@@ -71,6 +71,7 @@ import {
   capTtlToDays,
   getRemovedCertificateNames,
   getRemovedCertificateNamesFromCsr,
+  haveRenewalNamesChanged,
   unionUsageOptions
 } from "./certificateRenewalUtils";
 import { isExternalTemplateCa, rowErrorsOf } from "./certificateUtils";
@@ -701,6 +702,14 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     isSanSectionShown: constraints.shouldShowSanSection,
     isSubjectEvaluated: keySource !== CertificateRenewalKeySource.Csr && !renewsFromStoredCsr,
     isValidityEvaluated: !isExternalTemplateProfile,
+    isCommonNameAddedAsDnsSan:
+      Boolean(policyData?.addCommonNameAsDnsSan) &&
+      Boolean(certificate) &&
+      haveRenewalNamesChanged(
+        certificate!,
+        watch("subjectAttributes") ?? [],
+        watch("subjectAltNames") ?? []
+      ),
     resetKey: certificate?.id
   });
 
@@ -1091,6 +1100,11 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
               policyRows={policy.sans.rows}
               policyNotices={policy.sans.notices}
               revealPolicyErrors={policy.isRevealed("subjectAltNames")}
+              description={
+                policyData?.addCommonNameAsDnsSan
+                  ? "If you change the common name or SANs, this policy adds the common name as a DNS name SAN."
+                  : undefined
+              }
             />
           )}
           {removedNames.length > 0 && !nameRemovalError && (

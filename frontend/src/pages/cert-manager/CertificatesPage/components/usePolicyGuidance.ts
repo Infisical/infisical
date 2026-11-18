@@ -46,6 +46,7 @@ type UsePolicyGuidanceParams = {
   isValidityEvaluated?: boolean;
   /** Identity of the current policy source; a change here starts every violation hidden again. */
   resetKey?: string;
+  isCommonNameAddedAsDnsSan?: boolean;
 };
 
 export type PolicyGuidance = {
@@ -77,7 +78,8 @@ export const usePolicyGuidance = ({
   customExtensionDeclarations = EMPTY_CUSTOM_EXTENSION_DECLARATIONS,
   isSubjectEvaluated = true,
   isValidityEvaluated = true,
-  resetKey
+  resetKey,
+  isCommonNameAddedAsDnsSan = false
 }: UsePolicyGuidanceParams): PolicyGuidance => {
   const subjectAttributes: SubjectAttribute[] =
     watch("subjectAttributes") ?? EMPTY_SUBJECT_ATTRIBUTES;
@@ -98,9 +100,17 @@ export const usePolicyGuidance = ({
         subjectAttributes,
         subjectAltNames,
         isSubjectSectionShown,
-        isSanSectionShown
+        isSanSectionShown,
+        isCommonNameAddedAsDnsSan
       }),
-    [rules, subjectAttributes, subjectAltNames, isSubjectSectionShown, isSanSectionShown]
+    [
+      rules,
+      subjectAttributes,
+      subjectAltNames,
+      isSubjectSectionShown,
+      isSanSectionShown,
+      isCommonNameAddedAsDnsSan
+    ]
   );
 
   const customExtensions = useMemo(

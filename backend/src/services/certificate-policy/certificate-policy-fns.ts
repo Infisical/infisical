@@ -1,7 +1,12 @@
 import RE2 from "re2";
 
-import { CertSubjectAttributeType } from "../certificate-common/certificate-constants";
-import { TSubjectRule } from "./certificate-policy-types";
+import { BadRequestError } from "@app/lib/errors";
+import { isValidIp } from "@app/lib/ip";
+import { isValidHostname } from "@app/lib/validator/validate-hostname";
+
+import { CertSubjectAlternativeNameType, CertSubjectAttributeType } from "../certificate-common/certificate-constants";
+import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
+import { TCertificatePolicy, TSubjectRule } from "./certificate-policy-types";
 
 export const isWildcardPattern = (value: string): boolean => value.includes("*");
 
@@ -131,4 +136,101 @@ export const validateDomainComponentsAgainstRule = ({
   }
 
   return errors;
+};
+
+const WILDCARD_LABEL_PREFIX = "*.";
+
+export const isDnsHostname = (value: string): boolean => {
+  const hostname = value.startsWith(WILDCARD_LABEL_PREFIX) ? value.slice(WILDCARD_LABEL_PREFIX.length) : value;
+  return !isValidIp(hostname) && isValidHostname(hostname);
+};
+
+type TSubjectAlternativeName = { type: CertSubjectAlternativeNameType; value: string };
+
+export const includesCommonNameDnsSan = (
+  subjectAlternativeNames: TSubjectAlternativeName[] | null | undefined,
+  commonName: string | null | undefined
+): boolean =>
+  Boolean(commonName) &&
+  Boolean(
+    subjectAlternativeNames?.some(
+      (san) =>
+        san.type === CertSubjectAlternativeNameType.DNS_NAME && san.value.toLowerCase() === commonName?.toLowerCase()
+    )
+  );
+
+export const withCommonNameDnsSanReason = ({
+  policy,
+  sanType,
+  sanValue,
+  request,
+  error
+}: {
+  policy: Pick<TCertificatePolicy, "addCommonNameAsDnsSan">;
+  sanType: CertSubjectAlternativeNameType;
+  sanValue: string;
+  request: { commonName?: string | null };
+  error: string;
+}): string =>
+  policy.addCommonNameAsDnsSan && includesCommonNameDnsSan([{ type: sanType, value: sanValue }], request.commonName)
+    ? `${error}. The policy adds the common name as a DNS name SAN, so it must follow the DNS Name rules.`
+    : error;
+
+export const addCommonNameAsDnsSan = ({
+  policy,
+  enrollmentType,
+  commonName: requestedCommonName,
+  csrCommonName,
+  subjectAlternativeNames,
+  isCsrSignedAsSent = false
+}: {
+  policy: Pick<TCertificatePolicy, "addCommonNameAsDnsSan">;
+  enrollmentType: EnrollmentType;
+  commonName?: string | null;
+  csrCommonName?: string | null;
+  subjectAlternativeNames?: TSubjectAlternativeName[];
+  isCsrSignedAsSent?: boolean;
+}): { subjectAlternativeNames?: TSubjectAlternativeName[]; altNameEntries?: TSubjectAlternativeName[] } => {
+  const isAcme = enrollmentType === EnrollmentType.ACME;
+  const commonName = isAcme ? csrCommonName : requestedCommonName;
+  if (!policy.addCommonNameAsDnsSan || !commonName || isCsrSignedAsSent || (isAcme && isValidIp(commonName))) {
+    return { subjectAlternativeNames };
+  }
+
+  if (includesCommonNameDnsSan(subjectAlternativeNames, commonName)) {
+    return { subjectAlternativeNames };
+  }
+
+  if (!isDnsHostname(commonName)) {
+    throw new BadRequestError({
+      message: `The certificate policy adds the common name as a DNS name, but common name '${commonName}' is not a valid DNS host name. Use a host name such as app.example.com as the common name, or turn off 'Add common name as DNS SAN' on the policy.`
+    });
+  }
+
+  const subjectAlternativeNamesWithCommonName = [
+    ...(subjectAlternativeNames ?? []),
+    { type: CertSubjectAlternativeNameType.DNS_NAME, value: commonName }
+  ];
+  return {
+    subjectAlternativeNames: subjectAlternativeNamesWithCommonName,
+    altNameEntries: subjectAlternativeNamesWithCommonName
+  };
+};
+
+export const keepReviewedCommonNameDnsSan = ({
+  reviewedSubjectAlternativeNames,
+  ...input
+}: Omit<Parameters<typeof addCommonNameAsDnsSan>[0], "policy"> & {
+  reviewedSubjectAlternativeNames: TSubjectAlternativeName[] | null | undefined;
+}): ReturnType<typeof addCommonNameAsDnsSan> => {
+  const commonName = input.enrollmentType === EnrollmentType.ACME ? input.csrCommonName : input.commonName;
+  return addCommonNameAsDnsSan({
+    ...input,
+    policy: {
+      addCommonNameAsDnsSan:
+        Boolean(commonName) &&
+        isDnsHostname(commonName as string) &&
+        includesCommonNameDnsSan(reviewedSubjectAlternativeNames, commonName)
+    }
+  });
 };

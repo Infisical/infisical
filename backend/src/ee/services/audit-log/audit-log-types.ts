@@ -3890,6 +3890,7 @@ interface CreateCertificatePolicy {
         certificatePolicyId: string;
         name: string;
         projectId: string;
+        addCommonNameAsDnsSan: boolean;
         customExtensionOids?: string[];
       }
     | {
@@ -3910,6 +3911,7 @@ interface UpdateCertificatePolicy {
     | {
         certificatePolicyId: string;
         name: string;
+        addCommonNameAsDnsSan: boolean;
         customExtensionOids?: string[];
       }
     | {

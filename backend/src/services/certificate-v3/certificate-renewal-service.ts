@@ -27,6 +27,7 @@ import { CaCapability, CaType } from "@app/services/certificate-authority/certif
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
   caIssuesFromCsr,
+  caSignsCsrAsSent,
   caSupportsCapability,
   CERTIFICATE_AUTHORITIES_TYPE_MAP
 } from "@app/services/certificate-authority/certificate-authority-maps";
@@ -35,6 +36,11 @@ import {
   TProfileCustomExtension,
   TResolvedCustomExtension
 } from "@app/services/certificate-common/certificate-extension-fns";
+import {
+  addCommonNameAsDnsSan,
+  isDnsHostname,
+  keepReviewedCommonNameDnsSan
+} from "@app/services/certificate-policy/certificate-policy-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import {
@@ -131,6 +137,7 @@ import {
   isCertificateContentEdit,
   isSameRenewalApprovalSnapshot,
   keepCertificateFactsInCsrRenewal,
+  haveRenewalNamesChanged,
   resolveRenewalAlgorithms,
   resolveRenewalAltNames,
   resolveRenewalCustomExtensions,
@@ -490,7 +497,8 @@ export const certificateRenewalServiceFactory = ({
     actorOrgId,
     removeRootsFromChain,
     resolvedCustomExtensions,
-    approvedCertificateRequestId
+    approvedCertificateRequestId,
+    isCommonNameAddedToCsr
   }: {
     keySource: CertificateRenewalKeySource;
     csr?: string;
@@ -513,6 +521,7 @@ export const certificateRenewalServiceFactory = ({
     removeRootsFromChain?: boolean;
     resolvedCustomExtensions?: TResolvedCustomExtension[];
     approvedCertificateRequestId?: string;
+    isCommonNameAddedToCsr: boolean;
   }): Promise<TCertificateIssuanceResponse> => {
     const isCsrAuthoritative = keySource === CertificateRenewalKeySource.Csr;
     const requestedAltNames = certificateRequest.subjectAlternativeNames ?? [];
@@ -589,6 +598,7 @@ export const certificateRenewalServiceFactory = ({
         customExtensions: resolvedCustomExtensions,
         commonName: certificateRequest.commonName,
         altNames: isCsrAuthoritative ? undefined : requestedAltNames.map((san) => san.value).join(","),
+        altNameEntries: isCommonNameAddedToCsr ? requestedAltNames : undefined,
         basicConstraints: caBasicConstraints,
         pathLength: certificateRequest.basicConstraints?.pathLength,
         ttl,
@@ -828,7 +838,8 @@ export const certificateRenewalServiceFactory = ({
     originalSignatureAlgorithm,
     originalKeyAlgorithm,
     profileCustomExtensions,
-    maxTtlDays
+    maxTtlDays,
+    isCsrSignedAsSent
   }: {
     originalCert: TCertificates;
     policy: Parameters<TCertificatePolicyServiceFactory["validateRequestAgainstPolicy"]>[0];
@@ -840,6 +851,7 @@ export const certificateRenewalServiceFactory = ({
     originalKeyAlgorithm?: CertKeyAlgorithm;
     profileCustomExtensions?: TProfileCustomExtension[] | null;
     maxTtlDays?: number;
+    isCsrSignedAsSent: boolean;
   }) => {
     const originalTtl = certificateSpanToTtl(originalCert.notBefore, originalCert.notAfter);
 
@@ -883,7 +895,19 @@ export const certificateRenewalServiceFactory = ({
 
     const requestedTtl = mergedRequest.validity?.ttl || originalTtl;
     const ttl = maxTtlDays && ms(requestedTtl) > ms(`${maxTtlDays}d`) ? `${maxTtlDays}d` : requestedTtl;
-    const certificateRequest = { ...mergedRequest, validity: { ttl } };
+    const { subjectAlternativeNames, altNameEntries: commonNameAltNameEntries } = haveRenewalNamesChanged(
+      originalRequest,
+      mergedRequest
+    )
+      ? addCommonNameAsDnsSan({
+          policy,
+          enrollmentType: EnrollmentType.API,
+          commonName: mergedRequest.commonName,
+          subjectAlternativeNames: mergedRequest.subjectAlternativeNames,
+          isCsrSignedAsSent
+        })
+      : { subjectAlternativeNames: mergedRequest.subjectAlternativeNames, altNameEntries: undefined };
+    const certificateRequest = { ...mergedRequest, subjectAlternativeNames, validity: { ttl } };
 
     const validationResult = certificatePolicyService.validateRequestAgainstPolicy(policy, certificateRequest, {
       profileCustomExtensions
@@ -896,7 +920,8 @@ export const certificateRenewalServiceFactory = ({
       certificateRequest,
       replayedRequest: originalRequest,
       ttl,
-      resolvedCustomExtensions: validationResult.resolvedCustomExtensions
+      resolvedCustomExtensions: validationResult.resolvedCustomExtensions,
+      isCommonNameAdded: Boolean(commonNameAltNameEntries)
     };
   };
 
@@ -1270,6 +1295,37 @@ export const certificateRenewalServiceFactory = ({
     }
   };
 
+  const $withRenewalCommonNameDnsSan = async ({
+    originalCert,
+    renewedRequest,
+    hasCsr
+  }: {
+    originalCert: TCertificates;
+    renewedRequest: TCertificateRequest;
+    hasCsr: boolean;
+  }) => {
+    const { commonName, subjectAlternativeNames } = renewedRequest;
+    if (!originalCert.profileId || !commonName || !isDnsHostname(commonName)) return subjectAlternativeNames;
+
+    const profile = await certificateProfileDAL.findByIdWithConfigs(originalCert.profileId);
+    if (!profile?.certificatePolicyId) return subjectAlternativeNames;
+
+    const policy = await certificatePolicyService.getPolicyById({
+      policyId: profile.certificatePolicyId,
+      internal: true
+    });
+    const caId = profile.caId || originalCert.caId;
+    const ca = hasCsr && caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(caId) : null;
+
+    return addCommonNameAsDnsSan({
+      policy,
+      enrollmentType: EnrollmentType.API,
+      commonName,
+      subjectAlternativeNames,
+      isCsrSignedAsSent: caSignsCsrAsSent(ca?.externalCa?.type as CaType | undefined)
+    }).subjectAlternativeNames;
+  };
+
   // Renewal is exempt from the certificate caps only while it stays the same logical certificate: a
   // refused renewal lets a live certificate expire. The flow lets the caller rewrite the common name
   // and SANs though, and a renewal that does inserts a row under a quota key the org has never held,
@@ -1307,9 +1363,22 @@ export const certificateRenewalServiceFactory = ({
     // go stale at once and reading it here would make every renewal look like a new certificate.
     if (renewedQuotaKey === buildCertificateQuotaKey(originalCert)) return undefined;
 
+    const renewedSubjectAlternativeNames = await $withRenewalCommonNameDnsSan({
+      originalCert,
+      renewedRequest,
+      hasCsr: Boolean(csrRenewalRequest)
+    });
+    const issuedAltNames = (renewedSubjectAlternativeNames ?? []).map((san) => san.value).join(",");
+    if (
+      buildCertificateQuotaKey({ commonName: renewedRequest.commonName, altNames: issuedAltNames }) ===
+      buildCertificateQuotaKey(originalCert)
+    ) {
+      return undefined;
+    }
+
     return validateCertificateRequestLicense({
       request: renewedRequest,
-      altNames: renewedAltNames,
+      altNames: issuedAltNames,
       projectId: originalCert.projectId,
       projectDAL,
       licenseService,
@@ -1508,11 +1577,14 @@ export const certificateRenewalServiceFactory = ({
     // Without the private key, reusing the key pair means renewing from the CSR Infisical holds for it, so
     // it runs as a CSR renewal: the CSR is the source of truth for the subject and names on every CA type.
     let isStoredCsr = false;
+    let storedCsrReviewedAltNames: TCertificateRequest["subjectAlternativeNames"] | null = null;
     if (
       keySource === CertificateRenewalKeySource.Reuse &&
       !(await certificateSecretDAL.findOne({ certId: certificateId }))
     ) {
-      const storedCsr = await $findStoredCsr(certificateId);
+      const originatingRequest = await certificateDAL.getOriginatingRequestByCertId(certificateId);
+      const storedCsr = await $findStoredCsr(certificateId, originatingRequest.csr ?? null);
+      storedCsrReviewedAltNames = originatingRequest.exists ? originatingRequest.altNames : null;
       if (storedCsr) {
         keySource = CertificateRenewalKeySource.Csr;
         csr = storedCsr;
@@ -1536,6 +1608,18 @@ export const certificateRenewalServiceFactory = ({
     const certForLicenseChecks = await certificateDAL.findById(certificateId);
     if (!certForLicenseChecks) {
       throw new NotFoundError({ message: "Certificate not found" });
+    }
+
+    let isCommonNameKeptInCsr = false;
+    if (csrRenewalRequest && isStoredCsr) {
+      const { subjectAlternativeNames, altNameEntries } = keepReviewedCommonNameDnsSan({
+        reviewedSubjectAlternativeNames: storedCsrReviewedAltNames,
+        enrollmentType: EnrollmentType.API,
+        commonName: csrRenewalRequest.commonName,
+        subjectAlternativeNames: csrRenewalRequest.subjectAlternativeNames
+      });
+      csrRenewalRequest.subjectAlternativeNames = subjectAlternativeNames;
+      isCommonNameKeptInCsr = Boolean(altNameEntries);
     }
 
     await $assertRequestedAlgorithmsLicensed({ originalCert: certForLicenseChecks, csrRenewalRequest, attributes });
@@ -1595,19 +1679,21 @@ export const certificateRenewalServiceFactory = ({
           }
         }
 
-        const { certificateRequest, replayedRequest, ttl, resolvedCustomExtensions } = $buildValidatedRenewalRequest({
-          originalCert,
-          policy,
-          csrRenewalRequest,
-          issuedFrom: originatingRequest,
-          attributes,
-          keySource,
-          originalSignatureAlgorithm,
-          originalKeyAlgorithm,
-          profileCustomExtensions: profile?.defaults?.customExtensions,
-          maxTtlDays:
-            externalConfiguration?.reissue && caType ? CertificateReissueMap[caType]?.maxValidityDays : undefined
-        });
+        const { certificateRequest, replayedRequest, ttl, resolvedCustomExtensions, isCommonNameAdded } =
+          $buildValidatedRenewalRequest({
+            originalCert,
+            policy,
+            csrRenewalRequest,
+            issuedFrom: originatingRequest,
+            attributes,
+            keySource,
+            originalSignatureAlgorithm,
+            originalKeyAlgorithm,
+            profileCustomExtensions: profile?.defaults?.customExtensions,
+            maxTtlDays:
+              externalConfiguration?.reissue && caType ? CertificateReissueMap[caType]?.maxValidityDays : undefined,
+            isCsrSignedAsSent: Boolean(csrRenewalRequest) && caSignsCsrAsSent(caType)
+          });
 
         changedAttributes = buildRenewalAuditChanges(replayedRequest, { ...certificateRequest, validity: { ttl } });
 
@@ -1756,6 +1842,7 @@ export const certificateRenewalServiceFactory = ({
           return {
             renewalMode: CertificateRenewalMode.KeyPreserving as const,
             resolvedCustomExtensions,
+            isCommonNameAddedToCsr: isCommonNameKeptInCsr || isCommonNameAdded,
             keySource,
             csr,
             ca,

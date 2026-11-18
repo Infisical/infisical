@@ -1,5 +1,6 @@
 import * as x509 from "@peculiar/x509";
 
+import { isIPv6 } from "@app/helpers/ip";
 import {
   certKeyAlgorithms,
   SIGNATURE_ALGORITHMS_OPTIONS
@@ -86,6 +87,34 @@ const parseCertificateSans = (
     .map((san) => san.trim())
     .filter(Boolean)
     .map((value) => ({ type: resolveSanType(value, allowedSanTypes), value }));
+};
+
+const URI_SCHEME_REGEX = /^[a-zA-Z][a-zA-Z0-9+.-]*:/;
+
+export const haveRenewalNamesChanged = (
+  cert: Pick<TCertificate, "commonName" | "subjectAltNames" | "altNames">,
+  subjectAttributes: { type: CertSubjectAttributeType; value: string }[],
+  subjectAltNames: { value: string }[]
+): boolean => {
+  const normalizeSanValue = (value: string) => {
+    const trimmed = value.trim();
+    return !isIPv6(trimmed) && URI_SCHEME_REGEX.test(trimmed) ? trimmed : trimmed.toLowerCase();
+  };
+  const toNameKey = (commonName: string, sanValues: string[]) =>
+    [
+      commonName.trim().toLowerCase(),
+      ...sanValues.map(normalizeSanValue).filter(Boolean).sort()
+    ].join("\n");
+  const commonName =
+    subjectAttributes.find((attr) => attr.type === CertSubjectAttributeType.COMMON_NAME)?.value ??
+    "";
+
+  return (
+    toNameKey(
+      commonName,
+      subjectAltNames.map((san) => san.value)
+    ) !== toNameKey(cert.commonName ?? "", (cert.subjectAltNames || cert.altNames || "").split(","))
+  );
 };
 
 const buildSubjectAttributes = (cert: TCertificate) => {

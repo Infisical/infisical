@@ -23,6 +23,8 @@ The renewed certificate starts as an exact copy of the one being renewed. Only w
 | Clear a field | The attribute is dropped from the renewed certificate |
 | Edit a list, such as names or key usages | The list you submit replaces the current one |
 
+If the certificate's policy has [Add common name as DNS SAN](/documentation/platform/pki/settings/policies#subject-alternative-names-sans) turned on and you change the common name or SANs, the common name is also added as a DNS SAN.
+
 Defaults configured on the certificate profile are deliberately not applied. They describe what a **new** certificate should look like, so applying them during a renewal would rewrite fields you never touched. The profile's [certificate policy](/documentation/platform/pki/settings/policies) still validates the result, so a renewal can't produce a certificate the policy would have rejected at issuance.
 
 ## Choosing how the key pair is handled

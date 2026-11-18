@@ -207,6 +207,7 @@ export const certificatePolicyResponseSchema = z.object({
   validity: policyValiditySchema.optional(),
   basicConstraints: policyBasicConstraintsSchema.optional(),
   customExtensions: z.array(policyCustomExtensionSchema).optional(),
+  addCommonNameAsDnsSan: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

@@ -21,7 +21,10 @@ import { validateAwsPcaCaIssuanceInputs } from "@app/services/certificate-author
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
-import { caUsesExternalIssuanceQueue } from "@app/services/certificate-authority/certificate-authority-maps";
+import {
+  caSignsCsrAsSent,
+  caUsesExternalIssuanceQueue
+} from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
@@ -36,6 +39,7 @@ import {
   TRequestCustomExtension,
   TResolvedCustomExtension
 } from "@app/services/certificate-common/certificate-extension-fns";
+import { keepReviewedCommonNameDnsSan } from "@app/services/certificate-policy/certificate-policy-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateRequest } from "@app/services/certificate-policy/certificate-policy-types";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -466,6 +470,17 @@ export const certificateApprovalServiceFactory = (
       csr || ""
     );
     const mappedReconstructedRequest = mapEnumsForValidation(reconstructedRequest);
+    const {
+      subjectAlternativeNames: subjectAlternativeNamesWithCommonName,
+      altNameEntries: altNameEntriesWithCommonName
+    } = keepReviewedCommonNameDnsSan({
+      reviewedSubjectAlternativeNames: certRequest.altNames as TAltNameEntry[] | null,
+      enrollmentType: (certRequest.enrollmentType as EnrollmentType) || EnrollmentType.API,
+      commonName: reconstructedRequest.commonName,
+      csrCommonName: certRequest.commonName,
+      subjectAlternativeNames: reconstructedRequest.subjectAlternativeNames
+    });
+    mappedReconstructedRequest.subjectAlternativeNames = subjectAlternativeNamesWithCommonName;
     mappedReconstructedRequest.keyAlgorithm = reconstructedKeyAlg;
     mappedReconstructedRequest.signatureAlgorithm = reconstructedSigAlg;
     if (certRequest.notAfter) {
@@ -535,6 +550,7 @@ export const certificateApprovalServiceFactory = (
       ttl,
       subjectOverride,
       altNames: undefined,
+      altNameEntries: altNameEntriesWithCommonName,
       keyUsages: reconstructedRequest.keyUsages
         ? convertKeyUsageArrayToLegacy(reconstructedRequest.keyUsages)
         : undefined,
@@ -711,6 +727,15 @@ export const certificateApprovalServiceFactory = (
       profileDefaults: profile.defaults,
       ttl: effectiveTtl
     });
+
+    mappedReconstructedRequest.subjectAlternativeNames = keepReviewedCommonNameDnsSan({
+      reviewedSubjectAlternativeNames: certRequest.altNames as TAltNameEntry[] | null,
+      enrollmentType: (certRequest.enrollmentType as EnrollmentType) || EnrollmentType.API,
+      commonName: mappedReconstructedRequest.commonName,
+      csrCommonName: certRequest.commonName,
+      subjectAlternativeNames: mappedReconstructedRequest.subjectAlternativeNames,
+      isCsrSignedAsSent: Boolean(certRequest.csr) && caSignsCsrAsSent(caType)
+    }).subjectAlternativeNames;
 
     const revalidationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,

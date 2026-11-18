@@ -2603,6 +2603,8 @@ const domainComponentRule = (rule: string) =>
 const DOMAIN_COMPONENT_DENIED_RULE = `Domain component sequences that are rejected, each comma-joined most specific first. A sequence is rejected wherever it appears in the chain, so "example,com" rejects DC=example,DC=com and DC=host,DC=example,DC=com alike.`;
 
 export const CERTIFICATE_POLICIES = {
+  ADD_COMMON_NAME_AS_DNS_SAN:
+    "When true, issuance adds the certificate's common name as a DNS name subject alternative name unless a DNS name SAN already matches it (case-insensitive). The added name is checked against the SAN rules like a requested one, and a common name that is not a valid DNS host name is refused. ACME issuance adds only the common name of the CSR, and an IP address common name there is left as it is. Microsoft AD CS signs a CSR as sent, so a request to an AD CS CA that includes a CSR is not changed. Requires a dns_name SAN rule when the policy restricts SANs. A renewal adds it only when it changes the common name or SANs. Defaults to false on create; omit it on update to keep the current value.",
   CUSTOM_EXTENSION_RULES:
     "Rules for custom X.509 extensions, one per OID. Omit the field to leave custom extensions unconstrained; send an empty array to forbid them entirely.",
   CUSTOM_EXTENSION_RULE: {

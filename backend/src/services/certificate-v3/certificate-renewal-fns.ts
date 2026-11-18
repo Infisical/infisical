@@ -478,6 +478,21 @@ export const keepCertificateFactsInCsrRenewal = (
   basicConstraints: csrRequest.basicConstraints ?? certificate.basicConstraints
 });
 
+export const haveRenewalNamesChanged = (
+  original: Pick<TCertificateRequest, "commonName" | "subjectAlternativeNames">,
+  renewed: Pick<TCertificateRequest, "commonName" | "subjectAlternativeNames">
+): boolean => {
+  const toNameKey = ({ commonName, subjectAlternativeNames }: typeof original) =>
+    [
+      (commonName ?? "").toLowerCase(),
+      ...(subjectAlternativeNames ?? [])
+        .map((san) => (san.type === CertSubjectAlternativeNameType.URI ? san.value : san.value.toLowerCase()))
+        .sort()
+    ].join("\n");
+
+  return toNameKey(original) !== toNameKey(renewed);
+};
+
 export const buildRenewalAuditChanges = (
   replayedRequest: TCertificateRequest,
   issuedRequest: TCertificateRequest

@@ -355,7 +355,12 @@ export const useCertificatePolicy = (
       // Seed the rows the policy requires so they are visible as fields from the start. Writing an
       // identical value would still hand the form a new array, and the guidance hook reads those
       // identities as an edit and clears the findings the requester is looking at.
-      const seeded = withRequiredRows(buildPolicyRules(templateData), nextSubjectAttrs, nextSans);
+      const seeded = withRequiredRows(
+        buildPolicyRules(templateData),
+        nextSubjectAttrs,
+        nextSans,
+        Boolean(templateData.addCommonNameAsDnsSan)
+      );
       if (!isSameRows(watch("subjectAltNames"), seeded.subjectAltNames)) {
         setValue("subjectAltNames", seeded.subjectAltNames);
       }

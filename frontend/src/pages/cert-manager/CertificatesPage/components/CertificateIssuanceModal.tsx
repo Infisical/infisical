@@ -39,6 +39,7 @@ import { buildExtendedKeyUsageToggleSchema } from "@app/hooks/api/certificates/c
 import { CertificateRequestStatus, CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import { useUnifiedCertificateIssuance } from "@app/hooks/api/certificates/mutations";
 import { useListPkiApplicationProfiles } from "@app/hooks/api/pkiApplications";
+import { wasErrorReported } from "@app/hooks/api/reactQuery";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { useWizardSteps } from "@app/hooks/useWizardSteps";
 import { PkiDocsUrls } from "@app/pages/cert-manager/pki-docs-urls";
@@ -431,7 +432,8 @@ export const CertificateIssuanceModal = ({
     customExtensionDeclarations: requestableCustomExtensions,
     isSubjectEvaluated: requestMethod === RequestMethod.MANAGED,
     isValidityEvaluated: !isAdcsProfile,
-    resetKey: actualSelectedProfileId
+    resetKey: actualSelectedProfileId,
+    isCommonNameAddedAsDnsSan: Boolean(policyData?.addCommonNameAsDnsSan)
   });
 
   const resetAllState = useCallback(() => {
@@ -613,6 +615,7 @@ export const CertificateIssuanceModal = ({
         const response = await issueCertificate(request);
         handleIssuanceResponse(response);
       } catch (error) {
+        if (wasErrorReported(error)) return;
         createNotification({
           text: `Failed to request certificate: ${(error as Error)?.message || "Unknown error"}`,
           type: "error"
@@ -848,6 +851,11 @@ export const CertificateIssuanceModal = ({
               policyRows={policy.sans.rows}
               policyNotices={policy.sans.notices}
               revealPolicyErrors={policy.isRevealed("subjectAltNames")}
+              description={
+                policyData?.addCommonNameAsDnsSan
+                  ? "This policy adds the common name as a DNS name SAN, so you don't need to list it here."
+                  : undefined
+              }
             />
           )}
 

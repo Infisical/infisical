@@ -8,7 +8,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorType, AuthMethod } from "../auth/auth-type";
 import {
@@ -112,6 +112,7 @@ describe("CertificatePolicyService", () => {
     name: "web-server-template",
     description: "Template for web server certificates",
     ...samplePolicy,
+    addCommonNameAsDnsSan: false,
     createdAt: new Date(),
     updatedAt: new Date()
   };
@@ -183,6 +184,20 @@ describe("CertificatePolicyService", () => {
         name: expect.any(String)
       });
       expect(result).toEqual(sampleTemplate);
+    });
+
+    it.each([
+      ["no SANs allowed", []],
+      ["no DNS name rule", [{ type: CertSubjectAlternativeNameType.EMAIL, allowed: ["*@example.com"] }]]
+    ])("should refuse the common name option when the policy has %s", async (_, sans) => {
+      await expect(
+        service.createPolicy({
+          ...mockActor,
+          projectId: "project-123",
+          data: { ...createData, sans, addCommonNameAsDnsSan: true }
+        })
+      ).rejects.toThrow(BadRequestError);
+      expect(mockCertificatePolicyDAL.create).not.toHaveBeenCalled();
     });
 
     // Previously tested service-level validations that are now schema-level:
@@ -290,6 +305,26 @@ describe("CertificatePolicyService", () => {
         name: expect.any(String)
       });
       expect(result).toEqual(updatedTemplate);
+    });
+
+    it.each([
+      [
+        "turning the option on keeps stored SANs without a DNS name rule",
+        { sans: [], addCommonNameAsDnsSan: false },
+        { addCommonNameAsDnsSan: true }
+      ],
+      [
+        "new SANs drop the DNS name rule while the option is stored on",
+        { addCommonNameAsDnsSan: true },
+        { sans: [{ type: CertSubjectAlternativeNameType.EMAIL, allowed: ["*@example.com"] }] }
+      ]
+    ])("should refuse an update where %s", async (_, stored, data) => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue({ ...sampleTemplate, ...stored });
+
+      await expect(service.updatePolicy({ ...mockActor, policyId: "policy-123", data })).rejects.toThrow(
+        BadRequestError
+      );
+      expect(mockCertificatePolicyDAL.updateById).not.toHaveBeenCalled();
     });
 
     it("should throw NotFoundError when template does not exist", async () => {
@@ -664,6 +699,20 @@ describe("CertificatePolicyService", () => {
 
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain("email SAN matching denied pattern 'forbidden@example.com' found in request");
+    });
+
+    it("should name the common name when the DNS name the policy adds for it is refused", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue({ ...sampleTemplate, addCommonNameAsDnsSan: true });
+
+      const result = await service.validateCertificateRequest("template-123", {
+        ...validRequest,
+        commonName: "forbidden.com",
+        subjectAlternativeNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "forbidden.com" }]
+      });
+
+      expect(result.errors).toContain(
+        "dns_name SAN value 'forbidden.com' does not match allowed patterns: *.example.com, *.api.example.com. The policy adds the common name as a DNS name SAN, so it must follow the DNS Name rules."
+      );
     });
 
     it("should detect invalid signature algorithm", async () => {

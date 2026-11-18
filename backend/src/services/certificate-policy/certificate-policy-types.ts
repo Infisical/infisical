@@ -86,7 +86,9 @@ export type TCertificatePolicyInsert = TPkiCertificatePoliciesInsert & {
   customExtensions?: TCustomExtensionRule[] | null;
 };
 
-export type TCertificatePolicyUpdate = Partial<Pick<TCertificatePolicy, "name" | "description">> & {
+export type TCertificatePolicyUpdate = Partial<
+  Pick<TCertificatePolicy, "name" | "description" | "addCommonNameAsDnsSan">
+> & {
   subject?: TTemplateV2Policy["subject"] | null;
   sans?: TTemplateV2Policy["sans"] | null;
   keyUsages?: TTemplateV2Policy["keyUsages"] | null;

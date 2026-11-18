@@ -251,7 +251,7 @@ const STEPS = [
       "Control the subject attributes and alternative names allowed on issued certificates.",
     rightLabel: "SUBJECT",
     rightDescription:
-      "By default, issued certificates may carry any subject attributes and subject alternative names. Enable a restriction to define exactly which values are allowed, required, or denied. Requests that fall outside those rules are rejected at issuance."
+      "By default, issued certificates may carry any subject attributes and subject alternative names. Enable a restriction to define exactly which values are allowed, required, or denied. Requests that fall outside those rules are rejected at issuance. You can also have the common name added as a DNS name SAN."
   },
   {
     name: "Algorithms",
@@ -649,7 +649,8 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
         signatureAlgorithm,
         keyAlgorithm,
         basicConstraints,
-        customExtensions
+        customExtensions,
+        addCommonNameAsDnsSan: policyData.addCommonNameAsDnsSan
       };
     };
 
@@ -674,7 +675,8 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
         },
         keyAlgorithm: {
           allowedKeyTypes: []
-        }
+        },
+        addCommonNameAsDnsSan: false
       };
     };
 
@@ -725,6 +727,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
     const watchedKeyAlgs = watch("keyAlgorithm")?.allowedKeyTypes || [];
     const watchedIsCAPolicy = watch("basicConstraints.isCA") || CertPolicyState.DENIED;
     const watchedCustomExtensions = watch("customExtensions") || [];
+    const watchedAddCommonNameAsDnsSan = watch("addCommonNameAsDnsSan");
 
     const markCustomPreset = () => {
       if (watchedPreset !== POLICY_PRESET_IDS.CUSTOM) {
@@ -767,6 +770,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
         setRestrictSans(Boolean(formData.subjectAlternativeNames?.length));
         setValue("customExtensions", []);
         setRestrictCustomExtensions(false);
+        setValue("addCommonNameAsDnsSan", false);
         setRestrictSignature(Boolean(formData.signatureAlgorithm?.allowedAlgorithms?.length));
         setRestrictKeyAlg(Boolean(formData.keyAlgorithm?.allowedKeyTypes?.length));
         setRestrictKeyUsages(
@@ -923,7 +927,8 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
         algorithms: algorithms.signature || algorithms.keyAlgorithm ? algorithms : null,
         validity: validity.max ? validity : null,
         basicConstraints,
-        customExtensions
+        customExtensions,
+        addCommonNameAsDnsSan: Boolean(data.addCommonNameAsDnsSan)
       };
     };
 
@@ -1085,6 +1090,12 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
         }
         if (restrictSans && watchedSans.some((s) => !s.value?.[0]?.trim())) {
           stepErrors.sans = "Every subject alternative name needs a value (use * for any).";
+        } else if (
+          restrictSans &&
+          watchedAddCommonNameAsDnsSan &&
+          !watchedSans.some((s) => s.type === CertSubjectAlternativeNameType.DNS_NAME)
+        ) {
+          stepErrors.sans = "Add a DNS Name rule, or turn off 'Add common name as DNS SAN'.";
         }
       }
 
@@ -1520,6 +1531,23 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
                 </Button>
               </div>
             </SectionToggle>
+
+            <Controller
+              control={control}
+              name="addCommonNameAsDnsSan"
+              render={({ field: { value, onChange } }) => (
+                <SectionToggle
+                  title="Add common name as DNS SAN"
+                  description="Adds the common name as a DNS name SAN when a request doesn't list it."
+                  enabled={Boolean(value)}
+                  onChange={(enabled) => {
+                    onChange(enabled);
+                    clearError("sans");
+                    markCustomPreset();
+                  }}
+                />
+              )}
+            />
           </div>
         )}
 

@@ -171,7 +171,11 @@ const createCertificatePolicySchema = z.object({
   algorithms: policyAlgorithmsSchema.nullish(),
   validity: policyValiditySchema.nullish(),
   basicConstraints: policyBasicConstraintsSchema.optional(),
-  customExtensions: z.array(policyCustomExtensionSchema).nullish().describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULES)
+  customExtensions: z
+    .array(policyCustomExtensionSchema)
+    .nullish()
+    .describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULES),
+  addCommonNameAsDnsSan: z.boolean().optional().describe(CERTIFICATE_POLICIES.ADD_COMMON_NAME_AS_DNS_SAN)
 });
 
 const updateCertificatePolicySchema = z.object({
@@ -184,7 +188,11 @@ const updateCertificatePolicySchema = z.object({
   algorithms: policyAlgorithmsSchema.nullish(),
   validity: policyValiditySchema.nullish(),
   basicConstraints: policyBasicConstraintsSchema.optional(),
-  customExtensions: z.array(policyCustomExtensionSchema).nullish().describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULES)
+  customExtensions: z
+    .array(policyCustomExtensionSchema)
+    .nullish()
+    .describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULES),
+  addCommonNameAsDnsSan: z.boolean().optional().describe(CERTIFICATE_POLICIES.ADD_COMMON_NAME_AS_DNS_SAN)
 });
 
 export const registerCertificatePolicyRouter = async (server: FastifyZodProvider) => {
@@ -225,6 +233,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
             certificatePolicyId: certificatePolicy.id,
             name: certificatePolicy.name,
             projectId: certificatePolicy.projectId,
+            addCommonNameAsDnsSan: certificatePolicy.addCommonNameAsDnsSan,
             ...(certificatePolicy.customExtensions && {
               customExtensionOids: certificatePolicy.customExtensions.map((rule) => rule.oid)
             })
@@ -384,6 +393,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
           metadata: {
             certificatePolicyId: certificatePolicy.id,
             name: certificatePolicy.name,
+            addCommonNameAsDnsSan: certificatePolicy.addCommonNameAsDnsSan,
             ...(certificatePolicy.customExtensions && {
               customExtensionOids: certificatePolicy.customExtensions.map((rule) => rule.oid)
             })

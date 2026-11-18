@@ -4,7 +4,10 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DetailGroup
+  Detail,
+  DetailGroup,
+  DetailLabel,
+  DetailValue
 } from "@app/components/v3";
 import { TCertificatePolicy } from "@app/hooks/api/certificatePolicies";
 import {
@@ -19,11 +22,11 @@ type Props = {
 };
 
 export const PolicySansRulesSection = ({ policy }: Props) => {
-  if (!policy.sans) {
+  if (!policy.sans && !policy.addCommonNameAsDnsSan) {
     return null;
   }
 
-  const entries = policy.sans.filter(
+  const entries = (policy.sans ?? []).filter(
     (rule) =>
       (rule.allowed && rule.allowed.length > 0) ||
       (rule.required && rule.required.length > 0) ||
@@ -37,13 +40,19 @@ export const PolicySansRulesSection = ({ policy }: Props) => {
         <CardDescription>Constraints on SAN entries in issued certificates</CardDescription>
       </CardHeader>
       <CardContent>
-        {entries.length === 0 ? (
+        {policy.sans && entries.length === 0 ? (
           <p className="text-sm text-muted">
             No subject alternative names are allowed. Certificates issued under this policy cannot
             include any SANs.
           </p>
         ) : (
           <DetailGroup>
+            {policy.addCommonNameAsDnsSan && (
+              <Detail>
+                <DetailLabel>Add Common Name as DNS SAN</DetailLabel>
+                <DetailValue>Enabled</DetailValue>
+              </Detail>
+            )}
             {entries.map((rule, idx) => (
               <div
                 // eslint-disable-next-line react/no-array-index-key

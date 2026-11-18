@@ -71,7 +71,8 @@ const Page = () => {
     policy?.algorithms?.keyAlgorithm?.length ||
     policy?.validity?.max ||
     policy?.basicConstraints?.isCA ||
-    policy?.customExtensions
+    policy?.customExtensions ||
+    policy?.addCommonNameAsDnsSan
   );
 
   const handleDeleteConfirm = async () => {
