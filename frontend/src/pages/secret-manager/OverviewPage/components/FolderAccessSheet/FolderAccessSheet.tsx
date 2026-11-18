@@ -2,10 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BotIcon, SearchIcon, UserIcon, UsersIcon, XIcon } from "lucide-react";
 
-import {
-  FolderAccessControlsUpgradeIntent,
-  useUpgradeGate
-} from "@app/components/license/UpgradeGate";
+import { useUpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Accordion,
@@ -71,7 +68,7 @@ import {
   byAdminThenName,
   byName,
   canGrantFolderAccess,
-  isRootFolderPath,
+  subfolderUpgradeIntentOf,
   TFolderAccessActor,
   toIdentityActor,
   toOrgIdentityActor,
@@ -121,7 +118,7 @@ type Props = {
   environmentSlug: string;
   folderPath: string;
   environmentName: string;
-  onManageRootAccess?: () => void;
+  onManageInheritedAccess?: (secretPath: string) => void;
 };
 
 export const FolderAccessSheet = ({
@@ -131,7 +128,7 @@ export const FolderAccessSheet = ({
   environmentSlug,
   folderPath,
   environmentName,
-  onManageRootAccess
+  onManageInheritedAccess
 }: Props) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 300);
@@ -144,14 +141,13 @@ export const FolderAccessSheet = ({
   const isGrantBlocked = (change: Parameters<typeof canGrantFolderAccess>[1]) => {
     if (canGrantFolderAccess(Boolean(subscription?.secretsFolderRbac), change)) return false;
     openUpgradeGate({
-      intent: FolderAccessControlsUpgradeIntent,
+      intent: subfolderUpgradeIntentOf(folderPath),
       paywallKey: "secret-manager.folder-access-sheet"
     });
     return true;
   };
   const [noAccessTab, setNoAccessTab] = useState<TFolderAccessActor["type"]>("user");
   const isFiltering = Boolean(filter.types.length || filter.kinds.length);
-  const isRoot = isRootFolderPath(folderPath);
 
   const queryClient = useQueryClient();
   const { currentOrg } = useOrganization();
@@ -586,7 +582,7 @@ export const FolderAccessSheet = ({
                       key={`${actor.type}-${actor.id}`}
                       actor={actor}
                       isPending={isAccessLocked}
-                      canApplyToSubfolders={isRoot}
+                      folderPath={folderPath}
                       onSetTier={(tier, isRecursive) => setTier(actor, tier, isRecursive)}
                       onSetRecursive={(isRecursive) => setRecursive(actor, isRecursive)}
                       onSetTemporaryRange={(range) =>
@@ -599,7 +595,7 @@ export const FolderAccessSheet = ({
                       }
                       onMakePermanent={() => setAccessType(actor, { isTemporary: false })}
                       onRemove={() => setRemovalActor(actor)}
-                      onManageInheritedAccess={onManageRootAccess}
+                      onManageInheritedAccess={onManageInheritedAccess}
                     />
                   ))}
                 </div>
@@ -680,7 +676,7 @@ export const FolderAccessSheet = ({
                                       actor={actor}
                                       isDisabled={isGrantLocked}
                                       isPending={isGrantLocked}
-                                      canApplyToSubfolders={isRoot}
+                                      folderPath={folderPath}
                                       onSetTier={(tier, isRecursive) =>
                                         setTier(actor, tier, isRecursive)
                                       }
@@ -703,7 +699,7 @@ export const FolderAccessSheet = ({
                                       actor={actor}
                                       isDisabled={isGrantLocked}
                                       isPending={isGrantLocked}
-                                      canApplyToSubfolders={isRoot}
+                                      folderPath={folderPath}
                                       footerNote={`Also adds ${actor.name.split(" ")[0]} to this project with the No Access role.`}
                                       onSetTier={(tier, isRecursive) =>
                                         addToProjectAndGrant(actor, tier, isRecursive)

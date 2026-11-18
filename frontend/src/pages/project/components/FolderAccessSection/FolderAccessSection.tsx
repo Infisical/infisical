@@ -61,9 +61,8 @@ import {
 import { analytics, AnalyticsEvent, FolderAccessGrantSheetSource } from "@app/lib/analytics";
 import { FOLDER_ROLE_TIER_LABELS } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
 import {
-  formatExpirationTime,
-  grantStateOf,
-  isRootFolderPath
+  findInheritedGrant,
+  formatExpirationTime
 } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 import { RemoveFolderAccessDialog } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/RemoveFolderAccessDialog";
 
@@ -132,15 +131,11 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
 
   const dialogActor = (() => {
     if (!deleteTarget) return null;
-    const inheritedAccess = isRootFolderPath(deleteTarget.secretPath)
-      ? null
-      : ((folderAccess ?? []).find(
-          (row) =>
-            row.environment === deleteTarget.environment &&
-            row.isPermissionRecursive &&
-            isRootFolderPath(row.secretPath) &&
-            grantStateOf(row) !== "expired"
-        ) ?? null);
+    const inheritedAccess = findInheritedGrant(
+      folderAccess ?? [],
+      deleteTarget.environment,
+      deleteTarget.secretPath
+    );
     return toFolderAccessActor(actor, deleteTarget, inheritedAccess);
   })();
 

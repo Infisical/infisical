@@ -123,12 +123,21 @@ export const RemoveFolderAccessDialog = ({
               permissions here, so removing it can change their access.
             </AlertDialogDescription>
           )}
-          {!isExpired && isRecursive && (
+          {!isExpired && isRecursive && !inheritedAccess && (
             <AlertDialogDescription>
               This access also applies to the subfolders of{" "}
               <span className="font-mono text-foreground">{folderPath}</span>. Removing it returns
               them to their project roles in those subfolders too, except where they have a role set
               on the subfolder itself.
+            </AlertDialogDescription>
+          )}
+          {!isExpired && isRecursive && inheritedAccess && (
+            <AlertDialogDescription>
+              This access also applies to the subfolders of{" "}
+              <span className="font-mono text-foreground">{folderPath}</span>. Removing it returns
+              them to <span className="font-medium text-foreground">{inheritedTierLabel}</span> from{" "}
+              <span className="font-mono text-foreground">{inheritedAccess.secretPath}</span> in
+              those subfolders too, except where they have a role set on the subfolder itself.
             </AlertDialogDescription>
           )}
           {isTemporary && expiry && (

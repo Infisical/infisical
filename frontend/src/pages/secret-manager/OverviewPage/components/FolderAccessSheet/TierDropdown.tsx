@@ -21,8 +21,10 @@ import {
 import { SecretFolderRole } from "@app/hooks/api/folderAccess";
 
 import { FOLDER_ROLE_TIER_LABELS, FOLDER_ROLE_TIERS } from "./folder-access.const";
+import { isRootFolderPath } from "./folder-access.utils";
 
 export type TRecursiveControl = {
+  label: string;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
 };
@@ -79,6 +81,7 @@ const TierOptions = ({
 // the menu stays open on toggle so a tier can still be picked afterwards, which means the check
 // state is flipped by hand instead of through the item's own select handling
 const RecursiveItem = ({
+  label,
   checked,
   onCheckedChange,
   isPending
@@ -92,7 +95,7 @@ const RecursiveItem = ({
     }}
   >
     <FolderTreeIcon />
-    Apply to Environment
+    {label}
   </DropdownMenuCheckboxItem>
 );
 
@@ -120,12 +123,19 @@ export const TierDropdown = ({
   // an inherited grant is edited where it was made, so this menu only explains it and offers an
   // exact grant on top
   if (!activeTier && inherited) {
+    const isFromRoot = isRootFolderPath(inherited.sourcePath);
     return (
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel>Inherited</DropdownMenuLabel>
         <div className="flex items-center gap-1.5 px-2 py-1 text-sm">
           <span className="font-medium">{FOLDER_ROLE_TIER_LABELS[inherited.tier]}</span>
-          <span className="text-muted">from environment permissions</span>
+          {isFromRoot ? (
+            <span className="text-muted">from environment permissions</span>
+          ) : (
+            <span className="min-w-0 truncate text-muted">
+              from <span className="font-mono">{inherited.sourcePath}</span>
+            </span>
+          )}
 
           {inherited.expiryLabel && (
             <span className="ml-auto text-xs whitespace-nowrap text-muted">
@@ -133,14 +143,19 @@ export const TierDropdown = ({
             </span>
           )}
         </div>
-        <p className="px-2 pb-1.5 text-xs leading-4 text-muted">
-          This role was applied to the full environment and all of its subfolders. To change or
-          remove it, edit it on the environment layer permissions.
+        <p className="px-2 pb-1.5 text-xs leading-4 break-words text-muted">
+          {isFromRoot
+            ? "This role was applied to the full environment and all of its subfolders. To change or remove it, edit it on the environment layer permissions."
+            : `This role was applied to ${inherited.sourcePath} and all of its subfolders. To change or remove it, edit it on ${inherited.sourcePath}.`}
         </p>
         {inherited.onManage && (
           <DropdownMenuItem onClick={inherited.onManage}>
             <CornerLeftUpIcon />
-            Manage Environment Permissions
+            {isFromRoot ? (
+              "Manage Environment Permissions"
+            ) : (
+              <span className="min-w-0 truncate">Manage Access on {inherited.sourcePath}</span>
+            )}
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />

@@ -1,7 +1,4 @@
-import {
-  FolderAccessControlsUpgradeIntent,
-  useUpgradeGate
-} from "@app/components/license/UpgradeGate";
+import { useUpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -20,7 +17,7 @@ import {
 } from "@app/hooks/api/folderAccess";
 import {
   canGrantFolderAccess,
-  isRootFolderPath
+  subfolderUpgradeIntentOf
 } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 import { FolderPathBreadcrumb } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/FolderPathBreadcrumb";
 
@@ -43,7 +40,7 @@ type FormProps = {
 };
 
 const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormProps) => {
-  const grant = useFolderGrantDraft(access, isRootFolderPath(access.secretPath));
+  const grant = useFolderGrantDraft(access, access.secretPath);
 
   const updateUserAccess = useUpdateUserFolderAccess();
   const updateIdentityAccess = useUpdateIdentityFolderAccess();
@@ -58,7 +55,7 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
       })
     ) {
       openUpgradeGate({
-        intent: FolderAccessControlsUpgradeIntent,
+        intent: subfolderUpgradeIntentOf(access.secretPath),
         paywallKey: "project.folder-access-section"
       });
       return;
