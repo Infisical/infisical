@@ -87,6 +87,7 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority/certif
 import { expandInternalCa } from "../certificate-authority/certificate-authority-fns";
 import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
+import { resolveCurrentCertificateStatus } from "../certificate/certificate-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipGroupDALFactory } from "../membership-group/membership-group-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
@@ -1671,6 +1672,9 @@ export const projectServiceFactory = ({
     applicationIds,
     sortBy,
     sortOrder,
+    sortByCurrentStatus,
+    statusAt,
+    excludeFriendlyNameFromSearch,
     actorId,
     actorOrgId,
     actorAuthMethod,
@@ -1721,6 +1725,7 @@ export const projectServiceFactory = ({
       ...(friendlyName && { friendlyName }),
       ...(commonName && { commonName }),
       ...(search && { search }),
+      ...(search && excludeFriendlyNameFromSearch && { excludeFriendlyNameFromSearch }),
       ...(status && {
         status: Array.isArray(status) ? status : status.split(",").map((s) => s.trim())
       }),
@@ -1773,18 +1778,38 @@ export const projectServiceFactory = ({
           {
             offset,
             limit,
-            sort: [[validatedSortBy, validatedSortOrder]]
+            sort: [[validatedSortBy, validatedSortOrder]],
+            sortByCurrentStatus,
+            statusAt
           },
           permissionFilters
         );
 
     const count = forPkiSync
       ? await certificateDAL.countActiveCertificatesForSync(syncEligibilityFilters, permissionFilters)
-      : await certificateDAL.countCertificatesInProject(regularFilters, permissionFilters);
+      : await certificateDAL.countCertificatesInProject(regularFilters, permissionFilters, statusAt);
 
     return {
       certificates,
       totalCount: count
+    };
+  };
+
+  const searchCertificatesWithCurrentStatus = async (
+    dto: Omit<TListProjectCertsDTO, "sortByCurrentStatus" | "statusAt">
+  ) => {
+    const statusAt = new Date();
+    const { certificates, totalCount } = await listProjectCertificates({
+      ...dto,
+      sortByCurrentStatus: true,
+      statusAt
+    });
+    return {
+      certificates: certificates.map((certificate) => ({
+        ...certificate,
+        status: resolveCurrentCertificateStatus(certificate, statusAt)
+      })),
+      totalCount
     };
   };
 
@@ -2658,6 +2683,7 @@ export const projectServiceFactory = ({
     upgradeProject,
     listProjectCas,
     listProjectCertificates,
+    searchCertificatesWithCurrentStatus,
     getDashboardStats,
     getActivityTrend,
     getPqcTrend,

@@ -1,13 +1,11 @@
 ---
 title: "Agent Vault"
-description: "Let the AI agents in your infrastructure call HTTP APIs and MCP servers, and reach databases and SSH servers, without having access to their credentials."
+description: "Let the AI agents in your infrastructure reach APIs, MCP servers, databases, and SSH servers without holding their credentials."
 sidebarTitle: "Agent Vault"
 icon: "vault"
 ---
 
-Infisical Agent Vault brokers credentials for the AI agents you run in your own infrastructure. Your agents call HTTP APIs and MCP servers, and reach databases and SSH servers, through an Agent Vault proxy, which attaches the real credentials or logs in with them, so the agents never see them.
-
-On Infisical Cloud, Agent Vault includes 5,000 free requests a month. To use more, an admin adds a payment method in **Usage & Billing**. For plans and prices, see [Pricing](https://infisical.com/pricing).
+Infisical Agent Vault brokers credentials for the AI agents you run in your own infrastructure. Your agents reach APIs, MCP servers, databases, and SSH servers through an Agent Vault proxy. The proxy adds the real credentials to each request, so the agents never see them.
 
 ## Get started
 
@@ -49,15 +47,9 @@ Set up Agent Vault for where your agents run.
   </Card>
 </CardGroup>
 
-## Concepts
+## Defining resources
 
 <CardGroup cols={2}>
-  <Card title="Projects" icon="folder" href="/documentation/platform/agent-vault/projects">
-    Keep each agentic system's credentials and members in a separate Agent Vault project.
-  </Card>
-  <Card title="Access bundles" icon="box" href="/documentation/platform/agent-vault/access-bundles">
-    Lists of services that AI agents can access during a session.
-  </Card>
   <Card title="Services" icon="plug" href="/documentation/platform/agent-vault/services">
     Anything an AI agent talks to during a session, such as an API, an MCP server, a database, or an SSH server.
   </Card>
@@ -65,25 +57,38 @@ Set up Agent Vault for where your agents run.
     Values you store once and use in any service in an Agent Vault project.
   </Card>
   <Card title="Skills" icon="book-open-text" href="/documentation/platform/agent-vault/skills">
-    Instructions you keep in Agent Vault and install for agents you start with an access bundle.
+    Instructions you keep in an Agent Vault project and install to your agents.
+  </Card>
+</CardGroup>
+
+## Granting access
+
+<CardGroup cols={2}>
+  <Card title="Access control" icon="shield-half" href="/documentation/platform/agent-vault/access-control">
+    Understand how permissions work in an Agent Vault project.
   </Card>
   <Card title="Sessions" icon="monitor" href="/documentation/platform/agent-vault/sessions">
     Time-bound grants that let AI agents access services without holding real credentials.
   </Card>
-  <Card title="Create sessions with the CLI" icon="calendar-clock" href="/documentation/platform/agent-vault/sessions-cli">
-    Start an agent from cron, a container, or CI, with a new session for each run.
-  </Card>
-  <Card title="Create sessions with the API" icon="key-round" href="/documentation/platform/agent-vault/sessions-api">
-    Create a session for each agent run from your own code.
-  </Card>
-  <Card title="Session logs" icon="list" href="/documentation/platform/agent-vault/session-logs">
-    A record of every request an AI agent makes, stored encrypted.
-  </Card>
   <Card title="Proxies" icon="server" href="/documentation/platform/agent-vault/proxies">
-    Forward proxies that intercept an AI agent's requests and attach real credentials on the way out.
+    Run the proxy that attaches credentials to your agents' requests.
   </Card>
-  <Card title="Access control" icon="shield-half" href="/documentation/platform/agent-vault/access-control">
-    Understand how permissions work in an Agent Vault project.
+  <Card title="Hooks" icon="webhook" href="/documentation/platform/agent-vault/hooks">
+    Let your own server allow or refuse an AI agent's requests and connections to a service, before the proxy attaches the credential.
+  </Card>
+  <Card title="Service discovery" icon="compass" href="/documentation/platform/agent-vault/service-discovery">
+    Let an AI agent find the services its session can use.
+  </Card>
+</CardGroup>
+
+## Monitoring
+
+<CardGroup cols={2}>
+  <Card title="Session logs" icon="list" href="/documentation/platform/agent-vault/session-logs">
+    Keep an encrypted record of every request, statement, and command an AI agent makes, stored by Infisical or in your own Amazon S3 bucket.
+  </Card>
+  <Card title="External storage" icon="database" href="/documentation/platform/agent-vault/external-log-storage">
+    Store session logs in an Amazon S3 bucket that you own.
   </Card>
 </CardGroup>
 
