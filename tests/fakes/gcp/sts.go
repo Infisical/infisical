@@ -138,6 +138,11 @@ func (p *Pool) token(w http.ResponseWriter, r *http.Request) {
 		writeSTSError(w, invalidRequest("subject_token is required."))
 		return
 	}
+	// GCP requires a scope when it exchanges an external credential for an access token
+	if strings.TrimSpace(in.Scope) == "" {
+		writeSTSError(w, invalidRequest("scope is required when exchanging an external credential for a Google access token."))
+		return
+	}
 
 	name, _ := parseProviderAudience(in.Audience)
 	p.mu.Lock()

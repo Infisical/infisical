@@ -319,7 +319,7 @@ export const PkiSyncFns = {
     pkiSync: TPkiSyncWithCredentials,
     certificateMap: TCertificateMap,
     dependencies: {
-      appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
+      appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById" | "update">;
       kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
       certificateDAL: TCertificateDALFactory;
       certificateSyncDAL: TCertificateSyncDALFactory;
@@ -590,7 +590,7 @@ export const PkiSyncFns = {
     pkiSync: TPkiSyncWithCredentials,
     certificateNames: string[],
     dependencies: {
-      appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
+      appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById" | "update">;
       kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
       certificateSyncDAL: TCertificateSyncDALFactory;
       certificateDAL: TCertificateDALFactory;

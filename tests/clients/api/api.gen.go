@@ -103493,7 +103493,8 @@ type CreateGcpAppConnectionJSONBody_Rotation struct {
 type CreateGcpAppConnectionJSONBody0 struct {
 	// Credentials The credentials used to connect with GCP.
 	Credentials struct {
-		ServiceAccountEmail openapi_types.Email `json:"serviceAccountEmail"`
+		ServiceAccountEmail      openapi_types.Email `json:"serviceAccountEmail"`
+		WorkloadIdentityProvider interface{}         `json:"workloadIdentityProvider,omitempty"`
 	} `json:"credentials"`
 
 	// Method The method used to authenticate with GCP.
@@ -103867,7 +103868,8 @@ type UpdateGcpAppConnectionJSONBodyCredentials0 struct {
 
 // UpdateGcpAppConnectionJSONBodyCredentials1 defines parameters for UpdateGcpAppConnection.
 type UpdateGcpAppConnectionJSONBodyCredentials1 struct {
-	ServiceAccountEmail openapi_types.Email `json:"serviceAccountEmail"`
+	ServiceAccountEmail      openapi_types.Email `json:"serviceAccountEmail"`
+	WorkloadIdentityProvider interface{}         `json:"workloadIdentityProvider,omitempty"`
 }
 
 // UpdateGcpAppConnectionJSONBody_Credentials defines parameters for UpdateGcpAppConnection.

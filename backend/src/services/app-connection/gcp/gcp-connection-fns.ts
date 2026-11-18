@@ -189,6 +189,7 @@ const getGcpImpersonationAccessToken = async (serviceAccountEmail: string) => {
 };
 
 const GCP_SERVICE_ACCOUNT_TOKEN_LIFETIME_SECONDS = 3600;
+const GCP_TOKEN_REQUEST_TIMEOUT_MS = 30_000;
 
 type TGcpStsTokenResponse = { access_token: string; expires_in: number };
 type TGcpStsErrorResponse = { error?: string; error_description?: string };
@@ -237,14 +238,18 @@ const exchangeGcpWorkloadIdentityToken = async (
 
   let federatedToken: TGcpStsTokenResponse;
   try {
-    const { data } = await request.post<TGcpStsTokenResponse>(GCP_STS_TOKEN_URL, {
-      grantType: "urn:ietf:params:oauth:grant-type:token-exchange",
-      audience: `//iam.googleapis.com/${workloadIdentityProvider}`,
-      scope: IntegrationUrls.GCP_CLOUD_PLATFORM_SCOPE,
-      requestedTokenType: "urn:ietf:params:oauth:token-type:access_token",
-      subjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
-      subjectToken
-    });
+    const { data } = await request.post<TGcpStsTokenResponse>(
+      GCP_STS_TOKEN_URL,
+      {
+        grantType: "urn:ietf:params:oauth:grant-type:token-exchange",
+        audience: `//iam.googleapis.com/${workloadIdentityProvider}`,
+        scope: IntegrationUrls.GCP_CLOUD_PLATFORM_SCOPE,
+        requestedTokenType: "urn:ietf:params:oauth:token-type:access_token",
+        subjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
+        subjectToken
+      },
+      { timeout: GCP_TOKEN_REQUEST_TIMEOUT_MS }
+    );
     federatedToken = data;
   } catch (error) {
     const body = error instanceof AxiosError ? (error.response?.data as TGcpStsErrorResponse | undefined) : undefined;
@@ -282,20 +287,28 @@ const exchangeGcpWorkloadIdentityToken = async (
         scope: [IntegrationUrls.GCP_CLOUD_PLATFORM_SCOPE],
         lifetime: `${GCP_SERVICE_ACCOUNT_TOKEN_LIFETIME_SECONDS}s`
       },
-      { headers: { Authorization: `Bearer ${federatedToken.access_token}` } }
+      { headers: { Authorization: `Bearer ${federatedToken.access_token}` }, timeout: GCP_TOKEN_REQUEST_TIMEOUT_MS }
     );
 
     return { accessToken: data.accessToken, expiresAt: new Date(data.expireTime).getTime() };
   } catch (error) {
     const status = error instanceof AxiosError ? error.response?.status : undefined;
-    const googleMessage =
-      error instanceof AxiosError ? (error.response?.data as TGoogleApiError | undefined)?.error?.message : undefined;
+    const body = error instanceof AxiosError ? (error.response?.data as TGoogleApiError | undefined) : undefined;
+    const googleMessage = body?.error?.message;
 
     // Not the error itself: its request config holds the federated token
     logger.warn(
       { connectionId: appConnection.id, serviceAccountEmail, status, googleMessage },
       "GCP refused to issue a service account access token for a federated token"
     );
+
+    if (isGcpServiceDisabledError(body, googleMessage ?? "")) {
+      throw new BadRequestError({
+        message: `GCP could not issue an access token for service account '${serviceAccountEmail}' because the IAM Service Account Credentials API (iamcredentials.googleapis.com) is not enabled: ${
+          googleMessage ?? "service disabled"
+        }`
+      });
+    }
 
     if (status === 403 || status === 404) {
       throw new BadRequestError({
@@ -312,9 +325,10 @@ const exchangeGcpWorkloadIdentityToken = async (
 };
 
 // A federated token only lasts as long as the token Infisical signed (5 minutes), so the usual 5 minute
-// margin would never reuse one
+// margin would never reuse one. Callers fetch one token per operation, so this is also the least time an
+// operation gets without a service account.
 const getWorkloadIdentityTokenRefreshMarginMs = (serviceAccountEmail?: string) =>
-  serviceAccountEmail ? 5 * 60 * 1000 : 2 * 60 * 1000;
+  serviceAccountEmail ? 5 * 60 * 1000 : 3 * 60 * 1000;
 
 const getGcpWorkloadIdentityAccessToken = async (
   connectionId: string,
@@ -361,7 +375,10 @@ const getGcpWorkloadIdentityAccessToken = async (
     projectId: appConnection.projectId
   });
 
-  await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials });
+  await appConnectionDAL.update(
+    { id: appConnection.id, encryptedCredentials: appConnection.encryptedCredentials },
+    { encryptedCredentials }
+  );
 
   return token.accessToken;
 };

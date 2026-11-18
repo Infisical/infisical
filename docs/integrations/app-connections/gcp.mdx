@@ -220,6 +220,10 @@ In GCP, create the workload identity pool and a provider that trusts Infisical's
                 | [Service account key rotation](/documentation/platform/secret-rotation/gcp-service-account-key) | `roles/iam.serviceAccountKeyAdmin` |
 
                 If a certificate sync removes certificates or uses a certificate map, also grant `roles/certificatemanager.owner`. To limit key rotation to specific service accounts, grant `roles/iam.serviceAccountKeyAdmin` on [each of those service accounts](/documentation/platform/secret-rotation/gcp-service-account-key#step-1-configure-the-service-account-for-infisical) instead of the project. Certificate syncs and ACME DNS validation also need some GCP APIs enabled, which [Configure service account for Infisical](#configure-service-account-for-infisical) lists for each integration.
+
+                <Note>
+                    Without a service account, GCP issues tokens that last at most 5 minutes, and each operation gets a token that is valid for at least 3 minutes. A sync of many secrets or a scan of many GCP projects can take longer than that, so use a service account for large workloads. Verifying such a connection also checks only that the provider trusts Infisical, not which roles the member has, so a missing role shows up at the first sync.
+                </Note>
             </Tab>
         </Tabs>
     </Step>

@@ -187,7 +187,7 @@ const WorkloadIdentityFederationSetup = ({
     member &&
     (serviceAccountEmail
       ? [
-          `gcloud iam service-accounts add-iam-policy-binding ${serviceAccountEmail} \\`,
+          `gcloud iam service-accounts add-iam-policy-binding "${serviceAccountEmail}" \\`,
           "  --role roles/iam.workloadIdentityUser \\",
           `  --member "${member}"`
         ]

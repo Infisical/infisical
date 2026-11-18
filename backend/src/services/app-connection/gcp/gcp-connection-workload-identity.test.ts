@@ -8,6 +8,7 @@ import {
   getGcpConnectionFederatedCredential,
   validateGcpConnectionCredentials
 } from "./gcp-connection-fns";
+import { GcpConnectionServiceAccountImpersonationCredentialsSchema } from "./gcp-connection-schemas";
 import { TGcpConnectionAuthDeps, TGcpConnectionConfig, TGcpConnectionForAuth } from "./gcp-connection-types";
 
 const config = vi.hoisted(() => ({ SITE_URL: "https://app.test" as string | undefined }));
@@ -130,13 +131,14 @@ describe("validateGcpConnectionCredentials with workload identity federation", (
         audience: `//iam.googleapis.com/${PROVIDER}`,
         subjectToken: "signed-jwt",
         subjectTokenType: "urn:ietf:params:oauth:token-type:jwt"
-      })
+      }),
+      expect.anything()
     );
     expect(post).toHaveBeenNthCalledWith(
       2,
       `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${encodeURIComponent(SERVICE_ACCOUNT)}:generateAccessToken`,
       expect.anything(),
-      { headers: { Authorization: "Bearer federated-token" } }
+      expect.objectContaining({ headers: { Authorization: "Bearer federated-token" } })
     );
     expect(credentials).toEqual({
       workloadIdentityProvider: PROVIDER,
@@ -183,11 +185,60 @@ describe("validateGcpConnectionCredentials with workload identity federation", (
   });
 });
 
+describe("validateGcpConnectionCredentials when GCP's IAM Credentials API is off", () => {
+  test("says which API to enable rather than asking for a role grant", async () => {
+    googleResponds({
+      iam: googleError(403, {
+        error: {
+          message: "IAM Service Account Credentials API has not been used in project 123 before or it is disabled.",
+          details: [{ "@type": "type.googleapis.com/google.rpc.ErrorInfo", reason: "SERVICE_DISABLED" }]
+        }
+      })
+    });
+
+    const error = (await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService).catch(
+      (e: unknown) => e
+    )) as BadRequestError;
+
+    expect(error.message).toContain(
+      "IAM Service Account Credentials API (iamcredentials.googleapis.com) is not enabled"
+    );
+    expect(error.message).not.toContain("roles/iam.workloadIdentityUser");
+  });
+});
+
+describe("GCP token requests", () => {
+  test("give up after a bounded time instead of waiting on Google forever", async () => {
+    await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService);
+
+    expect(post.mock.calls).toHaveLength(2);
+    post.mock.calls.forEach((call) => expect(call[2]).toMatchObject({ timeout: 30_000 }));
+  });
+});
+
+describe("GcpConnectionServiceAccountImpersonationCredentialsSchema", () => {
+  test("refuses a workload identity provider instead of silently dropping it", () => {
+    const result = GcpConnectionServiceAccountImpersonationCredentialsSchema.safeParse({
+      serviceAccountEmail: SERVICE_ACCOUNT,
+      workloadIdentityProvider: PROVIDER
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  test("still accepts the impersonation credentials alone", () => {
+    expect(
+      GcpConnectionServiceAccountImpersonationCredentialsSchema.safeParse({ serviceAccountEmail: SERVICE_ACCOUNT })
+        .success
+    ).toBe(true);
+  });
+});
+
 describe("getGcpConnectionAuthToken with workload identity federation", () => {
-  const updateById = vi.fn();
+  const update = vi.fn();
   const findById = vi.fn();
   const deps = {
-    appConnectionDAL: { findById, updateById },
+    appConnectionDAL: { findById, update },
     kmsService: {},
     oidcIssuerService
   } as unknown as TGcpConnectionAuthDeps;
@@ -199,7 +250,7 @@ describe("getGcpConnectionAuthToken with workload identity federation", () => {
   } as unknown as TGcpConnectionForAuth;
 
   beforeEach(() => {
-    updateById.mockReset();
+    update.mockReset();
     findById.mockReset();
     findById.mockResolvedValue({
       ...CONNECTION,
@@ -209,7 +260,13 @@ describe("getGcpConnectionAuthToken with workload identity federation", () => {
     });
   });
 
-  const storeCredentials = ({ minutesLeft, serviceAccountEmail }: { minutesLeft: number; serviceAccountEmail?: string }) => {
+  const storeCredentials = ({
+    minutesLeft,
+    serviceAccountEmail
+  }: {
+    minutesLeft: number;
+    serviceAccountEmail?: string;
+  }) => {
     stored.credentials = {
       workloadIdentityProvider: PROVIDER,
       serviceAccountEmail,
@@ -223,7 +280,7 @@ describe("getGcpConnectionAuthToken with workload identity federation", () => {
 
     await expect(getGcpConnectionAuthToken(connection, deps)).resolves.toBe("cached-token");
     expect(signToken).not.toHaveBeenCalled();
-    expect(updateById).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
   });
 
   test("exchanges and stores a new token when the cached one is about to expire", async () => {
@@ -231,9 +288,8 @@ describe("getGcpConnectionAuthToken with workload identity federation", () => {
 
     await expect(getGcpConnectionAuthToken(connection, deps)).resolves.toBe("sa-token");
 
-    expect(updateById).toHaveBeenCalledTimes(1);
-    const [id, { encryptedCredentials }] = updateById.mock.calls[0] as [string, { encryptedCredentials: Buffer }];
-    expect(id).toBe(CONNECTION.id);
+    expect(update).toHaveBeenCalledTimes(1);
+    const [, { encryptedCredentials }] = update.mock.calls[0] as [unknown, { encryptedCredentials: Buffer }];
     expect(JSON.parse(encryptedCredentials.toString())).toMatchObject({
       workloadIdentityProvider: PROVIDER,
       accessToken: "sa-token",
@@ -241,11 +297,26 @@ describe("getGcpConnectionAuthToken with workload identity federation", () => {
     });
   });
 
-  test("reuses a federated token for most of its five minute life when there is no service account", async () => {
+  test("stores the token only over the credentials it was minted for, so a concurrent reconnect wins", async () => {
+    storeCredentials({ minutesLeft: 4, serviceAccountEmail: SERVICE_ACCOUNT });
+
+    await getGcpConnectionAuthToken(connection, deps);
+
+    expect(update.mock.calls[0][0]).toEqual({ id: CONNECTION.id, encryptedCredentials: Buffer.from("encrypted") });
+  });
+
+  test("reuses a federated token while it has more than three minutes left when there is no service account", async () => {
     storeCredentials({ minutesLeft: 4 });
 
     await expect(getGcpConnectionAuthToken(connection, deps)).resolves.toBe("cached-token");
     expect(signToken).not.toHaveBeenCalled();
+  });
+
+  test("replaces a federated token with less than three minutes left, so an operation gets at least three", async () => {
+    storeCredentials({ minutesLeft: 2.5 });
+
+    await expect(getGcpConnectionAuthToken(connection, deps)).resolves.toBe("federated-token");
+    expect(signToken).toHaveBeenCalledTimes(1);
   });
 
   test("refuses with not found when the connection no longer exists", async () => {

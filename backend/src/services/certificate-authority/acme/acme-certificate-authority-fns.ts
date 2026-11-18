@@ -149,7 +149,7 @@ const calculateFinalRenewBeforeDays = (
 };
 
 type TAcmeCertificateAuthorityFnsDeps = {
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   certificateAuthorityDAL: Pick<
     TCertificateAuthorityDALFactory,
@@ -175,7 +175,7 @@ type TAcmeCertificateAuthorityFnsDeps = {
 };
 
 type TOrderCertificateDeps = {
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "update">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;

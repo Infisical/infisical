@@ -38,7 +38,7 @@ export type TGcpConnectionFederatedCredential = z.infer<typeof GcpConnectionFede
 // What a caller needs to get a token for a stored connection. Workload identity federation signs a token,
 // and caches GCP's access token in the connection's credentials.
 export type TGcpConnectionAuthDeps = {
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };

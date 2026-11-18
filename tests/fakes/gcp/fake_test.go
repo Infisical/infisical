@@ -242,6 +242,25 @@ func TestGCPFake_TokenExchange(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, status)
 		require.Equal(t, "invalid_target", body["error"])
 	})
+
+	t.Run("should refuse an exchange that asks for no scope and issue nothing", func(t *testing.T) {
+		// Setup
+		r := newRig(t)
+
+		// Action
+		status, body := r.post(t, gcp.STS.Host(), "/v1/token", "", map[string]string{
+			"grantType":          "urn:ietf:params:oauth:grant-type:token-exchange",
+			"audience":           "//iam.googleapis.com/" + r.cp.Provider(providerID),
+			"requestedTokenType": "urn:ietf:params:oauth:token-type:access_token",
+			"subjectTokenType":   "urn:ietf:params:oauth:token-type:jwt",
+			"subjectToken":       r.sign(t, r.key, r.claims("app-connection:1")),
+		})
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, status)
+		require.Equal(t, "invalid_request", body["error"])
+		require.Empty(t, r.cp.STS.State(t).Exchanges)
+	})
 }
 
 func TestGCPFake_GenerateAccessToken(t *testing.T) {

@@ -13,7 +13,15 @@ import { GCP_WORKLOAD_IDENTITY_PROVIDER_PATTERN } from "./gcp-connection-constan
 import { GcpConnectionMethod } from "./gcp-connection-enums";
 
 export const GcpConnectionServiceAccountImpersonationCredentialsSchema = z.object({
-  serviceAccountEmail: z.string().email().trim().min(1, "Service account email required")
+  serviceAccountEmail: z.string().email().trim().min(1, "Service account email required"),
+  workloadIdentityProvider: z
+    .undefined({
+      errorMap: () => ({
+        message:
+          "A Service Account Impersonation connection has no workload identity provider. Create a Workload Identity Federation connection instead."
+      })
+    })
+    .optional()
 });
 
 export const GcpConnectionWorkloadIdentityFederationInputCredentialsSchema = z.object({
