@@ -1,19 +1,19 @@
 import { ProjectType } from "@app/db/schemas";
 import { Meter, TUsageCounter } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import { TProjectsService } from "@app/domains/platform/projects/ce/module";
 
 export type TPamDeps = {
-  organizationsProjectsService: TOrganizationsProjectsService;
+  projectsService: TProjectsService;
 };
 
 export class PamModule {
   readonly usageCounters: TUsageCounter[];
 
-  constructor({ organizationsProjectsService }: TPamDeps) {
+  constructor({ projectsService }: TPamDeps) {
     this.usageCounters = [
       {
         meter: Meter.PamIdentities,
-        count: (orgId) => organizationsProjectsService.countProjectIdentities(ProjectType.PAM, orgId)
+        count: (orgId) => projectsService.countProjectIdentities(ProjectType.PAM, orgId)
       }
     ];
   }

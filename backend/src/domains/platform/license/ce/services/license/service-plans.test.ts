@@ -28,7 +28,7 @@ const countingWorkspaces = () => {
     used: WORKSPACES_USED,
     failure: null as Error | null,
     lastOptions: undefined as TReadOptions | undefined,
-    organizations: {
+    projects: {
       countWorkspaces: async (_orgId: string, options?: TReadOptions) => {
         counts.calls += 1;
         counts.lastOptions = options;
@@ -121,7 +121,7 @@ describe("LicenseService.getPlan", () => {
   test("should report the project count for a plan without a project limit", async () => {
     // Setup
     const counts = countingWorkspaces();
-    const { licenseService } = await buildLicense({ organizations: counts.organizations });
+    const { licenseService } = await buildLicense({ projects: counts.projects });
 
     // Action
     const plan = await licenseService.getPlan(ROOT.id);
@@ -136,7 +136,7 @@ describe("LicenseService.getPlan", () => {
     const counts = countingWorkspaces();
     const licenseServer = new FakeLicenseServer();
     licenseServer.plans.set(ROOT.id, limitedPlan());
-    const { licenseService } = await buildLicense({ licenseServer, organizations: counts.organizations });
+    const { licenseService } = await buildLicense({ licenseServer, projects: counts.projects });
     await licenseService.getPlan(ROOT.id);
     await licenseService.invalidatePlan(ROOT.id);
 
@@ -534,7 +534,7 @@ describe("LicenseService.refreshWorkspacesUsed", () => {
     const counts = countingWorkspaces();
     const licenseServer = new FakeLicenseServer();
     licenseServer.plans.set(ROOT.id, limitedPlan());
-    const { licenseService } = await buildLicense({ licenseServer, organizations: counts.organizations });
+    const { licenseService } = await buildLicense({ licenseServer, projects: counts.projects });
     await licenseService.getPlan(ROOT.id);
     counts.used = 7;
 
@@ -565,7 +565,7 @@ describe("LicenseService.refreshWorkspacesUsed", () => {
   test("should not recount after a project change for a plan without a project limit", async () => {
     // Setup
     const counts = countingWorkspaces();
-    const { licenseService } = await buildLicense({ organizations: counts.organizations });
+    const { licenseService } = await buildLicense({ projects: counts.projects });
     await licenseService.getPlan(ROOT.id);
     counts.calls = 0;
 
@@ -579,7 +579,7 @@ describe("LicenseService.refreshWorkspacesUsed", () => {
   test("should not count or fetch when no plan is cached", async () => {
     // Setup
     const counts = countingWorkspaces();
-    const { licenseService, licenseServer } = await buildLicense({ organizations: counts.organizations });
+    const { licenseService, licenseServer } = await buildLicense({ projects: counts.projects });
 
     // Action
     await licenseService.refreshWorkspacesUsed(ROOT.id);
@@ -594,7 +594,7 @@ describe("LicenseService.refreshWorkspacesUsed", () => {
     const counts = countingWorkspaces();
     const licenseServer = new FakeLicenseServer();
     licenseServer.plans.set(ROOT.id, limitedPlan());
-    const { licenseService } = await buildLicense({ licenseServer, organizations: counts.organizations });
+    const { licenseService } = await buildLicense({ licenseServer, projects: counts.projects });
     await licenseService.getPlan(ROOT.id);
     counts.failure = new Error("primary timeout");
     counts.calls = 0;

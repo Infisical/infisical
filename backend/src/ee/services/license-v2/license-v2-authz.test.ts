@@ -36,10 +36,12 @@ const buildService = () => {
     envConfig: { isCloud: false, SITE_URL: "http://localhost" },
     orgDAL: { findById: vi.fn(async () => ({ id: OTHER_ORG, name: "Other", slug: "other" })) },
     permissionService: { getOrgPermission },
-    organizationsProjectsService: {
+    organizationsService: {
       countBillableOrgActors: vi.fn(async () => ({ users: 0, identities: 0 })),
       getBillableIdentityOwnershipBreakdown: vi.fn(async () => []),
-      resolveRootOrgId: vi.fn(async (id: string) => id),
+      resolveRootOrgId: vi.fn(async (id: string) => id)
+    },
+    projectsService: {
       countProjectIdentitiesByKind: vi.fn(async () => ({ users: 0, identities: 0 })),
       getProjectIdentityBreakdown: vi.fn(async () => [])
     },

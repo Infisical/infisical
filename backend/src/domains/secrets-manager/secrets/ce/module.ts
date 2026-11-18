@@ -1,19 +1,19 @@
 import { ProjectType } from "@app/db/schemas";
 import { Meter, TUsageCounter } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import { TProjectsService } from "@app/domains/platform/projects/ce/module";
 
 export type TSecretsDeps = {
-  organizationsProjectsService: TOrganizationsProjectsService;
+  projectsService: TProjectsService;
 };
 
 export class SecretsModule {
   readonly usageCounters: TUsageCounter[];
 
-  constructor({ organizationsProjectsService }: TSecretsDeps) {
+  constructor({ projectsService }: TSecretsDeps) {
     this.usageCounters = [
       {
         meter: Meter.SecretIdentities,
-        count: (orgId) => organizationsProjectsService.countProjectIdentities(ProjectType.SecretManager, orgId)
+        count: (orgId) => projectsService.countProjectIdentities(ProjectType.SecretManager, orgId)
       }
     ];
   }

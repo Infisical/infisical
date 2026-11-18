@@ -1,4 +1,4 @@
-import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import { TOrganizationsService } from "@app/domains/platform/organizations/ce/module";
 
 import { TCertificateOrgUnitCount, TCertificateUsageStore, TOrgUnitCount, TPkiRootOrgUsage } from "../dependencies";
 
@@ -16,7 +16,7 @@ export type TCertManagerService = {
 export class CertManagerService implements TCertManagerService {
   constructor(
     private readonly certificateUsageStore: TCertificateUsageStore,
-    private readonly organizationsProjectsService: TOrganizationsProjectsService
+    private readonly organizationsService: TOrganizationsService
   ) {}
 
   countActiveCertificateQuota(orgId?: string) {
@@ -40,6 +40,6 @@ export class CertManagerService implements TCertManagerService {
   }
 
   resolveRootOrgId(orgId: string) {
-    return this.organizationsProjectsService.resolveRootOrgId(orgId);
+    return this.organizationsService.resolveRootOrgId(orgId);
   }
 }

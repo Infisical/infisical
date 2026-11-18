@@ -1,6 +1,6 @@
 import { TDomainKeyStore } from "@app/domains/lib/key-store";
 import { TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import { TOrganizationsService } from "@app/domains/platform/organizations/ce/module";
 
 import { TAgentVaultAccessService, TAgentVaultUsageService } from "../ce/services/dependencies";
 import { FreeUsageCache } from "./data-access/free-usage-cache";
@@ -11,7 +11,7 @@ export type TAgentVaultDeps = {
   keyStore: TDomainKeyStore;
   licenseService: TLicenseService;
   usageMeteringService: TUsageMeteringService;
-  organizationsProjectsService: TOrganizationsProjectsService;
+  organizationsService: TOrganizationsService;
 };
 
 export class AgentVaultEeModule {
@@ -19,17 +19,13 @@ export class AgentVaultEeModule {
 
   readonly agentVaultUsageService: TAgentVaultUsageService;
 
-  constructor({ keyStore, licenseService, usageMeteringService, organizationsProjectsService }: TAgentVaultDeps) {
+  constructor({ keyStore, licenseService, usageMeteringService, organizationsService }: TAgentVaultDeps) {
     const freeUsageCache = new FreeUsageCache(keyStore);
-    this.agentVaultAccessService = new AgentVaultAccessService(
-      licenseService,
-      organizationsProjectsService,
-      freeUsageCache
-    );
+    this.agentVaultAccessService = new AgentVaultAccessService(licenseService, organizationsService, freeUsageCache);
     this.agentVaultUsageService = new AgentVaultUsageService(
       licenseService,
       usageMeteringService,
-      organizationsProjectsService,
+      organizationsService,
       freeUsageCache
     );
   }
