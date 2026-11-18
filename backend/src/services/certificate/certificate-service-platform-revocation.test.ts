@@ -54,6 +54,7 @@ const buildService = (
 ) => {
   const certificateDAL = {
     findById: vi.fn().mockResolvedValue(certificate ?? undefined),
+    findByIdForUpdate: vi.fn().mockResolvedValue(certificate ?? undefined),
     update: vi.fn().mockResolvedValue([{ id: "cert-1" }]),
     transaction: vi.fn().mockImplementation(async (run: (trx: unknown) => Promise<unknown>) => run({}))
   };
@@ -71,6 +72,7 @@ const buildService = (
     pkiSyncQueue: {},
     pkiApplicationDAL: { findById: vi.fn().mockResolvedValue(undefined) },
     auditLogService: { createAuditLog: vi.fn() },
+    signerDAL: { findOne: vi.fn().mockResolvedValue(undefined) },
     ...overrides
   } as unknown as TDeps;
 
@@ -92,7 +94,7 @@ describe("certificateService.revokeCertAsPlatform", () => {
 
     expect(result.outcome).toBe(PlatformRevocationOutcome.Revoked);
     expect(certificateDAL.update).toHaveBeenCalledWith(
-      { id: "cert-1", $notEqual: { status: CertStatus.REVOKED } },
+      { id: "cert-1" },
       expect.objectContaining({ status: CertStatus.REVOKED }),
       expect.anything()
     );
@@ -106,7 +108,7 @@ describe("certificateService.revokeCertAsPlatform", () => {
 
   it("reports a revocation that committed after the certificate was read as already revoked without overwriting it", async () => {
     const { service, certificateDAL, internalCertificateAuthorityDAL } = buildService();
-    certificateDAL.update.mockResolvedValueOnce([]);
+    certificateDAL.findByIdForUpdate.mockResolvedValueOnce({ ...activeCertificate, status: CertStatus.REVOKED });
 
     const result = await service.revokeCertAsPlatform({
       certificateId: "cert-1",
@@ -230,7 +232,7 @@ describe("certificateService.revokeCert", () => {
 
   it("tells the user the certificate is already revoked when another revocation committed first", async () => {
     const { service, certificateDAL } = buildService();
-    certificateDAL.update.mockResolvedValueOnce([]);
+    certificateDAL.findByIdForUpdate.mockResolvedValueOnce({ ...activeCertificate, status: CertStatus.REVOKED });
 
     await expect(revokeAsUser(service)).rejects.toThrow("is already revoked");
     expect(rebuildCaCrlAfterChange).not.toHaveBeenCalled();

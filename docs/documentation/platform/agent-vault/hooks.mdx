@@ -250,7 +250,7 @@ The body describes the session, the service, and the request the agent is about 
 - `deliveryId`: the same value as the `webhook-id` header
 - `session.actor`: the user or machine identity that created the session, as it was when the session was created
 - `session.onBehalfOf`: the user a machine identity created the session [on behalf of](/documentation/platform/agent-vault/sessions-on-behalf-of-users), or `null`
-- `service.accessBundle`: the access bundle the session uses the service through, or `null` for an inline service
+- `service.accessBundle`: the access bundle the session uses the service through, or `null` for an inline service or a service named when the session was created
 - `request.path`: the path as the agent sent it, still percent-encoded
 - `request.headers`: the headers the agent sent, with names in lowercase, each with a list of values
 - `request.body`: the request body as text if it's valid UTF-8, or as base64 with `bodyEncoding` set to `base64`
@@ -348,7 +348,7 @@ The session's owner and the project's admins can read the session logs, and the 
 
 ## Limitations
 
-- **Session labels aren't a safe input:** The session's owner and project admins can [change the label](/documentation/platform/agent-vault/sessions#label-a-session) at any time, so never allow a request because of `session.label`
+- **Session labels aren't a safe input:** The session's owner and project admins can [change the label](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata) at any time, so never allow a request because of `session.label`
 - **MySQL can switch databases:** `connection.database` is the database the connection opens with, but a MySQL client can switch to any other database the service's account can reach with `USE`, so limit the account's grants on the server
 - **One MCP tool call can reach the hook more than once:** If an MCP server asks the agent for more input during a tool call, the agent sends the tool call again with a new JSON-RPC ID, and the proxy asks the hook again
 - **`http://` isn't encrypted:** Over an `http://` URL, the request (with the agent's headers and body) and your server's answer cross the network unencrypted, so use `http://` only on a network you trust

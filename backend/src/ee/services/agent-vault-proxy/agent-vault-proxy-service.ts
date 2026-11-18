@@ -1,12 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
-import {
-  ActionProjectType,
-  OrgMembershipStatus,
-  ProjectMembershipRole,
-  TAgentVaultProxies,
-  TAgentVaultSessions
-} from "@app/db/schemas";
+import { ActionProjectType, OrgMembershipStatus, TAgentVaultProxies, TAgentVaultSessions } from "@app/db/schemas";
+import { TAgentVaultAccessService } from "@app/domains/agent-vault/agent-vault/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -57,7 +52,7 @@ import {
   openInlineServiceSecrets,
   toInlineServiceFacts,
   toResolvedInlineService,
-  withoutShadowedBundleServices
+  withoutShadowedServices
 } from "../agent-vault-session/agent-vault-session-inline-service-fns";
 import { deserializeSkillFiles } from "../agent-vault-skill/agent-vault-skill-fns";
 import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
@@ -77,6 +72,7 @@ import { toResolvedNativeTarget } from "../agent-vault/agent-vault-native-config
 import { TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
 import {
   findReachableAccessBundleIds,
+  hasRoleReachingEveryBundle,
   intersectAccessBundleIds,
   liveGroupIdsFrom
 } from "../agent-vault/agent-vault-permission";
@@ -127,7 +123,10 @@ const RESOLVE_REFRESH_BUDGET_MS = 4_000;
 
 type TAgentVaultProxyServiceFactoryDep = {
   agentVaultProxyDAL: TAgentVaultProxyDALFactory;
-  agentVaultResolveDAL: TAgentVaultResolveDALFactory;
+  agentVaultResolveDAL: Pick<
+    TAgentVaultResolveDALFactory,
+    "findResolvableServices" | "findSessionSkills" | "findReachableBundles"
+  >;
   agentVaultServiceCustomHeaderDAL: Pick<TAgentVaultServiceCustomHeaderDALFactory, "findByServiceIds">;
   agentVaultServiceSubstitutionDAL: Pick<TAgentVaultServiceSubstitutionDALFactory, "findByServiceIds">;
   agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findValuesForResolve">;
@@ -154,6 +153,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: TLicenseService;
+  agentVaultAccessService: Pick<TAgentVaultAccessService, "assertCanBroker">;
   resourceAuthMethodService: Pick<TResourceAuthMethodServiceFactory, "initAtCreate" | "revokeAccess">;
   agentVaultOauthService: Pick<TAgentVaultOauthServiceFactory, "refreshServiceToken" | "reportMissingScopes">;
 };
@@ -213,6 +213,7 @@ export const agentVaultProxyServiceFactory = ({
   permissionService,
   kmsService,
   licenseService,
+  agentVaultAccessService,
   resourceAuthMethodService,
   agentVaultOauthService
 }: TAgentVaultProxyServiceFactoryDep) => {
@@ -255,7 +256,7 @@ export const agentVaultProxyServiceFactory = ({
     { projectId, ctx }: TAgentVaultProxyScoped,
     action: ProjectPermissionAgentVaultProxyActions
   ) => {
-    const { permission, hasRole } = await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor: ctx.actor,
       actorId: ctx.actorId,
       projectId,
@@ -264,7 +265,7 @@ export const agentVaultProxyServiceFactory = ({
       actionProjectType: ActionProjectType.AgentVault
     });
     ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AgentVaultProxies);
-    return { isAdmin: hasRole(ProjectMembershipRole.Admin) };
+    return { permission };
   };
 
   const $findProxyOr404 = async ({ projectId, proxyId }: { projectId: string; proxyId: string }) => {
@@ -341,7 +342,12 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   const listProxies = async ({ search, orderBy, orderDirection, limit, offset, ...dto }: TListProxiesDTO) => {
-    const { isAdmin } = await $authorize(dto, ProjectPermissionAgentVaultProxyActions.Read);
+    const { permission } = await $authorize(dto, ProjectPermissionAgentVaultProxyActions.Read);
+    // Whoever can change a proxy's settings sees them; everyone else gets the view without them.
+    const showsSettings = permission.can(
+      ProjectPermissionAgentVaultProxyActions.Edit,
+      ProjectPermissionSub.AgentVaultProxies
+    );
     const { proxies, totalCount } = await agentVaultProxyDAL.findForList({
       projectId: dto.projectId,
       search,
@@ -350,7 +356,10 @@ export const agentVaultProxyServiceFactory = ({
       limit,
       offset
     });
-    return { proxies: proxies.map((proxy) => (isAdmin ? toAdminView(proxy) : toMemberView(proxy))), totalCount };
+    return {
+      proxies: proxies.map((proxy) => (showsSettings ? toAdminView(proxy) : toMemberView(proxy))),
+      totalCount
+    };
   };
 
   // A proxy started with its own CA reports only that CA's fingerprint, so the certificate Infisical holds is not
@@ -843,7 +852,7 @@ export const agentVaultProxyServiceFactory = ({
     });
     if (!orgMembership?.isActive) throw refused();
 
-    let isAdmin: boolean;
+    let reachesEveryBundle: boolean;
     let liveGroupIds: string[];
     try {
       const { permission, hasRole, memberships } = await permissionService.getProjectPermission({
@@ -857,7 +866,7 @@ export const agentVaultProxyServiceFactory = ({
       if (!permission.can(ProjectPermissionAgentVaultSessionActions.Read, ProjectPermissionSub.AgentVaultSessions)) {
         throw refused();
       }
-      isAdmin = hasRole(ProjectMembershipRole.Admin);
+      reachesEveryBundle = hasRoleReachingEveryBundle(hasRole);
       liveGroupIds = liveGroupIdsFrom(memberships);
     } catch (error) {
       if (error instanceof ForbiddenRequestError && error.name === "ProjectMembershipNotFound") throw refused();
@@ -868,7 +877,7 @@ export const agentVaultProxyServiceFactory = ({
       throw refused();
     }
 
-    if (isAdmin) return null;
+    if (reachesEveryBundle) return null;
     return findReachableAccessBundleIds(membershipDAL, {
       projectId,
       actor: { type: ActorType.USER, id: userId },
@@ -923,7 +932,8 @@ export const agentVaultProxyServiceFactory = ({
     // The role is re-derived here, never trusted from mint, and it has to be a live role: a time-limited one
     // leaves its row behind when it lapses. actorAuthMethod is passed as null *explicitly* — validateOrgSSO
     // throws on `undefined` but passes on `null`, and the session row stores no auth method.
-    let isAdmin: boolean;
+    let reachesEveryBundle: boolean;
+    let canUseInlineServices: boolean;
     let liveGroupIds: string[];
     try {
       const { permission, hasRole, memberships } = await permissionService.getProjectPermission({
@@ -937,7 +947,11 @@ export const agentVaultProxyServiceFactory = ({
       if (!permission.can(ProjectPermissionAgentVaultSessionActions.Read, ProjectPermissionSub.AgentVaultSessions)) {
         throw new UnauthorizedError({ message: "The role this session's actor held has expired" });
       }
-      isAdmin = hasRole(ProjectMembershipRole.Admin);
+      reachesEveryBundle = hasRoleReachingEveryBundle(hasRole);
+      canUseInlineServices = permission.can(
+        ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
+        ProjectPermissionSub.AgentVaultSessions
+      );
       liveGroupIds = liveGroupIdsFrom(memberships);
     } catch (error) {
       // A 403 reads to the proxy as "Infisical is unreachable", which would keep a removed member's agent
@@ -948,7 +962,7 @@ export const agentVaultProxyServiceFactory = ({
       throw error;
     }
 
-    const actorReach = isAdmin
+    const actorReach = reachesEveryBundle
       ? null
       : await findReachableAccessBundleIds(membershipDAL, {
           projectId: session.projectId,
@@ -957,7 +971,7 @@ export const agentVaultProxyServiceFactory = ({
         });
     return {
       accessBundleIds: onBehalfOf ? intersectAccessBundleIds(actorReach, onBehalfOf.reach) : actorReach,
-      isOwnerAdmin: isAdmin
+      ownerCanUseInlineServices: canUseInlineServices
     };
   };
 
@@ -982,32 +996,32 @@ export const agentVaultProxyServiceFactory = ({
       throw new NotFoundError({ message: "Session not found" });
     }
 
-    const { accessBundleIds, isOwnerAdmin } = await $authorizeSessionOwner(session, orgId);
-    return { session, onPrimary, proxy, accessBundleIds, isOwnerAdmin };
+    const { accessBundleIds, ownerCanUseInlineServices } = await $authorizeSessionOwner(session, orgId);
+    return { session, onPrimary, proxy, accessBundleIds, ownerCanUseInlineServices };
   };
 
   /** Resolve services and decrypt their credentials. The proxy's JWT authorizes; the session token is a selector. */
   const resolveSession = async ({ proxyId, orgId, sessionToken, hasSessionLogKey }: TResolveSessionDTO) => {
-    const { session, onPrimary, proxy, accessBundleIds, isOwnerAdmin } = await $authorizeSession({
+    const { session, onPrimary, proxy, accessBundleIds, ownerCanUseInlineServices } = await $authorizeSession({
       proxyId,
       orgId,
       sessionToken
     });
+    // After the session check, so a refusal never tells a caller anything about a token that isn't theirs.
+    await agentVaultAccessService.assertCanBroker(orgId);
 
-    // Starting a session with inline services is an admin's call, and like a grant it is re-checked on every resolve: an
-    // owner who is no longer an admin keeps the session's bundle, if it has one, and loses its inline services until
-    // they are an admin again.
-    const inlineServiceRows = isOwnerAdmin
-      ? await agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary })
-      : [];
-    const rows = withoutShadowedBundleServices(
+    // Sending inline services takes its own permission, and like a grant it is re-checked on every resolve: an owner who
+    // loses it keeps the session's bundle, if it has one, and loses its inline services until they hold it again.
+    const { bundleServices: rows, inlineServices: inlineServiceRows } = withoutShadowedServices(
       await agentVaultResolveDAL.findResolvableServices({
         sessionId: session.id,
         projectId: session.projectId,
         accessBundleIds,
         onPrimary
       }),
-      inlineServiceRows
+      ownerCanUseInlineServices
+        ? await agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary })
+        : []
     );
 
     // The values of whoever the session uses (its owner, or the user it acts for), read once: a member's OAuth
@@ -1209,7 +1223,14 @@ export const agentVaultProxyServiceFactory = ({
       }
       return [resolved];
     });
-    const services = [...bundleServices, ...inlineServices];
+    // An override goes last, so it takes only a host that nothing else in the session names exactly: an exact host beats
+    // a wildcard wherever it sits, and the Go matcher breaks a tie between two exact ones by order.
+    const overrideIds = new Set(rows.filter((row) => row.isOverride).map((row) => row.id));
+    const services = [
+      ...bundleServices.filter((service) => !overrideIds.has(service.id)),
+      ...inlineServices,
+      ...bundleServices.filter((service) => overrideIds.has(service.id))
+    ];
 
     // A key that can't be opened turns logs off for this session instead of cutting the agent off from its services.
     const $sessionLogs = (): { enabled: boolean; sessionKey: string | null } => {
@@ -1295,6 +1316,7 @@ export const agentVaultProxyServiceFactory = ({
   // After the upstream rejected a token. Never audited, like resolve: it is proxy-driven and per request.
   const refreshCredential = async ({ rejectedTokenHash, ...dto }: TRefreshCredentialDTO) => {
     const { session, row } = await $findSessionOauthService(dto);
+    await agentVaultAccessService.assertCanBroker(dto.orgId);
     const result = await agentVaultOauthService.refreshServiceToken({
       serviceId: row.id,
       projectId: session.projectId,
@@ -1409,16 +1431,19 @@ export const agentVaultProxyServiceFactory = ({
       throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });
     }
 
-    const { accessBundleIds, isOwnerAdmin } = await $authorizeSessionOwner(session, project.orgId);
+    const { accessBundleIds, ownerCanUseInlineServices } = await $authorizeSessionOwner(session, project.orgId);
 
     const scope = { sessionId: session.id, projectId: session.projectId, accessBundleIds, onPrimary };
-    const [bundleRows, bundles, inlineRows] = await Promise.all([
+    const [resolvableRows, bundles, sessionInlineRows] = await Promise.all([
       agentVaultResolveDAL.findResolvableServices(scope),
       agentVaultResolveDAL.findReachableBundles(scope),
-      isOwnerAdmin ? agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary }) : []
+      ownerCanUseInlineServices ? agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary }) : []
     ]);
-    // The same services resolve sends: a bundle service the session sent one of its own by name for is left out.
-    const rows = withoutShadowedBundleServices(bundleRows, inlineRows);
+    // The same services resolve sends, one per name.
+    const { bundleServices: rows, inlineServices: inlineRows } = withoutShadowedServices(
+      resolvableRows,
+      sessionInlineRows
+    );
     const serviceIds = rows.map((row) => row.id);
     const [customHeaderRows, substitutionRows, personalValueRows, proxy] = await Promise.all([
       agentVaultServiceCustomHeaderDAL.findByServiceIds(serviceIds),
@@ -1431,22 +1456,23 @@ export const agentVaultProxyServiceFactory = ({
     ]);
 
     const setPersonalFields = toSetPersonalFields(rows, personalValueRows);
+    const factsOf = (row: (typeof rows)[number]) =>
+      toBundleServiceFacts(row, {
+        customHeaderNames: customHeaderRows.filter((header) => header.serviceId === row.id).map(({ name }) => name),
+        substitutions: substitutionRows
+          .filter((substitution) => substitution.serviceId === row.id)
+          .map(({ placeholder, surfaces }) => ({ placeholder, surfaces })),
+        setPersonalFields: setPersonalFields.get(row.id) ?? new Set<string>()
+      });
 
-    // Bundle services before inline ones, the order resolve sends them in.
+    // The order resolve sends them in: bundle and named services, inline ones, then overrides.
     const services = [
-      ...rows.map((row) =>
-        toBundleServiceFacts(row, {
-          customHeaderNames: customHeaderRows.filter((header) => header.serviceId === row.id).map(({ name }) => name),
-          substitutions: substitutionRows
-            .filter((substitution) => substitution.serviceId === row.id)
-            .map(({ placeholder, surfaces }) => ({ placeholder, surfaces })),
-          setPersonalFields: setPersonalFields.get(row.id) ?? new Set<string>()
-        })
-      ),
+      ...rows.filter((row) => !row.isOverride).map(factsOf),
       ...inlineRows.flatMap((row) => {
         const facts = toInlineServiceFacts(row);
         return facts ? [facts] : [];
-      })
+      }),
+      ...rows.filter((row) => row.isOverride).map(factsOf)
     ];
 
     // A proxy names itself on the requests it forwards. One outside the session's project is ignored rather than

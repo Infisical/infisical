@@ -55,11 +55,8 @@ import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-encryption-key-dal";
 import { kmsServiceFactory, TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { AgentVaultModule } from "@app/domains/agent-vault/agent-vault/ce/module";
-import { Meter, Plan, TPlanFeatures } from "@app/domains/platform/license/ce/module";
+import { Plan, TPlanFeatures } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
-import { usageCounter } from "@app/domains/platform/license/ce/testing/usage-counter";
-import { OrganizationsProjectsModule } from "@app/domains/platform/organizations-projects/ce/module";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
@@ -71,11 +68,8 @@ import { userDALFactory } from "@app/services/user/user-dal";
 
 const planWith = (features: Partial<TPlanFeatures>) => Plan.restore({ ...testFeatures(), ...features });
 
-const countAgentVaultSeats = (orgId: string) => {
-  const { organizationsProjectsService } = new OrganizationsProjectsModule({ db: testDb });
-  const { usageCounters } = new AgentVaultModule({ organizationsProjectsService });
-  return usageCounter(usageCounters, Meter.AgentVaultIdentities).count(orgId);
-};
+// These specs exercise resolve itself; the Agent Vault free limit has its own unit tests.
+const allowAgentVault = { assertCanBroker: async () => {} };
 
 declare const testKeyStore: TKeyStoreFactory;
 
@@ -3037,6 +3031,9 @@ describe("Agent Vault V1 Router", async () => {
         // By id, a global variable reads to a member like one that does not exist, as another member's personal one does.
         expect((await member.asIdentity("GET", `${variablesUrl}/${variable.id}/value`)).statusCode).toBe(404);
         expect((await member.asIdentity("DELETE", `${variablesUrl}/${variable.id}`)).statusCode).toBe(404);
+        const edited = await member.asIdentity("PATCH", `${variablesUrl}/${variable.id}`, { value: "smuggled" });
+        expect(edited.statusCode).toBe(404);
+        expect(edited.json().message).toBe(`Variable with ID '${variable.id}' not found`);
         expect(
           (await member.asIdentity("POST", variablesUrl, { scope: "global", key: "MINE", value: "x" })).statusCode
         ).toBe(403);
@@ -4999,6 +4996,208 @@ describe("Agent Vault V1 Router", async () => {
         await member.cleanup();
       }
     });
+
+    describe("named in a session", async () => {
+      const sessionsUrl = "/api/v1/agent-vault/sessions";
+      const bearerService = (name: string, host: string, bundleIds: string[] = []) =>
+        createService(bundleIds, { name, hostPattern: host, credential: { type: "bearer", value: `sk-${name}` } });
+      const inline = (name: string, host: string) => ({
+        type: "http",
+        name,
+        hostPattern: host,
+        credential: { type: "bearer", value: `sk-inline-${name}` }
+      });
+      const resolveWith = async (sessionToken: string, proxyName: string) => {
+        const proxy = await inject("POST", "/api/v1/agent-vault/proxies", { name: proxyName });
+        expect(proxy.statusCode, proxy.payload).toBe(200);
+        const res = await testServer.inject({
+          method: "POST",
+          url: "/api/v1/agent-vault/proxy/resolve",
+          headers: {
+            authorization: `Bearer ${(proxy.json() as { proxyToken: string }).proxyToken}`,
+            "x-infisical-agent-session": sessionToken
+          }
+        });
+        expect(res.statusCode, res.payload).toBe(200);
+        return (res.json().services as { name: string; credential: { value?: string } }[])
+          .map((entry) => `${entry.name}=${entry.credential.value}`)
+          .sort();
+      };
+      const sessionServiceNames = async (sessionToken: string) => {
+        const res = await testServer.inject({
+          method: "GET",
+          url: "/api/v1/agent-vault/session/services",
+          headers: { authorization: `Bearer ${sessionToken}` }
+        });
+        expect(res.statusCode, res.payload).toBe(200);
+        return (res.json().services as { name: string }[]).map((entry) => entry.name).sort();
+      };
+
+      test("an Admin names a service in no bundle beside an inline one; reads keep the order sent and resolve sends both", async () => {
+        const loose = await bearerService("ns-loose", "ns-loose.example.com");
+
+        const minted = await inject("POST", sessionsUrl, {
+          services: [inline("ns-inline", "ns-inline.example.com"), "ns-loose"],
+          ttl: "1h"
+        });
+        expect(minted.statusCode, minted.payload).toBe(200);
+        const { session } = minted.json() as { session: { id: string; token: string; services: unknown[] } };
+        expect(session.services).toEqual([
+          expect.objectContaining({ name: "ns-inline", type: "http", hostPattern: "ns-inline.example.com", isInline: true }),
+          { id: loose.id, name: "ns-loose", type: "http", description: null, hostPattern: "ns-loose.example.com", isInline: false }
+        ]);
+
+        const read = await inject("GET", `${sessionsUrl}/${session.id}`);
+        expect(read.statusCode).toBe(200);
+        expect((read.json().session.services as { name: string; isInline: boolean }[]).map((entry) => [entry.name, entry.isInline])).toEqual([
+          ["ns-inline", true],
+          ["ns-loose", false]
+        ]);
+
+        expect(await resolveWith(session.token, "ns-resolve-admin")).toEqual([
+          "ns-inline=sk-inline-ns-inline",
+          "ns-loose=sk-ns-loose"
+        ]);
+      });
+
+      test("a Member names only services in a bundle granted to them, and loses one when the grant goes", async () => {
+        const member = await createMemberIdentity(`ns-member-${Date.now()}`);
+        try {
+          const bundle = await createAccessBundle(`ns-member-bundle-${Date.now()}`);
+          await bearerService("ns-granted", "ns-granted.example.com", [bundle.id]);
+          await bearerService("ns-outside", "ns-outside.example.com");
+          await grant(bundle.id, member.id);
+
+          const outside = await member.as("POST", sessionsUrl, { services: ["ns-outside"] });
+          expect(outside.statusCode).toBe(400);
+          expect(outside.json().message).toBe(
+            "You can't name a service called 'ns-outside'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
+          );
+          // An unknown name reads exactly like one out of reach.
+          const unknown = await member.as("POST", sessionsUrl, { services: ["ns-no-such-service"] });
+          expect(unknown.json().message).toBe(
+            "You can't name a service called 'ns-no-such-service'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
+          );
+
+          const minted = await member.as("POST", sessionsUrl, { services: ["ns-granted"] });
+          expect(minted.statusCode, minted.payload).toBe(200);
+          const { token, id: sessionId } = minted.json().session as { token: string; id: string };
+          expect(await sessionServiceNames(token)).toEqual(["ns-granted"]);
+          const namedIn = async (read: Promise<{ json: () => { session: { services: { name: string }[] } } }>) =>
+            (await read).json().session.services.map((entry) => entry.name);
+          expect(await namedIn(member.as("GET", `${sessionsUrl}/${sessionId}`))).toEqual(["ns-granted"]);
+
+          const revoked = await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
+            machineIdentityIds: [member.id]
+          });
+          expect(revoked.statusCode, revoked.payload).toBe(200);
+          expect(await sessionServiceNames(token)).toEqual([]);
+
+          // Session reads show a named service only while the reader reaches it, so its later changes stay with the
+          // services API.
+          const granted = (await inject("GET", `${servicesUrl}?search=ns-granted`)).json().services[0] as { id: string };
+          expect(
+            (await inject("PATCH", `${servicesUrl}/${granted.id}`, { type: "http", description: "changed after the revoke" }))
+              .statusCode
+          ).toBe(200);
+          const ownRead = await member.as("GET", `${sessionsUrl}/${sessionId}`);
+          expect(ownRead.statusCode).toBe(200);
+          expect(ownRead.json().session.services).toEqual([]);
+          expect(ownRead.payload).not.toContain("changed after the revoke");
+          const ownList = await member.as("GET", `${sessionsUrl}?limit=100`);
+          const listed = (ownList.json().sessions as { id: string; services: unknown[] }[]).find(
+            (row) => row.id === sessionId
+          );
+          expect(listed?.services).toEqual([]);
+          expect(await namedIn(inject("GET", `${sessionsUrl}/${sessionId}`))).toEqual(["ns-granted"]);
+        } finally {
+          await member.cleanup();
+        }
+      });
+
+      test("a name sent twice is refused, and so is a service covering a host one the session names already covers", async () => {
+        await bearerService("ns-dup", "ns-dup.example.com");
+
+        const twice = await inject("POST", sessionsUrl, { services: ["ns-dup", "ns-dup"] });
+        expect(twice.statusCode).toBe(422);
+        expect(twice.payload).toContain('More than one service in this session is named \\"ns-dup\\"');
+
+        const overlapping = await inject("POST", sessionsUrl, {
+          services: ["ns-dup", inline("ns-dup-direct", "ns-dup.example.com")]
+        });
+        expect(overlapping.statusCode).toBe(400);
+        expect(overlapping.json().message).toContain("which 'ns-dup', a service this session names, already covers");
+
+        await bearerService("ns-dup-mirror", "ns-dup.example.com");
+        const twoNamed = await inject("POST", sessionsUrl, { services: ["ns-dup", "ns-dup-mirror"] });
+        expect(twoNamed.statusCode).toBe(400);
+        expect(twoNamed.json().message).toContain("both cover ns-dup.example.com");
+      });
+
+      test("a Member naming a wildcard service gets the more specific services its bundle uses for some of its hosts", async () => {
+        const member = await createMemberIdentity(`ns-override-member-${Date.now()}`);
+        try {
+          const bundle = await createAccessBundle(`ns-override-bundle-${Date.now()}`);
+          await bearerService("ns-ov-wild", "*.ns-ov.example.com", [bundle.id]);
+          // An override of the wildcard, whose own wildcard is overridden in turn.
+          await bearerService("ns-ov-api", "api.ns-ov.example.com, *.api.ns-ov.example.com", [bundle.id]);
+          const deep = await bearerService("ns-ov-v1", "v1.api.ns-ov.example.com", [bundle.id]);
+          await bearerService("ns-ov-elsewhere", "ns-ov-elsewhere.example.com", [bundle.id]);
+          await grant(bundle.id, member.id);
+
+          const proxy = await inject("POST", "/api/v1/agent-vault/proxies", { name: `ns-override-${Date.now()}` });
+          expect(proxy.statusCode, proxy.payload).toBe(200);
+          const { proxyToken } = proxy.json() as { proxyToken: string };
+          const resolved = async (sessionToken: string) => {
+            const res = await testServer.inject({
+              method: "POST",
+              url: "/api/v1/agent-vault/proxy/resolve",
+              headers: { authorization: `Bearer ${proxyToken}`, "x-infisical-agent-session": sessionToken }
+            });
+            expect(res.statusCode, res.payload).toBe(200);
+            return (res.json().services as { name: string; accessBundleName: string | null }[]).map(
+              (entry) => `${entry.name}@${entry.accessBundleName ?? "-"}`
+            );
+          };
+
+          const minted = await member.as("POST", sessionsUrl, { services: ["ns-ov-wild"] });
+          expect(minted.statusCode, minted.payload).toBe(200);
+          const { token, services } = minted.json().session as { token: string; services: { name: string }[] };
+          // Reads keep what the session names; resolve adds the overrides last, credited to the bundle that pairs them.
+          expect(services.map((entry) => entry.name)).toEqual(["ns-ov-wild"]);
+          expect(await resolved(token)).toEqual([
+            "ns-ov-wild@-",
+            `ns-ov-api@${bundle.name}`,
+            `ns-ov-v1@${bundle.name}`
+          ]);
+          expect(await sessionServiceNames(token)).toEqual(["ns-ov-api", "ns-ov-v1", "ns-ov-wild"]);
+
+          // The bundle's later edits reach the session on the next resolve, as they would a session carrying it.
+          const unlinked = await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/services/${deep.id}`);
+          expect(unlinked.statusCode, unlinked.payload).toBe(200);
+          expect(await resolved(token)).toEqual(["ns-ov-wild@-", `ns-ov-api@${bundle.name}`]);
+
+          // An admin reaches every bundle and could name the wildcard service alone anyway, so gets exactly that.
+          const asAdmin = await inject("POST", sessionsUrl, { services: ["ns-ov-wild"] });
+          expect(asAdmin.statusCode, asAdmin.payload).toBe(200);
+          expect(await resolved(asAdmin.json().session.token as string)).toEqual(["ns-ov-wild@-"]);
+        } finally {
+          await member.cleanup();
+        }
+      });
+
+      test("a deleted service drops out of the sessions that named it", async () => {
+        const doomed = await bearerService("ns-deleted", "ns-deleted.example.com");
+        const minted = await inject("POST", sessionsUrl, { services: ["ns-deleted"] });
+        expect(minted.statusCode, minted.payload).toBe(200);
+        const { id, token } = minted.json().session as { id: string; token: string };
+        expect(await sessionServiceNames(token)).toEqual(["ns-deleted"]);
+
+        expect((await inject("DELETE", `${servicesUrl}/${doomed.id}`)).statusCode).toBe(200);
+        expect(await sessionServiceNames(token)).toEqual([]);
+        expect((await inject("GET", `${sessionsUrl}/${id}`)).json().session.services).toEqual([]);
+      });
+    });
   });
 
   describe("product membership", async () => {
@@ -5583,6 +5782,31 @@ describe("Agent Vault V1 Router", async () => {
       const notAnId = await inject("DELETE", membersUrl, { userIds: ["not-a-uuid"] });
       expect(notAnId.statusCode).toBe(422);
     });
+
+    test("a member can't add, re-role or remove members, or list who could be added", async () => {
+      const member = await createMemberIdentity(`av-member-writes-${Date.now()}`);
+      const bystander = await createOrgIdentity(`av-member-writes-bystander-${Date.now()}`);
+      try {
+        const refused = await Promise.all([
+          member.as("GET", `${membersUrl}/available`),
+          member.as("POST", membersUrl, { machineIdentityIds: [bystander.id], role: "member" }),
+          member.as("PATCH", membersUrl, { machineIdentityIds: [member.id], role: "admin" }),
+          member.as("DELETE", membersUrl, { userIds: [seedData1.id] })
+        ]);
+        expect(refused.map((res) => res.statusCode)).toEqual([403, 403, 403, 403]);
+        refused.forEach((res) => {
+          expect(res.json().error).toBe("PermissionDenied");
+          expect(res.json().message).toMatch(/^You are not allowed to (read|create|edit|delete) on (member|groups|identity)$/);
+        });
+
+        const listed = await listMembers("actorType=machineIdentity");
+        expect(listed.members.find((row) => row.id === bystander.id)).toBeUndefined();
+        expect(listed.members.find((row) => row.id === member.id)?.role).toBe("member");
+      } finally {
+        await member.cleanup();
+        await deleteOrgIdentity(bystander.id);
+      }
+    });
   });
 
   describe("cross-org ids and foreign resources", async () => {
@@ -5706,6 +5930,63 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
+    test("only an admin lists everyone's sessions or revokes one that belongs to someone else", async () => {
+      const bundle = await createAccessBundle(`session-others-${Date.now()}`);
+      const adminMint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
+      expect(adminMint.statusCode).toBe(200);
+      const adminSession = adminMint.json().session as { id: string };
+
+      const member = await createMemberIdentity(`session-others-member-${Date.now()}`);
+      try {
+        expect(
+          (
+            await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
+              machineIdentityIds: [member.id]
+            })
+          ).statusCode
+        ).toBe(200);
+        const memberMint = await member.as("POST", "/api/v1/agent-vault/sessions", {
+          accessBundle: bundle.name,
+          ttl: "1h"
+        });
+        expect(memberMint.statusCode).toBe(200);
+        const memberSession = memberMint.json().session as { id: string };
+
+        const everyone = await member.as("GET", "/api/v1/agent-vault/sessions?scope=all");
+        expect(everyone.statusCode).toBe(403);
+        expect(everyone.json().message).toBe("You are not allowed to read-any on agent-vault-sessions");
+        const own = await member.as("GET", "/api/v1/agent-vault/sessions?limit=100");
+        expect(own.statusCode).toBe(200);
+        expect((own.json().sessions as { id: string }[]).map((row) => row.id)).toEqual([memberSession.id]);
+
+        const listedByAdmin = await inject("GET", "/api/v1/agent-vault/sessions?scope=all&limit=2");
+        expect(listedByAdmin.statusCode).toBe(200);
+        expect((listedByAdmin.json().sessions as { id: string }[]).map((row) => row.id)).toEqual([
+          memberSession.id,
+          adminSession.id
+        ]);
+
+        const revokeTheirs = await member.as("POST", `/api/v1/agent-vault/sessions/${adminSession.id}/revoke`);
+        expect(revokeTheirs.statusCode).toBe(404);
+        expect(revokeTheirs.json().message).toBe(`Session with ID '${adminSession.id}' not found`);
+        const stillActive = await inject("GET", `/api/v1/agent-vault/sessions/${adminSession.id}`);
+        expect(stillActive.json().session.status).toBe("active");
+
+        const readByAdmin = await inject("GET", `/api/v1/agent-vault/sessions/${memberSession.id}`);
+        expect(readByAdmin.statusCode).toBe(200);
+        const relabelledByAdmin = await inject("PATCH", `/api/v1/agent-vault/sessions/${memberSession.id}`, {
+          label: "checked by admin"
+        });
+        expect(relabelledByAdmin.statusCode).toBe(200);
+        expect(relabelledByAdmin.json().session).toMatchObject({ id: memberSession.id, label: "checked by admin" });
+        const revokedByAdmin = await inject("POST", `/api/v1/agent-vault/sessions/${memberSession.id}/revoke`);
+        expect(revokedByAdmin.statusCode).toBe(200);
+        expect(revokedByAdmin.json().session).toMatchObject({ id: memberSession.id, status: "revoked" });
+      } finally {
+        await member.cleanup();
+      }
+    });
+
     test("the bundle comes only from the session row", async () => {
       const granted = await createAccessBundle("session-granted");
       const notNamed = await createAccessBundle("session-not-named");
@@ -5774,7 +6055,7 @@ describe("Agent Vault V1 Router", async () => {
       // An empty list reads as leaving the bundle out, which needs services of the session's own.
       const empty = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [], ttl: "1h" });
       expect(empty.statusCode).toBe(400);
-      expect(empty.json().message).toContain("or send the services it should reach");
+      expect(empty.json().message).toContain("or the services it should reach");
     });
 
     test("a session whose bundle was deleted keeps its name and loses its id", async () => {
@@ -5880,7 +6161,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(set.json().session).toMatchObject({ id, label: "first pass", status: "active" });
       expect((await inject("GET", `/api/v1/agent-vault/sessions/${id}`)).json().session.label).toBe("first pass");
 
-      // The label is the only field, so leaving it out must not read as clearing it.
+      // Neither field sent is refused, rather than read as clearing the label.
       expect((await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, {})).statusCode).toBe(422);
       expect((await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { label: "a\u200bb" })).statusCode).toBe(422);
       expect((await inject("GET", `/api/v1/agent-vault/sessions/${id}`)).json().session.label).toBe("first pass");
@@ -5912,6 +6193,133 @@ describe("Agent Vault V1 Router", async () => {
       } finally {
         await member.cleanup();
       }
+    });
+
+    test("metadata is set at creation, returned on every read, and replaced or cleared later", async () => {
+      const bundle = await createAccessBundle(`session-metadata-${Date.now()}`);
+      const label = `metadata run ${Date.now()}`;
+
+      const plain = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
+      expect(plain.statusCode).toBe(200);
+      expect(plain.json().session.metadata).toEqual({});
+
+      const minted = await inject("POST", "/api/v1/agent-vault/sessions", {
+        accessBundle: bundle.name,
+        ttl: "1h",
+        label,
+        metadata: { " runId ": " 8812 ", slackChannel: "#deploys", endUser: "alice@example.com" }
+      });
+      expect(minted.statusCode).toBe(200);
+      const { id } = minted.json().session as { id: string };
+      const expected = [
+        ["runId", "8812"],
+        ["slackChannel", "#deploys"],
+        ["endUser", "alice@example.com"]
+      ];
+      expect(Object.entries(minted.json().session.metadata as Record<string, string>)).toEqual(expected);
+
+      const byId = await inject("GET", `/api/v1/agent-vault/sessions/${id}`);
+      expect(Object.entries(byId.json().session.metadata as Record<string, string>)).toEqual(expected);
+      const listed = await inject("GET", `/api/v1/agent-vault/sessions?search=${encodeURIComponent(label)}`);
+      expect(listed.json().sessions[0]).toMatchObject({ id, metadata: Object.fromEntries(expected) });
+
+      // Metadata is not searchable.
+      const searched = await inject("GET", "/api/v1/agent-vault/sessions?search=8812");
+      expect((searched.json() as { sessions: { id: string }[] }).sessions.map((row) => row.id)).not.toContain(id);
+
+      // A label-only edit keeps the metadata.
+      const relabelled = await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { label: "renamed" });
+      expect(relabelled.statusCode).toBe(200);
+      expect(relabelled.json().session).toMatchObject({ label: "renamed", metadata: Object.fromEntries(expected) });
+
+      // Metadata replaces the whole set and leaves the label alone.
+      const replaced = await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { metadata: { ticket: "OPS-12" } });
+      expect(replaced.statusCode).toBe(200);
+      expect(replaced.json().session).toMatchObject({ label: "renamed", metadata: { ticket: "OPS-12" } });
+      expect((await inject("GET", `/api/v1/agent-vault/sessions/${id}`)).json().session.metadata).toEqual({
+        ticket: "OPS-12"
+      });
+
+      // Still editable once the session is revoked, like the label.
+      const revoked = await inject("POST", `/api/v1/agent-vault/sessions/${id}/revoke`);
+      expect(revoked.json().session.metadata).toEqual({ ticket: "OPS-12" });
+      const cleared = await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { metadata: {} });
+      expect(cleared.statusCode).toBe(200);
+      expect(cleared.json().session).toMatchObject({ status: "revoked", metadata: {} });
+
+      const rejected = {
+        tooMany: Object.fromEntries(Array.from({ length: 21 }, (_, index) => [`key${index}`, "v"])),
+        collision: { runId: "1", "runId ": "2" },
+        emptyKey: { "": "v" },
+        emptyValue: { runId: " " },
+        equalsInKey: { "run=id": "v" },
+        invisible: { "alice\u200b": "v" },
+        nonString: { runId: 8812 }
+      };
+      for await (const [name, metadata] of Object.entries(rejected)) {
+        const res = await inject("POST", "/api/v1/agent-vault/sessions", {
+          accessBundle: bundle.name,
+          ttl: "1h",
+          metadata
+        });
+        expect(res.statusCode, name).toBe(422);
+      }
+      const collision = await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { metadata: rejected.collision });
+      expect(JSON.stringify(collision.json().message)).toContain(
+        "The metadata key 'runId' appears more than once. Each key can be used once per session."
+      );
+      const emptyValue = await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { metadata: rejected.emptyValue });
+      expect(emptyValue.statusCode).toBe(422);
+      expect(JSON.stringify(emptyValue.json().message)).toContain("Enter a value for metadata key 'runId'");
+      expect((await inject("GET", `/api/v1/agent-vault/sessions/${id}`)).json().session.metadata).toEqual({});
+    });
+
+    test("metadata filters the session list, every pair must match, and the count follows it", async () => {
+      const bundle = await createAccessBundle(`session-metadata-filter-${Date.now()}`);
+      const runId = `run-${Date.now()}`;
+      const mint = async (metadata: Record<string, string>) => {
+        const res = await inject("POST", "/api/v1/agent-vault/sessions", {
+          accessBundle: bundle.name,
+          ttl: "1h",
+          metadata
+        });
+        expect(res.statusCode).toBe(200);
+        return res.json().session.id as string;
+      };
+      const prod = await mint({ runId, env: "prod" });
+      const staging = await mint({ runId, env: "staging" });
+      await mint({ runId: `${runId}-other`, env: "prod" });
+
+      const list = async (query: string) => {
+        const res = await inject("GET", `/api/v1/agent-vault/sessions?${query}`);
+        expect(res.statusCode, query).toBe(200);
+        const body = res.json() as { sessions: { id: string }[]; totalCount: number };
+        return { ids: body.sessions.map((row) => row.id).sort(), totalCount: body.totalCount };
+      };
+
+      expect(await list(`metadata=runId=${runId}`)).toEqual({ ids: [prod, staging].sort(), totalCount: 2 });
+      // A real repeated param, which arrives as an array.
+      expect(await list(`metadata=runId=${runId}&metadata=env=prod`)).toEqual({ ids: [prod], totalCount: 1 });
+      expect(await list(`metadata=${encodeURIComponent(` runId = ${runId} `)}&metadata=env=dev`)).toEqual({
+        ids: [],
+        totalCount: 0
+      });
+      // The count describes the filtered set, not the page.
+      const paged = await list(`metadata=runId=${runId}&limit=1`);
+      expect(paged.ids).toHaveLength(1);
+      expect(paged.totalCount).toBe(2);
+
+      const malformed = await inject("GET", "/api/v1/agent-vault/sessions?metadata=runId");
+      expect(malformed.statusCode).toBe(422);
+      expect(JSON.stringify(malformed.json().message)).toContain(
+        "Filter metadata as key=value, such as metadata=runId=8812"
+      );
+      const emptyValue = await inject("GET", "/api/v1/agent-vault/sessions?metadata=runId=");
+      expect(emptyValue.statusCode).toBe(422);
+      expect(JSON.stringify(emptyValue.json().message)).toContain("Enter a value for metadata key 'runId'");
+      const repeated = await inject("GET", "/api/v1/agent-vault/sessions?metadata=runId=1&metadata=runId=2");
+      expect(repeated.statusCode).toBe(422);
+      expect(JSON.stringify(repeated.json().message)).toContain("The metadata key 'runId' appears more than once.");
     });
 
     test("search filters and counts on the server, not just the page", async () => {
@@ -6321,6 +6729,132 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
+    test("on a user's behalf, a named service has to be in a bundle granted to both the user and the identity", async () => {
+      const projectId = await getProjectId();
+      const stamp = Date.now();
+      const shared = await createAccessBundle(`obo-named-shared-${stamp}`);
+      const botOnly = await createAccessBundle(`obo-named-bot-${stamp}`);
+      const userOnly = await createAccessBundle(`obo-named-user-${stamp}`);
+      const service = async (name: string, bundleIds: string[]) => {
+        const res = await inject("POST", "/api/v1/agent-vault/services", {
+          type: "http",
+          name,
+          hostPattern: `${name}.example.com`,
+          credential: { type: "passthrough" },
+          accessBundleIds: bundleIds
+        });
+        expect(res.statusCode, res.payload).toBe(200);
+      };
+      await service(`obo-ns-shared-${stamp}`, [shared.id]);
+      await service(`obo-ns-bot-${stamp}`, [botOnly.id]);
+      await service(`obo-ns-split-${stamp}`, [botOnly.id, userOnly.id]);
+      await service(`obo-ns-loose-${stamp}`, []);
+      const bot = await createMemberIdentity(`obo-named-bot-${stamp}`);
+      const alice = await createAgentVaultUser("obo-named-alice", projectId);
+      try {
+        await grantBundle(shared.id, { userIds: [alice.userId], machineIdentityIds: [bot.id] });
+        await grantBundle(botOnly.id, { machineIdentityIds: [bot.id] });
+        await grantBundle(userOnly.id, { userIds: [alice.userId] });
+        await delegate(bot, { scope: "selected", userIds: [alice.userId] });
+        const mintNamed = (name: string) =>
+          bot.as("POST", sessionsUrl, { services: [name], onBehalfOf: { userId: alice.userId } });
+
+        expect((await mintNamed(`obo-ns-shared-${stamp}`)).statusCode).toBe(200);
+
+        const loose = await mintNamed(`obo-ns-loose-${stamp}`);
+        expect(loose.statusCode).toBe(400);
+        expect(loose.json().message).toContain(`This machine identity can't name a service called 'obo-ns-loose-${stamp}'`);
+
+        const botsOwn = await mintNamed(`obo-ns-bot-${stamp}`);
+        expect(botsOwn.statusCode).toBe(400);
+        expect(botsOwn.json().message).toContain(`can't use a service called 'obo-ns-bot-${stamp}'`);
+
+        // Each reaches it, through different bundles, and resolve reaches only bundles granted to both.
+        const split = await mintNamed(`obo-ns-split-${stamp}`);
+        expect(split.statusCode).toBe(400);
+        expect(split.json().message).toContain("isn't in an access bundle granted to both");
+      } finally {
+        await bot.cleanup();
+        await deleteUsers([alice.userId]);
+      }
+    });
+
+    test("a service sent with the session can't switch off an override that a named service brings", async () => {
+      const projectId = await getProjectId();
+      const stamp = Date.now();
+      const bundle = await createAccessBundle(`obo-ov-${stamp}`);
+      const service = async (name: string, hostPattern: string, extra: Record<string, unknown> = {}) => {
+        const res = await inject("POST", "/api/v1/agent-vault/services", {
+          type: "http",
+          name,
+          hostPattern,
+          credential: { type: "bearer", value: `sk-${name}` },
+          accessBundleIds: [bundle.id],
+          ...extra
+        });
+        expect(res.statusCode, res.payload).toBe(200);
+        return res.json().service as { id: string };
+      };
+      const wildcard = `obo-ov-wild-${stamp}`;
+      const readOnly = `obo-ov-ro-${stamp}`;
+      await service(wildcard, `*.obo-ov-${stamp}.example.com`);
+      const override = await service(readOnly, `api.obo-ov-${stamp}.example.com`, { allowedMethods: ["GET"] });
+      // An admin identity can send services with a session, and acting for a member it reaches only the member's bundles.
+      const bot = await createMemberIdentity(`obo-ov-bot-${stamp}`);
+      const alice = await createAgentVaultUser("obo-ov-alice", projectId);
+      try {
+        expect(
+          (await inject("PATCH", "/api/v1/agent-vault/members", { machineIdentityIds: [bot.id], role: "admin" }))
+            .statusCode
+        ).toBe(200);
+        await grantBundle(bundle.id, { userIds: [alice.userId] });
+        await delegate(bot, { scope: "selected", userIds: [alice.userId] });
+        const sent = (name: string) => ({
+          type: "http",
+          name,
+          hostPattern: `${name}.unrelated.example.com`,
+          credential: { type: "bearer", value: "sk-sent" }
+        });
+        const mint = (services: unknown[]) =>
+          bot.as("POST", sessionsUrl, { services, onBehalfOf: { userId: alice.userId } });
+
+        const taken = await mint([wildcard, sent(readOnly)]);
+        expect(taken.statusCode, taken.payload).toBe(400);
+        expect(taken.json().message).toContain(
+          `has the same name as '${readOnly}', a service this session gets from an access bundle alongside a service it names`
+        );
+
+        // A rename after the mint can still give the two one name, and then the override is the one resolve keeps.
+        const later = `obo-ov-later-${stamp}`;
+        const minted = await mint([wildcard, sent(later)]);
+        expect(minted.statusCode, minted.payload).toBe(200);
+        const proxy = await inject("POST", "/api/v1/agent-vault/proxies", { name: `obo-ov-${stamp}` });
+        expect(proxy.statusCode, proxy.payload).toBe(200);
+        const resolved = async () => {
+          const res = await testServer.inject({
+            method: "POST",
+            url: "/api/v1/agent-vault/proxy/resolve",
+            headers: {
+              authorization: `Bearer ${proxy.json().proxyToken as string}`,
+              "x-infisical-agent-session": minted.json().session.token as string
+            }
+          });
+          expect(res.statusCode, res.payload).toBe(200);
+          return (res.json().services as { name: string; allowedMethods: string[] | null }[]).map(
+            ({ name, allowedMethods }) => `${name}:${allowedMethods?.join(",") ?? "any"}`
+          );
+        };
+        expect(await resolved()).toEqual([`${wildcard}:any`, `${later}:any`, `${readOnly}:GET`]);
+
+        const renamed = await inject("PATCH", `/api/v1/agent-vault/services/${override.id}`, { type: "http", name: later });
+        expect(renamed.statusCode, renamed.payload).toBe(200);
+        expect(await resolved()).toEqual([`${wildcard}:any`, `${later}:GET`]);
+      } finally {
+        await bot.cleanup();
+        await deleteUsers([alice.userId]);
+      }
+    });
+
     test("a group in the delegation covers its members while they stay in the group", async () => {
       const projectId = await getProjectId();
       const bundle = await createAccessBundle(`obo-group-${Date.now()}`);
@@ -6517,6 +7051,175 @@ describe("Agent Vault V1 Router", async () => {
         replies.forEach((reply) => {
           expect(reply.statusCode).toBe(200);
           expect(reply.json()).toMatchObject({ accessBundles: [], totalCount: 0 });
+        });
+      } finally {
+        await bot.cleanup();
+        await deleteUsers([alice.userId, outsider.userId]);
+      }
+    });
+
+    test("an identity lists the services a session on a user's behalf could name", async () => {
+      const projectId = await getProjectId();
+      const stamp = String(Date.now());
+      const shared = await createAccessBundle(`obo-svc-shared-${stamp}`);
+      const usersOnly = await createAccessBundle(`obo-svc-users-${stamp}`);
+      const botsOnly = await createAccessBundle(`obo-svc-bots-${stamp}`);
+      const needsSetup = await createAccessBundle(`obo-svc-setup-${stamp}`);
+      const createService = async (label: string, accessBundleId: string, memberProvided: boolean) => {
+        const res = await inject("POST", "/api/v1/agent-vault/services", {
+          accessBundleIds: [accessBundleId],
+          type: "http",
+          name: `obo-svc-${label}-${stamp}`,
+          hostPattern: `${label}-${stamp}.example.com`,
+          credential: memberProvided
+            ? { type: "bearer", memberProvidedFields: ["credential-value"] }
+            : { type: "bearer", value: `${label}-token` }
+        });
+        expect(res.statusCode).toBe(200);
+        return res.json().service as { id: string; name: string };
+      };
+      const sharedService = await createService("shared", shared.id, false);
+      const userService = await createService("users", usersOnly.id, false);
+      const botService = await createService("bots", botsOnly.id, false);
+      const setupService = await createService("setup", needsSetup.id, true);
+      const bot = await createMemberIdentity(`obo-svc-bot-${stamp}`);
+      const alice = await createAgentVaultUser("obo-svc-alice", projectId);
+      const outsider = await createAgentVaultUser("obo-svc-outsider", projectId);
+      const servicesUrl = (query: string) => `/api/v1/agent-vault/services?limit=100&${query}`;
+      type TListedService = {
+        name: string;
+        accessBundles: { name: string }[];
+        personalValues: { isConfigured: boolean } | null;
+      };
+      const listed = (res: { json: () => { services: TListedService[] } }) =>
+        res
+          .json()
+          .services.filter((service) => service.name.endsWith(stamp))
+          .map((service) => service.name);
+      let adminVariableId: string | undefined;
+      try {
+        await grantBundle(shared.id, { userIds: [alice.userId], machineIdentityIds: [bot.id] });
+        await grantBundle(usersOnly.id, { userIds: [alice.userId] });
+        await grantBundle(botsOnly.id, { machineIdentityIds: [bot.id] });
+        await grantBundle(needsSetup.id, { machineIdentityIds: [bot.id] });
+        await delegate(bot, { scope: "selected", userIds: [alice.userId, seedData1.id] });
+
+        // Only the service in a bundle granted to both: not the one only Alice holds, nor the one only the identity holds.
+        const byId = await bot.as("GET", servicesUrl(`onBehalfOfUserId=${alice.userId}`));
+        expect(byId.statusCode).toBe(200);
+        expect(listed(byId)).toEqual([sharedService.name]);
+        const sharedRow = (byId.json().services as TListedService[]).find((row) => row.name === sharedService.name);
+        expect(sharedRow?.accessBundles.map((bundle) => bundle.name)).toEqual([shared.name]);
+        const byEmail = await bot.as("GET", servicesUrl(`onBehalfOfUserEmail=${encodeURIComponent(alice.username)}`));
+        expect(listed(byEmail)).toEqual(listed(byId));
+
+        // The list offers exactly what a session on her behalf accepts.
+        const mintNaming = (name: string) =>
+          bot.as("POST", sessionsUrl, { services: [name], onBehalfOf: { userId: alice.userId } });
+        expect((await mintNaming(sharedService.name)).statusCode).toBe(200);
+        expect((await mintNaming(userService.name)).statusCode).toBe(400);
+        expect((await mintNaming(botService.name)).statusCode).toBe(400);
+
+        // Without onBehalfOf the identity still lists the services in its own bundles.
+        const own = await bot.as("GET", servicesUrl("orderBy=name&orderDirection=asc"));
+        expect(listed(own)).toEqual([botService.name, setupService.name, sharedService.name]);
+
+        // A user the delegation doesn't cover reads exactly like one who doesn't exist, as on the bundle list.
+        const missingId = crypto.randomUUID();
+        const uncovered = await bot.as("GET", servicesUrl(`onBehalfOfUserId=${outsider.userId}`));
+        const unknown = await bot.as("GET", servicesUrl(`onBehalfOfUserId=${missingId}`));
+        expect([uncovered.statusCode, unknown.statusCode]).toEqual([403, 403]);
+        expect(uncovered.json().message.replace(outsider.userId, "<user>")).toBe(
+          unknown.json().message.replace(missingId, "<user>")
+        );
+
+        const asUser = await inject("GET", servicesUrl(`onBehalfOfUserId=${alice.userId}`));
+        expect(asUser.statusCode).toBe(400);
+        expect(asUser.json().message).toBe("Only a machine identity can start a session on behalf of a user");
+        const both = await bot.as(
+          "GET",
+          servicesUrl(`onBehalfOfUserId=${alice.userId}&onBehalfOfUserEmail=${encodeURIComponent(alice.username)}`)
+        );
+        expect(both.statusCode).toBe(422);
+        const withGranted = await bot.as("GET", servicesUrl(`onBehalfOfUserId=${alice.userId}&granted=true`));
+        expect(withGranted.statusCode).toBe(422);
+
+        // The setup state is the user's: the seeded admin reaches every bundle, so the identity's grants decide the
+        // list, and one service asks for a value the admin hasn't saved yet.
+        const forAdmin = (requiresSetup: string) =>
+          bot.as(
+            "GET",
+            servicesUrl(`onBehalfOfUserId=${seedData1.id}&requiresSetup=${requiresSetup}&orderBy=name&orderDirection=asc`)
+          );
+        const pendingForAdmin = await forAdmin("true");
+        expect(listed(pendingForAdmin)).toEqual([setupService.name]);
+        expect(
+          (pendingForAdmin.json().services as TListedService[]).find((row) => row.name === setupService.name)
+            ?.personalValues?.isConfigured
+        ).toBe(false);
+        const variableKey = `OBO_SVC_${stamp}`;
+        const variable = await inject("POST", "/api/v1/agent-vault/variables", {
+          scope: "personal",
+          key: variableKey,
+          value: "admin_personal_token"
+        });
+        expect(variable.statusCode, variable.payload).toBe(200);
+        adminVariableId = (variable.json() as { variable: { id: string } }).variable.id;
+        const saved = await inject("PATCH", `/api/v1/agent-vault/services/${setupService.id}/personal-values`, {
+          values: [{ field: "credential-value", value: `{{${variableKey}}}` }]
+        });
+        expect(saved.statusCode).toBe(200);
+        expect(listed(await forAdmin("true"))).toEqual([]);
+        const configuredForAdmin = await forAdmin("false");
+        expect(listed(configuredForAdmin)).toEqual([botService.name, setupService.name, sharedService.name]);
+
+        // The admin's own list shows the variable their value uses. On their behalf, the identity learns only that the
+        // value is set: not the admin's variables, nor their OAuth connection.
+        const adminsOwn = await inject("GET", servicesUrl(`search=${encodeURIComponent(setupService.name)}`));
+        expect(
+          (adminsOwn.json().services as TListedService[]).find((row) => row.name === setupService.name)?.personalValues
+        ).toMatchObject({
+          fields: [{ field: "credential-value", variableReferences: [{ variableId: adminVariableId, key: variableKey }] }]
+        });
+        expect(
+          (configuredForAdmin.json().services as TListedService[]).find((row) => row.name === setupService.name)
+            ?.personalValues
+        ).toEqual({
+          isConfigured: true,
+          fields: [{ field: "credential-value", isSet: true, updatedAt: expect.any(String) }]
+        });
+      } finally {
+        await bot.cleanup();
+        await deleteUsers([alice.userId, outsider.userId]);
+        for (const service of [sharedService, userService, botService, setupService]) {
+          // eslint-disable-next-line no-await-in-loop
+          await inject("DELETE", `/api/v1/agent-vault/services/${service.id}`);
+        }
+        if (adminVariableId) await inject("DELETE", `/api/v1/agent-vault/variables/${adminVariableId}`);
+      }
+    });
+
+    test("an identity granted no bundles learns nothing about a user by listing services on their behalf", async () => {
+      const projectId = await getProjectId();
+      const bot = await createMemberIdentity(`obo-svc-probe-bot-${Date.now()}`);
+      const alice = await createAgentVaultUser("obo-svc-probe-alice", projectId);
+      const outsider = await createAgentVaultUser("obo-svc-probe-outsider", null);
+      const bundle = await createAccessBundle(`obo-svc-probe-${Date.now()}`);
+      const listFor = (query: string) => bot.as("GET", `/api/v1/agent-vault/services?${query}`);
+      try {
+        await grantBundle(bundle.id, { userIds: [alice.userId] });
+        await delegate(bot, { scope: "all-members" });
+
+        // A member of Agent Vault, an org member outside it, and no one at all read the same.
+        const replies = await Promise.all([
+          listFor(`onBehalfOfUserId=${alice.userId}`),
+          listFor(`onBehalfOfUserId=${outsider.userId}`),
+          listFor(`onBehalfOfUserId=${crypto.randomUUID()}`),
+          listFor(`onBehalfOfUserEmail=${encodeURIComponent(`obo-svc-probe-nobody-${Date.now()}@example.com`)}`)
+        ]);
+        replies.forEach((reply) => {
+          expect(reply.statusCode).toBe(200);
+          expect(reply.json()).toMatchObject({ services: [], totalCount: 0 });
         });
       } finally {
         await bot.cleanup();
@@ -7632,7 +8335,7 @@ describe("Agent Vault V1 Router", async () => {
       const res = await inject("POST", sessionsUrl, { ttl: "1h" });
       expect(res.statusCode).toBe(400);
       expect(res.json().message).toBe(
-        "Name the access bundle this session should carry, or send the services it should reach."
+        "Name the access bundle this session should carry, or the services it should reach."
       );
     });
 
@@ -7687,7 +8390,7 @@ describe("Agent Vault V1 Router", async () => {
         const refused = await member.as("POST", sessionsUrl, { ttl: "1h", services: [openai] });
         expect(refused.statusCode).toBe(403);
         expect(refused.json().message).toBe(
-          "Only an Agent Vault admin can send services with a session. Name an access bundle instead."
+          "You are not allowed to create-with-inline-services on agent-vault-sessions. Name an access bundle or the project's services instead."
         );
       } finally {
         await member.cleanup();
@@ -7785,12 +8488,26 @@ describe("Agent Vault V1 Router", async () => {
         const resolve = await createResolver(`inline-demote-${Date.now()}`);
         const serviceNames = async () =>
           ((await resolve(token)).json().services as TResolvedService[]).map((entry) => entry.name);
+        // The services list the agent reads follows the same rule as resolve.
+        const listedNames = async () =>
+          (
+            (
+              await testServer.inject({
+                method: "GET",
+                url: "/api/v1/agent-vault/session/services",
+                headers: { authorization: `Bearer ${token}` }
+              })
+            ).json().services as { name: string }[]
+          ).map((entry) => entry.name);
         expect(await serviceNames()).toEqual(["github", "openai"]);
+        expect(await listedNames()).toEqual(["github", "openai"]);
 
         await setRole("member");
         expect(await serviceNames()).toEqual(["github"]);
+        expect(await listedNames()).toEqual(["github"]);
         await setRole("admin");
         expect(await serviceNames()).toEqual(["github", "openai"]);
+        expect(await listedNames()).toEqual(["github", "openai"]);
       } finally {
         await owner.cleanup();
       }
@@ -7965,6 +8682,7 @@ describe("Agent Vault V1 Router", async () => {
     ) =>
       agentVaultProxyServiceFactory({
         agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
+        agentVaultAccessService: allowAgentVault,
         agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
@@ -8103,6 +8821,7 @@ describe("Agent Vault V1 Router", async () => {
 
       const resolver = agentVaultProxyServiceFactory({
         agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
+        agentVaultAccessService: allowAgentVault,
         agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
@@ -8364,6 +9083,7 @@ describe("Agent Vault V1 Router", async () => {
 
       const resolver = agentVaultProxyServiceFactory({
         agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
+        agentVaultAccessService: allowAgentVault,
         agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
@@ -9418,6 +10138,31 @@ describe("Agent Vault V1 Router", async () => {
       expect(proxy.pollInterval).toBe(60);
     });
 
+    test("a member's proxy list leaves out the settings an admin's shows", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: `member-view-${Date.now()}` });
+      expect(created.statusCode).toBe(200);
+      const proxyId = created.json().proxy.id as string;
+
+      const member = await createMemberIdentity(`proxy-member-view-${Date.now()}`);
+      try {
+        const asMember = await member.as("GET", "/api/v1/agent-vault/proxies");
+        expect(asMember.statusCode).toBe(200);
+        const seen = (asMember.json().proxies as Record<string, unknown>[]).find((row) => row.id === proxyId);
+        expect(seen).toMatchObject({ id: proxyId });
+        expect(seen).toHaveProperty("isHealthy");
+        ["trafficPolicy", "allowedHosts", "pollInterval", "createdAt"].forEach((field) =>
+          expect(seen).not.toHaveProperty(field)
+        );
+
+        const asAdmin = await inject("GET", "/api/v1/agent-vault/proxies");
+        const full = (asAdmin.json().proxies as Record<string, unknown>[]).find((row) => row.id === proxyId);
+        expect(full).toMatchObject({ id: proxyId, trafficPolicy: "any-host", allowedHosts: null, pollInterval: 60 });
+        expect(full).toHaveProperty("createdAt");
+      } finally {
+        await member.cleanup();
+      }
+    });
+
     test("a proxy's description is stored, searchable, and can be cleared", async () => {
       const created = await inject("POST", "/api/v1/agent-vault/proxies", {
         name: "described-proxy",
@@ -9888,6 +10633,48 @@ describe("Agent Vault V1 Router", async () => {
         body: { method: "token", token: "avp_x" }
       });
       expect(login.statusCode).toBe(404);
+    });
+  });
+
+  describe("billing", async () => {
+    const reportUsage = (accessToken: string, body: Record<string, unknown>) =>
+      testServer.inject({
+        method: "POST",
+        url: "/api/v1/agent-vault/proxy/usage",
+        headers: { authorization: `Bearer ${accessToken}` },
+        body
+      });
+
+    const usageReport = () => ({ reportId: crypto.randomUUID(), endedAt: new Date().toISOString(), brokered: 3 });
+
+    test("a proxy reports its usage with its proxy token and gets a 204", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "usage-report" });
+      expect(created.statusCode).toBe(200);
+      const { proxyToken } = created.json() as { proxyToken: string };
+
+      const res = await reportUsage(proxyToken, usageReport());
+      expect(res.statusCode).toBe(204);
+      expect(res.payload).toBe("");
+    });
+
+    test("a usage report with a bad body is a 422", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "usage-bad-body" });
+      const { proxyToken } = created.json() as { proxyToken: string };
+
+      expect((await reportUsage(proxyToken, { ...usageReport(), reportId: "not-a-uuid" })).statusCode).toBe(422);
+      expect((await reportUsage(proxyToken, { ...usageReport(), brokered: -1 })).statusCode).toBe(422);
+      expect((await reportUsage(proxyToken, { ...usageReport(), brokered: 1.5 })).statusCode).toBe(422);
+    });
+
+    test("a user's token can't report usage", async () => {
+      const res = await reportUsage(jwtAuthToken, usageReport());
+      expect(res.statusCode).toBe(403);
+    });
+
+    test("the access route wraps the org's access in `access`", async () => {
+      const res = await injectRaw("GET", "/api/v1/agent-vault/settings/access");
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ access: { state: "self-hosted", allowed: true, freeUsage: null, warn: false } });
     });
   });
 
@@ -10413,6 +11200,7 @@ describe("Agent Vault V1 Router", async () => {
 
         const resolver = agentVaultProxyServiceFactory({
           agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
+          agentVaultAccessService: allowAgentVault,
           agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
           agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
           agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
@@ -10520,6 +11308,7 @@ describe("Agent Vault V1 Router", async () => {
 
         const resolver = agentVaultProxyServiceFactory({
           agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
+          agentVaultAccessService: allowAgentVault,
           agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
           agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
           agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
@@ -10758,7 +11547,7 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("a revoke reaches only this bundle's grant for this actor, and grants are not seats", async () => {
+    test("a revoke reaches only this bundle's grant for this actor", async () => {
       const projectId = await getProjectId();
       const bundle = await createAccessBundle("scoped-member-ids");
       const identity = await createOrgIdentity(`av-seats-${Date.now()}`);
@@ -10766,8 +11555,6 @@ describe("Agent Vault V1 Router", async () => {
         (await inject("POST", "/api/v1/agent-vault/members", { machineIdentityIds: [identity.id], role: "member" }))
           .statusCode
       ).toBe(200);
-
-      const seatsBefore = await countAgentVaultSeats(seedData1.organization.id);
 
       const projectMembership = await testDb("memberships")
         .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorIdentityId: identity.id })
@@ -10806,10 +11593,6 @@ describe("Agent Vault V1 Router", async () => {
         members: [],
         skipped: [{ type: "machineIdentity", id: identity.id }]
       });
-
-      expect(await countAgentVaultSeats(seedData1.organization.id)).toBe(
-        seatsBefore
-      );
 
       await deleteOrgIdentity(identity.id);
     });

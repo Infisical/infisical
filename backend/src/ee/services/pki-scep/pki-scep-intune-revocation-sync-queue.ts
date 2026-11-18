@@ -61,7 +61,7 @@ type TScepIntuneRevocationSyncQueueFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "decryptWithKmsKey" | "generateKmsKey">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  certificateDAL: Pick<TCertificateDALFactory, "findScepCertsByValidationConnectionsAndSerials">;
+  certificateDAL: Pick<TCertificateDALFactory, "findScepCertsByValidationConnectionsAndSerials" | "primaryNode">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateService: Pick<TCertificateServiceFactory, "revokeCertAsPlatform" | "rebuildCrlsAfterPlatformRevocations">;
@@ -343,7 +343,11 @@ export const scepIntuneRevocationSyncQueueFactory = ({
   };
 
   const groupConnectionsByOrgTenant = async () => {
-    const intuneScepConfigs = await scepEnrollmentConfigDAL.find({ challengeType: ScepChallengeType.MICROSOFT_INTUNE });
+    const primary = certificateDAL.primaryNode();
+    const intuneScepConfigs = await scepEnrollmentConfigDAL.find(
+      { challengeType: ScepChallengeType.MICROSOFT_INTUNE },
+      { tx: primary }
+    );
     const connectionIds = [
       ...new Set(
         intuneScepConfigs
@@ -353,10 +357,13 @@ export const scepIntuneRevocationSyncQueueFactory = ({
     ];
     if (connectionIds.length === 0) return [];
 
-    const connections = await appConnectionDAL.find({
-      $in: { id: connectionIds },
-      app: AppConnection.MicrosoftIntune
-    });
+    const connections = await appConnectionDAL.find(
+      {
+        $in: { id: connectionIds },
+        app: AppConnection.MicrosoftIntune
+      },
+      { tx: primary }
+    );
 
     const orgTenants = new Map<string, TOrgTenant>();
     const orgIdsWithUnreadableConnections = new Set<string>();

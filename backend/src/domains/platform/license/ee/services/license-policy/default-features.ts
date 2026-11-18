@@ -74,6 +74,7 @@ type TDefaultOnPremFeatures = TInstanceFeatures & {
   maxWildcardCertificates: null;
   maxSansPerCertificate: null;
   pam: null;
+  agentVault: null;
   certManager: null;
   secretsTemporaryAccess: null;
   enterprisePamAccount: null;
@@ -173,6 +174,7 @@ export const getDefaultOnPremFeatures = (): TDefaultOnPremFeatures => ({
   maxSansPerCertificate: null,
   // product gating
   pam: null,
+  agentVault: null,
   certManager: null,
   secretsTemporaryAccess: null,
   enterprisePamAccount: null,

@@ -733,6 +733,7 @@ export enum EventType {
   SECRET_SCANNING_CONFIG_UPDATE = "secret-scanning-config-update",
 
   UPDATE_ORG = "update-org",
+  UPDATE_ORG_AI_CONFIG = "update-org-ai-config",
   ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING = "enable-org-wide-secret-value-tracking",
 
   CREATE_PROJECT = "create-project",
@@ -951,6 +952,9 @@ export enum EventType {
   ENABLE_PKI_SIGNER = "enable-pki-signer",
   DISABLE_PKI_SIGNER = "disable-pki-signer",
   REISSUE_PKI_SIGNER_CERTIFICATE = "reissue-pki-signer-certificate",
+  RENEW_PKI_SIGNER_CERTIFICATE = "renew-pki-signer-certificate",
+  REVOKE_PKI_SIGNER_CERTIFICATE = "revoke-pki-signer-certificate",
+  PKI_SIGNER_CERTIFICATE_REVOCATION_DECIDED = "pki-signer-certificate-revocation-decided",
   IMPORT_PKI_SIGNER_CERTIFICATE = "import-pki-signer-certificate",
   EXPORT_PKI_SIGNER_CERTIFICATE = "export-pki-signer-certificate",
   UPDATE_PKI_SIGNER_APPROVAL_POLICY = "update-pki-signer-approval-policy",
@@ -5271,6 +5275,47 @@ interface ReissuePkiSignerCertificateEvent {
   };
 }
 
+interface RenewPkiSignerCertificateEvent {
+  type: EventType.RENEW_PKI_SIGNER_CERTIFICATE;
+  metadata: {
+    signerId: string;
+    name: string;
+    status: string;
+    caId: string;
+    caName: string;
+    previousSerialNumber: string | null;
+  };
+}
+
+interface RevokePkiSignerCertificateEvent {
+  type: EventType.REVOKE_PKI_SIGNER_CERTIFICATE;
+  metadata: {
+    signerId: string;
+    name: string;
+    certificateId: string;
+    certificateCommonName: string;
+    serialNumber: string;
+    revocationReason: CrlReason;
+    status: string;
+    digicertRevocationRequestId?: number;
+  };
+}
+
+interface PkiSignerCertificateRevocationDecidedEvent {
+  type: EventType.PKI_SIGNER_CERTIFICATE_REVOCATION_DECIDED;
+  metadata: {
+    signerId: string;
+    name: string;
+    certificateId: string;
+    certificateCommonName: string;
+    serialNumber: string;
+    revocationReason: CrlReason;
+    digicertRevocationRequestId?: number;
+    decision: string;
+    status: string;
+  };
+}
+
 interface ImportPkiSignerCertificateEvent {
   type: EventType.IMPORT_PKI_SIGNER_CERTIFICATE;
   metadata: {
@@ -5993,6 +6038,15 @@ interface SecretReminderDeleteEvent {
 interface SecretScanningConfigReadEvent {
   type: EventType.SECRET_SCANNING_CONFIG_GET;
   metadata?: Record<string, never>; // not needed, based off projectId
+}
+
+interface OrgAiConfigUpdateEvent {
+  type: EventType.UPDATE_ORG_AI_CONFIG;
+  metadata: {
+    connectionId: string | null;
+    connectionName: string | null;
+    model: string | null;
+  };
 }
 
 interface OrgUpdateEvent {
@@ -7082,11 +7136,15 @@ interface AgentVaultSessionMintEvent {
   metadata: {
     sessionId: string;
     label: string | null;
-    // Null for a session started with inline services only.
+    // The session's own key/value metadata. Set when the session was created with some.
+    metadata?: Record<string, string>;
+    // Null for a session started without an access bundle.
     accessBundleId: string | null;
     accessBundleName: string | null;
     expiresAt: string | null;
-    // Set when an admin sent services with the session. Never their values.
+    // Set when the session names project services, in the order it named them.
+    namedServices?: { serviceId: string; name: string }[];
+    // Set when an admin sent services inline with the session. Never their values.
     services?: {
       serviceId: string;
       // The name it was sent with, or its first host when it was sent without one.
@@ -7127,6 +7185,8 @@ interface AgentVaultSessionUpdateEvent {
     sessionId: string;
     label: string | null;
     previousLabel: string | null;
+    // The session's own key/value metadata after the update.
+    metadata?: Record<string, string>;
     sessionOwner: string;
     accessBundleName: string | null;
     // Set when the machine identity in sessionOwner started the session on this user's behalf.
@@ -9031,6 +9091,9 @@ export type Event =
   | EnablePkiSignerEvent
   | DisablePkiSignerEvent
   | ReissuePkiSignerCertificateEvent
+  | RenewPkiSignerCertificateEvent
+  | RevokePkiSignerCertificateEvent
+  | PkiSignerCertificateRevocationDecidedEvent
   | ImportPkiSignerCertificateEvent
   | ExportPkiSignerCertificateEvent
   | UpdatePkiSignerApprovalPolicyEvent
@@ -9110,6 +9173,7 @@ export type Event =
   | SecretScanningConfigUpdateEvent
   | SecretScanningConfigReadEvent
   | OrgUpdateEvent
+  | OrgAiConfigUpdateEvent
   | ProjectCreateEvent
   | ProjectUpdateEvent
   | ProjectDeleteEvent

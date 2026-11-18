@@ -7,6 +7,7 @@ import {
   DescribeCertificateAuthorityCommand,
   GetCertificateCommand,
   IssueCertificateCommand,
+  RequestAlreadyProcessedException,
   RequestInProgressException,
   RevokeCertificateCommand,
   ValidityPeriodType
@@ -14,7 +15,7 @@ import {
 import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
-import { TableName } from "@app/db/schemas";
+import { ProjectType, TableName } from "@app/db/schemas";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -219,7 +220,10 @@ const createPcaClient = async ({
   }
 
   const decryptedConnection = (await decryptAppConnection(appConnection, kmsService)) as TAwsConnection;
-  const awsConfig = await getAwsConnectionConfig(decryptedConnection, region);
+  const awsConfig = await getAwsConnectionConfig(
+    { ...decryptedConnection, projectType: ProjectType.CertificateManager },
+    region
+  );
 
   return new ACMPCAClient({
     sha256: CustomAWSHasher,
@@ -926,15 +930,21 @@ export const AwsPcaCertificateAuthorityFns = ({
 
     const revocationReason = CRL_REASON_TO_REVOCATION_REASON_MAP[reason];
 
-    const revokeResult = await pcaClient.send(
-      new RevokeCertificateCommand({
-        CertificateAuthorityArn: certificateAuthorityArn,
-        CertificateSerial: serialNumber,
-        RevocationReason: revocationReason
-      })
-    );
-
-    logger.info(revokeResult, "AWS PCA RevokeCertificate result");
+    try {
+      const revokeResult = await pcaClient.send(
+        new RevokeCertificateCommand({
+          CertificateAuthorityArn: certificateAuthorityArn,
+          CertificateSerial: serialNumber,
+          RevocationReason: revocationReason
+        })
+      );
+      logger.info(revokeResult, "AWS PCA RevokeCertificate result");
+    } catch (err) {
+      if (!(err instanceof RequestAlreadyProcessedException)) throw err;
+      logger.info(
+        `AWS PCA certificate already revoked upstream, treating as success [caId=${caId}] [serialNumber=${serialNumber}]`
+      );
+    }
   };
 
   return {

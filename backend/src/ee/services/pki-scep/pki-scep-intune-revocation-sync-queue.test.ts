@@ -62,6 +62,7 @@ vi.mock("@app/services/app-connection/microsoft-intune", () => ({
 }));
 
 const ISSUER = "CN=Test";
+const PRIMARY_NODE = { node: "primary" };
 const connection = (id: string, tenantId: string, orgId = "org-1") => ({ id, tenantId, orgId, projectId: null });
 const matched = (id: string, serialNumber: string, status: string = CertStatus.ACTIVE): TMatched => ({
   id,
@@ -109,7 +110,10 @@ const runSync = async ({
   batches.forEach((batch) => downloadRevocationRequests.mockResolvedValueOnce(batch));
   downloadRevocationRequests.mockResolvedValue([]);
 
+  const scepEnrollmentConfigFind = vi.fn();
+  const appConnectionFind = vi.fn();
   const certificateDAL = {
+    primaryNode: vi.fn().mockReturnValue(PRIMARY_NODE),
     findScepCertsByValidationConnectionsAndSerials: vi
       .fn()
       .mockImplementation((_scopes: unknown, serials: string[]) =>
@@ -128,22 +132,20 @@ const runSync = async ({
       }
     },
     scepEnrollmentConfigDAL: {
-      find: vi.fn().mockResolvedValue(
+      find: scepEnrollmentConfigFind.mockResolvedValue(
         (enrollmentConnectionIds ?? connections.map((c) => c.id)).map((validationConnectionId) => ({
           validationConnectionId
         }))
       )
     },
     appConnectionDAL: {
-      find: vi
-        .fn()
-        .mockImplementation(({ $in }: { $in: { id: string[] } }) =>
-          Promise.resolve(
-            connections
-              .filter((c) => $in.id.includes(c.id))
-              .map((c) => ({ ...c, encryptedCredentials: `${c.tenantId}|${c.id}` }))
-          )
+      find: appConnectionFind.mockImplementation(({ $in }: { $in: { id: string[] } }) =>
+        Promise.resolve(
+          connections
+            .filter((c) => $in.id.includes(c.id))
+            .map((c) => ({ ...c, encryptedCredentials: `${c.tenantId}|${c.id}` }))
         )
+      )
     },
     kmsService: {
       decryptWithKmsKey: vi.fn().mockResolvedValue(({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob)
@@ -175,7 +177,7 @@ const runSync = async ({
   } as unknown as Parameters<typeof scepIntuneRevocationSyncQueueFactory>[0]).init();
 
   await handler!();
-  return { certificateDAL, certificateService, revokeCertAsPlatform };
+  return { certificateDAL, certificateService, revokeCertAsPlatform, scepEnrollmentConfigFind, appConnectionFind };
 };
 
 const uploadedResults = (call = 0) => uploadRevocationResults.mock.calls[call][0].results;
@@ -316,12 +318,14 @@ describe("Intune SCEP revocation sync", () => {
   });
 
   test("downloads only the org's requests and matches certificates from every enrollment connection of that org in the tenant", async () => {
-    const { certificateDAL } = await runSync({
+    const { certificateDAL, scepEnrollmentConfigFind, appConnectionFind } = await runSync({
       connections: [connection("conn-1", "tenant-a"), connection("conn-2", "TENANT-A")],
       batches: [[{ requestContext: "ctx-1", serialNumber: "aa", issuerName: ISSUER }]],
       certificates: [matched("cert-2", "aa")]
     });
 
+    expect(scepEnrollmentConfigFind).toHaveBeenCalledWith(expect.anything(), { tx: PRIMARY_NODE });
+    expect(appConnectionFind).toHaveBeenCalledWith(expect.anything(), { tx: PRIMARY_NODE });
     expect(downloadRevocationRequests).toHaveBeenCalledTimes(1);
     expect(downloadRevocationRequests).toHaveBeenCalledWith(expect.objectContaining({ caConfiguration: "org-1" }));
     expect(certificateDAL.findScepCertsByValidationConnectionsAndSerials).toHaveBeenCalledWith(
