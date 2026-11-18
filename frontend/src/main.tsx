@@ -89,12 +89,17 @@ registerV4BridgeRouter(router);
 
 const isV4Path = (pathname: string) => /^\/v4(?:\/|$)/.test(pathname);
 
+const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
 router.subscribe("onBeforeLoad", ({ pathChanged, toLocation }) => {
-  if (isV4Path(toLocation.pathname)) return;
+  const isV4 = isV4Path(toLocation.pathname);
+  const root = document.documentElement;
+  root.toggleAttribute("data-v4", isV4);
   // index.html paints the v4 theme's ground on /v4 paths before any JavaScript runs; main's pages
   // paint their own, so the ground goes as soon as a navigation leaves /v4.
-  document.documentElement.removeAttribute("data-v4-boot");
+  if (!isV4) root.removeAttribute("data-v4-boot");
   if (pathChanged) {
+    NProgress.configure({ trickle: !(isV4 && prefersReducedMotion.matches) });
     NProgress.start();
     const timer = setTimeout(() => {
       clearTimeout(timer);

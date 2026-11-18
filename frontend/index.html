@@ -24,6 +24,13 @@
     <style>
       html[data-v4-boot="light"] { background: #ffffff; color-scheme: light; }
       html[data-v4-boot="dark"] { background: #121213; color-scheme: dark; }
+      html[data-v4][data-theme="light"] #nprogress .bar { background: #e3f047; }
+      html[data-v4][data-theme="light"] #nprogress .peg { box-shadow: 0 0 10px #e3f047, 0 0 5px #e3f047; }
+      html[data-v4][data-theme="dark"] #nprogress .bar { background: #e3f047; }
+      html[data-v4][data-theme="dark"] #nprogress .peg { box-shadow: 0 0 10px #e3f047, 0 0 5px #e3f047; }
+      @media (prefers-reduced-motion: reduce) {
+        html[data-v4] #nprogress .bar { transition: none !important; }
+      }
     </style>
     <script>
       (function () {
