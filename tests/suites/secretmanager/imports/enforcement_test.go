@@ -153,6 +153,28 @@ func TestImportReplicationEnforcement_NewImports(t *testing.T) {
 		require.Empty(t, listImports(t, proj, "prod", "/"))
 	})
 
+	t.Run("should refuse an import that ignores the policy when the folder is named with a path alias", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateFolder(t, proj, "staging", stagingApp.Path)
+		secretmanager.CreateFolder(t, proj, "prod", "/app")
+		createPolicy(t, proj, "prod", "/app", tn.Admin, true)
+
+		// Action
+		body := api.CreateSecretImportJSONRequestBody{ProjectId: proj.ID, Environment: "prod", Path: new("//app")}
+		body.Import.Environment = stagingApp.Env
+		body.Import.Path = stagingApp.Path
+		res, err := tn.Admin.API.CreateSecretImportWithResponse(t.Context(), body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "creating the import returned %s", apierr.Body(res.Body))
+		require.Empty(t, listImports(t, proj, "prod", "/app"))
+	})
+
 	t.Run("should hold a replicated import's values until each change is approved", func(t *testing.T) {
 		t.Parallel()
 		spec.Why(t, `Creating the source secret and creating the import can each queue a replication

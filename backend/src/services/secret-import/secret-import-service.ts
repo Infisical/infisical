@@ -235,7 +235,13 @@ export const secretImportServiceFactory = ({
       });
 
     if (!isReplication && !isCrossProjectImport) {
-      const policy = await secretChangePolicyService.getSecretApprovalPolicy(projectId, environment, folder.path);
+      // findBySecretPath resolves "//app" to the /app folder but returns the requested path as folder.path, and
+      // policies are matched by path, so an alias would miss the policy that governs the folder.
+      const policy = await secretChangePolicyService.getSecretApprovalPolicy(
+        projectId,
+        environment,
+        path.posix.join("/", folder.path)
+      );
       if (policy?.enforceImportReplication) throw ERR_NON_REPLICATION_IMPORT_UNDER_POLICY(policy.name);
     }
 
@@ -378,7 +384,11 @@ export const secretImportServiceFactory = ({
       (data.environment !== undefined && importedEnv.id !== secImpDoc.importEnv) ||
       (data.path !== undefined && data.path !== secImpDoc.importPath);
     if (isSourceChanging && !secImpDoc.isReplication && importedEnv.projectId === projectId) {
-      const policy = await secretChangePolicyService.getSecretApprovalPolicy(projectId, environment, folder.path);
+      const policy = await secretChangePolicyService.getSecretApprovalPolicy(
+        projectId,
+        environment,
+        path.posix.join("/", folder.path)
+      );
       if (policy?.enforceImportReplication) throw ERR_NON_REPLICATION_IMPORT_UNDER_POLICY(policy.name);
     }
 
