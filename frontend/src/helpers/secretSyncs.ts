@@ -8,6 +8,7 @@ import {
 import { CloudflarePagesVariableType } from "@app/hooks/api/secretSyncs/types/cloudflare-pages-sync";
 import { CloudflareSecretsStoreScope } from "@app/hooks/api/secretSyncs/types/cloudflare-secrets-store-sync";
 import { CloudflareWorkersVariableType } from "@app/hooks/api/secretSyncs/types/cloudflare-workers-sync";
+import { CoolifySyncScope } from "@app/hooks/api/secretSyncs/types/coolify-sync";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import { GitHubSyncSecretType } from "@app/hooks/api/secretSyncs/types/github-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
@@ -558,4 +559,9 @@ export const COOLIFY_RESOURCE_TYPE_LABELS: Record<CoolifyResourceType, string> =
   [CoolifyResourceType.Application]: "Application",
   [CoolifyResourceType.Service]: "Service",
   [CoolifyResourceType.Database]: "Database"
+};
+
+export const COOLIFY_SYNC_SCOPE_LABELS: Record<CoolifySyncScope, string> = {
+  [CoolifySyncScope.Production]: "Production",
+  [CoolifySyncScope.Preview]: "Preview Deployments"
 };

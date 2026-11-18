@@ -18,7 +18,13 @@ import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { SecretSyncError } from "../secret-sync-errors";
 import { TSecretSyncPayload } from "../secret-sync-payload";
 import { TSecretMap } from "../secret-sync-types";
-import { COOLIFY_ENV_VAR_NAME_RULE, isManagedByCoolify, isValidCoolifyEnvVarName } from "./coolify-sync-constants";
+import {
+  COOLIFY_ENV_VAR_NAME_RULE,
+  COOLIFY_MANAGED_COMMENT,
+  isManagedByCoolify,
+  isValidCoolifyEnvVarName
+} from "./coolify-sync-constants";
+import { CoolifySyncScope } from "./coolify-sync-enums";
 import { TCoolifyEnvVar, TCoolifyEnvVarUpsert, TCoolifySyncWithCredentials } from "./coolify-sync-types";
 
 type TCoolifyEnvVarsApi = { connection: TCoolifyConnection; envsPath: string; deps: TCoolifyGatewayDeps };
@@ -34,15 +40,21 @@ const COOLIFY_RESOURCE_PATH: Record<CoolifyResourceType, string> = {
 
 const COOLIFY_UPSERT_BATCH_SIZE = 100;
 
-// Preview copies follow their main variable, so the sync imports and deletes by main copy and leaves a variable
-// that only exists for previews alone
+const isInScope = (envVar: TCoolifyEnvVar, scope: CoolifySyncScope) =>
+  Boolean(envVar.is_preview) === (scope === CoolifySyncScope.Preview);
+
+// Coolify gives preview deployments a copy of each production variable it creates, which would hand production
+// secrets to the code of a pull request, so the sync deletes the copies of the ones it writes
+const isCopyOfProductionVar = (envVar: TCoolifyEnvVar) =>
+  Boolean(envVar.is_preview) && envVar.comment === COOLIFY_MANAGED_COMMENT[CoolifySyncScope.Production];
+
 const getOwnedEnvVars = (
-  { environment, syncOptions: { keySchema } }: TCoolifySyncWithCredentials,
+  { environment, destinationConfig: { scope }, syncOptions: { keySchema } }: TCoolifySyncWithCredentials,
   envVars: TCoolifyEnvVar[]
 ) =>
   envVars.filter(
     (envVar) =>
-      !envVar.is_preview &&
+      isInScope(envVar, scope) &&
       !isManagedByCoolify(envVar.key) &&
       matchesSchema(envVar.key, environment?.slug || "", keySchema)
   );
@@ -149,7 +161,7 @@ export const CoolifySyncFns = {
   ) {
     const secretMap = payload.flatten();
     const {
-      destinationConfig,
+      destinationConfig: { resourceType, scope },
       syncOptions: { disableSecretDeletion }
     } = secretSync;
 
@@ -168,37 +180,40 @@ export const CoolifySyncFns = {
     const api = await getCoolifyEnvVarsApi(secretSync, gatewayV2Service, gatewayPoolService);
     const envVars = await listCoolifyEnvVars(api);
 
-    // Coolify gives each new application variable a copy for preview deployments that later updates and deletes
-    // never reach, so both copies are written to keep an old value from living on in previews
-    const copies = destinationConfig.resourceType === CoolifyResourceType.Application ? [false, true] : [false];
-
-    const existingCopies = new Map(envVars.map((envVar) => [`${Boolean(envVar.is_preview)}:${envVar.key}`, envVar]));
+    const isPreview = scope === CoolifySyncScope.Preview;
+    const comment = COOLIFY_MANAGED_COMMENT[scope];
+    const existingVars = new Map(
+      envVars.filter((envVar) => isInScope(envVar, scope)).map((envVar) => [envVar.key, envVar])
+    );
 
     const upserts: TCoolifyEnvVarUpsert[] = [];
     for (const [key, { value }] of Object.entries(secretMap)) {
-      for (const isPreview of copies) {
-        const existing = existingCopies.get(`${isPreview}:${key}`);
+      const existing = existingVars.get(key);
 
-        // Coolify stores an empty value as null, and without the literal flag it resolves a value that starts
-        // with $ as a reference to another variable
-        if (!existing || existing.value !== (value || null) || !existing.is_literal) {
-          upserts.push({ key, value, is_literal: true, ...(isPreview && { is_preview: true }) });
-        }
+      // Coolify stores an empty value as null, and without the literal flag it resolves a value that starts with $
+      // as a reference to another variable
+      if (!existing || existing.value !== (value || null) || !existing.is_literal || existing.comment !== comment) {
+        upserts.push({ key, value, is_literal: true, comment, ...(isPreview && { is_preview: true }) });
       }
     }
 
     await upsertCoolifyEnvVars(api, upserts);
 
-    if (disableSecretDeletion) return;
+    // The copies of production variables created in this run only show up in a fresh listing
+    const createdProductionVars =
+      resourceType === CoolifyResourceType.Application &&
+      !isPreview &&
+      upserts.some(({ key }) => !existingVars.has(key));
+    const productionVarCopies = isPreview
+      ? []
+      : (createdProductionVars ? await listCoolifyEnvVars(api) : envVars).filter(isCopyOfProductionVar);
 
-    const staleKeys = new Set(
-      getOwnedEnvVars(secretSync, envVars)
-        .filter((envVar) => !Object.hasOwn(secretMap, envVar.key))
-        .map((envVar) => envVar.key)
-    );
+    const staleVars = disableSecretDeletion
+      ? []
+      : getOwnedEnvVars(secretSync, envVars).filter((envVar) => !Object.hasOwn(secretMap, envVar.key));
 
-    for (const envVar of envVars) {
-      if (staleKeys.has(envVar.key)) await deleteCoolifyEnvVar(api, envVar);
+    for (const envVar of [...productionVarCopies, ...staleVars]) {
+      await deleteCoolifyEnvVar(api, envVar);
     }
   },
 
@@ -209,11 +224,15 @@ export const CoolifySyncFns = {
     gatewayPoolService: TGatewayPoolService
   ) {
     const secretMap = payload.flatten();
+    const { scope } = secretSync.destinationConfig;
     const api = await getCoolifyEnvVarsApi(secretSync, gatewayV2Service, gatewayPoolService);
     const envVars = await listCoolifyEnvVars(api);
 
     for (const envVar of envVars) {
-      if (!isManagedByCoolify(envVar.key) && Object.hasOwn(secretMap, envVar.key)) {
+      const isRemovable =
+        isInScope(envVar, scope) || (scope === CoolifySyncScope.Production && isCopyOfProductionVar(envVar));
+
+      if (isRemovable && !isManagedByCoolify(envVar.key) && Object.hasOwn(secretMap, envVar.key)) {
         await deleteCoolifyEnvVar(api, envVar);
       }
     }

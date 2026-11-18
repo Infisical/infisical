@@ -3929,7 +3929,9 @@ export const SecretSyncs = {
     COOLIFY: {
       resourceType: "The type of Coolify resource to sync secrets to. Either 'application', 'service' or 'database'.",
       resourceId: "The UUID of the Coolify resource to sync secrets to.",
-      resourceName: "The name of the Coolify resource to sync secrets to."
+      resourceName: "The name of the Coolify resource to sync secrets to.",
+      scope:
+        "The application variables to sync secrets to: 'production', or 'preview' for the variables Coolify gives preview deployments. Services and databases only have 'production'. Defaults to 'production'."
     }
   }
 };

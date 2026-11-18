@@ -5,15 +5,31 @@ import {
   Combobox,
   Field,
   FieldContent,
+  FieldDescription,
   FieldError,
   FieldGroup,
-  FieldLabel
+  FieldLabel,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@app/components/v3";
-import { COOLIFY_RESOURCE_TYPE_LABELS } from "@app/helpers/secretSyncs";
-import { useCoolifyConnectionListResources } from "@app/hooks/api/appConnections/coolify";
+import { COOLIFY_RESOURCE_TYPE_LABELS, COOLIFY_SYNC_SCOPE_LABELS } from "@app/helpers/secretSyncs";
+import {
+  CoolifyResourceType,
+  useCoolifyConnectionListResources
+} from "@app/hooks/api/appConnections/coolify";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
+import { CoolifySyncScope } from "@app/hooks/api/secretSyncs/types/coolify-sync";
 
 import { TSecretSyncForm } from "../schemas";
+
+const SCOPE_HELP_TEXT: Record<CoolifySyncScope, string> = {
+  [CoolifySyncScope.Production]: "Secrets are written to the application's production variables.",
+  [CoolifySyncScope.Preview]:
+    "Secrets are written to the variables Coolify gives preview deployments of pull requests. Sync them from a non-production environment."
+};
 
 export const CoolifySyncFields = () => {
   const { control, setValue } = useFormContext<
@@ -21,6 +37,7 @@ export const CoolifySyncFields = () => {
   >();
 
   const connectionId = useWatch({ name: "connection.id", control });
+  const resourceType = useWatch({ name: "destinationConfig.resourceType", control });
 
   const {
     data: resources = [],
@@ -36,6 +53,7 @@ export const CoolifySyncFields = () => {
         onChange={() => {
           setValue("destinationConfig.resourceId", "");
           setValue("destinationConfig.resourceName", "");
+          setValue("destinationConfig.scope", CoolifySyncScope.Production);
         }}
       />
       <Controller
@@ -62,6 +80,7 @@ export const CoolifySyncFields = () => {
                   onChange(option?.id ?? "");
                   setValue("destinationConfig.resourceName", option?.name ?? "");
                   if (option) setValue("destinationConfig.resourceType", option.type);
+                  setValue("destinationConfig.scope", CoolifySyncScope.Production);
                 }}
                 options={resources}
                 placeholder="Select a resource..."
@@ -83,6 +102,34 @@ export const CoolifySyncFields = () => {
           </Field>
         )}
       />
+      {resourceType === CoolifyResourceType.Application && (
+        <Controller
+          name="destinationConfig.scope"
+          control={control}
+          defaultValue={CoolifySyncScope.Production}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>Scope</FieldLabel>
+              <FieldContent>
+                <Select value={value} onValueChange={onChange}>
+                  <SelectTrigger className="w-full" isError={Boolean(error)}>
+                    <SelectValue placeholder="Select a scope..." />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {Object.values(CoolifySyncScope).map((coolifyScope) => (
+                      <SelectItem value={coolifyScope} key={coolifyScope}>
+                        {COOLIFY_SYNC_SCOPE_LABELS[coolifyScope]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {value && <FieldDescription>{SCOPE_HELP_TEXT[value]}</FieldDescription>}
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          )}
+        />
+      )}
     </FieldGroup>
   );
 };

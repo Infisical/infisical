@@ -21,11 +21,13 @@ export type TCoolifyEnvVar = {
   value?: string | null;
   is_preview?: boolean;
   is_literal?: boolean;
+  comment?: string | null;
 };
 
 export type TCoolifyEnvVarUpsert = {
   key: string;
   value: string;
   is_literal: true;
+  comment: string;
   is_preview?: true;
 };
