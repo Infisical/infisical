@@ -101,6 +101,12 @@ type TBatchFailure = { approvalRequestId: string; message: string };
 type TBatchResponse = {
   failures: TBatchFailure[];
   approvals?: Pick<TSecretApprovalRequest, "id" | "hasMerged" | "conflicts">[];
+  reviews?: {
+    requestId: string;
+    reviewerUserId: string;
+    status: ApprovalStatus;
+    comment?: string | null;
+  }[];
 };
 
 export const useBulkActOnSecretApprovalRequests = () => {
@@ -132,6 +138,25 @@ export const useBulkActOnSecretApprovalRequests = () => {
           queryClient.setQueryData<TSecretApprovalRequest>(
             secretApprovalRequestKeys.detail({ id }),
             (details) => details && { ...details, hasMerged, conflicts }
+          )
+        );
+        data.reviews?.forEach(({ requestId, reviewerUserId, status, comment: reviewComment }) =>
+          queryClient.setQueryData<TSecretApprovalRequest>(
+            secretApprovalRequestKeys.detail({ id: requestId }),
+            (details) => {
+              if (!details) return details;
+              const reviewer =
+                details.reviewers.find(({ userId }) => userId === reviewerUserId) ??
+                details.policy.approvers.find(({ userId }) => userId === reviewerUserId);
+              if (!reviewer) return details;
+              return {
+                ...details,
+                reviewers: [
+                  ...details.reviewers.filter(({ userId }) => userId !== reviewerUserId),
+                  { createdAt: new Date(), ...reviewer, status, comment: reviewComment ?? "" }
+                ]
+              };
+            }
           )
         );
       } catch (error) {
