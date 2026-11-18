@@ -1,14 +1,24 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, ResourceType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
+  ProjectPermissionCertificateActions,
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import {
+  ResourcePermissionCertificateActions,
+  ResourcePermissionSub
+} from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import {
+  buildCertificateBundleSubject,
+  buildCertificateReadSubject,
+  canReadCertificatePrivateKey
+} from "@app/services/certificate/certificate-permission-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TPkiCertificateInstallationDALFactory } from "./pki-certificate-installation-dal";
@@ -33,7 +43,7 @@ type TPkiInstallationServiceFactoryDep = {
     TPkiCertificateInstallationDALFactory,
     "findById" | "findByProjectId" | "countByProjectId" | "findByIdWithCertificates" | "updateById" | "deleteById"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   queueInstallationRescan: (installationId: string) => Promise<void>;
@@ -119,8 +129,57 @@ export const pkiInstallationServiceFactory = ({
     const { connectionId } = (installation.locationDetails as TPkiInstallationLocationDetails | null) ?? {};
     const connection = connectionId ? await appConnectionDAL.findById(connectionId) : undefined;
 
+    const loadApplicationPermission = (applicationId: string) =>
+      permissionService
+        .getResourcePermission({
+          actor,
+          actorId,
+          projectId: installation.projectId,
+          resourceType: ResourceType.CertificateApplication,
+          resourceId: applicationId,
+          actorAuthMethod,
+          actorOrgId
+        })
+        .then(({ permission: appPermission }) => appPermission)
+        .catch(() => null);
+    const applicationPermissions = new Map<string, ReturnType<typeof loadApplicationPermission>>();
+    const getApplicationPermission = (applicationId: string) => {
+      let result = applicationPermissions.get(applicationId);
+      if (!result) {
+        result = loadApplicationPermission(applicationId);
+        applicationPermissions.set(applicationId, result);
+      }
+      return result;
+    };
+
+    const certificates = await Promise.all(
+      installation.certificates.map(async ({ metadata, ...cert }) => {
+        const readSubject = buildCertificateReadSubject(cert, metadata);
+        const bundleSubject = buildCertificateBundleSubject(cert, metadata);
+
+        const appPermission = cert.applicationId ? await getApplicationPermission(cert.applicationId) : null;
+        const canReadViaApplication = Boolean(
+          appPermission?.can(ResourcePermissionCertificateActions.Read, ResourcePermissionSub.Certificates)
+        );
+
+        const canRead = permission.can(ProjectPermissionCertificateActions.Read, readSubject) || canReadViaApplication;
+
+        const canReadBundle =
+          permission.can(ProjectPermissionCertificateActions.Read, bundleSubject) || canReadViaApplication;
+        const canReadPrivateKey = canReadCertificatePrivateKey({
+          applicationId: cert.applicationId,
+          projectPermission: permission,
+          applicationPermission: appPermission,
+          certSubject: bundleSubject
+        });
+        const canExportPkcs12 = cert.hasPrivateKey && canReadBundle && canReadPrivateKey;
+
+        return { ...cert, canRead, canExportPkcs12 };
+      })
+    );
+
     return {
-      ...sanitizePkiInstallation(installation),
+      ...sanitizePkiInstallation({ ...installation, certificates }),
       connection: connection && connection.orgId === actorOrgId ? { id: connection.id, name: connection.name } : null
     };
   };

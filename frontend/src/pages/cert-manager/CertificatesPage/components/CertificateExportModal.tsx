@@ -99,11 +99,21 @@ const createExportFormSchema = (pkcs12PasswordPolicy: TPasswordPolicy) => {
 type ExportFormData = z.infer<ReturnType<typeof createExportFormSchema>>;
 
 export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelected }: Props) => {
-  const { certificateId, serialNumber } =
+  const { certificateId, serialNumber, hasPrivateKey, canExportPem, canExportPkcs12 } =
     (popUp?.certificateExport?.data as {
       certificateId: string;
       serialNumber: string;
+      hasPrivateKey?: boolean;
+      canExportPem?: boolean;
+      canExportPkcs12?: boolean;
     }) || {};
+  const isPemUnavailable = canExportPem === false;
+  let pkcs12UnavailableReason: string | null = null;
+  if (hasPrivateKey === false) pkcs12UnavailableReason = "no private key stored";
+  else if (canExportPkcs12 === false) pkcs12UnavailableReason = "no permission";
+  const isPkcs12Unavailable = Boolean(pkcs12UnavailableReason);
+  const defaultFormat: CertificateExportFormat =
+    isPemUnavailable && !isPkcs12Unavailable ? "pkcs12" : "pem";
 
   const { config } = useServerConfig();
   const exportFormSchema = useMemo(
@@ -134,12 +144,12 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
   useEffect(() => {
     if (popUp?.certificateExport?.isOpen) {
       reset({
-        format: "pem",
+        format: defaultFormat,
         pkcs12Password: "",
         pkcs12Alias: ""
       });
     }
-  }, [popUp?.certificateExport?.isOpen, reset]);
+  }, [popUp?.certificateExport?.isOpen, defaultFormat, reset]);
 
   const onFormSubmit = (data: ExportFormData) => {
     if (!(certificateId || serialNumber)) return;
@@ -192,8 +202,12 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent position="popper">
-                    <SelectItem value="pem">PEM</SelectItem>
-                    <SelectItem value="pkcs12">PKCS12</SelectItem>
+                    <SelectItem value="pem" disabled={isPemUnavailable}>
+                      PEM{isPemUnavailable ? " (no permission)" : ""}
+                    </SelectItem>
+                    <SelectItem value="pkcs12" disabled={isPkcs12Unavailable}>
+                      PKCS12{pkcs12UnavailableReason ? ` (${pkcs12UnavailableReason})` : ""}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <FieldDescription>

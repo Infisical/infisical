@@ -165,6 +165,11 @@ export type TPkiInstallationCert = {
   deletedAt?: string | null;
   friendlyName?: string | null;
   fingerprintSha256?: string | null;
+  altNames?: string | null;
+  applicationId?: string | null;
+  hasPrivateKey?: boolean;
+  canRead?: boolean;
+  canExportPkcs12?: boolean;
 };
 
 export type TPkiDiscoveryScan = {
