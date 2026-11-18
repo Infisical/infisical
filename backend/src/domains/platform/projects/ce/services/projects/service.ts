@@ -3,10 +3,13 @@ import { TReadOptions } from "@app/domains/lib/data-access";
 import { TTransaction, TTransactionRunner } from "@app/domains/lib/transactions";
 import { TIdentityOwnership } from "@app/domains/platform/organizations/ce/module";
 
+import { Project } from "../../models/project";
 import { TProjectIdentityStore, TProjectsStores, TProjectStore } from "../dependencies";
 import { ProjectsTransaction, TProjectsTransaction } from "./projects-transaction";
 
 export type TProjectsService = {
+  // The project, for a caller that may not be a member of it. Null when it does not exist.
+  findProject(projectId: string): Promise<Project | null>;
   // Includes sub-orgs. Pass readFrom primary right after a commit that changed it.
   countWorkspaces(orgId: string, options?: TReadOptions): Promise<number>;
   countProjectIdentities(projectType: ProjectType, orgId: string | null): Promise<number>;
@@ -25,6 +28,10 @@ export class ProjectsService implements TProjectsService {
     private readonly projectIdentityStore: TProjectIdentityStore,
     private readonly transactionRunner: TTransactionRunner<TProjectsStores>
   ) {}
+
+  findProject(projectId: string): Promise<Project | null> {
+    return this.projectStore.findById(projectId);
+  }
 
   countWorkspaces(orgId: string, options?: TReadOptions): Promise<number> {
     return this.projectStore.countWorkspaces(orgId, options);
