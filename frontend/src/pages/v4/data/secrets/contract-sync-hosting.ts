@@ -1,4 +1,5 @@
 import type { TCloud66Stack } from "@app/hooks/api/appConnections/cloud-66/types";
+import type { TConvexDeployment } from "@app/hooks/api/appConnections/convex/types";
 import type { TFlyioApp } from "@app/hooks/api/appConnections/flyio/types";
 import type { THerokuApp } from "@app/hooks/api/appConnections/heroku/types";
 import type {
@@ -31,6 +32,7 @@ export type SyncHostingLookups = {
   useRenderEnvironmentGroups: ConnectionOptions<TRenderEnvironmentGroup>;
   useRailwayProjects: ConnectionOptions<TRailwayProject>;
   useFlyioApps: ConnectionOptions<TFlyioApp>;
+  useConvexDeployments: ConnectionOptions<TConvexDeployment>;
   useCloud66Stacks: ConnectionOptions<TCloud66Stack>;
   useLaravelForgeOrganizations: ConnectionOptions<TLaravelForgeOrganization>;
   useLaravelForgeServers: (

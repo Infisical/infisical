@@ -140,6 +140,26 @@ function HerokuDestination() {
   );
 }
 
+function ConvexDestination() {
+  const { setValue } = useSyncForm();
+  const deployments = useConnectionOptions(useV4Adapter("secrets").useConvexDeployments);
+  return (
+    <Stack gap={16}>
+      <ConnectionField onChange={() => setValue("destinationConfig.deploymentName", "")} />
+      <ComboField
+        name="destinationConfig.deploymentName"
+        label="Deployment"
+        options={deployments.map((deployment) => ({
+          value: deployment.name,
+          label: deployment.name,
+          meta: deployment.type
+        }))}
+        placeholder="Select a deployment..."
+      />
+    </Stack>
+  );
+}
+
 function NetlifyDestination() {
   const { control, setValue } = useSyncForm();
   const [connectionId, accountId] = useWatch({
@@ -611,7 +631,8 @@ export const HOSTING_SYNC_VIEWS: Record<
   | SecretSync.Flyio
   | SecretSync.Cloud66
   | SecretSync.LaravelForge
-  | SecretSync.Portainer,
+  | SecretSync.Portainer
+  | SecretSync.Convex,
   SyncView
 > = {
   [SecretSync.Heroku]: {
@@ -621,6 +642,11 @@ export const HOSTING_SYNC_VIEWS: Record<
       ["App name", config.appName],
       ["App ID", config.app]
     ]
+  },
+  [SecretSync.Convex]: {
+    Destination: ConvexDestination,
+    defaults: { destinationConfig: { deploymentName: "" } },
+    destinationReview: (config) => [["Deployment", config.deploymentName]]
   },
   [SecretSync.Netlify]: {
     Destination: NetlifyDestination,

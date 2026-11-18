@@ -898,7 +898,12 @@ Do not hand such a URL to a vendor SDK that makes its own requests; it follows r
 [`src/ee/services/certificate-authority-ocsp/AGENTS.md`](src/ee/services/certificate-authority-ocsp/AGENTS.md).**
 One rule binds code elsewhere: **any new path that revokes a certificate must bump
 `internal_certificate_authorities.ocspGeneration` in the same transaction as the status write** (as
-`revokeCert` does), or cached OCSP responses keep answering `good`.
+`revokeCert` does), or cached OCSP responses keep answering `good`. A job that revokes on a signal from an
+outside system, where the CA hasn't revoked yet, calls `certificateService.revokeCertAsPlatform` (the
+upstream CA call, OCSP bump, syncs and alerts) instead of writing `status` itself, writes the `REVOKE_CERT`
+audit log with the `PLATFORM` actor, and calls `rebuildCrlsAfterPlatformRevocations` once per batch, since
+`revokeCertAsPlatform` never rebuilds the CRL itself. A sync that mirrors a revocation the CA already made (the
+DigiCert revocation sync) keeps writing `status` directly.
 
 ### Internal CA key sources
 
@@ -986,6 +991,8 @@ Enterprise code lives in `src/ee/`:
 - `src/ee/routes/v1/`, `src/ee/routes/v2/` — EE route files
 
 EE routes register before community routes so they can override/extend endpoints. Licensing lives in the License domain (`src/domains/platform/license/`, read its `AGENTS.md` first). For feature gating take `licenseService: TLicenseService` and call `getPlan(orgId)`: check with `plan.has(PlanFeature.Rbac)` or refuse with `plan.assert(PlanFeature.Rbac)`, which names the feature in the error, and check numeric limits through `plan.exceeds(PlanLimit.X, used)`, never by reading the field. For usage take `usageMeteringService: TUsageMeteringService`: `emit(orgId, Meter.X)` after a metered write commits, `syncSeats(orgId)` after a member change commits. License never joins your transaction: read `getSeatUsage(orgId)` before opening it and check with `seatUsage.assertAvailable(plan)` inside it.
+
+Encryption (the root key, KMS keys, org and project data keys, HSM, external KMS keys, root key rotation) lives in the KMS Core domain (`src/domains/platform/kms-core/`, read its `AGENTS.md` before touching it): take the service you call, named with a `kms` prefix so it reads as KMS in a deps list: `kmsDataKeyService: TKmsDataKeyService` (org and project cipher pairs, key ids, backups), `kmsKeyService: TKmsKeyService` (KMS keys and cryptography with them) or `kmsRootKeyService: TKmsRootKeyService` (root key, cookie signing key, rotation). Inside a transaction you hold, call it through `within(sealKnexTransaction(trx))` (`kmsDataKeyService.within(...).createCipherPairWithDataKey(...)`) so the keys it creates commit or roll back with your rows; outside one, call the service directly.
 
 **PAM**: Before working on any `pam-*` service or router, read [`src/ee/services/pam/AGENTS.md`](src/ee/services/pam/AGENTS.md) for a high-level map of the PAM backend — module layout, permission model, and non-obvious invariants. It is intentionally a concept map, not a spec: read the referenced code for implementation detail. If you add a feature, keep any addition there brief (a concept or invariant, not code mechanics).
 
@@ -1195,15 +1202,15 @@ The gate has to sit at the call site because **a `DROP` aggregation does not bou
 
 ### Instance Root Encryption Key (rotation)
 
-`ENCRYPTION_KEY` wraps the in-DB root key in `kms_root_config` and is rotatable; the design is documented
-in `kms-service.ts` and `kms-root-config-dal.ts`. Two rules for code elsewhere:
+`ENCRYPTION_KEY` wraps the in-DB root key in `kms_root_config` and is rotatable; KMS Core owns it (see
+`src/domains/platform/kms-core/AGENTS.md`). Two rules for code elsewhere:
 
 - **`KMS_ROOT_CONFIG_UUID` always holds the active key** so app versions predating rotation can boot. New
   code never looks a root config row up by id or by `kekLabel`; it trial-decrypts (sentinel, staged, retained).
-- **Migrations must never call `*WithRootEncryptionKey` or `buildSecretBlindIndexFromName`**: they run before
-  `kmsService.startService`, so they fall back to the environment key, which on a rotated instance is wrong:
-  decrypts fail the auth tag and encrypts silently write unreadable rows. Oxlint blocks this under
-  `src/db/migrations/`.
+- **Migrations must never call `*WithRootEncryptionKey` or `buildSecretBlindIndexFromName`**: KMS Core starts in a
+  migration without the legacy key snapshot (`startStandaloneKmsCore`), so they fall back to the environment key,
+  which on a rotated instance is wrong: decrypts fail the auth tag and encrypts silently write unreadable rows.
+  Oxlint blocks this under `src/db/migrations/`.
 
 ### Database Configuration
 

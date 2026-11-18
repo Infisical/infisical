@@ -26,6 +26,7 @@ export const IMPORT_CAPABLE_SYNCS: readonly SecretSync[] = [
   SecretSync.AzureKeyVault,
   SecretSync.Camunda,
   SecretSync.Cloud66,
+  SecretSync.Convex,
   SecretSync.ExternalInfisical,
   SecretSync.GCPSecretManager,
   SecretSync.HasuraCloud,

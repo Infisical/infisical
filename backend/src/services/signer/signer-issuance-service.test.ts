@@ -26,11 +26,6 @@ vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
 }));
 
-vi.mock("../project/project-fns", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../project/project-fns")>();
-  return { ...actual, getProjectKmsCertificateKeyId: vi.fn().mockResolvedValue("kms-1") };
-});
-
 vi.mock("./signer-issuance-fns", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./signer-issuance-fns")>();
   return {
@@ -190,7 +185,8 @@ const buildService = ({
       })
     },
     projectDAL: { findOne: vi.fn().mockResolvedValue({ id: PROJECT_ID, orgId: ORG_ID }) },
-    kmsService: {
+    kmsDataKeyService: { getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-1") },
+    kmsKeyService: {
       encryptWithKmsKey: vi.fn().mockResolvedValue(async ({ plainText }: { plainText: Buffer }) => ({
         cipherTextBlob: plainText
       })),
@@ -825,7 +821,7 @@ describe("signerIssuanceService keeping the reissued order's job until its repla
 
   it("leaves the kept job pending when the replacement can't be created", async () => {
     const { service, deps } = buildService({ pendingJobs: [keptJob] });
-    deps.kmsService.encryptWithKmsKey.mockRejectedValue(new Error("KMS unavailable"));
+    deps.kmsKeyService.encryptWithKmsKey.mockRejectedValue(new Error("KMS unavailable"));
 
     await expect(service.requestIssuance({ ...requestInput, keepOrderId: ORDER_ID })).rejects.toThrow(
       "KMS unavailable"
