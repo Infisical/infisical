@@ -110,10 +110,17 @@ export class AgentVaultUsageService implements TAgentVaultUsageService {
     const plan = await this.licenseService.getPlan(rootOrgId);
     if (!AgentVaultAccess.isLimited({ isCloud: true, plan })) return [];
 
+    // Checked again once locked: another report may have sent it and freed the lock since the read above. Its sender
+    // writes the sent key before deleting the lock, so this read sees it.
     const locked = await Promise.all(
-      due.map(async (threshold) =>
-        (await this.freeUsageCache.lockNotice(rootOrgId, month, threshold)) ? threshold : null
-      )
+      due.map(async (threshold) => {
+        if (!(await this.freeUsageCache.lockNotice(rootOrgId, month, threshold))) return null;
+        if (await this.freeUsageCache.isNoticeSent(rootOrgId, month, threshold)) {
+          await this.freeUsageCache.releaseNotice(rootOrgId, month, threshold);
+          return null;
+        }
+        return threshold;
+      })
     );
     return locked
       .filter((threshold) => threshold !== null)

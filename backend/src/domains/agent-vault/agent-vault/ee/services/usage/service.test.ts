@@ -5,6 +5,7 @@ import { testFeatures } from "@app/domains/platform/license/ce/testing/test-feat
 
 import { AgentVaultFreeUsageThreshold } from "../../../ce/models/agent-vault-access-state";
 import { FreeUsageCache } from "../../data-access/free-usage-cache";
+import { UsageMonth } from "../../models/usage-month";
 import { AgentVaultUsageService } from "./service";
 
 vi.mock("@app/lib/logger", () => ({
@@ -233,6 +234,22 @@ describe("AgentVaultUsageService.recordProxyUsage", () => {
 
     // Assert
     expect(again).toEqual([]);
+  });
+
+  test("should not return a notice that another report sent after this one first saw it unsent", async () => {
+    // Setup
+    const { service, freeUsageCache } = build();
+    const [due] = await service.recordProxyUsage({ ...report, reportId: "r-1", brokered: 3_800 });
+    await service.completeNotice(due);
+    // The second report read the sent key before the first one marked it.
+    vi.spyOn(freeUsageCache, "isNoticeSent").mockResolvedValueOnce(false);
+
+    // Action
+    const late = await service.recordProxyUsage({ ...report, reportId: "r-2", brokered: 10 });
+
+    // Assert
+    expect(late).toEqual([]);
+    expect(await freeUsageCache.lockNotice(ROOT_ORG_ID, UsageMonth.of(new Date()), due.threshold)).toBe(true);
   });
 
   test("should return a notice again on the next report when sending it failed", async () => {
