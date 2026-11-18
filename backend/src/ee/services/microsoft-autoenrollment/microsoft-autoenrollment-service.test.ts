@@ -500,6 +500,38 @@ describe("microsoftAutoenrollmentService", () => {
       expect(learnServerChannelBindings).toHaveBeenCalledTimes(1);
     });
 
+    test("a mismatch on one instance accepts a binding another instance just learned while it holds the lock", async () => {
+      usedReplayKeys.add(
+        KeyStorePrefixes.MicrosoftAutoenrollmentServerChannelBindingsRefreshLock("app.example.com:443")
+      );
+      cacheBindings([
+        { binding: ROTATED_BINDING, ageMs: 0 },
+        { binding: SERVER_BINDING, ageMs: 0 }
+      ]);
+      const staleCache = JSON.stringify([
+        { binding: SERVER_BINDING.toString("hex"), seenAt: new Date().toISOString() }
+      ]);
+      deps.keyStore.getItem.mockImplementationOnce(async () => staleCache);
+
+      const response = await getPoliciesBoundTo(ROTATED_BINDING);
+
+      expect(response.statusCode).toBe(200);
+      expect(learnServerChannelBindings).not.toHaveBeenCalled();
+    });
+
+    test("still refuses a binding that no instance has learned while another instance holds the lock", async () => {
+      usedReplayKeys.add(
+        KeyStorePrefixes.MicrosoftAutoenrollmentServerChannelBindingsRefreshLock("app.example.com:443")
+      );
+      cacheBindings([{ binding: SERVER_BINDING, ageMs: 0 }]);
+
+      const response = await getPoliciesBoundTo(RELAYED_BINDING);
+
+      expect(response.statusCode).toBe(401);
+      expect(learnServerChannelBindings).not.toHaveBeenCalled();
+      expect(refusalReasons()).toEqual([KerberosFailureReason.ChannelBindingMismatch]);
+    });
+
     test("reads the certificates again when the cache is gone, even while another refresh holds the lock", async () => {
       usedReplayKeys.add(
         KeyStorePrefixes.MicrosoftAutoenrollmentServerChannelBindingsRefreshLock("app.example.com:443")

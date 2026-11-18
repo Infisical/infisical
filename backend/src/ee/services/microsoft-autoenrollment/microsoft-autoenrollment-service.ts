@@ -365,7 +365,10 @@ export const microsoftAutoenrollmentServiceFactory = ({
         )
         .catch(() => null)) === "OK";
     if (isRefreshAllowed) return $learnServerChannelBindings(endpoint, cachedEntries);
-    return learningServerChannelBindings.get(describeEndpoint(endpoint)) ?? null;
+    const localLearning = learningServerChannelBindings.get(describeEndpoint(endpoint));
+    if (localLearning) return localLearning;
+    const sharedEntries = await $readServerChannelBindings(endpoint);
+    return sharedEntries.length ? sharedEntries : null;
   };
 
   const $loadExpectedChannelBindings = async (): Promise<TExpectedChannelBindings | null> => {
