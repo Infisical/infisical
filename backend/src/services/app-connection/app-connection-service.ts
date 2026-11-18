@@ -1262,6 +1262,12 @@ export const appConnectionServiceFactory = ({
               "Cannot delete this App Connection because a certificate authority signs with an AWS KMS key reached through it. Delete that certificate authority first."
           });
         }
+        if (constraint === "pki_microsoft_autoenrollment_configs_appconnectionid_foreign") {
+          throw new BadRequestError({
+            message:
+              "Cannot delete this App Connection because Microsoft Autoenrollment on an application's certificate profile looks up computers through it. Turn off Microsoft Autoenrollment there, or pick another LDAP connection, first."
+          });
+        }
         throw new BadRequestError({
           message:
             "Cannot delete App Connection with existing connections. Remove all existing connections and try again."

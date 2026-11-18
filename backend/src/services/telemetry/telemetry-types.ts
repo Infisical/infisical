@@ -14,6 +14,7 @@ import {
   IdentityActor,
   KmipClientActor,
   KmipServerActor,
+  MicrosoftAutoenrollmentAccountActor,
   PlatformActor,
   RelayActor,
   ScepAccountActor,
@@ -388,6 +389,7 @@ export type TSecretModifiedEvent = {
       | KmipClientActor
       | EstAccountActor
       | ScepAccountActor
+      | MicrosoftAutoenrollmentAccountActor
       | GatewayActor
       | RelayActor
       | KmipServerActor

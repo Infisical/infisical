@@ -7,12 +7,15 @@ import {
 } from "@app/helpers/resourcePermissions";
 
 import {
+  TListMicrosoftAutoenrollmentGroupsDTO,
   TListPkiApplicationsParams,
   TListPkiApplicationsResponse,
   TPkiApplication,
   TPkiApplicationEnrollmentState,
   TPkiApplicationMember,
   TPkiApplicationPermissionSet,
+  TMicrosoftAutoenrollmentGroupSearch,
+  TMicrosoftAutoenrollmentServicePrincipal,
   TPkiApplicationProfile
 } from "./types";
 
@@ -29,7 +32,15 @@ export const pkiApplicationKeys = {
   getUserApplicationPermissions: (applicationId: string) =>
     ["user-application-permissions", { applicationId }] as const,
   enrollment: (applicationId: string, profileId: string) =>
-    [...pkiApplicationKeys.all, "enrollment", { applicationId, profileId }] as const
+    [...pkiApplicationKeys.all, "enrollment", { applicationId, profileId }] as const,
+  microsoftAutoenrollmentGroups: (params: TListMicrosoftAutoenrollmentGroupsDTO) =>
+    [...pkiApplicationKeys.all, "microsoft-autoenrollment-groups", params] as const,
+  microsoftAutoenrollmentServicePrincipal: (applicationId: string, profileId: string) =>
+    [
+      ...pkiApplicationKeys.all,
+      "microsoft-autoenrollment-service-principal",
+      { applicationId, profileId }
+    ] as const
 };
 
 const BASE_URL = "/api/v1/cert-manager/applications";
@@ -154,6 +165,44 @@ export const useGetPkiApplicationEnrollment = (applicationId: string, profileId:
     queryFn: async () => {
       const { data } = await apiRequest.get<TPkiApplicationEnrollmentState>(
         `${BASE_URL}/${applicationId}/profiles/${profileId}/enrollment`
+      );
+      return data;
+    },
+    enabled: Boolean(applicationId && profileId)
+  });
+
+export const useListMicrosoftAutoenrollmentGroups = ({
+  applicationId,
+  profileId,
+  connectionId,
+  search
+}: TListMicrosoftAutoenrollmentGroupsDTO) =>
+  useQuery({
+    queryKey: pkiApplicationKeys.microsoftAutoenrollmentGroups({
+      applicationId,
+      profileId,
+      connectionId,
+      search
+    }),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TMicrosoftAutoenrollmentGroupSearch>(
+        `${BASE_URL}/${applicationId}/profiles/${profileId}/enrollment/microsoft-autoenrollment/groups`,
+        { params: { connectionId, search } }
+      );
+      return data;
+    },
+    enabled: Boolean(applicationId && profileId && connectionId)
+  });
+
+export const useGetMicrosoftAutoenrollmentServicePrincipal = (
+  applicationId: string,
+  profileId: string
+) =>
+  useQuery({
+    queryKey: pkiApplicationKeys.microsoftAutoenrollmentServicePrincipal(applicationId, profileId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TMicrosoftAutoenrollmentServicePrincipal>(
+        `${BASE_URL}/${applicationId}/profiles/${profileId}/enrollment/microsoft-autoenrollment/service-principal`
       );
       return data;
     },

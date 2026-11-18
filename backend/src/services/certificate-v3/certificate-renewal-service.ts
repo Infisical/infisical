@@ -37,6 +37,7 @@ import {
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import {
+  ENROLLMENT_TYPE_NAME_MAP,
   EnrollmentType,
   IssuerType,
   TCertificateProfileWithConfigs
@@ -689,7 +690,7 @@ export const certificateRenewalServiceFactory = ({
     const { enrollmentType } = originatingRequest;
     if (enrollmentType && enrollmentType !== EnrollmentType.API) {
       throw new ForbiddenRequestError({
-        message: `Certificate is not eligible for renewal: ${enrollmentType.toUpperCase()} certificates cannot be renewed`
+        message: `Certificate is not eligible for renewal: ${ENROLLMENT_TYPE_NAME_MAP[enrollmentType as EnrollmentType] ?? enrollmentType} certificates cannot be renewed`
       });
     }
 
@@ -2027,7 +2028,7 @@ export const certificateRenewalServiceFactory = ({
     const enrollmentType = await certificateDAL.getRequestEnrollmentTypeByCertId(certificate.id);
     if (enrollmentType && enrollmentType !== EnrollmentType.API) {
       throw new ForbiddenRequestError({
-        message: `Certificate is not eligible for auto-renewal: ${enrollmentType.toUpperCase()} certificates cannot be auto-renewed`
+        message: `Certificate is not eligible for auto-renewal: ${ENROLLMENT_TYPE_NAME_MAP[enrollmentType as EnrollmentType] ?? enrollmentType} certificates cannot be auto-renewed`
       });
     }
 

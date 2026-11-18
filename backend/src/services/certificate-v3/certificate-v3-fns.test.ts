@@ -6,8 +6,13 @@ import {
   CertSubjectAlternativeNameType
 } from "../certificate-common/certificate-constants";
 import { extractCertificateRequestFromCSR } from "../certificate-common/certificate-csr-utils";
+import { encodeCustomExtensionValue } from "../certificate-common/certificate-extension-fns";
 import { TCertificateProfileDefaults } from "../certificate-profile/certificate-profile-types";
-import { applyProfileDefaults } from "./certificate-v3-fns";
+import {
+  applyIssuerNameOverride,
+  applyProfileDefaults,
+  assertIssuerAddedExtensionsAllowedByPolicy
+} from "./certificate-v3-fns";
 
 const BARE_CSR = `-----BEGIN CERTIFICATE REQUEST-----
 MIICjjCCAXYCAQAwGzEZMBcGA1UEAwwQc2hvcC5leGFtcGxlLmNvbTCCASIwDQYJ
@@ -206,5 +211,91 @@ describe("applyProfileDefaults", () => {
     expect(request.subjectAlternativeNames).toEqual([
       { type: CertSubjectAlternativeNameType.DNS_NAME, value: "shop.example.com" }
     ]);
+  });
+});
+
+describe("applyIssuerNameOverride", () => {
+  const issuerNameOverride = {
+    commonName: "laptop01.corp.example.com",
+    altNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "laptop01.corp.example.com" }]
+  };
+  const csrRequest = {
+    commonName: "anything",
+    keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE],
+    extendedKeyUsages: [CertExtendedKeyUsageType.CODE_SIGNING]
+  };
+
+  it("takes key usages from the profile when it sets them, so the computer cannot pick its own", () => {
+    const profileDefaults = {
+      keyUsages: [CertKeyUsageType.KEY_ENCIPHERMENT],
+      extendedKeyUsages: [CertExtendedKeyUsageType.CLIENT_AUTH]
+    };
+
+    const result = applyProfileDefaults(
+      applyIssuerNameOverride(csrRequest, issuerNameOverride, profileDefaults),
+      profileDefaults
+    );
+
+    expect(result.keyUsages).toEqual([CertKeyUsageType.KEY_ENCIPHERMENT]);
+    expect(result.extendedKeyUsages).toEqual([CertExtendedKeyUsageType.CLIENT_AUTH]);
+    expect(result.commonName).toBe("laptop01.corp.example.com");
+  });
+
+  it("keeps the request's key usages when the profile sets none", () => {
+    const result = applyProfileDefaults(applyIssuerNameOverride(csrRequest, issuerNameOverride, {}), {});
+
+    expect(result.keyUsages).toEqual([CertKeyUsageType.DIGITAL_SIGNATURE]);
+    expect(result.extendedKeyUsages).toEqual([CertExtendedKeyUsageType.CODE_SIGNING]);
+  });
+});
+
+describe("assertIssuerAddedExtensionsAllowedByPolicy", () => {
+  const SID_OID = "1.3.6.1.4.1.311.25.2";
+  const TEMPLATE_INFO_OID = "1.3.6.1.4.1.311.21.7";
+  const COMPUTER_SID = "S-1-5-21-1111111111-2222222222-3333333333-1105";
+  const issuerAdded = (oid: string, value: string) => ({
+    oid,
+    critical: false,
+    value: encodeCustomExtensionValue(oid, value),
+    issuerAdded: true
+  });
+  const sidExtension = issuerAdded(SID_OID, COMPUTER_SID);
+
+  it("refuses a computer SID the policy denies", () => {
+    expect(() =>
+      assertIssuerAddedExtensionsAllowedByPolicy([sidExtension], [{ oid: SID_OID, denied: [COMPUTER_SID] }])
+    ).toThrow(/is denied by this policy/);
+  });
+
+  it("refuses a computer SID outside the domain the policy requires", () => {
+    expect(() =>
+      assertIssuerAddedExtensionsAllowedByPolicy(
+        [sidExtension],
+        [{ oid: SID_OID, required: ["S-1-5-21-9999999999-*"] }]
+      )
+    ).toThrow(/does not match any value required by this policy/);
+  });
+
+  it("accepts a computer SID the policy allows", () => {
+    expect(() =>
+      assertIssuerAddedExtensionsAllowedByPolicy(
+        [sidExtension],
+        [{ oid: SID_OID, required: ["S-1-5-21-1111111111-2222222222-3333333333-*"] }]
+      )
+    ).not.toThrow();
+  });
+
+  it("adds the extensions when the policy has no rule for them", () => {
+    expect(() =>
+      assertIssuerAddedExtensionsAllowedByPolicy([sidExtension], [{ oid: "1.2.3.4", allowed: ["*"] }])
+    ).not.toThrow();
+    expect(() => assertIssuerAddedExtensionsAllowedByPolicy([sidExtension], undefined)).not.toThrow();
+  });
+
+  it("does not hold the template information Windows needs to policy values", () => {
+    const templateInfo = issuerAdded(TEMPLATE_INFO_OID, "1.3.6.1.4.1.99999.1.2.3:100.0");
+    expect(() =>
+      assertIssuerAddedExtensionsAllowedByPolicy([templateInfo], [{ oid: TEMPLATE_INFO_OID, required: ["Machine"] }])
+    ).not.toThrow();
   });
 });

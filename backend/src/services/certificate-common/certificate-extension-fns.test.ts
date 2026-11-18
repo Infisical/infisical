@@ -138,6 +138,15 @@ describe("describeCustomExtensionValue", () => {
 });
 
 describe("resolveCustomExtensions", () => {
+  it("leaves a required rule for an issuer-added extension to the issuer's own check", () => {
+    const rules = [{ oid: "1.3.6.1.4.1.311.25.2", required: ["S-1-5-21-*"] }];
+
+    expect(resolveCustomExtensions({ rules }).errors).toEqual([
+      expect.stringContaining("This policy requires custom extension '1.3.6.1.4.1.311.25.2'")
+    ]);
+    expect(resolveCustomExtensions({ rules, issuerAddedOids: ["1.3.6.1.4.1.311.25.2"] }).errors).toEqual([]);
+  });
+
   const declareSid = { oid: SID_OID, value: SID };
 
   it("emits a declared value when the policy is unconstrained", () => {

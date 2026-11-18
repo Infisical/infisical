@@ -2,7 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { CertStatus } from "../certificate/certificate-types";
-import { EnrollmentType, IssuerType } from "./certificate-profile-types";
+import { EnrollmentType, IssuerType, PROFILE_ENROLLMENT_TYPES } from "./certificate-profile-types";
 
 export const createCertificateProfileSchema = z
   .object({
@@ -15,7 +15,7 @@ export const createCertificateProfileSchema = z
       .max(255)
       .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens"),
     description: z.string().max(1000).optional(),
-    enrollmentType: z.nativeEnum(EnrollmentType),
+    enrollmentType: z.enum(PROFILE_ENROLLMENT_TYPES),
     issuerType: z.nativeEnum(IssuerType).default(IssuerType.CA),
     estConfig: z
       .object({
@@ -158,7 +158,7 @@ export const updateCertificateProfileSchema = z
       .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens")
       .optional(),
     description: z.string().max(1000).optional(),
-    enrollmentType: z.nativeEnum(EnrollmentType).optional(),
+    enrollmentType: z.enum(PROFILE_ENROLLMENT_TYPES).optional(),
     issuerType: z.nativeEnum(IssuerType).optional(),
     estConfig: z
       .object({
@@ -240,7 +240,7 @@ export const listCertificateProfilesSchema = z.object({
   offset: z.coerce.number().min(0).default(0),
   limit: z.coerce.number().min(1).max(100).default(20),
   search: z.string().optional(),
-  enrollmentType: z.nativeEnum(EnrollmentType).optional(),
+  enrollmentType: z.enum(PROFILE_ENROLLMENT_TYPES).optional(),
   issuerType: z.nativeEnum(IssuerType).optional(),
   caId: z.string().uuid().optional()
 });

@@ -2,7 +2,7 @@ import { buildDomainBaseDN } from "@app/lib/ldap/ldap-search-fns";
 
 import { LdapProvider } from "./ldap-connection-enums";
 import { extractDomainFromDN } from "./ldap-connection-fns";
-import { assertLdapProviderIsSupported, parseLdapBindIdentity } from "./ldap-directory-fns";
+import { assertLdapProviderIsSupported, parseLdapBindIdentity, readAccountDisabledFlag } from "./ldap-directory-fns";
 
 describe("parseLdapBindIdentity", () => {
   test("derives the domain and the UPN local part, which is only a fallback for the logon name", () => {
@@ -91,4 +91,21 @@ describe("assertLdapProviderIsSupported", () => {
   it("accepts an absent provider, which is a connection read without decrypted credentials", () => {
     expect(() => assertLdapProviderIsSupported(undefined, "corp-ad")).not.toThrow();
   });
+});
+
+describe("readAccountDisabledFlag", () => {
+  test.each([
+    ["4096", false],
+    ["4098", true],
+    ["2", true]
+  ])("reads the disabled bit from %s", (userAccountControl, isDisabled) => {
+    expect(readAccountDisabledFlag(userAccountControl)).toBe(isDisabled);
+  });
+
+  test.each(["", "   ", "not-a-number"])(
+    "returns null when userAccountControl is absent or unreadable (%j)",
+    (userAccountControl) => {
+      expect(readAccountDisabledFlag(userAccountControl)).toBeNull();
+    }
+  );
 });

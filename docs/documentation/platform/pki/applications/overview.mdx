@@ -6,7 +6,7 @@ description: "Issue certificates, configure enrollment, and manage lifecycle aut
 
 Applications are where teams issue and manage certificates. Within an Application, you can:
 
-- **Issue certificates** via API, ACME, EST, or SCEP
+- **Issue certificates** via API, ACME, EST, SCEP, or Microsoft Autoenrollment
 - **Automate renewal** so certificates never expire unexpectedly
 - **Configure alerting** for expiration, issuance, and lifecycle events
 - **Sync certificates** to AWS ACM, Azure Key Vault, Cloudflare, and other destinations
@@ -21,7 +21,7 @@ Each Application represents a service or workload in your organization — a pay
     Team members with Admin, Operator, or Auditor roles.
   </Card>
   <Card title="Enrollment Methods" icon="log-in">
-    How certificates are requested — API, ACME, EST, or SCEP.
+    How certificates are requested: API, ACME, EST, SCEP, or Microsoft Autoenrollment.
   </Card>
   <Card title="Certificate Inventory" icon="list">
     All certificates issued for this Application.
@@ -77,6 +77,7 @@ Members are assigned to Applications with one of three roles:
     | **ACME** | Certbot, cert-manager, standard tooling |
     | **EST** | Enterprise device enrollment |
     | **SCEP** | Network devices, MDM systems |
+    | **Microsoft Autoenrollment** | Domain-joined Windows computers |
     
     See [Enrollment Methods](/documentation/platform/pki/applications/enrollment-methods/overview) for detailed configuration.
   </Step>

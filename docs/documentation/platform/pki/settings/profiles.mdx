@@ -93,7 +93,7 @@ Profiles are consumed through [Applications](/documentation/platform/pki/applica
     Creates an Application, attaches one or more profiles to it, and assigns team members (Application Admins, Operators, Auditors).
   </Step>
   <Step title="Application Admin configures enrollment">
-    Within the Application, the Application Admin configures [enrollment methods](/documentation/platform/pki/applications/enrollment-methods/overview) (API, ACME, EST, SCEP) for each attached profile. The enrollment URL is unique to the Application + Profile pair.
+    Within the Application, the Application Admin configures [enrollment methods](/documentation/platform/pki/applications/enrollment-methods/overview) (API, ACME, EST, SCEP, Microsoft Autoenrollment) for each attached profile. The enrollment URL is unique to the Application + Profile pair.
   </Step>
   <Step title="Certificates are issued">
     Teams request certificates through the configured enrollment method. Requests are validated against the profile's policy and signed by the profile's CA.

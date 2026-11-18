@@ -1557,6 +1557,331 @@ describe("CertificateV3Service", () => {
     });
   });
 
+  describe("signCertificateFromProfile with a subject override and additional extensions", () => {
+    const templateExtension = {
+      oid: "1.3.6.1.4.1.311.21.7",
+      critical: false,
+      value: Buffer.from([0x30, 0x03, 0x02, 0x01, 0x64])
+    };
+
+    const signWithOverride = () =>
+      service.signCertificateFromProfile({
+        profileId: "profile-123",
+        csr: "-----BEGIN CERTIFICATE REQUEST-----\nMIIC...",
+        validity: { ttl: "30d" },
+        enrollmentType: EnrollmentType.API,
+        issuerNameOverride: {
+          commonName: "laptop01.corp.example.com",
+          altNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "laptop01.corp.example.com" }]
+        },
+        additionalExtensions: [templateExtension],
+        ...mockActor
+      });
+
+    beforeEach(() => {
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue({
+        id: "profile-123",
+        projectId: "project-123",
+        caId: "ca-123",
+        certificatePolicyId: "policy-123",
+        slug: "web-servers",
+        enrollmentType: EnrollmentType.API,
+        apiConfigId: "api-config-123"
+      } as any);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue({
+        id: "ca-123",
+        projectId: "project-123",
+        externalCa: undefined,
+        internalCa: { id: "internal-ca-123", type: "ROOT", keyAlgorithm: "RSA_2048", activeCaCertId: "cert-123" }
+      } as any);
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue({
+        id: "policy-123",
+        projectId: "project-123"
+      } as any);
+      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
+        isValid: true,
+        errors: [],
+        warnings: []
+      });
+      vi.mocked(extractCertificateRequestFromCSR).mockReturnValue({
+        commonName: "dc01.corp.example.com",
+        subjectAlternativeNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "dc01.corp.example.com" }],
+        customExtensions: [{ oid: templateExtension.oid, critical: false, value: "MAA=" }]
+      } as any);
+    });
+
+    it("validates and signs the override's names, not the CSR's, and carries the additional extension", async () => {
+      await signWithOverride().catch(() => undefined);
+
+      const [, validatedRequest] = vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mock.calls[0];
+      expect(validatedRequest.commonName).toBe("laptop01.corp.example.com");
+      expect(validatedRequest.subjectAlternativeNames).toEqual([
+        { type: CertSubjectAlternativeNameType.DNS_NAME, value: "laptop01.corp.example.com" }
+      ]);
+      expect(validatedRequest.customExtensions ?? []).not.toContainEqual(
+        expect.objectContaining({ oid: templateExtension.oid })
+      );
+
+      const [signInput] = vi.mocked(mockInternalCaService.signCertFromCa).mock.calls[0] as any[];
+      expect(signInput.subjectOverride).toBe("CN=laptop01.corp.example.com");
+      expect(signInput.altNames).toBe("laptop01.corp.example.com");
+      expect(signInput.customExtensions).toEqual([
+        {
+          oid: templateExtension.oid,
+          critical: false,
+          value: templateExtension.value.toString("base64"),
+          issuerAdded: true
+        }
+      ]);
+    });
+
+    it("signs only the issuer-added copy when the profile also declares the same extension", async () => {
+      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
+        isValid: true,
+        errors: [],
+        warnings: [],
+        resolvedCustomExtensions: [
+          { oid: templateExtension.oid, critical: false, value: "MAMCAWU=" },
+          { oid: "1.2.3.4", critical: false, value: "BAA=" }
+        ]
+      } as any);
+
+      await signWithOverride().catch(() => undefined);
+
+      const [signInput] = vi.mocked(mockInternalCaService.signCertFromCa).mock.calls[0] as any[];
+      expect(signInput.customExtensions).toEqual([
+        { oid: "1.2.3.4", critical: false, value: "BAA=" },
+        {
+          oid: templateExtension.oid,
+          critical: false,
+          value: templateExtension.value.toString("base64"),
+          issuerAdded: true
+        }
+      ]);
+    });
+
+    it("links a Microsoft Autoenrollment renewal to the certificate it replaces", async () => {
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue({
+        id: "profile-123",
+        projectId: "project-123",
+        caId: "ca-123",
+        certificatePolicyId: "policy-123",
+        slug: "web-servers",
+        enrollmentType: EnrollmentType.MICROSOFT_AUTOENROLLMENT,
+        apiConfigId: "api-config-123"
+      } as any);
+      mockCertificateRequestService.createCertificateRequest.mockResolvedValue({
+        id: "sign-req-1",
+        createdAt: new Date()
+      });
+      vi.mocked(mockInternalCaService.signCertFromCa).mockImplementation((async (dto: any) => {
+        await dto.onPersisted?.({ id: "cert-new", notAfter: new Date(Date.now() + 86400000) }, {});
+        return {
+          certificate: "cert",
+          certificateChain: "chain",
+          issuingCaCertificate: "ca",
+          certificateId: "cert-new"
+        };
+      }) as any);
+
+      await service
+        .signCertificateFromProfile({
+          profileId: "profile-123",
+          csr: "-----BEGIN CERTIFICATE REQUEST-----\nMIIC...",
+          validity: { ttl: "30d" },
+          enrollmentType: EnrollmentType.MICROSOFT_AUTOENROLLMENT,
+          issuanceOperation: CertificateIssuanceOperation.RENEW,
+          originalCertificateId: "cert-old",
+          ...mockActor
+        })
+        .catch(() => undefined);
+
+      expect(mockInternalCaService.signCertFromCa).toHaveBeenCalled();
+
+      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith(
+        "cert-new",
+        expect.objectContaining({ renewedFromCertificateId: "cert-old" }),
+        expect.anything()
+      );
+      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith(
+        "cert-old",
+        { renewedByCertificateId: "cert-new" },
+        expect.anything()
+      );
+    });
+
+    it("leaves renewal links of other enrollment methods unchanged", async () => {
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue({
+        id: "profile-123",
+        projectId: "project-123",
+        caId: "ca-123",
+        certificatePolicyId: "policy-123",
+        slug: "web-servers",
+        enrollmentType: EnrollmentType.EST,
+        apiConfigId: "api-config-123"
+      } as any);
+      mockCertificateRequestService.createCertificateRequest.mockResolvedValue({
+        id: "sign-req-1",
+        createdAt: new Date()
+      });
+      vi.mocked(mockInternalCaService.signCertFromCa).mockImplementation((async (dto: any) => {
+        await dto.onPersisted?.({ id: "cert-new", notAfter: new Date(Date.now() + 86400000) }, {});
+        return {
+          certificate: "cert",
+          certificateChain: "chain",
+          issuingCaCertificate: "ca",
+          certificateId: "cert-new"
+        };
+      }) as any);
+
+      await service
+        .signCertificateFromProfile({
+          profileId: "profile-123",
+          csr: "-----BEGIN CERTIFICATE REQUEST-----\nMIIC...",
+          validity: { ttl: "30d" },
+          enrollmentType: EnrollmentType.EST,
+          issuanceOperation: CertificateIssuanceOperation.RENEW,
+          originalCertificateId: "cert-old",
+          ...mockActor
+        })
+        .catch(() => undefined);
+
+      expect(mockInternalCaService.signCertFromCa).toHaveBeenCalled();
+
+      expect(mockCertificateDAL.updateById).not.toHaveBeenCalledWith(
+        "cert-new",
+        expect.objectContaining({ renewedFromCertificateId: "cert-old" }),
+        expect.anything()
+      );
+      expect(mockCertificateDAL.updateById).not.toHaveBeenCalledWith("cert-old", expect.anything(), expect.anything());
+    });
+
+    it("records the request number hook inside the issuance transaction", async () => {
+      const issuanceTx = { isTransaction: true };
+      const onCertificateRequestPersisted = vi.fn().mockResolvedValue(undefined);
+      mockCertificateRequestService.createCertificateRequest.mockResolvedValue({
+        id: "sign-req-1",
+        createdAt: new Date()
+      });
+      vi.mocked(mockInternalCaService.signCertFromCa).mockImplementation((async (dto: any) => {
+        await dto.onPersisted?.({ id: "cert-new", notAfter: new Date(Date.now() + 86400000) }, issuanceTx);
+        return {
+          certificate: "cert",
+          certificateChain: "chain",
+          issuingCaCertificate: "ca",
+          certificateId: "cert-new"
+        };
+      }) as any);
+
+      await service
+        .signCertificateFromProfile({
+          profileId: "profile-123",
+          csr: "-----BEGIN CERTIFICATE REQUEST-----\nMIIC...",
+          validity: { ttl: "30d" },
+          enrollmentType: EnrollmentType.API,
+          onCertificateRequestPersisted,
+          ...mockActor
+        })
+        .catch(() => undefined);
+
+      expect(onCertificateRequestPersisted).toHaveBeenCalledWith("sign-req-1", issuanceTx);
+    });
+
+    describe("a renewal held for approval", () => {
+      const holdTx = { isTransaction: true };
+
+      const signHeldRenewal = (enrollmentType: EnrollmentType, onCertificateRequestPersisted = vi.fn()) =>
+        service.signCertificateFromProfile({
+          profileId: "profile-123",
+          csr: "-----BEGIN CERTIFICATE REQUEST-----\nMIIC...",
+          validity: { ttl: "30d" },
+          enrollmentType,
+          issuanceOperation: CertificateIssuanceOperation.RENEW,
+          originalCertificateId: "cert-old",
+          onCertificateRequestPersisted,
+          ...mockActor
+        });
+
+      beforeEach(() => {
+        mockApprovalPolicyService.matchPolicy.mockResolvedValue({
+          id: "approval-policy-1",
+          isActive: true,
+          bypassForMachineIdentities: false,
+          maxRequestTtl: null
+        });
+        mockCertificateRequestDAL.transaction.mockImplementation(async (callback: (tx: any) => Promise<unknown>) =>
+          callback(holdTx)
+        );
+      });
+
+      it("stores the certificate a Microsoft Autoenrollment renewal replaces on the held request", async () => {
+        vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue({
+          id: "profile-123",
+          projectId: "project-123",
+          caId: "ca-123",
+          certificatePolicyId: "policy-123",
+          slug: "web-servers",
+          enrollmentType: EnrollmentType.MICROSOFT_AUTOENROLLMENT,
+          apiConfigId: "api-config-123"
+        } as any);
+
+        const result = await signHeldRenewal(EnrollmentType.MICROSOFT_AUTOENROLLMENT);
+
+        expect(result.status).toBe(CertificateRequestStatus.PENDING_APPROVAL);
+        const [storedRequest] = mockCertificateRequestDAL.create.mock.calls[0];
+        expect(storedRequest.renewedFromCertificateId).toBe("cert-old");
+      });
+
+      it("does not store a renewal link for a method that leaves renewals unlinked", async () => {
+        vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue({
+          id: "profile-123",
+          projectId: "project-123",
+          caId: "ca-123",
+          certificatePolicyId: "policy-123",
+          slug: "web-servers",
+          enrollmentType: EnrollmentType.EST,
+          apiConfigId: "api-config-123"
+        } as any);
+
+        const result = await signHeldRenewal(EnrollmentType.EST);
+
+        expect(result.status).toBe(CertificateRequestStatus.PENDING_APPROVAL);
+        const [storedRequest] = mockCertificateRequestDAL.create.mock.calls[0];
+        expect(storedRequest.renewedFromCertificateId).toBeNull();
+      });
+
+      it("runs the request number hook in the transaction that holds the request", async () => {
+        const onCertificateRequestPersisted = vi.fn().mockResolvedValue(undefined);
+
+        await signHeldRenewal(EnrollmentType.API, onCertificateRequestPersisted);
+
+        expect(onCertificateRequestPersisted).toHaveBeenCalledWith("cert-req-123", holdTx);
+      });
+    });
+
+    it("keeps the additional extension on a request held for approval", async () => {
+      mockApprovalPolicyService.matchPolicy.mockResolvedValue({
+        id: "approval-policy-1",
+        isActive: true,
+        bypassForMachineIdentities: false,
+        maxRequestTtl: null
+      });
+      mockCertificateRequestDAL.transaction.mockImplementation(async (callback: (tx: any) => Promise<unknown>) =>
+        callback({})
+      );
+
+      const result = await signWithOverride();
+
+      expect(result.status).toBe(CertificateRequestStatus.PENDING_APPROVAL);
+      expect(mockInternalCaService.signCertFromCa).not.toHaveBeenCalled();
+      const [storedRequest] = mockCertificateRequestDAL.create.mock.calls[0];
+      expect(storedRequest.commonName).toBe("laptop01.corp.example.com");
+      expect(JSON.parse(storedRequest.customExtensions ?? "[]")).toContainEqual(
+        expect.objectContaining({ oid: templateExtension.oid })
+      );
+    });
+  });
+
   describe("orderCertificate", () => {
     const mockCertificateOrder = {
       altNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "example.com" }],

@@ -38,6 +38,8 @@ export enum TableName {
   PkiScepEnrollmentConfig = "pki_scep_enrollment_configs",
   PkiScepTransaction = "pki_scep_transactions",
   PkiScepDynamicChallenge = "pki_scep_dynamic_challenges",
+  PkiMicrosoftAutoenrollmentConfig = "pki_microsoft_autoenrollment_configs",
+  PkiMicrosoftAutoenrollmentRequest = "pki_microsoft_autoenrollment_requests",
   PkiSubscriber = "pki_subscribers",
   PkiAlert = "pki_alerts",
   PkiAlertsV2 = "pki_alerts_v2",

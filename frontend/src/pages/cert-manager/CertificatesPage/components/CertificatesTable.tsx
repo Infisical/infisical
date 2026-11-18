@@ -78,7 +78,11 @@ import type {
   TSystemViewFilters
 } from "@app/hooks/api/certificateInventoryViews/types";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
-import { NON_PQC_KEY_ALGORITHMS, PQC_KEY_ALGORITHMS } from "@app/hooks/api/certificates/constants";
+import {
+  getEnrollmentTypeName,
+  NON_PQC_KEY_ALGORITHMS,
+  PQC_KEY_ALGORITHMS
+} from "@app/hooks/api/certificates/constants";
 import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
 import { useGetPkiApplicationPermissions } from "@app/hooks/api/pkiApplications/queries";
@@ -165,8 +169,7 @@ const EmptyCell = () => <span className="text-muted">—</span>;
 
 const getEnrollmentMethodBadge = (enrollmentType: string | null | undefined) => {
   if (!enrollmentType) return <EmptyCell />;
-  const label = enrollmentType.toUpperCase();
-  return <Badge variant="ghost">{label}</Badge>;
+  return <Badge variant="ghost">{getEnrollmentTypeName(enrollmentType)}</Badge>;
 };
 
 const SortIcon = ({
