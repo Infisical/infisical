@@ -1,5 +1,6 @@
 // Package aws fakes the parts of AWS that Infisical calls: STS, SSM Parameter Store,
-// Secrets Manager, IAM access keys and CloudFormation stacks.
+// Secrets Manager, IAM access keys, CloudFormation stacks, Certificate Manager, Private
+// CA, Elastic Load Balancing listeners and Route 53.
 //
 // One fake for the provider, served on each hostname the SDK resolves. Each host is its
 // own fakenet scope, so a test reads Parameter Store state from the SSM host and access
@@ -43,13 +44,19 @@ var (
 	SSM            = service{host: "ssm." + Region + ".amazonaws.com", name: "ssm", region: Region, newFake: newParameterStore}
 	SecretsManager = service{host: "secretsmanager." + Region + ".amazonaws.com", name: "secretsmanager", region: Region, newFake: newSecretsManager}
 	CloudFormation = service{host: "cloudformation." + Region + ".amazonaws.com", name: "cloudformation", region: Region, newFake: newCloudFormation}
+	ACM            = service{host: "acm." + Region + ".amazonaws.com", name: "acm", region: Region, newFake: newCertificateManager}
+	ACMPCA         = service{host: "acm-pca." + Region + ".amazonaws.com", name: "acm-pca", region: Region, newFake: newPrivateCAs}
+	ELB            = service{host: "elasticloadbalancing." + Region + ".amazonaws.com", name: "elasticloadbalancing", region: Region, newFake: newLoadBalancing}
+
+	// Route53 is global, and signed for us-east-1.
+	Route53 = service{host: "route53.amazonaws.com", name: "route53", region: "us-east-1", newFake: newHostedZones}
 
 	// IAM is global, and signed for us-east-1.
 	IAM = service{host: "iam.amazonaws.com", name: "iam", region: "us-east-1", newFake: newIAM}
 )
 
 // Services is every AWS host fakenet answers for.
-var Services = []fakenet.Service{STS, STSGlobal, SSM, SecretsManager, IAM, CloudFormation}
+var Services = []fakenet.Service{STS, STSGlobal, SSM, SecretsManager, IAM, CloudFormation, ACM, ACMPCA, ELB, Route53}
 
 type service struct {
 	host    string
@@ -222,7 +229,9 @@ func invalidToken(svc service) *apiError {
 	return errf(http.StatusForbidden, "InvalidClientTokenId", "The security token included in the request is invalid.")
 }
 
-func (s service) json() bool { return s.name == "ssm" || s.name == "secretsmanager" }
+func (s service) json() bool {
+	return s.name == "ssm" || s.name == "secretsmanager" || s.name == "acm" || s.name == "acm-pca"
+}
 
 func (s service) targetPrefix() string {
 	switch s.name {
@@ -230,6 +239,10 @@ func (s service) targetPrefix() string {
 		return "AmazonSSM."
 	case "secretsmanager":
 		return "secretsmanager."
+	case "acm":
+		return "CertificateManager."
+	case "acm-pca":
+		return "ACMPrivateCA."
 	}
 	return ""
 }
@@ -366,6 +379,10 @@ func namespace(s service) string {
 		return "https://iam.amazonaws.com/doc/2010-05-08/"
 	case "cloudformation":
 		return "http://cloudformation.amazonaws.com/doc/2010-05-15/"
+	case "elasticloadbalancing":
+		return "http://elasticloadbalancing.amazonaws.com/doc/2015-12-01/"
+	case "route53":
+		return route53Namespace
 	}
 	return ""
 }

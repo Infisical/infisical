@@ -1,6 +1,7 @@
 package pki
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
@@ -35,4 +36,12 @@ func EnableSCEP(tt *testing.T, app Application, profile Profile, body api.SetPki
 	res, err := app.project.tn.Admin.API.SetPkiApplicationScepEnrollmentWithResponse(tt.Context(), app.ID, profile.ID, body)
 	require.NoError(tt, err, "enabling SCEP enrollment")
 	require.NotNilf(tt, res.JSON200, "enabling SCEP enrollment returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+}
+
+// EnableAPI turns on API enrollment for a profile of the application.
+func EnableAPI(tt *testing.T, app Application, profile Profile, body api.SetPkiApplicationApiEnrollmentJSONRequestBody) {
+	tt.Helper()
+	res, err := app.project.tn.Admin.API.SetPkiApplicationApiEnrollmentWithResponse(tt.Context(), app.ID, profile.ID, body)
+	require.NoError(tt, err, "enabling API enrollment")
+	require.Equalf(tt, http.StatusOK, res.StatusCode(), "enabling API enrollment: %s", apierr.Body(res.Body))
 }

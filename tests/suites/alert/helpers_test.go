@@ -17,6 +17,8 @@ const (
 	identityAuthentication = "identity.authentication"
 	authMethodChanged      = "identity.authentication.auth-method-changed"
 	authExpiry             = "identity.authentication.expiry"
+	certManager            = "cert-manager"
+	certificateExpiry      = "cert-manager.certificate.expiry"
 )
 
 // alertBody is a create request. Sent as raw JSON so a test can send what the typed

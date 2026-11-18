@@ -118,10 +118,20 @@ func (s *Server) Admin(ca *CA) http.Handler {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
+	mux.HandleFunc("PUT "+AdminPrefix+"/tls/{name}", adminServeCertificate(ca))
+	mux.HandleFunc("DELETE "+AdminPrefix+"/tls/{name}", adminServeCertificate(ca))
+
 	mux.HandleFunc("DELETE "+AdminPrefix+"/scopes/{host}/{key}", func(w http.ResponseWriter, r *http.Request) {
+		id := scopeID{r.PathValue("host"), r.PathValue("key")}
 		s.mu.Lock()
-		delete(s.scopes, scopeID{r.PathValue("host"), r.PathValue("key")})
+		sc := s.scopes[id]
+		delete(s.scopes, id)
 		s.mu.Unlock()
+		if sc != nil {
+			if rel, ok := sc.fake.(Releaser); ok {
+				rel.Release()
+			}
+		}
 		w.WriteHeader(http.StatusNoContent)
 	})
 

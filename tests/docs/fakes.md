@@ -73,8 +73,11 @@ A fake is the external service; a kind is how one Infisical resource connects to
 1. Add `fixture/appconnection_<app>.go` declaring an `AppConnectionKind` named after the
    app, auth method, and resource: `GitHubPATAppConnection`.
 2. Take the host from the fake (`github.Service.Host()`); never write it twice.
-3. The host must be one the client hardcodes. Pointing a configurable base URL at
-   fakenet proves the fake works and nothing about interception.
+3. For a vendor-hosted API, the host must be the one the client calls by default.
+   Pointing a configurable base URL at fakenet proves the fake works and nothing about
+   interception. A customer-hosted service, such as an appliance, has no default host:
+   pass the fake's fixed `.test` name through the connection's normal host setting (see
+   the [appliance table](#certificate-manager)).
 
 A different resource on the same service, such as a dynamic secret, gets its own kind
 type in its product's fixture package and reuses the fake.
@@ -133,8 +136,24 @@ record, so publish it first; it is removed when the test ends.
 fakenet.SetTXT(t, fixture.FakenetAdmin(t, tn), "_infisical-verification.acme.test", "value")
 ```
 
-DNS provider fakes (`cloudflare`, `dnsmadeeasy`) serve the TXT records created through
+DNS provider fakes (`cloudflare`, `dnsmadeeasy`, and Route 53 in `aws`) serve the TXT records created through
 their APIs the same way, through `Emitter.SetTXT`, as the provider's nameservers would.
+
+## TLS certificates
+
+fakenet answers TLS on port 443 for every name with a certificate it mints for that
+name. A product that reads what a server presents, such as certificate discovery, can be
+shown a certificate the test chose instead, until the test ends. The override is keyed by
+hostname alone on the one listener every test shares, so generate the name per test and
+use it for the certificate, the override, and what the product scans:
+
+```go
+name := "www-" + id.Short() + ".acme.test"
+fakenet.ServeCertificate(t, fixture.FakenetAdmin(t, tn), name, certPEM, keyPEM)
+```
+
+`fakenet.StallPort` accepts TCP connections on every name and never answers, for a test
+that needs a client to wait out its own timeout, such as a discovery scan kept running.
 
 ## Certificate Manager
 
@@ -142,10 +161,35 @@ their APIs the same way, through `Emitter.SetTXT`, as the provider's nameservers
 |---|---|---|---|
 | `website` | every name under `web.test`, over plain HTTP on port 80 | the label left of `web.test` | ACME HTTP-01: the web server behind a name the test makes up (`website.Name(scope, "www")`) |
 | `acmeca` | `acme.ca.test/<scope>` | path | the upstream CA an ACME CA in Infisical orders from; verifies JWS, nonces and CSR names, and validates DNS-01 against the TXT records the DNS provider fakes publish |
-| `cloudflare` | `api.cloudflare.com` | bearer API token | Cloudflare App Connections and DNS-01 records |
+| `cloudflare` | `api.cloudflare.com` | bearer API token | Cloudflare App Connections, DNS-01 records, and custom certificate syncs (paged list, upload, in-place update, delete) |
 | `dnsmadeeasy` | `api.dnsmadeeasy.com` | `x-dnsme-apiKey`, with the HMAC checked | DNS Made Easy App Connections and DNS-01 records |
+| `digicert` | `www.digicert.com` | `X-DC-DEVKEY` API key | DigiCert CAs: orders issue at once for names under a domain the account validated, otherwise wait for the DCV TXT record and a validation trigger |
+| `godaddy` | `api.godaddy.com` | API key of the `sso-key` header | GoDaddy CAs: certificates issue once domain control is proven and validation is triggered |
+| `venafitpp` | `tpp.venafi.test/<scope>` | path; the user is checked against `venafitpp.Password` | Venafi TPP CAs: OAuth tokens, requests under a policy folder, a retrieve that answers 202 once before the certificate, token revocation |
+| `aws` | `acm`, `acm-pca` and `elasticloadbalancing` in `us-east-1`; `route53.amazonaws.com` | access key id | AWS Private CA (`SeedPrivateCA`), ACM Public CA (a requested certificate reports its validation CNAME and is issued on the first status check, so ACM's 60 second retry never runs, but exports only once Route 53 serves that CNAME), ACM, ELB and Secrets Manager certificate syncs (`SeedListener`), Route 53 DNS-01 and validation records (`SeedHostedZone`; TXT records served through `Emitter.SetTXT`) |
+| `azureadcs` | `certsrv.adcs.test/<scope>` | path; NTLMv2 checked against `azureadcs.Password` | Azure AD CS CAs: web enrollment through `certfnsh.asp` and `certnew.cer`, denying templates the CA does not publish |
+| `azure` | `*.vault.azure.net` | client id the tenant's token names (`fixture.AzureClientID`) | Azure Key Vault certificate syncs: PEM imports with their key, versions, soft-deleted names |
+| `chef` | `api.chef.io` | `X-Ops-UserId`, with the request signature checked | Chef certificate syncs: data bag items |
+| `imperva` | `my.imperva.com`, `api.imperva.com` | `x-API-Id`, with the key checked | Imperva certificate syncs: a site's custom certificate per key type |
+| `oauth` | `www.googleapis.com` (the instance's JWT grant), `iamcredentials.googleapis.com`, `certificatemanager.googleapis.com` | impersonated service account email (`fixture.GCPServiceAccountEmail`) | GCP Certificate Manager syncs: impersonation, certificates, long-running operations done once polled |
 
 A host registered as `*.<domain>` answers for every name under it; an exact host wins.
+
+Appliances the customer hosts have no real hostname, so each fake answers on one fixed
+`.test` name on port 443, and the connection's username, whose password the fake derives
+(`<fake>.Password`), is the scope.
+
+| Fake | Host | Scope | Used by |
+|---|---|---|---|
+| `f5bigip` | `bigip.f5.test` | username, then the `X-F5-Auth-Token` it issued | F5 BIG-IP certificate syncs: file uploads, `ssl-cert` and `ssl-key` installs, config saves |
+| `kemp` | `loadmaster.kemp.test` | basic auth username | Kemp LoadMaster certificate syncs: certificates and the intermediate store |
+| `netscaler` | `adc.netscaler.test` | username, then the `NITRO_AUTH_TOKEN` cookie it issued | NetScaler certificate syncs: file uploads, certkeys, config saves |
+| `nutanix` | `prism.nutanix.test` | basic auth username or `X-ntnx-api-key` | Nutanix Prism Central certificate syncs: the cluster certificate, replaced only with the current ETag |
+| `panos` | `firewall.panos.test` | username, then the `X-PAN-KEY` it issued | Palo Alto Networks certificate syncs: keygen, imports, SSL/TLS service profiles, commits |
+| `linuxserver` | SSH on port 22, any name (`ssh.linux.test` in connections) | SSH username | Linux Server certificate syncs: password logins, an SFTP filesystem (`WithDirectories`), and the `chown` command; anything else exits 127 |
+
+Like LDAP, `linuxserver` is not HTTP: fakenet serves it on its own listener and finds the
+host by the username of each login. Seed and read it through the admin API.
 
 ## Test plumbing once
 

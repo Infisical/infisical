@@ -34,6 +34,10 @@ type Emitter struct {
 	key  string
 }
 
+// Scope is the scope key the emitter publishes for, for a provider whose hosts share
+// one account's state, which the fake can then find by it.
+func (e Emitter) Scope() string { return e.key }
+
 // SetTXT answers DNS TXT queries for name with values, for a fake that is a DNS
 // provider: a record created through its API is then served the way the provider's
 // nameservers would serve it. No values removes the name.

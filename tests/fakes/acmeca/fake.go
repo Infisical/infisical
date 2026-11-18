@@ -1,21 +1,18 @@
 package acmeca
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"math/big"
 	"net/http"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/Infisical/infisical/tests/fakes/internal/issuer"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 )
 
@@ -39,30 +36,8 @@ func DirectoryURL(scope string) string {
 }
 
 func (service) New(events fakenet.Emitter) fakenet.Fake {
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		panic(err)
-	}
-	tmpl := &x509.Certificate{
-		SerialNumber:          big.NewInt(1),
-		Subject:               pkix.Name{CommonName: "Fake ACME Root CA"},
-		NotBefore:             time.Now().Add(-time.Hour),
-		NotAfter:              time.Now().Add(10 * 365 * 24 * time.Hour),
-		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
-		BasicConstraintsValid: true,
-		IsCA:                  true,
-	}
-	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
-	if err != nil {
-		panic(err)
-	}
-	cert, err := x509.ParseCertificate(der)
-	if err != nil {
-		panic(err)
-	}
-
 	c := &CA{
-		Issued: []Issued{}, events: events, key: key, cert: cert,
+		Issued: []Issued{}, events: events, root: issuer.New("Fake ACME Root CA"),
 		nonces: map[string]bool{}, accounts: map[string]*account{}, orders: map[string]*order{},
 		authzs: map[string]*authorization{}, challenges: map[string]*challenge{},
 	}
@@ -392,12 +367,11 @@ func (c *CA) sign(orderID string, names []string, csr *x509.CertificateRequest) 
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	}
-	der, err := x509.CreateCertificate(rand.Reader, tmpl, c.cert, csr.PublicKey, c.key)
+	der, err := c.root.Create(tmpl, csr.PublicKey)
 	if err != nil {
 		return Issued{}, err
 	}
-	chain := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})) +
-		string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.cert.Raw}))
+	chain := issuer.PEM(der) + c.root.RootPEM()
 	return Issued{OrderID: orderID, Names: names, Serial: hex.EncodeToString(serial.Bytes()), PEM: chain, IssuedAt: time.Now().UTC()}, nil
 }
 

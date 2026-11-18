@@ -48,6 +48,12 @@ type Fake interface {
 	Seed([]byte) error
 }
 
+// Releaser is a Fake that holds state outside its own scope, such as an account two
+// hosts share, and gives it up when the test removes the scope.
+type Releaser interface {
+	Release()
+}
+
 // Call is one request a scope received.
 type Call struct {
 	Method string    `json:"method"`

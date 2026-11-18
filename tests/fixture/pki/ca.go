@@ -1,7 +1,9 @@
 package pki
 
 import (
+	"net/http"
 	"testing"
+	"time"
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture"
@@ -53,4 +55,52 @@ func NewAcmeCA(tt *testing.T, p *Project, dns *fixture.AppConnection, provider a
 	require.NoError(tt, err, "creating an ACME CA")
 	require.NotNilf(tt, res.JSON200, "creating an ACME CA returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 	return CA{ID: res.JSON200.Id}
+}
+
+// NewPendingIntermediateCA creates an intermediate CA on an RSA-2048 key that waits
+// for its certificate, and returns it with its CSR.
+func NewPendingIntermediateCA(tt *testing.T, p *Project) (CA, string) {
+	tt.Helper()
+	client := p.tn.Admin.API
+	body := api.CreateInternalCertificateAuthorityV1JSONRequestBody{
+		ProjectId: &p.ID,
+		Name:      "ca-" + id.Short(),
+		Status:    api.CreateInternalCertificateAuthorityV1JSONBodyStatusPendingCertificate,
+	}
+	body.Configuration.Type = api.CreateInternalCertificateAuthorityV1JSONBodyConfigurationTypeIntermediate
+	body.Configuration.KeyAlgorithm = api.CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmRSA2048
+	body.Configuration.Organization = new("Infisical Harness")
+	body.Configuration.CommonName = new("Harness Intermediate " + id.Short())
+	res, err := client.CreateInternalCertificateAuthorityV1WithResponse(tt.Context(), body)
+	require.NoError(tt, err, "creating an intermediate CA")
+	require.NotNilf(tt, res.JSON200, "creating an intermediate CA returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	ca := CA{ID: res.JSON200.Id}
+
+	csr, err := client.GetCaCsrWithResponse(tt.Context(), ca.ID.String(), nil)
+	require.NoError(tt, err, "reading the intermediate's CSR")
+	require.NotNilf(tt, csr.JSON200, "reading the intermediate's CSR returned %d: %s", csr.StatusCode(), apierr.Body(csr.Body))
+	return ca, csr.JSON200.Csr
+}
+
+// NewIntermediateCA creates an intermediate CA on an RSA-2048 key and installs a
+// certificate the parent signs over its CSR, valid for a year.
+func NewIntermediateCA(tt *testing.T, p *Project, parent CA) CA {
+	tt.Helper()
+	client := p.tn.Admin.API
+	ca, csr := NewPendingIntermediateCA(tt, p)
+
+	signed, err := client.SignIntermediateCaWithResponse(tt.Context(), parent.ID.String(), api.SignIntermediateCaJSONRequestBody{
+		Csr:      csr,
+		NotAfter: time.Now().AddDate(1, 0, 0).UTC().Format(time.RFC3339),
+	})
+	require.NoError(tt, err, "signing the intermediate")
+	require.NotNilf(tt, signed.JSON200, "signing the intermediate returned %d: %s", signed.StatusCode(), apierr.Body(signed.Body))
+
+	imp, err := client.ImportCaCertificateWithResponse(tt.Context(), ca.ID.String(), api.ImportCaCertificateJSONRequestBody{
+		Certificate:      signed.JSON200.Certificate,
+		CertificateChain: signed.JSON200.CertificateChain,
+	})
+	require.NoError(tt, err, "installing the intermediate's certificate")
+	require.Equalf(tt, http.StatusOK, imp.StatusCode(), "installing the intermediate's certificate: %s", apierr.Body(imp.Body))
+	return ca
 }
