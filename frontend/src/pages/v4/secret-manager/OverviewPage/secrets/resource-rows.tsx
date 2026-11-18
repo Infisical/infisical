@@ -54,6 +54,7 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 
 import { v4Path } from "../../../links";
+import { nameLabel } from "../../../shell/resource-name";
 import { withoutDefaults } from "../../search-defaults";
 import {
   environments,
@@ -967,27 +968,31 @@ export function ImportRow({
   entries,
   ctx,
   sourceSecrets,
-  projectName,
+  projectId,
   sites
 }: {
   rowKey: string;
   entries: Of<"import">[];
   ctx: RowContext;
   sourceSecrets: (entry: Of<"import">) => Secret[];
-  projectName: string;
+  projectId: string;
   sites: EnvironmentOption[];
 }) {
   const expanded = ctx.expanded.includes(rowKey);
   const setExpanded = (open: boolean) => ctx.onExpand(rowKey, open);
   const first = entries[0];
-  const crossProject = first.source.project !== projectName;
+  const crossProject = first.source.project !== projectId;
+  const sourceProject = nameLabel(
+    { id: first.source.project, name: first.sourceProjectName, pending: false },
+    "project"
+  );
   const sourceEnvironment =
     environments.find((environment) => environment.value === first.source.environment)?.label ??
     first.source.environment;
   const label = (
     <>
       <span className={`${styles.importLabel} ${styles.importWide}`}>
-        {crossProject && <Badge tone="warn">{first.source.project}</Badge>}
+        {crossProject && <Badge tone="warn">{sourceProject}</Badge>}
         <Badge tone="outline">
           <Icon icon={LayersIcon} />
           {sourceEnvironment}
@@ -999,7 +1004,8 @@ export function ImportRow({
         <span className={styles.truncate}>{first.source.path}</span>
         <span className={styles.nameDetails}>
           <span className={styles.subtle}>
-            {crossProject ? `${first.source.project} ${sourceEnvironment}` : sourceEnvironment}
+            {crossProject && <>{sourceProject} </>}
+            {sourceEnvironment}
           </span>
         </span>
       </span>

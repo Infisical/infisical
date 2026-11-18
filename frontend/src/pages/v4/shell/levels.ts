@@ -86,7 +86,7 @@ export const shellTrail = ({
     at.settings && shellLevel(linkTo, "project-settings", "Settings", at.settings);
   const opens = projectSettings ? { settings: projectSettings } : undefined;
   if (at.projectId)
-    trail.push(shellLevel(linkTo, at.level, projectName ?? at.projectId, at.sections, opens));
+    trail.push(shellLevel(linkTo, at.level, projectName ?? "Project", at.sections, opens));
   else if (at.level === "pki" || at.level === "scanning" || at.level === "pam")
     trail.push(shellLevel(linkTo, at.level, product?.label ?? at.level, at.sections, opens));
   if (projectSettings && at.inSettings) trail.push(projectSettings);

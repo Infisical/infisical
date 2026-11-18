@@ -162,6 +162,7 @@ export const buildResources = ({
         environment: entry.importEnv.slug,
         path: entry.importPath
       },
+      sourceProjectName: entry.sourceProjectName,
       revoked: Boolean(entry.isAccessRevoked),
       replicated: Boolean(entry.isReplication),
       replicationStatus: replicationOf(entry.isReplication, entry.isReplicationSuccess),

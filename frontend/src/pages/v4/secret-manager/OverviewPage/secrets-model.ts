@@ -54,6 +54,7 @@ export type Resource =
   | (ResourceBase & {
       kind: "import";
       source: Scope;
+      sourceProjectName?: string;
       revoked: boolean;
       replicated: boolean;
       replicationStatus?: "succeeded" | "failed";

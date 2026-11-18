@@ -618,6 +618,21 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
           lastReplicated: "2026-10-22T08:00:00Z"
         }
       ),
+      secretImport(
+        "/",
+        "dev",
+        { environment: "prod", path: "/shared" },
+        {
+          importEnv: { ...envOf("prod"), projectId: "platform-core" },
+          sourceProjectName: "platform-core"
+        }
+      ),
+      secretImport(
+        "/",
+        "dev",
+        { environment: "prod", path: "/billing" },
+        { importEnv: { ...envOf("prod"), projectId: "7d2e9a41-58c3-4b6f-9e0a-1c5f3b8d2a67" } }
+      ),
       secretImport("/api", "dev", { environment: "dev", path: "/workers" }),
       secretImport("/api", "prod", { environment: "staging", path: "/api/v1" }),
       ...many
