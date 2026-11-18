@@ -419,6 +419,22 @@ export type TAgentVaultSessionInlineService = (
   hook?: TAgentVaultServiceHook | null;
 };
 
+/** A project service a session names. Only what identifies it is returned. */
+export type TAgentVaultSessionNamedService = {
+  id: string;
+  name: string;
+  type: AgentVaultServiceType;
+  description: string | null;
+  /** The host an HTTP or MCP service matches. Null for database and SSH services. */
+  hostPattern: string | null;
+  isInline: false;
+};
+
+/** A session's service: a project service it names, or one sent with it. */
+export type TAgentVaultSessionService =
+  | (TAgentVaultSessionInlineService & { isInline: true })
+  | TAgentVaultSessionNamedService;
+
 export type TAgentVaultSessionActor =
   | (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }>, "id"> & {
       id: string | null;
@@ -436,6 +452,7 @@ export type TAgentVaultSessionOnBehalfOf = Extract<
 export type TAgentVaultSession = {
   id: string;
   label: string | null;
+  metadata: Record<string, string>;
   actor: TAgentVaultSessionActor;
   onBehalfOf: TAgentVaultSessionOnBehalfOf | null;
   status: AgentVaultSessionStatus;
@@ -443,7 +460,8 @@ export type TAgentVaultSession = {
   revokedAt: string | null;
   createdAt: string;
   accessBundle: TAgentVaultSessionAccessBundle | null;
-  services: TAgentVaultSessionInlineService[];
+  /** The services it names and the ones sent with it, in the order they were sent. Its access bundle's aren't listed. */
+  services: TAgentVaultSessionService[];
   /** Null until the proxy uploads the session's first log chunk. */
   stats: TAgentVaultSessionStats | null;
 };
@@ -497,12 +515,13 @@ export type TSetAgentVaultDelegationDTO = {
 export type TAgentVaultMintedSession = {
   id: string;
   label: string | null;
+  metadata: Record<string, string>;
   token: string;
   expiresAt: string | null;
   createdAt: string;
   projectId: string;
   accessBundle: TAgentVaultSessionAccessBundle | null;
-  services: TAgentVaultSessionInlineService[];
+  services: TAgentVaultSessionService[];
 };
 
 export type TAgentVaultProxy = {
@@ -539,6 +558,7 @@ export type TListAgentVaultSessionsDTO = {
   limit?: number;
   offset?: number;
   search?: string;
+  metadata?: Record<string, string>;
 };
 
 export type TCreateAgentVaultAccessBundleDTO = {
@@ -680,15 +700,21 @@ export type TAddAgentVaultMembersDTO = TAgentVaultActorIdsDTO & {
   accessBundleId: string;
 };
 
+// Needs an access bundle, at least one service, or both. Each is named rather than referenced by ID. The API also takes
+// services defined inline, which this UI doesn't send.
 export type TCreateAgentVaultSessionDTO = {
-  accessBundle: string;
+  accessBundle?: string;
+  services?: string[];
   ttl: string;
   label?: string;
+  metadata?: Record<string, string>;
 };
 
-export type TUpdateAgentVaultSessionLabelDTO = {
+export type TUpdateAgentVaultSessionDTO = {
   sessionId: string;
-  label: string | null;
+  label?: string | null;
+  /** Replaces the session's whole metadata set; an empty object clears it. */
+  metadata?: Record<string, string>;
 };
 
 export type TAgentVaultProxySettingsDTO = {
@@ -1027,4 +1053,21 @@ export type TUpdateAgentVaultSkillDTO = TCreateAgentVaultSkillDTO & {
   skillId: string;
   /** The version the files were edited from. The server refuses the save when a newer one was published since. */
   baseVersion?: number;
+};
+
+export type TAgentVaultFreeUsage = {
+  used: number;
+  limit: number;
+  resetsAt: string;
+};
+
+export type TAgentVaultAccess = {
+  /** `free` and `limit-reached` are orgs without Agent Vault on their plan, counted against the free monthly requests. */
+  state: "self-hosted" | "plan" | "open" | "free" | "limit-reached";
+  /** False once the free requests are used: proxies refuse agent requests until a payment method is added or the month resets. */
+  allowed: boolean;
+  /** Only for an org on the free tier. Org-wide: sub-organizations share their root's count. */
+  freeUsage: TAgentVaultFreeUsage | null;
+  /** True from 80% of the free requests. */
+  warn: boolean;
 };

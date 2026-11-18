@@ -10,6 +10,7 @@ import {
   TApprovalPolicies,
   TApprovalRequests
 } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -26,9 +27,9 @@ import {
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TSlackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
@@ -105,7 +106,7 @@ type TApprovalPolicyServiceFactoryDep = {
   approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findByIdWithWorkflowIntegrationDetails">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   notificationService: TNotificationServiceFactory;
   permissionService: Pick<
     TPermissionServiceFactory,
@@ -153,7 +154,7 @@ export const approvalPolicyServiceFactory = ({
   approvalRequestGrantsDAL,
   userGroupMembershipDAL,
   slackIntegrationDAL,
-  kmsService,
+  kmsDataKeyService,
   notificationService,
   permissionService,
   licenseService,
@@ -181,7 +182,7 @@ export const approvalPolicyServiceFactory = ({
     notificationService,
     smtpService,
     slackIntegrationDAL,
-    kmsService
+    kmsDataKeyService
   };
 
   const $notify = (args: {
@@ -273,7 +274,7 @@ export const approvalPolicyServiceFactory = ({
     actor: TApprovalActor,
     ctx: TDecorationContext = $buildDecorationContext(actor)
   ): Promise<R & TBypassAffordances & TAutoApprovalAffordance> => {
-    const autoApproval = toAutoApprovalOutcome(request);
+    const autoApproval = toAutoApprovalOutcome(request, { hideAi: request.requesterId === actor.id });
 
     if (!resources[request.type as ApprovalPolicyType]?.isBreakGlassEligible) {
       return { ...request, canBreakGlass: false, isBreakGlass: false, bypassReason: null, autoApproval };
@@ -1378,7 +1379,17 @@ export const approvalPolicyServiceFactory = ({
             approvalRequestDAL.hasApprovedRequestLinkingRecord({ policyId: evaluatedPolicyId, ...record }),
           orgId: actor.orgId,
           projectId,
-          ctx: { requester: { email: requesterEmail || null } }
+          ctx: {
+            requester: { email: requesterEmail || null },
+            request: {
+              policyType,
+              policyName: policy.name,
+              requester: { name: requesterName || null, email: requesterEmail || null },
+              justification: justification ?? null,
+              duration: requestDuration ?? null,
+              details: requestData
+            }
+          }
         });
 
         const current = await checkAgainstPolicy();
@@ -1415,7 +1426,7 @@ export const approvalPolicyServiceFactory = ({
         const closest = autoApprovalEvidence ? getClosestFailedRule(autoApprovalEvidence) : null;
         throw new BadRequestError({
           message: closest
-            ? `Request rejected because it didn't pass an auto-approval rule. There are no approvers to review it. Closest rule "${closest.ruleName}": ${closest.reason}`
+            ? `Request rejected because it didn't pass an auto-approval rule. There are no approvers to review it.${closest.reason ? ` Closest rule "${closest.ruleName}": ${closest.reason}` : ""}`
             : "Request rejected. There are no approvers to review it. Auto-approval doesn't apply to this request either."
         });
       }
@@ -1528,6 +1539,15 @@ export const approvalPolicyServiceFactory = ({
     return { request: decorated };
   };
 
+  const $assertNotScopeNarrowed = () => {
+    if (isScopeNarrowedRequest()) {
+      throw new ForbiddenRequestError({
+        message:
+          "An OAuth application with scoped access cannot approve, reject, or bypass approval requests. Sign in to Infisical to review this request."
+      });
+    }
+  };
+
   const approveRequest = async (
     requestId: string,
     { comment, bypassReason }: { comment?: string; bypassReason?: string },
@@ -1537,6 +1557,8 @@ export const approvalPolicyServiceFactory = ({
     request: TApprovalRequests & { steps: unknown[] } & TBypassAffordances;
     bypassMetadata?: BreakGlassBypassMetadata;
   }> => {
+    $assertNotScopeNarrowed();
+
     const request = await approvalRequestDAL.findById(requestId);
     if (!request) {
       throw new ForbiddenRequestError({ message: "Request not found" });
@@ -1767,6 +1789,8 @@ export const approvalPolicyServiceFactory = ({
     actor: TApprovalActor,
     policyType: ApprovalPolicyType
   ) => {
+    $assertNotScopeNarrowed();
+
     const request = await approvalRequestDAL.findById(requestId);
     if (!request) {
       throw new ForbiddenRequestError({ message: "Request not found" });
@@ -2305,7 +2329,8 @@ export const approvalPolicyServiceFactory = ({
       subject,
       constraint,
       search,
-      siblings
+      siblings,
+      selected
     }: {
       scope: ApprovalPolicyScope;
       scopeId: string;
@@ -2314,6 +2339,7 @@ export const approvalPolicyServiceFactory = ({
       constraint: string;
       search?: string;
       siblings: Record<string, string[]>;
+      selected: string[];
     },
     actor: TApprovalActor
   ) => {
@@ -2327,7 +2353,16 @@ export const approvalPolicyServiceFactory = ({
       policyType
     );
 
-    return autoApprovalService.listOptions({ projectId, actor, connectionId, subject, constraint, search, siblings });
+    return autoApprovalService.listOptions({
+      projectId,
+      actor,
+      connectionId,
+      subject,
+      constraint,
+      search,
+      siblings,
+      selected
+    });
   };
 
   const $actorGrantFilter = (actor: TApprovalSubjectActor) =>
@@ -2588,10 +2623,13 @@ export const approvalPolicyServiceFactory = ({
     });
     if (!isApprover) return null;
 
-    const requests = await approvalRequestDAL.findByProjectId(policyType, projectId);
+    const requests = await approvalRequestDAL.findByProjectId(policyType, projectId, {
+      status: ApprovalRequestStatus.Pending
+    });
     const candidates = requests.filter((request) => {
-      if (request.status !== ApprovalRequestStatus.Pending) return false;
       if (scopeId && request.scopeId !== scopeId) return false;
+      if ($isRequester(request, actor)) return false;
+      if (isApprovalRequestExpired(request)) return false;
 
       const currentStep = request.steps.find((step) => step.stepNumber === request.currentStep);
       return Boolean(currentStep && $namesActor(currentStep.approvers, actor.id, userGroupIds));

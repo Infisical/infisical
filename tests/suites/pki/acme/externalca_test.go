@@ -75,10 +75,8 @@ func allowNames(t *testing.T, commonName, dnsName string) api.CreateCertificateP
 	return body
 }
 
-// withCertificateKey makes the project's certificate KMS key exist before parallel
-// subtests use it. Infisical creates that key on first use without locking the project
-// (getProjectKmsCertificateKeyId), so concurrent first uses each create one and data
-// encrypted under the losing key no longer decrypts.
+// withCertificateKey creates the project's certificate KMS key before parallel subtests
+// run, so none of them goes through first-use creation.
 func withCertificateKey(t *testing.T, proj *pki.Project) {
 	t.Helper()
 	pki.NewInternalCA(t, proj)

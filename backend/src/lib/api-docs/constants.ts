@@ -1300,7 +1300,8 @@ export const PROJECTS = {
     notBeforeFrom: "Filter certificates issued on or after this date.",
     notBeforeTo: "Filter certificates issued on or before this date.",
     sortBy: "Column to sort by (e.g. 'notAfter', 'notBefore', 'commonName').",
-    sortOrder: "Sort direction: 'asc' or 'desc'."
+    sortOrder: "Sort direction: 'asc' or 'desc'.",
+    applicationIds: "Filter to certificates issued through any of the supplied Applications."
   },
   LIST_PKI_SUBSCRIBERS: {
     projectId: "The ID of the project to list PKI subscribers for."
@@ -2508,6 +2509,20 @@ export const CERTIFICATES = {
     deletedByActorId: "The ID of the user or machine identity that deleted this certificate.",
     deletedByActorName: "The name of the user or machine identity that deleted this certificate, if it still exists."
   },
+  SEARCH: {
+    search: "Search by common name, SAN, serial number, or certificate ID.",
+    createdAtFrom: "Filter certificates created on or after this date.",
+    createdAtTo: "Filter certificates created on or before this date.",
+    status:
+      "List of statuses to filter by, for example ['active', 'expired']. Allowed values: active, renewed, expired, revoked, deleted. Returns exactly the certificates whose status in the response is one of these values. If you leave it out, every certificate except deleted ones is returned.",
+    keyAlgorithm: "List of key algorithms to filter by, for example ['RSA_2048', 'EC_prime256v1'].",
+    source:
+      "List of certificate sources to filter by, for example ['issued']. Allowed values: issued, discovered, imported.",
+    sortBy:
+      "Field to sort by: 'notAfter', 'notBefore', 'createdAt', 'commonName', 'keyAlgorithm' or 'status'. Sorting by status orders the statuses returned in the response alphabetically: active, deleted, expired, renewed, revoked in ascending order.",
+    statusRes:
+      "The certificate's current state, worked out once when the search starts, so every certificate in the response is evaluated at the same moment. 'deleted' if the certificate was deleted, otherwise 'revoked' if it was revoked, 'expired' if its validity period has ended, 'renewed' if a newer certificate has replaced it, and 'active' otherwise. Getting a certificate by ID returns its stored status instead, which stays 'active' after the certificate expires or is renewed."
+  },
   RENEW: {
     id: "The ID of the certificate to renew.",
     renewalKeySource:
@@ -3413,6 +3428,9 @@ export const AppConnections = {
         "Whether or not to reject untrusted SSL certificates (true/false). Set to false for iLO interfaces using self-signed certificates.",
       sslCertificate: "The CA certificate (PEM format) used to verify the iLO interface's TLS certificate."
     },
+    INCIDENT_IO: {
+      apiKey: "The incident.io API key used to read on-call schedules. It needs the View on-call resources permission."
+    },
     JIRA: {
       instanceUrl:
         "The URL of your Jira site (e.g., 'https://your-domain.atlassian.net' for Jira Cloud or 'https://jira.example.com' for Jira Data Center).",
@@ -3646,7 +3664,7 @@ export const SecretSyncs = {
     },
     AZURE_APP_CONFIGURATION: {
       configurationUrl:
-        "The URL of the Azure App Configuration to sync secrets to. Example: https://example.azconfig.io/",
+        "The URL of the Azure App Configuration to sync secrets to. Example: https://example.azconfig.io",
       label: "An optional label to assign to secrets created in Azure App Configuration.",
       tenantId: "The Tenant ID to use to connect with Azure Client Secrets.",
       clientId: "The Client ID to use to connect with Azure Client Secrets.",
@@ -3807,6 +3825,9 @@ export const SecretSyncs = {
       storeName: "An optional display name for the Cloudflare Secrets Store.",
       scopes:
         "The Cloudflare services allowed to use the synced secrets. Applied every time a secret is written, so it replaces scopes set in Cloudflare."
+    },
+    CONVEX: {
+      deploymentName: "The name of the Convex deployment to sync secrets to, such as happy-otter-123."
     },
     ZABBIX: {
       scope: "The Zabbix scope that secrets should be synced to.",
@@ -4821,6 +4842,10 @@ export const AGENT_VAULT = {
       "true lists only the services that still need your personal values; false leaves them out. Leave it out to list both.",
     granted:
       "true lists only services in access bundles granted to you, leaving out ones an admin reaches only through their role.",
+    onBehalfOfUserId:
+      "List the services a session on behalf of this user could name: those in an access bundle granted to both the user and your machine identity. accessBundles then lists those shared bundles, and requiresSetup and personalValues refer to the user's personal values, which say only whether each value is set. Only a machine identity whose delegation covers the user can do this, and granted can't be combined with it. Set this or onBehalfOfUserEmail, not both.",
+    onBehalfOfUserEmail:
+      "Like onBehalfOfUserId, naming the user by email address instead. Set this or onBehalfOfUserId, not both.",
     orderBy: "What to sort services by: name, type, or createdAt.",
     orderDirection: "The sort direction, asc or desc.",
     description:
@@ -5000,11 +5025,15 @@ export const AGENT_VAULT = {
     isSet: "Whether you have set this value.",
     updatedAt: "When this value last changed, or null if you haven't set it.",
     variableReferences: "Your personal variables that this value uses.",
+    serviceVariableReferences:
+      "Your personal variables that this value uses. Left out when a machine identity lists services on a user's behalf.",
     values:
       "The values to set, at most one per field the service leaves to its members. A field you leave out keeps its saved value, so after a field becomes member provided you only need to send that one.",
     value: `The value. Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to your personal variables, written as \`{{KEY}}\`. Never returned once saved.`,
     oauth:
       "For the credential-value field of a service that leaves its OAuth sign-in to members: your connection's status, or null if you haven't connected. Null for every other field.",
+    serviceOauth:
+      "For the credential-value field of a service that leaves its OAuth sign-in to members: your connection's status, or null if you haven't connected. Null for every other field, and left out when a machine identity lists services on a user's behalf.",
     oauthStatus:
       "`connected`, `needs-reauthorization` (your login is no longer accepted, so connect again; until then your sessions can't use the service), or `needs-additional-scopes` (the MCP server asked for scopes your connection lacks; connect again to grant them).",
     oauthRequiredScopes: "Scopes the MCP server asked for that your connection lacks. Connect again to grant them.",
@@ -5286,15 +5315,29 @@ export const AGENT_VAULT = {
     sessionId: "The ID of the session.",
     revokedAt: "When the session was revoked.",
     accessBundle:
-      "The name of the access bundle this session carries. Leave it out to start a session with services of its own only.",
-    accessBundleRead: "The access bundle this session carries. Null for a session with services of its own only.",
+      "The name of the access bundle this session carries. Leave it out to start a session with only the services it names or sends.",
+    accessBundleRead:
+      "The access bundle this session carries. Null for a session with only the services it names or sends.",
+    services:
+      "The services this session reaches besides its access bundle's. Each entry is either the name of a service in the project, up to 50, or a service sent inline, up to 20. Names must be unique across the list. If a name repeats, the request fails with a 422 error that names it.",
+    serviceName:
+      "The name of a service in this project. An Agent Vault admin can name any of them, and a member only a service in an access bundle granted to them. A session on behalf of a user can name only a service in an access bundle granted to both the user and the machine identity. On every request, the session reaches the service only while its owner still does.",
+    servicesRead:
+      "The services this session names and the ones sent with it, in the order they were sent. Inline services are listed without their secrets. Its access bundle's services aren't listed here. Empty when the session carries only an access bundle.",
+    namedServiceId: "The ID of the project service.",
+    namedServiceName: "The name of the project service.",
+    namedServiceType: "The type of the project service.",
+    namedServiceHostPattern:
+      "The host the project service matches, for an HTTP or MCP service. Null for a database or SSH service, which has no host pattern.",
+    serviceIsInline:
+      "Whether the service was sent with this session (true) or is a service in the project that the session names (false).",
     stats:
       "How many requests went through this session, as counted by the proxy when it uploads session logs. Null when no logs were uploaded for the session, for example while session logs are off.",
     statsRequests: "Every request the proxy recorded for this session, whatever its decision.",
     statsBrokered:
       "The requests the proxy sent with a credential attached. Null when a proxy didn't report it for any of the session's logs.",
     inlineServices:
-      "Services this session carries itself, alongside its access bundle's or without one. Agent Vault admins only, up to 20. Each takes the same fields as a service in an access bundle, with three differences: the name is optional, every value is sent exactly as given because variables aren't available, and no field can be left to members. They belong to this session only and can't be edited. Their credentials, custom header values and substitution values are deleted when the session is revoked, or within an hour after it expires.",
+      "A service sent with this session, alongside its access bundle's and the services it names. Agent Vault admins only, up to 20. Each takes the same fields as a service in an access bundle, with three differences: the name is optional, every value is sent exactly as given because variables aren't available, and no field can be left to members. They belong to this session only and can't be edited. Their credentials, custom header values and substitution values are deleted when the session is revoked, or within an hour after it expires.",
     inlineServiceName:
       "A name for the service, shown in session logs and in the proxy's error messages. Lowercase letters, numbers and hyphens. Leave it out and the service goes by its first host. Either way, it can't match the name of another service in the session or in its access bundle.",
     inlineServiceValue:
@@ -5331,7 +5374,12 @@ export const AGENT_VAULT = {
     label:
       "A short description of what the session is for, such as `nightly deploy` or `support ticket triage`. Up to 128 characters, without line breaks, tabs, or invisible characters. Shown wherever the session is listed.",
     updateLabel:
-      "The new label for the session, up to 128 characters, without line breaks, tabs, or invisible characters. Send null or an empty string to remove the label. You can't change the label once the session's owner, or the user it was started on behalf of, is deleted.",
+      "The new label for the session, up to 128 characters, without line breaks, tabs, or invisible characters. Send null or an empty string to remove the label. Leave it out to keep the current label. You can't change the label once the session's owner, or the user it was started on behalf of, is deleted.",
+    metadata:
+      "Key/value pairs that describe the session, such as a run ID, a ticket or the end user an agent works for, so whoever reads the session later can tell what it was for. Up to 20 entries. Each key is 1 to 255 characters and each value 1 to 1020, without line breaks, tabs, or invisible characters. A key can't contain `=`. Keys and values are trimmed, and each key can be used once.",
+    metadataRead: "The session's metadata, as key/value pairs. Empty when it has none.",
+    updateMetadata:
+      "The session's new metadata. It replaces every existing entry, so send the full set you want to keep, or an empty object to remove them all. Leave it out to keep the current metadata. Up to 20 entries, with the same rules as at creation, so a value can't be empty and a key can't contain `=`. You can't change the metadata once the session's owner, or the user it was started on behalf of, is deleted.",
     onBehalfOf:
       "Start the session on behalf of a user instead of yourself. Only a machine identity whose delegation covers the user can do this. The session can use only an access bundle that both the user and the machine identity can use, and it uses the user's personal values. The session still belongs to the machine identity, so only the machine identity and Agent Vault admins can see it and its session logs, not the user. Name the user by userId or by userEmail, not both.",
     onBehalfOfUserId: "The ID of the user to start the session on behalf of.",
@@ -5343,6 +5391,8 @@ export const AGENT_VAULT = {
       "Filter by session status: `active`, `revoked` or `expired`. Separate several with commas to match any of them.",
     search:
       "Match sessions by label, actor name, actor email, the name or email of the user a session was started on behalf of, or access bundle name.",
+    metadataFilter:
+      "Filter by metadata, as `key=value`, such as `metadata=runId=8812`. Repeat the parameter to filter by several entries; a session must match all of them. Keys and values match exactly, after trimming, and a value can't be empty. Up to 20 entries.",
     limit: "The maximum number of sessions to return.",
     offset: "How many sessions to skip.",
     actorType: "Whether the session belongs to a user or a machine identity.",
@@ -5447,6 +5497,23 @@ export const AGENT_VAULT = {
     limit: "The maximum number of users and groups to return.",
     offset: "How many users and groups to skip.",
     totalCount: "How many users and groups match, across every page."
+  },
+  ACCESS: {
+    state:
+      "Why the organization can or can't use Agent Vault: `self-hosted` and `plan` are never limited, `open` means the plan doesn't say yet and nothing is limited, `free` means it uses the free monthly requests, and `limit-reached` means it used them all this month.",
+    allowed: "Whether agents can use Agent Vault right now. False only once the free requests for this month are used.",
+    freeUsage:
+      "The organization's free requests this month, or `null` when it isn't on the free tier or the count couldn't be read.",
+    used: "How many free requests the organization used this month.",
+    limit: "How many free requests the organization gets each month.",
+    resetsAt: "When the free requests start again, at the start of next month (UTC).",
+    warn: "Whether the organization used most of its free requests this month, so the UI can warn before they run out."
+  },
+  USAGE: {
+    reportId:
+      "A random ID the proxy picks for this report. Send the same ID when you resend a report, so it is counted once.",
+    endedAt: "When the period this report covers ended. Send the same time when you resend a report.",
+    brokered: "How many requests the proxy brokered in this period, from 0 to 1,000,000."
   }
 };
 
@@ -5502,9 +5569,13 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
   ruleName: "A name that tells approvers why the rule approved a request.",
   conditions: "Every condition in a rule must pass for the rule to approve.",
   conditionConnectionId:
-    "The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'.",
+    "The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'. Omit it for an 'ai' condition.",
   conditionSubject:
-    "What the condition checks: one of the inputs' subjects, or 'requester' for the requester's own account.",
+    "What the condition checks: one of the inputs' subjects, 'requester' for the requester's own account, or 'ai' to have the organization's AI model review the request.",
+  conditionPrompt:
+    "For an 'ai' condition, the instructions the AI model checks the request against. The model receives the request details and every request form field value.",
+  conditionContextConnectionIds:
+    "For an 'ai' condition, the IDs of App Connections the AI model can read from with read-only lookups (e.g. a Jira connection).",
   constraint: "Which check to run, from the subject's constraints in the auto-approval catalog (e.g. 'status').",
   values: "The values the check accepts. Several values mean any of them; checks that take no value use an empty list.",
   requestInputs:
@@ -5518,6 +5589,8 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
   optionsSubject: "The subject the condition checks.",
   optionsConstraint: "The check to list values for.",
   optionsSearch: "Filters the values by this text.",
+  optionsSelected:
+    "A JSON array of the values already picked in this condition, which the options always include so each keeps its label.",
   optionsSiblings:
     "A JSON object of the values already picked in the rule's other conditions, keyed by constraint, which narrows the values listed (e.g. statuses for the picked projects)."
 };
@@ -5539,4 +5612,11 @@ export const AWS_HONEY_TOKENS = {
     unavailableReason:
       "Why this AWS account cannot be used now, or null when it can. For `instance`: `instance-not-configured` means the instance has no managed signing key, `incomplete-aws-credentials` means only one of the managed AWS access key ID and secret access key is set, and `invalid-role-arn` means the managed role ARN is not an IAM role ARN. For `organization`: `account-not-connected` means your organization has not connected an AWS account, and `stack-verification-pending` means the CloudFormation stack is not verified yet."
   }
+};
+
+export const ORG_AI_CONFIG = {
+  connectionId:
+    "The ID of the organization-level Anthropic App Connection the organization's AI features use. Null turns AI features off.",
+  model: "The ID of the Anthropic model to use, such as 'claude-sonnet-4-5'. Required when connectionId is set.",
+  connectionName: "The name of the App Connection."
 };
