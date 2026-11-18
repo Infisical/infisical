@@ -11,7 +11,8 @@ export enum KerberosFailureReason {
   MissingPac = "missing-pac",
   InvalidPacSignature = "invalid-pac-signature",
   NotComputerAccount = "not-computer-account",
-  MissingChannelBinding = "missing-channel-binding"
+  MissingChannelBinding = "missing-channel-binding",
+  ChannelBindingMismatch = "channel-binding-mismatch"
 }
 
 export enum KerberosEncryptionType {
@@ -48,4 +49,5 @@ export type TVerifyNegotiateTokenDTO = {
   authorizationHeader?: string;
   keytabEntries: TKeytabEntry[];
   checkReplay: (replayKey: string) => Promise<boolean>;
+  expectedChannelBindings: Buffer[] | null;
 };

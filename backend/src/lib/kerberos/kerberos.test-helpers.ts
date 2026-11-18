@@ -281,6 +281,7 @@ export type TTestNegotiateOptions = {
   isSpnego?: boolean;
   pac?: Buffer | null;
   authenticatorKey?: Buffer;
+  channelBinding?: Buffer;
   checksum?: { type: number; value: Buffer } | null;
 };
 
@@ -301,7 +302,8 @@ export const buildTestNegotiateHeader = ({
   isSpnego = true,
   pac = buildTestPac({ serviceKey }),
   authenticatorKey,
-  checksum = { type: GSS_CHECKSUM_TYPE, value: buildTestGssChecksumValue() }
+  channelBinding,
+  checksum = { type: GSS_CHECKSUM_TYPE, value: buildTestGssChecksumValue(channelBinding) }
 }: TTestNegotiateOptions) => {
   const sessionKey = crypto.randomBytes(32);
   const authorizationData =

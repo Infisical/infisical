@@ -44,6 +44,20 @@ const ELLIPTIC_CURVE_BY_ALGORITHM: Partial<Record<CertKeyAlgorithm, TTemplateEll
   [CertKeyAlgorithm.ECDSA_P521]: { oid: "1.3.132.0.35", name: "ECDSA_P521", keyLength: 521 }
 };
 
+const KEY_ALGORITHM_DISPLAY_NAMES: Partial<Record<string, string>> = {
+  [CertKeyAlgorithm.RSA_2048]: "RSA 2048",
+  [CertKeyAlgorithm.RSA_3072]: "RSA 3072",
+  [CertKeyAlgorithm.RSA_4096]: "RSA 4096",
+  [CertKeyAlgorithm.ECDSA_P256]: "ECDSA P256",
+  [CertKeyAlgorithm.ECDSA_P384]: "ECDSA P384",
+  [CertKeyAlgorithm.ECDSA_P521]: "ECDSA P521"
+};
+
+export const TEMPLATE_DEFAULT_KEY_ALGORITHM = CertKeyAlgorithm.RSA_2048;
+
+export const getKeyAlgorithmDisplayName = (keyAlgorithm: string) =>
+  KEY_ALGORITHM_DISPLAY_NAMES[keyAlgorithm] ?? keyAlgorithm;
+
 export const buildTemplateOid = (applicationProfileId: string) => {
   const hex = applicationProfileId.split("-").join("");
   const arcs = Array.from({ length: hex.length / 4 }, (_, index) => parseInt(hex.slice(index * 4, index * 4 + 4), 16));

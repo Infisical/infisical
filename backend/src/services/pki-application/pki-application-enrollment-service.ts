@@ -17,7 +17,10 @@ import {
   getMicrosoftAutoenrollmentUnsupportedReason,
   resolveInstanceServicePrincipalName
 } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-fns";
-import { MicrosoftAutoenrollmentKeytabSource } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-types";
+import {
+  MICROSOFT_AUTOENROLLMENT_NOT_ENABLED_MESSAGE,
+  MicrosoftAutoenrollmentKeytabSource
+} from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionApplicationActions,
@@ -32,7 +35,9 @@ import {
 } from "@app/ee/services/pki-scep/pki-scep-fns";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
+import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { TProjectPermission } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -153,7 +158,7 @@ type TPkiApplicationEnrollmentServiceFactoryDep = {
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   pkiApplicationProfileDAL: Pick<
     TPkiApplicationProfileDALFactory,
-    "findOneByApplicationAndProfile" | "transaction" | "update"
+    "findOneByApplicationAndProfile" | "transaction" | "update" | "primaryNode"
   >;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   estEnrollmentConfigDAL: Pick<TEstEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
@@ -161,7 +166,7 @@ type TPkiApplicationEnrollmentServiceFactoryDep = {
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   microsoftAutoenrollmentEnrollmentConfigDAL: Pick<
     TMicrosoftAutoenrollmentEnrollmentConfigDALFactory,
-    "create" | "update" | "updateById" | "deleteById" | "findById" | "findByApplicationId"
+    "create" | "update" | "deleteById" | "findById" | "findByApplicationId" | "primaryNode"
   >;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
@@ -183,6 +188,9 @@ type TPkiApplicationEnrollmentServiceFactoryDep = {
 };
 
 export type TPkiApplicationEnrollmentServiceFactory = ReturnType<typeof pkiApplicationEnrollmentServiceFactory>;
+
+const CONCURRENT_MICROSOFT_AUTOENROLLMENT_SAVE_MESSAGE =
+  "Microsoft Autoenrollment settings for this profile changed while this save was in progress. Save again.";
 
 export const pkiApplicationEnrollmentServiceFactory = ({
   pkiApplicationDAL,
@@ -1017,6 +1025,20 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     return { applicationId, applicationName: application.name, profileId };
   };
 
+  const $findJunctionOnPrimary = async (applicationId: string, profileId: string) => {
+    const junction = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(
+      applicationId,
+      profileId,
+      pkiApplicationProfileDAL.primaryNode()
+    );
+    if (!junction) {
+      throw new NotFoundError({
+        message: `Profile '${profileId}' is not attached to application '${applicationId}'.`
+      });
+    }
+    return junction;
+  };
+
   const setMicrosoftAutoenrollmentEnrollment = async ({
     applicationId,
     profileId,
@@ -1029,7 +1051,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     actorRootOrgId,
     actorParentOrgId
   }: TSetMicrosoftAutoenrollmentEnrollmentDTO) => {
-    const { junction, application } = await $assertEditEnrollment(
+    const { application } = await $assertEditEnrollment(
       applicationId,
       profileId,
       projectId,
@@ -1038,12 +1060,16 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
+    const junction = await $findJunctionOnPrimary(applicationId, profileId);
 
     const plan = await licenseService.getPlan(actorOrgId);
     plan.assert(PlanFeature.PkiMicrosoftAutoenrollment);
 
     const existingConfig = junction.microsoftAutoenrollmentConfigId
-      ? await microsoftAutoenrollmentEnrollmentConfigDAL.findById(junction.microsoftAutoenrollmentConfigId)
+      ? await microsoftAutoenrollmentEnrollmentConfigDAL.findById(
+          junction.microsoftAutoenrollmentConfigId,
+          microsoftAutoenrollmentEnrollmentConfigDAL.primaryNode()
+        )
       : null;
 
     if (config.keytab && config.reuseKeytab) {
@@ -1085,7 +1111,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     const isAllowedGroupsChanged = isConnectionChanged || isAllowedGroupSidsChanged;
 
     const isDirectoryLookupNeeded = isAllowedGroupsChanged && allowedGroupSids.length > 0;
-    const connection =
+    const ldapConnection =
       config.connectionId || isDirectoryLookupNeeded
         ? await resolveMicrosoftAutoenrollmentConnection(
             {
@@ -1100,17 +1126,19 @@ export const pkiApplicationEnrollmentServiceFactory = ({
             },
             { appConnectionService }
           )
-        : await appConnectionDAL.findById(connectionId);
+        : null;
+    const connection = ldapConnection ?? (await appConnectionDAL.findById(connectionId));
     if (!connection) {
       throw new NotFoundError({ message: `LDAP connection with ID '${connectionId}' not found.` });
     }
 
-    const allowedGroups = isAllowedGroupsChanged
-      ? await resolveMicrosoftAutoenrollmentAllowedGroups(
-          { connection, isConnectionChanged, allowedGroupSids, storedGroups },
-          { gatewayV2Service, gatewayPoolService }
-        )
-      : storedGroups;
+    let allowedGroups = isAllowedGroupsChanged ? [] : storedGroups;
+    if (isAllowedGroupsChanged && ldapConnection) {
+      allowedGroups = await resolveMicrosoftAutoenrollmentAllowedGroups(
+        { connection: ldapConnection, isConnectionChanged, allowedGroupSids, storedGroups },
+        { gatewayV2Service, gatewayPoolService }
+      );
+    }
 
     const newKeytab = await resolveMicrosoftAutoenrollmentKeytab(
       {
@@ -1144,33 +1172,50 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     const isConfigChanged =
       Boolean(newKeytab) || isAllowedGroupsChanged || configFields.renewBeforeDays !== existingConfig?.renewBeforeDays;
 
-    const savedConfig = await pkiApplicationProfileDAL.transaction(async (tx) => {
-      if (existingConfig) {
-        return isConfigChanged
-          ? microsoftAutoenrollmentEnrollmentConfigDAL.updateById(
-              existingConfig.id,
-              { ...configFields, allowedGroups: storedAllowedGroups, $incr: { templateMinorRevision: 1 } },
-              tx
-            )
-          : existingConfig;
-      }
+    const savedConfig = await pkiApplicationProfileDAL
+      .transaction(async (tx) => {
+        if (existingConfig) {
+          if (!isConfigChanged) return existingConfig;
+          const [updated] = await microsoftAutoenrollmentEnrollmentConfigDAL.update(
+            {
+              id: existingConfig.id,
+              templateMajorRevision: existingConfig.templateMajorRevision,
+              templateMinorRevision: existingConfig.templateMinorRevision
+            },
+            { ...configFields, allowedGroups: storedAllowedGroups, $incr: { templateMinorRevision: 1 } },
+            tx
+          );
+          if (!updated) {
+            throw new ConflictError({
+              message: CONCURRENT_MICROSOFT_AUTOENROLLMENT_SAVE_MESSAGE
+            });
+          }
+          return updated;
+        }
 
-      const created = await microsoftAutoenrollmentEnrollmentConfigDAL.create(
-        { ...configFields, allowedGroups: storedAllowedGroups, applicationProfileId: junction.id },
-        tx
-      );
-      await pkiApplicationProfileDAL.update(
-        { applicationId, profileId },
-        { microsoftAutoenrollmentConfigId: created.id },
-        tx
-      );
-      return created;
-    });
+        const created = await microsoftAutoenrollmentEnrollmentConfigDAL.create(
+          { ...configFields, allowedGroups: storedAllowedGroups, applicationProfileId: junction.id },
+          tx
+        );
+        await pkiApplicationProfileDAL.update(
+          { applicationId, profileId },
+          { microsoftAutoenrollmentConfigId: created.id },
+          tx
+        );
+        return created;
+      })
+      .catch((error: unknown) => {
+        if (hasPostgresErrorCode(error, DatabaseErrorCode.UniqueViolation)) {
+          throw new ConflictError({ message: CONCURRENT_MICROSOFT_AUTOENROLLMENT_SAVE_MESSAGE });
+        }
+        throw error;
+      });
 
     return {
       applicationId,
       applicationName: application.name,
       profileId,
+      profileName: profile.slug,
       microsoftAutoenrollment: buildMicrosoftAutoenrollmentState({
         applicationId,
         profileId,
@@ -1204,9 +1249,10 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    if (!junction.microsoftAutoenrollmentConfigId) {
-      return { applicationId, applicationName: application.name, profileId };
-    }
+    const profile = await certificateProfileDAL.findById(profileId);
+    if (!profile) throw new NotFoundError({ message: `Certificate profile with ID '${profileId}' not found` });
+    const result = { applicationId, applicationName: application.name, profileId, profileName: profile.slug };
+    if (!junction.microsoftAutoenrollmentConfigId) return result;
     await pkiApplicationProfileDAL.transaction(async (tx) => {
       await pkiApplicationProfileDAL.update(
         { applicationId, profileId },
@@ -1218,7 +1264,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
         tx
       );
     });
-    return { applicationId, applicationName: application.name, profileId };
+    return result;
   };
 
   const reenrollMicrosoftAutoenrollmentComputers = async ({
@@ -1230,7 +1276,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TClearMethodEnrollmentDTO) => {
-    const { junction, application } = await $assertEditEnrollment(
+    const { application } = await $assertEditEnrollment(
       applicationId,
       profileId,
       projectId,
@@ -1239,19 +1285,26 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
+    const plan = await licenseService.getPlan(actorOrgId);
+    plan.assert(PlanFeature.PkiMicrosoftAutoenrollment);
+    const junction = await $findJunctionOnPrimary(applicationId, profileId);
     if (!junction.microsoftAutoenrollmentConfigId) {
-      throw new NotFoundError({
-        message: "Microsoft Autoenrollment is not turned on for this profile in the application."
-      });
+      throw new NotFoundError({ message: MICROSOFT_AUTOENROLLMENT_NOT_ENABLED_MESSAGE });
     }
+    const profile = await certificateProfileDAL.findById(profileId);
+    if (!profile) throw new NotFoundError({ message: `Certificate profile with ID '${profileId}' not found` });
     const [updated] = await microsoftAutoenrollmentEnrollmentConfigDAL.update(
       { id: junction.microsoftAutoenrollmentConfigId },
       { templateMinorRevision: 0, $incr: { templateMajorRevision: 1 } }
     );
+    if (!updated) {
+      throw new NotFoundError({ message: MICROSOFT_AUTOENROLLMENT_NOT_ENABLED_MESSAGE });
+    }
     return {
       applicationId,
       applicationName: application.name,
       profileId,
+      profileName: profile.slug,
       templateMajorRevision: updated.templateMajorRevision
     };
   };

@@ -75,7 +75,20 @@ describe("getMicrosoftAutoenrollmentUnsupportedReason", () => {
         { profileSlug: "web", caId: "ca-id" },
         withCa(internalCa("EC_prime256v1"))
       )
-    ).resolves.toMatch(/asks Windows for an RSA key, but its certificate authority's key is EC_prime256v1/);
+    ).resolves.toBe(
+      "Profile 'web' has no default key algorithm, so Windows requests RSA 2048 keys, but its certificate authority's ECDSA P256 key cannot sign that request. Use a certificate authority with an RSA key, or set the profile's default key algorithm."
+    );
+  });
+
+  test("names the profile's key and the certificate authority's key by their display names", async () => {
+    await expect(
+      getMicrosoftAutoenrollmentUnsupportedReason(
+        { profileSlug: "web", caId: "ca-id", keyAlgorithm: CertKeyAlgorithm.ECDSA_P384 },
+        withCa(internalCa("RSA_4096"))
+      )
+    ).resolves.toBe(
+      "Profile 'web' asks Windows for ECDSA P384 keys, but its certificate authority's RSA 4096 key cannot sign that request. Use a certificate authority with an elliptic curve key, or change the profile's default key algorithm."
+    );
   });
 
   test.each([CertKeyAlgorithm.ML_DSA_65, CertKeyAlgorithm.SLH_DSA_SHA2_128F])(

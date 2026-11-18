@@ -1,12 +1,13 @@
 import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
+import { z } from "zod";
 
-import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { isSignerCertIssuedByCa } from "@app/ee/services/pki-scep/pki-scep-fns";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { classifyError } from "@app/lib/errors/classify";
 import { asNonSharedBuffer } from "@app/lib/fn";
@@ -14,6 +15,7 @@ import {
   KerberosError,
   KerberosFailureReason,
   parseKeytab,
+  readAuthorizationHeader,
   TKerberosIdentity,
   verifyNegotiateToken
 } from "@app/lib/kerberos";
@@ -51,6 +53,11 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
+import {
+  getInstanceTlsEndpoint,
+  learnServerChannelBindings,
+  TInstanceTlsEndpoint
+} from "./microsoft-autoenrollment-channel-binding-fns";
 import { parseEnrollmentRequestToken } from "./microsoft-autoenrollment-cmc-fns";
 import {
   buildCesUrl,
@@ -79,6 +86,7 @@ import {
   resolveTemplatePrivateKey
 } from "./microsoft-autoenrollment-template-fns";
 import {
+  MICROSOFT_AUTOENROLLMENT_NOT_ENABLED_MESSAGE,
   MicrosoftAutoenrollmentFailureReason,
   MicrosoftAutoenrollmentIssuanceResult,
   MicrosoftAutoenrollmentMetadataKey,
@@ -108,8 +116,7 @@ type TMicrosoftAutoenrollmentServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
-  licenseService: TLicenseService;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "getItem" | "setItemWithExpiry">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog" | "createCollapsedAuditLog">;
 };
 
@@ -147,6 +154,22 @@ const describeDirectoryLookupFailure = (err: unknown) => {
 
 const MAX_FAILURE_REASON_LENGTH = 256;
 
+const CHANNEL_BINDING_RETENTION_MS = KeyStoreTtls.MicrosoftAutoenrollmentServerChannelBindingsInSeconds * 1000;
+const CHANNEL_BINDING_REFRESH_AFTER_MS = 60 * 60 * 1000;
+
+const ServerChannelBindingsCacheSchema = z.array(
+  z.object({ binding: z.string().length(32), seenAt: z.string().datetime() })
+);
+
+type TServerChannelBindingEntry = z.infer<typeof ServerChannelBindingsCacheSchema>[number];
+
+type TExpectedChannelBindings = { endpoint: TInstanceTlsEndpoint; entries: TServerChannelBindingEntry[] };
+
+const toChannelBindingBuffers = (entries: TServerChannelBindingEntry[]) =>
+  entries.map(({ binding }) => Buffer.from(binding, "hex"));
+
+const describeEndpoint = ({ host, port }: TInstanceTlsEndpoint) => `${host}:${port}`;
+
 export const microsoftAutoenrollmentServiceFactory = ({
   pkiApplicationProfileDAL,
   pkiApplicationDAL,
@@ -167,7 +190,6 @@ export const microsoftAutoenrollmentServiceFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   keyStore,
-  licenseService,
   auditLogService
 }: TMicrosoftAutoenrollmentServiceFactoryDep) => {
   const $soapResponse = (
@@ -198,7 +220,9 @@ export const microsoftAutoenrollmentServiceFactory = ({
     return { applicationId, junction, config, profile, caId: profile.caId, orgId };
   };
 
-  const $decryptKeytab = async (profileContext: NonNullable<Awaited<ReturnType<typeof $loadContext>>>) => {
+  type TProfileContext = NonNullable<Awaited<ReturnType<typeof $loadContext>>>;
+
+  const $decryptKeytab = async (profileContext: TProfileContext) => {
     const kmsDecryptor = await kmsService.decryptWithKmsKey({
       kmsId: await getProjectKmsCertificateKeyId({
         projectId: profileContext.profile.projectId,
@@ -213,7 +237,7 @@ export const microsoftAutoenrollmentServiceFactory = ({
   type TContext = Awaited<ReturnType<typeof $decryptKeytab>>;
 
   const $recordRefusal = async (
-    context: TContext,
+    context: TProfileContext,
     clientIp: string,
     {
       reason,
@@ -240,7 +264,7 @@ export const microsoftAutoenrollmentServiceFactory = ({
           applicationId: context.applicationId,
           applicationName: application?.name,
           profileId: context.profile.id,
-          profileSlug: context.profile.slug,
+          profileName: context.profile.slug,
           reason,
           computerName,
           ticketServiceName,
@@ -257,22 +281,173 @@ export const microsoftAutoenrollmentServiceFactory = ({
       .then(normalizeHttpServicePrincipalName)
       .catch(() => null);
 
-  const $authenticate = async (context: TContext, authorizationHeader: string | undefined, clientIp: string) => {
-    try {
-      const identity = await verifyNegotiateToken({
-        authorizationHeader,
-        keytabEntries: context.keytabEntries,
-        checkReplay: async (replayKey) =>
-          (await keyStore.setItemWithExpiryNX(
-            KeyStorePrefixes.MicrosoftAutoenrollmentReplay(
-              context.config.servicePrincipalName.toLowerCase(),
-              replayKey
-            ),
-            KeyStoreTtls.MicrosoftAutoenrollmentReplayInSeconds,
-            1
-          )) === "OK"
+  const $readServerChannelBindings = async (endpoint: TInstanceTlsEndpoint) => {
+    const cached = await keyStore
+      .getItem(KeyStorePrefixes.MicrosoftAutoenrollmentServerChannelBindings(describeEndpoint(endpoint)))
+      .catch((err: unknown) => {
+        logger.warn({ err }, "Unable to read the cached TLS channel bindings for Microsoft Autoenrollment");
+        return null;
       });
-      return { identity };
+    if (!cached) return [];
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(cached);
+    } catch {
+      return [];
+    }
+    const entries = ServerChannelBindingsCacheSchema.safeParse(parsed);
+    if (!entries.success) return [];
+    const retainedAfter = Date.now() - CHANNEL_BINDING_RETENTION_MS;
+    return entries.data.filter(({ seenAt }) => new Date(seenAt).getTime() >= retainedAfter);
+  };
+
+  const learningServerChannelBindings = new Map<string, Promise<TServerChannelBindingEntry[]>>();
+
+  const $learnServerChannelBindings = (
+    endpoint: TInstanceTlsEndpoint,
+    cachedEntries: TServerChannelBindingEntry[] = []
+  ) => {
+    const endpointKey = describeEndpoint(endpoint);
+    const inFlight = learningServerChannelBindings.get(endpointKey);
+    if (inFlight) return inFlight;
+
+    const learning = (async () => {
+      let learnError: unknown;
+      const learnedBindings = await learnServerChannelBindings(endpoint).catch((err: unknown): string[] => {
+        learnError = err;
+        return [];
+      });
+      if (!learnedBindings.length) {
+        logger.warn(
+          { err: learnError, host: endpoint.host, port: endpoint.port },
+          "Unable to read the TLS certificates the instance host serves, so Microsoft Autoenrollment cannot learn its channel bindings"
+        );
+        await keyStore
+          .setItemWithExpiry(
+            KeyStorePrefixes.MicrosoftAutoenrollmentServerChannelBindingsLearnFailed(endpointKey),
+            KeyStoreTtls.MicrosoftAutoenrollmentServerChannelBindingsLearnFailedInSeconds,
+            1
+          )
+          .catch(() => undefined);
+        return cachedEntries;
+      }
+      const seenAt = new Date().toISOString();
+      const entries = [
+        ...learnedBindings.map((binding) => ({ binding, seenAt })),
+        ...cachedEntries.filter(({ binding }) => !learnedBindings.includes(binding))
+      ];
+      await keyStore
+        .setItemWithExpiry(
+          KeyStorePrefixes.MicrosoftAutoenrollmentServerChannelBindings(endpointKey),
+          KeyStoreTtls.MicrosoftAutoenrollmentServerChannelBindingsInSeconds,
+          JSON.stringify(entries)
+        )
+        .catch((err: unknown) => {
+          logger.warn({ err }, "Unable to cache the TLS channel bindings for Microsoft Autoenrollment");
+        });
+      return entries;
+    })().finally(() => learningServerChannelBindings.delete(endpointKey));
+
+    learningServerChannelBindings.set(endpointKey, learning);
+    return learning;
+  };
+
+  const $refreshServerChannelBindings = async (
+    endpoint: TInstanceTlsEndpoint,
+    cachedEntries: TServerChannelBindingEntry[]
+  ) => {
+    const isRefreshAllowed =
+      (await keyStore
+        .setItemWithExpiryNX(
+          KeyStorePrefixes.MicrosoftAutoenrollmentServerChannelBindingsRefreshLock(describeEndpoint(endpoint)),
+          KeyStoreTtls.MicrosoftAutoenrollmentServerChannelBindingsRefreshLockInSeconds,
+          1
+        )
+        .catch(() => null)) === "OK";
+    if (isRefreshAllowed) return $learnServerChannelBindings(endpoint, cachedEntries);
+    return learningServerChannelBindings.get(describeEndpoint(endpoint)) ?? null;
+  };
+
+  const $loadExpectedChannelBindings = async (): Promise<TExpectedChannelBindings | null> => {
+    if (crypto.isFipsModeEnabled()) return null;
+    const endpoint = getInstanceTlsEndpoint();
+    if (!endpoint) return null;
+
+    const entries = await $readServerChannelBindings(endpoint);
+    if (entries.length) {
+      const lastSeenAt = Math.max(...entries.map(({ seenAt }) => new Date(seenAt).getTime()));
+      if (Date.now() - lastSeenAt > CHANNEL_BINDING_REFRESH_AFTER_MS) {
+        void $refreshServerChannelBindings(endpoint, entries).catch(() => undefined);
+      }
+      return { endpoint, entries };
+    }
+
+    const hasLearningFailed = await keyStore
+      .getItem(KeyStorePrefixes.MicrosoftAutoenrollmentServerChannelBindingsLearnFailed(describeEndpoint(endpoint)))
+      .catch(() => null);
+    if (hasLearningFailed) return null;
+
+    const learnedEntries = await $learnServerChannelBindings(endpoint);
+    return learnedEntries.length ? { endpoint, entries: learnedEntries } : null;
+  };
+
+  const $verifyNegotiateToken = (
+    context: TContext,
+    authorizationHeader: string | undefined,
+    expectedChannelBindings: Buffer[] | null
+  ) =>
+    verifyNegotiateToken({
+      authorizationHeader,
+      keytabEntries: context.keytabEntries,
+      expectedChannelBindings,
+      checkReplay: async (replayKey) =>
+        (await keyStore.setItemWithExpiryNX(
+          KeyStorePrefixes.MicrosoftAutoenrollmentReplay(context.config.servicePrincipalName.toLowerCase(), replayKey),
+          KeyStoreTtls.MicrosoftAutoenrollmentReplayInSeconds,
+          1
+        )) === "OK"
+    });
+
+  const $verifyWithChannelBindingRefresh = async (
+    context: TContext,
+    authorizationHeader: string | undefined,
+    channelBindings: TExpectedChannelBindings | null
+  ) => {
+    try {
+      return await $verifyNegotiateToken(
+        context,
+        authorizationHeader,
+        channelBindings && toChannelBindingBuffers(channelBindings.entries)
+      );
+    } catch (error) {
+      if (
+        !channelBindings ||
+        !(error instanceof KerberosError) ||
+        error.reason !== KerberosFailureReason.ChannelBindingMismatch
+      ) {
+        throw error;
+      }
+      const refreshedEntries = await $refreshServerChannelBindings(channelBindings.endpoint, channelBindings.entries);
+      const hasNewBinding = refreshedEntries?.some(
+        ({ binding }) => !channelBindings.entries.some((entry) => entry.binding === binding)
+      );
+      if (!refreshedEntries || !hasNewBinding) throw error;
+      return $verifyNegotiateToken(context, authorizationHeader, toChannelBindingBuffers(refreshedEntries));
+    }
+  };
+
+  const $authenticate = async (
+    profileContext: TProfileContext,
+    authorizationHeader: string | undefined,
+    clientIp: string
+  ) => {
+    let channelBindings: TExpectedChannelBindings | null = null;
+    try {
+      readAuthorizationHeader(authorizationHeader);
+      const context = await $decryptKeytab(profileContext);
+      channelBindings = await $loadExpectedChannelBindings();
+      const identity = await $verifyWithChannelBindingRefresh(context, authorizationHeader, channelBindings);
+      return { context, identity };
     } catch (error) {
       if (!(error instanceof KerberosError)) throw error;
 
@@ -281,21 +456,25 @@ export const microsoftAutoenrollmentServiceFactory = ({
         error.reason === KerberosFailureReason.NoMatchingKey &&
         ticketServicePrincipalName &&
         ticketServicePrincipalName.toLowerCase() !==
-          stripKerberosRealm(context.config.servicePrincipalName).toLowerCase() &&
+          stripKerberosRealm(profileContext.config.servicePrincipalName).toLowerCase() &&
         ticketServicePrincipalName === (await $resolveInstanceServicePrincipalName())
       ) {
         await microsoftAutoenrollmentEnrollmentConfigDAL.recordKeytabMismatch(
-          context.config.id,
+          profileContext.config.id,
           ticketServicePrincipalName
         );
       }
 
-      await $recordRefusal(context, clientIp, {
+      const message =
+        error.reason === KerberosFailureReason.ChannelBindingMismatch && channelBindings
+          ? `The request's Kerberos channel binding matches none of the TLS certificates this instance found at ${channelBindings.endpoint.host}, so the computer saw a certificate this instance cannot see at that host name, such as one from a proxy that inspects HTTPS or from an internal address this instance does not resolve. Exclude ${channelBindings.endpoint.host} from HTTPS inspection and make sure this instance resolves it the same way computers do.`
+          : error.message;
+      await $recordRefusal(profileContext, clientIp, {
         reason: error.reason,
         computerName: error.clientName,
         ticketServiceName: error.serviceName?.slice(0, MAX_TICKET_SERVICE_NAME_LENGTH),
         ticketKeyVersion: error.keyVersion ?? undefined,
-        message: error.message.slice(0, MAX_REFUSAL_MESSAGE_LENGTH)
+        message: message.slice(0, MAX_REFUSAL_MESSAGE_LENGTH)
       });
 
       return { refusal: $soapResponse("", { "WWW-Authenticate": NEGOTIATE }, UNAUTHORIZED_STATUS_CODE) };
@@ -432,13 +611,18 @@ export const microsoftAutoenrollmentServiceFactory = ({
     });
     const storedCertificate = isCurrentCertificateValid
       ? await certificateDAL.findOne(
-          { serialNumber: currentCertificate.serialNumber, caId: context.caId, profileId: context.profile.id },
+          {
+            serialNumber: currentCertificate.serialNumber,
+            caId: context.caId,
+            profileId: context.profile.id,
+            applicationId: context.applicationId
+          },
           certificateDAL.primaryNode()
         )
       : undefined;
     if (!storedCertificate || storedCertificate.deletedAt) {
       return {
-        refusal: `The certificate being renewed (serial ${currentCertificate.serialNumber}) was not issued from profile '${context.profile.slug}', has expired, was deleted, or is revoked.`
+        refusal: `The certificate being renewed (serial ${currentCertificate.serialNumber}) was not issued from profile '${context.profile.slug}' in this application, has expired, was deleted, or is revoked.`
       };
     }
 
@@ -574,7 +758,7 @@ export const microsoftAutoenrollmentServiceFactory = ({
           applicationId: context.applicationId,
           applicationName: result.applicationName ?? undefined,
           profileId: context.profile.id,
-          profileSlug: context.profile.slug,
+          profileName: context.profile.slug,
           computerName: identity.clientName,
           computerSid: identity.accountSid,
           dnsHostName,
@@ -709,22 +893,15 @@ export const microsoftAutoenrollmentServiceFactory = ({
     const profileContext = await $loadContext(applicationId, profileId);
     if (!profileContext) {
       return $soapResponse(
-        buildSoapFault({
-          relatesTo: null,
-          message: "Microsoft Autoenrollment is not turned on for this profile in the application."
-        }),
+        buildSoapFault({ relatesTo: null, message: MICROSOFT_AUTOENROLLMENT_NOT_ENABLED_MESSAGE }),
         {},
         NOT_ENABLED_STATUS_CODE
       );
     }
-    const plan = await licenseService.getPlan(profileContext.orgId);
-    if (!plan.has(PlanFeature.PkiMicrosoftAutoenrollment)) {
-      return $fault(null, "The organization's plan does not include Microsoft Autoenrollment.");
-    }
-    const context = await $decryptKeytab(profileContext);
 
-    const authentication = await $authenticate(context, authorizationHeader, clientIp);
+    const authentication = await $authenticate(profileContext, authorizationHeader, clientIp);
     if (authentication.refusal) return authentication.refusal;
+    const { context } = authentication;
 
     const mutualAuthHeaders: Record<string, string> = authentication.identity.responseToken
       ? { "WWW-Authenticate": `${NEGOTIATE} ${authentication.identity.responseToken}` }

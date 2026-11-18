@@ -4500,7 +4500,6 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     keyStore,
-    licenseService,
     auditLogService
   });
 

@@ -4219,6 +4219,7 @@ interface SetPkiApplicationMicrosoftAutoenrollmentEnrollment {
     applicationId: string;
     applicationName: string;
     profileId: string;
+    profileName: string;
     servicePrincipalName: string;
     keyVersion: number;
     connectionId: string;
@@ -4237,6 +4238,7 @@ interface ClearPkiApplicationMicrosoftAutoenrollmentEnrollment {
     applicationId: string;
     applicationName: string;
     profileId: string;
+    profileName: string;
   };
 }
 
@@ -4246,6 +4248,7 @@ interface ReenrollPkiApplicationMicrosoftAutoenrollmentComputers {
     applicationId: string;
     applicationName: string;
     profileId: string;
+    profileName: string;
     templateMajorRevision: number;
   };
 }
@@ -8136,7 +8139,7 @@ interface MicrosoftAutoenrollmentIssuanceEvent {
     applicationId: string;
     applicationName?: string;
     profileId: string;
-    profileSlug: string;
+    profileName: string;
     computerName: string;
     computerSid: string;
     dnsHostName: string;
@@ -8144,7 +8147,7 @@ interface MicrosoftAutoenrollmentIssuanceEvent {
     certificateId?: string;
     serialNumber?: string;
     certificateRequestId: string;
-    requestNumber?: string;
+    requestNumber: string;
   };
 }
 
@@ -8154,7 +8157,7 @@ interface MicrosoftAutoenrollmentRequestRefusedEvent {
     applicationId: string;
     applicationName?: string;
     profileId: string;
-    profileSlug: string;
+    profileName: string;
     reason: KerberosFailureReason | MicrosoftAutoenrollmentFailureReason;
     computerName?: string;
     ticketServiceName?: string;

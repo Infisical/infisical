@@ -77,11 +77,16 @@ const readMutualAuthReply = (responseToken: string | null, sessionKey: Buffer, i
 describe("verifyNegotiateToken", () => {
   const keytabEntry = buildTestKeytabEntry();
 
-  const verify = (authorizationHeader?: string, checkReplay = vi.fn().mockResolvedValue(true)) =>
+  const verify = (
+    authorizationHeader?: string,
+    checkReplay = vi.fn().mockResolvedValue(true),
+    expectedChannelBindings: Buffer[] | null = null
+  ) =>
     verifyNegotiateToken({
       authorizationHeader,
       keytabEntries: [keytabEntry],
-      checkReplay
+      checkReplay,
+      expectedChannelBindings
     });
 
   const verifyToken = (options: Partial<TTestNegotiateOptions> = {}) =>
@@ -155,7 +160,8 @@ describe("verifyNegotiateToken", () => {
     const result = await verifyNegotiateToken({
       authorizationHeader,
       keytabEntries: [keytabEntry, aes128Entry],
-      checkReplay: vi.fn().mockResolvedValue(true)
+      checkReplay: vi.fn().mockResolvedValue(true),
+      expectedChannelBindings: null
     });
 
     expect(result.clientName).toBe(TEST_COMPUTER_NAME);
@@ -292,6 +298,42 @@ describe("verifyNegotiateToken", () => {
       clientName: TEST_COMPUTER_NAME
     });
     expect(checkReplay).not.toHaveBeenCalled();
+  });
+
+  test("accepts an authenticator bound to one of the expected certificates", async () => {
+    const channelBinding = Buffer.alloc(16, 0xcd);
+    const { authorizationHeader } = buildTestNegotiateHeader({ serviceKey: keytabEntry.key, channelBinding });
+
+    const result = await verify(authorizationHeader, vi.fn().mockResolvedValue(true), [
+      Buffer.alloc(16, 0x01),
+      Buffer.from(channelBinding)
+    ]);
+
+    expect(result.clientName).toBe(TEST_COMPUTER_NAME);
+  });
+
+  test("refuses an authenticator bound to a certificate the server does not present, before the replay check", async () => {
+    const checkReplay = vi.fn().mockResolvedValue(true);
+    const { authorizationHeader } = buildTestNegotiateHeader({
+      serviceKey: keytabEntry.key,
+      channelBinding: Buffer.alloc(16, 0xcd)
+    });
+
+    await expectFailure(
+      verify(authorizationHeader, checkReplay, [Buffer.alloc(16, 0xce)]),
+      KerberosFailureReason.ChannelBindingMismatch,
+      { clientName: TEST_COMPUTER_NAME }
+    );
+    expect(checkReplay).not.toHaveBeenCalled();
+  });
+
+  test("refuses a missing channel binding even when bindings are expected", async () => {
+    const { authorizationHeader } = buildTestNegotiateHeader({ serviceKey: keytabEntry.key, checksum: null });
+
+    await expectFailure(
+      verify(authorizationHeader, vi.fn().mockResolvedValue(true), [Buffer.alloc(16, 0xce)]),
+      KerberosFailureReason.MissingChannelBinding
+    );
   });
 
   test("refuses a user account", async () => {

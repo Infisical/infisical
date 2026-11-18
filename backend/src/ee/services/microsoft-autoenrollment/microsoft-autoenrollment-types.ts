@@ -37,3 +37,6 @@ export type TMicrosoftAutoenrollmentResponse = {
   body: string;
   headers: Record<string, string>;
 };
+
+export const MICROSOFT_AUTOENROLLMENT_NOT_ENABLED_MESSAGE =
+  "Microsoft Autoenrollment is not turned on for this profile in the application.";

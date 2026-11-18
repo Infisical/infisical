@@ -2800,6 +2800,29 @@ export const MICROSOFT_AUTOENROLLMENT = {
     reuseKeytab:
       "Copy the keytab another profile in this application already has, named by that profile's ID in profileId. Cannot be sent together with keytab."
   },
+  STATE: {
+    otherProfiles:
+      "Other profiles in this application that have Microsoft Autoenrollment on, with their keytab's service principal name, key version and LDAP connection, so their keytab can be reused.",
+    unsupportedReason:
+      "Why this profile cannot use Microsoft Autoenrollment, such as an external certificate authority or a key type Windows cannot request. Null when it can.",
+    configured: "Whether Microsoft Autoenrollment is on for this profile in the application.",
+    id: "The ID of the Microsoft Autoenrollment configuration.",
+    policyUrl:
+      "The enrollment policy server URL to add to the Group Policy object, under Certificate Services Client - Certificate Enrollment Policy.",
+    policyId: "The ID Windows uses for this enrollment policy server. Each policy server URL has its own.",
+    templateName: "The certificate template name Windows shows for this profile.",
+    templateOid:
+      "The OID of the certificate template, written into the template information extension of each certificate.",
+    allowedGroups:
+      "The Active Directory groups whose computers may enroll, each with its security identifier (SID) and name. Empty allows any computer in the domain.",
+    renewBeforeDays:
+      "How many days before expiry Windows renews the certificate. Values of the certificate's validity or more are capped at the validity minus one day.",
+    servicePrincipalName: "The Kerberos service principal name the stored keytab is for.",
+    keyVersion: "The key version number of the stored keytab.",
+    connectionId: "The ID of the Active Directory LDAP connection used to look up computers.",
+    keytabMismatch:
+      "Set when computers asked for a ticket for a different service principal name than the stored keytab's, so the keytab must be replaced. Null when no mismatch was seen since the keytab was last replaced."
+  },
   LIST_GROUPS: {
     connectionId: "The ID of the Active Directory LDAP connection to search.",
     search: "Text the group name contains. Up to 50 groups are returned."

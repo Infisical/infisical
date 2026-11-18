@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { MICROSOFT_AUTOENROLLMENT } from "@app/lib/api-docs";
+
 export const ApplicationIdParamsSchema = z.object({ applicationId: z.string().uuid() });
 
 export const ApplicationProfileSchema = z.object({
@@ -18,16 +20,18 @@ export const ApplicationProfileSchema = z.object({
 });
 
 export const MicrosoftAutoenrollmentStateSchema = z.object({
-  id: z.string().uuid(),
-  policyUrl: z.string(),
-  policyId: z.string(),
-  templateName: z.string(),
-  templateOid: z.string(),
-  allowedGroups: z.array(z.object({ sid: z.string(), name: z.string().nullable() })),
-  renewBeforeDays: z.number().int(),
-  servicePrincipalName: z.string(),
-  keyVersion: z.number().int(),
-  connectionId: z.string().uuid(),
+  id: z.string().uuid().describe(MICROSOFT_AUTOENROLLMENT.STATE.id),
+  policyUrl: z.string().describe(MICROSOFT_AUTOENROLLMENT.STATE.policyUrl),
+  policyId: z.string().describe(MICROSOFT_AUTOENROLLMENT.STATE.policyId),
+  templateName: z.string().describe(MICROSOFT_AUTOENROLLMENT.STATE.templateName),
+  templateOid: z.string().describe(MICROSOFT_AUTOENROLLMENT.STATE.templateOid),
+  allowedGroups: z
+    .array(z.object({ sid: z.string(), name: z.string().nullable() }))
+    .describe(MICROSOFT_AUTOENROLLMENT.STATE.allowedGroups),
+  renewBeforeDays: z.number().int().describe(MICROSOFT_AUTOENROLLMENT.STATE.renewBeforeDays),
+  servicePrincipalName: z.string().describe(MICROSOFT_AUTOENROLLMENT.STATE.servicePrincipalName),
+  keyVersion: z.number().int().describe(MICROSOFT_AUTOENROLLMENT.STATE.keyVersion),
+  connectionId: z.string().uuid().describe(MICROSOFT_AUTOENROLLMENT.STATE.connectionId),
   keytabMismatch: z
     .object({
       servicePrincipalName: z.string(),
@@ -35,4 +39,5 @@ export const MicrosoftAutoenrollmentStateSchema = z.object({
       requestCount: z.number().int()
     })
     .nullable()
+    .describe(MICROSOFT_AUTOENROLLMENT.STATE.keytabMismatch)
 });

@@ -1,6 +1,8 @@
 /* eslint-disable no-bitwise */
 import * as asn1js from "asn1js";
 
+import { crypto } from "@app/lib/crypto/cryptography";
+
 import { kerberosDecrypt, kerberosEncrypt } from "./kerberos-crypto";
 import { KerberosError } from "./kerberos-error";
 import { parsePacLogonInfo, verifyPacServerSignature } from "./kerberos-pac";
@@ -209,7 +211,7 @@ const decryptPart = ({
   }
 };
 
-const readAuthorizationHeader = (authorizationHeader?: string) => {
+export const readAuthorizationHeader = (authorizationHeader?: string) => {
   const [scheme, ...rest] = (authorizationHeader ?? "").trim().split(" ");
   const value = rest.join(" ").trim();
   if (scheme.toLowerCase() !== NEGOTIATE_SCHEME || !value) {
@@ -334,26 +336,47 @@ const parseAuthenticator = (plain: Buffer): TAuthenticator => {
   };
 };
 
-const hasChannelBinding = (checksum: TAuthenticator["checksum"]) => {
+const readChannelBinding = (checksum: TAuthenticator["checksum"]) => {
   if (
     !checksum ||
     checksum.type !== GSS_CHECKSUM_TYPE ||
     checksum.value.length < GSS_CHECKSUM_MIN_LENGTH ||
     checksum.value.readUInt32LE(0) !== GSS_CHECKSUM_BINDINGS_LENGTH
   ) {
-    return false;
+    return null;
   }
-  return checksum.value
-    .subarray(GSS_CHECKSUM_BINDINGS_OFFSET, GSS_CHECKSUM_BINDINGS_OFFSET + GSS_CHECKSUM_BINDINGS_LENGTH)
-    .some((byte) => byte !== 0);
+  const channelBinding = checksum.value.subarray(
+    GSS_CHECKSUM_BINDINGS_OFFSET,
+    GSS_CHECKSUM_BINDINGS_OFFSET + GSS_CHECKSUM_BINDINGS_LENGTH
+  );
+  return channelBinding.some((byte) => byte !== 0) ? channelBinding : null;
 };
 
-const verifyChannelBinding = (authenticator: TAuthenticator, context: TErrorContext) => {
-  if (!hasChannelBinding(authenticator.checksum)) {
+const verifyChannelBinding = (
+  authenticator: TAuthenticator,
+  expectedChannelBindings: Buffer[] | null,
+  context: TErrorContext
+) => {
+  const channelBinding = readChannelBinding(authenticator.checksum);
+  if (!channelBinding) {
     throw new KerberosError({
       reason: KerberosFailureReason.MissingChannelBinding,
       message:
         "The request was refused because its Kerberos authenticator carries no channel binding, so it did not come over HTTPS with channel binding. Make sure computers reach the enrollment URL over HTTPS.",
+      ...context
+    });
+  }
+  if (!expectedChannelBindings) return;
+
+  const isExpected = expectedChannelBindings.some(
+    (expected) =>
+      expected.length === channelBinding.length && crypto.nativeCrypto.timingSafeEqual(expected, channelBinding)
+  );
+  if (!isExpected) {
+    throw new KerberosError({
+      reason: KerberosFailureReason.ChannelBindingMismatch,
+      message:
+        "The request was refused because its Kerberos channel binding is for a TLS certificate this server does not present, so the ticket may have been relayed from another HTTPS site.",
       ...context
     });
   }
@@ -529,7 +552,8 @@ const buildMutualAuthToken = (token: TNegotiateToken, ticket: TTicket, authentic
 export const verifyNegotiateToken = async ({
   authorizationHeader,
   keytabEntries,
-  checkReplay
+  checkReplay,
+  expectedChannelBindings
 }: TVerifyNegotiateTokenDTO): Promise<TKerberosIdentity & { responseToken: string | null }> => {
   const rawToken = readAuthorizationHeader(authorizationHeader);
   const token = asMalformed(
@@ -591,7 +615,7 @@ export const verifyNegotiateToken = async ({
     context
   );
 
-  verifyChannelBinding(authenticator, context);
+  verifyChannelBinding(authenticator, expectedChannelBindings, context);
   await verifyTicketClaims({ ticket, authenticator, checkReplay, context });
   const logonInfo = readPacLogonInfo(ticket, keytabEntry.key, context);
   if (!ticket.clientName.endsWith(COMPUTER_ACCOUNT_SUFFIX)) {

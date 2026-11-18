@@ -106,6 +106,7 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
             applicationId: req.params.applicationId,
             applicationName: result.applicationName,
             profileId: req.params.profileId,
+            profileName: result.profileName,
             servicePrincipalName: result.microsoftAutoenrollment.servicePrincipalName,
             keyVersion: result.microsoftAutoenrollment.keyVersion,
             connectionId: result.microsoftAutoenrollment.connectionId,
@@ -166,7 +167,8 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
           metadata: {
             applicationId: req.params.applicationId,
             applicationName: result.applicationName,
-            profileId: req.params.profileId
+            profileId: req.params.profileId,
+            profileName: result.profileName
           }
         }
       });
@@ -224,6 +226,7 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
             applicationId: req.params.applicationId,
             applicationName: result.applicationName,
             profileId: req.params.profileId,
+            profileName: result.profileName,
             templateMajorRevision: result.templateMajorRevision
           }
         }

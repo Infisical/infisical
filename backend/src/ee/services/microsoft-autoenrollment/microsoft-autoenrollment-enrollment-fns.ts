@@ -4,7 +4,7 @@ import { logger } from "@app/lib/logger";
 import { TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { TLdapConnectionConfig } from "@app/services/app-connection/ldap/ldap-connection-types";
+import { TLdapConnection } from "@app/services/app-connection/ldap/ldap-connection-types";
 import {
   assertLdapProviderIsSupported,
   LdapTargetConfigurationError,
@@ -25,6 +25,8 @@ import { buildPolicyId, buildTemplateOid } from "./microsoft-autoenrollment-temp
 import { MicrosoftAutoenrollmentKeytabSource } from "./microsoft-autoenrollment-types";
 
 type TDirectoryConnection = { id: string; name: string };
+
+type TMicrosoftAutoenrollmentConnection = TLdapConnection & { id: string };
 
 type TMicrosoftAutoenrollmentConfigWithGroups = Omit<TPkiMicrosoftAutoenrollmentConfigs, "allowedGroups"> & {
   allowedGroups: TMicrosoftAutoenrollmentAllowedGroup[];
@@ -103,8 +105,13 @@ export const resolveMicrosoftAutoenrollmentConnection = async (
       parentOrgId: actorParentOrgId
     }
   );
+  if (connection.app !== AppConnection.LDAP) {
+    throw new BadRequestError({
+      message: `App connection '${connection.name}' is not an LDAP connection. Microsoft Autoenrollment requires an Active Directory connection.`
+    });
+  }
   assertLdapProviderIsSupported(
-    (connection.credentials as { provider?: string } | undefined)?.provider,
+    connection.credentials.provider,
     connection.name,
     "Microsoft Autoenrollment looks computers up by their security identifier in Active Directory, so it requires an Active Directory connection."
   );
@@ -112,13 +119,11 @@ export const resolveMicrosoftAutoenrollmentConnection = async (
 };
 
 export const searchMicrosoftAutoenrollmentGroups = (
-  connection: TDirectoryConnection,
+  connection: TMicrosoftAutoenrollmentConnection,
   search: string | undefined,
   gatewayServices: TLdapDirectoryGatewayServices
 ) =>
-  searchDirectoryGroups({ config: connection as unknown as TLdapConnectionConfig, search }, gatewayServices).catch(
-    withActiveDirectoryErrors(connection)
-  );
+  searchDirectoryGroups({ config: connection, search }, gatewayServices).catch(withActiveDirectoryErrors(connection));
 
 export const resolveMicrosoftAutoenrollmentAllowedGroups = async (
   {
@@ -127,36 +132,32 @@ export const resolveMicrosoftAutoenrollmentAllowedGroups = async (
     allowedGroupSids,
     storedGroups
   }: {
-    connection: TDirectoryConnection;
+    connection: TMicrosoftAutoenrollmentConnection;
     isConnectionChanged: boolean;
     allowedGroupSids: string[];
     storedGroups: TMicrosoftAutoenrollmentAllowedGroup[];
   },
   gatewayServices: TLdapDirectoryGatewayServices
 ): Promise<TMicrosoftAutoenrollmentAllowedGroup[]> => {
-  if (isConnectionChanged) {
-    if (!allowedGroupSids.length) {
-      await searchMicrosoftAutoenrollmentGroups(connection, undefined, gatewayServices);
-      return [];
-    }
-    const resolvedNames = await resolveDirectorySidNames(
-      { config: connection as unknown as TLdapConnectionConfig, sids: allowedGroupSids },
-      gatewayServices
-    ).catch(withActiveDirectoryErrors(connection));
-    return mergeAllowedGroups(allowedGroupSids, resolvedNames, storedGroups);
+  if (!allowedGroupSids.length) {
+    if (isConnectionChanged) await searchMicrosoftAutoenrollmentGroups(connection, undefined, gatewayServices);
+    return [];
   }
 
-  if (!allowedGroupSids.length) return [];
   const resolvedNames = await resolveDirectorySidNames(
-    { config: connection as unknown as TLdapConnectionConfig, sids: allowedGroupSids },
+    { config: connection, sids: allowedGroupSids },
     gatewayServices
-  ).catch((err: unknown) => {
-    logger.warn(
-      { err },
-      `Unable to resolve Microsoft Autoenrollment group names from Active Directory [connectionId=${connection.id}]`
-    );
-    return null;
-  });
+  ).catch(
+    isConnectionChanged
+      ? withActiveDirectoryErrors(connection)
+      : (err: unknown) => {
+          logger.warn(
+            { err },
+            `Unable to resolve Microsoft Autoenrollment group names from Active Directory [connectionId=${connection.id}]`
+          );
+          return null;
+        }
+  );
   return mergeAllowedGroups(allowedGroupSids, resolvedNames, storedGroups);
 };
 

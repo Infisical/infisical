@@ -1,10 +1,10 @@
 import * as x509 from "@peculiar/x509";
 import { beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { Plan } from "@app/domains/platform/license/ce/module";
-import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { isSignerCertIssuedByCa } from "@app/ee/services/pki-scep/pki-scep-fns";
+import { KeyStorePrefixes } from "@app/keystore/keystore";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { KerberosFailureReason } from "@app/lib/kerberos";
 import {
@@ -19,6 +19,7 @@ import { CertificateIssuanceOperation } from "@app/services/certificate-common/c
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 
+import { learnServerChannelBindings } from "./microsoft-autoenrollment-channel-binding-fns";
 import { parseEnrollmentRequestToken } from "./microsoft-autoenrollment-cmc-fns";
 import { resolveInstanceServicePrincipalName } from "./microsoft-autoenrollment-fns";
 import { microsoftAutoenrollmentServiceFactory } from "./microsoft-autoenrollment-service";
@@ -52,6 +53,11 @@ vi.mock("./microsoft-autoenrollment-fns", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./microsoft-autoenrollment-fns")>()),
   loadLdapConnectionConfig: vi.fn().mockResolvedValue({}),
   resolveInstanceServicePrincipalName: vi.fn().mockResolvedValue("HTTP/app.example.com")
+}));
+
+vi.mock("./microsoft-autoenrollment-channel-binding-fns", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./microsoft-autoenrollment-channel-binding-fns")>()),
+  learnServerChannelBindings: vi.fn()
 }));
 
 vi.mock("./microsoft-autoenrollment-cmc-fns", async (importOriginal) => {
@@ -136,6 +142,7 @@ describe("microsoftAutoenrollmentService", () => {
   let plainCsr: Buffer;
 
   const usedReplayKeys = new Set<string>();
+  const keyStoreItems = new Map<string, string>();
   const config = {
     id: "config-id",
     templateMajorRevision: 100,
@@ -173,14 +180,16 @@ describe("microsoftAutoenrollmentService", () => {
     appConnectionDAL: { findById: vi.fn() },
     gatewayV2Service: { getPlatformConnectionDetailsByGatewayId: vi.fn() },
     gatewayPoolService: { resolveEffectiveGatewayId: vi.fn() },
-    keyStore: { setItemWithExpiryNX: vi.fn() },
-    licenseService: { getPlan: vi.fn() },
+    keyStore: { setItemWithExpiryNX: vi.fn(), getItem: vi.fn(), setItemWithExpiry: vi.fn() },
     auditLogService: { createAuditLog: vi.fn(), createCollapsedAuditLog: vi.fn() }
   };
 
-  const service = microsoftAutoenrollmentServiceFactory(
-    deps as unknown as Parameters<typeof microsoftAutoenrollmentServiceFactory>[0]
-  );
+  const createService = () =>
+    microsoftAutoenrollmentServiceFactory(
+      deps as unknown as Parameters<typeof microsoftAutoenrollmentServiceFactory>[0]
+    );
+
+  let service = createService();
 
   const buildAuthorization = (overrides: Partial<Parameters<typeof buildTestNegotiateHeader>[0]> = {}) =>
     buildTestNegotiateHeader({ serviceKey: keytabEntry.key, ...overrides }).authorizationHeader;
@@ -229,8 +238,17 @@ describe("microsoftAutoenrollmentService", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    service = createService();
     usedReplayKeys.clear();
+    keyStoreItems.clear();
     config.allowedGroups = [];
+    vi.spyOn(crypto, "isFipsModeEnabled").mockReturnValue(false);
+    vi.mocked(learnServerChannelBindings).mockResolvedValue([]);
+    deps.keyStore.getItem.mockImplementation(async (key: string) => keyStoreItems.get(key) ?? null);
+    deps.keyStore.setItemWithExpiry.mockImplementation(async (key: string, _expiry: number, value: string) => {
+      keyStoreItems.set(key, value);
+      return "OK";
+    });
     deps.pkiApplicationProfileDAL.findOneByApplicationAndProfile.mockResolvedValue({
       id: JUNCTION_ID,
       microsoftAutoenrollmentConfigId: config.id
@@ -252,9 +270,6 @@ describe("microsoftAutoenrollmentService", () => {
     });
     deps.projectDAL.findOne.mockResolvedValue({ id: "project-id", orgId: "org-id" });
     deps.kmsService.decryptWithKmsKey.mockResolvedValue(async () => keytab);
-    deps.licenseService.getPlan.mockResolvedValue(
-      Plan.restore({ ...testFeatures(), pkiMicrosoftAutoenrollment: true })
-    );
     deps.keyStore.setItemWithExpiryNX.mockImplementation(async (key: string) => {
       if (usedReplayKeys.has(key)) return null;
       usedReplayKeys.add(key);
@@ -287,17 +302,6 @@ describe("microsoftAutoenrollmentService", () => {
       expect(response.statusCode).toBe(404);
       expect(deps.keyStore.setItemWithExpiryNX).not.toHaveBeenCalled();
     });
-
-    test("refuses every computer when the plan does not include Microsoft Autoenrollment", async () => {
-      deps.licenseService.getPlan.mockResolvedValue(Plan.restore(testFeatures()));
-
-      const response = await service.getPolicies(request(GET_POLICIES_BODY));
-
-      expect(response.statusCode).toBe(500);
-      expect(response.body).toContain("<s:Fault>");
-      expect(deps.keyStore.setItemWithExpiryNX).not.toHaveBeenCalled();
-      expect(deps.kmsService.decryptWithKmsKey).not.toHaveBeenCalled();
-    });
   });
 
   describe("Kerberos authentication", () => {
@@ -307,6 +311,16 @@ describe("microsoftAutoenrollmentService", () => {
       expect(response.statusCode).toBe(401);
       expect(response.headers["WWW-Authenticate"]).toBe("Negotiate");
       expect(refusalReasons()).toEqual([KerberosFailureReason.NoTicket]);
+      expect(deps.kmsService.decryptWithKmsKey).not.toHaveBeenCalled();
+      expect(learnServerChannelBindings).not.toHaveBeenCalled();
+    });
+
+    test("asks for a ticket without decrypting the keytab when the Authorization header is not Negotiate", async () => {
+      const response = await service.getPolicies(request(GET_POLICIES_BODY, "Basic dXNlcjpwYXNz"));
+
+      expect(response.statusCode).toBe(401);
+      expect(refusalReasons()).toEqual([KerberosFailureReason.NoTicket]);
+      expect(deps.kmsService.decryptWithKmsKey).not.toHaveBeenCalled();
     });
 
     test("refuses a replayed authenticator", async () => {
@@ -359,6 +373,183 @@ describe("microsoftAutoenrollmentService", () => {
       expect(response.statusCode).toBe(401);
       expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.recordKeytabMismatch).not.toHaveBeenCalled();
       expect(refusalReasons()).toEqual([KerberosFailureReason.NoMatchingKey]);
+    });
+  });
+
+  describe("TLS channel binding", () => {
+    const CHANNEL_BINDINGS_KEY = KeyStorePrefixes.MicrosoftAutoenrollmentServerChannelBindings("app.example.com:443");
+    const SERVER_BINDING = Buffer.alloc(16, 0x11);
+    const ROTATED_BINDING = Buffer.alloc(16, 0x22);
+    const RELAYED_BINDING = Buffer.alloc(16, 0x33);
+    const HOUR_MS = 60 * 60 * 1000;
+
+    const cacheBindings = (entries: { binding: Buffer; ageMs: number }[]) =>
+      keyStoreItems.set(
+        CHANNEL_BINDINGS_KEY,
+        JSON.stringify(
+          entries.map(({ binding, ageMs }) => ({
+            binding: binding.toString("hex"),
+            seenAt: new Date(Date.now() - ageMs).toISOString()
+          }))
+        )
+      );
+
+    const cachedBindings = () =>
+      (JSON.parse(keyStoreItems.get(CHANNEL_BINDINGS_KEY) ?? "[]") as { binding: string }[]).map(
+        ({ binding }) => binding
+      );
+
+    let authenticatorMicroseconds = 0;
+    const getPoliciesBoundTo = (channelBinding: Buffer) => {
+      authenticatorMicroseconds += 1;
+      return service.getPolicies(
+        request(GET_POLICIES_BODY, buildAuthorization({ channelBinding, microseconds: authenticatorMicroseconds }))
+      );
+    };
+
+    const replayKeysWritten = () =>
+      [...usedReplayKeys].filter((key) => key.startsWith("microsoft-autoenrollment-replay:"));
+
+    test("learns the instance's certificates and accepts a request bound to one of them", async () => {
+      vi.mocked(learnServerChannelBindings).mockResolvedValue([SERVER_BINDING.toString("hex")]);
+
+      const response = await getPoliciesBoundTo(SERVER_BINDING);
+
+      expect(response.statusCode).toBe(200);
+      expect(learnServerChannelBindings).toHaveBeenCalledExactlyOnceWith({ host: "app.example.com", port: 443 });
+      expect(cachedBindings()).toEqual([SERVER_BINDING.toString("hex")]);
+    });
+
+    test("uses fresh cached certificates without reading them again", async () => {
+      cacheBindings([{ binding: SERVER_BINDING, ageMs: 0 }]);
+
+      const response = await getPoliciesBoundTo(SERVER_BINDING);
+
+      expect(response.statusCode).toBe(200);
+      expect(learnServerChannelBindings).not.toHaveBeenCalled();
+    });
+
+    test("refuses a request bound to another certificate after one rate-limited read, without using its authenticator", async () => {
+      cacheBindings([{ binding: SERVER_BINDING, ageMs: 0 }]);
+      vi.mocked(learnServerChannelBindings).mockResolvedValue([SERVER_BINDING.toString("hex")]);
+
+      const first = await getPoliciesBoundTo(RELAYED_BINDING);
+      const second = await getPoliciesBoundTo(RELAYED_BINDING);
+
+      expect(first.statusCode).toBe(401);
+      expect(second.statusCode).toBe(401);
+      expect(learnServerChannelBindings).toHaveBeenCalledTimes(1);
+      expect(replayKeysWritten()).toEqual([]);
+      expect(refusalReasons()).toEqual([
+        KerberosFailureReason.ChannelBindingMismatch,
+        KerberosFailureReason.ChannelBindingMismatch
+      ]);
+      const [[refusal]] = deps.auditLogService.createCollapsedAuditLog.mock.calls as [
+        [{ event: { metadata: { message: string } } }]
+      ];
+      expect(refusal.event.metadata.message).toContain("app.example.com");
+      expect(refusal.event.metadata.message).toContain("Exclude app.example.com from HTTPS inspection");
+    });
+
+    test("accepts a request bound to a rotated certificate once the read finds it", async () => {
+      cacheBindings([{ binding: SERVER_BINDING, ageMs: 0 }]);
+      vi.mocked(learnServerChannelBindings).mockResolvedValue([ROTATED_BINDING.toString("hex")]);
+
+      const response = await getPoliciesBoundTo(ROTATED_BINDING);
+
+      expect(response.statusCode).toBe(200);
+      expect(learnServerChannelBindings).toHaveBeenCalledTimes(1);
+      expect(cachedBindings()).toEqual([ROTATED_BINDING.toString("hex"), SERVER_BINDING.toString("hex")]);
+    });
+
+    test("keeps certificates seen in the last 24 hours when it reads them again, and drops older ones", async () => {
+      cacheBindings([
+        { binding: SERVER_BINDING, ageMs: 2 * HOUR_MS },
+        { binding: RELAYED_BINDING, ageMs: 25 * HOUR_MS }
+      ]);
+      vi.mocked(learnServerChannelBindings).mockResolvedValue([ROTATED_BINDING.toString("hex")]);
+
+      expect((await getPoliciesBoundTo(SERVER_BINDING)).statusCode).toBe(200);
+      await vi.waitFor(() =>
+        expect(cachedBindings()).toEqual([ROTATED_BINDING.toString("hex"), SERVER_BINDING.toString("hex")])
+      );
+      expect(learnServerChannelBindings).toHaveBeenCalledTimes(1);
+      expect((await getPoliciesBoundTo(RELAYED_BINDING)).statusCode).toBe(401);
+    });
+
+    test("answers from stale cached certificates without waiting for them to be read again", async () => {
+      cacheBindings([{ binding: SERVER_BINDING, ageMs: 2 * HOUR_MS }]);
+      const neverSettles = new Promise<string[]>((resolve) => {
+        setTimeout(() => resolve([]), 60 * 60 * 1000).unref();
+      });
+      vi.mocked(learnServerChannelBindings).mockReturnValue(neverSettles);
+
+      const response = await getPoliciesBoundTo(SERVER_BINDING);
+
+      expect(response.statusCode).toBe(200);
+      expect(learnServerChannelBindings).toHaveBeenCalledTimes(1);
+    });
+
+    test("a mismatch refetch while another refresh holds the lock waits for this instance's learn already in progress", async () => {
+      cacheBindings([{ binding: SERVER_BINDING, ageMs: 2 * HOUR_MS }]);
+      vi.mocked(learnServerChannelBindings).mockResolvedValue([ROTATED_BINDING.toString("hex")]);
+
+      const response = await getPoliciesBoundTo(ROTATED_BINDING);
+
+      expect(response.statusCode).toBe(200);
+      expect(learnServerChannelBindings).toHaveBeenCalledTimes(1);
+    });
+
+    test("reads the certificates again when the cache is gone, even while another refresh holds the lock", async () => {
+      usedReplayKeys.add(
+        KeyStorePrefixes.MicrosoftAutoenrollmentServerChannelBindingsRefreshLock("app.example.com:443")
+      );
+      vi.mocked(learnServerChannelBindings).mockResolvedValue([SERVER_BINDING.toString("hex")]);
+
+      const response = await getPoliciesBoundTo(RELAYED_BINDING);
+
+      expect(response.statusCode).toBe(401);
+      expect(learnServerChannelBindings).toHaveBeenCalledTimes(1);
+      expect(refusalReasons()).toEqual([KerberosFailureReason.ChannelBindingMismatch]);
+    });
+
+    test("reads the certificates once for concurrent requests on an empty cache", async () => {
+      vi.mocked(learnServerChannelBindings).mockResolvedValue([SERVER_BINDING.toString("hex")]);
+
+      const responses = await Promise.all([getPoliciesBoundTo(SERVER_BINDING), getPoliciesBoundTo(SERVER_BINDING)]);
+
+      expect(responses.map(({ statusCode }) => statusCode)).toEqual([200, 200]);
+      expect(learnServerChannelBindings).toHaveBeenCalledTimes(1);
+    });
+
+    test("checks only that a binding is present in FIPS mode", async () => {
+      vi.mocked(crypto.isFipsModeEnabled).mockReturnValue(true);
+      cacheBindings([{ binding: SERVER_BINDING, ageMs: 0 }]);
+
+      const response = await getPoliciesBoundTo(RELAYED_BINDING);
+
+      expect(response.statusCode).toBe(200);
+      expect(learnServerChannelBindings).not.toHaveBeenCalled();
+    });
+
+    test("checks only that a binding is present when the instance's certificate cannot be read", async () => {
+      vi.mocked(learnServerChannelBindings).mockRejectedValue(new Error("connect ECONNREFUSED"));
+
+      const response = await getPoliciesBoundTo(RELAYED_BINDING);
+
+      expect(response.statusCode).toBe(200);
+      expect(learnServerChannelBindings).toHaveBeenCalledTimes(1);
+      expect(keyStoreItems.has(CHANNEL_BINDINGS_KEY)).toBe(false);
+
+      expect((await getPoliciesBoundTo(RELAYED_BINDING)).statusCode).toBe(200);
+      expect(learnServerChannelBindings).toHaveBeenCalledTimes(1);
+    });
+
+    test("still refuses a request with no channel binding when the certificate cannot be read", async () => {
+      const response = await service.getPolicies(request(GET_POLICIES_BODY, buildAuthorization({ checksum: null })));
+
+      expect(response.statusCode).toBe(401);
+      expect(refusalReasons()).toEqual([KerberosFailureReason.MissingChannelBinding]);
     });
   });
 
@@ -463,7 +654,7 @@ describe("microsoftAutoenrollmentService", () => {
         value: COMPUTER_SID
       });
       expect(issuanceAuditLog().type).toBe(EventType.MICROSOFT_AUTOENROLLMENT_ISSUANCE);
-      expect(issuanceAuditLog().metadata).toMatchObject({ profileSlug: "web-servers", serialNumber: "0a1b2c3d" });
+      expect(issuanceAuditLog().metadata).toMatchObject({ profileName: "web-servers", serialNumber: "0a1b2c3d" });
     });
 
     test("creates the request number in the issuance transaction and audits it after commit", async () => {
@@ -603,7 +794,8 @@ describe("microsoftAutoenrollmentService", () => {
       expect(deps.certificateDAL.findOne.mock.calls[0][0]).toEqual({
         serialNumber: "0a1b2c3d",
         caId: CA_ID,
-        profileId: PROFILE_ID
+        profileId: PROFILE_ID,
+        applicationId: APPLICATION_ID
       });
       expect(deps.certificateV3Service.signCertificateFromProfile).toHaveBeenCalledWith(
         expect.objectContaining({

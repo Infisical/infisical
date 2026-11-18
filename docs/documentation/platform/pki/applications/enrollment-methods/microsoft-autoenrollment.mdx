@@ -19,7 +19,12 @@ Each computer signs in with its Kerberos ticket on every request. Its certificat
 - A domain account to map the Kerberos service principal to, and permission to run `ktpass` on a domain controller
 - Windows computers that can reach your Infisical instance over HTTPS, with a TLS certificate they trust
 
-RSA keys need a CA with an RSA key, and ECDSA keys need a CA with an EC key. Requests that don't carry HTTPS channel binding are refused. Windows sends it by default when it connects over HTTPS, unless the computer sets `SuppressExtendedProtection` to `1` under `HKLM\SYSTEM\CurrentControlSet\Control\Lsa`.
+Each request must carry an HTTPS channel binding for a TLS certificate that your instance serves at its host name. Windows adds the channel binding by default when it connects over HTTPS, unless the computer sets `SuppressExtendedProtection` to `1` under `HKLM\SYSTEM\CurrentControlSet\Control\Lsa`. Your instance reads the certificates valid for its host name at the addresses its own DNS resolver and public DNS return, so an internal address with a valid certificate for the host name works.
+
+- A request is refused if the computer sees a certificate your instance can't see at its host name, typically from a proxy that inspects HTTPS or from an internal address your instance doesn't resolve
+- To avoid this, exclude your instance's host name from HTTPS inspection and make sure your instance resolves its host name the same way computers do
+- If your instance runs in FIPS mode, a request only needs to carry a channel binding, for any certificate
+- If your instance can't read its certificates, requests are checked against the last certificates it read for up to a day, and after that only need to carry a channel binding until it can read them again
 
 <Note>
   On a self-hosted instance, set `SITE_URL` to the HTTPS address computers use, because the enrollment URLs and the Kerberos service principal are built from it.
@@ -68,7 +73,7 @@ Fill in the rest of the panel, then select **Enable**:
 
 - **LDAP connection**: the Active Directory connection used to look up each computer's DNS name
 - **AD groups (optional)**: the groups whose computers can enroll (leave it empty to let every computer in the domain enroll)
-- **Renew before (days)**: the number of days before expiry that Windows renews a certificate (defaults to 42, and is capped at the certificate's lifetime minus one day)
+- **Renew before (days)**: the number of days before expiry that Windows renews a certificate (defaults to 42, and is capped at the certificate's validity minus one day)
 
 Certificates are valid for the profile's default TTL. If the profile has no default TTL, they're valid for one year, the same as the AD CS computer templates, or for the policy's maximum validity if that's shorter.
 
@@ -180,7 +185,7 @@ Windows keeps the enrollment policy for up to 8 hours, so a change to the enroll
 
 ## Re-enroll computers
 
-Changing the enrollment method doesn't replace the certificates computers already hold. They get the new settings when they renew. To make every computer request a new certificate now (the same as re-enrolling all certificate holders of a template in AD CS), go to the **Renewal** section of the panel and select **Re-enroll All Computers**. Each computer requests a new certificate the next time it fetches the enrollment policy.
+Changing the enrollment method doesn't replace the certificates computers already hold. They get the new settings when they renew. To make every computer request a new certificate the next time it fetches the enrollment policy (the same as re-enrolling all certificate holders of a template in AD CS), go to the **Renewal** section of the panel and select **Re-enroll All Computers**.
 
 ## Approvals
 
@@ -197,8 +202,11 @@ To install an approved certificate without waiting, run `certutil -pulse` on the
   <Accordion title="A computer added to an allowed group still can't enroll">
     A computer's group memberships come from its Kerberos ticket, so a group change only takes effect when the computer gets a new ticket, after a restart or when its ticket expires. To get a new ticket right away, run `klist -li 0x3e7 purge` on the computer from an elevated prompt, then run autoenrollment again.
   </Accordion>
+  <Accordion title="Requests are refused with a channel binding mismatch">
+    The audit log shows the reason `channel-binding-mismatch` when a request is bound to a TLS certificate that your instance can't see at its host name. This usually means computers reach your instance through a proxy that inspects HTTPS, or resolve its host name to an internal address that your instance's own DNS lookups don't return. Exclude your instance's host name from HTTPS inspection, and make sure your instance resolves its host name the same way computers do. If neither applies, someone may be relaying the computers' Kerberos tickets through another HTTPS site.
+  </Accordion>
   <Accordion title="A computer doesn't get a certificate">
-    Windows records an error in the computer's Application event log, under the source `CertificateServicesClient-CertEnroll`, but it never shows the reason the request was refused. Find the reason in the [audit logs](/documentation/platform/audit-logs), then match the Windows error. A refused sign-in, a request sent without HTTPS channel binding, a computer outside the allowed groups, an Active Directory problem or a refused renewal is logged as **Microsoft Autoenrollment Request Refused** (`microsoft-autoenrollment-request-refused`). A request that the certificate policy or CA rejects, such as one with a TTL or key the policy doesn't allow, or a computer SID that the policy's rule for the SID extension doesn't allow, is logged as `certificate-issuance-failed`.
+    Windows records an error in the computer's Application event log, under the source `CertificateServicesClient-CertEnroll`, but it never shows the reason the request was refused. Find the reason in the [audit logs](/documentation/platform/audit-logs), then match the Windows error. A refused sign-in, a request sent without HTTPS channel binding or bound to another TLS certificate, a computer outside the allowed groups, an Active Directory problem or a refused renewal is logged as **Microsoft Autoenrollment Request Refused** (`microsoft-autoenrollment-request-refused`). A request that the certificate policy or CA rejects, such as one with a TTL or key the policy doesn't allow, or a computer SID that the policy's rule for the SID extension doesn't allow, is logged as **Certificate Issuance Failed** (`certificate-issuance-failed`).
 
     | Windows error | Cause |
     | --- | --- |

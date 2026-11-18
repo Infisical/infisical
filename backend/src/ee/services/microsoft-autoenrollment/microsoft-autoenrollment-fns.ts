@@ -12,7 +12,12 @@ import { TCertificateAuthorityDALFactory } from "@app/services/certificate-autho
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { TMicrosoftAutoenrollmentAllowedGroup } from "@app/services/enrollment-config/microsoft-autoenrollment-enrollment-config-dal";
 
-import { isTemplateKeyAlgorithmSupported, resolveTemplatePrivateKey } from "./microsoft-autoenrollment-template-fns";
+import {
+  getKeyAlgorithmDisplayName,
+  isTemplateKeyAlgorithmSupported,
+  resolveTemplatePrivateKey,
+  TEMPLATE_DEFAULT_KEY_ALGORITHM
+} from "./microsoft-autoenrollment-template-fns";
 
 const MAX_CNAME_HOPS = 10;
 const CNAME_END_OF_CHAIN_CODES = ["ENODATA", "ENOTFOUND"];
@@ -146,9 +151,18 @@ const checkProfileCaCompatibility = async (
       message: `Microsoft Autoenrollment requires a profile that issues from an internal certificate authority, because Windows needs the issuing CA certificate in the template list. Profile '${profileSlug}' does not.`
     };
   }
+  const caKeyName = getKeyAlgorithmDisplayName(caKeyAlgorithm);
+  if (!keyAlgorithm) {
+    const defaultKeyName = getKeyAlgorithmDisplayName(TEMPLATE_DEFAULT_KEY_ALGORITHM);
+    return {
+      shortReason: `the profile has no default key algorithm, so Windows would request ${defaultKeyName} keys, which its certificate authority's ${caKeyName} key cannot sign`,
+      message: `Profile '${profileSlug}' has no default key algorithm, so Windows requests ${defaultKeyName} keys, but its certificate authority's ${caKeyName} key cannot sign that request. Use a certificate authority with an RSA key, or set the profile's default key algorithm.`
+    };
+  }
+  const keyName = getKeyAlgorithmDisplayName(keyAlgorithm);
   return {
-    shortReason: `the profile would ask Windows for ${keyFamily} key, which its certificate authority's ${caKeyAlgorithm} key cannot sign`,
-    message: `Profile '${profileSlug}' asks Windows for ${keyFamily} key, but its certificate authority's key is ${caKeyAlgorithm}, which cannot sign that request. Use a certificate authority with ${keyFamily} key, or change the profile's default key algorithm.`
+    shortReason: `the profile would ask Windows for ${keyName} keys, which its certificate authority's ${caKeyName} key cannot sign`,
+    message: `Profile '${profileSlug}' asks Windows for ${keyName} keys, but its certificate authority's ${caKeyName} key cannot sign that request. Use a certificate authority with ${keyFamily} key, or change the profile's default key algorithm.`
   };
 };
 

@@ -75,8 +75,11 @@ export const microsoftAutoenrollmentEnrollmentConfigDALFactory = (db: TDbClient)
     }
   };
 
+  const primaryNode = () => db.primaryNode();
+
   return {
     ...microsoftAutoenrollmentConfigOrm,
+    primaryNode,
     findById,
     findByApplicationId,
     recordKeytabMismatch

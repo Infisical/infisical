@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheck, faCopy, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { AxiosError } from "axios";
 import { format } from "date-fns";
 import {
@@ -14,6 +15,7 @@ import {
   RotateCwIcon,
   TriangleAlertIcon
 } from "lucide-react";
+import { z } from "zod";
 
 import { useConnectionCreation } from "@app/components/app-connections/useConnectionCreation";
 import {
@@ -206,26 +208,20 @@ const ReenrollComputersButton = ({
   isPending: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [isConfirming, setIsConfirming] = useState(false);
-  const isActionPending = isPending || isConfirming;
   return (
     <>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="w-fit"
-        onClick={() => setIsOpen(true)}
-        isDisabled={isActionPending}
-      >
-        Re-enroll All Computers
-      </Button>
-      <AlertDialog
-        open={isOpen}
-        onOpenChange={(open) => {
-          if (!isActionPending) setIsOpen(open);
-        }}
-      >
+      <div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setIsOpen(true)}
+          isDisabled={isPending}
+        >
+          Re-enroll All Computers
+        </Button>
+      </div>
+      <AlertDialog open={isOpen} onOpenChange={setIsOpen} isPending={isPending}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogMedia>
@@ -239,23 +235,19 @@ const ReenrollComputersButton = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isActionPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel isDisabled={isPending}>Cancel</AlertDialogCancel>
             <Button
               type="button"
               variant="project"
-              isPending={isActionPending}
-              isDisabled={isActionPending}
+              isPending={isPending}
+              isDisabled={isPending}
               onClick={async () => {
-                if (isActionPending) return;
-                setIsConfirming(true);
                 try {
                   await onConfirmed();
                   setIsOpen(false);
                 } catch {
                   // oxlint-disable-next-line no-useless-return
                   return;
-                } finally {
-                  setIsConfirming(false);
                 }
               }}
             >
@@ -1520,13 +1512,66 @@ const MAX_GROUP_RESULTS = 50;
 const MAX_KEYTAB_BYTES = 64 * 1024;
 const KEYTAB_FILE_NAME = "infisical.keytab";
 
-type MicrosoftAutoenrollmentForm = {
-  connectionId: string | null;
-  allowedGroups: TMicrosoftAutoenrollmentGroup[];
-  renewBeforeDays: number | null;
-  keytabFile: File | null;
-  reuseFrom: TMicrosoftAutoenrollmentOtherProfile | null;
-};
+const createMicrosoftAutoenrollmentFormSchema = (
+  isKeytabRequired: boolean,
+  isReuseCandidateOffered: boolean
+) =>
+  z
+    .object({
+      connectionId: z.string().nullable(),
+      allowedGroups: z.array(z.custom<TMicrosoftAutoenrollmentGroup>()),
+      renewBeforeDays: z.number().nullable(),
+      keytabFile: z.instanceof(File).nullable(),
+      reuseFrom: z.custom<TMicrosoftAutoenrollmentOtherProfile>().nullable()
+    })
+    .superRefine((values, ctx) => {
+      if (values.keytabFile && values.keytabFile.size > MAX_KEYTAB_BYTES) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["keytabFile"],
+          message: "The keytab must be 64 KB or smaller."
+        });
+      }
+      if (isKeytabRequired && !values.keytabFile && !values.reuseFrom) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["keytabFile"],
+          message: isReuseCandidateOffered
+            ? "Upload a keytab, or select Use This Keytab."
+            : "Upload the keytab the command created."
+        });
+      }
+      if (!values.connectionId) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["connectionId"],
+          message: "Select an LDAP connection."
+        });
+      }
+      if (values.allowedGroups.length > MAX_ALLOWED_GROUPS) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["allowedGroups"],
+          message: `Select at most ${MAX_ALLOWED_GROUPS} groups.`
+        });
+      }
+      if (
+        values.renewBeforeDays === null ||
+        !Number.isInteger(values.renewBeforeDays) ||
+        values.renewBeforeDays < 1 ||
+        values.renewBeforeDays > MAX_RENEW_BEFORE_DAYS
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["renewBeforeDays"],
+          message: `Must be between 1 and ${MAX_RENEW_BEFORE_DAYS}`
+        });
+      }
+    });
+
+type MicrosoftAutoenrollmentForm = z.infer<
+  ReturnType<typeof createMicrosoftAutoenrollmentFormSchema>
+>;
 
 const getMicrosoftAutoenrollmentFormValues = (
   initial: TMicrosoftAutoenrollmentEnrollment | null
@@ -1577,14 +1622,29 @@ const MicrosoftAutoenrollmentPanel = ({
   const [isReplacingKeytab, setIsReplacingKeytab] = useState(false);
   const [groupSearch, setGroupSearch] = useState("");
   const [debouncedGroupSearch] = useDebounce(groupSearch, 300);
+  const { data: servicePrincipal, error: servicePrincipalError } =
+    useGetMicrosoftAutoenrollmentServicePrincipal(applicationId, profileId);
+  const instanceServicePrincipalName = servicePrincipal?.servicePrincipalName.toLowerCase();
+  const reuseCandidate = instanceServicePrincipalName
+    ? otherProfiles.find(
+        (p) =>
+          p.servicePrincipalName.split("@")[0].toLowerCase() === instanceServicePrincipalName &&
+          (!initial ||
+            p.servicePrincipalName !== initial.servicePrincipalName ||
+            p.keyVersion !== initial.keyVersion)
+      )
+    : undefined;
   const {
     control,
     handleSubmit,
     watch,
     reset,
     setValue,
-    formState: { isDirty, isSubmitting }
+    formState: { isDirty, isSubmitting, dirtyFields }
   } = useForm<MicrosoftAutoenrollmentForm>({
+    resolver: zodResolver(
+      createMicrosoftAutoenrollmentFormSchema(!initial, Boolean(reuseCandidate))
+    ),
     defaultValues: getMicrosoftAutoenrollmentFormValues(initial)
   });
 
@@ -1602,8 +1662,6 @@ const MicrosoftAutoenrollmentPanel = ({
   const connectionCreation = useConnectionCreation(AppConnection.LDAP, (connection) =>
     setValue("connectionId", connection.id, { shouldDirty: true, shouldValidate: true })
   );
-  const { data: servicePrincipal, error: servicePrincipalError } =
-    useGetMicrosoftAutoenrollmentServicePrincipal(applicationId, profileId);
   const {
     data: groupSearchResult,
     isFetching: isGroupsFetching,
@@ -1616,7 +1674,8 @@ const MicrosoftAutoenrollmentPanel = ({
     search: debouncedGroupSearch.trim().slice(0, MAX_GROUP_SEARCH_LENGTH) || undefined
   });
 
-  const isPending = setMutation.isPending || clearMutation.isPending || isSubmitting;
+  const isPending =
+    setMutation.isPending || clearMutation.isPending || reenrollMutation.isPending || isSubmitting;
   useEffect(() => {
     onDirtyChange("microsoft-autoenrollment", isDirty);
   }, [isDirty, onDirtyChange]);
@@ -1632,17 +1691,6 @@ const MicrosoftAutoenrollmentPanel = ({
   );
 
   const isKeytabUploadShown = !reuseFrom && (!initial || isReplacingKeytab);
-  const mismatchedServiceName = initial?.keytabMismatch?.servicePrincipalName.toLowerCase();
-  const reuseCandidates = otherProfiles.filter(
-    (p) =>
-      !initial ||
-      p.servicePrincipalName !== initial.servicePrincipalName ||
-      p.keyVersion !== initial.keyVersion
-  );
-  const reuseCandidate =
-    reuseCandidates.find(
-      (p) => p.servicePrincipalName.split("@")[0].toLowerCase() === mismatchedServiceName
-    ) ?? reuseCandidates[0];
   const reuseCandidateConnectionName = ldapConnections?.find(
     (c) => c.id === reuseCandidate?.connectionId
   )?.name;
@@ -1668,9 +1716,10 @@ const MicrosoftAutoenrollmentPanel = ({
       applicationId,
       profileId,
       connectionId: values.connectionId ?? undefined,
-      allowedGroupSids: values.allowedGroups.length
-        ? values.allowedGroups.map((group) => group.sid)
-        : null,
+      allowedGroupSids:
+        !initial || dirtyFields.allowedGroups
+          ? values.allowedGroups.map((group) => group.sid)
+          : undefined,
       renewBeforeDays: values.renewBeforeDays ?? undefined,
       keytab: values.keytabFile
         ? bytesToBase64(new Uint8Array(await values.keytabFile.arrayBuffer()))
@@ -1694,7 +1743,7 @@ const MicrosoftAutoenrollmentPanel = ({
 
   let ktpassContent: React.ReactNode = <Skeleton className="h-20 w-full" />;
   if (ktpassCommand) {
-    ktpassContent = <CodeBlock value={ktpassCommand} className="whitespace-pre-wrap" />;
+    ktpassContent = <CodeBlock value={ktpassCommand} />;
   } else if (servicePrincipalError) {
     ktpassContent = (
       <Alert variant="danger">
@@ -1795,10 +1844,7 @@ const MicrosoftAutoenrollmentPanel = ({
                 On a domain controller, turn on AES for the service account first. Without it,
                 tickets can be encrypted with RC4, which the keytab can&apos;t read.
               </p>
-              <CodeBlock
-                value="Set-ADUser <service-account> -KerberosEncryptionType AES128,AES256"
-                className="whitespace-pre-wrap"
-              />
+              <CodeBlock value="Set-ADUser <service-account> -KerberosEncryptionType AES128,AES256" />
               <p className="text-sm text-accent">
                 Then run this with your realm and service account, and upload the file it creates.
               </p>
@@ -1810,15 +1856,6 @@ const MicrosoftAutoenrollmentPanel = ({
               <Controller
                 control={control}
                 name="keytabFile"
-                rules={{
-                  validate: (file, values) => {
-                    if (file && file.size > MAX_KEYTAB_BYTES)
-                      return "The keytab must be 64 KB or smaller.";
-                    if (!initial && !file && !values.reuseFrom)
-                      return "Upload the keytab the command created.";
-                    return true;
-                  }
-                }}
                 render={({ field, fieldState: { error } }) => (
                   <Field ref={field.ref} tabIndex={-1} className="scroll-mb-20 outline-none">
                     <FileDropzone
@@ -1843,7 +1880,6 @@ const MicrosoftAutoenrollmentPanel = ({
           <Controller
             control={control}
             name="connectionId"
-            rules={{ required: true }}
             render={({ field: { value, onChange, onBlur, name, ref }, fieldState: { error } }) => (
               <Field>
                 <FieldLabel htmlFor="microsoft-autoenrollment-connection">
@@ -1871,7 +1907,7 @@ const MicrosoftAutoenrollmentPanel = ({
                   Needs an LDAP connection that uses the Active Directory provider. Looks up each
                   computer&apos;s DNS name in the domain.
                 </FieldDescription>
-                {error ? <FieldError>Select an LDAP connection.</FieldError> : null}
+                {error ? <FieldError>{error.message}</FieldError> : null}
               </Field>
             )}
           />
@@ -1880,10 +1916,6 @@ const MicrosoftAutoenrollmentPanel = ({
           <Controller
             control={control}
             name="allowedGroups"
-            rules={{
-              validate: (value) =>
-                value.length <= MAX_ALLOWED_GROUPS || `Select at most ${MAX_ALLOWED_GROUPS} groups.`
-            }}
             render={({ field, fieldState: { error } }) => (
               <Field>
                 <FieldLabel htmlFor="microsoft-autoenrollment-groups">
@@ -1941,11 +1973,6 @@ const MicrosoftAutoenrollmentPanel = ({
           <Controller
             control={control}
             name="renewBeforeDays"
-            rules={{
-              validate: (value) =>
-                (value !== null && value >= 1 && value <= MAX_RENEW_BEFORE_DAYS) ||
-                `Must be between 1 and ${MAX_RENEW_BEFORE_DAYS}`
-            }}
             render={({ field, fieldState: { error } }) => (
               <Field>
                 <FieldLabel>Renew before (days)</FieldLabel>
@@ -1959,6 +1986,7 @@ const MicrosoftAutoenrollmentPanel = ({
                     value={field.value ?? ""}
                     onChange={handleOptionalIntChange(field.onChange)}
                     isError={Boolean(error)}
+                    className="scroll-mb-20"
                   />
                 </FieldContent>
                 {error ? <FieldError>{error.message}</FieldError> : null}
@@ -1976,11 +2004,12 @@ const MicrosoftAutoenrollmentPanel = ({
               <FieldLabel>Re-enroll computers</FieldLabel>
               <FieldDescription>
                 Saving changes doesn&apos;t replace certificates computers already hold. To make
-                every computer request a new certificate now, re-enroll them.
+                every computer request a new certificate the next time it fetches the enrollment
+                policy, re-enroll them.
               </FieldDescription>
               <ReenrollComputersButton
                 profileName={initial?.templateName ?? ""}
-                isPending={isPending || reenrollMutation.isPending}
+                isPending={isPending}
                 onConfirmed={async () => {
                   await reenrollMutation.mutateAsync({ applicationId, profileId });
                   createNotification({
