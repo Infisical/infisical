@@ -174,6 +174,7 @@ import type { LocalSecretSync } from "./secrets/secret-sync/sync-model";
 import {
   type AddNewBlocks,
   AddNewMenu,
+  EnvironmentAction,
   ExportMenu,
   FolderBreadcrumbBar,
   type QuickAddAnnotations,
@@ -1240,13 +1241,6 @@ export const OverviewPage = () => {
     return undefined;
   })();
   const colSpan = visibleEnvironments.length + 3;
-  const commitCount =
-    adapter.useCommitCount({
-      projectId,
-      environment: activeEnvironment,
-      directory: path,
-      enabled: single
-    }).data ?? 0;
   const createDenied = (environment: string) =>
     Boolean(
       blockFor(
@@ -1781,12 +1775,66 @@ export const OverviewPage = () => {
               <div className={styles.page}>
                 <PageHeader
                   size="md"
+                  className={styles.header}
                   title={
-                    session.projects.find((entry) => entry.id === projectId)?.name ??
-                    projectQuery.data?.name ??
-                    projectId
+                    <>
+                      <span className={styles.titleIcon}>
+                        <Icon name="folder" size={20} />
+                      </span>
+                      {session.projects.find((entry) => entry.id === projectId)?.name ??
+                        projectQuery.data?.name ??
+                        projectId}
+                    </>
+                  }
+                  badges={
+                    <EnvironmentAction
+                      label="Manage access to this folder"
+                      icon="users"
+                      environments={visibleEnvironments}
+                      disabledReason={writeBlock}
+                      blockOf={(environment) =>
+                        blockFor(
+                          ProjectPermissionSub.SecretFolders,
+                          ProjectPermissionSecretFolderActions.ManageAccess,
+                          { environment, secretPath: path },
+                          "manage access to this folder"
+                        )
+                      }
+                      onSelect={(environment) => {
+                        const segments = path.split("/").filter(Boolean);
+                        const folder: Of<"folder"> = {
+                          kind: "folder",
+                          id: `folder:${path}`,
+                          project,
+                          environment: environment.value,
+                          path: `/${segments.slice(0, -1).join("/")}`,
+                          name: segments.at(-1) ?? "",
+                          description: "",
+                          createdAt: "",
+                          updatedAt: ""
+                        };
+                        startRowAction({
+                          kind: "folder",
+                          action: "access",
+                          entry: folder,
+                          entries: [folder]
+                        });
+                      }}
+                    />
                   }
                   description={projectQuery.data?.description || undefined}
+                  actions={
+                    <>
+                      {addNewMenu()}
+                      <EnvironmentAction
+                        label="Commit history"
+                        icon="history"
+                        environments={visibleEnvironments}
+                        disabledReason={writeBlock}
+                        onSelect={viewCommits}
+                      />
+                    </>
+                  }
                 />
                 <div className={styles.toolbar}>
                   <div className={styles.envPicker}>
@@ -1844,42 +1892,11 @@ export const OverviewPage = () => {
                     secretCount={single ? envSecrets(activeEnvironment).length : 0}
                     onExport={(action) => exportEnv(activeEnvironment, action)}
                   />
-                  {addNewMenu()}
                 </div>
                 <div className={styles.tableBlock}>
                   <div className={styles.tableFrame}>
                     <FolderBreadcrumbBar
                       path={path}
-                      accessBlock={blockFor(
-                        ProjectPermissionSub.SecretFolders,
-                        ProjectPermissionSecretFolderActions.ManageAccess,
-                        { environment: activeEnvironment, secretPath: path },
-                        "manage access to this folder"
-                      )}
-                      onManageAccess={
-                        single
-                          ? () => {
-                              const segments = path.split("/").filter(Boolean);
-                              const folder: Of<"folder"> = {
-                                kind: "folder",
-                                id: `folder:${path}`,
-                                project,
-                                environment: activeEnvironment,
-                                path: `/${segments.slice(0, -1).join("/")}`,
-                                name: segments.at(-1) ?? "",
-                                description: "",
-                                createdAt: "",
-                                updatedAt: ""
-                              };
-                              startRowAction({
-                                kind: "folder",
-                                action: "access",
-                                entry: folder,
-                                entries: [folder]
-                              });
-                            }
-                          : undefined
-                      }
                       actions={
                         !single &&
                         !unavailableState && (
@@ -1983,18 +2000,6 @@ export const OverviewPage = () => {
                                       onClick={() => setRevealAll(!revealAll)}
                                     >
                                       {revealAll ? "Hide values" : "Reveal all"}
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="xs"
-                                      icon="git"
-                                      onClick={() => viewCommits(visibleEnvironments[0])}
-                                    >
-                                      <span className={styles.headLabel}>
-                                        {planGates.plan && !planGates.plan.pitRecovery
-                                          ? "Commit history"
-                                          : `${commitCount} commit${commitCount === 1 ? "" : "s"}`}
-                                      </span>
                                     </Button>
                                     <SecretSyncStatusBadge
                                       syncs={syncs}

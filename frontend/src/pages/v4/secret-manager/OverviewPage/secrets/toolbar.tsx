@@ -14,7 +14,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger
 } from "@infisical/cipher/ui/dropdown-menu";
-import { Icon } from "@infisical/cipher/ui/icon";
+import { Icon, type IconSource } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Popover, PopoverAnchor, PopoverContent } from "@infisical/cipher/ui/popover";
 import { TableCell, TableRow } from "@infisical/cipher/ui/table";
@@ -310,75 +310,121 @@ export function AddNewMenu({
 
 export function FolderBreadcrumbBar({
   path,
-  accessBlock,
   actions,
-  onManageAccess,
   onNavigate,
   report
 }: {
   path: string;
-  accessBlock?: string;
   actions?: ReactNode;
-  onManageAccess?: () => void;
   onNavigate: (path: string) => void;
   report: (message: string, tone: "ok" | "bad") => void;
 }) {
   const segments = path.split("/").filter(Boolean);
+  const copyPath = (
+    <DropdownMenuItem
+      onSelect={async () => {
+        try {
+          await navigator.clipboard.writeText(path);
+          report("Folder path copied to clipboard.", "ok");
+        } catch {
+          report("Failed to copy folder path to clipboard.", "bad");
+        }
+      }}
+    >
+      <Icon name="copy" />
+      Copy path
+    </DropdownMenuItem>
+  );
   return (
     <div className={styles.pathBar}>
-      <span className={styles.crumbs}>
-        <Breadcrumb
-          aria-label="Folder path"
-          items={[
-            {
-              label: <Icon name="home" label="Root folder" />,
-              onNavigate: segments.length ? () => onNavigate("/") : undefined
-            },
-            ...segments.map((segment, index) => ({
+      <Breadcrumb
+        aria-label="Folder path"
+        className={styles.crumbs}
+        trailingDivider
+        items={[
+          {
+            label: <Icon name="home" label="Root folder" />,
+            onNavigate: segments.length ? () => onNavigate("/") : undefined,
+            menu: segments.length ? undefined : copyPath
+          },
+          ...segments.map((segment, index) => {
+            const current = index === segments.length - 1;
+            return {
               label: segment,
-              onNavigate:
-                index < segments.length - 1
-                  ? () => onNavigate(`/${segments.slice(0, index + 1).join("/")}`)
-                  : undefined
-            }))
-          ]}
-        />
-      </span>
-      <span className={styles.pathActions}>
-        {actions}
-        <Tooltip content="Copy path">
-          <span className={styles.actionSlot}>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              icon="copy"
-              iconOnly
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(path);
-                  report("Folder path copied to clipboard.", "ok");
-                } catch {
-                  report("Failed to copy folder path to clipboard.", "bad");
-                }
-              }}
-            >
-              Copy path
-            </Button>
-          </span>
-        </Tooltip>
-        {onManageAccess && (
-          <Button
-            variant="ghost"
-            size="xs"
-            icon="user"
-            disabledReason={accessBlock}
-            onClick={onManageAccess}
-          >
-            Manage access
-          </Button>
-        )}
-      </span>
+              onNavigate: current
+                ? undefined
+                : () => onNavigate(`/${segments.slice(0, index + 1).join("/")}`),
+              menu: current ? copyPath : undefined
+            };
+          })
+        ]}
+      />
+      {actions && <span className={styles.pathActions}>{actions}</span>}
     </div>
+  );
+}
+
+type HeaderEnvironment = { value: string; label: string };
+
+export function EnvironmentAction({
+  label,
+  icon,
+  environments,
+  disabledReason,
+  blockOf,
+  onSelect
+}: {
+  label: string;
+  icon: IconSource;
+  environments: HeaderEnvironment[];
+  disabledReason?: string;
+  blockOf?: (environment: string) => string | undefined;
+  onSelect: (environment: HeaderEnvironment) => void;
+}) {
+  const reason =
+    disabledReason ?? (environments.length === 1 ? blockOf?.(environments[0].value) : undefined);
+  if (reason)
+    return (
+      <Button variant="ghost" icon={icon} iconOnly disabledReason={reason}>
+        {label}
+      </Button>
+    );
+  if (environments.length === 1)
+    return (
+      <Tooltip content={label}>
+        <Button variant="ghost" icon={icon} iconOnly onClick={() => onSelect(environments[0])}>
+          {label}
+        </Button>
+      </Tooltip>
+    );
+  return (
+    <DropdownMenu>
+      <Tooltip content={label}>
+        <span className={styles.actionSlot}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" icon={icon} iconOnly>
+              {label}
+            </Button>
+          </DropdownMenuTrigger>
+        </span>
+      </Tooltip>
+      <DropdownMenuContent align="start">
+        <DropdownMenuLabel>Environment</DropdownMenuLabel>
+        {environments.map((environment) => {
+          const block = blockOf?.(environment.value);
+          return (
+            <DropdownMenuItem
+              key={environment.value}
+              disabled={Boolean(block)}
+              description={block}
+              onSelect={() => onSelect(environment)}
+            >
+              {environment.label}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
