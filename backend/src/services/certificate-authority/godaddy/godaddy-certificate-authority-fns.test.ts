@@ -57,7 +57,8 @@ const buildFns = (renewedByCertificateId: string | null = null) =>
         externalMetadata: { type: CaType.GODADDY, certificateId: GODADDY_CERTIFICATE_ID }
       })
     },
-    kmsService: {}
+    kmsDataKeyService: {},
+    kmsKeyService: {}
   } as unknown as Parameters<typeof GoDaddyCertificateAuthorityFns>[0]);
 
 const revoke = (renewedByCertificateId: string | null = null) =>

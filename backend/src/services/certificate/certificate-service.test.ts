@@ -399,6 +399,7 @@ describe("certificate revocation behind an approval policy", () => {
       }))
     };
     const pkiApplicationDAL = { findById: vi.fn().mockResolvedValue({ id: "app-1", name: "web" }) };
+    const licenseService = { getPlan: vi.fn().mockResolvedValue({ has: () => true }) };
 
     const deps = {
       certificateDAL,
@@ -422,6 +423,8 @@ describe("certificate revocation behind an approval policy", () => {
         findById: vi.fn().mockResolvedValue({ firstName: "Ada", lastName: "Lovelace", email: "ada@example.com" })
       },
       usageMeteringService: { emit: vi.fn() },
+      projectDAL: { findById: vi.fn().mockResolvedValue({ id: "project-1", orgId: "org-1" }) },
+      licenseService,
       telemetryService: { sendPostHogEvents: vi.fn().mockResolvedValue(undefined) },
       permissionService: {
         getResourcePermission: vi.fn().mockResolvedValue({ permission: createMongoAbility(applicationPermissions) })
@@ -439,6 +442,7 @@ describe("certificate revocation behind an approval policy", () => {
       approvalRequestDAL,
       auditLogService,
       pkiApplicationDAL,
+      licenseService,
       storedCertificate: () => stored,
       auditEvents: () => auditLogService.createAuditLog.mock.calls.map(([log]) => (log as TAuditLog).event)
     };
@@ -471,6 +475,18 @@ describe("certificate revocation behind an approval policy", () => {
       );
       expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
       expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
+    });
+
+    it("refuses to open a request for a certificate from a PQC CA once the license no longer includes PQC", async () => {
+      const mlDsaCa = { ...internalCa, internalCa: { ...internalCa.internalCa, keyAlgorithm: "ML-DSA-65" } };
+      const ctx = buildRevocationService({ ca: mlDsaCa });
+      ctx.licenseService.getPlan.mockResolvedValue({ has: () => false });
+
+      await expect(ctx.service.revokeCert(revokeRequest)).rejects.toThrow(
+        "Your license does not include PQC algorithms."
+      );
+      expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+      expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
     });
 
     it("refuses a second request while one is still waiting for approval", async () => {
@@ -925,6 +941,20 @@ describe("certificate revocation behind an approval policy", () => {
       expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
         approvedRevocation,
         "An unexpected error stopped the revocation. The certificate is still active."
+      );
+    });
+
+    it("fails an approved revocation from a PQC CA once the license no longer includes PQC, and says the certificate is still active", async () => {
+      const mlDsaCa = { ...internalCa, internalCa: { ...internalCa.internalCa, keyAlgorithm: "ML-DSA-65" } };
+      const ctx = buildRevocationService({ ca: mlDsaCa });
+      ctx.licenseService.getPlan.mockResolvedValue({ has: () => false });
+
+      await ctx.service.revokeApprovedCertificate(approvedRevocation);
+
+      expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
+      expect(ctx.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+        approvedRevocation,
+        "Your license does not include PQC algorithms. Please upgrade to the Enterprise plan to use a PQC algorithm. The certificate is still active."
       );
     });
 

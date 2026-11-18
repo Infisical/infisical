@@ -591,6 +591,30 @@ describe("Revocation approval when a saved approver's access changes", { timeout
     }).expect(expectIdsOnly);
   });
 
+  test("a refused approver who belongs only to another Application comes back as the ID the caller sent", async () => {
+    const fixture = await setUp({ approverVia: "user", steps: oneStep });
+    const otherApplication = await setUp({ approverVia: "user", steps: oneStep });
+    const elsewhere = await createApprover("auditor-elsewhere");
+    await addApplicationUsers({
+      applicationId: otherApplication.application.id,
+      userIds: [elsewhere.userId],
+      role: ResourceMembershipRole.Auditor,
+      authToken: adminToken
+    });
+
+    await createRevocationApprovalPolicy({
+      applicationId: fixture.application.id,
+      profileSlug: fixture.profile.slug,
+      steps: [{ requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: elsewhere.userId }] }],
+      authToken: adminToken
+    }).expect((res) => {
+      expect(res.statusCode, res.payload).toBe(400);
+      expect(JSON.parse(res.payload).message).toBe(
+        `Revocation approvers need an Admin or Operator role in the Application, so they can approve requests. These approvers are Auditors or aren't in the Application: users ${elsewhere.userId}.`
+      );
+    });
+  });
+
   test("a covered certificate can't be revoked once one of a 2-approval step's two approvers is demoted to Auditor", async () => {
     const fixture = await setUp({
       approverVia: "user",
