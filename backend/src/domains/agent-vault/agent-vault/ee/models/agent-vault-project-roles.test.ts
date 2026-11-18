@@ -20,7 +20,7 @@ import {
 } from "@app/domains/platform/projects/ce/module";
 
 import { AgentVaultProjectRoles } from "./agent-vault-project-roles";
-import { agentVaultProjectAdminPermissions } from "./agent-vault-roles";
+import { agentVaultProjectAdminPermissions, agentVaultProjectMemberPermissions } from "./agent-vault-roles";
 
 const permissionFor = (slug: string, packedRules?: unknown) =>
   Permission.fromRules<ProjectPermissionSet>({
@@ -79,6 +79,22 @@ const replacedRoleChecks = (permission: TAgentVaultPermission) =>
 const allowed = (checks: Record<string, boolean>) => Object.keys(checks).filter((key) => checks[key]);
 
 describe("AgentVaultProjectRoles.rulesFor", () => {
+  test.each([
+    ProjectMembershipRole.Member,
+    ProjectMembershipRole.Viewer,
+    ProjectMembershipRole.NoAccess,
+    "removed-product-role"
+  ])("should read the slug %s as a member", (slug) => {
+    // Setup
+    const roles = new AgentVaultProjectRoles();
+
+    // Action
+    const rules = roles.rulesFor(Grant.restore({ slug }));
+
+    // Assert
+    expect(rules).toBe(agentVaultProjectMemberPermissions);
+  });
+
   test("should let the admin, and not a member, edit the project's audit log settings", () => {
     // Setup
     const check = { action: ProjectPermissionAuditLogsActions.Edit, subject: ProjectPermissionSub.AuditLogs };
