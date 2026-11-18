@@ -23,8 +23,8 @@ on:
         default: full
 
 env:
-  CIPHER_BASE: "v0.1.15"
-  CIPHER_CANDIDATE: "v0.1.16"
+  CIPHER_BASE: ""
+  CIPHER_CANDIDATE: ""
   CACHE_PREFIX: cvc-v1
   PIXEL_THRESHOLD: "0"
 
@@ -117,7 +117,7 @@ jobs:
   capture:
     name: Capture (${{ matrix.side }})
     needs: prepare
-    if: needs.prepare.outputs.skip != 'true'
+    if: needs.prepare.outputs.skip != 'true' && needs.prepare.outputs.pages != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     container:
@@ -187,7 +187,8 @@ jobs:
 
   diff:
     name: Diff
-    needs: capture
+    needs: [prepare, capture]
+    if: always() && needs.prepare.result == 'success' && needs.prepare.outputs.skip != 'true' && (needs.capture.result == 'success' || needs.capture.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

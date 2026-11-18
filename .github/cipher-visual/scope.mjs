@@ -3,7 +3,8 @@
 // changed, every public Cipher module those changes reach, and the pages (from a manifest) whose import
 // graph uses one of them. Prints JSON. "full": true means scope cannot be narrowed and every page renders.
 //
-// node scope.mjs --cipher <dir> --base <ref> --candidate <ref> [--pages <manifest.json>]
+// node scope.mjs --cipher <dir> --base <ref> --candidate <ref> [--pages <manifest.json>] [--showcase]
+//   --showcase: the pages are Cipher's own showcase, so changes under site/ count too.
 //   manifest: { "root": "frontend/src", "alias": { "@app/": "frontend/src/" }, "pages": [{ "id": "x", "entries": ["frontend/src/pages/x.tsx"] }] }
 //   "ignore": [paths] lists consumer files the walk never enters, such as a generated route tree that imports every page.
 //   Paths in the manifest are relative to the manifest's directory unless absolute.
@@ -11,9 +12,11 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
+const argv = process.argv.slice(2);
 const args = Object.fromEntries(
-  process.argv.slice(2).reduce((acc, value, i, all) => (value.startsWith("--") ? [...acc, [value.slice(2), all[i + 1]]] : acc), [])
+  argv.reduce((acc, value, i, all) => (value.startsWith("--") ? [...acc, [value.slice(2), all[i + 1]?.startsWith("--") ? true : all[i + 1] ?? true]] : acc), [])
 );
+const showcase = Boolean(args.showcase);
 const cipher = path.resolve(args.cipher);
 const git = (...a) => execFileSync("git", ["-C", cipher, ...a], { encoding: "utf8" }).trim();
 
@@ -44,14 +47,26 @@ const IGNORE = [/^src\/THIRD_PARTY_NOTICES\.md$/, /\.md$/];
 
 const base = sourceOf(args.base);
 const candidate = sourceOf(args.candidate);
-const changed = git("diff", "--name-only", base, candidate, "--", "src", "package.json", "scripts/tokens.ts", "vite.config.ts", "tsconfig.build.json")
+const changed = git("diff", "--name-only", base, candidate, "--", "src", "package.json", "package-lock.json", "scripts/tokens.ts", "vite.config.ts", "tsconfig.build.json", ...(showcase ? ["site"] : []))
   .split("\n").filter(Boolean).filter((f) => !IGNORE.some((re) => re.test(f)));
 
 const fullReasons = [];
 for (const file of changed) {
-  if (file === "package.json") {
-    const deps = (ref) => { const p = JSON.parse(git("show", ref + ":package.json")); return JSON.stringify([p.dependencies, p.peerDependencies, p.exports]); };
-    if (deps(base) !== deps(candidate)) fullReasons.push("package.json: dependencies or exports changed");
+  if (file === "package.json" || file === "package-lock.json") {
+    // Every release bumps the version, so compare the manifests without it.
+    const read = (ref) => {
+      const json = JSON.parse(git("show", ref + ":" + file));
+      delete json.version;
+      if (json.packages?.[""]) delete json.packages[""].version;
+      if (file === "package.json") delete json.scripts;
+      return JSON.stringify(json);
+    };
+    if (read(base) !== read(candidate)) fullReasons.push(file + ": dependencies, exports or installed versions changed");
+    continue;
+  }
+  if (file.startsWith("site/")) {
+    if (/^site\/src\/(examples\/|catalog\.json$)/.test(file)) continue;
+    fullReasons.push(file + ": shared showcase file");
     continue;
   }
   const hit = FULL.find(([re]) => re.test(file));
@@ -107,17 +122,20 @@ let icons = [];
 if (changed.includes(ICON_DATA)) {
   const before = iconBlocks(base);
   const after = iconBlocks(candidate);
-  icons = [...after.keys()].filter((k) => before.has(k) && before.get(k) !== after.get(k));
+  icons = [...after.keys()].filter((k) => before.get(k) !== after.get(k));
   const dropped = [...before.keys()].filter((k) => !after.has(k));
   if (dropped.length) fullReasons.push("icons removed: " + dropped.join(", "));
 }
 const namesIcon = (file) => {
   const text = readFileSync(file, "utf8");
-  return icons.some((name) => text.includes('"' + name + '"') || text.includes("'" + name + "'"));
+  if (/\bicon(Names|Shapes)\b/.test(text)) return true;
+  // A quoted name counts on a line that reads as an icon reference, so a "tag" or "key" elsewhere doesn't.
+  return text.split("\n").some((line) => /icon|name=|media/i.test(line) && icons.some((name) => line.includes('"' + name + '"') || line.includes("'" + name + "'")));
 };
 const reached = new Set();
 const queue = changed.filter((f) => f.startsWith("src/") && f !== ICON_DATA).map((f) => path.join(cipher, f)).filter((f) => existsSync(f));
-if (icons.length) for (const file of srcFiles) if (file !== path.join(cipher, ICON_DATA) && namesIcon(file)) queue.push(file);
+const ICON_RENDERERS = new Set([ICON_DATA, "src/ui/icon.tsx"].map((f) => path.join(cipher, f)));
+if (icons.length) for (const file of srcFiles) if (!ICON_RENDERERS.has(file) && namesIcon(file)) queue.push(file);
 const removed = changed.filter((f) => f.startsWith("src/") && !existsSync(path.join(cipher, f)));
 if (removed.length) fullReasons.push("removed files: " + removed.join(", "));
 while (queue.length) {
@@ -156,6 +174,7 @@ if (args.pages) {
       let specs = cache.get(file);
       if (!specs) { specs = specifiers(file); cache.set(file, specs); }
       if (icons.length && !iconFiles.has(file) && namesIcon(file)) iconFiles.add(file);
+      if (changedAbs.has(file)) found.add("changed: " + path.relative(cipher, file));
       for (const spec of specs) {
         if (spec.startsWith("@infisical/cipher")) found.add(spec.replace(/\.(css|js)$/, ""));
         else stack.push(resolveConsumer(spec, file));
@@ -165,13 +184,21 @@ if (args.pages) {
     if (iconFiles.size && found.size) found.add("icon names: " + icons.join(", "));
     return found;
   };
+  const changedAbs = new Set(changed.map((f) => path.join(cipher, f)));
+  const catalogChanged = new Set();
+  if (showcase && changed.includes("site/src/catalog.json")) {
+    const entries = (ref) => new Map(JSON.parse(git("show", ref + ":site/src/catalog.json")).map((e) => [e.id, JSON.stringify(e)]));
+    const before = entries(base);
+    for (const [id, entry] of entries(candidate)) if (before.get(id) !== entry) catalogChanged.add(id);
+  }
   const touched = new Set(modules);
   if (icons.length) touched.add("icon names: " + icons.join(", "));
   pages = [];
   for (const page of manifest.pages) {
     const used = new Set(page.entries.flatMap((e) => [...uses(rel(e))]));
     if (!used.size) unmapped.push(page.id);
-    const hits = [...used].filter((m) => touched.has(m));
+    const hits = [...used].filter((m) => touched.has(m) || m.startsWith("changed: "));
+    if (catalogChanged.has(page.id)) hits.push("catalog entry");
     if (hits.length || !used.size) pages.push({ id: page.id, via: hits });
   }
 }
