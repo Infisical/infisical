@@ -107,6 +107,40 @@ func TestImportReplicationEnforcement_ExistingImports(t *testing.T) {
 		require.Equal(t, map[string][]string{directImport: {"KEY"}, replicatedImport: {}}, keysByImport)
 	})
 
+	t.Run("should reject an environment list that holds an invalid slug", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+
+		// Action
+		res, err := tn.Admin.API.ListSecretApprovalPolicyNonReplicationImportsWithResponse(t.Context(),
+			&api.ListSecretApprovalPolicyNonReplicationImportsParams{ProjectId: proj.ID, Environments: "prod,Not A Slug", SecretPath: "/"})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusUnprocessableEntity, res.StatusCode(), "listing returned %s", apierr.Body(res.Body))
+	})
+
+	t.Run("should let a role that can only create policies list the imports that ignore one", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		proj.NewRole(t, "policy-creator", fixture.Permission{Subject: "secret-approval", Action: []string{"create"}})
+		creator := proj.NewUser(t, fixture.WithRoles("policy-creator"))
+
+		// Action
+		res, err := creator.API.ListSecretApprovalPolicyNonReplicationImportsWithResponse(t.Context(),
+			&api.ListSecretApprovalPolicyNonReplicationImportsParams{ProjectId: proj.ID, Environments: "prod", SecretPath: "/"})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "listing returned %s", apierr.Body(res.Body))
+	})
+
 	t.Run("should refuse to point a direct import at another source in a governed folder", func(t *testing.T) {
 		t.Parallel()
 

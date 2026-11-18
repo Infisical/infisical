@@ -447,10 +447,16 @@ export const secretChangePolicyServiceFactory = ({
         actorOrgId,
         actionProjectType: ActionProjectType.SecretManager
       });
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Read,
-        ProjectPermissionSub.SecretApproval
-      );
+      // The lookup runs while a policy is being created or edited, so anyone allowed to do either may run it.
+      if (
+        !permission.can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretApproval) &&
+        !permission.can(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval)
+      ) {
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionActions.Read,
+          ProjectPermissionSub.SecretApproval
+        );
+      }
 
       const envs = await projectEnvDAL.find({ projectId, $in: { slug: environments } });
       if (envs.length !== new Set(environments).size) {
