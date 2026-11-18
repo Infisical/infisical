@@ -1345,7 +1345,7 @@ function SingleSecretRowView({
         row={{
           "data-recent": ctx.recent.includes(rowKey) || undefined,
           "data-pending": pendingType,
-          className: styles.row
+          className: `${styles.row} ${styles.topAligned}`
         }}
       >
         <SelectCell
@@ -1517,28 +1517,30 @@ function SecretRowView({
   const groupActions: RowActionProps = {
     label: name,
     menu: (
-      <DropdownMenuItem
-        disabled={Boolean(renameBlock)}
-        description={renameBlock}
-        onSelect={() => setRenaming(true)}
-      >
-        <Icon icon={EditIcon} />
-        Edit secret name
-      </DropdownMenuItem>
-    ),
-    inline: [
-      {
-        label: "Copy secret name",
-        icon: "copy",
-        onSelect: () =>
-          copy(
-            name,
-            `Copied the name ${name}.`,
-            "Could not copy the name. Check clipboard permissions.",
-            ctx.report
-          )
-      }
-    ]
+      <>
+        <DropdownMenuItem
+          onSelect={() =>
+            copy(
+              name,
+              `Copied the name ${name}.`,
+              "Could not copy the name. Check clipboard permissions.",
+              ctx.report
+            )
+          }
+        >
+          <Icon name="copy" />
+          Copy secret name
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={Boolean(renameBlock)}
+          description={renameBlock}
+          onSelect={() => setRenaming(true)}
+        >
+          <Icon icon={EditIcon} />
+          Edit secret name
+        </DropdownMenuItem>
+      </>
+    )
   };
   return (
     <>
