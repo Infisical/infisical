@@ -12,12 +12,13 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
-import { useSubscription } from "@app/context";
+import { useOrganization, useSubscription } from "@app/context";
 import {
   TFolderAccess,
   useUpdateIdentityFolderAccess,
   useUpdateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import {
   canGrantFolderAccess,
   isRootFolderPath
@@ -26,7 +27,7 @@ import { FolderPathBreadcrumb } from "@app/pages/secret-manager/OverviewPage/com
 
 import { ActorSummary } from "./ActorSummary";
 import { FolderGrantFields, useFolderGrantDraft } from "./FolderGrantFields";
-import { TFolderAccessSectionActor } from "./types";
+import { folderAccessChangeSourceOf, TFolderAccessSectionActor } from "./types";
 
 type Props = {
   access: TFolderAccess | null;
@@ -45,6 +46,7 @@ type FormProps = {
 const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormProps) => {
   const grant = useFolderGrantDraft(access, isRootFolderPath(access.secretPath));
 
+  const { currentOrg } = useOrganization();
   const updateUserAccess = useUpdateUserFolderAccess();
   const updateIdentityAccess = useUpdateIdentityFolderAccess();
   const { subscription } = useSubscription();
@@ -76,6 +78,12 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
       await updateIdentityAccess.mutateAsync({ ...payload, identityId: actor.id });
     }
     createNotification({ type: "success", text: "Folder access updated" });
+    analytics.captureForOrganization(AnalyticsEvent.FolderAccessChanged, currentOrg.id, {
+      source: folderAccessChangeSourceOf(actor),
+      action: "updated",
+      actorType: actor.type,
+      projectId: access.projectId
+    });
     onClose();
   };
 

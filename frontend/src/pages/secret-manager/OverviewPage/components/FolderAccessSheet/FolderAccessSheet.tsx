@@ -65,6 +65,7 @@ import {
   useUpdateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { analytics, AnalyticsEvent, FolderAccessSheetSource } from "@app/lib/analytics";
 
 import { FOLDER_ROLE_TIER_LABELS } from "./folder-access.const";
 import {
@@ -122,6 +123,7 @@ type Props = {
   folderPath: string;
   environmentName: string;
   onManageRootAccess?: () => void;
+  source: FolderAccessSheetSource;
 };
 
 export const FolderAccessSheet = ({
@@ -131,7 +133,8 @@ export const FolderAccessSheet = ({
   environmentSlug,
   folderPath,
   environmentName,
-  onManageRootAccess
+  onManageRootAccess,
+  source
 }: Props) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 300);
@@ -367,6 +370,13 @@ export const FolderAccessSheet = ({
   // failures are already surfaced by the global MutationCache.onError toast, which carries the
   // server's own message, so only the success side is announced here
   const notifySuccess = (text: string) => createNotification({ text, type: "success" });
+  const trackChange = (actor: TFolderAccessActor, action: "added" | "updated" | "removed") =>
+    analytics.captureForOrganization(AnalyticsEvent.FolderAccessChanged, currentOrg.id, {
+      source,
+      action,
+      actorType: actor.type,
+      projectId
+    });
 
   const setTier = (
     actor: TFolderAccessActor,
@@ -380,68 +390,87 @@ export const FolderAccessSheet = ({
     const target = { projectId, environmentSlug, secretPath: folderPath };
     const tierLabel = FOLDER_ROLE_TIER_LABELS[permission];
     const scope = appliesToSubfolders ? "this folder and its subfolders" : "this folder";
-    const onSuccess = () =>
+    const onSuccess = () => {
       notifySuccess(
         actor.access
           ? `Updated ${actor.name} to ${tierLabel} on ${scope}`
           : `Granted ${actor.name} ${tierLabel} access to ${scope}`
       );
+      trackChange(actor, actor.access ? "updated" : "added");
+    };
     const recursion = isPermissionRecursive ? { isPermissionRecursive } : {};
 
     if (actor.type === "user") {
       if (actor.access)
-        updateUserAccess.mutate({ ...target, userId: actor.id, permission }, { onSuccess });
+        updateUserAccess
+          .mutateAsync({ ...target, userId: actor.id, permission })
+          .then(onSuccess)
+          .catch(() => undefined);
       else
-        createUserAccess.mutate(
-          { ...target, userId: actor.id, permission, ...recursion },
-          { onSuccess }
-        );
+        createUserAccess
+          .mutateAsync({ ...target, userId: actor.id, permission, ...recursion })
+          .then(onSuccess)
+          .catch(() => undefined);
       return;
     }
     if (actor.access)
-      updateIdentityAccess.mutate({ ...target, identityId: actor.id, permission }, { onSuccess });
+      updateIdentityAccess
+        .mutateAsync({ ...target, identityId: actor.id, permission })
+        .then(onSuccess)
+        .catch(() => undefined);
     else
-      createIdentityAccess.mutate(
-        { ...target, identityId: actor.id, permission, ...recursion },
-        { onSuccess }
-      );
+      createIdentityAccess
+        .mutateAsync({ ...target, identityId: actor.id, permission, ...recursion })
+        .then(onSuccess)
+        .catch(() => undefined);
   };
 
   const setRecursive = (actor: TFolderAccessActor, isPermissionRecursive: boolean) => {
     if (isGrantBlocked({ isPermissionRecursive })) return;
     const target = { projectId, environmentSlug, secretPath: folderPath };
-    const onSuccess = () =>
+    const onSuccess = () => {
       notifySuccess(
         isPermissionRecursive
           ? `${actor.name}'s access now applies to ${folderPath} and all of its subfolders`
           : `${actor.name}'s access now applies to ${folderPath} only`
       );
+      trackChange(actor, "updated");
+    };
 
     if (actor.type === "user")
-      updateUserAccess.mutate(
-        { ...target, userId: actor.id, isPermissionRecursive },
-        { onSuccess }
-      );
+      updateUserAccess
+        .mutateAsync({ ...target, userId: actor.id, isPermissionRecursive })
+        .then(onSuccess)
+        .catch(() => undefined);
     else
-      updateIdentityAccess.mutate(
-        { ...target, identityId: actor.id, isPermissionRecursive },
-        { onSuccess }
-      );
+      updateIdentityAccess
+        .mutateAsync({ ...target, identityId: actor.id, isPermissionRecursive })
+        .then(onSuccess)
+        .catch(() => undefined);
   };
 
   const setAccessType = (actor: TFolderAccessActor, type: TFolderGrantType) => {
     if (isGrantBlocked({ isPermissionRecursive: actor.access?.isPermissionRecursive })) return;
     const target = { projectId, environmentSlug, secretPath: folderPath };
-    const onSuccess = () =>
+    const onSuccess = () => {
       notifySuccess(
         type.isTemporary
           ? `${actor.name}'s folder access now expires in ${type.temporaryRange}`
           : `Removed the expiration on ${actor.name}'s folder access`
       );
+      trackChange(actor, "updated");
+    };
 
     if (actor.type === "user")
-      updateUserAccess.mutate({ ...target, userId: actor.id, type }, { onSuccess });
-    else updateIdentityAccess.mutate({ ...target, identityId: actor.id, type }, { onSuccess });
+      updateUserAccess
+        .mutateAsync({ ...target, userId: actor.id, type })
+        .then(onSuccess)
+        .catch(() => undefined);
+    else
+      updateIdentityAccess
+        .mutateAsync({ ...target, identityId: actor.id, type })
+        .then(onSuccess)
+        .catch(() => undefined);
   };
 
   // folder access only applies to project members, so an organization member joins the project with
@@ -488,12 +517,20 @@ export const FolderAccessSheet = ({
     const target = { projectId, environmentSlug, secretPath: folderPath };
     const onSuccess = () => {
       notifySuccess(`Removed ${actor.name}'s folder access`);
+      trackChange(actor, "removed");
       setRemovalActor(null);
     };
 
     if (actor.type === "user")
-      deleteUserAccess.mutate({ ...target, userId: actor.id }, { onSuccess });
-    else deleteIdentityAccess.mutate({ ...target, identityId: actor.id }, { onSuccess });
+      deleteUserAccess
+        .mutateAsync({ ...target, userId: actor.id })
+        .then(onSuccess)
+        .catch(() => undefined);
+    else
+      deleteIdentityAccess
+        .mutateAsync({ ...target, identityId: actor.id })
+        .then(onSuccess)
+        .catch(() => undefined);
   };
 
   return (

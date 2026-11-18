@@ -26,6 +26,7 @@ import {
 import {
   ProjectPermissionSecretFolderActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission,
   useSubscription
@@ -38,6 +39,7 @@ import {
   useUpdateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
 import { useGetProjectFolders } from "@app/hooks/api/secretFolders/queries";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import { FOLDER_ROLE_TIER_LABELS } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
 import {
   canGrantFolderAccess,
@@ -46,7 +48,7 @@ import {
 
 import { ActorSummary } from "./ActorSummary";
 import { FolderGrantFields, useFolderGrantDraft } from "./FolderGrantFields";
-import { TFolderAccessSectionActor } from "./types";
+import { folderAccessChangeSourceOf, TFolderAccessSectionActor } from "./types";
 
 type Props = {
   isOpen: boolean;
@@ -63,6 +65,7 @@ type FormProps = {
 
 const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) => {
   const { projectId, currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
@@ -161,6 +164,12 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
         await updateIdentityAccess.mutateAsync({ ...payload, identityId: actor.id });
       }
       createNotification({ type: "success", text: "Folder access updated" });
+      analytics.captureForOrganization(AnalyticsEvent.FolderAccessChanged, currentOrg.id, {
+        source: folderAccessChangeSourceOf(actor),
+        action: "updated",
+        actorType: actor.type,
+        projectId
+      });
       onClose();
       return;
     }
@@ -172,6 +181,12 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
       await createIdentityAccess.mutateAsync({ ...payload, identityId: actor.id });
     }
     createNotification({ type: "success", text: "Folder access granted" });
+    analytics.captureForOrganization(AnalyticsEvent.FolderAccessChanged, currentOrg.id, {
+      source: folderAccessChangeSourceOf(actor),
+      action: "added",
+      actorType: actor.type,
+      projectId
+    });
     onClose();
   };
 
