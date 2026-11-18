@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Button } from "@infisical/cipher/ui/button";
@@ -6,6 +6,7 @@ import DOMPurify from "dompurify";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import rehypeRaw from "rehype-raw";
 
+import { formatFreeUsageCount } from "@app/components/agent-vault/FreeUsage/free-usage-format";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionBillingActions,
@@ -17,8 +18,10 @@ import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import type { SubscriptionPlanNotice } from "@app/hooks/api/subscriptions/types";
+import { AnalyticsEvent } from "@app/lib/analytics";
 
 import { failed } from "../access/toast";
+import { useAgentVaultFreeUsage } from "../agent-vault/free-usage/use-free-usage";
 import { useCertManagerProjectId } from "../cert-manager/components/certificate";
 import { useV4Adapter, useV4Mode } from "../data/adapters";
 import { useV4Session } from "../data/session/contract";
@@ -142,6 +145,51 @@ const useTrialBanner = (orgId: string): ShellBanner | undefined => {
     actions: canResolve && !processing.length && (
       <Button variant="outline" size="sm" onClick={() => go(orgHref(orgId, "/billing"))}>
         Complete payment
+      </Button>
+    )
+  };
+};
+
+const useAgentVaultFreeUsageBanner = (orgId: string, enabled: boolean): ShellBanner | undefined => {
+  const hasTrackedView = useRef(false);
+  const {
+    freeUsage,
+    isLimitReached,
+    warn,
+    canAddPaymentMethod,
+    isRootOrganization,
+    openAddPaymentMethod,
+    trackPaywall
+  } = useAgentVaultFreeUsage(orgId, "agent-vault.free-usage-notice", enabled);
+  const isShown = Boolean(freeUsage) && warn;
+  const limit = freeUsage ? formatFreeUsageCount(freeUsage.limit) : "";
+  const until = canAddPaymentMethod
+    ? "until an admin adds a payment method or the month resets"
+    : "until the month resets";
+  const owner = isRootOrganization ? "This organization" : "Your root organization";
+  const usageMessage = isLimitReached
+    ? `${owner} used its ${limit} free Agent Vault requests this month. Agent requests are refused ${until}.`
+    : `${owner} used ${freeUsage ? formatFreeUsageCount(freeUsage.used) : ""} of its ${limit} free Agent Vault requests this month. Once they're used, agent requests are refused ${until}.`;
+  const askAdmin = isRootOrganization
+    ? "Ask an organization admin to add a payment method."
+    : "Ask an admin of the root organization to add a payment method.";
+  const message = canAddPaymentMethod ? usageMessage : `${usageMessage} ${askAdmin}`;
+
+  useEffect(() => {
+    if (!isShown || hasTrackedView.current) return;
+    hasTrackedView.current = true;
+    trackPaywall(AnalyticsEvent.PaywallViewed, message);
+  }, [isShown, message, trackPaywall]);
+
+  if (!isShown) return undefined;
+  return {
+    id: "agent-vault-free-usage",
+    tone: isLimitReached ? "bad" : "warn",
+    dismiss: "session",
+    message,
+    actions: canAddPaymentMethod && (
+      <Button variant="outline" size="sm" onClick={() => openAddPaymentMethod(message)}>
+        Add payment method
       </Button>
     )
   };
@@ -432,10 +480,15 @@ export const ShellBanners = ({
   certManagerOverview
 }: ShellBannerContext) => {
   const trial = useTrialBanner(orgId);
+  const agentVaultFreeUsage = useAgentVaultFreeUsageBanner(
+    orgId,
+    product === ProjectType.AgentVault && Boolean(projectId)
+  );
   const network = useNetworkBanner(orgId, scope === "org");
   const instance = useInstanceBanners(scope, orgId);
   const stacked = [
     ...(scope === "org" || scope === "project" ? [trial] : []),
+    agentVaultFreeUsage,
     network,
     ...instance
   ].filter((banner): banner is ShellBanner => Boolean(banner));

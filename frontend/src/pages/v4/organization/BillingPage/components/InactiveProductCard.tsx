@@ -8,11 +8,22 @@ import {
   getSelfHostedLicenseState,
   SELF_HOSTED_LICENSE_COPY
 } from "@app/components/license/self-hosted-license";
+import { BillingProduct } from "@app/components/license/UpgradeGate/upgrade-intents";
 import type { BillingCatalogProduct } from "@app/hooks/api/billing/types";
 
+import { useOrgId } from "../../../access/permissions";
+import { formatFreeUsageSummary } from "../../../agent-vault/free-usage/free-usage-format";
+import { useV4Adapter } from "../../../data/adapters";
 import { ProductIcon, useBillingSubscription } from "./shared";
 
 import styles from "./billing.module.css";
+
+const AgentVaultFreeUsageLine = () => {
+  const orgId = useOrgId();
+  const { data: access } = useV4Adapter("agentVaultSettings").useAccess(orgId);
+  if (!access?.freeUsage) return null;
+  return <span className={styles.secondary}>Free: {formatFreeUsageSummary(access.freeUsage)}</span>;
+};
 
 export const InactiveProductCard = ({
   prod,
@@ -78,6 +89,7 @@ export const InactiveProductCard = ({
         <span className={styles.secondary}>
           {canActivate || canContactSales ? (prod.tagline ?? note) : note}
         </span>
+        {prod.id === BillingProduct.AgentVault && <AgentVaultFreeUsageLine />}
         {action && <div>{action}</div>}
       </div>
     </Card>

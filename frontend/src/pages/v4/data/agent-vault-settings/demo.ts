@@ -1,5 +1,8 @@
+import { useRouterState } from "@tanstack/react-router";
+
 import { AgentVaultSessionLogStorageType } from "@app/hooks/api/agentVault/enums";
 import type {
+  TAgentVaultAccess,
   TAgentVaultSessionLogReadCheck,
   TAgentVaultSessionLogSettingsState
 } from "@app/hooks/api/agentVault/types";
@@ -19,6 +22,30 @@ const plan: TSessionLogPlan = {
   agentVaultManagedStorage: true,
   agentVaultByoS3: true,
   agentVaultSessionLogRetentionDays: 30
+};
+
+const FREE_LIMIT = 5000;
+const FREE_USAGE: Record<string, { used: number; warn: boolean }> = {
+  under: { used: 1240, warn: false },
+  near: { used: 4210, warn: true },
+  over: { used: FREE_LIMIT, warn: true }
+};
+
+const accessFor = (scenario: unknown): TAgentVaultAccess => {
+  const usage = typeof scenario === "string" ? FREE_USAGE[scenario] : undefined;
+  if (!usage) return { state: "plan", allowed: true, freeUsage: null, warn: false };
+  const now = new Date();
+  const isLimitReached = usage.used >= FREE_LIMIT;
+  return {
+    state: isLimitReached ? "limit-reached" : "free",
+    allowed: !isLimitReached,
+    freeUsage: {
+      used: usage.used,
+      limit: FREE_LIMIT,
+      resetsAt: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString()
+    },
+    warn: usage.warn
+  };
 };
 
 const connection = (
@@ -107,6 +134,12 @@ const readCheckOf = (projectId: string): TAgentVaultSessionLogReadCheck | null =
 };
 
 export const agentVaultSettingsDemo: AgentVaultSettingsAdapter = {
+  useAccess: () => {
+    const scenario = useRouterState({
+      select: (state) => (state.location.search as { freeUsage?: unknown }).freeUsage
+    });
+    return { data: accessFor(scenario), isPending: false, error: null };
+  },
   useSessionLogPlan: () => ({ data: plan, isPending: false, error: null }),
   useSessionLogSettings: (_, projectId) => ({
     data: stateOf(settings.use(), projectId),

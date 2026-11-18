@@ -279,6 +279,29 @@ const catalog: BillingCatalogProduct[] = [
       }),
       productPlan("enterprise", "Enterprise", 2)
     ]
+  },
+  {
+    id: "agent_vault",
+    name: "Agent Vault",
+    icon: "bot",
+    color: "",
+    displayOrder: 4,
+    tagline: "Give agents API access without handing them credentials.",
+    plans: [
+      productPlan("pro", "Pro", 1, {
+        dims: [
+          {
+            key: "agent_vault_brokered_requests",
+            label: "Brokered requests",
+            noun: "1,000 requests",
+            monthly: 2,
+            annual: 0,
+            included: 0
+          }
+        ]
+      }),
+      productPlan("enterprise", "Enterprise", 2)
+    ]
   }
 ];
 

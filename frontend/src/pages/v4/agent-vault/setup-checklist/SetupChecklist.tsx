@@ -3,8 +3,12 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { Progress } from "@infisical/cipher/ui/progress";
 import type { SidebarProps } from "@infisical/cipher/ui/sidebar";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { Gauge } from "lucide-react";
 
+import { useV4Adapter } from "../../data/adapters";
 import type { ShellLocation } from "../../shell/location";
+import { formatFreeUsageSummary } from "../free-usage/free-usage-format";
+import { FreeUsageMeter } from "../free-usage/free-usage-meter";
 import {
   AgentVaultSetupStep,
   type TAgentVaultSetupProgress,
@@ -145,28 +149,43 @@ export const useAgentVaultSetupSidebar = (
 ): Pick<SidebarProps, "footer" | "footerIcon" | "footerLabel" | "footerItems"> => {
   const projectId = at.level === "agent-vault" ? at.projectId : undefined;
   const progress = useAgentVaultSetupProgress(orgId, projectId ?? "");
+  const { data: access } = useV4Adapter("agentVaultSettings").useAccess(orgId, Boolean(projectId));
   if (!projectId) return {};
 
-  if (progress.canRestore)
-    return {
-      footerItems: [
-        {
-          id: "agent-vault-setup-steps",
-          label: "Setup Steps",
-          icon: "list-checks",
-          onClick: progress.restore
-        }
-      ]
-    };
+  const freeUsage = access?.freeUsage;
+  const restore: Pick<SidebarProps, "footerItems"> = progress.canRestore
+    ? {
+        footerItems: [
+          {
+            id: "agent-vault-setup-steps",
+            label: "Setup Steps",
+            icon: "list-checks",
+            onClick: progress.restore
+          }
+        ]
+      }
+    : {};
+  const steps = !progress.canRestore && progress.isVisible ? setupSteps(progress) : null;
+  if (!steps && !freeUsage) return restore;
 
-  if (!progress.isVisible) return {};
-
-  const steps = setupSteps(progress);
+  const usageLabel = freeUsage
+    ? `Free Agent Vault requests: ${formatFreeUsageSummary(freeUsage)}`
+    : "";
   return {
+    ...restore,
     footer: (
-      <SetupChecklist orgId={orgId} projectId={projectId} progress={progress} steps={steps} />
+      <div className="flex flex-col gap-2">
+        {steps && (
+          <SetupChecklist orgId={orgId} projectId={projectId} progress={progress} steps={steps} />
+        )}
+        <FreeUsageMeter orgId={orgId} />
+      </div>
     ),
-    footerIcon: "list-checks",
-    footerLabel: `${TITLE}, ${progress.completedCount} of ${steps.length} done`
+    footerIcon: steps ? "list-checks" : Gauge,
+    footerLabel: steps
+      ? [`${TITLE}, ${progress.completedCount} of ${steps.length} done`, usageLabel]
+          .filter(Boolean)
+          .join(". ")
+      : usageLabel
   };
 };

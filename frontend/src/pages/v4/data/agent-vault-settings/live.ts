@@ -6,6 +6,7 @@ import {
   fetchAgentVaultSessionLogReadAccess
 } from "@app/hooks/api/agentVault/queries";
 import type {
+  TAgentVaultAccess,
   TAgentVaultSessionLogHealth,
   TAgentVaultSessionLogSettingsState,
   TUpdateAgentVaultSessionLogSettingsDTO
@@ -24,6 +25,17 @@ import { useGetOrgSubscription } from "@app/hooks/api/subscriptions/queries";
 import type { AgentVaultSettingsAdapter } from "./contract";
 
 export const agentVaultSettingsLive: AgentVaultSettingsAdapter = {
+  useAccess: (orgId, enabled = true) =>
+    useQuery({
+      enabled,
+      queryKey: agentVaultKeys.access(orgId),
+      queryFn: async () => {
+        const { data } = await apiRequest.get<{ access: TAgentVaultAccess }>(
+          "/api/v1/agent-vault/settings/access"
+        );
+        return data.access;
+      }
+    }),
   useSessionLogPlan: (orgId) => {
     const { data, isPending, error } = useGetOrgSubscription({ orgID: orgId });
     return {

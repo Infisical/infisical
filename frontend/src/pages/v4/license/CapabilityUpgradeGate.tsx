@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
@@ -73,6 +73,7 @@ const CapabilityUpgradeDialog = ({
   const isAgentVault =
     intent.productName === "Agent Vault" ||
     (intent.featureKey.startsWith("audit_log") && isAgentVaultProjectPath(toV3Href(pathname)));
+  const isAgentVaultSalesLed = isAgentVault && intent.isEnterpriseFeature;
   const canManageBilling =
     !isInstance &&
     permission.can(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing);
@@ -80,12 +81,7 @@ const CapabilityUpgradeDialog = ({
     !isInstance && permission.can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
   const productPlans = isInstance ? [] : getProductPlanSummaries(subscription?.productPlans);
 
-  useEffect(() => {
-    if (!isOpen) {
-      eventPropertiesRef.current = null;
-      return;
-    }
-
+  const trackOpen = useEffectEvent(() => {
     const eventProperties = {
       paywallKey,
       paywallText: intent.description,
@@ -97,7 +93,14 @@ const CapabilityUpgradeDialog = ({
     if (mode !== "demo") {
       analytics.captureForOrganization(AnalyticsEvent.PaywallViewed, orgId, eventProperties);
     }
-    // Capture the opening intent once, even when the triggering popup data changes.
+  });
+
+  useEffect(() => {
+    if (!isOpen) {
+      eventPropertiesRef.current = null;
+      return;
+    }
+    trackOpen();
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -111,12 +114,15 @@ const CapabilityUpgradeDialog = ({
       );
     }
 
-    if (isInstance || isAgentVault) {
+    if (isInstance || isAgentVaultSalesLed) {
       window.open(CONTACT_SALES_URL, "_blank", "noopener,noreferrer");
       return;
     }
 
-    window.location.assign(resolve(orgHref(rootOrgId ?? orgId, "/billing")));
+    const search = intent.productKey
+      ? `?${new URLSearchParams({ upgradeProduct: intent.productKey }).toString()}`
+      : "";
+    window.location.assign(resolve(orgHref(rootOrgId ?? orgId, `/billing${search}`)));
   };
 
   let scopeName = intent.productName ?? "Infisical Platform";
@@ -129,7 +135,7 @@ const CapabilityUpgradeDialog = ({
 
   let actionLabel = isSubOrganization ? "Continue to root billing" : "View plans";
   if (isInstance) actionLabel = "Contact sales";
-  else if (isAgentVault) actionLabel = "Contact us";
+  else if (isAgentVaultSalesLed) actionLabel = "Contact us";
   else if (!canReadBilling) actionLabel = "Close";
 
   let billingTitle = "Organization subscription required";
@@ -139,10 +145,10 @@ const CapabilityUpgradeDialog = ({
     billingTitle = "Instance license required";
     billingDescription =
       "This feature is licensed for the entire instance, not an individual product. Contact our team to discuss your deployment.";
-  } else if (isAgentVault) {
-    billingTitle = "Contact us for access";
+  } else if (isAgentVaultSalesLed) {
+    billingTitle = "Enterprise plan required";
     billingDescription =
-      "Agent Vault plans aren't available for purchase yet. Contact our team to enable this feature for your organization.";
+      "This is on the Agent Vault Enterprise plan. Contact our team to add it to your organization.";
   } else if (!canReadBilling) {
     billingTitle = "Billing access required";
     billingDescription =
@@ -168,8 +174,8 @@ const CapabilityUpgradeDialog = ({
   if (isInstance) {
     scopeDescription =
       "Licensed for your entire self-hosted deployment, independently of organization product plans.";
-  } else if (isAgentVault) {
-    scopeDescription = "Agent Vault access is arranged directly with our team.";
+  } else if (isAgentVaultSalesLed) {
+    scopeDescription = "Agent Vault Enterprise is arranged directly with our team.";
   } else if (isSubOrganization) {
     scopeDescription = "Managed by your root organization and shared with its sub-organizations.";
   } else if (isProduct) {
@@ -190,7 +196,7 @@ const CapabilityUpgradeDialog = ({
           variant="primary"
           className="w-full"
           onClick={
-            !isInstance && !isAgentVault && !canReadBilling
+            !isInstance && !isAgentVaultSalesLed && !canReadBilling
               ? () => onOpenChange(false)
               : openUpgradeDestination
           }
@@ -224,7 +230,7 @@ const CapabilityUpgradeDialog = ({
           </section>
         </>
       )}
-      {!isInstance && !isAgentVault && visiblePlans.length > 0 && (
+      {!isInstance && !isAgentVaultSalesLed && visiblePlans.length > 0 && (
         <>
           <Separator />
           <section aria-label="Current product plans" className="flex flex-col gap-3">

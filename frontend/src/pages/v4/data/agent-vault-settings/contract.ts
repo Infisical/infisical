@@ -1,4 +1,5 @@
 import type {
+  TAgentVaultAccess,
   TAgentVaultSessionLogHealth,
   TAgentVaultSessionLogReadCheck,
   TAgentVaultSessionLogSettingsState,
@@ -22,6 +23,7 @@ export type TSessionLogPlan = Pick<
 >;
 
 export type AgentVaultSettingsAdapter = {
+  useAccess: (orgId: string, enabled?: boolean) => V4QueryResult<TAgentVaultAccess>;
   useSessionLogPlan: (orgId: string) => V4QueryResult<TSessionLogPlan>;
   useSessionLogSettings: (
     orgId: string,
