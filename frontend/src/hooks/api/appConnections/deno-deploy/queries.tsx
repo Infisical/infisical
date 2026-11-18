@@ -26,11 +26,11 @@ export const useDenoDeployConnectionListApps = (
   return useQuery({
     queryKey: denoDeployConnectionKeys.listApps(connectionId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TDenoDeployApp[]>(
+      const { data } = await apiRequest.get<{ apps: TDenoDeployApp[] }>(
         `/api/v1/app-connections/deno-deploy/${connectionId}/apps`
       );
 
-      return data;
+      return data.apps;
     },
     ...options
   });

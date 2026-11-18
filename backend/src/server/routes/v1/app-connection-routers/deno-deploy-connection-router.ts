@@ -34,19 +34,21 @@ export const registerDenoDeployConnectionRouter = async (server: FastifyZodProvi
         connectionId: z.string().uuid()
       }),
       response: {
-        200: z
-          .object({
-            id: z.string(),
-            slug: z.string()
-          })
-          .array()
+        200: z.object({
+          apps: z
+            .object({
+              id: z.string(),
+              slug: z.string()
+            })
+            .array()
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       const apps = await server.services.appConnection.denoDeploy.listApps(connectionId, req.permission);
-      return apps;
+      return { apps };
     }
   });
 };
