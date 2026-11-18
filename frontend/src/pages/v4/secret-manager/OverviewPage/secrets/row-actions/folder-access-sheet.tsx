@@ -288,7 +288,7 @@ function GrantValue({ access, isOverride }: { access: FolderGrant; isOverride: b
       : null;
   return (
     <AccessValue value={tierLabel(access.permission)} scope="Folder">
-      {isOverride && <Badge tone="warn">Override</Badge>}
+      {isOverride && <Badge tone="outline">Override</Badge>}
       {remainingTime ? (
         <Tooltip
           content={`Access ${remainingTime.isExpired ? "expired" : "expires"} on ${formatExpiryFull(remainingTime.expiresAt)}`}
