@@ -37,6 +37,9 @@ export enum OauthDelegationMode {
 export const DEFAULT_OAUTH_ACCESS_TOKEN_TTL_SECONDS = 86400;
 export const MIN_OAUTH_ACCESS_TOKEN_TTL_SECONDS = 60;
 export const MAX_OAUTH_ACCESS_TOKEN_TTL_SECONDS = 90 * 24 * 60 * 60;
+// A public client has no admin-set lifetime and no secret, so its access tokens stay short; the refresh token
+// keeps it signed in.
+export const PUBLIC_OAUTH_CLIENT_ACCESS_TOKEN_TTL_SECONDS = 60 * 60;
 
 export type TCreateOauthClientDTO = {
   name: string;
@@ -65,6 +68,7 @@ export type TOauthAuthorizeInfoDTO = {
   clientId: string;
   redirectUri: string;
   scope?: string;
+  resource?: string;
 };
 
 export type TOauthConsentDTO = {
@@ -74,6 +78,9 @@ export type TOauthConsentDTO = {
   codeChallenge?: string;
   codeChallengeMethod?: "S256";
   scope?: string;
+  resource?: string;
+  // The consenting session's org, which a public client is granted since it belongs to no org of its own.
+  orgId: string;
   userId: string;
   authMethod: AuthMethod;
   issuingRootOrgId?: string;
@@ -119,9 +126,11 @@ export const OauthAuthorizationCodePayloadSchema = z.object({
   codeChallengeMethod: z.literal("S256").optional(),
   // Granted, validated delegation scopes (recognized OauthScope values only). Resolved at consent
   // time so the token exchange does not have to re-parse the original space-delimited request.
-  scopes: z.array(z.string()).optional()
+  scopes: z.array(z.string()).optional(),
+  resource: z.string().optional()
 });
 
 export type TOauthRefreshJwtTokenPayload = AuthModeRefreshJwtTokenPayload & {
   oauthClientId?: string;
+  aud?: string;
 };

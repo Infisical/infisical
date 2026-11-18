@@ -233,7 +233,8 @@ export enum UserAgentType {
   TERRAFORM = "terraform",
   OTHER = "other",
   PYTHON_SDK = "InfisicalPythonSDK",
-  NODE_SDK = "InfisicalNodeSDK"
+  NODE_SDK = "InfisicalNodeSDK",
+  MCP = "mcp"
 }
 
 export enum EventType {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useSearch } from "@tanstack/react-router";
+import { Link, useRouteContext, useSearch } from "@tanstack/react-router";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -13,22 +13,51 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Checkbox,
   Skeleton
 } from "@app/components/v3";
 import { useGetOauthAuthorizeInfo, useOauthConsent } from "@app/hooks/api";
+import { useGetOrganizationById } from "@app/hooks/api/organization/queries";
 
 export const OauthConsentPage = () => {
   const [isRedirecting, setIsRedirecting] = useState(false);
+  // The user can grant less than the application asked for; the token response tells it what it got.
+  const [declinedScopes, setDeclinedScopes] = useState<string[]>([]);
 
   const search = useSearch({
     from: "/_authenticate/organization/oauth-consent"
+  });
+
+  const organizationId = useRouteContext({
+    from: "/_authenticate",
+    select: (el) => el.organizationId
   });
 
   const {
     data: authorizeInfo,
     isPending: isInfoPending,
     error: authorizeInfoError
-  } = useGetOauthAuthorizeInfo(search.client_id, search.redirect_uri, search.scope);
+  } = useGetOauthAuthorizeInfo(
+    search.client_id,
+    search.redirect_uri,
+    search.scope,
+    search.resource
+  );
+
+  // A public client is granted the organization the user is signed in to, so name it.
+  const { data: organization } = useGetOrganizationById(organizationId ?? "", {
+    enabled: Boolean(authorizeInfo?.publicClientHost && organizationId)
+  });
+
+  const requestedScopes = authorizeInfo?.requestedScopes ?? [];
+  const grantedScopes = requestedScopes
+    .map(({ scope }) => scope)
+    .filter((scope) => !declinedScopes.includes(scope));
+  const isNothingGranted = requestedScopes.length > 0 && grantedScopes.length === 0;
+
+  const isGrantingSecretValues = Boolean(
+    authorizeInfo?.publicClientHost && grantedScopes.includes("secrets:read")
+  );
 
   const { mutateAsync: consentOauth, isPending: isConsenting } = useOauthConsent();
 
@@ -48,7 +77,8 @@ export const OauthConsentPage = () => {
         state: search.state,
         codeChallenge: search.code_challenge,
         codeChallengeMethod: search.code_challenge_method,
-        scope: search.scope
+        scope: grantedScopes.join(" "),
+        resource: search.resource
       });
 
       setIsRedirecting(true);
@@ -120,28 +150,61 @@ export const OauthConsentPage = () => {
             <div className="rounded-md border border-border bg-container p-4">
               <p className="text-xs text-accent">Application</p>
               <p className="mt-1 font-medium text-foreground">{authorizeInfo.clientName}</p>
+              {authorizeInfo.publicClientHost && (
+                <p className="mt-1 text-sm text-accent">{authorizeInfo.publicClientHost}</p>
+              )}
               {authorizeInfo.clientDescription && (
                 <p className="mt-1 text-sm text-accent">{authorizeInfo.clientDescription}</p>
               )}
+              {organization && (
+                <p className="mt-3 text-xs text-muted">
+                  Access applies to the {organization.name} organization.
+                </p>
+              )}
               <p className="mt-3 text-xs text-muted">
-                {authorizeInfo.requestedScopes.length
-                  ? "This application is requesting the following access on your behalf, limited to your existing Infisical permissions, until you revoke its session."
+                {requestedScopes.length
+                  ? "Choose what this application can do on your behalf. It is limited to your existing Infisical permissions until you revoke its session."
                   : "This application will be able to act on your behalf with your existing Infisical permissions until you revoke its session."}
               </p>
-              {authorizeInfo.requestedScopes.length > 0 && (
+              {requestedScopes.length > 0 && (
                 <ul className="mt-3 flex flex-col gap-2">
-                  {authorizeInfo.requestedScopes.map(({ scope, description }) => (
-                    <li key={scope} className="flex items-start gap-2 text-sm text-foreground">
-                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
-                      <span>
-                        {description}
-                        <span className="ml-1 text-xs text-muted">({scope})</span>
-                      </span>
+                  {requestedScopes.map(({ scope, description }) => (
+                    <li key={scope}>
+                      <label
+                        htmlFor={`oauth-scope-${scope}`}
+                        className="flex cursor-pointer items-start gap-2 text-sm text-foreground"
+                      >
+                        <Checkbox
+                          id={`oauth-scope-${scope}`}
+                          variant="org"
+                          className="mt-0.5"
+                          isChecked={!declinedScopes.includes(scope)}
+                          onCheckedChange={(checked) =>
+                            setDeclinedScopes((prev) =>
+                              checked === true
+                                ? prev.filter((declined) => declined !== scope)
+                                : [...prev, scope]
+                            )
+                          }
+                        />
+                        <span>
+                          {description}
+                          <span className="ml-1 text-xs text-muted">({scope})</span>
+                        </span>
+                      </label>
                     </li>
                   ))}
                 </ul>
               )}
             </div>
+          )}
+          {isGrantingSecretValues && (
+            <Alert variant="warning">
+              <AlertDescription>
+                This allows the application to read secret values. Any value it reads is sent to the
+                application, and to the AI model it uses.
+              </AlertDescription>
+            </Alert>
           )}
           {!isInfoPending && authorizeInfoError && (
             <Alert variant="danger">
@@ -174,7 +237,7 @@ export const OauthConsentPage = () => {
               className="flex-1"
               onClick={handleAuthorize}
               isPending={isConsenting}
-              isDisabled={isConsenting || !isRequestValidated || isPkceMissing}
+              isDisabled={isConsenting || !isRequestValidated || isPkceMissing || isNothingGranted}
             >
               Authorize
             </Button>

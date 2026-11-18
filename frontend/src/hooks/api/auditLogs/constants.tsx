@@ -538,6 +538,7 @@ export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
   [UserAgentType.TERRAFORM]: "Terraform",
   [UserAgentType.NODE_SDK]: "InfisicalNodeSDK",
   [UserAgentType.PYTHON_SDK]: "InfisicalPythonSDK",
+  [UserAgentType.MCP]: "MCP",
   [UserAgentType.OTHER]: "Other"
 };
 
