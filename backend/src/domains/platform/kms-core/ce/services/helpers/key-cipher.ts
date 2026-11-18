@@ -87,10 +87,17 @@ export class KeyCipher {
     return materialId ? this.stores.kmsKeyVersionStore.listByInternalKmsId(materialId, options) : [];
   }
 
-  // The org's data key must already exist: an external key's inputs were encrypted with it when stored.
+  // The org's data key must already exist: an external key's inputs were encrypted with it when stored. A replica can
+  // still show the org row without it, so a row with no data key counts as a miss and is read again from the primary.
   private async existingOrgCipher(orgId: string, options?: TReadOptions): Promise<TCipherPair> {
-    const orgKey = await this.stores.organizationKeyStore.find(orgId, options);
-    if (!orgKey) throw new RuleViolationError({ message: "Invalid organization KMS" });
+    const orgKey = await findOnReplicaThenPrimary(
+      async (readOptions) => {
+        const found = await this.stores.organizationKeyStore.find(orgId, readOptions);
+        return found?.hasDataKey() ? found : null;
+      },
+      () => new RuleViolationError({ message: "Invalid organization KMS" }),
+      options
+    );
     const material = orgKey.material();
     const kmsKey = await requireKey(this.stores.kmsKeyStore, material.kmsKeyId, options);
     const decrypt = await this.decryptorNow(kmsKey, options);
