@@ -5,20 +5,16 @@ import {
   ProjectPermissionSub,
   TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
-import {
-  assertRoleSetBoundary,
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
-import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import {
   filterRolesNeedingPrivilegeBoundary,
   resolveMembershipRoleSlugs,
-  toRoleAbilities
+  toBoundsTargets
 } from "@app/services/membership/membership-fns";
+import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -113,28 +109,17 @@ export const newProjectMembershipIdentityFactory = ({
       roles: filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role)
     });
     for (const permissionRole of permissionRoles) {
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
-        ProjectPermissionSub.Identity,
-        permission.toAbility(),
-        permissionRole.permission.toAbility(),
-        {
+      assertPermissionBounds(permission, {
+        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+        actions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
+        subject: ProjectPermissionSub.Identity,
+        fields: {
           identityId: identityDetails.id,
           assignableRole: permissionRole.role?.slug
-        }
-      );
-
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to create identity project membership",
-            shouldUseNewPrivilegeSystem,
-            ProjectPermissionIdentityActions.AssignRole,
-            ProjectPermissionSub.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
+        },
+        targets: [{ permission: permissionRole.permission }],
+        message: "Failed to create identity project membership"
+      });
     }
   };
 
@@ -195,14 +180,13 @@ export const newProjectMembershipIdentityFactory = ({
       roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
-    assertRoleSetBoundary({
-      shouldUseNewPrivilegeSystem,
-      opActions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
-      opSubject: ProjectPermissionSub.Identity,
-      actorPermission: permission.toAbility(),
-      targetPermissions: toRoleAbilities(targetPermissions),
-      baseMessage: "Failed to change the roles of a more privileged identity",
-      subjectFields: { identityId: dto.selector.identityId }
+    assertPermissionBounds(permission, {
+      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+      actions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
+      subject: ProjectPermissionSub.Identity,
+      fields: { identityId: dto.selector.identityId },
+      targets: toBoundsTargets(targetPermissions),
+      message: "Failed to change the roles of a more privileged identity"
     });
 
     const permissionRoles = await projectPermissionService.getProjectPermissionByRoles({
@@ -210,28 +194,17 @@ export const newProjectMembershipIdentityFactory = ({
       roles: filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role)
     });
     for (const permissionRole of permissionRoles) {
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
-        ProjectPermissionSub.Identity,
-        permission.toAbility(),
-        permissionRole.permission.toAbility(),
-        {
+      assertPermissionBounds(permission, {
+        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+        actions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
+        subject: ProjectPermissionSub.Identity,
+        fields: {
           identityId: identityDetails.id,
           assignableRole: permissionRole.role?.slug
-        }
-      );
-
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to update identity project membership",
-            shouldUseNewPrivilegeSystem,
-            ProjectPermissionIdentityActions.AssignRole,
-            ProjectPermissionSub.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
+        },
+        targets: [{ permission: permissionRole.permission }],
+        message: "Failed to update identity project membership"
+      });
     }
   };
 
@@ -269,14 +242,13 @@ export const newProjectMembershipIdentityFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
-    assertRoleSetBoundary({
-      shouldUseNewPrivilegeSystem,
-      opActions: ProjectPermissionIdentityActions.Delete,
-      opSubject: ProjectPermissionSub.Identity,
-      actorPermission: permission.toAbility(),
-      targetPermissions: toRoleAbilities(targetPermissions),
-      baseMessage: "Failed to remove a more privileged identity from the project",
-      subjectFields: { identityId: dto.selector.identityId }
+    assertPermissionBounds(permission, {
+      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+      actions: ProjectPermissionIdentityActions.Delete,
+      subject: ProjectPermissionSub.Identity,
+      fields: { identityId: dto.selector.identityId },
+      targets: toBoundsTargets(targetPermissions),
+      message: "Failed to remove a more privileged identity from the project"
     });
   };
 

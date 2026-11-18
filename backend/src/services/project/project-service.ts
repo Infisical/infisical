@@ -51,7 +51,7 @@ import {
   ProjectPermissionSub,
   TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
-import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
+import { SecretReadAccess, TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import {
@@ -60,7 +60,6 @@ import {
 } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
 import { THoneyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
-import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import {
   InfisicalProjectTemplate,
   TProjectTemplateServiceFactory
@@ -1412,10 +1411,7 @@ export const projectServiceFactory = ({
 
   const getProjectUpgradeStatus = async ({ projectId, actor }: { projectId: string } & TActorInput) => {
     const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
-    throwIfMissingSecretReadValueOrDescribePermission(
-      permission.toAbility(),
-      ProjectPermissionSecretActions.DescribeSecret
-    );
+    SecretReadAccess.assert(permission, ProjectPermissionSecretActions.DescribeSecret);
 
     const project = await projectDAL.findProjectById(projectId);
 

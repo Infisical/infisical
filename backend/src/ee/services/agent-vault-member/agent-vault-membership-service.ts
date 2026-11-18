@@ -18,7 +18,6 @@ import {
   TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -26,6 +25,7 @@ import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { lockMembershipsById, TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { assertWillRetainProjectAdmin, roleNeedsPrivilegeBoundary } from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
@@ -555,17 +555,16 @@ export const agentVaultMembershipServiceFactory = ({
 
     entries.forEach(({ actor, roles }) => {
       const op = ROLE_ASSIGNMENT[actor.type];
-      assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem: ctx.org.shouldUseNewPrivilegeSystem,
-        opActions: [...op.actions],
-        opSubject: op.subject,
-        actorPermission: permission.toAbility(),
-        targetPermissions: roles.flatMap((role) => {
+      assertPermissionBounds(permission, {
+        usesNewPrivilegeSystem: ctx.org.shouldUseNewPrivilegeSystem,
+        actions: [...op.actions],
+        subject: op.subject,
+        fields: op.fields(actor.id, names.get(actorKey(actor))),
+        targets: roles.flatMap((role) => {
           const ability = abilityOf.get(role);
-          return ability ? [{ permission: ability.permission.toAbility(), role: ability.role }] : [];
+          return ability ? [{ permission: ability.permission, roleSlug: ability.role?.slug }] : [];
         }),
-        baseMessage,
-        subjectFields: op.fields(actor.id, names.get(actorKey(actor)))
+        message: baseMessage
       });
     });
   };

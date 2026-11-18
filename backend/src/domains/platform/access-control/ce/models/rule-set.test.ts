@@ -116,6 +116,81 @@ describe("RuleSet.interpolate", () => {
   });
 });
 
+describe("RuleSet.interpolate trimSuffix", () => {
+  const trim = (namespace: string, pattern?: string) => {
+    const template = pattern
+      ? `{{ trimSuffix identity.auth.kubernetes.namespace '${pattern}' }}`
+      : "{{ trimSuffix identity.auth.kubernetes.namespace }}";
+    const [rule] = RuleSet.of([allow("read", "secrets", { environment: template })]).interpolate({
+      identity: { auth: { kubernetes: { namespace } } }
+    }).rules;
+    return (rule.conditions as { environment: string }).environment;
+  };
+
+  test("should trim a matching glob suffix", () => {
+    expect(trim("myapp-pr-1", "-pr-*")).toBe("myapp");
+    expect(trim("myapp-pr-42", "-pr-*")).toBe("myapp");
+  });
+
+  test("should return the value unchanged when nothing matches the pattern", () => {
+    expect(trim("myapp", "-pr-*")).toBe("myapp");
+    expect(trim("myapp-mr-1", "-pr-*")).toBe("myapp-mr-1");
+  });
+
+  test("should remove the shortest matching suffix, not the longest", () => {
+    expect(trim("app-pr-1", "-*")).toBe("app-pr");
+  });
+
+  test("should trim a literal suffix when the pattern has no glob syntax", () => {
+    expect(trim("myapp-prod", "-prod")).toBe("myapp");
+    expect(trim("myapp", "-prod")).toBe("myapp");
+  });
+
+  test("should support the wider glob syntax permission conditions use", () => {
+    expect(trim("myapp-pr-1", "-{pr,mr}-*")).toBe("myapp");
+    expect(trim("myapp-pr-1", "-pr-?")).toBe("myapp");
+  });
+
+  test("should leave an unresolved attribute literal intact so the condition fails closed", () => {
+    expect(trim("{{identity.auth.kubernetes.namespace}}", "-pr-*")).toBe("{{identity.auth.kubernetes.namespace}}");
+  });
+
+  test("should return an empty string for an empty value", () => {
+    expect(trim("", "-pr-*")).toBe("");
+  });
+
+  test("should return the value unchanged for a malformed pattern instead of throwing", () => {
+    expect(trim("myapp-pr-1", "-pr-+(")).toBe("myapp-pr-1");
+  });
+
+  test("should return the value unchanged when no pattern is given", () => {
+    expect(trim("myapp-pr-1")).toBe("myapp-pr-1");
+  });
+
+  test("should trim a pattern carrying the maximum number of wildcards", () => {
+    expect(trim("myapp-1-2-3-4-5", "-*-*-*-*-*")).toBe("myapp");
+    expect(trim("myapp-1-2-3-4-5", "-?-?-?-?-?")).toBe("myapp");
+  });
+
+  test("should return the value unchanged for a pattern with more wildcards than the limit", () => {
+    expect(trim("myapp-1-2-3-4-5-6", "-*-*-*-*-*-*")).toBe("myapp-1-2-3-4-5-6");
+    expect(trim("myapp-1-2-3-4-5-6", "-?-?-?-?-?-?")).toBe("myapp-1-2-3-4-5-6");
+  });
+
+  test("should count each character of a globstar toward the wildcard limit", () => {
+    expect(trim("myapp-a-b", "-**-**")).toBe("myapp");
+    expect(trim("myapp-a-b-c", "-**-**-**")).toBe("myapp-a-b-c");
+  });
+
+  test("should not count brace expansion toward the wildcard limit", () => {
+    expect(trim("myapp-pr-1-2-3-4-5", "-{pr,mr}-*-*-*-*-*")).toBe("myapp");
+  });
+
+  test("should count wildcards in the pattern, not in the value", () => {
+    expect(trim("my*app*x*y*z*w-pr-1", "-pr-*")).toBe("my*app*x*y*z*w");
+  });
+});
+
 describe("RuleSet.interpolateStored", () => {
   const context = { identity: { id: "i1", username: "alice", metadata: {}, auth: {} } };
 

@@ -3,13 +3,13 @@ import { z } from "zod";
 
 import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas";
 import { ProjectPermissionV2Schema } from "@app/domains/platform/projects/ce/module";
-import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ApiDocsTags, IDENTITY_ADDITIONAL_PRIVILEGE_V2 } from "@app/lib/api-docs";
 import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { checkForInvalidPermissionCombination } from "@app/server/lib/project-permission-input";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedIdentityPrivilegeSchema } from "@app/server/routes/sanitizedSchema/identitiy-additional-privilege";

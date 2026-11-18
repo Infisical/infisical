@@ -8,17 +8,13 @@ import {
   TOrgPermissionService
 } from "@app/domains/platform/organizations/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import {
-  assertRoleSetBoundary,
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
-import { BadRequestError, InternalServerError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import {
   filterRolesNeedingPrivilegeBoundary,
   resolveMembershipRoleSlugs,
-  toRoleAbilities
+  toBoundsTargets
 } from "@app/services/membership/membership-fns";
+import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
 import { TMembershipGroupDALFactory } from "../membership-group-dal";
@@ -104,23 +100,13 @@ export const newOrgMembershipGroupFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = dto.actor.org;
     for (const permissionRole of permissionRoles) {
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        OrgPermissionGroupActions.GrantPrivileges,
-        OrgPermissionSubjects.Groups,
-        permission.toAbility(),
-        permissionRole.permission.toAbility()
-      );
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to link group to sub-organization",
-            shouldUseNewPrivilegeSystem,
-            OrgPermissionGroupActions.GrantPrivileges,
-            OrgPermissionSubjects.Groups
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
+      assertPermissionBounds(permission, {
+        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+        actions: OrgPermissionGroupActions.GrantPrivileges,
+        subject: OrgPermissionSubjects.Groups,
+        targets: [{ permission: permissionRole.permission }],
+        message: "Failed to link group to sub-organization"
+      });
     }
 
     return { group: { id: group.id, name: group.name } };
@@ -153,33 +139,22 @@ export const newOrgMembershipGroupFactory = ({
       ignoreUnresolvedRoles: true
     });
 
-    assertRoleSetBoundary({
-      shouldUseNewPrivilegeSystem,
-      opActions: OrgPermissionGroupActions.GrantPrivileges,
-      opSubject: OrgPermissionSubjects.Groups,
-      actorPermission: permission.toAbility(),
-      targetPermissions: toRoleAbilities(targetPermissions),
-      baseMessage: "Failed to change the roles of a more privileged group"
+    assertPermissionBounds(permission, {
+      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+      actions: OrgPermissionGroupActions.GrantPrivileges,
+      subject: OrgPermissionSubjects.Groups,
+      targets: toBoundsTargets(targetPermissions),
+      message: "Failed to change the roles of a more privileged group"
     });
 
     for (const permissionRole of permissionRoles) {
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        OrgPermissionGroupActions.GrantPrivileges,
-        OrgPermissionSubjects.Groups,
-        permission.toAbility(),
-        permissionRole.permission.toAbility()
-      );
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to create group org membership",
-            shouldUseNewPrivilegeSystem,
-            OrgPermissionGroupActions.GrantPrivileges,
-            OrgPermissionSubjects.Groups
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
+      assertPermissionBounds(permission, {
+        usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+        actions: OrgPermissionGroupActions.GrantPrivileges,
+        subject: OrgPermissionSubjects.Groups,
+        targets: [{ permission: permissionRole.permission }],
+        message: "Failed to create group org membership"
+      });
     }
 
     return { group: { id: groupDetails.id, name: groupDetails.name } };
@@ -212,13 +187,12 @@ export const newOrgMembershipGroupFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
-    assertRoleSetBoundary({
-      shouldUseNewPrivilegeSystem,
-      opActions: OrgPermissionGroupActions.Delete,
-      opSubject: OrgPermissionSubjects.Groups,
-      actorPermission: permission.toAbility(),
-      targetPermissions: toRoleAbilities(targetPermissions),
-      baseMessage: "Failed to remove a more privileged group from the organization"
+    assertPermissionBounds(permission, {
+      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+      actions: OrgPermissionGroupActions.Delete,
+      subject: OrgPermissionSubjects.Groups,
+      targets: toBoundsTargets(targetPermissions),
+      message: "Failed to remove a more privileged group from the organization"
     });
 
     return { group: { id: group.id, name: group.name } };

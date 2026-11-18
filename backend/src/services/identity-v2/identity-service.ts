@@ -27,12 +27,8 @@ import {
   ProjectPermissionSub,
   TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
-import {
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -40,6 +36,7 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
+import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "@app/services/super-admin/super-admin-fns";
@@ -171,25 +168,13 @@ export const identityV2ServiceFactory = ({
         roles: filterRolesNeedingPrivilegeBoundary(data.roles).map((el) => el.role)
       });
       for (const permissionRole of permissionRoles) {
-        const permissionBoundary = validatePrivilegeChangeOperation(
-          shouldUseNewPrivilegeSystem,
-          [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
-          ProjectPermissionSub.Identity,
-          actorPermission.toAbility(),
-          permissionRole.permission.toAbility(),
-          { assignableRole: permissionRole.role?.slug }
-        );
-        if (!permissionBoundary.isValid) {
-          throw new PermissionBoundaryError({
-            message: constructPermissionErrorMessage(
-              "Failed to create identity project membership",
-              shouldUseNewPrivilegeSystem,
-              ProjectPermissionIdentityActions.AssignRole,
-              ProjectPermissionSub.Identity
-            ),
-            details: { missingPermissions: permissionBoundary.missingPermissions }
-          });
-        }
+        assertPermissionBounds(actorPermission, {
+          usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+          actions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
+          subject: ProjectPermissionSub.Identity,
+          targets: [{ permission: permissionRole.permission, roleSlug: permissionRole.role?.slug }],
+          message: "Failed to create identity project membership"
+        });
       }
 
       const customInputRoles = data.roles.filter((el) => isCustomProjectRole(el.role));

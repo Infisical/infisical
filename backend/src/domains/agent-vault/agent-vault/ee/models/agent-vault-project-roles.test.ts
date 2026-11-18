@@ -9,6 +9,7 @@ import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionAgentVaultVariableActions,
+  ProjectPermissionAuditLogsActions,
   ProjectPermissionCmekActions,
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
@@ -78,6 +79,19 @@ const replacedRoleChecks = (permission: TAgentVaultPermission) =>
 const allowed = (checks: Record<string, boolean>) => Object.keys(checks).filter((key) => checks[key]);
 
 describe("AgentVaultProjectRoles.rulesFor", () => {
+  test("should let the admin, and not a member, edit the project's audit log settings", () => {
+    // Setup
+    const check = { action: ProjectPermissionAuditLogsActions.Edit, subject: ProjectPermissionSub.AuditLogs };
+
+    // Action
+    const granted = [ProjectMembershipRole.Admin, ProjectMembershipRole.Member].map((slug) =>
+      permissionFor(slug).can(check)
+    );
+
+    // Assert
+    expect(granted).toEqual([true, false]);
+  });
+
   test("should give only the admin set the actions that replaced role checks", () => {
     // Setup
     const adminChecks = replacedRoleChecks(permissionFor(ProjectMembershipRole.Admin));

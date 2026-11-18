@@ -1,5 +1,3 @@
-import { MongoAbility } from "@casl/ability";
-
 import { AccessScope } from "@app/db/schemas";
 import { TActorContext } from "@app/domains/lib/actor-context";
 import { TActorGrantsService } from "@app/domains/platform/access-control/ce/module";
@@ -14,8 +12,8 @@ import {
   TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
 import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
-import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { ActorType } from "@app/lib/auth/actor-types";
+import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 
 const PROJECT_ACTION_BY_ORG_ACTION = {
   [OrgPermissionIdentityActions.EditAuth]: ProjectPermissionIdentityActions.EditAuth,
@@ -74,16 +72,13 @@ export const assertIdentityAuthAccessAllowed = async (
     ]);
     const folderGrants = await secretsPermissionService.getFolderGrantPermissions({ target, projectId, grants });
 
-    assertRoleSetBoundary({
-      shouldUseNewPrivilegeSystem,
-      opActions: PROJECT_ACTION_BY_ORG_ACTION[action],
-      opSubject: ProjectPermissionSub.Identity,
-      actorPermission: permission.toAbility() as MongoAbility,
-      targetPermissions: [...roleGrants, ...folderGrants].map((grant) => ({
-        permission: grant.toAbility() as MongoAbility
-      })),
-      baseMessage,
-      subjectFields: { identityId }
+    assertPermissionBounds(permission, {
+      usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+      actions: PROJECT_ACTION_BY_ORG_ACTION[action],
+      subject: ProjectPermissionSub.Identity,
+      fields: { identityId },
+      targets: [...roleGrants, ...folderGrants].map((grant) => ({ permission: grant })),
+      message: baseMessage
     });
     return;
   }
@@ -97,12 +92,11 @@ export const assertIdentityAuthAccessAllowed = async (
     actor: { ...target, name: identityName },
     orgId
   });
-  assertRoleSetBoundary({
-    shouldUseNewPrivilegeSystem,
-    opActions: action,
-    opSubject: OrgPermissionSubjects.Identity,
-    actorPermission: permission.toAbility() as MongoAbility,
-    targetPermissions: roleGrants.map((grant) => ({ permission: grant.toAbility() as MongoAbility })),
-    baseMessage
+  assertPermissionBounds(permission, {
+    usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+    actions: action,
+    subject: OrgPermissionSubjects.Identity,
+    targets: roleGrants.map((grant) => ({ permission: grant })),
+    message: baseMessage
   });
 };
