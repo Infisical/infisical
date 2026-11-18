@@ -2,13 +2,15 @@ import { packRules, unpackRules } from "@casl/ability/extra";
 
 import { OrgMembershipRole } from "@app/db/schemas";
 import { EntityNotFoundError } from "@app/domains/lib/errors";
-import { Grant } from "@app/domains/platform/access-control/ce/module";
+import { Grant, Permission } from "@app/domains/platform/access-control/ce/module";
 
 import {
   orgAdminPermissions,
   orgMemberPermissions,
   orgNoAccessPermissions,
+  OrgPermissionAuditLogsActions,
   OrgPermissionMemberActions,
+  OrgPermissionSchema,
   OrgPermissionSubjects
 } from "./org-permission-set";
 import { OrgRoles } from "./org-roles";
@@ -64,5 +66,35 @@ describe("OrgRoles.isBuiltIn", () => {
 
     // Assert
     expect(builtIn).toEqual([true, true, true, false, false]);
+  });
+});
+
+describe("OrgPermissionSubjects.AuditLogStreams", () => {
+  test("should let the admin manage audit log streams, let a member read them, and be written by the role API", () => {
+    // Setup
+    const permissionOf = (slug: OrgMembershipRole) =>
+      Permission.fromRules({ rules: OrgRoles.rulesFor(Grant.restore({ slug })) });
+    const check = (action: OrgPermissionAuditLogsActions) => ({
+      action,
+      subject: OrgPermissionSubjects.AuditLogStreams
+    });
+
+    // Action
+    const granted = [OrgMembershipRole.Admin, OrgMembershipRole.Member].map((slug) => [
+      permissionOf(slug).can(check(OrgPermissionAuditLogsActions.Read)),
+      permissionOf(slug).can(check(OrgPermissionAuditLogsActions.Edit))
+    ]);
+
+    // Assert
+    expect(granted).toEqual([
+      [true, true],
+      [true, false]
+    ]);
+    expect(
+      OrgPermissionSchema.safeParse({
+        subject: OrgPermissionSubjects.AuditLogStreams,
+        action: [OrgPermissionAuditLogsActions.Read, OrgPermissionAuditLogsActions.Edit]
+      }).success
+    ).toBe(true);
   });
 });
