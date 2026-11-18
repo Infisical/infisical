@@ -613,8 +613,10 @@ function KindRowView({
   const line = (entry: Resource, withName: boolean) => (
     <div className={styles.nameLine}>
       {withName && <span className={styles.truncate}>{spec.label(entry)}</span>}
-      {withName && <RowStateBadges rowKey={rowKey} ctx={ctx} />}
-      {spec.details(entry)}
+      <span className={styles.nameDetails}>
+        {withName && <RowStateBadges rowKey={rowKey} ctx={ctx} />}
+        {spec.details(entry)}
+      </span>
     </div>
   );
   const actions = (entry: Resource): RowActionProps => ({
@@ -978,17 +980,30 @@ export function ImportRow({
   const expanded = ctx.expanded.includes(rowKey);
   const setExpanded = (open: boolean) => ctx.onExpand(rowKey, open);
   const first = entries[0];
+  const crossProject = first.source.project !== projectName;
+  const sourceEnvironment =
+    environments.find((environment) => environment.value === first.source.environment)?.label ??
+    first.source.environment;
   const label = (
-    <span className={styles.importLabel}>
-      {first.source.project !== projectName && <Badge tone="warn">{first.source.project}</Badge>}
-      <Badge tone="outline">
-        <Icon icon={LayersIcon} />
-        {environments.find((environment) => environment.value === first.source.environment)
-          ?.label ?? first.source.environment}
-      </Badge>
-      <Icon name="folder" size={14} />
-      <span className={styles.truncate}>{first.source.path}</span>
-    </span>
+    <>
+      <span className={`${styles.importLabel} ${styles.importWide}`}>
+        {crossProject && <Badge tone="warn">{first.source.project}</Badge>}
+        <Badge tone="outline">
+          <Icon icon={LayersIcon} />
+          {sourceEnvironment}
+        </Badge>
+        <Icon name="folder" size={14} />
+        <span className={styles.truncate}>{first.source.path}</span>
+      </span>
+      <span className={`${styles.importLabel} ${styles.importNarrow}`}>
+        <span className={styles.truncate}>{first.source.path}</span>
+        <span className={styles.nameDetails}>
+          <span className={styles.subtle}>
+            {crossProject ? `${first.source.project} ${sourceEnvironment}` : sourceEnvironment}
+          </span>
+        </span>
+      </span>
+    </>
   );
   const replication = (entry: Of<"import">) =>
     entry.replicated &&
@@ -1067,7 +1082,7 @@ export function ImportRow({
             colSpan={ctx.single ? 2 : undefined}
             className={styles.nameCell}
           >
-            <div className={styles.nameLine}>
+            <div className={`${styles.nameLine} ${styles.importLine}`}>
               <span className={styles.nameKind}>
                 <KindIcon kind="import" />
               </span>

@@ -241,6 +241,7 @@ const inventoryColumns = (orgId: string): DataTableColumn<TCertificate>[] => [
     header: "SAN / CN",
     primary: true,
     grow: true,
+    minWidth: 160,
     text: (r) => certificateName(r),
     render: (r) => {
       const extra = (r.altNames?.split(",").filter(Boolean).length ?? 0) - 1;
