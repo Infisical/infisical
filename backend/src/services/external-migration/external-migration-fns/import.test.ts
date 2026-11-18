@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { FakeKmsCore } from "@app/domains/platform/kms-core/ce/testing/fake-kms-core";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 
 import { TImportDataIntoInfisicalDTO } from "./envkey";
 import { importDataIntoInfisicalFn } from "./import";

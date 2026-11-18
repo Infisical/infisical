@@ -5,9 +5,9 @@ import {
   ResourcePermissionPamResourceActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
 import { PAM_ROTATION_FACTORY_MAP, TPamRotationHandler } from "../pam-account-rotation/pam-rotation-handlers";
 import { PamAccountType, PamHeartbeatStatus, PamSshAuthMethod } from "../pam/pam-enums";

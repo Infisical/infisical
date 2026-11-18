@@ -1,5 +1,5 @@
+import { ActorType } from "@app/lib/auth/actor-types";
 import { TGenericPermission } from "@app/lib/types";
-import { ActorType } from "@app/services/auth/auth-type";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
 import {

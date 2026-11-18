@@ -1,6 +1,6 @@
 import { OrganizationActionScope, ProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TSecretScanningV2ProjectResolverFactory } from "./secret-scanning-v2-project-resolver";

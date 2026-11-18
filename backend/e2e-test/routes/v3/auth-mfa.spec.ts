@@ -5,7 +5,8 @@ import jwt, { decode } from "jsonwebtoken";
 
 import { OrgMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { AuthMethod, AuthTokenType, MfaMethod, SsoMfaTrust } from "@app/services/auth/auth-type";
+import { AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
+import { SsoMfaTrust } from "@app/services/auth/auth-type";
 
 import { TTestSmtpService } from "../../mocks/smtp";
 import { loginUser, selectOrg } from "../../testUtils/auth";

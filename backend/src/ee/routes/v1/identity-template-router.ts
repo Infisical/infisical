@@ -16,9 +16,9 @@ import {
   oidcTemplateFieldsSchema,
   templateFieldsPatchSchema
 } from "@app/ee/services/identity-auth-template/identity-auth-template-schemas";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
 const templateNameSchema = z

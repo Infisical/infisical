@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { SecretFolderRole, TOrganizations } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorAuthMethod, ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import {
   BadRequestError,
@@ -15,7 +16,6 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
-import { ActorAuthMethod, ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 import { FOLDER_SCOPED_DENY_RULES, SECRET_FOLDER_ROLE_PERMISSIONS } from "./folder-roles";

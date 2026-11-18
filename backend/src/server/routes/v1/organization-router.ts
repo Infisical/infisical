@@ -18,13 +18,14 @@ import {
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, KeyStoreTtls } from "@app/keystore/keystore";
 import { ApiDocsTags, AUDIT_LOG_SETTINGS, AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
+import { ActorType, AuthMode, MfaMethod } from "@app/lib/auth/actor-types";
 import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";
 import { JobState } from "@app/queue/queue-service";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode, MfaMethod, SsoMfaTrust } from "@app/services/auth/auth-type";
+import { SsoMfaTrust } from "@app/services/auth/auth-type";
 import { OrgWithSubOrgsSchema, sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 

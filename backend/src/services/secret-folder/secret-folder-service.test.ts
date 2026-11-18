@@ -1,7 +1,7 @@
 import { vi } from "vitest";
 
+import { ActorType } from "@app/lib/auth/actor-types";
 import { OrgServiceActor } from "@app/lib/types";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { secretFolderServiceFactory } from "./secret-folder-service";
 

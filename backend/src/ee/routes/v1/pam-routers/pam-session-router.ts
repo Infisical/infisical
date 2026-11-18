@@ -8,6 +8,7 @@ import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recordi
 import { PamAccessMethod, PamAccountType, PamSessionStatus } from "@app/ee/services/pam/pam-enums";
 import { PamPolicyRulesSchema } from "@app/ee/services/pam/pam-policies";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { auditSafeText } from "@app/server/lib/schemas";
@@ -15,7 +16,6 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SanitizedSessionSchema = PamSessionsSchema.pick({

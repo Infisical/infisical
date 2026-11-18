@@ -10,6 +10,7 @@ import {
 } from "@app/db/schemas";
 import { EventType, SecretFolderAccessEventMetadata } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, FOLDER_ACCESS, PROJECT_IDENTITIES, PROJECT_IDENTITY_MEMBERSHIP } from "@app/lib/api-docs";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
@@ -17,7 +18,6 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { temporaryPermissionTypeSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedFolderAccessIdentitySchema, SanitizedFolderAccessSchema } from "../sanitizedSchema/folder-access";

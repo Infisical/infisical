@@ -7,9 +7,9 @@ import { AuditLogInfo, TAuditLogServiceFactory } from "@app/ee/services/audit-lo
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { TProjectPermission } from "@app/lib/types";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { CertSubjectAlternativeNameType } from "@app/services/certificate-common/certificate-constants";
 import { TResolvedCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";

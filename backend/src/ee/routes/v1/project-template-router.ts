@@ -5,12 +5,12 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { isInfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-fns";
 import { ApiDocsTags, ProjectTemplates } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const MAX_JSON_SIZE_LIMIT_IN_BYTES = 32_768;

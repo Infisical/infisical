@@ -13,6 +13,7 @@ import { EventType, TAuditLogServiceFactory, TMfaSatisfiedBy } from "@app/ee/ser
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { FOREIGN_SSO_SESSION_ERROR_NAME } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
@@ -71,15 +72,7 @@ import {
   TProcessProviderCallbackDTO,
   TVerifyMfaTokenDTO
 } from "./auth-login-type";
-import {
-  ActorType,
-  AuthMethod,
-  AuthModeMfaJwtTokenPayload,
-  AuthTokenType,
-  MfaMethod,
-  ProviderAuthResult,
-  TProviderAuthCallback
-} from "./auth-type";
+import { AuthModeMfaJwtTokenPayload, ProviderAuthResult, TProviderAuthCallback } from "./auth-type";
 import { verifyCaptcha } from "./captcha-fns";
 import { TMfaLockoutServiceFactory } from "./mfa-lockout-service";
 

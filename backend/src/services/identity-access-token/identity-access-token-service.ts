@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { IdentityAuthMethod, OrgMembershipStatus, TableName, TIdentityAccessTokens } from "@app/db/schemas";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { withCache } from "@app/lib/cache/with-cache";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
@@ -12,7 +13,6 @@ import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 import { recordTokenRenewalMetric } from "@app/lib/telemetry/metrics";
 
-import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TIdentityAccessTokenDALFactory } from "./identity-access-token-dal";

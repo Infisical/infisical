@@ -6,7 +6,8 @@ import { Knex } from "knex";
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
+import { AuthMethod } from "@app/lib/auth/actor-types";
+import { ProviderAuthResult } from "@app/services/auth/auth-type";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
 import { loginUser, selectOrg } from "../../testUtils/auth";

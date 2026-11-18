@@ -1,5 +1,5 @@
 import { ActionProjectType, OrganizationActionScope, ResourceType } from "@app/db/schemas";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 
 /**
  * Builders for {@link requestMemoize} string keys. Centralizes formats so call sites

@@ -1,6 +1,5 @@
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { SecretSharingAccessType, TGenericPermission, TOrgPermission } from "@app/lib/types";
-
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 
 export enum SecretSharingType {
   Share = "share",

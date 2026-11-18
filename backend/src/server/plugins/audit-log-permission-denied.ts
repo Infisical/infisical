@@ -2,6 +2,7 @@ import { AnyAbility, ForbiddenError } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 import fp from "fastify-plugin";
 
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { PermissionBoundaryError } from "@app/lib/errors";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 
@@ -37,22 +38,23 @@ const readProjectId = (source: unknown) => {
   return typeof projectId === "string" ? projectId : undefined;
 };
 
-// RBAC denials are CASL ForbiddenError or PermissionBoundaryError, and onError runs before the
+// RBAC denials are the domains' PermissionDeniedError, CASL ForbiddenError or PermissionBoundaryError, and onError runs before the
 // error handler, so this hook catches all of them. ForbiddenRequestError is skipped: it's mostly
 // auth-mode, plan, admin-only and ownership checks with no action/subject, so it'd just be noise.
 // Services that call permission.can() by hand and throw ForbiddenRequestError aren't captured,
 // switch them to throwUnlessCan if you want them recorded.
 export const injectPermissionDeniedAuditLog = fp(async (server: FastifyZodProvider) => {
   server.addHook("onError", async (req, _reply, error) => {
+    const denial = error instanceof PermissionDeniedError ? error.denial : undefined;
     const isCaslDenial = error instanceof ForbiddenError;
-    if (!isCaslDenial && !(error instanceof PermissionBoundaryError)) return;
+    if (!denial && !isCaslDenial && !(error instanceof PermissionBoundaryError)) return;
     if (!req.auth || !req.auditLogInfo?.actor) return;
 
     const orgId = req.auditLogInfo.orgId ?? req.permission?.orgId;
     if (!orgId) return;
 
     const caslError = isCaslDenial ? (error as unknown as ForbiddenError<AnyAbility>) : undefined;
-    const missing = isCaslDenial ? undefined : readMissingPermission((error as PermissionBoundaryError).details);
+    const missing = error instanceof PermissionBoundaryError ? readMissingPermission(error.details) : undefined;
 
     const { schema } = req.routeOptions;
     const projectId =
@@ -66,10 +68,12 @@ export const injectPermissionDeniedAuditLog = fp(async (server: FastifyZodProvid
       orgId,
       projectId,
       metadata: {
-        permissionAction: caslError?.action ? String(caslError.action) : missing?.action,
-        permissionSubject: caslError?.subjectType ? String(caslError.subjectType) : missing?.subject,
-        permissionSubjectDetails: pickSubjectDetails(caslError?.subject),
-        errorName: error.name,
+        permissionAction: denial?.action ?? (caslError?.action ? String(caslError.action) : missing?.action),
+        permissionSubject:
+          denial?.subject ?? (caslError?.subjectType ? String(caslError.subjectType) : missing?.subject),
+        permissionSubjectDetails: pickSubjectDetails(denial ? denial.subjectFields : caslError?.subject),
+        // A domain denial records the name a CASL denial always had, so the audit log reads the same either way.
+        errorName: denial ? "ForbiddenError" : error.name,
         route: req.routeOptions.url,
         method: req.method
       }

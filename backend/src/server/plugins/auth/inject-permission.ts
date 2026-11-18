@@ -1,7 +1,7 @@
 import fp from "fastify-plugin";
 
+import { ActorType } from "@app/lib/auth/actor-types";
 import { logger } from "@app/lib/logger";
-import { ActorType } from "@app/services/auth/auth-type";
 
 // inject permission type needed based on auth extracted
 export const injectPermission = fp(async (server) => {
