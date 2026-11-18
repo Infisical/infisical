@@ -267,7 +267,7 @@ describe("Certificate renewal approval", async () => {
     test(
       "keeps automatic renewal when the person who asked for a rejected renewal was deleted first",
       async () => {
-        const certificateId = deletedRequesterCertificateId;
+        const heldCertificateId = deletedRequesterCertificateId;
         const { userId: requesterId } = await createUser("renewal-requester");
         await addUserMembership({ userId: requesterId, orgId: ctx.orgId, role: OrgMembershipRole.Member });
         await addUserMembership({
@@ -284,18 +284,21 @@ describe("Certificate renewal approval", async () => {
         });
         const requesterToken = await createUserAccessToken({ userId: requesterId, orgId: ctx.orgId });
 
-        const renewal = await renewCertificate({ authToken: requesterToken, certificateId });
+        const renewal = await renewCertificate({ authToken: requesterToken, certificateId: heldCertificateId });
         expect(renewal.status, "the renewal waits for approval").toBe(CertificateRequestStatus.PENDING_APPROVAL);
-        const [approvalRequest] = await pendingRenewalApprovals(ctx, certificateId);
+        const [approvalRequest] = await pendingRenewalApprovals(ctx, heldCertificateId);
 
         await deleteUsers([requesterId]);
         const stored = await testDb(TableName.ApprovalRequests).where({ id: approvalRequest.id }).first();
         expect(stored?.requesterId ?? null, "deleting the user cleared the request's requester").toBeNull();
 
-        const rejected = await rejectCertRequestApproval({ authToken: ctx.approverToken, requestId: approvalRequest.id });
+        const rejected = await rejectCertRequestApproval({
+          authToken: ctx.approverToken,
+          requestId: approvalRequest.id
+        });
         expect(rejected.status).toBe(ApprovalRequestStatus.Rejected);
 
-        const certificate = await getCertificate({ authToken: ctx.authToken, certificateId });
+        const certificate = await getCertificate({ authToken: ctx.authToken, certificateId: heldCertificateId });
         expect(certificate.renewalError ?? null, "the rejection didn't stop automatic renewal").toBeNull();
       },
       TEST_TIMEOUT_MS
@@ -304,13 +307,14 @@ describe("Certificate renewal approval", async () => {
 
   describe("an issuance policy that requires approval for every renewal, renewed automatically", async () => {
     let ctx: TApplicationContext;
-    const certificateIds = { approved: "", rejected: "", heldByHand: "" };
+    const certificateIds = { approved: "", rejected: "", heldByHand: "", heldPastExpiry: "" };
 
     beforeAll(async () => {
       ctx = await setUpApplication("renewal-always-auto");
       certificateIds.approved = await issue(ctx);
       certificateIds.rejected = await issue(ctx);
       certificateIds.heldByHand = await issue(ctx);
+      certificateIds.heldPastExpiry = await issue(ctx);
 
       await createApplicationCertRequestPolicy({
         authToken: ctx.authToken,
@@ -401,6 +405,38 @@ describe("Certificate renewal approval", async () => {
           "the job raised no request beside the manual one"
         ).toHaveLength(1);
         await expectNotRenewed(ctx, certificateId, "while the manual renewal waits");
+      },
+      TEST_TIMEOUT_MS
+    );
+
+    // The hourly cleanup is what marks an expired request, so until it runs one stays pending in the database.
+    test(
+      "asks again for a renewal whose pending request has passed its expiry",
+      async () => {
+        const certificateId = certificateIds.heldPastExpiry;
+        await makeDueForAutoRenewal(ctx, certificateId);
+        const expire = (requestId: string) =>
+          testDb(TableName.ApprovalRequests)
+            .where({ id: requestId })
+            .update({ expiresAt: new Date(Date.now() - 60_000) });
+
+        const manual = await renewCertificate({ authToken: ctx.authToken, certificateId });
+        expect(manual.status, "the manual renewal waits for approval").toBe(CertificateRequestStatus.PENDING_APPROVAL);
+        const [manualRequest] = await pendingRenewalApprovals(ctx, certificateId);
+        await expire(manualRequest.id);
+
+        await runCertificateAutoRenewal();
+
+        const jobRequests = (await pendingRenewalApprovals(ctx, certificateId)).filter(
+          (req) => req.requesterName === "Automatic Renewal"
+        );
+        expect(jobRequests, "the job raised a request past the expired one").toHaveLength(1);
+        await expire(jobRequests[0].id);
+
+        const again = await renewCertificate({ authToken: ctx.authToken, certificateId });
+        expect(again.status, "a manual renewal isn't refused by expired requests").toBe(
+          CertificateRequestStatus.PENDING_APPROVAL
+        );
       },
       TEST_TIMEOUT_MS
     );

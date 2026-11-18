@@ -17,7 +17,7 @@ import { ActorType } from "../auth/auth-type";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaType } from "../certificate-authority/certificate-authority-enums";
 import { caUsesExternalIssuanceQueue } from "../certificate-authority/certificate-authority-maps";
-import { CertificateIssuanceOperation } from "../certificate-common/certificate-constants";
+import { CaOperationFailureStage, CertificateIssuanceOperation } from "../certificate-common/certificate-constants";
 import { extractCertificateRequestFromCSR } from "../certificate-common/certificate-csr-utils";
 import { describeCaOperationFailure } from "../certificate-common/certificate-failure-fns";
 import {
@@ -113,7 +113,7 @@ const $findApprovalRequest = async (deps: TApprovalLookupDeps, approvalRequestId
 const $warnLookupFailed = (certificateRequestId: string) => (err: unknown) => {
   logger.warn(
     err,
-    `Failed to look up a failed certificate request's details [certificateRequestId=${certificateRequestId}]`
+    `Failed to look up a certificate request's details for its audit event [certificateRequestId=${certificateRequestId}]`
   );
   return undefined;
 };
@@ -129,12 +129,14 @@ export const recordCertificateRequestFailure = async (
     operation,
     originalCertificateId,
     error,
+    failureStage = CaOperationFailureStage.Ca,
     notifyApprovers = false
   }: {
     certificateRequest: TCertificateRequests;
     operation?: CertificateIssuanceOperation;
     originalCertificateId?: string;
     error?: unknown;
+    failureStage?: CaOperationFailureStage;
     notifyApprovers?: boolean;
   }
 ) => {
@@ -194,10 +196,11 @@ export const recordCertificateRequestFailure = async (
     approval.approvalRequest,
     describeCaOperationFailure({
       action: approval.renewal ? "Renewing the certificate" : "Issuing the certificate",
+      stage: failureStage,
       ca,
       error,
       message: certificateRequest.errorMessage,
-      fallback: "An unexpected error stopped the certificate from being issued."
+      fallback: `An unexpected error stopped the certificate from being ${approval.renewal ? "renewed" : "issued"}.`
     })
   );
 };
@@ -220,10 +223,16 @@ export const recordApprovedRenewalIssued = async (
     const approval = await $findApprovalRequest(deps, certificateRequest.approvalRequestId);
     if (!approval?.renewal) return;
 
+    // These only label the event, so a failed read leaves those labels out rather than losing the event.
+    const onLookupError = $warnLookupFailed(certificateRequest.id);
     const [certificate, profile, application] = await Promise.all([
-      deps.certificateDAL.findById(certificateId),
-      certificateRequest.profileId ? deps.certificateProfileDAL.findById(certificateRequest.profileId) : undefined,
-      certificateRequest.applicationId ? deps.pkiApplicationDAL.findById(certificateRequest.applicationId) : undefined
+      deps.certificateDAL.findById(certificateId).catch(onLookupError),
+      certificateRequest.profileId
+        ? deps.certificateProfileDAL.findById(certificateRequest.profileId).catch(onLookupError)
+        : undefined,
+      certificateRequest.applicationId
+        ? deps.pkiApplicationDAL.findById(certificateRequest.applicationId).catch(onLookupError)
+        : undefined
     ]);
     await deps.auditLogService.createAuditLog({
       projectId: certificateRequest.projectId,
@@ -252,4 +261,22 @@ export const recordApprovedRenewalIssued = async (
       `Failed to record an approved renewal the CA issued [certificateRequestId=${certificateRequest.id}] [certificateId=${certificateId}]`
     );
   }
+};
+
+// Only the attach that moves the request out of pending records the renewal, so a retried or concurrent attach
+// can't record it twice. A request that's already issued keeps its certificate: a concurrent run that fetched its
+// own copy from the CA mustn't repoint the request away from the certificate its renew event names.
+export const attachIssuedCertificate = async (
+  deps: TRecordApprovedRenewalIssuedDeps & {
+    certificateRequestDAL: Pick<TCertificateRequestDALFactory, "attachCertificateFromPending" | "findById">;
+  },
+  { certificateRequestId, certificateId }: { certificateRequestId: string; certificateId: string }
+) => {
+  const attached = await deps.certificateRequestDAL.attachCertificateFromPending(certificateRequestId, certificateId);
+  if (!attached) {
+    const current = await deps.certificateRequestDAL.findById(certificateRequestId);
+    return current?.certificateId === certificateId ? current : null;
+  }
+  await recordApprovedRenewalIssued(deps, { certificateRequest: attached, certificateId });
+  return attached;
 };

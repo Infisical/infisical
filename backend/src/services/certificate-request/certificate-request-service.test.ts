@@ -18,7 +18,10 @@ import {
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import {
+  CaOperationFailureStage,
+  CertificateIssuanceOperation
+} from "@app/services/certificate-common/certificate-constants";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
@@ -36,13 +39,19 @@ describe("CertificateRequestService", () => {
 
   const mockCertificateRequestDAL: Pick<
     TCertificateRequestDALFactory,
-    "create" | "findById" | "findByIdWithCertificate" | "transitionFromPending" | "attachCertificate"
+    | "create"
+    | "findById"
+    | "findByIdWithCertificate"
+    | "transitionFromPending"
+    | "attachCertificate"
+    | "attachCertificateFromPending"
   > = {
     create: vi.fn() as any,
     findById: vi.fn() as any,
     findByIdWithCertificate: vi.fn() as any,
     transitionFromPending: vi.fn() as any,
-    attachCertificate: vi.fn() as any
+    attachCertificate: vi.fn() as any,
+    attachCertificateFromPending: vi.fn() as any
   };
 
   const mockCertificateDAL: Pick<TCertificateDALFactory, "findById"> = {
@@ -990,7 +999,22 @@ describe("CertificateRequestService", () => {
 
         expect(mockApprovalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
           approvalRequest,
-          "An unexpected error stopped the certificate from being issued."
+          "An unexpected error stopped the certificate from being renewed."
+        );
+      });
+
+      it("says the CA issued the certificate when linking it to the request failed", async () => {
+        await service.updateCertificateRequestStatus({
+          certificateRequestId: failedRequest.id,
+          status: CertificateRequestStatus.FAILED,
+          error: new Error("Failed to execute db ops"),
+          failureStage: CaOperationFailureStage.AttachingIssuedCertificate,
+          errorMessage: "Failed to attach certificate: Failed to execute db ops"
+        });
+
+        expect(mockApprovalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+          approvalRequest,
+          "CA 'digicert-ca' (DigiCert CertCentral) issued the certificate, but Infisical couldn't link it to this request. Find it in the certificate inventory before you renew or request it again."
         );
       });
     });
@@ -1033,7 +1057,7 @@ describe("CertificateRequestService", () => {
 
       (mockCertificateRequestDAL.findById as any).mockResolvedValue(mockRequest);
       (mockCertificateDAL.findById as any).mockResolvedValue(mockCertificate);
-      (mockCertificateRequestDAL.attachCertificate as any).mockResolvedValue(mockUpdatedRequest);
+      (mockCertificateRequestDAL.attachCertificateFromPending as any).mockResolvedValue(mockUpdatedRequest);
 
       const result = await service.attachCertificateToRequest({
         certificateRequestId: "550e8400-e29b-41d4-a716-446655440014",
@@ -1042,7 +1066,7 @@ describe("CertificateRequestService", () => {
 
       expect(mockCertificateRequestDAL.findById).toHaveBeenCalledWith("550e8400-e29b-41d4-a716-446655440014");
       expect(mockCertificateDAL.findById).toHaveBeenCalledWith("550e8400-e29b-41d4-a716-446655440015");
-      expect(mockCertificateRequestDAL.attachCertificate).toHaveBeenCalledWith(
+      expect(mockCertificateRequestDAL.attachCertificateFromPending).toHaveBeenCalledWith(
         "550e8400-e29b-41d4-a716-446655440014",
         "550e8400-e29b-41d4-a716-446655440015"
       );
@@ -1107,7 +1131,7 @@ describe("CertificateRequestService", () => {
           serialNumber: "0a1b",
           renewedFromCertificateId: "cert-old"
         });
-        (mockCertificateRequestDAL.attachCertificate as any).mockResolvedValue({
+        (mockCertificateRequestDAL.attachCertificateFromPending as any).mockResolvedValue({
           ...pendingRequest,
           status: CertificateRequestStatus.ISSUED,
           certificateId: "cert-new"
@@ -1159,14 +1183,52 @@ describe("CertificateRequestService", () => {
         );
       });
 
-      it("records nothing again when a retry attaches the same certificate", async () => {
-        (mockCertificateRequestDAL.findById as any).mockResolvedValue({
-          ...pendingRequest,
-          status: CertificateRequestStatus.ISSUED
-        });
+      it("keeps the event when looking up a label fails", async () => {
+        mockCertificateProfileDAL.findById.mockRejectedValue(new Error("connection reset"));
 
         await service.attachCertificateToRequest({ certificateRequestId: "req-2", certificateId: "cert-new" });
 
+        expect(mockAuditLogService.createAuditLog).toHaveBeenCalledWith(
+          expect.objectContaining({
+            event: expect.objectContaining({
+              metadata: expect.objectContaining({ newCertificateId: "cert-new", profileName: "" })
+            })
+          })
+        );
+      });
+
+      it("records nothing again when a retry attaches the same certificate", async () => {
+        (mockCertificateRequestDAL.attachCertificateFromPending as any).mockResolvedValue(null);
+        (mockCertificateRequestDAL.findById as any).mockResolvedValue({
+          ...pendingRequest,
+          status: CertificateRequestStatus.ISSUED,
+          certificateId: "cert-new"
+        });
+
+        const attached = await service.attachCertificateToRequest({
+          certificateRequestId: "req-2",
+          certificateId: "cert-new"
+        });
+
+        expect(attached).toEqual(expect.objectContaining({ certificateId: "cert-new" }));
+        expect(mockAuditLogService.createAuditLog).not.toHaveBeenCalled();
+      });
+
+      it("keeps an issued request on its certificate when a concurrent run attaches another", async () => {
+        (mockCertificateRequestDAL.attachCertificateFromPending as any).mockResolvedValue(null);
+        (mockCertificateRequestDAL.findById as any).mockResolvedValue({
+          ...pendingRequest,
+          status: CertificateRequestStatus.ISSUED,
+          certificateId: "cert-new"
+        });
+
+        const attached = await service.attachCertificateToRequest({
+          certificateRequestId: "req-2",
+          certificateId: "cert-other"
+        });
+
+        expect(attached).toBeNull();
+        expect(mockCertificateRequestDAL.attachCertificate).not.toHaveBeenCalled();
         expect(mockAuditLogService.createAuditLog).not.toHaveBeenCalled();
       });
 

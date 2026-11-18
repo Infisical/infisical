@@ -21,6 +21,7 @@ import { QueueName, TQueueServiceFactory } from "@app/queue";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
+  CaOperationFailureStage,
   CertificateIssuanceOperation,
   domainComponentsSchema,
   resolvedCustomExtensionSchema
@@ -41,7 +42,7 @@ import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metad
 import { TUserDALFactory } from "../user/user-dal";
 import { TCertificateRequestDALFactory } from "./certificate-request-dal";
 import {
-  recordApprovedRenewalIssued,
+  attachIssuedCertificate,
   recordCertificateRequestFailure,
   TRecordCertificateRequestFailureDeps
 } from "./certificate-request-fns";
@@ -495,6 +496,7 @@ export const certificateRequestServiceFactory = ({
       operation?: CertificateIssuanceOperation;
       originalCertificateId?: string;
       error?: unknown;
+      failureStage?: CaOperationFailureStage;
       notifyApprovers?: boolean;
     } = {}
   ) =>
@@ -517,7 +519,8 @@ export const certificateRequestServiceFactory = ({
     errorMessage,
     operation,
     originalCertificateId,
-    error
+    error,
+    failureStage
   }: TUpdateCertificateRequestStatusDTO) => {
     const certificateRequest = await certificateRequestDAL.findById(certificateRequestId);
     if (!certificateRequest) {
@@ -528,7 +531,13 @@ export const certificateRequestServiceFactory = ({
     // A null result means the request already left pending, so its failure was recorded then.
     if (updated && status === CertificateRequestStatus.FAILED) {
       // A background job failed it, so nobody who approved it would hear about it otherwise.
-      await recordIssuanceFailure(updated, { operation, originalCertificateId, error, notifyApprovers: true });
+      await recordIssuanceFailure(updated, {
+        operation,
+        originalCertificateId,
+        error,
+        failureStage,
+        notifyApprovers: true
+      });
     }
     return updated;
   };
@@ -547,22 +556,18 @@ export const certificateRequestServiceFactory = ({
       throw new NotFoundError({ message: "Certificate not found" });
     }
 
-    const attached = await certificateRequestDAL.attachCertificate(certificateRequestId, certificateId);
-    // Attaching to an already issued request is a retry, and its renewal was recorded the first time.
-    if (attached && certificateRequest.status !== CertificateRequestStatus.ISSUED) {
-      await recordApprovedRenewalIssued(
-        {
-          auditLogService,
-          approvalRequestDAL,
-          approvalPolicyDAL,
-          certificateDAL,
-          certificateProfileDAL,
-          pkiApplicationDAL
-        },
-        { certificateRequest: attached, certificateId }
-      );
-    }
-    return attached;
+    return attachIssuedCertificate(
+      {
+        auditLogService,
+        approvalRequestDAL,
+        approvalPolicyDAL,
+        certificateDAL,
+        certificateProfileDAL,
+        pkiApplicationDAL,
+        certificateRequestDAL
+      },
+      { certificateRequestId, certificateId }
+    );
   };
 
   const listCertificateRequests = async ({

@@ -77,6 +77,15 @@ export enum CertificateIssuanceOperation {
   RENEW = "renew"
 }
 
+// Where an issuance or renewal failed, which decides whether a failure notice may blame the CA.
+export enum CaOperationFailureStage {
+  // Infisical refused or failed before any CA call, for example a policy or eligibility check.
+  Infisical = "infisical",
+  Ca = "ca",
+  // The CA issued the certificate and Infisical stored it, but linking it to its request failed.
+  AttachingIssuedCertificate = "attaching-issued-certificate"
+}
+
 export enum CertSubjectAlternativeNameType {
   DNS_NAME = "dns_name",
   IP_ADDRESS = "ip_address",

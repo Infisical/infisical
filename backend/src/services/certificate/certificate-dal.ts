@@ -934,6 +934,12 @@ export const certificateDALFactory = (db: TDbClient) => {
             })
             .where(`${TableName.ApprovalRequests}.type`, ApprovalPolicyType.CertRequest)
             .where(`${TableName.ApprovalRequests}.status`, ApprovalRequestStatus.Pending)
+            // An hourly job marks expired requests, so until then one past its expiry still reads as pending.
+            .where((unexpiredQb) => {
+              void unexpiredQb
+                .whereNull(`${TableName.ApprovalRequests}.expiresAt`)
+                .orWhere(`${TableName.ApprovalRequests}.expiresAt`, ">", now);
+            })
             .whereRaw(`"${TableName.ApprovalRequests}"."projectId" = "${TableName.Certificate}"."projectId"`)
             .whereRaw(`${PENDING_RENEWAL_CERTIFICATE_ID} = "${TableName.Certificate}"."id"::text`);
         })
@@ -966,6 +972,9 @@ export const certificateDALFactory = (db: TDbClient) => {
     try {
       const row = await (tx || db)(TableName.ApprovalRequests)
         .where({ projectId, type: ApprovalPolicyType.CertRequest, status: ApprovalRequestStatus.Pending })
+        .where((unexpiredQb) => {
+          void unexpiredQb.whereNull("expiresAt").orWhere("expiresAt", ">", new Date());
+        })
         .whereRaw(`${PENDING_RENEWAL_CERTIFICATE_ID} = ?`, [certificateId])
         .first("id");
       return Boolean(row);

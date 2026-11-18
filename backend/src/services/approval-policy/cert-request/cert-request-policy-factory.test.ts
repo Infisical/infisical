@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
-import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -31,10 +30,11 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
       approvalPolicyService: { notifyApprovedActionFailed: vi.fn().mockResolvedValue(undefined) },
       auditLogService: { createAuditLog: vi.fn().mockResolvedValue(undefined) },
       certificateApprovalService: { issueCertificate: vi.fn(issueCertificate) },
-      certificateAuthorityDAL: {
-        findByIdWithAssociatedCa: vi.fn().mockResolvedValue({ name: "root-ca", externalCa: null })
+      certificateRequestDAL: {
+        updateById: vi.fn().mockResolvedValue(failedRequest),
+        transitionFromPending: vi.fn().mockResolvedValue(failedRequest),
+        findById: vi.fn()
       },
-      certificateRequestDAL: { updateById: vi.fn().mockResolvedValue(failedRequest), findById: vi.fn() },
       certificateRequestService: { recordIssuanceFailure: vi.fn() },
       certificateRenewalService: {
         renewApprovedCertificate: vi.fn().mockResolvedValue(undefined),
@@ -51,10 +51,11 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
 
     await resource.postApprovalRoutine!(request);
 
-    expect(deps.certificateRequestDAL.updateById).toHaveBeenLastCalledWith("cert-req-1", {
-      status: CertificateRequestStatus.FAILED,
-      errorMessage: "CA is disabled"
-    });
+    expect(deps.certificateRequestDAL.transitionFromPending).toHaveBeenCalledWith(
+      "cert-req-1",
+      CertificateRequestStatus.FAILED,
+      "CA is disabled"
+    );
     expect(deps.certificateRequestService.recordIssuanceFailure).toHaveBeenCalledWith(failedRequest, { error });
     expect(deps.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
       request,
@@ -120,21 +121,18 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
 
   it.each([
     [
-      "an internal CA",
-      { name: "root-ca", externalCa: null },
-      "Certificate Authority is disabled, must be active",
-      "Renewing the certificate at CA 'root-ca' failed: Certificate Authority is disabled, must be active."
+      "a check Infisical makes, without blaming the CA",
+      new BadRequestError({ message: "Certificate is not eligible for renewal: Certificate Authority is disabled" }),
+      "Certificate is not eligible for renewal: Certificate Authority is disabled."
     ],
     [
-      "an external CA behind an unreachable gateway",
-      { name: "e2e-adcs-ca", externalCa: { type: CaType.ADCS } },
-      "Unable to connect to gateway, no platform connection details found",
-      "Renewing the certificate at CA 'e2e-adcs-ca' (Microsoft ADCS) failed: Unable to connect to gateway, no platform connection details found."
+      "an unexpected error, without passing on its text",
+      new Error("relation does not exist"),
+      "An unexpected error stopped the certificate from being renewed."
     ]
-  ])("tells the requester and approvers when an approved renewal fails at %s", async (_ca, ca, message, reason) => {
+  ])("tells the requester and approvers when an approved renewal fails at %s", async (_case, error, reason) => {
     const { deps, resource } = setup(() => Promise.resolve());
-    deps.certificateAuthorityDAL.findByIdWithAssociatedCa.mockResolvedValue(ca);
-    deps.certificateRenewalService.renewApprovedCertificate.mockRejectedValue(new BadRequestError({ message }));
+    deps.certificateRenewalService.renewApprovedCertificate.mockRejectedValue(error);
     const renewalRequest = {
       id: "approval-1",
       organizationId: "org-1",
@@ -145,8 +143,66 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
 
     await resource.postApprovalRoutine!(renewalRequest);
 
-    expect(deps.certificateAuthorityDAL.findByIdWithAssociatedCa).toHaveBeenCalledWith("ca-1");
     expect(deps.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(renewalRequest, reason);
+  });
+
+  it("reports no failure when the renewal went through before something after it threw", async () => {
+    const { deps, resource } = setup(() => Promise.resolve());
+    deps.certificateRenewalService.renewApprovedCertificate.mockRejectedValue(new Error("connection reset"));
+    deps.certificateRequestDAL.transitionFromPending.mockResolvedValue(null);
+    deps.certificateRequestDAL.findById.mockResolvedValue({
+      id: "cert-req-1",
+      status: CertificateRequestStatus.ISSUED
+    });
+
+    await resource.postApprovalRoutine!({
+      id: "approval-1",
+      organizationId: "org-1",
+      requestData: { requestData: { certificateRequestId: "cert-req-1", renewal: { certificateId: "cert-1" } } }
+    } as never);
+
+    expect(deps.certificateRequestDAL.updateById).not.toHaveBeenCalledWith(
+      "cert-req-1",
+      expect.objectContaining({ status: CertificateRequestStatus.FAILED })
+    );
+    expect(deps.certificateRequestService.recordIssuanceFailure).not.toHaveBeenCalled();
+    expect(deps.approvalPolicyService.notifyApprovedActionFailed).not.toHaveBeenCalled();
+  });
+
+  it("reports a failure the issuance already marked on its request before rethrowing", async () => {
+    const error = new BadRequestError({ message: "CA is not active" });
+    const { deps, failedRequest, resource } = setup(() => Promise.reject(error));
+    deps.certificateRequestDAL.transitionFromPending.mockResolvedValue(null);
+    deps.certificateRequestDAL.findById.mockResolvedValue(failedRequest);
+
+    await resource.postApprovalRoutine!(request);
+
+    expect(deps.certificateRequestService.recordIssuanceFailure).toHaveBeenCalledWith(failedRequest, { error });
+    expect(deps.approvalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(request, "CA is not active.");
+  });
+
+  it("names a certificate with no common name by its first subject alternative name", async () => {
+    const { resource } = setup(() => Promise.resolve());
+
+    const notification = await resource.buildNotification!({
+      event: ApprovalNotificationEvent.ApprovedActionFailed,
+      request: {
+        id: "approval-1",
+        organizationId: "org-1",
+        type: "cert-request",
+        requestData: {
+          requestData: {
+            certificateRequestId: "cert-req-1",
+            certificateRequest: { altNames: [{ type: "dns_name", value: "api.example.com" }] }
+          }
+        }
+      } as never,
+      failureReason: "CA is disabled."
+    });
+
+    expect(notification?.inApp?.body).toBe(
+      "The approved issuance of the certificate 'api.example.com' didn't complete. Reason: CA is disabled."
+    );
   });
 
   it("words the failure notification for a renewal and names the certificate", async () => {

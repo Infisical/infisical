@@ -532,7 +532,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
         const renewalComplete = Boolean(newSerial && storedSerial && newSerial !== storedSerial);
         if (!renewalComplete) {
           throw new AcmPendingError(
-            `AWS ACM renewal for ${certificateArn} has not completed yet (status=${renewStatus ?? "unknown"}) — will retry`
+            `AWS ACM renewal for ${certificateArn} has not completed yet (status=${renewStatus ?? "unknown"})`
           );
         }
       }
@@ -588,7 +588,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       }
 
       if (detail.Status === CertificateStatus.PENDING_VALIDATION) {
-        throw new AcmPendingError(`AWS ACM certificate ${certificateArn} is still pending DNS validation — will retry`);
+        throw new AcmPendingError(`AWS ACM certificate ${certificateArn} is still pending DNS validation`);
       }
       if (
         detail.Status === CertificateStatus.FAILED ||
@@ -614,9 +614,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       // relation for the renewed cert body yet and returns "must have at least one relation of type
       // EXPORT". This is transient — let the queue retry loop handle it.
       if (error instanceof Error && new RE2("relation of type EXPORT", "i").test(error.message)) {
-        throw new AcmPendingError(
-          `AWS ACM export not yet available for ${certificateArn} (${error.message}) — will retry`
-        );
+        throw new AcmPendingError(`AWS ACM export not yet available for ${certificateArn} (${error.message})`);
       }
       throw error;
     }

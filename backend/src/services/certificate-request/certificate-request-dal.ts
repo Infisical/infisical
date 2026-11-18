@@ -150,19 +150,16 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  const attachCertificate = async (
+  const $attachCertificate = async (
     id: string,
     certificateId: string,
+    fromStatuses: CertificateRequestStatus[],
     tx?: Knex
   ): Promise<TCertificateRequests | null> => {
     try {
       const [updated] = await (tx || db)(TableName.CertificateRequests)
         .where({ id })
-        .whereIn("status", [
-          CertificateRequestStatus.PENDING,
-          CertificateRequestStatus.PENDING_VALIDATION,
-          CertificateRequestStatus.ISSUED
-        ])
+        .whereIn("status", fromStatuses)
         .update({ certificateId, status: CertificateRequestStatus.ISSUED, pendingMessage: null })
         .returning("*");
       return updated ?? null;
@@ -170,6 +167,23 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
       throw new DatabaseError({ error, name: "Attach certificate to request" });
     }
   };
+
+  const attachCertificate = (id: string, certificateId: string, tx?: Knex) =>
+    $attachCertificate(
+      id,
+      certificateId,
+      [CertificateRequestStatus.PENDING, CertificateRequestStatus.PENDING_VALIDATION, CertificateRequestStatus.ISSUED],
+      tx
+    );
+
+  // Concurrent attaches serialize on the row, so exactly one of them moves the request out of pending.
+  const attachCertificateFromPending = (id: string, certificateId: string, tx?: Knex) =>
+    $attachCertificate(
+      id,
+      certificateId,
+      [CertificateRequestStatus.PENDING, CertificateRequestStatus.PENDING_VALIDATION],
+      tx
+    );
 
   const findByProjectId = async (
     projectId: string,
@@ -524,6 +538,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     setPendingMessage,
     transitionToPendingValidation,
     attachCertificate,
+    attachCertificateFromPending,
     findByProjectId,
     countByProjectId,
     findByProjectIdWithCertificate,

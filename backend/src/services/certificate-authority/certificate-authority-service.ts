@@ -31,7 +31,7 @@ import { TAppConnectionServiceFactory } from "../app-connection/app-connection-s
 import { TCertificateProfileDALFactory } from "../certificate-profile/certificate-profile-dal";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import {
-  recordApprovedRenewalIssued,
+  attachIssuedCertificate,
   recordCertificateRequestFailure,
   TRecordCertificateRequestFailureDeps
 } from "../certificate-request/certificate-request-fns";
@@ -170,7 +170,12 @@ type TCertificateAuthorityServiceFactoryDep = {
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateRequestDAL: Pick<
     TCertificateRequestDALFactory,
-    "findById" | "updateById" | "transitionFromPending" | "attachCertificate" | "setPendingMessage"
+    | "findById"
+    | "updateById"
+    | "transitionFromPending"
+    | "attachCertificate"
+    | "attachCertificateFromPending"
+    | "setPendingMessage"
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -1510,7 +1515,8 @@ export const certificateAuthorityServiceFactory = ({
         errorMessage,
         operation,
         originalCertificateId,
-        error
+        error,
+        failureStage
       }: TUpdateCertificateRequestStatusDTO) => {
         const updated = await certificateRequestDAL.transitionFromPending(id, status, errorMessage);
         if (updated && status === CertificateRequestStatus.FAILED) {
@@ -1524,31 +1530,31 @@ export const certificateAuthorityServiceFactory = ({
               approvalPolicyDAL,
               approvalPolicyService
             },
-            { certificateRequest: updated, operation, originalCertificateId, error, notifyApprovers: true }
+            {
+              certificateRequest: updated,
+              operation,
+              originalCertificateId,
+              error,
+              failureStage,
+              notifyApprovers: true
+            }
           );
         }
         return updated;
       },
-      attachCertificateToRequest: async ({
-        certificateRequestId: id,
-        certificateId
-      }: TAttachCertificateToRequestDTO) => {
-        const attached = await certificateRequestDAL.attachCertificate(id, certificateId);
-        if (attached) {
-          await recordApprovedRenewalIssued(
-            {
-              auditLogService,
-              approvalRequestDAL,
-              approvalPolicyDAL,
-              certificateDAL,
-              certificateProfileDAL,
-              pkiApplicationDAL
-            },
-            { certificateRequest: attached, certificateId }
-          );
-        }
-        return attached;
-      }
+      attachCertificateToRequest: ({ certificateRequestId: id, certificateId }: TAttachCertificateToRequestDTO) =>
+        attachIssuedCertificate(
+          {
+            auditLogService,
+            approvalRequestDAL,
+            approvalPolicyDAL,
+            certificateDAL,
+            certificateProfileDAL,
+            pkiApplicationDAL,
+            certificateRequestDAL
+          },
+          { certificateRequestId: id, certificateId }
+        )
     };
 
     const result =

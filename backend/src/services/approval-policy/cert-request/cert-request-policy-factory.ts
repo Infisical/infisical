@@ -2,8 +2,10 @@ import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/a
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
-import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import {
+  CaOperationFailureStage,
+  CertificateIssuanceOperation
+} from "@app/services/certificate-common/certificate-constants";
 import { describeCaOperationFailure } from "@app/services/certificate-common/certificate-failure-fns";
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
@@ -33,8 +35,7 @@ type TCertRequestApprovalResourceDep = {
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "notifyApprovedActionFailed">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   certificateApprovalService: TCertificateApprovalService;
-  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
-  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
+  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById" | "transitionFromPending">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "recordIssuanceFailure">;
   certificateRenewalService: Pick<
     TCertificateRenewalServiceFactory,
@@ -48,7 +49,6 @@ export const certRequestApprovalResourceFactory = ({
   approvalPolicyService,
   auditLogService,
   certificateApprovalService,
-  certificateAuthorityDAL,
   certificateRequestDAL,
   certificateRequestService,
   certificateRenewalService,
@@ -83,9 +83,8 @@ export const certRequestApprovalResourceFactory = ({
       const { renewal, certificateRequest } = (request.requestData as { requestData: TCertRequestRequestData })
         .requestData;
       const action = renewal ? "renewal" : "issuance";
-      const certificate = certificateRequest?.commonName
-        ? ` of the certificate '${certificateRequest.commonName}'`
-        : "";
+      const certificateName = certificateRequest?.commonName || certificateRequest?.altNames?.[0]?.value;
+      const certificate = certificateName ? ` of the certificate '${certificateName}'` : "";
       return {
         inApp: {
           type: NotificationType.APPROVED_ACTION_FAILED,
@@ -165,10 +164,19 @@ export const certRequestApprovalResourceFactory = ({
       );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const failedRequest = await certificateRequestDAL.updateById(certReqId, {
-        status: CertificateRequestStatus.FAILED,
-        errorMessage
-      });
+      // Issuance and renewal mark their own request failed before rethrowing, so a failed request is still this
+      // failure to report. Any other state (issued, because something threw after the renewal committed, or gone)
+      // means there's no failure to report.
+      const failedRequest =
+        (await certificateRequestDAL.transitionFromPending(certReqId, CertificateRequestStatus.FAILED, errorMessage)) ??
+        (await certificateRequestDAL.findById(certReqId));
+      if (failedRequest?.status !== CertificateRequestStatus.FAILED) {
+        logger.error(
+          { error, certificateRequestId: certReqId, approvalRequestId: request.id },
+          `Approved certificate request threw but isn't failed [certificateRequestId=${certReqId}] [status=${failedRequest?.status ?? "missing"}]`
+        );
+        return;
+      }
       await certificateRequestService.recordIssuanceFailure(failedRequest, {
         error,
         ...(renewal && {
@@ -176,15 +184,15 @@ export const certRequestApprovalResourceFactory = ({
           originalCertificateId: renewal.certificateId
         })
       });
-      const caId = failedRequest?.caId ?? renewal?.caId;
-      const ca = caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(caId).catch(() => undefined) : undefined;
+      // External CAs are only reached from a background job, and internal-CA signing is Infisical's own, so a
+      // failure here never names a CA.
       await approvalPolicyService.notifyApprovedActionFailed(
         request,
         describeCaOperationFailure({
           action: renewal ? "Renewing the certificate" : "Issuing the certificate",
-          ca,
+          stage: CaOperationFailureStage.Infisical,
           error,
-          fallback: "An unexpected error stopped the certificate from being issued."
+          fallback: `An unexpected error stopped the certificate from being ${renewal ? "renewed" : "issued"}.`
         })
       );
       logger.error(

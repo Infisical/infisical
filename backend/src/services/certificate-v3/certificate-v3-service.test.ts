@@ -3169,6 +3169,47 @@ describe("CertificateV3Service", () => {
           );
         });
 
+        it("lets a machine identity renew without approval when the policy allows it", async () => {
+          setupRenewal(mockOriginalCert);
+          mockApprovalPolicyService.matchPolicy.mockResolvedValue({
+            ...alwaysPolicy,
+            bypassForMachineIdentities: true
+          });
+
+          const result = await service.renewCertificate({
+            certificateId: "cert-123",
+            ...mockActor,
+            actor: ActorType.IDENTITY,
+            actorId: "identity-123"
+          });
+
+          expect(result.status).toBe(CertificateRequestStatus.ISSUED);
+          expect(mockApprovalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+        });
+
+        it("holds a machine identity's renewal when the policy doesn't let it bypass approval", async () => {
+          setupRenewal(mockOriginalCert);
+          mockApprovalPolicyService.matchPolicy.mockResolvedValue({
+            ...alwaysPolicy,
+            bypassForMachineIdentities: false
+          });
+
+          const result = await service.renewCertificate({
+            certificateId: "cert-123",
+            ...mockActor,
+            actor: ActorType.IDENTITY,
+            actorId: "identity-123"
+          });
+
+          expect(result.status).toBe(CertificateRequestStatus.PENDING_APPROVAL);
+          expect(mockApprovalPolicyService.createRequestFromPolicy).toHaveBeenCalledWith(
+            expect.objectContaining({
+              machineIdentityId: "identity-123",
+              requestData: expect.objectContaining({ renewal: expect.objectContaining({ raisedByAutoRenewal: false }) })
+            })
+          );
+        });
+
         it("issues the approved renewal without holding it again", async () => {
           setupRenewal(mockOriginalCert);
           mockApprovalPolicyService.matchPolicy.mockResolvedValue(alwaysPolicy);

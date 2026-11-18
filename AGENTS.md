@@ -157,21 +157,25 @@ stop agreeing.
 
 A new approval type's `postApprovalRoutine` must never throw, because it runs after the approval has committed. Throwing
 can't undo the approval, would fail the approver's request for an approval that went through, and never reaches the
-requester. `approveRequest` runs it once, for the approval that completes the request. When the approved
-action fails there, record the failure in the audit log and call
-`approvalPolicyService.notifyApprovedActionFailed`, which tells the requester and the request's approvers why
-(`ApprovalNotificationEvent.ApprovedActionFailed`); the resource's `buildNotification` supplies the wording, and its
-`filterActiveApprovers` drops approvers who have since lost access to the scope, since the request's approver list
-outlives their removal. Certificate revocation (`certificateService.revokeApprovedCertificate`) is the reference.
-Certificate issuance and renewal (`cert-request-policy-factory.ts`) notify through it when the approved action fails,
-but they have no `filterActiveApprovers`, and their status updates, failure recording and telemetry still run outside
-any guard, so they can still throw. Don't copy that part. An external CA can fail an approved certificate request later,
-in a background job. Jobs report that through `updateCertificateRequestStatus`, whose two implementations
-(`certificate-request-service.ts`, and the manual validation one in `certificate-authority-service.ts`) record it with
-`recordCertificateRequestFailure` and `notifyApprovers`. A new job that fails a certificate request must go through one
-of them, or nobody who approved the request hears about it. The ACME order sync (`checkAndSyncAcmeOrderStatus`) is an
-exception: it fails an abandoned ACME issuance directly inside its transaction, and records no failure event and sends
-no notice.
+requester. `approveRequest` runs it for the approval that completes the request, and `createRequest` runs it for a
+request an auto-approval rule approves, where a throw fails the requester's call instead. When the approved action fails
+there, record the failure in the audit log and call `approvalPolicyService.notifyApprovedActionFailed`, which tells the
+requester and the approvers why (`ApprovalNotificationEvent.ApprovedActionFailed`), leaving out any approver the
+resource's `filterActiveApprovers` drops; the resource's `buildNotification` supplies the wording. Certificate
+revocation (`certificateService.revokeApprovedCertificate`) is the reference. Certificate issuance and renewal
+(`cert-request-policy-factory.ts`) notify through it when the approved action fails, but they have no
+`filterActiveApprovers`, so every approver saved on the request hears, and the status writes around the action
+(`updateById` before it, `transitionFromPending` in its `catch`) and the renewal telemetry still run outside any guard,
+so they can still throw, and a throw from the `catch`'s write sends no notice. Don't copy that part. An external CA can
+fail an approved certificate request later, in a background job. Jobs report that through
+`updateCertificateRequestStatus`, whose two implementations (`certificate-request-service.ts`, and the manual validation
+one in `certificate-authority-service.ts`) record it with `recordCertificateRequestFailure` and `notifyApprovers`. A new
+job that fails a certificate request must go through one of them, or nobody who approved the request hears about it, and
+must pass `failureStage: CaOperationFailureStage.AttachingIssuedCertificate` when linking a certificate the CA already
+issued to its request fails, since the notice otherwise says the CA failed and a retry issues a duplicate. A failure
+inside a CA module after the CA issued (storing the certificate) still reports at the CA stage, because the main
+issuance queue catch can't tell it apart. The ACME order sync (`checkAndSyncAcmeOrderStatus`) is an exception: it fails
+an abandoned ACME issuance directly inside its transaction, and records no failure event and sends no notice.
 
 Auto-approval rules (`approval-policy/auto-approval/`) live on the policy and are evaluated once in
 `createRequest`, outside any transaction, failing closed. Another service becomes checkable by adding a

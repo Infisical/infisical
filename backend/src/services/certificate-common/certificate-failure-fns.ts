@@ -1,33 +1,51 @@
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { asSentence } from "@app/lib/fn/string";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 
+import { CaOperationFailureStage } from "./certificate-constants";
 import { CA_TYPE_LABEL } from "./external-metadata-schemas";
 
-// Only request errors carry text a user can act on; anything else is reported as unexpected rather than leaking
-// internal detail. `message` is text already written for users (a background job's stored reason), used when the
-// error has none, since jobs often store a reason with a prefix of their own. The CA is named so a generic upstream
-// message ("Unable to connect to gateway") says where it failed.
+// The CA is named only when the failure happened there, since a notice that blames the CA for Infisical's own
+// check or database error sends people to the wrong place, and one saying the CA failed after it issued the
+// certificate invites a retry that issues a duplicate. At the CA, the upstream text is quoted (it is already
+// stored on the request) and `message`, a job's stored reason, stands in when there is no error. Infisical's own
+// errors carry text a user can act on only when they are request errors.
 export const describeCaOperationFailure = ({
   action,
+  stage,
   ca,
   error,
-  message: shownMessage,
+  message: storedMessage,
   fallback
 }: {
   action: string;
+  stage: CaOperationFailureStage;
   ca?: { name: string; externalCa?: { type?: string | null } | null } | null;
   error?: unknown;
   message?: string | null;
   fallback: string;
 }) => {
-  const message =
-    (error instanceof BadRequestError || error instanceof NotFoundError ? error.message : undefined) || shownMessage;
-  if (!ca) return message ? asSentence(message) : fallback;
+  const caType = ca?.externalCa?.type as CaType | undefined;
+  let caLabel: string | undefined;
+  if (ca) caLabel = caType ? `CA '${ca.name}' (${CA_TYPE_LABEL[caType] ?? caType})` : `CA '${ca.name}'`;
 
-  const caType = ca.externalCa?.type as CaType | undefined;
-  const caLabel = caType ? `CA '${ca.name}' (${CA_TYPE_LABEL[caType] ?? caType})` : `CA '${ca.name}'`;
-  return message
-    ? `${action} at ${caLabel} failed: ${asSentence(message)}`
+  if (stage === CaOperationFailureStage.AttachingIssuedCertificate) {
+    return `${caLabel ?? "The CA"} issued the certificate, but Infisical couldn't link it to this request. Find it in the certificate inventory before you renew or request it again.`;
+  }
+
+  const requestErrorMessage =
+    error instanceof BadRequestError || error instanceof NotFoundError ? error.message : undefined;
+  if (
+    stage === CaOperationFailureStage.Infisical ||
+    error instanceof DatabaseError ||
+    error instanceof InternalServerError
+  ) {
+    return requestErrorMessage ? asSentence(requestErrorMessage) : fallback;
+  }
+
+  const caMessage = (error instanceof Error ? error.message : undefined) || storedMessage;
+  if (!caLabel) return caMessage ? asSentence(caMessage) : fallback;
+  return caMessage
+    ? `${action} at ${caLabel} failed: ${asSentence(caMessage)}`
     : `${action} at ${caLabel} failed with an unexpected error.`;
 };

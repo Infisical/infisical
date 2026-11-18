@@ -1323,10 +1323,17 @@ export const certificateRenewalServiceFactory = ({
     });
   };
 
+  // Callers read this after the renewal has committed, and the name only labels the result, so a failed read
+  // mustn't turn a finished renewal into an error.
   const $resolveApplicationName = async (applicationId?: string | null) => {
     if (!applicationId) return null;
-    const application = await pkiApplicationDAL.findById(applicationId);
-    return application?.name ?? null;
+    try {
+      const application = await pkiApplicationDAL.findById(applicationId);
+      return application?.name ?? null;
+    } catch (error) {
+      logger.warn(error, `Failed to look up a renewed certificate's application [applicationId=${applicationId}]`);
+      return null;
+    }
   };
 
   const $holdRenewalForApproval = async (
@@ -1461,7 +1468,8 @@ export const certificateRenewalServiceFactory = ({
     if (!certificate || !(raisedByAutoRenewal || isSourcedOutsideInfisical(certificate))) return;
 
     await certificateDAL.updateById(certificateId, {
-      renewalError: "A renewal of this certificate was rejected. Renew it manually to request approval again."
+      renewalError:
+        "A renewal of this certificate was rejected. Infisical won't renew it automatically until a manual renewal completes."
     });
   };
 
