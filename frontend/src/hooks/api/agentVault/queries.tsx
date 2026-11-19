@@ -886,7 +886,10 @@ const fetchAgentVaultVariables = async (
 export const useListAgentVaultVariables = (
   projectId: string,
   params: TListAgentVaultVariablesDTO = {},
-  { enabled = true }: { enabled?: boolean } = {}
+  {
+    enabled = true,
+    refetchOnWindowFocus = false
+  }: { enabled?: boolean; refetchOnWindowFocus?: boolean } = {}
 ) => {
   const { currentOrg } = useOrganization();
 
@@ -894,7 +897,8 @@ export const useListAgentVaultVariables = (
     queryKey: agentVaultKeys.variableList(currentOrg.id, projectId, params),
     queryFn: () => fetchAgentVaultVariables(projectId, params),
     placeholderData: keepPreviousInProject(projectId),
-    enabled
+    enabled,
+    refetchOnWindowFocus
   });
 };
 

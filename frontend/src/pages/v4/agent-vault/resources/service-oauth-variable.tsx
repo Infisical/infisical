@@ -76,7 +76,7 @@ export const OAuthVariableField = ({
       search: debouncedSearch.trim() || undefined,
       limit: 100
     },
-    { enabled: canList }
+    { enabled: canList, refetchOnWindowFocus: true }
   );
   const variables = data?.variables ?? [];
   const selectedKey = form.oauthVariableKey;
