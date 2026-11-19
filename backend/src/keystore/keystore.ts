@@ -41,6 +41,8 @@ export const PgSqlLock = {
     pgAdvisoryLockHashText(`clear-agent-vault-personal-values:${projectId}`),
   AccessSharedSecret: (sharedSecretId: string) => pgAdvisoryLockHashText(`access-shared-secret:${sharedSecretId}`),
   ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
+  SecretScanningFindingLocations: (resourceId: string) =>
+    pgAdvisoryLockHashText(`secret-scanning-finding-locations:${resourceId}`),
   OrgAccessReconcile: (actorId: string) => pgAdvisoryLockHashText(`org-access-reconcile:${actorId}`),
   OrgAccessReconcileScope: (rootOrgId: string) => pgAdvisoryLockHashText(`org-access-reconcile-scope:${rootOrgId}`),
   LastAdminGuard: (scope: "org" | "project", scopeId: string) =>
@@ -188,8 +190,6 @@ export const KeyStorePrefixes = {
   }) =>
     `${SECRET_MANAGER_CACHE_PREFIX}:${arg.projectId}:secrets_v2-dal:v${arg.version}:get-secrets-service-layer-zstd:${arg.actorId}-${arg.permissionFingerprint}-${arg.permissionHash}-${arg.requestParamsHash}` as const,
   SecretEtag: (projectId: string, dayStamp: string) => `secret-etag:${projectId}:${dayStamp}` as const,
-  SecretPermissionFingerprint: (projectId: string, actorType: string, actorId: string) =>
-    `secret-perm-fingerprint:${projectId}:${actorType}:${actorId}` as const,
 
   PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
   PamDefaultProject: (orgId: string) => `pam-default-project:${orgId}` as const,

@@ -1116,7 +1116,8 @@ export const registerRoutes = async (
     alertProviderRegistry,
     alertRecipientResolver,
     kmsDataKeyService,
-    smtpService
+    smtpService,
+    slackIntegrationDAL
   });
   const alertQueue = alertQueueServiceFactory({
     cronJob,
@@ -1147,7 +1148,9 @@ export const registerRoutes = async (
     orgDAL,
     projectDAL,
     groupDAL,
-    emailDomainDAL
+    emailDomainDAL,
+    slackIntegrationDAL,
+    permissionService
   });
   const alertService = alertServiceFactory({
     alertDAL,
@@ -1181,6 +1184,7 @@ export const registerRoutes = async (
     alertProviderRegistry,
     kmsDataKeyService,
     smtpService,
+    slackIntegrationDAL,
     keyStore
   });
 
@@ -3263,7 +3267,8 @@ export const registerRoutes = async (
     permissionService,
     kmsDataKeyService,
     slackIntegrationDAL,
-    workflowIntegrationDAL
+    workflowIntegrationDAL,
+    alertChannelDAL
   });
 
   const workflowIntegrationService = workflowIntegrationServiceFactory({

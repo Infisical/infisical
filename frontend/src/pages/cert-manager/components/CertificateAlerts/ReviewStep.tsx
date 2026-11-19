@@ -64,6 +64,10 @@ const describeChannel = (channel: TChannelForm, members: TMemberEmails): string 
     }
     case AlertChannelType.Webhook:
       return channel.url ?? "";
+    case AlertChannelType.SlackApp:
+      return (channel.slackChannels ?? [])
+        .map((slackChannel) => `#${slackChannel.name}`)
+        .join(", ");
     case AlertChannelType.Slack:
       return "Slack Incoming Webhook";
     case AlertChannelType.PagerDuty:

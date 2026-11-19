@@ -728,6 +728,7 @@ export enum EventType {
   SECRET_SCANNING_RESOURCE_REMOVE = "secret-scanning-resource-remove",
   SECRET_SCANNING_SCAN_LIST = "secret-scanning-scan-list",
   SECRET_SCANNING_FINDING_LIST = "secret-scanning-finding-list",
+  SECRET_SCANNING_FINDING_LOCATION_LIST = "secret-scanning-finding-location-list",
   SECRET_SCANNING_FINDING_UPDATE = "secret-scanning-finding-update",
   SECRET_SCANNING_CONFIG_GET = "secret-scanning-config-get",
   SECRET_SCANNING_CONFIG_UPDATE = "secret-scanning-config-update",
@@ -5999,9 +6000,20 @@ interface SecretScanningFindingListEvent {
   };
 }
 
+interface SecretScanningFindingLocationListEvent {
+  type: EventType.SECRET_SCANNING_FINDING_LOCATION_LIST;
+  metadata: {
+    findingId: string;
+    findingRule: string;
+    resourceId: string;
+    resourceName: string;
+    count: number;
+  };
+}
+
 interface SecretScanningFindingUpdateEvent {
   type: EventType.SECRET_SCANNING_FINDING_UPDATE;
-  metadata: TUpdateSecretScanningFindingDTO;
+  metadata: TUpdateSecretScanningFindingDTO & { findingRule: string; resourceId: string; resourceName: string };
 }
 
 interface SecretScanningConfigUpdateEvent {
@@ -9235,6 +9247,7 @@ export type Event =
   | SecretScanningResourceRemoveEvent
   | SecretScanningScanListEvent
   | SecretScanningFindingListEvent
+  | SecretScanningFindingLocationListEvent
   | SecretScanningFindingUpdateEvent
   | SecretScanningConfigUpdateEvent
   | SecretScanningConfigReadEvent

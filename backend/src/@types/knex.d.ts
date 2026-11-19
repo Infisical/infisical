@@ -687,6 +687,9 @@ import {
   TSecretScanningDataSources,
   TSecretScanningDataSourcesInsert,
   TSecretScanningDataSourcesUpdate,
+  TSecretScanningFindingLocations,
+  TSecretScanningFindingLocationsInsert,
+  TSecretScanningFindingLocationsUpdate,
   TSecretScanningFindings,
   TSecretScanningFindingsInsert,
   TSecretScanningFindingsUpdate,
@@ -1805,6 +1808,11 @@ declare module "knex/types/tables" {
       TSecretScanningFindings,
       TSecretScanningFindingsInsert,
       TSecretScanningFindingsUpdate
+    >;
+    [TableName.SecretScanningFindingLocation]: KnexOriginal.CompositeTableType<
+      TSecretScanningFindingLocations,
+      TSecretScanningFindingLocationsInsert,
+      TSecretScanningFindingLocationsUpdate
     >;
     [TableName.SecretScanningConfig]: KnexOriginal.CompositeTableType<
       TSecretScanningConfigs,

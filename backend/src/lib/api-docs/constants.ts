@@ -2672,7 +2672,8 @@ export const ALERTING = {
       "The settings of the alert's event, for example `alertBefore` on an expiry event. The accepted fields depend on `eventType`.",
     enabled: "Whether the alert is enabled. Defaults to true.",
     projectId: "The ID of the project to create the alert in. Optional when the resource belongs to a project.",
-    channels: "The channels the alert notifies. Each is email, Slack, webhook, or PagerDuty."
+    channels:
+      "The channels the alert notifies. `channelType` is `email`, `slack-app` (posts through a Slack integration; set `config.workflowIntegrationId` and `config.channels`, 1 to 20 `{ id, name }` Slack channels), `slack` (incoming webhook), `webhook`, or `pagerduty`."
   },
   TEST_CHANNEL: {
     resourceType: "The type of resource the alert watches.",
@@ -3399,6 +3400,11 @@ export const AppConnections = {
       username: "The username of the Jenkins user that owns the API token.",
       apiToken: "The Jenkins API token used to authenticate."
     },
+    COOLIFY: {
+      instanceUrl:
+        "The Coolify instance URL to connect to: 'https://app.coolify.io' for Coolify Cloud, or the URL of a self-hosted instance (e.g., 'https://coolify.example.com').",
+      apiToken: "The Coolify API token used to authenticate."
+    },
     QOVERY: {
       accessToken: "The project access token used to authenticate with Qovery."
     },
@@ -3818,7 +3824,9 @@ export const SecretSyncs = {
     CLOUDFLARE_WORKERS: {
       scriptId: "The ID of the Cloudflare Workers script to sync secrets to.",
       variableType:
-        "The type of variable to sync secrets as: secret_text (default), plain_text or json. If a secret already exists on the Worker as a different type, the sync fails and nothing is changed, except that with syncNonSecretBindings on, a secret_text sync updates existing plaintext and JSON variables as they are. Syncs created before this option existed have no type and skip those secrets instead. Infisical only deletes variables of this type."
+        "The type of variable to sync secrets as: secret_text (default), plain_text or json. If a secret already exists on the Worker as a different type, the sync fails and nothing is changed, except that with syncNonSecretBindings on, a secret_text sync updates existing plaintext and JSON variables as they are. Syncs created before this option existed have no type and skip those secrets instead. Infisical only deletes variables of this type.",
+      previewName:
+        "The name of a Preview on the Worker to sync secrets to. Omit it to sync to production. The Preview must already have a deployment, and each sync creates a new deployment of it."
     },
     CLOUDFLARE_SECRETS_STORE: {
       storeId: "The ID of the Cloudflare Secrets Store to sync secrets to.",
@@ -3920,6 +3928,13 @@ export const SecretSyncs = {
       scope:
         "The Jenkins credential store to sync secrets to. Either 'global' for the system store or 'folder' for a folder's store.",
       folderPath: "The full name of the Jenkins folder to sync secrets to (e.g., 'team/app')."
+    },
+    COOLIFY: {
+      resourceType: "The type of Coolify resource to sync secrets to. Either 'application', 'service' or 'database'.",
+      resourceId: "The UUID of the Coolify resource to sync secrets to.",
+      resourceName: "The name of the Coolify resource to sync secrets to.",
+      scope:
+        "The application variables to sync secrets to: 'production', or 'preview' for the variables Coolify gives preview deployments. Services and databases only have 'production'. Defaults to 'production'."
     }
   }
 };
@@ -4346,10 +4361,18 @@ export const SecretScanningFindings = {
     status: "Only return findings with this status.",
     dataSourceId: "Only return findings detected in this Data Source.",
     resourceId: "Only return findings detected in this resource, such as a repository or project.",
-    orderBy: "The field to sort findings by.",
+    scanId: "Only return findings this scan found in a new location.",
+    orderBy: "The field to sort findings by. Sorting by `author` is deprecated and uses the first location's author.",
     orderDirection: "The direction to sort findings in.",
     offset: "The number of findings to skip, for pagination.",
     limit: "The maximum number of findings to return, from 1 to 100."
+  },
+  DEPRECATED_FIRST_LOCATION:
+    "Deprecated: describes only the first place the secret was found. Use the finding's locations instead.",
+  LIST_LOCATIONS: {
+    findingId: "The ID of the Secret Scanning Finding to list the locations of.",
+    offset: "The number of locations to skip, for pagination.",
+    limit: "The maximum number of locations to return, from 1 to 100."
   },
   UPDATE: {
     findingId: "The ID of the Secret Scanning Finding to update.",

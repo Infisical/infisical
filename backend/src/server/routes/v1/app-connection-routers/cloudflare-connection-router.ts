@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import z from "zod";
 
 import { readLimit } from "@app/server/config/rateLimiter";
@@ -77,6 +78,45 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
 
       const scripts = await server.services.appConnection.cloudflare.listWorkersScripts(connectionId, req.permission);
       return scripts;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/cloudflare-workers-scripts/:scriptId/previews`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listCloudflareWorkersPreviews",
+      params: z.object({
+        connectionId: z.string().uuid(),
+        scriptId: z
+          .string()
+          .trim()
+          .min(1, "Script ID is required")
+          .max(64)
+          .refine((val) => new RE2(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/).test(val), "Invalid script ID format")
+      }),
+      response: {
+        200: z
+          .object({
+            id: z.string(),
+            name: z.string()
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { connectionId, scriptId } = req.params;
+
+      const previews = await server.services.appConnection.cloudflare.listWorkersPreviews(
+        connectionId,
+        scriptId,
+        req.permission
+      );
+      return previews;
     }
   });
 

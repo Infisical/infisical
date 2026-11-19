@@ -456,8 +456,6 @@ export const GitLabSecretScanningFactory = ({
             finding.StartLine === finding.EndLine
               ? startLine
               : convertPatchLineToFileLineNumber(commitDiff.diff, finding.EndLine);
-          const startColumn = finding.StartColumn - 1; // subtract 1 for +
-          const endColumn = finding.EndColumn - 1; // subtract 1 for +
           const authorName = commit.author.name;
           const authorEmail = commit.author.email;
 
@@ -465,14 +463,12 @@ export const GitLabSecretScanningFactory = ({
             ...finding,
             StartLine: startLine,
             EndLine: endLine,
-            StartColumn: startColumn,
-            EndColumn: endColumn,
             File: commitDiff.newPath,
             Commit: commit.id,
             Author: authorName,
             Email: authorEmail,
             Message: commit.message,
-            Fingerprint: `${commit.id}:${commitDiff.newPath}:${finding.RuleID}:${startLine}:${startColumn}`,
+            Fingerprint: `${commit.id}:${commitDiff.newPath}:${finding.RuleID}:${startLine}:${finding.StartColumn}`,
             Date: commit.timestamp,
             Attributes: {
               ...finding.Attributes,
