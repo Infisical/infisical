@@ -239,7 +239,7 @@ The agent retries failures at two levels. First, [`infisical.retry-strategy`](#i
 
 The agent waits `failure-retry-interval` between these attempts. After `max-failure-retries` consecutive failed attempts, it pauses for ten times `failure-retry-interval`, up to one hour, and then starts a new round of attempts. Each attempt can create a certificate in Infisical, so the pause limits how many certificates a lasting problem creates, such as an output path the agent can't write to.
 
-Some failures change what the agent does next:
+### Recovery by failure type
 
 | Failure | Agent behavior |
 | ------- | -------------- |
