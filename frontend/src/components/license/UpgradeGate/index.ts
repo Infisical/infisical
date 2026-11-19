@@ -51,6 +51,7 @@ export {
   CrossSignedCertificatesUpgradeIntent,
   ExternalCertificateAuthoritiesUpgradeIntent,
   FolderAccessControlsUpgradeIntent,
+  FolderSubfolderAccessUpgradeIntent,
   getSafeUpgradeReturnPath,
   HoneyTokensUpgradeIntent,
   PamAccountLimitUpgradeIntent,
