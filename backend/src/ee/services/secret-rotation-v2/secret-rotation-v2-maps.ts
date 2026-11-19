@@ -79,3 +79,11 @@ export const getSecretRotationConnectionApps = (type: SecretRotation): [AppConne
   SECRET_ROTATION_CONNECTION_MAP[type],
   ...(SECRET_ROTATION_ADDITIONAL_CONNECTION_MAP[type] ?? [])
 ];
+
+/**
+ * Rotations whose credentials get an expiry derived from the rotation interval when they are created. A new
+ * interval can't move that expiry, so changing it rotates right away and the schedule follows from there.
+ */
+export const SECRET_ROTATIONS_ROTATED_ON_INTERVAL_CHANGE = new Set<SecretRotation>([
+  SecretRotation.GitLabServiceAccountToken
+]);

@@ -21,6 +21,7 @@ import {
   SECRET_ROTATION_MAP
 } from "@app/helpers/secretRotationsV2";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
+import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 import { TSecretRotationV2Form } from "./schemas";
 import { SecretRotationV2ConnectionField } from "./SecretRotationV2ConnectionField";
@@ -31,7 +32,7 @@ type Props = {
 };
 
 export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: Props) => {
-  const { control, watch } = useFormContext<TSecretRotationV2Form>();
+  const { control, watch, setValue } = useFormContext<TSecretRotationV2Form>();
 
   const [type, isAutoRotationEnabled] = watch(["type", "isAutoRotationEnabled"]);
 
@@ -63,7 +64,16 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
         />
       )}
 
-      <SecretRotationV2ConnectionField isUpdate={isUpdate} />
+      <SecretRotationV2ConnectionField
+        isUpdate={isUpdate}
+        onChange={() => {
+          // GitLab IDs are only unique per instance, so a selection made with another connection can name a
+          // different group or service account
+          if (type !== SecretRotation.GitLabServiceAccountToken) return;
+          setValue("parameters.groupId", "");
+          setValue("parameters.serviceAccountId", "");
+        }}
+      />
       <Controller
         render={({ field: { value, onChange, onBlur, ref }, fieldState: { error } }) => (
           <Field data-invalid={Boolean(error)}>

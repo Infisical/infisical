@@ -43,7 +43,8 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-fns";
 import {
   getSecretRotationConnectionApps,
-  SECRET_ROTATION_NAME_MAP
+  SECRET_ROTATION_NAME_MAP,
+  SECRET_ROTATIONS_ROTATED_ON_INTERVAL_CHANGE
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import {
   TCheckSecretRotationV2Credentials,
@@ -933,6 +934,28 @@ export const secretRotationV2ServiceFactory = ({
           environmentName: environment.name,
           excludeReplication: true
         });
+      }
+
+      if (
+        SECRET_ROTATIONS_ROTATED_ON_INTERVAL_CHANGE.has(type) &&
+        payload.rotationInterval !== undefined &&
+        payload.rotationInterval !== secretRotation.rotationInterval
+      ) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-use-before-define
+          const rotatedSecretRotation = await rotateGeneratedCredentials(
+            { ...secretRotation, ...updatedSecretRotation },
+            { isManualRotation: true }
+          );
+
+          return await expandSecretRotation(rotatedSecretRotation, kmsDataKeyService);
+        } catch (error: unknown) {
+          throw new BadRequestError({
+            message: `The rotation interval was updated, but rotating the credentials for the new interval failed: ${
+              (error as Error)?.message ?? "Unknown error"
+            }. Rotate the secrets to try again.`
+          });
+        }
       }
 
       // queue for rotation if adjusted time falls before next cron

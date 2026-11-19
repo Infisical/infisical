@@ -4,16 +4,20 @@ import {
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
-  TRotationFactoryRotateCredentials
+  TRotationFactoryRotateCredentials,
+  TSecretRotationV2Raw
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import {
   assertGitLabConnectionCanCreateTokens,
   createGitLabToken,
   getGitLabTokenApiContext,
   revokeGitLabToken,
+  TGitLabTokenApiContext,
+  TGitLabTokenCredentials,
   verifyGitLabToken
 } from "@app/ee/services/secret-rotation-v2/shared/gitlab-token";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import {
   getGitLabCurrentUserId,
   getGitLabErrorMessage
@@ -66,6 +70,28 @@ export const gitLabServiceAccountTokenRotationFactory: TRotationFactory<
     return context;
   };
 
+  // A token Infisical fails to save is one nothing tracks, so a retry or a delete can never revoke it.
+  const $saveOrRevoke = async (
+    context: TGitLabTokenApiContext,
+    credentials: TGitLabTokenCredentials,
+    save: (credentials: TGitLabTokenCredentials) => Promise<TSecretRotationV2Raw>
+  ) => {
+    try {
+      return await save(credentials);
+    } catch (error: unknown) {
+      try {
+        await revokeGitLabToken({ context, tokensPath, tokenId: credentials.tokenId, resourceLabel });
+      } catch (revokeError: unknown) {
+        logger.error(
+          revokeError,
+          `Failed to revoke an unsaved GitLab token [tokenId=${credentials.tokenId}] [groupId=${groupId}] [serviceAccountId=${serviceAccountId}]`
+        );
+      }
+
+      throw error;
+    }
+  };
+
   const issueCredentials: TRotationFactoryIssueCredentials<
     TGitLabServiceAccountTokenRotationGeneratedCredentials
   > = async (callback) => {
@@ -80,7 +106,7 @@ export const gitLabServiceAccountTokenRotationFactory: TRotationFactory<
       resourceLabel
     });
 
-    return callback(credentials);
+    return $saveOrRevoke(context, credentials, callback);
   };
 
   const revokeCredentials: TRotationFactoryRevokeCredentials<
@@ -118,7 +144,7 @@ export const gitLabServiceAccountTokenRotationFactory: TRotationFactory<
       resourceLabel
     });
 
-    return callback(newCredentials);
+    return $saveOrRevoke(context, newCredentials, callback);
   };
 
   const getSecretsPayload: TRotationFactoryGetSecretsPayload<TGitLabServiceAccountTokenRotationGeneratedCredentials> = (

@@ -178,6 +178,30 @@ describe("gitLabServiceAccountTokenRotationFactory", () => {
     expect(postMock).not.toHaveBeenCalled();
   });
 
+  it("revokes a created token that Infisical fails to save, then reports the save error", async () => {
+    const failingSave = vi.fn(async () => {
+      throw new Error("secret GITLAB_TOKEN already exists");
+    });
+
+    await expect(buildFactory().issueCredentials(failingSave)).rejects.toThrow("secret GITLAB_TOKEN already exists");
+    expect(deleteMock).toHaveBeenCalledWith(`${TOKENS_URL}/101`, expect.anything());
+  });
+
+  it("revokes the replacement token when saving a rotation fails, and keeps the save error", async () => {
+    const failingSave = vi.fn(async () => {
+      throw new Error("database unavailable");
+    });
+    deleteMock.mockResolvedValueOnce({ status: 204 }).mockRejectedValueOnce(axiosError(500, {}));
+
+    await expect(
+      buildFactory().rotateCredentials({ tokenId: "77", token: "glpat-old" }, failingSave, {
+        tokenId: "88",
+        token: "glpat-active"
+      })
+    ).rejects.toThrow("database unavailable");
+    expect(deleteMock.mock.calls.map(([url]) => url)).toEqual([`${TOKENS_URL}/77`, `${TOKENS_URL}/101`]);
+  });
+
   it("surfaces GitLab's validation message when token creation is rejected", async () => {
     postMock.mockRejectedValue(axiosError(400, { message: { expires_at: ["must be before 2027-01-01"] } }));
 

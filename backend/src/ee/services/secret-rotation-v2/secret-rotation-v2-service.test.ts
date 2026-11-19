@@ -68,6 +68,10 @@ vi.mock("./stripe-api-key/stripe-api-key-rotation-fns", () => ({
   stripeApiKeyRotationFactory: () => ({ rotateCredentials, getSecretsPayload: () => [] })
 }));
 
+vi.mock("./gitlab-service-account-token/gitlab-service-account-token-rotation-fns", () => ({
+  gitLabServiceAccountTokenRotationFactory: () => ({ rotateCredentials, getSecretsPayload: () => [] })
+}));
+
 vi.mock("./unix-linux-local-account-rotation/unix-linux-local-account-rotation-fns", () => ({
   unixLinuxLocalAccountRotationFactory: () => ({
     issueCredentials: async (callback: TRotationCallback) => callback({ username: "app", password: "reconciled" })
@@ -93,7 +97,10 @@ const rotation = (rotationStatus: SecretRotationStatus, type = SecretRotation.St
     connection: {
       id: "connection-1",
       orgId: "org-1",
-      app: type === SecretRotation.StripeApiKey ? "stripe" : "ssh"
+      app:
+        { [SecretRotation.StripeApiKey]: "stripe", [SecretRotation.GitLabServiceAccountToken]: "gitlab" }[
+          type as string
+        ] ?? "ssh"
     },
     folder: { id: "folder-1", path: "/" },
     environment: { id: "env-1", slug: "dev", name: "Development" }
@@ -491,5 +498,68 @@ describe("rotation alert cleanup", () => {
     await service.reapOrphanedRotationAlerts();
 
     expect(deps.alertService.deleteAlertsForDeletedResources).not.toHaveBeenCalled();
+  });
+});
+
+describe("updating the rotation interval", () => {
+  const update = (
+    service: ReturnType<typeof createService>["service"],
+    payload: { rotationInterval?: number; description?: string }
+  ) =>
+    service.updateSecretRotation(
+      { type: SecretRotation.GitLabServiceAccountToken, rotationId: "rotation-1", ...payload } as never,
+      actor as never
+    );
+
+  const createGitLabService = () => {
+    const created = createService({
+      storedStatus: SecretRotationStatus.Success,
+      type: SecretRotation.GitLabServiceAccountToken
+    });
+    created.deps.secretRotationV2DAL.transaction.mockImplementation(async (callback) =>
+      callback({ ...TX, raw: vi.fn(async () => undefined) })
+    );
+    return created;
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    rotateCredentials.mockImplementation(runCallback);
+  });
+
+  test("rotates GitLab credentials right away so the new token's expiry follows the new interval", async () => {
+    const { service, deps } = createGitLabService();
+
+    await update(service, { rotationInterval: 30 });
+
+    expect(rotateCredentials).toHaveBeenCalledTimes(1);
+    expect(deps.secretRotationV2DAL.updateById).toHaveBeenLastCalledWith(
+      "rotation-1",
+      expect.objectContaining({ isLastRotationManual: true, rotationStatus: SecretRotationStatus.Success }),
+      expect.anything()
+    );
+    expect(deps.queueService.queue).not.toHaveBeenCalled();
+  });
+
+  test("does not rotate when the interval is unchanged", async () => {
+    const { service } = createGitLabService();
+
+    await update(service, { rotationInterval: 1, description: "same interval" });
+
+    expect(rotateCredentials).not.toHaveBeenCalled();
+  });
+
+  test("reports that the interval was saved when the immediate rotation fails", async () => {
+    const { service, deps } = createGitLabService();
+    rotateCredentials.mockRejectedValue(new Error("GitLab is down"));
+
+    await expect(update(service, { rotationInterval: 30 })).rejects.toThrow(
+      "The rotation interval was updated, but rotating the credentials for the new interval failed"
+    );
+    expect(deps.secretRotationV2DAL.updateById).toHaveBeenCalledWith(
+      "rotation-1",
+      expect.objectContaining({ rotationInterval: 30 }),
+      expect.anything()
+    );
   });
 });
