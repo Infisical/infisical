@@ -2,6 +2,7 @@ import { MongoAbility, RawRule, subject } from "@casl/ability";
 
 import { AccessScope } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
+import { permissionBoundsMessage } from "@app/domains/platform/access-control/ce/module";
 import { TActorContextService } from "@app/domains/platform/organizations/ce/module";
 import {
   ProjectPermissionIdentityActions,
@@ -19,7 +20,6 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { buildMemberActorContext } from "@app/services/membership/membership-fns";
-import { permissionBoundsMessage } from "@app/services/membership/permission-bounds";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 

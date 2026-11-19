@@ -47,14 +47,16 @@ export const injectPermissionDeniedAuditLog = fp(async (server: FastifyZodProvid
   server.addHook("onError", async (req, _reply, error) => {
     const denial = error instanceof PermissionDeniedError ? error.denial : undefined;
     const isCaslDenial = error instanceof ForbiddenError;
-    if (!denial && !isCaslDenial && !(error instanceof PermissionBoundaryError)) return;
+    const isBoundaryRefusal =
+      error instanceof PermissionBoundaryError || (error instanceof PermissionDeniedError && error.isBoundaryRefusal);
+    if (!denial && !isCaslDenial && !isBoundaryRefusal) return;
     if (!req.auth || !req.auditLogInfo?.actor) return;
 
     const orgId = req.auditLogInfo.orgId ?? req.permission?.orgId;
     if (!orgId) return;
 
     const caslError = isCaslDenial ? (error as unknown as ForbiddenError<AnyAbility>) : undefined;
-    const missing = error instanceof PermissionBoundaryError ? readMissingPermission(error.details) : undefined;
+    const missing = isBoundaryRefusal ? readMissingPermission((error as { details?: unknown }).details) : undefined;
 
     const { schema } = req.routeOptions;
     const projectId =

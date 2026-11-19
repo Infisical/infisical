@@ -8,7 +8,7 @@ import {
 } from "@casl/ability";
 import { PackRule, packRules } from "@casl/ability/extra";
 
-import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { PERMISSION_BOUNDARY_ERROR_NAME, PermissionDeniedError } from "@app/domains/lib/errors";
 import { conditionsMatcher } from "@app/lib/casl";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 
@@ -36,6 +36,25 @@ export type TBoundsCheck<TSet extends AbilityTuple> = {
 };
 
 export type TMissingPermission = { action: string; subject: string; conditions?: unknown };
+
+// The refusal names the rule that applied: the change's own permission under the new privilege system, otherwise the
+// actor holding less than the target.
+export const permissionBoundsMessage = ({
+  message,
+  usesNewPrivilegeSystem,
+  action,
+  subject
+}: {
+  message: string;
+  usesNewPrivilegeSystem: boolean;
+  action: string;
+  subject: string;
+}) =>
+  `${message}${
+    usesNewPrivilegeSystem
+      ? `. Permission denied: ${action} on ${subject}. Check that the actor's role grants this permission and that all permission conditions are met.`
+      : ". Actor privilege level is not high enough to perform this action"
+  }`;
 
 // What an actor may do in one scope, built by that scope's owner. Wraps a CASL ability so callers check with objects
 // and never handle CASL; owners extend it with their own facts (the project, the admin role).
@@ -107,6 +126,25 @@ export class Permission<TSet extends AbilityTuple> {
       if (missing.length) return missing;
     }
     return [];
+  }
+
+  // Throws PermissionDeniedError named PermissionBoundaryError, with the missing permissions as its details, when
+  // boundsViolations finds any. `message` says what was refused; the rule that refused it is appended.
+  assertBounds({ message, ...check }: TBoundsCheck<TSet> & { message: string }): void {
+    const missingPermissions = this.boundsViolations(check);
+    if (!missingPermissions.length) return;
+
+    const action = Array.isArray(check.actions) ? check.actions[0] : check.actions;
+    throw new PermissionDeniedError({
+      name: PERMISSION_BOUNDARY_ERROR_NAME,
+      message: permissionBoundsMessage({
+        message,
+        usesNewPrivilegeSystem: check.usesNewPrivilegeSystem,
+        action: action as string,
+        subject: check.subject
+      }),
+      details: { missingPermissions }
+    });
   }
 
   private missingHeldPermission(target: Permission<AbilityTuple>): TMissingPermission[] {

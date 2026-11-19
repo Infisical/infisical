@@ -2,6 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { OrgMembershipRole } from "@app/db/schemas";
+import { PERMISSION_BOUNDARY_ERROR_NAME } from "@app/domains/lib/errors";
 import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
@@ -11,7 +12,6 @@ import {
   OrgPermissionGroupActions,
   OrgPermissionSubjects
 } from "@app/domains/platform/organizations/ce/module";
-import { PermissionBoundaryError } from "@app/lib/errors";
 
 import { groupServiceFactory } from "./group-service";
 
@@ -108,7 +108,7 @@ const createUpdate = ({
 // pass-through cases assert only that the boundary is not what stopped them.
 const expectNoBoundaryError = async (fn: () => Promise<unknown>) => {
   await fn().catch((err: unknown) => {
-    expect(err).not.toBeInstanceOf(PermissionBoundaryError);
+    expect((err as Error).name).not.toBe(PERMISSION_BOUNDARY_ERROR_NAME);
   });
 };
 
@@ -123,7 +123,7 @@ describe("updateGroup privilege boundary", () => {
       shouldUseNewPrivilegeSystem: false
     });
 
-    await expect(run()).rejects.toThrow(PermissionBoundaryError);
+    await expect(run()).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
     expect(membershipRoleDAL.create).not.toHaveBeenCalled();
   });
 
@@ -134,7 +134,7 @@ describe("updateGroup privilege boundary", () => {
       incomingRole: OrgMembershipRole.Member
     });
 
-    await expect(run()).rejects.toThrow(PermissionBoundaryError);
+    await expect(run()).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
   });
 
   test("an admin can still change an Admin group's role on either system", async () => {
@@ -149,7 +149,7 @@ describe("updateGroup privilege boundary", () => {
   test("on the legacy system, a weaker actor cannot delete an Admin-role group", async () => {
     const { remove } = createUpdate({ actorPermission: groupDeleterOnly, shouldUseNewPrivilegeSystem: false });
 
-    await expect(remove()).rejects.toThrow(PermissionBoundaryError);
+    await expect(remove()).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
   });
 
   test("deleting a group nothing outranks the actor on clears the boundary", async () => {

@@ -7,7 +7,6 @@ import {
 import { InternalServerError } from "@app/lib/errors";
 import { TMembershipIdentityDALFactory } from "@app/services/membership-identity/membership-identity-dal";
 import { resolveMembershipRoleSlugs, toBoundsTargets } from "@app/services/membership/membership-fns";
-import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 
 import { TIdentityV2Factory } from "../identity-types";
 
@@ -72,7 +71,7 @@ export const newProjectIdentityFactory = ({
       ignoreUnresolvedRoles: true
     });
 
-    assertPermissionBounds(permission, {
+    permission.assertBounds({
       usesNewPrivilegeSystem: dto.actor.org.shouldUseNewPrivilegeSystem,
       actions: ProjectPermissionIdentityActions.Delete,
       subject: ProjectPermissionSub.Identity,

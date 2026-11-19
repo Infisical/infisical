@@ -4,6 +4,7 @@ import Fastify, { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { z } from "zod";
 
+import { PERMISSION_BOUNDARY_ERROR_NAME, PermissionDeniedError } from "@app/domains/lib/errors";
 import { ActorType } from "@app/lib/auth/actor-types";
 
 import { injectPermissionDeniedAuditLog } from "./audit-log-permission-denied";
@@ -50,6 +51,18 @@ const buildServer = async () => {
     url: "/projects/:projectId/things",
     schema: { params: z.object({ projectId: z.string() }) },
     handler: async () => deny()
+  });
+
+  app.route({
+    method: "DELETE",
+    url: "/identities/:identityId",
+    handler: async () => {
+      throw new PermissionDeniedError({
+        name: PERMISSION_BOUNDARY_ERROR_NAME,
+        message: "Failed to remove a more privileged identity",
+        details: { missingPermissions: [{ action: "delete", subject: "identity" }] }
+      });
+    }
   });
 
   await app.ready();
@@ -103,5 +116,17 @@ describe("permission denied audit hook", () => {
     await app.inject({ method: "GET", url: `/projects/${PROJECT_ID}/things` });
 
     expect(recordedProjectId(server.recordPermissionDenied)).toBe(PROJECT_ID);
+  });
+
+  test("records a refused privilege change from Permission.assertBounds with its missing permission", async () => {
+    const built = await buildServer();
+    app = built.app;
+
+    await app.inject({ method: "DELETE", url: "/identities/identity-1" });
+
+    expect(built.recordPermissionDenied).toHaveBeenCalledTimes(1);
+    expect(built.recordPermissionDenied.mock.calls[0][0]).toMatchObject({
+      metadata: { permissionAction: "delete", permissionSubject: "identity", errorName: "PermissionBoundaryError" }
+    });
   });
 });

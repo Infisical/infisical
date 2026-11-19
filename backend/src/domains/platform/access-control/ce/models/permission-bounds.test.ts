@@ -1,3 +1,5 @@
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+
 import { Permission, TPermissionRule } from "./permission";
 
 type TSet = ["read" | "edit" | "delete" | "assign-role", "secrets" | "identity" | "member"];
@@ -225,5 +227,61 @@ describe("Permission.boundsViolations under the new privilege system", () => {
       // Assert
       expect(missing).toEqual([{ action: "delete", subject: "member" }]);
     });
+  });
+});
+
+describe("Permission.assertBounds", () => {
+  const MESSAGE = "Failed to remove a more privileged identity";
+
+  const refusalOf = (run: () => void) => {
+    try {
+      run();
+    } catch (error) {
+      return error as PermissionDeniedError;
+    }
+    throw new Error("expected the assertion to throw");
+  };
+
+  test("should not throw when the actor may make the change", () => {
+    // Setup
+    const run = () => {
+      admin.assertBounds({ ...removeIdentity(false, [{ permission: member }]), message: MESSAGE });
+      member.assertBounds({ ...removeIdentity(true, [{ permission: admin }]), message: MESSAGE });
+    };
+
+    // Action and assert
+    expect(run).not.toThrow();
+  });
+
+  test("should refuse with the privilege level message and the missing permissions under the old system", () => {
+    // Action
+    const error = refusalOf(() =>
+      member.assertBounds({ ...removeIdentity(false, [{ permission: admin }]), message: MESSAGE })
+    );
+
+    // Assert
+    expect(error).toBeInstanceOf(PermissionDeniedError);
+    expect([error.name, error.isBoundaryRefusal]).toEqual(["PermissionBoundaryError", true]);
+    expect(error.message).toBe(`${MESSAGE}. Actor privilege level is not high enough to perform this action`);
+    expect(error.details).toEqual({ missingPermissions: expect.any(Array) as unknown });
+  });
+
+  test("should refuse naming the first action and the subject under the new system", () => {
+    // Action
+    const error = refusalOf(() =>
+      nobody.assertBounds({
+        usesNewPrivilegeSystem: true,
+        actions: ["delete", "read"],
+        subject: "identity",
+        targets: [{ permission: member }],
+        message: MESSAGE
+      })
+    );
+
+    // Assert
+    expect(error.message).toBe(
+      `${MESSAGE}. Permission denied: delete on identity. Check that the actor's role grants this permission and that all permission conditions are met.`
+    );
+    expect(error.details).toEqual({ missingPermissions: [{ action: "delete", subject: "identity" }] });
   });
 });

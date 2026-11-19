@@ -31,7 +31,6 @@ import { TMembershipGroupServiceFactory } from "@app/services/membership-group/m
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { resolveMembershipRoleSlugs, toBoundsTargets } from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
-import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { emitGroupRemoved, toOrgMembershipActors } from "@app/services/org/org-membership-events";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
@@ -162,7 +161,7 @@ export const groupServiceFactory = ({
     const { shouldUseNewPrivilegeSystem } = actor.org;
     const isCustomRole = Boolean(rolePermissionDetails?.role);
     if (role !== OrgMembershipRole.NoAccess) {
-      assertPermissionBounds(permission, {
+      permission.assertBounds({
         usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionGroupActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Groups,
@@ -262,7 +261,7 @@ export const groupServiceFactory = ({
         ignoreUnresolvedRoles: true
       });
 
-      assertPermissionBounds(permission, {
+      permission.assertBounds({
         usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionGroupActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Groups,
@@ -270,7 +269,7 @@ export const groupServiceFactory = ({
         message: "Failed to change the roles of a more privileged group"
       });
 
-      assertPermissionBounds(permission, {
+      permission.assertBounds({
         usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionGroupActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Groups,
@@ -435,7 +434,7 @@ export const groupServiceFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = actor.org;
 
-    assertPermissionBounds(permission, {
+    permission.assertBounds({
       usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionGroupActions.Delete,
       subject: OrgPermissionSubjects.Groups,
@@ -689,7 +688,7 @@ export const groupServiceFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = actor.org;
 
-    assertPermissionBounds(permission, {
+    permission.assertBounds({
       usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionGroupActions.AddMembers,
       subject: OrgPermissionSubjects.Groups,
@@ -773,7 +772,7 @@ export const groupServiceFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = actor.org;
 
-    assertPermissionBounds(permission, {
+    permission.assertBounds({
       usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionGroupActions.AddIdentities,
       subject: OrgPermissionSubjects.Groups,
@@ -855,7 +854,7 @@ export const groupServiceFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = actor.org;
 
-    assertPermissionBounds(permission, {
+    permission.assertBounds({
       usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionGroupActions.RemoveMembers,
       subject: OrgPermissionSubjects.Groups,
@@ -918,7 +917,7 @@ export const groupServiceFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = actor.org;
 
-    assertPermissionBounds(permission, {
+    permission.assertBounds({
       usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionGroupActions.RemoveIdentities,
       subject: OrgPermissionSubjects.Groups,
