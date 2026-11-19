@@ -15,8 +15,8 @@ import {
   Button,
   Field,
   FieldContent,
-  FieldDescription,
   FieldError,
+  FieldFeedback,
   FieldLabel,
   Label,
   RadioGroup,
@@ -188,7 +188,7 @@ export const CancellationFeedbackDialog = ({
             control={control}
             name="comment"
             render={({ field, fieldState }) => (
-              <Field>
+              <Field data-invalid={Boolean(fieldState.error)}>
                 <FieldLabel htmlFor="cancellation-comment">
                   {isCommentRequired ? "Comment" : "Comment (optional)"}
                 </FieldLabel>
@@ -208,15 +208,16 @@ export const CancellationFeedbackDialog = ({
                     }
                     isError={Boolean(fieldState.error)}
                   />
-                  <FieldDescription className="flex justify-between gap-4">
-                    <span id="cancellation-comment-hint">
-                      Don&apos;t include secrets, credentials, or personal data.
-                    </span>
-                    <span className="tabular-nums">
+                  <div className="flex justify-between gap-4">
+                    <FieldFeedback
+                      id="cancellation-comment-hint"
+                      error={fieldState.error?.message}
+                      description="Don't include secrets, credentials, or personal data."
+                    />
+                    <span className="text-2xs leading-snug text-muted tabular-nums">
                       {field.value.length}/{COMMENT_MAX_LENGTH}
                     </span>
-                  </FieldDescription>
-                  <FieldError>{fieldState.error?.message}</FieldError>
+                  </div>
                 </FieldContent>
               </Field>
             )}
