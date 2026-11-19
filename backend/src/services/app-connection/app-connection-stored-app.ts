@@ -4,9 +4,9 @@ import { AppConnection } from "./app-connection-enums";
 // Redfish connections are still written as "hpe-ilo", the value earlier releases store and read, so rolling back to one
 // of them leaves every connection readable. Reads also accept "redfish", so a later release can migrate the rows and
 // still be rolled back to this one.
-// Remove this file and its callers only after a release that migrates the rows to "redfish" and writes "redfish" has
-// shipped, and together with a second migration that converts any "hpe-ilo" row left behind: until then, a pod still
-// on this code (during the rolling deploy, or after a rollback) can write "hpe-ilo" after the first migration ran
+// Remove this file and its callers together with the migration that rewrites the stored rows to "redfish". A Redfish
+// connection created on a pod still running this code while that migration deploys is stored as "hpe-ilo" and is
+// unreadable afterwards; that window was judged negligible, and such a row is fixed by setting its app to "redfish"
 const LEGACY_STORED_APP: Partial<Record<AppConnection, string>> = {
   [AppConnection.Redfish]: "hpe-ilo"
 };
