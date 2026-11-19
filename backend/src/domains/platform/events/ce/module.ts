@@ -3,11 +3,12 @@ import { poolStoreConnection, singleStoreConnection } from "@app/domains/lib/dat
 import type { TDomainCron, TDomainQueue } from "@app/domains/lib/jobs";
 import { TransactionRunner } from "@app/domains/lib/transactions";
 import { logger } from "@app/lib/logger";
-import { resolveCoreMeter } from "@app/lib/telemetry/metrics";
 
+import { TelemetryClient } from "./clients/telemetry/client";
 import { OutboxEntryStore } from "./data-access/outbox-entry-store";
-import { TEventsStores } from "./services/dependencies";
-import { EventsService, TEventsService } from "./services/events/service";
+import { TEventConsumer, TEventsStores } from "./services/dependencies";
+import { EventDeliveryService, TEventDeliveryService } from "./services/event-delivery/service";
+import { EventEmitterService, TEventEmitterService } from "./services/event-emitter/service";
 import { ConsumerRegistry } from "./services/helpers/consumer-registry";
 import { EventsQueues, FlushQueue } from "./services/helpers/flush-queue";
 import { RelayTimer } from "./services/helpers/relay-timer";
@@ -16,9 +17,9 @@ export { MAX_OUTBOX_PAYLOAD_BYTES } from "./models/emitted-event";
 export type { TEventInput } from "./models/emitted-event";
 export { EventDefinition, EventModificationType } from "./models/event-definition";
 export { EventOutboxStatus, EventResultStatus, MAX_OUTBOX_ATTEMPTS } from "./models/outbox-entry";
-export type { IEventConsumer, TEvent, TEventConsumerResult } from "./services/dependencies";
-export type { TEventsTransaction } from "./services/events/events-transaction";
-export type { TEventsService } from "./services/events/service";
+export type { TEvent, TEventConsumer, TEventConsumerResult } from "./services/dependencies";
+export type { TEventDeliveryService } from "./services/event-delivery/service";
+export type { TEventEmitterService, TEventEmitterTransaction } from "./services/event-emitter/service";
 export { parseEventPayload, runEventsConcurrentlyByKey, runEventsSerially } from "./services/helpers/consume-events";
 
 const FLUSH_WORKER_CONCURRENCY = 10;
@@ -37,28 +38,44 @@ export type TEventsDeps = {
 };
 
 export class EventsModule {
-  readonly eventsService: TEventsService;
+  readonly eventEmitterService: TEventEmitterService;
 
-  private readonly service: EventsService;
+  readonly eventDeliveryService: TEventDeliveryService;
 
   private readonly consumerRegistry = new ConsumerRegistry();
+
+  private readonly telemetryClient: TelemetryClient;
 
   private readonly relayTimer: RelayTimer;
 
   constructor(private readonly deps: TEventsDeps) {
     const { db } = deps;
-    this.service = new EventsService(
-      new OutboxEntryStore(poolStoreConnection(db)),
-      new TransactionRunner<TEventsStores>(db, (trx, locks) => ({
-        outboxEntryStore: new OutboxEntryStore(singleStoreConnection(trx)),
-        locks
-      })),
+    const outboxEntryStore = new OutboxEntryStore(poolStoreConnection(db));
+    const transactionRunner = new TransactionRunner<TEventsStores>(db, (trx, locks) => ({
+      outboxEntryStore: new OutboxEntryStore(singleStoreConnection(trx)),
+      locks
+    }));
+    this.telemetryClient = new TelemetryClient(deps.isTelemetryEnabled);
+
+    this.eventEmitterService = new EventEmitterService(
+      outboxEntryStore,
+      transactionRunner,
+      this.consumerRegistry,
+      this.telemetryClient
+    );
+    this.eventDeliveryService = new EventDeliveryService(
+      outboxEntryStore,
+      transactionRunner,
       this.consumerRegistry,
       new FlushQueue(deps.queueService),
-      deps.isTelemetryEnabled
+      this.telemetryClient
     );
-    this.eventsService = this.service;
-    this.relayTimer = new RelayTimer(() => this.service.relayDueEvents());
+    this.relayTimer = new RelayTimer(() => this.eventDeliveryService.relayDueEvents());
+  }
+
+  // Only while wiring: it throws once the module has started.
+  registerConsumer(consumer: TEventConsumer): void {
+    this.consumerRegistry.register(consumer);
   }
 
   // Call once at boot, after every consumer is registered: nothing is written for an event no consumer
@@ -71,7 +88,7 @@ export class EventsModule {
       async (job) => {
         const { consumer } = job.data;
         try {
-          await this.service.drain(consumer);
+          await this.eventDeliveryService.drain(consumer);
         } catch (error) {
           // The job is removeOnFail with a single attempt, so this line is the only trace it leaves.
           logger.error(error, `event-outbox: flush worker crashed [consumer=${consumer}]`);
@@ -86,7 +103,7 @@ export class EventsModule {
       pattern: STALE_CLAIM_SWEEPER_CRON,
       runHashTtlS: CRON_RUN_HASH_TTL_S,
       enabled: !this.deps.isSecondaryInstance,
-      handler: async () => this.service.sweepStaleClaims()
+      handler: async () => this.eventDeliveryService.sweepStaleClaims()
     });
 
     this.deps.cronJob.register({
@@ -94,31 +111,17 @@ export class EventsModule {
       pattern: CLEANUP_CRON,
       runHashTtlS: CRON_RUN_HASH_TTL_S,
       enabled: !this.deps.isSecondaryInstance,
-      handler: async () => this.service.pruneTerminalRows()
+      handler: async () => this.eventDeliveryService.pruneTerminalRows()
     });
 
     if (!this.deps.isGeneralWorkerRunModeEnabled || this.deps.isSecondaryInstance) return;
 
-    this.registerGauges();
+    this.telemetryClient.registerOldestPendingGauge();
     this.relayTimer.start();
   }
 
   // Waits for a relay tick that is still running.
   stop(): Promise<void> {
     return this.relayTimer.stop();
-  }
-
-  private registerGauges(): void {
-    const oldestPendingGauge = resolveCoreMeter().createObservableGauge("infisical.event_outbox.oldest_pending_age", {
-      description:
-        "Age in seconds of the oldest undelivered outbox event, by consumer. Alarm when this exceeds a small multiple of the relay interval: it means events are being recorded but not delivered.",
-      unit: "s"
-    });
-    oldestPendingGauge.addCallback((result) => {
-      if (!this.deps.isTelemetryEnabled) return;
-      this.service.oldestPendingAges().forEach(({ consumer, ageSeconds }) => {
-        result.observe(ageSeconds, { "event_outbox.consumer": consumer });
-      });
-    });
   }
 }

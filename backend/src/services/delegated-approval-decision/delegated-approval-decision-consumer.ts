@@ -1,5 +1,5 @@
 import {
-  IEventConsumer,
+  TEventConsumer,
   parseEventPayload,
   runEventsConcurrentlyByKey,
   TEvent,
@@ -23,7 +23,7 @@ type TDelegatedApprovalDecisionConsumerDep = {
 
 export const delegatedApprovalDecisionConsumerFactory = ({
   delegatedApprovalDecisionService
-}: TDelegatedApprovalDecisionConsumerDep): IEventConsumer<TDelegatedApprovalCallbackEventPayload> => {
+}: TDelegatedApprovalDecisionConsumerDep): TEventConsumer<TDelegatedApprovalCallbackEventPayload> => {
   const $handleEvent = async (event: TEvent): Promise<TEventConsumerResult> => {
     const { data, failure } = parseEventPayload(
       event,

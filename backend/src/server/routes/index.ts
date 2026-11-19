@@ -673,8 +673,7 @@ export const registerRoutes = async (
   const { usageMeteringService, licenseService } = domains.license;
   const { kmsDataKeyService, kmsKeyService, kmsRootKeyService } = domains.kmsCore;
   const { organizationsProjectsService } = domains.organizationsProjects;
-  const { eventsService } = domains.events;
-  const eventEmitter = legacyEventEmitter(eventsService);
+  const eventEmitter = legacyEventEmitter(domains.events.eventEmitterService);
   const { certManagerService } = domains.certManager;
 
   // An api-only deployment with no general-workers pod queues background work nobody consumes, so
@@ -1146,7 +1145,7 @@ export const registerRoutes = async (
     alertProviderRegistry,
     alertEngine
   });
-  eventsService.registerConsumer(
+  domains.events.registerConsumer(
     alertEventConsumerFactory({
       alertDAL,
       alertEngine,
@@ -3159,7 +3158,7 @@ export const registerRoutes = async (
     cronJob
   });
 
-  eventsService.registerConsumer(
+  domains.events.registerConsumer(
     orgAccessReconcileConsumerFactory({
       orgDAL,
       projectAccessRevokeService,
@@ -3167,7 +3166,7 @@ export const registerRoutes = async (
       usageMeteringService
     })
   );
-  eventsService.registerConsumer(licenseOrgDeletedConsumerFactory({ envConfig, licenseService }));
+  domains.events.registerConsumer(licenseOrgDeletedConsumerFactory({ envConfig, licenseService }));
   const orgAccessSweepQueue = orgAccessSweepQueueFactory({
     cronJob,
     orgDAL,
@@ -3332,7 +3331,7 @@ export const registerRoutes = async (
     eventEmitter
   });
 
-  eventsService.registerConsumer(
+  domains.events.registerConsumer(
     delegatedApprovalDispatchConsumerFactory({
       delegatedApprovalRequestDAL,
       delegatedApprovalPolicyDAL,
@@ -3397,7 +3396,7 @@ export const registerRoutes = async (
     auditLogService,
     ...delegatedApprovalDecisionMaps
   });
-  eventsService.registerConsumer(delegatedApprovalDecisionConsumerFactory({ delegatedApprovalDecisionService }));
+  domains.events.registerConsumer(delegatedApprovalDecisionConsumerFactory({ delegatedApprovalDecisionService }));
 
   const secretAccessApprovalPolicyService = secretAccessApprovalPolicyServiceFactory({
     projectDAL,

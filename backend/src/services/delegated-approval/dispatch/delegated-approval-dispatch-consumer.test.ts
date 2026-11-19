@@ -21,17 +21,6 @@ vi.mock("@app/lib/logger", () => ({
   initLogger: () => {}
 }));
 
-vi.mock("@app/lib/telemetry/metrics", () => ({
-  EventOutboxRejectReason: {
-    InvalidEvent: "invalid_event",
-    DataTooLarge: "data_too_large",
-    DataRejected: "data_rejected"
-  },
-  recordEventOutboxLagMetric: () => {},
-  recordEventOutboxExhaustedMetric: () => {},
-  recordEventOutboxRejectedMetric: () => {}
-}));
-
 const { dispatch } = vi.hoisted(() => ({ dispatch: vi.fn() }));
 vi.mock("./delegated-approval-dispatch-fns", () => ({
   getDelegatedApprovalProvider: () => ({ dispatch }),
@@ -440,9 +429,12 @@ describe("delegatedApprovalDispatchConsumer through the outbox", () => {
   const outboxDelegatedRequest = { ...pendingDelegatedRequest, dispatchEventId: EVENT_ID };
 
   const buildOutbox = (consumer: ReturnType<typeof buildConsumer>["consumer"]) => {
-    const { eventsService, outboxEntryStore } = buildEvents({ consumers: [consumer] });
+    const { eventEmitterService, eventDeliveryService, outboxEntryStore } = buildEvents({ consumers: [consumer] });
     return {
-      service: eventsService,
+      service: {
+        emit: eventEmitterService.emit.bind(eventEmitterService),
+        drain: eventDeliveryService.drain.bind(eventDeliveryService)
+      },
       rows: () => outboxEntryStore.all(),
       elapseBackoff: () => outboxEntryStore.elapseBackoff()
     };

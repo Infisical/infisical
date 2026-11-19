@@ -30,11 +30,6 @@ vi.mock("@app/lib/logger", () => ({
   initLogger: () => {}
 }));
 
-vi.mock("@app/lib/telemetry/metrics", () => ({
-  recordEventOutboxLagMetric: () => {},
-  recordEventOutboxExhaustedMetric: () => {}
-}));
-
 const { fetchDecision, REQUESTED_PERMISSIONS } = vi.hoisted(() => ({
   fetchDecision: vi.fn(),
   REQUESTED_PERMISSIONS: ["secrets:        read, create", "secret-folders: edit"]
@@ -659,9 +654,12 @@ describe("delegatedApprovalDecisionConsumer", () => {
 // later, instead of being dropped by a callback that answered 200 before anything was read.
 describe("delegatedApprovalDecisionConsumer through the outbox", () => {
   const buildOutbox = (consumer: ReturnType<typeof buildConsumer>["consumer"]) => {
-    const { eventsService, outboxEntryStore } = buildEvents({ consumers: [consumer] });
+    const { eventEmitterService, eventDeliveryService, outboxEntryStore } = buildEvents({ consumers: [consumer] });
     return {
-      service: eventsService,
+      service: {
+        emit: eventEmitterService.emit.bind(eventEmitterService),
+        drain: eventDeliveryService.drain.bind(eventDeliveryService)
+      },
       rows: () => outboxEntryStore.all(),
       elapseBackoff: () => outboxEntryStore.elapseBackoff()
     };

@@ -3,33 +3,15 @@ import crypto from "node:crypto";
 import { z } from "zod";
 
 import { TEventInput } from "../../models/emitted-event";
+import { OutboxClaim } from "../../models/outbox-claim";
 import { EventOutboxStatus, EventResultStatus, MAX_OUTBOX_ATTEMPTS, OutboxEntry } from "../../models/outbox-entry";
 import { buildEvents } from "../../testing/build-events";
-import { IEventConsumer, TEvent } from "../dependencies";
+import { TEventConsumer, TEvent } from "../dependencies";
 
 const { loggerWarn } = vi.hoisted(() => ({ loggerWarn: vi.fn<(...args: unknown[]) => void>() }));
 vi.mock("@app/lib/logger", () => ({
   logger: { info: () => {}, warn: loggerWarn, error: () => {}, debug: () => {} },
   initLogger: () => {}
-}));
-
-const { exhaustedMetrics, rejectedMetrics } = vi.hoisted(() => ({
-  exhaustedMetrics: [] as { consumer: string; count: number }[],
-  rejectedMetrics: [] as { eventType: string; reason: string; consumer?: string }[]
-}));
-vi.mock("@app/lib/telemetry/metrics", () => ({
-  EventOutboxRejectReason: {
-    InvalidEvent: "invalid_event",
-    DataTooLarge: "data_too_large",
-    DataRejected: "data_rejected"
-  },
-  recordEventOutboxLagMetric: () => {},
-  recordEventOutboxExhaustedMetric: (params: { consumer: string; count: number }) => {
-    exhaustedMetrics.push(params);
-  },
-  recordEventOutboxRejectedMetric: (params: { eventType: string; reason: string; consumer?: string }) => {
-    rejectedMetrics.push(params);
-  }
 }));
 
 const EVENT_TYPE = "approval.workflow.request_opened";
@@ -50,10 +32,10 @@ const makeEvent = (overrides?: Partial<TEventInput>): TEventInput => ({
   ...overrides
 });
 
-const deliverAll: IEventConsumer["handle"] = async (events) =>
+const deliverAll: TEventConsumer["handle"] = async (events) =>
   events.map((event) => ({ id: event.id, status: EventResultStatus.Delivered }));
 
-const makeConsumer = (overrides?: Partial<IEventConsumer>): IEventConsumer => ({
+const makeConsumer = (overrides?: Partial<TEventConsumer>): TEventConsumer => ({
   name: "alert",
   dataSchema: z.object({ targetIds: z.array(z.string()).min(1) }),
   subscribesTo: (type: string) => type === EVENT_TYPE,
@@ -62,225 +44,23 @@ const makeConsumer = (overrides?: Partial<IEventConsumer>): IEventConsumer => ({
 });
 
 // One consumer named "alert" with `count` events waiting for it.
-const buildWithPending = async (handle: IEventConsumer["handle"], count = 1) => {
+const buildWithPending = async (handle: TEventConsumer["handle"], count = 1) => {
   const built = buildEvents({ consumers: [makeConsumer({ handle })] });
-  await built.eventsService.emit(Array.from({ length: count }, () => makeEvent()));
+  await built.eventEmitterService.emit(Array.from({ length: count }, () => makeEvent()));
   return built;
 };
 
 beforeEach(() => {
   loggerWarn.mockClear();
-  exhaustedMetrics.length = 0;
-  rejectedMetrics.length = 0;
 });
 
-describe("EventsService.emit", () => {
-  test("should write one entry per subscribing consumer and none for a non-subscriber", async () => {
-    // Setup
-    const { eventsService, outboxEntryStore } = buildEvents({
-      consumers: [makeConsumer({ name: "alert" }), makeConsumer({ name: "other", subscribesTo: () => false })]
-    });
-
-    // Action
-    await eventsService.emit([makeEvent()]);
-
-    // Assert
-    expect(outboxEntryStore.all().map((row) => row.consumer)).toEqual(["alert"]);
-  });
-
-  test("should give every consumer's entry for one event the event's id", async () => {
-    // Setup
-    const { eventsService, outboxEntryStore } = buildEvents({
-      consumers: [makeConsumer({ name: "alert" }), makeConsumer({ name: "other" })]
-    });
-    const event = makeEvent();
-
-    // Action
-    await eventsService.emit([event]);
-
-    // Assert
-    expect(outboxEntryStore.all().map((row) => row.eventId)).toEqual([event.id, event.id]);
-  });
-
-  test("should write many events in the order they were given", async () => {
-    // Setup
-    const { eventsService, outboxEntryStore } = buildEvents({ consumers: [makeConsumer()] });
-    const events = [makeEvent(), makeEvent(), makeEvent()];
-
-    // Action
-    await eventsService.emit(events);
-
-    // Assert
-    expect(outboxEntryStore.all().map((row) => row.eventId)).toEqual(events.map((event) => event.id));
-    expect(outboxEntryStore.all().every((row) => row.status === EventOutboxStatus.Pending)).toBe(true);
-  });
-
-  test("should not touch the store when no consumer handles the event type", async () => {
-    // Setup
-    const { eventsService, outboxEntryStore } = buildEvents({
-      consumers: [makeConsumer({ subscribesTo: () => false })]
-    });
-    outboxEntryStore.insert = async () => {
-      throw new Error("the store was reached");
-    };
-
-    // Action
-    const result = eventsService.emit([makeEvent()]);
-
-    // Assert
-    await expect(result).resolves.toBeUndefined();
-  });
-
-  // A bad event fails the caller's write: a write that commits without its event is a change consumers
-  // never hear about.
-  test("should refuse an event whose data does not match a consumer's schema", async () => {
-    // Setup
-    const { eventsService, outboxEntryStore } = buildEvents({
-      consumers: [makeConsumer({ name: "lenient", dataSchema: z.object({}) }), makeConsumer({ name: "alert" })]
-    });
-
-    // Action
-    const result = eventsService.emit([makeEvent({ data: makePayload({ targetIds: [] }) })]);
-
-    // Assert
-    await expect(result).rejects.toThrow("could not record an event for this change");
-    expect(outboxEntryStore.all()).toEqual([]);
-    expect(rejectedMetrics).toEqual([{ eventType: EVENT_TYPE, reason: "data_rejected", consumer: "alert" }]);
-  });
-
-  test("should refuse an event whose data is oversized", async () => {
-    // Setup
-    const { eventsService, outboxEntryStore } = buildEvents({
-      consumers: [makeConsumer({ dataSchema: z.object({ blob: z.string() }) })]
-    });
-
-    // Action
-    const result = eventsService.emit([makeEvent({ data: { blob: "x".repeat(16 * 1024 + 1) } })]);
-
-    // Assert
-    await expect(result).rejects.toThrow("could not record an event for this change");
-    expect(outboxEntryStore.all()).toEqual([]);
-    expect(rejectedMetrics).toEqual([{ eventType: EVENT_TYPE, reason: "data_too_large", consumer: undefined }]);
-  });
-
-  test.each([
-    ["the id is not a UUID", { id: "reminder-1" }, EVENT_TYPE],
-    ["the type is not a dot-namespaced key", { type: "Not A Key" }, "Not A Key"]
-  ])("should refuse an event when %s", async (_, override, reportedType) => {
-    // Setup
-    const { eventsService, outboxEntryStore } = buildEvents({ consumers: [makeConsumer()] });
-
-    // Action
-    const result = eventsService.emit([makeEvent(override)]);
-
-    // Assert
-    await expect(result).rejects.toThrow("could not record an event for this change");
-    expect(outboxEntryStore.all()).toEqual([]);
-    expect(rejectedMetrics).toEqual([{ eventType: reportedType, reason: "invalid_event", consumer: undefined }]);
-  });
-
-  test("should write none of the events when one of them is refused", async () => {
-    // Setup
-    const { eventsService, outboxEntryStore } = buildEvents({ consumers: [makeConsumer()] });
-
-    // Action
-    const result = eventsService.emit([makeEvent(), makeEvent({ type: "Not A Key" })]);
-
-    // Assert
-    await expect(result).rejects.toThrow();
-    expect(outboxEntryStore.all()).toEqual([]);
-  });
-
-  // Swallowing it would hand the caller a poisoned transaction instead of the real error.
-  test("should let a failing insert reach the caller", async () => {
-    // Setup
-    const { eventsService, outboxEntryStore } = buildEvents({ consumers: [makeConsumer()] });
-    outboxEntryStore.insert = async () => {
-      throw new Error("connection terminated");
-    };
-
-    // Action
-    const result = eventsService.emit([makeEvent()]);
-
-    // Assert
-    await expect(result).rejects.toThrow("connection terminated");
-  });
-});
-
-describe("EventsService.within", () => {
-  test("should keep the events when the caller's transaction commits", async () => {
-    // Setup
-    const { eventsService, outboxEntryStore, transactionRunner } = buildEvents({ consumers: [makeConsumer()] });
-    const event = makeEvent();
-
-    // Action
-    await transactionRunner.run(({ tx }) => eventsService.within(tx).emit([event]));
-
-    // Assert
-    expect(outboxEntryStore.all().map((row) => row.eventId)).toEqual([event.id]);
-  });
-
-  test("should drop the events when the caller's transaction rolls back", async () => {
-    // Setup
-    const { eventsService, outboxEntryStore, transactionRunner } = buildEvents({ consumers: [makeConsumer()] });
-
-    // Action
-    const result = transactionRunner.run(async ({ tx }) => {
-      await eventsService.within(tx).emit([makeEvent()]);
-      throw new Error("the business write failed");
-    });
-
-    // Assert
-    await expect(result).rejects.toThrow("the business write failed");
-    expect(outboxEntryStore.all()).toEqual([]);
-  });
-
-  test("should refuse a malformed event, failing the caller's transaction", async () => {
-    // Setup
-    const { eventsService, outboxEntryStore, transactionRunner } = buildEvents({ consumers: [makeConsumer()] });
-
-    // Action
-    const result = transactionRunner.run(({ tx }) => eventsService.within(tx).emit([makeEvent({ id: "nope" })]));
-
-    // Assert
-    await expect(result).rejects.toThrow("could not record an event for this change");
-    expect(outboxEntryStore.all()).toEqual([]);
-  });
-});
-
-describe("EventsService.registerConsumer", () => {
-  test("should refuse a second consumer under a name already taken", () => {
-    // Setup
-    const { eventsService } = buildEvents({ consumers: [makeConsumer()] });
-
-    // Action
-    const register = () => eventsService.registerConsumer(makeConsumer());
-
-    // Assert
-    expect(register).toThrow("already registered under the name 'alert'");
-  });
-
-  // A consumer added after the workers started would have missed every event emitted before it.
-  test("should refuse a consumer once the registry is sealed", () => {
-    // Setup
-    const { eventsService, consumerRegistry } = buildEvents();
-    consumerRegistry.seal();
-
-    // Action
-    const register = () => eventsService.registerConsumer(makeConsumer());
-
-    // Assert
-    expect(register).toThrow("was registered after the events module started");
-  });
-});
-
-describe("EventsService.drain", () => {
+describe("EventDeliveryService.drain", () => {
   test("should deliver what is waiting and stop when nothing is left", async () => {
     // Setup
-    const { eventsService, outboxEntryStore } = await buildWithPending(deliverAll, 2);
+    const { eventDeliveryService, outboxEntryStore } = await buildWithPending(deliverAll, 2);
 
     // Action
-    const result = await eventsService.drain("alert");
+    const result = await eventDeliveryService.drain("alert");
 
     // Assert
     expect(result).toEqual({ handled: 2, unknownConsumer: false });
@@ -293,7 +73,7 @@ describe("EventsService.drain", () => {
   test("should hand the consumer each entry as a CloudEvent", async () => {
     // Setup
     let received: TEvent[] = [];
-    const { eventsService } = buildEvents({
+    const { eventEmitterService, eventDeliveryService } = buildEvents({
       consumers: [
         makeConsumer({
           handle: async (events) => {
@@ -304,10 +84,10 @@ describe("EventsService.drain", () => {
       ]
     });
     const event = makeEvent({ time: new Date("2026-08-20T17:42:31.000Z") });
-    await eventsService.emit([event]);
+    await eventEmitterService.emit([event]);
 
     // Action
-    await eventsService.drain("alert");
+    await eventDeliveryService.drain("alert");
 
     // Assert
     expect(received).toEqual([
@@ -325,12 +105,12 @@ describe("EventsService.drain", () => {
 
   test("should retry the whole batch when the consumer throws", async () => {
     // Setup
-    const { eventsService, outboxEntryStore } = await buildWithPending(async () => {
+    const { eventDeliveryService, outboxEntryStore } = await buildWithPending(async () => {
       throw new Error("provider exploded");
     }, 2);
 
     // Action
-    await eventsService.drain("alert");
+    await eventDeliveryService.drain("alert");
 
     // Assert
     expect(outboxEntryStore.all()).toMatchObject([
@@ -341,10 +121,10 @@ describe("EventsService.drain", () => {
 
   test("should retry an entry the consumer returned no result for", async () => {
     // Setup
-    const { eventsService, outboxEntryStore } = await buildWithPending(async () => []);
+    const { eventDeliveryService, outboxEntryStore } = await buildWithPending(async () => []);
 
     // Action
-    await eventsService.drain("alert");
+    await eventDeliveryService.drain("alert");
 
     // Assert
     expect(outboxEntryStore.all()).toMatchObject([{ status: EventOutboxStatus.Retry, attempts: 1 }]);
@@ -352,14 +132,14 @@ describe("EventsService.drain", () => {
 
   test("should not hand an entry out again before its backoff has passed", async () => {
     // Setup
-    const handle = vi.fn<IEventConsumer["handle"]>(async (events) =>
+    const handle = vi.fn<TEventConsumer["handle"]>(async (events) =>
       events.map((event) => ({ id: event.id, status: EventResultStatus.Retry }))
     );
-    const { eventsService } = await buildWithPending(handle);
-    await eventsService.drain("alert");
+    const { eventDeliveryService } = await buildWithPending(handle);
+    await eventDeliveryService.drain("alert");
 
     // Action
-    const result = await eventsService.drain("alert");
+    const result = await eventDeliveryService.drain("alert");
 
     // Assert
     expect(result.handled).toBe(0);
@@ -369,14 +149,14 @@ describe("EventsService.drain", () => {
   test("should tell the consumer about its last attempt, and fail the entry for good after it", async () => {
     // Setup
     const received: boolean[] = [];
-    const { eventsService, outboxEntryStore } = await buildWithPending(async (events) => {
+    const { eventDeliveryService, outboxEntryStore, metrics } = await buildWithPending(async (events) => {
       received.push(...events.map((event) => event.isFinalAttempt));
       return events.map((event) => ({ id: event.id, status: EventResultStatus.Retry, error: "slack 502" }));
     }, 2);
     outboxEntryStore.patch(outboxEntryStore.all()[1].id, { attempts: MAX_OUTBOX_ATTEMPTS - 1 });
 
     // Action
-    await eventsService.drain("alert");
+    await eventDeliveryService.drain("alert");
 
     // Assert
     expect(received).toEqual([false, true]);
@@ -384,7 +164,7 @@ describe("EventsService.drain", () => {
       { status: EventOutboxStatus.Retry, attempts: 1 },
       { status: EventOutboxStatus.Failed, attempts: MAX_OUTBOX_ATTEMPTS, lastError: "slack 502" }
     ]);
-    expect(exhaustedMetrics).toEqual([{ consumer: "alert", count: 1 }]);
+    expect(metrics.exhausted).toEqual([{ consumer: "alert", count: 1 }]);
   });
 
   // A short settle means the sweeper handed the entries to another worker mid-delivery, so the batch went
@@ -392,7 +172,7 @@ describe("EventsService.drain", () => {
   test("should report a claim that was taken away mid-delivery, leaving the new owner's entry alone", async () => {
     // Setup
     const built = buildEvents();
-    built.eventsService.registerConsumer(
+    built.consumerRegistry.register(
       makeConsumer({
         handle: async (events) => {
           built.outboxEntryStore.patch(built.outboxEntryStore.all()[0].id, { lockToken: "another-worker" });
@@ -400,10 +180,10 @@ describe("EventsService.drain", () => {
         }
       })
     );
-    await built.eventsService.emit([makeEvent(), makeEvent()]);
+    await built.eventEmitterService.emit([makeEvent(), makeEvent()]);
 
     // Action
-    await built.eventsService.drain("alert");
+    await built.eventDeliveryService.drain("alert");
 
     // Assert
     expect(loggerWarn).toHaveBeenCalledTimes(1);
@@ -416,10 +196,10 @@ describe("EventsService.drain", () => {
 
   test("should say nothing when every claimed entry settles", async () => {
     // Setup
-    const { eventsService } = await buildWithPending(deliverAll);
+    const { eventDeliveryService } = await buildWithPending(deliverAll);
 
     // Action
-    await eventsService.drain("alert");
+    await eventDeliveryService.drain("alert");
 
     // Assert
     expect(loggerWarn).not.toHaveBeenCalled();
@@ -427,10 +207,10 @@ describe("EventsService.drain", () => {
 
   test("should leave entries untouched when no consumer is registered under the name", async () => {
     // Setup
-    const { eventsService, outboxEntryStore } = await buildWithPending(deliverAll);
+    const { eventDeliveryService, outboxEntryStore } = await buildWithPending(deliverAll);
 
     // Action
-    const result = await eventsService.drain("gone");
+    const result = await eventDeliveryService.drain("gone");
 
     // Assert
     expect(result).toEqual({ handled: 0, unknownConsumer: true });
@@ -451,13 +231,13 @@ describe("EventsService.drain", () => {
     test("should keep the claim fresh while the consumer is still handling a batch", async () => {
       // Setup
       let release: () => void = () => {};
-      const { eventsService, outboxEntryStore } = await buildWithPending(
+      const { eventDeliveryService, outboxEntryStore } = await buildWithPending(
         (events) =>
           new Promise((resolve) => {
             release = () => resolve(events.map((event) => ({ id: event.id, status: EventResultStatus.Delivered })));
           })
       );
-      const draining = eventsService.drain("alert");
+      const draining = eventDeliveryService.drain("alert");
       await vi.advanceTimersByTimeAsync(0);
       const claimedAt = outboxEntryStore.all()[0].lockedAt as Date;
 
@@ -475,10 +255,10 @@ describe("EventsService.drain", () => {
     // flush job id is per consumer, blocks every later flush for that consumer until a restart.
     test("should give up on a consumer that never settles and retry the batch", async () => {
       // Setup
-      const { eventsService, outboxEntryStore } = await buildWithPending(() => new Promise(() => {}), 2);
+      const { eventDeliveryService, outboxEntryStore } = await buildWithPending(() => new Promise(() => {}), 2);
 
       // Action
-      const draining = eventsService.drain("alert");
+      const draining = eventDeliveryService.drain("alert");
       await vi.advanceTimersByTimeAsync(30 * 60_000);
 
       // Assert
@@ -492,17 +272,17 @@ describe("EventsService.drain", () => {
     // sweeper and notify again ten minutes later.
     test("should try again when saving the results fails once", async () => {
       // Setup
-      const { eventsService, outboxEntryStore } = await buildWithPending(deliverAll);
+      const { eventDeliveryService, outboxEntryStore } = await buildWithPending(deliverAll);
       const save = outboxEntryStore.saveSettled.bind(outboxEntryStore);
       let saves = 0;
-      outboxEntryStore.saveSettled = async (entries: OutboxEntry[], lockToken: string) => {
+      outboxEntryStore.saveSettled = async (claim: OutboxClaim) => {
         saves += 1;
         if (saves === 1) throw new Error("connection reset");
-        return save(entries, lockToken);
+        return save(claim);
       };
 
       // Action
-      const draining = eventsService.drain("alert");
+      const draining = eventDeliveryService.drain("alert");
       await vi.advanceTimersByTimeAsync(1_000);
 
       // Assert
@@ -512,7 +292,7 @@ describe("EventsService.drain", () => {
 
     test("should stop after three failed saves so the sweeper can take over", async () => {
       // Setup
-      const { eventsService, outboxEntryStore } = await buildWithPending(deliverAll);
+      const { eventDeliveryService, outboxEntryStore } = await buildWithPending(deliverAll);
       let saves = 0;
       outboxEntryStore.saveSettled = async () => {
         saves += 1;
@@ -520,7 +300,7 @@ describe("EventsService.drain", () => {
       };
 
       // Action
-      const draining = eventsService.drain("alert");
+      const draining = eventDeliveryService.drain("alert");
       // Attach the handler before advancing so the rejection has a listener when the retries run out.
       const outcome = expect(draining).rejects.toThrow("connection reset");
       await vi.advanceTimersByTimeAsync(5_000);
@@ -533,7 +313,7 @@ describe("EventsService.drain", () => {
   });
 });
 
-describe("EventsService.sweepStaleClaims", () => {
+describe("EventDeliveryService.sweepStaleClaims", () => {
   const claimAll = async (count: number) => {
     const built = await buildWithPending(deliverAll, count);
     await built.outboxEntryStore.claimBatch("alert", count);
@@ -542,14 +322,14 @@ describe("EventsService.sweepStaleClaims", () => {
 
   test("should back off a stale claim, fail an exhausted one and leave a live one alone", async () => {
     // Setup
-    const { eventsService, outboxEntryStore } = await claimAll(3);
+    const { eventDeliveryService, outboxEntryStore } = await claimAll(3);
     const [, stale, exhausted] = outboxEntryStore.all();
     const longAgo = new Date(Date.now() - HOUR_MS);
     outboxEntryStore.patch(stale.id, { lockedAt: longAgo });
     outboxEntryStore.patch(exhausted.id, { lockedAt: longAgo, attempts: MAX_OUTBOX_ATTEMPTS - 1 });
 
     // Action
-    await eventsService.sweepStaleClaims();
+    await eventDeliveryService.sweepStaleClaims();
 
     // Assert
     const [live, retried, failed] = outboxEntryStore.all();
@@ -563,7 +343,7 @@ describe("EventsService.sweepStaleClaims", () => {
   // metric promises to count every one.
   test("should count the entries it gives up on, per consumer", async () => {
     // Setup
-    const { eventsService, outboxEntryStore } = await claimAll(2);
+    const { eventDeliveryService, outboxEntryStore, metrics } = await claimAll(2);
     outboxEntryStore
       .all()
       .forEach((row) =>
@@ -571,21 +351,21 @@ describe("EventsService.sweepStaleClaims", () => {
       );
 
     // Action
-    await eventsService.sweepStaleClaims();
+    await eventDeliveryService.sweepStaleClaims();
 
     // Assert
-    expect(exhaustedMetrics).toEqual([{ consumer: "alert", count: 2 }]);
+    expect(metrics.exhausted).toEqual([{ consumer: "alert", count: 2 }]);
   });
 
   test("should record nothing when no claim is stale", async () => {
     // Setup
-    const { eventsService, outboxEntryStore } = await claimAll(1);
+    const { eventDeliveryService, outboxEntryStore, metrics } = await claimAll(1);
 
     // Action
-    await eventsService.sweepStaleClaims();
+    await eventDeliveryService.sweepStaleClaims();
 
     // Assert
-    expect(exhaustedMetrics).toEqual([]);
+    expect(metrics.exhausted).toEqual([]);
     expect(outboxEntryStore.all()).toMatchObject([{ status: EventOutboxStatus.Processing }]);
   });
 
@@ -604,21 +384,21 @@ describe("EventsService.sweepStaleClaims", () => {
       });
 
     const buildSweep = (batchSizes: number[]) => {
-      const { eventsService, outboxEntryStore } = buildEvents();
+      const { eventDeliveryService, outboxEntryStore } = buildEvents();
       const limits: number[] = [];
       outboxEntryStore.lockStaleClaims = async ({ limit }) => {
         limits.push(limit);
         return Array.from({ length: batchSizes[limits.length - 1] ?? limit }, staleEntry);
       };
-      return { eventsService, limits };
+      return { eventDeliveryService, limits };
     };
 
     test("should keep sweeping while batches come back full, and stop at a bound", async () => {
       // Setup
-      const { eventsService, limits } = buildSweep([]);
+      const { eventDeliveryService, limits } = buildSweep([]);
 
       // Action
-      await eventsService.sweepStaleClaims();
+      await eventDeliveryService.sweepStaleClaims();
 
       // Assert
       expect(limits).toEqual(Array.from({ length: 10 }, () => 1_000));
@@ -626,10 +406,10 @@ describe("EventsService.sweepStaleClaims", () => {
 
     test("should stop after the first batch that comes back short", async () => {
       // Setup
-      const { eventsService, limits } = buildSweep([1_000, 999, 1_000]);
+      const { eventDeliveryService, limits } = buildSweep([1_000, 999, 1_000]);
 
       // Action
-      await eventsService.sweepStaleClaims();
+      await eventDeliveryService.sweepStaleClaims();
 
       // Assert
       expect(limits).toHaveLength(2);
@@ -637,10 +417,10 @@ describe("EventsService.sweepStaleClaims", () => {
   });
 });
 
-describe("EventsService.pruneTerminalRows", () => {
+describe("EventDeliveryService.pruneTerminalRows", () => {
   test("should delete delivered entries older than a day and failed ones older than thirty", async () => {
     // Setup
-    const { eventsService, outboxEntryStore } = await buildWithPending(deliverAll, 5);
+    const { eventDeliveryService, outboxEntryStore } = await buildWithPending(deliverAll, 5);
     const daysAgo = (days: number) => new Date(Date.now() - days * 24 * HOUR_MS);
     const [oldDelivered, freshDelivered, oldFailed, recentFailed, oldPending] = outboxEntryStore.all();
     outboxEntryStore.patch(oldDelivered.id, { status: EventOutboxStatus.Delivered, updatedAt: daysAgo(2) });
@@ -650,26 +430,26 @@ describe("EventsService.pruneTerminalRows", () => {
     outboxEntryStore.patch(oldPending.id, { updatedAt: daysAgo(31) });
 
     // Action
-    await eventsService.pruneTerminalRows();
+    await eventDeliveryService.pruneTerminalRows();
 
     // Assert
     expect(outboxEntryStore.all().map((row) => row.id)).toEqual([freshDelivered.id, recentFailed.id, oldPending.id]);
   });
 });
 
-describe("EventsService.relayDueEvents", () => {
+describe("EventDeliveryService.relayDueEvents", () => {
   // One flush per consumer at a time keeps drain's batches serial and dedupes a consumer the relay
   // rediscovers while its flush is still queued. Retry lives on the entry, where it survives a Redis
   // flush, so BullMQ gets a single attempt.
   test("should enqueue one flush job per consumer with due work", async () => {
     // Setup
-    const { eventsService, queue } = buildEvents({
+    const { eventEmitterService, eventDeliveryService, queue } = buildEvents({
       consumers: [makeConsumer({ name: "alert" }), makeConsumer({ name: "audit" })]
     });
-    await eventsService.emit([makeEvent(), makeEvent()]);
+    await eventEmitterService.emit([makeEvent(), makeEvent()]);
 
     // Action
-    await eventsService.relayDueEvents();
+    await eventDeliveryService.relayDueEvents();
 
     // Assert
     expect(queue.jobs).toEqual([
@@ -688,11 +468,11 @@ describe("EventsService.relayDueEvents", () => {
 
   test("should enqueue nothing when no work is due", async () => {
     // Setup
-    const { eventsService, queue } = await buildWithPending(deliverAll);
-    await eventsService.drain("alert");
+    const { eventDeliveryService, queue } = await buildWithPending(deliverAll);
+    await eventDeliveryService.drain("alert");
 
     // Action
-    await eventsService.relayDueEvents();
+    await eventDeliveryService.relayDueEvents();
 
     // Assert
     expect(queue.jobs).toEqual([]);
@@ -700,26 +480,29 @@ describe("EventsService.relayDueEvents", () => {
 
   test("should report how long the oldest undelivered event has waited when telemetry is on", async () => {
     // Setup
-    const { eventsService } = buildEvents({ consumers: [makeConsumer()], isTelemetryEnabled: true });
-    await eventsService.emit([makeEvent({ time: new Date(Date.now() - 90_000) }), makeEvent()]);
+    const { eventEmitterService, eventDeliveryService, metrics } = buildEvents({
+      consumers: [makeConsumer()],
+      isTelemetryEnabled: true
+    });
+    await eventEmitterService.emit([makeEvent({ time: new Date(Date.now() - 90_000) }), makeEvent()]);
 
     // Action
-    await eventsService.relayDueEvents();
+    await eventDeliveryService.relayDueEvents();
 
     // Assert
-    const [age] = eventsService.oldestPendingAges();
+    const [age] = metrics.oldestPending;
     expect(age.consumer).toBe("alert");
     expect(age.ageSeconds).toBeGreaterThanOrEqual(90);
   });
 
   test("should not measure the backlog when telemetry is off", async () => {
     // Setup
-    const { eventsService } = await buildWithPending(deliverAll);
+    const { eventDeliveryService, metrics } = await buildWithPending(deliverAll);
 
     // Action
-    await eventsService.relayDueEvents();
+    await eventDeliveryService.relayDueEvents();
 
     // Assert
-    expect(eventsService.oldestPendingAges()).toEqual([]);
+    expect(metrics.oldestPending).toEqual([]);
   });
 });

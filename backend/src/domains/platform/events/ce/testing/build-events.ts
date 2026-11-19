@@ -2,18 +2,20 @@ import { TDomainQueue } from "@app/domains/lib/jobs";
 import { FakeQueue } from "@app/domains/lib/jobs/testing/fake-queue";
 import { InMemoryTransactionRunner } from "@app/domains/lib/transactions/testing/in-memory-transaction-runner";
 
-import { IEventConsumer, TEventsStores } from "../services/dependencies";
-import { EventsService } from "../services/events/service";
+import { TEventConsumer, TEventsStores } from "../services/dependencies";
+import { EventDeliveryService } from "../services/event-delivery/service";
+import { EventEmitterService } from "../services/event-emitter/service";
 import { ConsumerRegistry } from "../services/helpers/consumer-registry";
 import { FlushQueue } from "../services/helpers/flush-queue";
+import { FakeEventsMetrics } from "./fake-events-metrics";
 import { InMemoryOutboxEntryStore } from "./in-memory-outbox-entry-store";
 
 type TBuildEventsOptions = {
-  consumers?: IEventConsumer[];
+  consumers?: TEventConsumer[];
   isTelemetryEnabled?: boolean;
 };
 
-// The real service on in-memory stores: for tests of the domain, and of a consumer that needs the outbox's
+// The real services on in-memory stores: for tests of the domain, and of a consumer that needs the outbox's
 // retries rather than a single handle() call.
 export const buildEvents = ({ consumers = [], isTelemetryEnabled = false }: TBuildEventsOptions = {}) => {
   const outboxEntryStore = new InMemoryOutboxEntryStore();
@@ -23,14 +25,24 @@ export const buildEvents = ({ consumers = [], isTelemetryEnabled = false }: TBui
   }));
   const consumerRegistry = new ConsumerRegistry();
   const queue = new FakeQueue();
-  const eventsService = new EventsService(
+  const metrics = new FakeEventsMetrics(isTelemetryEnabled);
+  const eventEmitterService = new EventEmitterService(outboxEntryStore, transactionRunner, consumerRegistry, metrics);
+  const eventDeliveryService = new EventDeliveryService(
     outboxEntryStore,
     transactionRunner,
     consumerRegistry,
     new FlushQueue(queue as unknown as TDomainQueue),
-    isTelemetryEnabled
+    metrics
   );
-  consumers.forEach((consumer) => eventsService.registerConsumer(consumer));
+  consumers.forEach((consumer) => consumerRegistry.register(consumer));
 
-  return { eventsService, outboxEntryStore, transactionRunner, consumerRegistry, queue };
+  return {
+    eventEmitterService,
+    eventDeliveryService,
+    outboxEntryStore,
+    transactionRunner,
+    consumerRegistry,
+    queue,
+    metrics
+  };
 };

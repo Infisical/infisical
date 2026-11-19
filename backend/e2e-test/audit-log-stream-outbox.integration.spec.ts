@@ -60,7 +60,7 @@ const auditLogStreamDAL = auditLogStreamDALFactory(testDb as never);
 const outboxDAL = auditLogStreamOutboxDALFactory(testDb as never);
 
 // Never started, so the queue and cron are not touched: only emit runs, on the real table.
-const { eventsService } = new EventsModule({
+const eventsModule = new EventsModule({
   db: testDb as never,
   queueService: {} as never,
   cronJob: {} as never,
@@ -68,13 +68,13 @@ const { eventsService } = new EventsModule({
   isGeneralWorkerRunModeEnabled: false,
   isTelemetryEnabled: false
 });
-eventsService.registerConsumer({
+eventsModule.registerConsumer({
   name: CONSUMER,
   dataSchema: AuditLogStreamDeliveryFailedPayloadSchema as never,
   subscribesTo: (eventType) => eventType === AUDIT_LOG_STREAM_DELIVERY_FAILED_EVENT,
   handle: async () => []
 });
-const eventEmitter = legacyEventEmitter(eventsService);
+const eventEmitter = legacyEventEmitter(eventsModule.eventEmitterService);
 
 const service = auditLogStreamOutboxServiceFactory({
   auditLogStreamOutboxDAL: outboxDAL,

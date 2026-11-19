@@ -25,13 +25,15 @@ const EventInputSchema = z.object({
 // `id` is set when the event is built, so every consumer's row for it shares the same one.
 export type TEventInput = z.input<typeof EventInputSchema>;
 
-export enum EmittedEventRejection {
+// Why an emit was refused. `DataRejected` is a subscribing consumer's schema refusing the data.
+export enum EventRejectionReason {
   InvalidEvent = "invalid_event",
-  DataTooLarge = "data_too_large"
+  DataTooLarge = "data_too_large",
+  DataRejected = "data_rejected"
 }
 
 export type TEmittedEventRejectionDetails = {
-  reason: EmittedEventRejection;
+  reason: EventRejectionReason;
   type: string;
 };
 
@@ -50,7 +52,7 @@ export class EmittedEvent {
       throw new RuleViolationError({
         message: parsed.error.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join(", "),
         details: {
-          reason: EmittedEventRejection.InvalidEvent,
+          reason: EventRejectionReason.InvalidEvent,
           type: input.type
         } satisfies TEmittedEventRejectionDetails
       });
@@ -62,7 +64,7 @@ export class EmittedEvent {
       throw new RuleViolationError({
         message: `data is ${dataBytes} bytes, over the ${MAX_OUTBOX_PAYLOAD_BYTES} byte limit; the outbox carries identifiers, not documents`,
         details: {
-          reason: EmittedEventRejection.DataTooLarge,
+          reason: EventRejectionReason.DataTooLarge,
           type
         } satisfies TEmittedEventRejectionDetails
       });

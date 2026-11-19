@@ -1,7 +1,8 @@
 import crypto from "node:crypto";
 
+import { OutboxClaim } from "../models/outbox-claim";
 import { EventOutboxStatus, OutboxEntry } from "../models/outbox-entry";
-import { TOutboxClaim, TOutboxDelivery, TOutboxEntryStore } from "../services/dependencies";
+import { TOldestPendingAge, TOutboxDelivery, TOutboxEntryStore } from "../services/dependencies";
 
 export type TInMemoryOutboxRow = {
   id: string;
@@ -75,7 +76,7 @@ export class InMemoryOutboxEntryStore implements TOutboxEntryStore {
     return [...new Set(due.map((row) => row.consumer))];
   }
 
-  async findOldestPendingAgeSeconds(): Promise<{ consumer: string; ageSeconds: number }[]> {
+  async findOldestPendingAgeSeconds(): Promise<TOldestPendingAge[]> {
     const oldest = new Map<string, number>();
     for (const row of this.rows) {
       if ([...DUE, EventOutboxStatus.Processing].includes(row.status)) {
@@ -86,24 +87,25 @@ export class InMemoryOutboxEntryStore implements TOutboxEntryStore {
     return [...oldest].map(([consumer, occurredAt]) => ({ consumer, ageSeconds: (Date.now() - occurredAt) / 1000 }));
   }
 
-  async claimBatch(consumer: string, limit: number): Promise<TOutboxClaim> {
+  async claimBatch(consumer: string, limit: number): Promise<OutboxClaim> {
     const lockToken = crypto.randomUUID();
     const claimed = this.rows.filter((row) => row.consumer === consumer && isDue(row)).slice(0, limit);
     const now = new Date();
     claimed.forEach((row) =>
       Object.assign(row, { status: EventOutboxStatus.Processing, lockedAt: now, lockToken, updatedAt: now })
     );
-    return { lockToken, entries: claimed.map(toModel) };
+    return OutboxClaim.restore({ lockToken, entries: claimed.map(toModel) });
   }
 
-  async extendClaims(ids: string[], lockToken: string): Promise<void> {
+  async extendClaim(claim: OutboxClaim): Promise<void> {
+    const ids = claim.entryIds();
     this.rows
-      .filter((row) => ids.includes(row.id) && isHeldBy(row, lockToken))
+      .filter((row) => ids.includes(row.id) && isHeldBy(row, claim.lockToken))
       .forEach((row) => Object.assign(row, { lockedAt: new Date(), updatedAt: new Date() }));
   }
 
-  async saveSettled(entries: OutboxEntry[], lockToken: string): Promise<number> {
-    return this.saveOutcomes(entries, (row) => isHeldBy(row, lockToken));
+  async saveSettled(claim: OutboxClaim): Promise<number> {
+    return this.saveOutcomes(claim.entries, (row) => isHeldBy(row, claim.lockToken));
   }
 
   async lockStaleClaims({ thresholdMs, limit }: { thresholdMs: number; limit: number }): Promise<OutboxEntry[]> {

@@ -672,15 +672,15 @@ at-least-once delivery of a domain event registers next to it. The delegated app
 approval system inline from `handle()` and maps the outcome to `Delivered` / `Retry` / `Failed`, with no queue hop.
 
 **Naming:** the outbox is an implementation detail to both sides of it. Emitters pass a `TEventInput`;
-consumers implement `IEventConsumer`, receive `TEvent[]` (the CloudEvents envelope) and return
+consumers implement `TEventConsumer`, receive `TEvent[]` (the CloudEvents envelope) and return
 `TEventConsumerResult` with an `EventResultStatus`. Everything comes from
 `@app/domains/platform/events/ce/module`. Names with "outbox" in them (the store, queue, cron jobs, metrics,
 `EventOutboxStatus`) describe the mechanism and stay inside the domain.
 
 **Who takes what:** code under `src/services/` and `src/ee/services/` takes `eventEmitter: TEventEmitter`
 (`@app/lib/knex/event-emitter`) and calls `eventEmitter.emit(events, tx)` with its Knex transaction. A domain
-takes `eventsService: TEventsService` and calls `eventsService.within(tx).emit(events)` inside its `run`, or
-`eventsService.emit(events)` outside one.
+takes `eventEmitterService: TEventEmitterService` and calls `eventEmitterService.within(tx).emit(events)` inside its
+`run`, or `eventEmitterService.emit(events)` outside one.
 
 #### How to implement an event
 
@@ -734,7 +734,7 @@ summarise them.
    });
    ```
 
-5. **Consume it with an `IEventConsumer`** whose `subscribesTo` matches the definition's `type` and
+5. **Consume it with an `TEventConsumer`** whose `subscribesTo` matches the definition's `type` and
    whose `dataSchema` is the definition's `data` schema. Nothing is written for an event no consumer
    subscribes to. Only `subscribesTo` runs before the insert, in memory: whether a customer configured
    anything for the resource is decided in the worker, and a row nobody wanted is marked `Delivered` and
@@ -746,7 +746,7 @@ they move to it.
 
 **Before writing a consumer or changing the outbox itself, read
 [`src/domains/platform/events/AGENTS.md`](src/domains/platform/events/AGENTS.md)** (retry ownership,
-`isFinalAttempt`, fenced claims, ordering). Register a consumer with `eventsService.registerConsumer(...)` in
+`isFinalAttempt`, fenced claims, ordering). Register a consumer with `domains.events.registerConsumer(...)` in
 `server/routes/index.ts`, before `domains.events.start()`: a registration after it throws. In short: delivery is at-least-once with best-effort ordering,
 and one event's failure must never escape `handle` (use `runEventsSerially` / `runEventsConcurrentlyByKey`).
 

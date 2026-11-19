@@ -1,7 +1,7 @@
 import type { Knex } from "knex";
 
 import { TEventInput } from "@app/domains/platform/events/ce/module";
-import { FakeEventsService } from "@app/domains/platform/events/ce/testing/fake-events-service";
+import { FakeEventEmitterService } from "@app/domains/platform/events/ce/testing/fake-event-emitter-service";
 
 import { legacyEventEmitter } from "./event-emitter";
 
@@ -12,38 +12,38 @@ const events: TEventInput[] = [
 describe("legacyEventEmitter", () => {
   test("should join a Knex transaction, so the events commit with the caller's write", async () => {
     // Setup
-    const eventsService = new FakeEventsService();
+    const eventEmitterService = new FakeEventEmitterService();
     const trx = { isTransaction: true, executionPromise: Promise.resolve() } as unknown as Knex;
 
     // Action
-    await legacyEventEmitter(eventsService).emit(events, trx);
+    await legacyEventEmitter(eventEmitterService).emit(events, trx);
 
     // Assert
-    expect(eventsService.emittedInTransaction.map((joined) => joined.events)).toEqual([events]);
+    expect(eventEmitterService.emittedInTransaction.map((joined) => joined.events)).toEqual([events]);
   });
 
   test("should emit on its own for a plain connection instead of trying to join it", async () => {
     // Setup
-    const eventsService = new FakeEventsService();
+    const eventEmitterService = new FakeEventEmitterService();
     const connection = {} as Knex;
 
     // Action
-    await legacyEventEmitter(eventsService).emit(events, connection);
+    await legacyEventEmitter(eventEmitterService).emit(events, connection);
 
     // Assert
-    expect(eventsService.emitted).toEqual(events);
-    expect(eventsService.emittedInTransaction).toEqual([]);
+    expect(eventEmitterService.emitted).toEqual(events);
+    expect(eventEmitterService.emittedInTransaction).toEqual([]);
   });
 
   test("should emit on its own when no transaction is given", async () => {
     // Setup
-    const eventsService = new FakeEventsService();
+    const eventEmitterService = new FakeEventEmitterService();
 
     // Action
-    await legacyEventEmitter(eventsService).emit(events);
+    await legacyEventEmitter(eventEmitterService).emit(events);
 
     // Assert
-    expect(eventsService.emitted).toEqual(events);
-    expect(eventsService.emittedInTransaction).toEqual([]);
+    expect(eventEmitterService.emitted).toEqual(events);
+    expect(eventEmitterService.emittedInTransaction).toEqual([]);
   });
 });

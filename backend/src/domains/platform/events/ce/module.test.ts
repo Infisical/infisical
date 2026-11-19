@@ -19,7 +19,10 @@ vi.mock("@app/lib/logger", () => ({
 }));
 
 vi.mock("@app/lib/telemetry/metrics", () => ({
-  resolveCoreMeter: () => ({ createObservableGauge: () => ({ addCallback: () => {} }) })
+  resolveCoreMeter: () => ({ createObservableGauge: () => ({ addCallback: () => {} }) }),
+  recordEventOutboxLagMetric: () => {},
+  recordEventOutboxExhaustedMetric: () => {},
+  recordEventOutboxRejectedMetric: () => {}
 }));
 
 // The module builds the Postgres store itself. Every query here fails with `queryError`, which is enough to
@@ -44,7 +47,7 @@ const buildModule = (flags: { isSecondaryInstance?: boolean; isGeneralWorkerRunM
     isGeneralWorkerRunModeEnabled: flags.isGeneralWorkerRunModeEnabled ?? true,
     isTelemetryEnabled: false
   });
-  module.eventsService.registerConsumer({
+  module.registerConsumer({
     name: "alert",
     dataSchema: z.object({}),
     subscribesTo: () => true,
@@ -149,7 +152,7 @@ describe("EventsModule.start", () => {
 
     // Action
     const register = () =>
-      module.eventsService.registerConsumer({
+      module.registerConsumer({
         name: "late",
         dataSchema: z.object({}),
         subscribesTo: () => true,

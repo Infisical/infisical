@@ -4,37 +4,40 @@ The transactional outbox: an event is written as a row in the write's own transa
 subscribing consumer at least once. How to define and emit an event is in `backend/AGENTS.md` ("How to implement
 an event"). This file is for writing a consumer or changing the domain itself.
 
-One service, `eventsService: TEventsService` (`EventsModule.eventsService`):
+Two services, split by who calls them:
 
-- `emit(events)` writes the events on their own.
-- `within(tx).emit(events)` joins the caller's transaction, so the events commit or roll back with it. It is the
-  only thing that can run on a caller's transaction (see "Events joins transactions" in `src/domains/AGENTS.md`).
-- `registerConsumer(consumer)` adds a consumer while the server is being wired.
-- `drain(consumer)` delivers a consumer's due events now. The flush worker calls it; so do e2e specs.
+- `eventEmitterService: TEventEmitterService` is what every emitter takes.
+  - `emit(events)` writes the events on their own.
+  - `within(tx).emit(events)` joins the caller's transaction, so the events commit or roll back with it. It is the
+    only thing that can run on a caller's transaction (see "Events joins transactions" in `src/domains/AGENTS.md`).
+- `eventDeliveryService: TEventDeliveryService` is what the module's worker, crons and timer call: `drain(consumer)`
+  delivers a consumer's due events now (e2e specs call it too), `relayDueEvents()` queues a flush per consumer with
+  due events, `sweepStaleClaims()` and `pruneTerminalRows()`. Nothing that emits takes it.
 
-The relay, the stale-claim sweep and the prune are methods on `EventsService` that are not on `TEventsService`:
-only the module's worker, crons and timer call them.
+`EventsModule.registerConsumer(consumer)` adds a consumer while the server is being wired.
 
 Owns the `event_outbox` table (`OutboxEntryStore`). Depends on no other domain.
 
 | Layer | Holds |
 | --- | --- |
-| `ce/models/` | `EventDefinition` (an event's name and data schema), `EmittedEvent` (a validated event about to be written), `OutboxEntry` (one consumer's delivery of one event: status, attempts, backoff), `RetryBackoff` |
+| `ce/models/` | `EventDefinition` (an event's name and data schema), `EmittedEvent` (a validated event about to be written), `OutboxEntry` (one consumer's delivery of one event: status, attempts, backoff), `OutboxClaim` (the entries one worker holds, and the token that fences them), `RetryBackoff` |
 | `ce/data-access/` | `OutboxEntryStore` |
-| `ce/services/events/` | `EventsService`, `EventsTransaction` |
+| `ce/clients/telemetry/` | `TelemetryClient`: the outbox metrics and the oldest-pending gauge, behind `TEventsMetrics` so services never import the meter |
+| `ce/services/event-emitter/` | `EventEmitterService` |
+| `ce/services/event-delivery/` | `EventDeliveryService` |
 | `ce/services/helpers/` | `ConsumerRegistry`, `buildDeliveries` (validation and who gets a row), `FlushQueue`, `RelayTimer`, and the helpers consumers use (`consume-events.ts`) |
-| `ce/testing/` | `InMemoryOutboxEntryStore`, the store contract suite, `buildEvents()` (the real service on in-memory stores), `FakeEventsService` |
+| `ce/testing/` | `InMemoryOutboxEntryStore`, the store contract suite, `buildEvents()` (the real services on in-memory stores), `FakeEventEmitterService`, `FakeEventsMetrics` |
 
 ## Declared exceptions
 
 - **Consumers register after the module is built, and most are legacy code.** A consumer depends on services
   that themselves emit, so it cannot arrive through the constructor the way License takes `usageCounters`.
-  `routes/index.ts` calls `eventsService.registerConsumer(...)` while wiring and `domains.events.start()` once
+  `routes/index.ts` calls `domains.events.registerConsumer(...)` while wiring and `domains.events.start()` once
   every consumer is in; `start()` seals the registry, so a late registration throws instead of silently missing
-  the events emitted before it. `IEventConsumer` is this domain's type, which the consumer implements.
+  the events emitted before it. `TEventConsumer` is this domain's type, which the consumer implements.
 - **Legacy code emits through `legacyEventEmitter`** (`src/lib/knex/event-emitter.ts`), which turns its
   `tx?: Knex` into `within(sealKnexTransaction(tx))`, or a plain `emit` when the handle is not a transaction. Do
-  not add a `Knex` parameter to `TEventsService`.
+  not add a `Knex` parameter to `TEventEmitterService`.
 
 ## Consumer contract
 
@@ -55,20 +58,21 @@ Owns the `event_outbox` table (`OutboxEntryStore`). Depends on no other domain.
   in-flight rows.
 - Discovery only sees consumers registered in this process; rows for other names wait and show on the
   oldest-pending gauge.
-- To test a consumer through real retries, build the service with `buildEvents({ consumers: [consumer] })` and
-  call `drain`; `outboxEntryStore.elapseBackoff()` makes waiting entries due.
+- To test a consumer through real retries, build the services with `buildEvents({ consumers: [consumer] })`, emit
+  through `eventEmitterService` and call `eventDeliveryService.drain`; `outboxEntryStore.elapseBackoff()` makes waiting entries due.
 
 ## Mechanism
 
 - **Rules about an entry live on `OutboxEntry`**: `settle(result, backoff)` and `expireClaim(backoff)` decide
-  delivered, retry or failed, and `isFinalAttempt()` is what the consumer is told. The store only persists the
+  delivered, retry or failed, and `isFinalAttempt()` is what the consumer is told. `OutboxClaim.settle(results)`
+  matches a consumer's results to its entries by event id. The store only persists the
   outcome, one `UPDATE` per distinct outcome (`RetryBackoff` gives entries on the same attempt one delay so
   they group).
 - Backoff is exponential with jitter from 30s; `MAX_OUTBOX_ATTEMPTS` puts the last attempt about an hour
   after the first. Manual replay: `status = 'retry', attempts = 0, nextRetryAt = now()`.
 - **Claims are fenced leases.** `drain` refreshes `lockedAt` while `handle` runs; the sweeper recycles
-  claims older than `STALE_CLAIM_THRESHOLD_MS`. `claimBatch` stamps a `lockToken` that `extendClaims` and
-  `saveSettled` require, so a recycled worker's late result cannot overwrite the new owner's. A short settle
+  claims older than `STALE_CLAIM_THRESHOLD_MS`. `claimBatch` stamps a `lockToken` on the `OutboxClaim` that
+  `extendClaim` and `saveSettled` require, so a recycled worker's late result cannot overwrite the new owner's. A short settle
   count in `drain`'s log is the only sign a batch went out twice.
 - **`claimBatch` is one statement outside a transaction**, so its row locks live only as long as the `UPDATE`.
   `saveSettled`, and `lockStaleClaims` with `saveExpired`, run inside `transactionRunner.run`.

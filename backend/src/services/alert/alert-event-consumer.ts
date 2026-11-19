@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import {
   EventResultStatus,
-  IEventConsumer,
+  TEventConsumer,
   runEventsSerially,
   TEvent,
   TEventConsumerResult
@@ -38,7 +38,7 @@ export const alertEventConsumerFactory = ({
   alertDAL,
   alertEngine,
   alertProviderRegistry
-}: TAlertEventConsumerDep): IEventConsumer<TAlertEventPayload> => {
+}: TAlertEventConsumerDep): TEventConsumer<TAlertEventPayload> => {
   const subscribesTo = (eventType: string): boolean => alertProviderRegistry.eventTriggeredKeys().has(eventType);
 
   // subscribesTo only sees the event type, so a valid key on the wrong resourceType slips through. Fail

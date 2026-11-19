@@ -1,7 +1,7 @@
 import {
   EventModificationType,
   EventResultStatus,
-  IEventConsumer,
+  TEventConsumer,
   parseEventPayload,
   runEventsConcurrentlyByKey,
   TEvent,
@@ -25,7 +25,7 @@ type TLicenseOrgDeletedConsumerDep = {
 export const licenseOrgDeletedConsumerFactory = ({
   envConfig,
   licenseService
-}: TLicenseOrgDeletedConsumerDep): IEventConsumer<TOrganizationModifiedEventData> => {
+}: TLicenseOrgDeletedConsumerDep): TEventConsumer<TOrganizationModifiedEventData> => {
   const subscribesTo = (eventType: string) => envConfig.isCloud && eventType === OrganizationModifiedEventV1.type;
 
   const $handleEvent = async (event: TEvent): Promise<TEventConsumerResult> => {

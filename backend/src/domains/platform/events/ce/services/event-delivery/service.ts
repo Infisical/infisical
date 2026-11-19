@@ -1,17 +1,21 @@
-import { TTransaction, TTransactionRunner } from "@app/domains/lib/transactions";
+import { TTransactionRunner } from "@app/domains/lib/transactions";
 import { logger } from "@app/lib/logger";
-import { recordEventOutboxExhaustedMetric, recordEventOutboxLagMetric } from "@app/lib/telemetry/metrics";
 
-import { TEventInput } from "../../models/emitted-event";
 import { EventDefinition } from "../../models/event-definition";
+import { OutboxClaim } from "../../models/outbox-claim";
 import { EventOutboxStatus, EventResultStatus, OutboxEntry } from "../../models/outbox-entry";
 import { RetryBackoff } from "../../models/retry-backoff";
-import { IEventConsumer, TEvent, TEventConsumerResult, TEventsStores, TOutboxEntryStore } from "../dependencies";
-import { buildDeliveries } from "../helpers/build-deliveries";
+import {
+  TEvent,
+  TEventConsumer,
+  TEventConsumerResult,
+  TEventsMetrics,
+  TEventsStores,
+  TOutboxEntryStore
+} from "../dependencies";
 import { ConsumerRegistry } from "../helpers/consumer-registry";
 import { FlushQueue } from "../helpers/flush-queue";
 import { TimeoutError, withTimeout } from "../helpers/with-timeout";
-import { EventsTransaction, TEventsTransaction } from "./events-transaction";
 
 const MAX_BATCHES_PER_FLUSH = 10;
 const OUTBOX_CLAIM_BATCH_SIZE = 100;
@@ -54,42 +58,23 @@ const toEvent = (entry: OutboxEntry): TEvent => ({
   isFinalAttempt: entry.isFinalAttempt()
 });
 
-export type TEventsService = {
-  // Writes the events on their own. To make one exactly as durable as a write, emit it through within(tx).
-  emit(events: TEventInput[]): Promise<void>;
-  // Joins the caller's transaction, so the events commit or roll back with it.
-  within(tx: TTransaction): TEventsTransaction;
-  // Only while wiring: it throws once the module has started.
-  registerConsumer(consumer: IEventConsumer): void;
+export type TEventDeliveryService = {
   // Delivers a consumer's due events now, in bounded batches.
   drain(consumer: string): Promise<{ handled: number; unknownConsumer: boolean }>;
+  // Queues a flush for every consumer with due events.
+  relayDueEvents(): Promise<void>;
+  sweepStaleClaims(): Promise<void>;
+  pruneTerminalRows(): Promise<void>;
 };
 
-export class EventsService implements TEventsService {
-  private oldestPending: { consumer: string; ageSeconds: number }[] = [];
-
+export class EventDeliveryService implements TEventDeliveryService {
   constructor(
     private readonly outboxEntryStore: TOutboxEntryStore,
     private readonly transactionRunner: TTransactionRunner<TEventsStores>,
     private readonly consumerRegistry: ConsumerRegistry,
     private readonly flushQueue: FlushQueue,
-    private readonly isTelemetryEnabled: boolean
+    private readonly metrics: TEventsMetrics
   ) {}
-
-  async emit(events: TEventInput[]): Promise<void> {
-    const deliveries = buildDeliveries(this.consumerRegistry, events);
-    if (deliveries.length === 0) return;
-
-    await this.outboxEntryStore.insert(deliveries);
-  }
-
-  within(tx: TTransaction): TEventsTransaction {
-    return new EventsTransaction(this.transactionRunner.within(tx), this.consumerRegistry);
-  }
-
-  registerConsumer(consumer: IEventConsumer): void {
-    this.consumerRegistry.register(consumer);
-  }
 
   // Discovery only sees consumers registered in this process; rows for other names wait.
   async relayDueEvents(): Promise<void> {
@@ -99,14 +84,9 @@ export class EventsService implements TEventsService {
       await Promise.all(consumers.map((consumer) => this.flushQueue.enqueue(consumer)));
     }
 
-    if (this.isTelemetryEnabled) {
-      this.oldestPending = await this.outboxEntryStore.findOldestPendingAgeSeconds();
+    if (this.metrics.isEnabled()) {
+      this.metrics.recordOldestPending(await this.outboxEntryStore.findOldestPendingAgeSeconds());
     }
-  }
-
-  // As of the last relay tick.
-  oldestPendingAges(): { consumer: string; ageSeconds: number }[] {
-    return this.oldestPending;
   }
 
   // Bounded so a deep backlog can't hold a worker forever; the relay's next tick picks up the rest.
@@ -121,14 +101,14 @@ export class EventsService implements TEventsService {
 
     for (let batch = 0; batch < MAX_BATCHES_PER_FLUSH; batch += 1) {
       // eslint-disable-next-line no-await-in-loop -- batches are serial on purpose, to stay paced
-      const { lockToken, entries } = await this.outboxEntryStore.claimBatch(consumerName, OUTBOX_CLAIM_BATCH_SIZE);
-      if (entries.length === 0) break;
+      const claim = await this.outboxEntryStore.claimBatch(consumerName, OUTBOX_CLAIM_BATCH_SIZE);
+      if (claim.isEmpty) break;
 
       // eslint-disable-next-line no-await-in-loop -- see above
-      const results = await this.handleClaimed(consumer, entries, lockToken);
+      const results = await this.handleClaimed(consumer, claim);
       // eslint-disable-next-line no-await-in-loop -- see above
-      await this.settle(consumerName, entries, lockToken, results);
-      handled += entries.length;
+      await this.settle(consumerName, claim, results);
+      handled += claim.entries.length;
     }
 
     return { handled, unknownConsumer: false };
@@ -164,7 +144,7 @@ export class EventsService implements TEventsService {
     }
 
     for (const [consumer, count] of failedByConsumer) {
-      recordEventOutboxExhaustedMetric({ consumer, count });
+      this.metrics.recordExhausted({ consumer, count });
       logger.error(
         `event-outbox: gave up on ${count} event(s) whose worker never reported back [consumer=${consumer}] [thresholdMs=${STALE_CLAIM_THRESHOLD_MS}]`
       );
@@ -199,14 +179,10 @@ export class EventsService implements TEventsService {
   }
 
   // The heartbeat lets a slow batch outlive STALE_CLAIM_THRESHOLD_MS without being delivered twice.
-  private async handleClaimed(
-    consumer: IEventConsumer,
-    entries: OutboxEntry[],
-    lockToken: string
-  ): Promise<TEventConsumerResult[]> {
-    const ids = entries.map((entry) => entry.id);
+  private async handleClaimed(consumer: TEventConsumer, claim: OutboxClaim): Promise<TEventConsumerResult[]> {
+    const { entries } = claim;
     const heartbeat = setInterval(() => {
-      this.outboxEntryStore.extendClaims(ids, lockToken).catch((error) => {
+      this.outboxEntryStore.extendClaim(claim).catch((error) => {
         logger.warn(error, `event-outbox: failed to extend a claim [consumer=${consumer.name}]`);
       });
     }, CLAIM_HEARTBEAT_INTERVAL_MS);
@@ -236,26 +212,20 @@ export class EventsService implements TEventsService {
     }
   }
 
-  private async settle(
-    consumer: string,
-    entries: OutboxEntry[],
-    lockToken: string,
-    results: TEventConsumerResult[]
-  ): Promise<void> {
-    const byEventId = new Map(results.map((result) => [result.id, result]));
-    const backoff = RetryBackoff.forBatch();
-    const now = Date.now();
+  private async settle(consumer: string, claim: OutboxClaim, results: TEventConsumerResult[]): Promise<void> {
+    const { entries } = claim;
+    claim.settle(results, RetryBackoff.forBatch());
 
+    const now = Date.now();
     for (const entry of entries) {
-      entry.settle(byEventId.get(entry.eventId), backoff);
-      recordEventOutboxLagMetric({
+      this.metrics.recordLag({
         consumer: entry.consumer,
         status: entry.status,
         seconds: (now - entry.occurredAt.getTime()) / 1000
       });
     }
 
-    const settled = await this.saveSettledWithRetry(consumer, entries, lockToken);
+    const settled = await this.saveSettledWithRetry(consumer, claim);
     if (settled < entries.length) {
       logger.warn(
         `event-outbox: settled ${settled} of ${entries.length} row(s); the rest were no longer held by this claim [consumer=${consumer}]`
@@ -264,7 +234,7 @@ export class EventsService implements TEventsService {
 
     const failed = entries.filter((entry) => entry.status === EventOutboxStatus.Failed);
     if (failed.length > 0) {
-      recordEventOutboxExhaustedMetric({ consumer, count: failed.length });
+      this.metrics.recordExhausted({ consumer, count: failed.length });
       const reasons = [...new Set(failed.map((entry) => entry.lastError ?? "unknown"))].join(" | ");
       logger.error(`event-outbox: gave up on ${failed.length} event(s) [consumer=${consumer}]: ${reasons}`);
     }
@@ -272,13 +242,11 @@ export class EventsService implements TEventsService {
 
   // The consumer already delivered by now, so a transient failure here is retried rather than left to the
   // sweeper, which would deliver the batch again.
-  private async saveSettledWithRetry(consumer: string, entries: OutboxEntry[], lockToken: string): Promise<number> {
+  private async saveSettledWithRetry(consumer: string, claim: OutboxClaim): Promise<number> {
     for (let attempt = 1; ; attempt += 1) {
       try {
         // eslint-disable-next-line no-await-in-loop -- retrying the same statement is the point
-        return await this.transactionRunner.run(({ stores }) =>
-          stores.outboxEntryStore.saveSettled(entries, lockToken)
-        );
+        return await this.transactionRunner.run(({ stores }) => stores.outboxEntryStore.saveSettled(claim));
       } catch (error) {
         if (attempt >= COMMIT_ATTEMPTS) throw error;
         logger.warn(

@@ -7,8 +7,9 @@ import { TReadOptions, TStoreConnection } from "@app/domains/lib/data-access";
 import { DatabaseError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 
+import { OutboxClaim } from "../models/outbox-claim";
 import { EventOutboxStatus, OutboxEntry } from "../models/outbox-entry";
-import { TOutboxClaim, TOutboxDelivery, TOutboxEntryStore } from "../services/dependencies";
+import { TOldestPendingAge, TOutboxDelivery, TOutboxEntryStore } from "../services/dependencies";
 
 // Postgres caps a statement at 65535 bind parameters and a row takes five, so a bulk write of ~13k+
 // secrets would otherwise fail.
@@ -73,7 +74,7 @@ export class OutboxEntryStore implements TOutboxEntryStore {
     }
   }
 
-  async findOldestPendingAgeSeconds(options?: TReadOptions): Promise<{ consumer: string; ageSeconds: number }[]> {
+  async findOldestPendingAgeSeconds(options?: TReadOptions): Promise<TOldestPendingAge[]> {
     try {
       const reader = this.connection.reader(options);
       const rows = await reader(TableName.EventOutbox)
@@ -97,10 +98,10 @@ export class OutboxEntryStore implements TOutboxEntryStore {
   }
 
   // One statement on purpose so the row locks only live as long as the UPDATE. The fresh lockToken is
-  // how extendClaims and saveSettled tell this claim apart from a later one on the same rows. Old pods
+  // how extendClaim and saveSettled tell this claim apart from a later one on the same rows. Old pods
   // write rows without an eventId during a rolling deploy, so the claim fills it in; consumers rely on
   // every event having one.
-  async claimBatch(consumer: string, limit: number): Promise<TOutboxClaim> {
+  async claimBatch(consumer: string, limit: number): Promise<OutboxClaim> {
     const lockToken = crypto.randomUUID();
     try {
       const writer = this.connection.writer();
@@ -127,7 +128,7 @@ export class OutboxEntryStore implements TOutboxEntryStore {
 
       // RETURNING order is arbitrary, and handle() is promised id order.
       const rows = (claimed as unknown as TEventOutbox[]).sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1));
-      return { lockToken, entries: rows.map(toModel) };
+      return OutboxClaim.restore({ lockToken, entries: rows.map(toModel) });
     } catch (error) {
       throw new DatabaseError({ error, name: "EventOutbox: claimBatch" });
     }
@@ -135,14 +136,14 @@ export class OutboxEntryStore implements TOutboxEntryStore {
 
   // Keeps lockedAt fresh so the sweeper doesn't hand a slow batch to another worker mid-delivery.
   // Scoped to this claim's token so a late heartbeat can't refresh a lock someone else now holds.
-  async extendClaims(ids: string[], lockToken: string): Promise<void> {
-    if (ids.length === 0) return;
+  async extendClaim(claim: OutboxClaim): Promise<void> {
+    if (claim.isEmpty) return;
     try {
       const writer = this.connection.writer();
       await writer(TableName.EventOutbox)
-        .whereIn("id", ids)
+        .whereIn("id", claim.entryIds())
         .where("status", EventOutboxStatus.Processing)
-        .where("lockToken", lockToken)
+        .where("lockToken", claim.lockToken)
         .update({ lockedAt: writer.fn.now() });
     } catch (error) {
       throw new DatabaseError({ error, name: "EventOutbox: extendClaims" });
@@ -151,11 +152,11 @@ export class OutboxEntryStore implements TOutboxEntryStore {
 
   // The count comes up short when the sweeper recycled the claim mid-delivery and another worker now
   // owns the rows.
-  async saveSettled(entries: OutboxEntry[], lockToken: string): Promise<number> {
+  async saveSettled(claim: OutboxClaim): Promise<number> {
     try {
       return await this.saveOutcomes(
-        entries,
-        (query) => void query.where("status", EventOutboxStatus.Processing).where("lockToken", lockToken)
+        claim.entries,
+        (query) => void query.where("status", EventOutboxStatus.Processing).where("lockToken", claim.lockToken)
       );
     } catch (error) {
       throw new DatabaseError({ error, name: "EventOutbox: commitResults" });

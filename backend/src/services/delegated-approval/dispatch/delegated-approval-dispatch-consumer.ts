@@ -3,7 +3,7 @@ import { UnrecoverableError } from "bullmq";
 import { ProjectType } from "@app/db/schemas";
 import {
   EventResultStatus,
-  IEventConsumer,
+  TEventConsumer,
   MAX_OUTBOX_ATTEMPTS,
   parseEventPayload,
   runEventsConcurrentlyByKey,
@@ -84,7 +84,7 @@ export const delegatedApprovalDispatchConsumerFactory = ({
   projectDAL,
   appConnectionDAL,
   kmsDataKeyService
-}: TDelegatedApprovalDispatchConsumerDep): IEventConsumer<TDelegatedApprovalDispatchRequestedPayload> => {
+}: TDelegatedApprovalDispatchConsumerDep): TEventConsumer<TDelegatedApprovalDispatchRequestedPayload> => {
   const $markDispatchFailed = async (delegatedRequestId: string, eventId: string, statusReason: string) => {
     try {
       await delegatedApprovalRequestDAL.updateWithDetails(

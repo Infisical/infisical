@@ -1,6 +1,6 @@
 import {
   EventResultStatus,
-  IEventConsumer,
+  TEventConsumer,
   TEvent,
   TEventConsumerResult
 } from "@app/domains/platform/events/ce/module";
@@ -64,7 +64,7 @@ export const orgAccessReconcileConsumerFactory = ({
   projectAccessRevokeService,
   auditLogService,
   usageMeteringService
-}: TOrgAccessReconcileConsumerDep): IEventConsumer<TOrgMembershipEventPayload> => {
+}: TOrgAccessReconcileConsumerDep): TEventConsumer<TOrgMembershipEventPayload> => {
   const eventTypes = new Set<string>(ORG_MEMBERSHIP_EVENTS);
   const subscribesTo = (eventType: string) => eventTypes.has(eventType);
 

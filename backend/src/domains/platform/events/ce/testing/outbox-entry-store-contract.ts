@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { EmittedEvent } from "../models/emitted-event";
+import { OutboxClaim } from "../models/outbox-claim";
 import { EventOutboxStatus, EventResultStatus, MAX_OUTBOX_ATTEMPTS } from "../models/outbox-entry";
 import { RetryBackoff } from "../models/retry-backoff";
 import { TOutboxDelivery, TOutboxEntryStore } from "../services/dependencies";
@@ -136,14 +137,15 @@ export const describeOutboxEntryStoreContract = (name: string, setup: TSetup) =>
       const harness = await setup();
       const consumer = newConsumer();
       await harness.store.insert(deliveries(consumer, 3));
-      const { lockToken, entries } = await harness.store.claimBatch(consumer, 10);
+      const claim = await harness.store.claimBatch(consumer, 10);
+      const { entries } = claim;
       const backoff = RetryBackoff.forBatch();
       entries[0].settle({ status: EventResultStatus.Delivered }, backoff);
       entries[1].settle({ status: EventResultStatus.Retry, error: "slack 502" }, backoff);
       entries[2].settle({ status: EventResultStatus.Failed, error: "bad payload" }, backoff);
 
       // Action
-      const saved = await harness.transaction((store) => store.saveSettled(entries, lockToken));
+      const saved = await harness.transaction((store) => store.saveSettled(claim));
 
       // Assert
       expect(saved).toBe(3);
@@ -199,13 +201,13 @@ export const describeOutboxEntryStoreContract = (name: string, setup: TSetup) =>
       const harness = await setup();
       const consumer = newConsumer();
       await harness.store.insert([delivery(consumer)]);
-      const { lockToken, entries } = await harness.store.claimBatch(consumer, 10);
-      await harness.patch(entries[0].id, { lockedAt: new Date(Date.now() - HOUR_MS) });
+      const claim = await harness.store.claimBatch(consumer, 10);
+      await harness.patch(claim.entries[0].id, { lockedAt: new Date(Date.now() - HOUR_MS) });
       await expireStaleClaims(harness);
-      entries[0].settle({ status: EventResultStatus.Delivered }, RetryBackoff.forBatch());
+      claim.entries[0].settle({ status: EventResultStatus.Delivered }, RetryBackoff.forBatch());
 
       // Action
-      const saved = await harness.transaction((store) => store.saveSettled(entries, lockToken));
+      const saved = await harness.transaction((store) => store.saveSettled(claim));
 
       // Assert
       expect(saved).toBe(0);
@@ -230,14 +232,14 @@ export const describeOutboxEntryStoreContract = (name: string, setup: TSetup) =>
       second.entries[0].settle({ status: EventResultStatus.Delivered }, backoff);
 
       // Action
-      const late = await harness.transaction((store) => store.saveSettled(first.entries, first.lockToken));
+      const late = await harness.transaction((store) => store.saveSettled(first));
 
       // Assert
       expect(late).toBe(0);
       expect(await harness.rows(consumer)).toMatchObject([
         { status: EventOutboxStatus.Processing, lockToken: second.lockToken }
       ]);
-      expect(await harness.transaction((store) => store.saveSettled(second.entries, second.lockToken))).toBe(1);
+      expect(await harness.transaction((store) => store.saveSettled(second))).toBe(1);
       expect(await harness.rows(consumer)).toMatchObject([{ status: EventOutboxStatus.Delivered, lockToken: null }]);
     });
 
@@ -246,16 +248,18 @@ export const describeOutboxEntryStoreContract = (name: string, setup: TSetup) =>
       const harness = await setup();
       const consumer = newConsumer();
       await harness.store.insert(deliveries(consumer, 2));
-      const { lockToken, entries } = await harness.store.claimBatch(consumer, 10);
-      const [held, released] = entries;
+      const claim = await harness.store.claimBatch(consumer, 10);
+      const [held, released] = claim.entries;
       const longAgo = new Date(Date.now() - HOUR_MS);
       await harness.patch(held.id, { lockedAt: longAgo });
       await harness.patch(released.id, { lockedAt: longAgo });
       released.settle({ status: EventResultStatus.Delivered }, RetryBackoff.forBatch());
-      await harness.transaction((store) => store.saveSettled([released], lockToken));
+      await harness.transaction((store) =>
+        store.saveSettled(OutboxClaim.restore({ lockToken: claim.lockToken, entries: [released] }))
+      );
 
       // Action
-      await harness.store.extendClaims([held.id, released.id], lockToken);
+      await harness.store.extendClaim(claim);
 
       // Assert
       const [a, b] = await harness.rows(consumer);
@@ -280,7 +284,7 @@ export const describeOutboxEntryStoreContract = (name: string, setup: TSetup) =>
       await harness.patch(id, { lockedAt: longAgo });
 
       // Action
-      await harness.store.extendClaims([id], first.lockToken);
+      await harness.store.extendClaim(first);
 
       // Assert
       const [stored] = await harness.rows(consumer);

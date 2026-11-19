@@ -1,14 +1,14 @@
-import { IEventConsumer } from "../dependencies";
+import { TEventConsumer } from "../dependencies";
 
 // Consumers are built after the services that emit to them, so they register at wiring time instead of
 // arriving through a constructor. Sealed once the workers start: a consumer added later would have missed
 // every event emitted before it.
 export class ConsumerRegistry {
-  private readonly consumers = new Map<string, IEventConsumer>();
+  private readonly consumers = new Map<string, TEventConsumer>();
 
   private sealed = false;
 
-  register(consumer: IEventConsumer): void {
+  register(consumer: TEventConsumer): void {
     if (this.sealed) {
       throw new Error(`Event consumer '${consumer.name}' was registered after the events module started`);
     }
@@ -22,7 +22,7 @@ export class ConsumerRegistry {
     this.sealed = true;
   }
 
-  get(name: string): IEventConsumer | undefined {
+  get(name: string): TEventConsumer | undefined {
     return this.consumers.get(name);
   }
 
@@ -30,7 +30,7 @@ export class ConsumerRegistry {
     return [...this.consumers.keys()];
   }
 
-  subscribersOf(eventType: string): IEventConsumer[] {
+  subscribersOf(eventType: string): TEventConsumer[] {
     return [...this.consumers.values()].filter((consumer) => consumer.subscribesTo(eventType));
   }
 }

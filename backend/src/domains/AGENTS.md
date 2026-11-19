@@ -209,7 +209,7 @@ Calling another domain is a last resort. Before adding one:
 1. If you keep needing another domain's data for your own decisions, the boundary is wrong. Move the data
    or rule and raise it in review.
 2. If the other domain should react to your change (keys for a new project, cleanup after a delete), emit an
-   event in your transaction (`eventsService.within(tx).emit(...)`, see "Events joins transactions"). Until that
+   event in your transaction (`eventEmitterService.within(tx).emit(...)`, see "Events joins transactions"). Until that
    event exists, call it after your commit.
 3. If you need a value to write your own data (a cipher, a key id, a plan), call it before your `run`.
 
@@ -294,15 +294,15 @@ Events is the other domain any caller may bring into its transaction, because th
 the event has to commit or roll back with the write it describes. Emitting after the commit loses the event
 whenever the pod dies in between.
 
-- `eventsService.within(tx)` returns `TEventsTransaction`, which can only `emit`. Call it inside your `run` with
+- `eventEmitterService.within(tx)` returns `TEventEmitterTransaction`, which can only `emit`. Call it inside your `run` with
   the `tx` you were handed. This is the one case where `tx` goes to another domain and a method of another domain
   runs inside `run`.
 - It costs one insert on your connection: no lock, no read, no network call, and nothing waits on another
   domain's rows. Validation runs in memory before it.
 - A malformed event throws and fails your transaction, on purpose. So does a failed insert: don't catch either,
   the transaction is unusable afterwards.
-- Outside a transaction, call `eventsService.emit(events)`.
-- Take `eventsService: TEventsService` in your module deps; `domains.ts` builds Events first. Define your events
+- Outside a transaction, call `eventEmitterService.emit(events)`.
+- Take `eventEmitterService: TEventEmitterService` in your module deps; `domains.ts` builds Events first. Define your events
   with `EventDefinition.define` in your own domain.
 
 ## Errors
@@ -411,7 +411,7 @@ sets the pattern from the rules above, and its PR names it here.
 | Entity with one method per change | `platform/events/ce/models/outbox-entry.ts` (`settle`, `expireClaim`) |
 | In-memory store, contract suite run on both stores | `platform/events/ce/testing/` (`InMemoryOutboxEntryStore`, `outbox-entry-store-contract.ts`) |
 | Router | none yet |
-| A service on in-memory stores for tests (`build<Domain>()`), fake for consumers | `platform/events/ce/testing/build-events.ts`, `fake-events-service.ts` |
+| A service on in-memory stores for tests (`build<Domain>()`), fake for consumers | `platform/events/ce/testing/build-events.ts`, `fake-event-emitter-service.ts` |
 | Workers, crons and a timer in `start()`, with a `stop()` | `platform/events/ce/module.ts` |
 | Store query style on Postgres (returns counts, so no row-to-model mapping) | `platform/organizations-projects/ce/data-access/organization-store.ts` |
 | Joining a caller's transaction | `platform/organizations-projects/ce/services/organizations-projects/organizations-projects-transaction.ts` |
