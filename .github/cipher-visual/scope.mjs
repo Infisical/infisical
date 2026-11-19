@@ -26,7 +26,8 @@ const sourceOf = (ref) => {
   try {
     const parent = git("rev-parse", sha + "^");
     const outside = git("diff", "--name-only", parent, sha, "--", ".", ":!dist", ":!package.json");
-    if (!outside) return parent;
+    const built = git("diff", "--name-only", parent, sha, "--", "dist");
+    if (!outside && built) return parent;
   } catch {}
   return sha;
 };

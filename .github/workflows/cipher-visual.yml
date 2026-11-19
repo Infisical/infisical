@@ -95,6 +95,7 @@ jobs:
           CANDIDATE_SHA: ${{ steps.refs.outputs.candidate_sha }}
         run: |
           mkdir -p scope
+          git -C cipher checkout -q "$CANDIDATE_SHA"
           node .github/cipher-visual/scope.mjs --cipher cipher --base "$BASE_SHA" --candidate "$CANDIDATE_SHA" --pages .github/cipher-visual/pages.json > scope/scope.json
           pages=$(MODE="$MODE" node -e '
             const s = JSON.parse(require("fs").readFileSync("scope/scope.json", "utf8"));
@@ -121,7 +122,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     container:
-      image: mcr.microsoft.com/playwright:v1.65.0-noble
+      image: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:9beb546099e11f52d62e505537914870e01a67e0e6b00ae41da4775324e73dbe
     strategy:
       fail-fast: false
       matrix:

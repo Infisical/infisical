@@ -42,7 +42,7 @@ for (const key of [...b].sort()) {
     pixels = -1;
   } else {
     diff = new PNG({ width: px.width, height: px.height });
-    pixels = pixelmatch(px.data, py.data, diff.data, px.width, px.height, { threshold });
+    pixels = pixelmatch(px.data, py.data, diff.data, px.width, px.height, { threshold, includeAA: threshold === 0 });
   }
   if (pixels === 0) { result.unchanged += 1; continue; }
   result.changed.push({ file: key, pixels: pixels === -1 ? "size " + px.width + "x" + px.height + " -> " + py.width + "x" + py.height : pixels });
