@@ -6,7 +6,6 @@ import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { FakeKmsCore } from "@app/domains/platform/kms-core/ce/testing/fake-kms-core";
 
 import { InstanceConfigCoreModule } from "../../module";
-import { FakeInstanceConfigEnv } from "../../testing/fake-instance-config-env";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
@@ -20,7 +19,7 @@ const buildModule = async () => {
     db: h.db,
     keyStore: new InMemoryKeyStore(),
     kmsRootKeyService: new FakeKmsCore().kmsRootKeyService,
-    instanceConfigEnv: new FakeInstanceConfigEnv(),
+    processEnv: {},
     isFipsEnabled: () => false
   });
 };
@@ -101,7 +100,7 @@ describe("InstanceConfigCoreModule.create", () => {
       db: h.db,
       keyStore: new InMemoryKeyStore(),
       kmsRootKeyService: new FakeKmsCore().kmsRootKeyService,
-      instanceConfigEnv: new FakeInstanceConfigEnv(),
+      processEnv: {},
       isFipsEnabled: () => false
     });
 

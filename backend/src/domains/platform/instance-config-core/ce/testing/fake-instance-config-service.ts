@@ -3,10 +3,10 @@ import { randomUUID } from "node:crypto";
 import { TReadOptions } from "@app/domains/lib/data-access";
 import { InMemoryKeyStore } from "@app/domains/lib/key-store/testing/in-memory-key-store";
 import { FakeKmsCore } from "@app/domains/platform/kms-core/ce/testing/fake-kms-core";
-import { TOverridableEnvConfig } from "@app/lib/config/env";
 
 import { InstanceConfigCache } from "../data-access/instance-config-cache";
 import { ResolvedEnvCache } from "../data-access/resolved-env-cache";
+import { EnvOverrides, TOverridableEnvConfig } from "../models/env-overrides";
 import { TGitHubAppCredentialsRecord } from "../models/github-app-credentials";
 import { INSTANCE_CONFIG_ID, InstanceConfig, TInstanceConfigSettings } from "../models/instance-config";
 import { TMicrosoftTeamsAppCredentialsRecord } from "../models/microsoft-teams-app-credentials";
@@ -16,7 +16,6 @@ import {
   TInstanceConfigPatch,
   TInstanceConfigService
 } from "../services/instance-config/service";
-import { FakeInstanceConfigEnv } from "./fake-instance-config-env";
 import { InMemoryInstanceConfigStores } from "./in-memory-instance-config-stores";
 
 type TOptions = {
@@ -46,7 +45,7 @@ export class FakeInstanceConfigService implements TInstanceConfigService {
     const { kmsRootKeyService } = new FakeKmsCore();
     const seal = kmsRootKeyService.encryptWithRootKey();
     const now = new Date();
-    this.env = FakeInstanceConfigEnv.defaults(env);
+    this.env = { ...EnvOverrides.none().resolve({}), ...env };
 
     const config = InstanceConfig.restore({
       id: INSTANCE_CONFIG_ID,
@@ -97,7 +96,7 @@ export class FakeInstanceConfigService implements TInstanceConfigService {
       new InstanceConfigCache(new InMemoryKeyStore()),
       new ResolvedEnvCache(),
       kmsRootKeyService,
-      new FakeInstanceConfigEnv()
+      {}
     );
   }
 

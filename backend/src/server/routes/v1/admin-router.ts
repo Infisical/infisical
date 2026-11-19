@@ -8,9 +8,10 @@ import {
   OrgMembershipsSchema,
   OrgMembershipStatus
 } from "@app/db/schemas";
+import { OVERRIDABLE_ENV_KEYS } from "@app/domains/platform/instance-config-core/ce/module";
 import { RootKeyEncryptionStrategy } from "@app/domains/platform/kms-core/ce/module";
 import { ENCRYPTION_KEY_ROTATION } from "@app/lib/api-docs";
-import { getConfig, overridableKeys } from "@app/lib/config/env";
+import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { AllowedEmailDomainsSchema } from "@app/lib/validator";
@@ -225,7 +226,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           })
           .optional(),
         allowedStorageHostnames: StorageHostnameSchema.array().max(50).optional(),
-        envOverrides: z.record(z.enum(Array.from(overridableKeys) as [string, ...string[]]), z.string()).optional()
+        envOverrides: z.record(z.enum(OVERRIDABLE_ENV_KEYS as [string, ...string[]]), z.string()).optional()
       }),
       response: {
         200: z.object({

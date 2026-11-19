@@ -1,8 +1,7 @@
 import { TReadOptions } from "@app/domains/lib/data-access";
 import { TStoreLocks } from "@app/domains/lib/transactions";
-import type { TOverridableEnvConfig } from "@app/lib/config/env";
 
-import { TEnvOverrideGroups, TEnvOverridesRecord } from "../models/env-overrides";
+import { TOverridableEnvConfig } from "../models/env-overrides";
 import { InstanceConfig } from "../models/instance-config";
 
 // Owns super_admin: one row for the whole instance. Its reads also join organizations, saml_configs and oidc_configs
@@ -34,21 +33,4 @@ export type TResolvedEnvCache = {
 export type TInstanceConfigStores = {
   instanceConfigStore: TInstanceConfigStore;
   locks: TStoreLocks;
-};
-
-export type TResolvedOverridableEnv =
-  | { success: true; config: TOverridableEnvConfig }
-  | { success: false; issues: string[] };
-
-// What this domain needs from the env: the overridable keys and the Slack defaults. Built by domains.ts from lib/config/env.ts so this domain never loads it.
-export type TInstanceConfigEnv = {
-  groups: TEnvOverrideGroups;
-  keys: ReadonlySet<string>;
-  // Parses the process env with these overrides on top, through the env schema (its coercion, defaults and
-  // fallbacks), and returns the overridable keys. One issue line per rejected key.
-  resolve(overrides: TEnvOverridesRecord): TResolvedOverridableEnv;
-  // Whether the process env as it started sets the key.
-  hasEnvValue(key: string): boolean;
-  // WORKFLOW_SLACK_CLIENT_ID and WORKFLOW_SLACK_CLIENT_SECRET, which back the Slack credentials an admin has not stored.
-  slackDefaults(): { clientId?: string; clientSecret?: string };
 };

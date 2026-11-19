@@ -1,5 +1,4 @@
-import type { TOverridableEnvConfig } from "@app/lib/config/env";
-
+import { TOverridableEnvConfig } from "../models/env-overrides";
 import { TResolvedEnvCache } from "../services/dependencies";
 
 // One entry: the stored overrides change rarely, and every pod holds the same ones.

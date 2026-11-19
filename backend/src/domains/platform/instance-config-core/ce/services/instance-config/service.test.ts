@@ -1,13 +1,11 @@
 import { randomUUID } from "node:crypto";
 
 import { ReadFrom, TReadOptions } from "@app/domains/lib/data-access";
-import { RuleViolationError } from "@app/domains/lib/errors";
 
 import { InstanceConfigCache } from "../../data-access/instance-config-cache";
 import { ResolvedEnvCache } from "../../data-access/resolved-env-cache";
 import { InstanceConfig } from "../../models/instance-config";
 import { buildInstanceConfigCore } from "../../testing/build-instance-config-core";
-import { FakeInstanceConfigEnv } from "../../testing/fake-instance-config-env";
 import { InMemoryInstanceConfigStore } from "../../testing/in-memory-instance-config-store";
 import { TInstanceConfigStore } from "../dependencies";
 import { InstanceConfigService } from "./service";
@@ -91,24 +89,6 @@ describe("InstanceConfigService.getInstanceConfig", () => {
     expect(config.initialized).toBe(false);
   });
 
-  test("should fall back to the env defaults when the env schema no longer accepts the stored overrides", async () => {
-    // Setup
-    const first = await buildInstanceConfigCore();
-    await first.module.instanceConfigService.updateConfig({ envOverrides: { CLIENT_ID_GITHUB_LOGIN: "from-admin" } });
-    const { module } = await buildInstanceConfigCore({
-      memory: first.memory,
-      keyStore: first.keyStore,
-      kmsCore: first.kmsCore,
-      env: new FakeInstanceConfigEnv({ rejectedKeys: ["CLIENT_ID_GITHUB_LOGIN"] })
-    });
-
-    // Action
-    const config = await module.instanceConfigService.getInstanceConfig();
-
-    // Assert
-    expect(config.CLIENT_ID_GITHUB_LOGIN).toBeUndefined();
-  });
-
   test("should read the primary when the replica has not got the row yet", async () => {
     // Setup
     const { memory, keyStore, kmsCore } = await buildInstanceConfigCore();
@@ -118,7 +98,7 @@ describe("InstanceConfigService.getInstanceConfig", () => {
       new InstanceConfigCache(keyStore),
       new ResolvedEnvCache(),
       kmsCore.kmsRootKeyService,
-      new FakeInstanceConfigEnv()
+      {}
     );
     await keyStore.deleteItem(CACHE_KEY);
 
@@ -168,21 +148,20 @@ describe("InstanceConfigService.updateConfig", () => {
     }
   );
 
-  test("should refuse overrides the env schema rejects and change nothing", async () => {
+  test("should drop the env overrides an admin cannot override", async () => {
     // Setup
-    const { module } = await buildInstanceConfigCore({
-      env: new FakeInstanceConfigEnv({ rejectedKeys: ["CLIENT_ID_GITHUB_LOGIN"] })
-    });
+    const { module, memory, kmsCore } = await buildInstanceConfigCore();
     const service = module.instanceConfigService;
-    const before = await service.getInstanceConfig();
 
     // Action
-    const result = service.updateConfig({ allowSignUp: false, envOverrides: { CLIENT_ID_GITHUB_LOGIN: "x" } });
+    await service.updateConfig({ envOverrides: { CLIENT_ID_GITHUB_LOGIN: "from-admin", SALT_ROUNDS: "11" } });
 
     // Assert
-    await expect(result).rejects.toThrow('Key: "CLIENT_ID_GITHUB_LOGIN", Error: Invalid value');
-    await expect(result).rejects.toBeInstanceOf(RuleViolationError);
-    expect(await service.getInstanceConfig()).toEqual(before);
+    const row = await memory.instanceConfigStore.find();
+    if (!row) throw new Error("row missing");
+    expect(row.envOverrides(kmsCore.kmsRootKeyService.decryptWithRootKey()).toJSON()).toEqual({
+      CLIENT_ID_GITHUB_LOGIN: "from-admin"
+    });
   });
 
   test("should rewrite the shared copy so another pod sees the change", async () => {
@@ -264,7 +243,7 @@ describe("InstanceConfigService.getSlackCredentials", () => {
   test("should fall back to the env defaults for what the instance has not stored", async () => {
     // Setup
     const { module } = await buildInstanceConfigCore({
-      env: new FakeInstanceConfigEnv({ slackDefaults: { clientId: "env-id", clientSecret: "env-secret" } })
+      processEnv: { WORKFLOW_SLACK_CLIENT_ID: "env-id", WORKFLOW_SLACK_CLIENT_SECRET: "env-secret" }
     });
     const service = module.instanceConfigService;
     await service.updateConfig({ slackClientId: "stored-id" });
@@ -400,7 +379,7 @@ describe("InstanceConfigService.getEnvOverridesOrganized", () => {
   test("should show the stored override and whether the process env sets the key", async () => {
     // Setup
     const { module } = await buildInstanceConfigCore({
-      env: new FakeInstanceConfigEnv({ envKeys: ["CLIENT_ID_GOOGLE_LOGIN"] })
+      processEnv: { CLIENT_ID_GOOGLE_LOGIN: "from-env" }
     });
     const service = module.instanceConfigService;
     await service.updateConfig({ envOverrides: { CLIENT_ID_GITHUB_LOGIN: "from-admin" } });

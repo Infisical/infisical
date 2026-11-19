@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 
 import { TableName } from "@app/db/schemas";
-import type { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
-import { overwriteSchema } from "@app/lib/config/env";
+import {
+  OVERRIDABLE_ENV_KEYS,
+  type TInstanceConfigService
+} from "@app/domains/platform/instance-config-core/ce/module";
 import { LoginMethod, SuperAdminErrorCode } from "@app/services/super-admin/super-admin-types";
 
 // registerRoutes publishes its services for the e2e suite; writes through the service also refresh the shared cache.
@@ -150,7 +152,7 @@ describe("Admin V1 Router", () => {
   });
 
   describe("overridable env values", () => {
-    const overridableKeyNames = Object.values(overwriteSchema).flatMap(({ fields }) => fields.map(({ key }) => key));
+    const overridableKeyNames = OVERRIDABLE_ENV_KEYS;
     const privateKeyCanary = `override-canary-${randomUUID()}`;
 
     beforeAll(async () => {

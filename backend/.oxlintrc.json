@@ -544,14 +544,6 @@
                   "unsealTransaction"
                 ],
                 "message": "Only data-access/ may unseal a transaction: nothing else runs SQL on another domain's transaction."
-              },
-              {
-                "name": "@app/lib/config/env",
-                "importNames": [
-                  "resolveOverridableEnv",
-                  "hasOriginalEnvValue"
-                ],
-                "message": "Env values an instance admin can override come only from instanceConfigService.getInstanceConfig(). These are for domains.ts, which hands them to Instance Config Core."
               }
             ]
           }

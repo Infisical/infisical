@@ -2,22 +2,20 @@ import { findOnReplicaThenPrimary, ReadFrom, TReadOptions } from "@app/domains/l
 import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 import { TTransactionRunner } from "@app/domains/lib/transactions";
 import type { TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
-import type { TOverridableEnvConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
-import { EnvOverrides, TEnvOverridesRecord, TOrganizedEnvOverrides } from "../../models/env-overrides";
+import {
+  EnvOverrides,
+  TEnvOverridesRecord,
+  TOrganizedEnvOverrides,
+  TOverridableEnvConfig,
+  TProcessEnv
+} from "../../models/env-overrides";
 import { GitHubAppCredentials } from "../../models/github-app-credentials";
 import { InstanceConfig, TInstanceConfigSettings } from "../../models/instance-config";
 import { MicrosoftTeamsAppCredentials } from "../../models/microsoft-teams-app-credentials";
 import { SlackAppCredentials } from "../../models/slack-app-credentials";
-import {
-  TInstanceConfigCache,
-  TInstanceConfigEnv,
-  TInstanceConfigStore,
-  TInstanceConfigStores,
-  TResolvedEnvCache,
-  TResolvedOverridableEnv
-} from "../dependencies";
+import { TInstanceConfigCache, TInstanceConfigStore, TInstanceConfigStores, TResolvedEnvCache } from "../dependencies";
 
 // The instance's settings and every env value an instance admin can override, resolved: the override when one is
 // stored, otherwise the process env.
@@ -83,7 +81,7 @@ export class InstanceConfigService implements TInstanceConfigService {
     private readonly instanceConfigCache: TInstanceConfigCache,
     private readonly resolvedEnvCache: TResolvedEnvCache,
     private readonly kmsRootKeyService: TKmsRootKeyService,
-    private readonly instanceConfigEnv: TInstanceConfigEnv
+    private readonly processEnv: TProcessEnv
   ) {}
 
   async getInstanceConfig(): Promise<TInstanceConfig> {
@@ -98,9 +96,10 @@ export class InstanceConfigService implements TInstanceConfigService {
 
   async getSlackCredentials(): Promise<SlackAppCredentials> {
     const config = await this.readConfig();
-    return config
-      .slackCredentials(this.kmsRootKeyService.decryptWithRootKey())
-      .orEnv(this.instanceConfigEnv.slackDefaults());
+    return config.slackCredentials(this.kmsRootKeyService.decryptWithRootKey()).orEnv({
+      clientId: this.processEnv.WORKFLOW_SLACK_CLIENT_ID?.trim(),
+      clientSecret: this.processEnv.WORKFLOW_SLACK_CLIENT_SECRET?.trim()
+    });
   }
 
   async getMicrosoftTeamsCredentials(options?: TReadOptions): Promise<TMicrosoftTeamsCredentials> {
@@ -123,9 +122,7 @@ export class InstanceConfigService implements TInstanceConfigService {
 
   async getEnvOverridesOrganized(): Promise<TOrganizedEnvOverrides> {
     const config = await this.readConfig();
-    return config
-      .envOverrides(this.kmsRootKeyService.decryptWithRootKey())
-      .organize(this.instanceConfigEnv.groups, (key) => this.instanceConfigEnv.hasEnvValue(key));
+    return config.envOverrides(this.kmsRootKeyService.decryptWithRootKey()).organize(this.processEnv);
   }
 
   async updateConfig(patch: TInstanceConfigPatch): Promise<TInstanceConfigSettings> {
@@ -135,13 +132,7 @@ export class InstanceConfigService implements TInstanceConfigService {
           "No recognized instance configuration fields were provided. Settings that have been removed are no longer accepted."
       });
     }
-    const overrides =
-      patch.envOverrides !== undefined
-        ? EnvOverrides.create(patch.envOverrides, this.instanceConfigEnv.keys, (values) => {
-            const resolved = this.instanceConfigEnv.resolve(values);
-            return resolved.success ? [] : resolved.issues;
-          })
-        : undefined;
+    const overrides = patch.envOverrides !== undefined ? EnvOverrides.create(patch.envOverrides) : undefined;
     const seal = this.kmsRootKeyService.encryptWithRootKey();
 
     const updated = await this.change((config) => {
@@ -229,25 +220,14 @@ export class InstanceConfigService implements TInstanceConfigService {
     const cached = this.resolvedEnvCache.get(version);
     if (cached) return cached;
 
-    let resolved: TResolvedOverridableEnv;
+    let resolved: TOverridableEnvConfig;
     try {
-      const overrides = config.envOverrides(this.kmsRootKeyService.decryptWithRootKey());
-      resolved = this.instanceConfigEnv.resolve(overrides.toJSON());
+      resolved = config.envOverrides(this.kmsRootKeyService.decryptWithRootKey()).resolve(this.processEnv);
     } catch (error) {
-      logger?.error(error, "Stored env overrides cannot be read; using the process env instead");
-      resolved = { success: false, issues: [] };
+      logger?.error(error, "Stored env overrides cannot be applied; using the process env instead");
+      resolved = EnvOverrides.none().resolve(this.processEnv);
     }
-    if (!resolved.success) {
-      if (resolved.issues.length > 0) {
-        logger?.warn(
-          { issues: resolved.issues },
-          "Stored env overrides no longer parse; using the process env instead"
-        );
-      }
-      resolved = this.instanceConfigEnv.resolve({});
-      if (!resolved.success) throw new Error(`The process env does not parse: ${resolved.issues.join("; ")}`);
-    }
-    this.resolvedEnvCache.set(version, resolved.config);
-    return resolved.config;
+    this.resolvedEnvCache.set(version, resolved);
+    return resolved;
   }
 }

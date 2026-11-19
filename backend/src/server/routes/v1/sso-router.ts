@@ -15,8 +15,9 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as OAuth2Strategy } from "passport-oauth2";
 import { z } from "zod";
 
+import type { TInstanceConfig } from "@app/domains/platform/instance-config-core/ce/module";
 import { INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN } from "@app/lib/config/const";
-import { getConfig, TOverridableEnvConfig } from "@app/lib/config/env";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
@@ -37,7 +38,7 @@ import { PostHogEventTypes, SignupAttributionType, SignupSource } from "@app/ser
 const passport = new Authenticator({ key: "sso", userProperty: "passportUser" });
 
 type TOauthLoginConfig = Pick<
-  TOverridableEnvConfig,
+  TInstanceConfig,
   | "CLIENT_ID_GOOGLE_LOGIN"
   | "CLIENT_SECRET_GOOGLE_LOGIN"
   | "CLIENT_ID_GITHUB_LOGIN"

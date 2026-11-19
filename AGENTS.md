@@ -125,9 +125,9 @@ The `super_admin` row (instance settings, Slack, Teams and GitHub app credential
 Config Core: take `instanceConfigService: TInstanceConfigService` and read it through `getInstanceConfig()`,
 `isInstanceAdminIdentity()` and the credential getters; change it through `updateConfig()` and the other intent
 methods. Never query `super_admin` or decrypt its columns elsewhere; its cached value is shared with pods of the
-previous release. The env values an instance admin can override (`TOverridableKey` in `lib/config/env.ts`) are not on
-`getConfig()`: read them from `getInstanceConfig()` per use, never at boot, and destructure only the keys you need,
-because that object holds plaintext secrets. See `backend/src/domains/platform/instance-config-core/AGENTS.md`.
+previous release. The env values an instance admin can override (`EnvOverrides.KEYS` in Instance Config Core) are not
+in `lib/config/env.ts` and never go back into `envSchema`: read them from `getInstanceConfig()` per use, never at boot,
+and destructure only the keys you need, because that object holds plaintext secrets. See `backend/src/domains/platform/instance-config-core/AGENTS.md`.
 
 ### Service Factory + Manual DI (Backend)
 

@@ -10,13 +10,16 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { InstanceConfigCache } from "./data-access/instance-config-cache";
 import { InstanceConfigStore } from "./data-access/instance-config-store";
 import { ResolvedEnvCache } from "./data-access/resolved-env-cache";
+import { EnvOverrides, TProcessEnv } from "./models/env-overrides";
 import { InstanceConfig } from "./models/instance-config";
-import { TInstanceConfigEnv, TInstanceConfigStore, TInstanceConfigStores } from "./services/dependencies";
+import { TInstanceConfigStore, TInstanceConfigStores } from "./services/dependencies";
 import { InstanceConfigService, TInstanceConfigService } from "./services/instance-config/service";
 
 export { ReadFrom } from "@app/domains/lib/data-access";
-export type { TInstanceConfigEnv } from "./services/dependencies";
-export type { TInstanceConfigPatch, TInstanceConfigService } from "./services/instance-config/service";
+export type { TInstanceConfig, TInstanceConfigPatch, TInstanceConfigService } from "./services/instance-config/service";
+
+// The env values an instance admin can override, for request schemas that accept them.
+export const OVERRIDABLE_ENV_KEYS = EnvOverrides.KEYS;
 
 type TInstanceConfigStoreAccess = {
   transactionRunner: TTransactionRunner<TInstanceConfigStores>;
@@ -31,7 +34,8 @@ type TInstanceConfigCoreDeps = (
 ) & {
   keyStore: TDomainKeyStore;
   kmsRootKeyService: TKmsRootKeyService;
-  instanceConfigEnv: TInstanceConfigEnv;
+  // The process env as the server started: Instance Config Core parses the values an admin can override from it.
+  processEnv: TProcessEnv;
   isFipsEnabled?: () => boolean;
 };
 
@@ -69,7 +73,7 @@ export class InstanceConfigCoreModule {
         instanceConfigCache,
         new ResolvedEnvCache(),
         deps.kmsRootKeyService,
-        deps.instanceConfigEnv
+        deps.processEnv
       )
     );
   }
