@@ -52,7 +52,7 @@ To use the template, choose it when you [add an account](/documentation/platform
 
 **Allow Auto-Approval** and **Allow Break-Glass** only work together with **Require Approval**. If you turn off **Require Approval**, Infisical also turns off **Allow Break-Glass**.
 
-Machine identities and [AI agents](/documentation/platform/pam/ai-agents/overview) can't complete an MFA challenge, so they can't connect to accounts whose template has **Require MFA** on. If an agent needs an account, use **Require Approval** instead.
+Machine identities can't complete an MFA challenge. They can't connect to accounts whose template has **Require MFA** on. If an [AI agent](/documentation/platform/pam/ai-agents/overview#accounts-that-require-mfa) runs as you, it gives you a link to complete MFA in your browser. If an agent runs as a machine identity and needs an account, use **Require Approval** instead.
 
 ### Output masking
 
