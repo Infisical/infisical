@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -42,24 +42,19 @@ const COMMENT_MAX_LENGTH = 500;
 
 type CancellationReason = (typeof CANCELLATION_REASONS)[number]["value"];
 
-const formSchema = z
-  .object({
-    reason: z.enum(
-      CANCELLATION_REASONS.map((reason) => reason.value) as [
-        CancellationReason,
-        ...CancellationReason[]
-      ],
-      { message: "Select a reason to continue." }
-    ),
-    comment: z
-      .string()
-      .trim()
-      .max(COMMENT_MAX_LENGTH, `Keep your comment under ${COMMENT_MAX_LENGTH} characters.`)
-  })
-  .refine(({ reason, comment }) => reason !== "other" || comment.length > 0, {
-    path: ["comment"],
-    message: "Add a comment to continue."
-  });
+const formSchema = z.object({
+  reason: z.enum(
+    CANCELLATION_REASONS.map((reason) => reason.value) as [
+      CancellationReason,
+      ...CancellationReason[]
+    ],
+    { message: "Select a reason to continue." }
+  ),
+  comment: z
+    .string()
+    .trim()
+    .max(COMMENT_MAX_LENGTH, `Keep your comment under ${COMMENT_MAX_LENGTH} characters.`)
+});
 
 type FormData = z.infer<typeof formSchema>;
 
@@ -100,17 +95,27 @@ export const CancellationFeedbackDialog = ({
   const {
     control,
     handleSubmit,
-    trigger,
     setFocus,
-    formState: { isSubmitting, isSubmitted }
+    formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: { comment: "" }
   });
 
-  const isCommentRequired = useWatch({ control, name: "reason" }) === "other";
+  const isOther = useWatch({ control, name: "reason" }) === "other";
+  const [isCommentNudged, setIsCommentNudged] = useState(false);
+
+  useEffect(() => {
+    if (isCommentNudged && !isSubmitting) {
+      setFocus("comment");
+    }
+  }, [isCommentNudged, isSubmitting, setFocus]);
 
   const onSubmit = async ({ reason, comment }: FormData) => {
+    if (reason === "other" && !comment && !isCommentNudged) {
+      setIsCommentNudged(true);
+      return;
+    }
     try {
       await onConfirm();
     } catch {
@@ -154,9 +159,7 @@ export const CancellationFeedbackDialog = ({
                   value={field.value ?? ""}
                   onValueChange={(value) => {
                     field.onChange(value);
-                    if (isSubmitted) {
-                      trigger("comment");
-                    }
+                    setIsCommentNudged(false);
                     if (value === "other") {
                       setFocus("comment");
                     }
@@ -188,23 +191,24 @@ export const CancellationFeedbackDialog = ({
             control={control}
             name="comment"
             render={({ field, fieldState }) => (
-              <Field data-invalid={Boolean(fieldState.error)}>
+              <Field>
                 <FieldLabel htmlFor="cancellation-comment">
-                  {isCommentRequired ? "Comment" : "Comment (optional)"}
+                  {isOther ? "Comment" : "Comment (optional)"}
                 </FieldLabel>
                 <FieldContent>
                   <TextArea
                     {...field}
+                    onChange={(event) => {
+                      field.onChange(event);
+                      setIsCommentNudged(false);
+                    }}
                     id="cancellation-comment"
                     aria-describedby="cancellation-comment-hint"
                     rows={3}
                     maxLength={COMMENT_MAX_LENGTH}
                     disabled={isSubmitting}
-                    aria-required={isCommentRequired}
                     placeholder={
-                      isCommentRequired
-                        ? "What made you cancel?"
-                        : "Tell us what would have made you stay"
+                      isOther ? "What made you cancel?" : "Tell us what would have made you stay"
                     }
                     isError={Boolean(fieldState.error)}
                   />
@@ -212,7 +216,11 @@ export const CancellationFeedbackDialog = ({
                     <FieldFeedback
                       id="cancellation-comment-hint"
                       error={fieldState.error?.message}
-                      description="Don't include secrets, credentials, or personal data."
+                      description={
+                        isCommentNudged
+                          ? "Add a comment so we can improve, or submit again to skip."
+                          : "Don't include secrets, credentials, or personal data."
+                      }
                     />
                     <span className="text-2xs leading-snug text-muted tabular-nums">
                       {field.value.length}/{COMMENT_MAX_LENGTH}
