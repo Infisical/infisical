@@ -378,7 +378,7 @@ describe("fnSecretBulkDelete", () => {
 
     expect(emit).toHaveBeenLastCalledWith(
       [
-        {
+        expect.objectContaining({
           id: expect.any(String) as string,
           type: "com.infisical.secrets.secret.modified.v1",
           data: {
@@ -388,7 +388,7 @@ describe("fnSecretBulkDelete", () => {
             secretPath: "/app",
             modificationType: "deleted"
           }
-        }
+        })
       ],
       tx
     );

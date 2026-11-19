@@ -59,6 +59,6 @@ export class EventDefinition<TData extends z.AnyZodObject> {
   }
 
   build(eventData: z.input<TData>): TEventInput {
-    return { id: crypto.randomUUID(), type: this.type, data: eventData };
+    return { id: crypto.randomUUID(), type: this.type, data: eventData, dataSchema: this.data };
   }
 }

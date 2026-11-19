@@ -22,8 +22,9 @@ const EventInputSchema = z.object({
   time: z.date().optional()
 });
 
-// `id` is set at build time, so every consumer's row for the event shares it.
-export type TEventInput = z.input<typeof EventInputSchema>;
+// `id` is set at build time, so every consumer's row for the event shares it. `dataSchema` is the definition's
+// own schema, checked at emit and never stored. An input built by hand has none.
+export type TEventInput = z.input<typeof EventInputSchema> & { dataSchema?: z.ZodTypeAny };
 
 export class EmittedEvent {
   private constructor(
@@ -43,6 +44,15 @@ export class EmittedEvent {
       );
     }
     const { id, type, data, time } = parsed.data;
+
+    const ownSchema = input.dataSchema?.safeParse(data);
+    if (ownSchema && !ownSchema.success) {
+      throw new EventRejectedError(
+        EventRejectionReason.DataRejected,
+        type,
+        ownSchema.error.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join(", ")
+      );
+    }
 
     const dataBytes = Buffer.byteLength(JSON.stringify(data), "utf8");
     if (dataBytes > MAX_OUTBOX_PAYLOAD_BYTES) {

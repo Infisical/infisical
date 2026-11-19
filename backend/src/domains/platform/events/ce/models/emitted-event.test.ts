@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 
+import { z } from "zod";
+
 import { EmittedEvent, MAX_OUTBOX_PAYLOAD_BYTES, TEventInput } from "./emitted-event";
 import { EventRejectedError, EventRejectionReason } from "./event-rejection";
 
@@ -64,5 +66,16 @@ describe("EmittedEvent.create", () => {
 
     // Assert
     expect(error).toMatchObject({ reason: EventRejectionReason.DataTooLarge, eventType: input.type });
+  });
+
+  test("should refuse data that breaks the schema the event was defined with", () => {
+    // Setup
+    const input = makeInput({ dataSchema: z.object({ orgId: z.string().uuid() }) });
+
+    // Action
+    const error = rejection(input);
+
+    // Assert
+    expect(error).toMatchObject({ reason: EventRejectionReason.DataRejected, eventType: input.type });
   });
 });

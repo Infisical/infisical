@@ -52,7 +52,7 @@ export class OutboxEntryStore implements TOutboxEntryStore {
           .ignore();
       }
     } catch (error) {
-      throw new DatabaseError({ error, name: "EventOutbox: insertEvents" });
+      throw new DatabaseError({ error, name: "EventOutbox: insert" });
     }
   }
 
@@ -69,7 +69,7 @@ export class OutboxEntryStore implements TOutboxEntryStore {
 
       return rows.map((row) => row.consumer);
     } catch (error) {
-      throw new DatabaseError({ error, name: "EventOutbox: findDueFlushKeys" });
+      throw new DatabaseError({ error, name: "EventOutbox: findDueConsumers" });
     }
   }
 
@@ -143,7 +143,7 @@ export class OutboxEntryStore implements TOutboxEntryStore {
         .where("lockToken", claim.lockToken)
         .update({ lockedAt: writer.fn.now() });
     } catch (error) {
-      throw new DatabaseError({ error, name: "EventOutbox: extendClaims" });
+      throw new DatabaseError({ error, name: "EventOutbox: extendClaim" });
     }
   }
 
@@ -155,7 +155,7 @@ export class OutboxEntryStore implements TOutboxEntryStore {
         (query) => void query.where("status", EventOutboxStatus.Processing).where("lockToken", claim.lockToken)
       );
     } catch (error) {
-      throw new DatabaseError({ error, name: "EventOutbox: commitResults" });
+      throw new DatabaseError({ error, name: "EventOutbox: saveSettled" });
     }
   }
 
@@ -175,7 +175,7 @@ export class OutboxEntryStore implements TOutboxEntryStore {
     } catch (error) {
       throw new DatabaseError({
         error,
-        name: "EventOutbox: recoverStaleClaims"
+        name: "EventOutbox: lockStaleClaims"
       });
     }
   }
@@ -186,7 +186,7 @@ export class OutboxEntryStore implements TOutboxEntryStore {
     } catch (error) {
       throw new DatabaseError({
         error,
-        name: "EventOutbox: recoverStaleClaims"
+        name: "EventOutbox: saveExpired"
       });
     }
   }

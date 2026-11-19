@@ -48,9 +48,22 @@ describe("EventDefinition.build", () => {
     expect(input).toEqual({
       id: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$/) as string,
       type: "com.infisical.secrets.secret-import.modified.v2",
-      data: { secretImportId: "import-1" }
+      data: { secretImportId: "import-1" },
+      dataSchema: ExampleEvent.data
     });
     expect(EmittedEvent.create(input).type).toBe(ExampleEvent.type);
+  });
+
+  // The types stop this at compile time. A cast or a spread can still get bad data through.
+  test("should build an input that emit refuses when the data breaks the definition's schema", () => {
+    // Setup
+    const input = ExampleEvent.build({ secretImportId: 42 } as never);
+
+    // Action
+    const create = () => EmittedEvent.create(input);
+
+    // Assert
+    expect(create).toThrow("secretImportId");
   });
 
   test("should give every built event its own id", () => {
