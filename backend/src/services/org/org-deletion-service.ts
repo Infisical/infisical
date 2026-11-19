@@ -1,10 +1,10 @@
 import { Knex } from "knex";
 
 import { TOrganizations } from "@app/db/schemas";
+import { EventModificationType } from "@app/domains/platform/events/ce/module";
 import { THoneyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
 import { NotFoundError } from "@app/lib/errors";
-import { EventModificationType } from "@app/services/event-outbox/event-definition";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TReminderServiceFactory } from "@app/services/reminder/reminder-types";
@@ -80,13 +80,14 @@ export const orgDeletionServiceFactory = ({
         throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
       }
 
-      await OrganizationModifiedEventV1.emit(
-        eventEmitter,
-        {
-          organizationId: deletedOrg.id,
-          rootOrgId: deletedOrg.rootOrgId ?? null,
-          modificationType: EventModificationType.Deleted
-        },
+      await eventEmitter.emit(
+        [
+          OrganizationModifiedEventV1.build({
+            organizationId: deletedOrg.id,
+            rootOrgId: deletedOrg.rootOrgId ?? null,
+            modificationType: EventModificationType.Deleted
+          })
+        ],
         tx
       );
 

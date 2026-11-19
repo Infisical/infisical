@@ -4,6 +4,7 @@ import isEqual from "lodash.isequal";
 
 import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
 import { RuleViolationError, StateConflictError } from "@app/domains/lib/errors";
+import { EventModificationType } from "@app/domains/platform/events/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -72,6 +73,7 @@ import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/key
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { takeRowScanWindow } from "@app/lib/fn";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { recordSecretRotationOutcomeMetric, recordSecretRotationStatusChangeMetric } from "@app/lib/telemetry/metrics";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
@@ -82,8 +84,6 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { ActorType } from "@app/services/auth/auth-type";
-import { EventModificationType } from "@app/services/event-outbox/event-definition";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";

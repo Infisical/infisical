@@ -1,13 +1,13 @@
 import { z } from "zod";
 
-import { AlertDispatchOutcome, recordAlertDispatchOutcomeMetric } from "@app/lib/telemetry/metrics";
-import { runEventsSerially } from "@app/services/event-outbox/event-outbox-fns";
 import {
   EventResultStatus,
   IEventConsumer,
+  runEventsSerially,
   TEvent,
   TEventConsumerResult
-} from "@app/services/event-outbox/event-outbox-types";
+} from "@app/domains/platform/events/ce/module";
+import { AlertDispatchOutcome, recordAlertDispatchOutcomeMetric } from "@app/lib/telemetry/metrics";
 
 import { TAlertDALFactory } from "./alert-dal";
 import { TAlertEngine } from "./alert-engine";

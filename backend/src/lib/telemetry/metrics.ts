@@ -940,7 +940,7 @@ export const recordObjectStorageUploadMetric = (params: {
 
 // -- Event outbox (InfisicalCore meter) --------------------------------------------------------------
 // Outbox health, not what consumers do with events. The main canary is the oldest-pending-age gauge
-// in event-outbox-queue.ts, fed by the relay tick.
+// registered by the events module (domains/platform/events), fed by the relay tick.
 
 export const eventOutboxLagHistogram = infisicalCoreMeter.createHistogram("infisical.event_outbox.lag", {
   description:

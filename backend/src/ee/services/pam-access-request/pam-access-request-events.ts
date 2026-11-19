@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 
+import { TEventInput } from "@app/domains/platform/events/ce/module";
 import { ApprovalNotificationEvent } from "@app/services/approval-policy/approval-policy-enums";
-import { TEventInput } from "@app/services/event-outbox/event-outbox-types";
 
 export const PAM_FOLDER_RESOURCE_TYPE = "pam.folder";
 

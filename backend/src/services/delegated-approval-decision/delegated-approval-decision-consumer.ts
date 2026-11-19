@@ -1,10 +1,15 @@
 import {
+  IEventConsumer,
+  parseEventPayload,
+  runEventsConcurrentlyByKey,
+  TEvent,
+  TEventConsumerResult
+} from "@app/domains/platform/events/ce/module";
+import {
   DelegatedApprovalCallbackEventPayloadSchema,
   isDelegatedApprovalCallbackEvent,
   TDelegatedApprovalCallbackEventPayload
 } from "@app/services/delegated-approval-callback/delegated-approval-callback-events";
-import { parseEventPayload, runEventsConcurrentlyByKey } from "@app/services/event-outbox/event-outbox-fns";
-import { IEventConsumer, TEvent, TEventConsumerResult } from "@app/services/event-outbox/event-outbox-types";
 
 import {
   DELEGATED_APPROVAL_DECISION_CONCURRENCY,

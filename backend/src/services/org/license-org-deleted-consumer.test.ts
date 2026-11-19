@@ -1,5 +1,4 @@
-import { EventModificationType } from "@app/services/event-outbox/event-definition";
-import { EventResultStatus, TEvent } from "@app/services/event-outbox/event-outbox-types";
+import { EventModificationType, EventResultStatus, TEvent } from "@app/domains/platform/events/ce/module";
 
 import { LICENSE_ORG_DELETED_CONSUMER, licenseOrgDeletedConsumerFactory } from "./license-org-deleted-consumer";
 import { OrganizationModifiedEventV1 } from "./org-events";
