@@ -1,10 +1,10 @@
 import {
   EventModificationType,
   EventResultStatus,
-  TEventConsumer,
   parseEventPayload,
   runEventsConcurrentlyByKey,
   TEvent,
+  TEventConsumer,
   TEventConsumerResult
 } from "@app/domains/platform/events/ce/module";
 import type { TLicenseService } from "@app/domains/platform/license/ce/module";

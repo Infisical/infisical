@@ -23,7 +23,7 @@ describe("ConsumerRegistry.register", () => {
     expect(register).toThrow("already registered under the name 'alert'");
   });
 
-  // A consumer added after the workers started would have missed every event emitted before it.
+  // A late consumer would have missed every event emitted before it.
   test("should refuse a consumer once the registry is sealed", () => {
     // Setup
     const registry = new ConsumerRegistry();

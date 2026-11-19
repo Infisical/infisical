@@ -59,7 +59,7 @@ const kmsDataKeyService = {
 const auditLogStreamDAL = auditLogStreamDALFactory(testDb as never);
 const outboxDAL = auditLogStreamOutboxDALFactory(testDb as never);
 
-// Never started, so the queue and cron are not touched: only emit runs, on the real table.
+// Never started, so only emit runs (on the real table).
 const eventsModule = new EventsModule({
   db: testDb as never,
   queueService: {} as never,

@@ -111,7 +111,7 @@ export const startStandaloneKmsCore = async ({
 // Only file outside a domain that imports ee/. Products build before License and hand it their counters;
 // a product that needs License builds after it, so its counters have to come from data access.
 export const createDomains = async (deps: TDomainDeps) => {
-  // Depends on no other domain, and any of them may emit through it.
+  // Built first: any domain may emit through it.
   const events = new EventsModule({
     db: deps.db,
     queueService: deps.queueService,

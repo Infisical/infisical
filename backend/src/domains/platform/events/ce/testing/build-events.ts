@@ -15,8 +15,7 @@ type TBuildEventsOptions = {
   isTelemetryEnabled?: boolean;
 };
 
-// The real services on in-memory stores: for tests of the domain, and of a consumer that needs the outbox's
-// retries rather than a single handle() call.
+// The real services on in-memory stores, for domain tests and for a consumer test that needs real retries.
 export const buildEvents = ({ consumers = [], isTelemetryEnabled = false }: TBuildEventsOptions = {}) => {
   const outboxEntryStore = new InMemoryOutboxEntryStore();
   const transactionRunner = new InMemoryTransactionRunner<TEventsStores>(outboxEntryStore, (locks) => ({

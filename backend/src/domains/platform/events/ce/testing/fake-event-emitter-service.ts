@@ -3,7 +3,7 @@ import { TTransaction } from "@app/domains/lib/transactions";
 import { TEventInput } from "../models/emitted-event";
 import { TEventEmitterService } from "../services/event-emitter/service";
 
-// For tests of code that emits: records every event, and which ones joined a transaction.
+// Records every event, and which ones joined a transaction.
 export class FakeEventEmitterService implements TEventEmitterService {
   emitted: TEventInput[] = [];
 

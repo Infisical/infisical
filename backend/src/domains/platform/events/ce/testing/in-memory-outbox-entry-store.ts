@@ -40,8 +40,7 @@ const isDue = (row: TInMemoryOutboxRow) => DUE.includes(row.status) && row.nextR
 const isHeldBy = (row: TInMemoryOutboxRow, lockToken: string) =>
   row.status === EventOutboxStatus.Processing && row.lockToken === lockToken;
 
-// Reads the clock on every call, like NOW() in the Postgres store, so a test moves time with fake timers
-// or by patching a row.
+// Reads the clock on every call, like NOW() in Postgres, so a test moves time with fake timers or patch().
 export class InMemoryOutboxEntryStore implements TOutboxEntryStore {
   private rows: TInMemoryOutboxRow[] = [];
 
@@ -137,7 +136,7 @@ export class InMemoryOutboxEntryStore implements TOutboxEntryStore {
     return expired.length;
   }
 
-  // In id order, as copies: change a row through patch().
+  // Copies, in id order. Change a row through patch().
   all(consumer?: string): TInMemoryOutboxRow[] {
     return this.rows.filter((row) => !consumer || row.consumer === consumer).map((row) => ({ ...row }));
   }

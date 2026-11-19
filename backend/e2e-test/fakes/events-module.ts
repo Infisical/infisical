@@ -4,7 +4,7 @@ import { FolderModifiedEventV1 } from "@app/services/secret-folder/secret-folder
 import { SecretImportModifiedEventV1 } from "@app/services/secret-import/secret-import-events";
 import { SecretModifiedEventV1 } from "@app/services/secret-v2-bridge/secret-events";
 
-// Relative on purpose: it is the specifier domains.ts uses that the vitest alias points here.
+// Relative on purpose: the vitest alias only catches the specifier domains.ts uses.
 import {
   EventResultStatus,
   EventsModule as RealEventsModule,
@@ -13,29 +13,24 @@ import {
   TEventsDeps
 } from "../../src/domains/platform/events/ce/module";
 
-// Wraps the real events module for specs. Wired in through test.alias in vitest.e2e.config.mts; nothing under
-// src/ references this file.
-//
-// It does two things. It registers a consumer that accepts every secret event: nothing in src/ subscribes to
-// them yet, and emit skips events nobody subscribes to, so specs would never see the rows. And it hands a spec
-// the delivery service, to deliver pending events now rather than waiting up to OUTBOX_RELAY_INTERVAL_MS (plus start
-// jitter) for the relay.
-//
-// The relay keeps running alongside. Claims are exclusive, so an event is delivered once whichever side gets
-// to it first, and a spec should still wait on the outcome rather than on the drain.
+// Wraps the real events module for specs, wired in via test.alias in vitest.e2e.config.mts.
+// - Registers a consumer for the secret events. Nothing in src/ subscribes to them yet, and emit skips events
+//   nobody subscribes to, so specs would never see the rows.
+// - Lets a spec drain now instead of waiting on the relay. The relay still runs, so wait on the outcome, not on
+//   the drain.
 export const SECRET_EVENTS_RECORDER = "e2e-secret-events";
 
 const RECORDED_EVENTS = [SecretModifiedEventV1, FolderModifiedEventV1, SecretImportModifiedEventV1] as const;
 
 const secretEventsRecorder: TEventConsumer = {
   name: SECRET_EVENTS_RECORDER,
-  // The real schemas, so a bad payload fails the spec the same way it would fail a real consumer.
+  // Real schemas, so a bad payload fails the spec like it would a real consumer.
   dataSchema: z.union([RECORDED_EVENTS[0].data, RECORDED_EVENTS[1].data, RECORDED_EVENTS[2].data]),
   subscribesTo: (eventType) => RECORDED_EVENTS.some((definition) => definition.type === eventType),
   handle: async (events) => events.map((event) => ({ id: event.id, status: EventResultStatus.Delivered }))
 };
 
-// The handle hangs off globalThis for the reason given in aws-iam-user-secret-rotation-fns.ts.
+// On globalThis for the same reason as aws-iam-user-secret-rotation-fns.ts.
 const globalScope = globalThis as typeof globalThis & {
   infisicalEventDeliveryService?: TEventDeliveryService;
 };
@@ -44,8 +39,8 @@ export class EventsModule extends RealEventsModule {
   constructor(deps: TEventsDeps) {
     super(deps);
     this.registerConsumer(secretEventsRecorder);
-    // The shared test server boots first. A spec that boots and closes a second server of its own (eg
-    // api-run-modes.spec.ts) must not take the handle, or later specs would drive that closed server.
+    // First server wins: a spec that boots and closes its own server (eg api-run-modes.spec.ts) must not take
+    // the handle, or later specs would drive a closed server.
     globalScope.infisicalEventDeliveryService ??= this.eventDeliveryService;
   }
 }

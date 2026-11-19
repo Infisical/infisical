@@ -2,7 +2,6 @@ import { EventRejectionReason } from "../models/emitted-event";
 import { EventOutboxStatus } from "../models/outbox-entry";
 import { TEventsMetrics, TOldestPendingAge } from "../services/dependencies";
 
-// Records what the outbox reported, so a test can assert on it.
 export class FakeEventsMetrics implements TEventsMetrics {
   rejected: { eventType: string; reason: EventRejectionReason; consumer?: string }[] = [];
 

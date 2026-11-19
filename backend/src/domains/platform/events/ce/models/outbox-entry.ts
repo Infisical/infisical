@@ -31,8 +31,7 @@ export type TOutboxEntryRecord = {
   lastError: string | null;
 };
 
-// One consumer's delivery of one event. Entries are born in the store, one per subscribing consumer, so
-// there is no create(): a claim restores them.
+// One consumer's delivery of one event. No create(): the store inserts rows and a claim restores them.
 export class OutboxEntry {
   private delayMs: number | null = null;
 
@@ -74,17 +73,17 @@ export class OutboxEntry {
     return this.error;
   }
 
-  // Set only by an outcome that retries.
+  // Only set when the outcome is a retry.
   get retryDelayMs(): number | null {
     return this.delayMs;
   }
 
-  // The entry is failed after this attempt whatever the consumer returns.
+  // After this attempt the entry fails no matter what the consumer returns.
   isFinalAttempt(): boolean {
     return this.attemptsMade + 1 >= MAX_OUTBOX_ATTEMPTS;
   }
 
-  // No result means unaccounted for, not delivered.
+  // No result means retry, not delivered.
   settle(result: { status: EventResultStatus; error?: string } | undefined, backoff: RetryBackoff): void {
     const outcome = result ?? {
       status: EventResultStatus.Retry,

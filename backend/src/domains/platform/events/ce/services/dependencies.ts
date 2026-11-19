@@ -7,8 +7,7 @@ import { EmittedEvent, EventRejectionReason } from "../models/emitted-event";
 import { OutboxClaim } from "../models/outbox-claim";
 import { EventOutboxStatus, EventResultStatus, OutboxEntry } from "../models/outbox-entry";
 
-// What a consumer sees: the CloudEvents 1.0 envelope, plus whether this is its last attempt. Lock and
-// status columns stay inside the outbox.
+// What a consumer sees: the CloudEvents 1.0 envelope plus whether this is the last attempt.
 export type TEvent<TData = unknown> = {
   specversion: "1.0";
   id: string;
@@ -30,16 +29,15 @@ export type TEventConsumer<TData = unknown> = {
   // Stored on every row and part of the flush job id, so renaming it orphans in-flight rows.
   name: string;
 
-  // Checked at emit. Don't make it `.strict()`: one event can feed several consumers, so each schema
-  // has to tolerate fields it doesn't care about.
+  // Checked at emit. Don't make it `.strict()`: one event can feed several consumers, so each schema has to
+  // tolerate fields it doesn't care about.
   dataSchema: z.ZodType<TData>;
 
-  // Runs on the request path for every emit, so keep it pure and in-memory. Whether anyone actually
-  // wants the event is decided later, in handle().
+  // Runs on the request path for every emit, so keep it pure and in-memory. Whether anyone actually wants the
+  // event is decided later, in handle().
   subscribesTo(type: string): boolean;
 
-  // Events arrive in the order they were written and one flush runs per consumer at a time, so a batch
-  // is ordered but nothing is promised across flushes. Must return one result per event.
+  // A batch is in write order, but nothing is promised across flushes. Must return one result per event.
   handle(events: TEvent[]): Promise<TEventConsumerResult[]>;
 };
 
@@ -48,13 +46,13 @@ export type TOutboxDelivery = { consumer: string; event: EmittedEvent };
 export type TOldestPendingAge = { consumer: string; ageSeconds: number };
 
 export type TOutboxEntryStore = {
-  // An event a consumer already has is dropped.
+  // Skips an event the consumer already has.
   insert(deliveries: TOutboxDelivery[]): Promise<void>;
   findDueConsumers(consumers: string[], options?: TReadOptions): Promise<string[]>;
   findOldestPendingAgeSeconds(options?: TReadOptions): Promise<TOldestPendingAge[]>;
   claimBatch(consumer: string, limit: number): Promise<OutboxClaim>;
   extendClaim(claim: OutboxClaim): Promise<void>;
-  // Returns how many entries the claim still held. Needs a transaction: it is one statement per outcome.
+  // Returns how many entries the claim still held. One statement per outcome, so call it in a transaction.
   saveSettled(claim: OutboxClaim): Promise<number>;
   // Locks the rows until the transaction ends, so only call it inside one.
   lockStaleClaims(input: { thresholdMs: number; limit: number }): Promise<OutboxEntry[]>;

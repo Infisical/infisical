@@ -73,13 +73,13 @@ export class EventsModule {
     this.relayTimer = new RelayTimer(() => this.eventDeliveryService.relayDueEvents());
   }
 
-  // Only while wiring: it throws once the module has started.
+  // Only while wiring: throws once the module has started.
   registerConsumer(consumer: TEventConsumer): void {
     this.consumerRegistry.register(consumer);
   }
 
-  // Call once at boot, after every consumer is registered: nothing is written for an event no consumer
-  // subscribes to, so a consumer registered later would have missed events.
+  // Call once at boot, after every consumer is registered. Emit writes nothing for an event nobody subscribes
+  // to, so a late consumer would have missed events.
   start(): void {
     this.consumerRegistry.seal();
 
@@ -90,7 +90,7 @@ export class EventsModule {
         try {
           await this.eventDeliveryService.drain(consumer);
         } catch (error) {
-          // The job is removeOnFail with a single attempt, so this line is the only trace it leaves.
+          // removeOnFail with a single attempt, so this log is the only trace the job leaves.
           logger.error(error, `event-outbox: flush worker crashed [consumer=${consumer}]`);
           throw error;
         }
@@ -120,7 +120,7 @@ export class EventsModule {
     this.relayTimer.start();
   }
 
-  // Waits for a relay tick that is still running.
+  // Waits for an in-flight relay tick.
   stop(): Promise<void> {
     return this.relayTimer.stop();
   }

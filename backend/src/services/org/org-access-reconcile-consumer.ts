@@ -1,7 +1,7 @@
 import {
   EventResultStatus,
-  TEventConsumer,
   TEvent,
+  TEventConsumer,
   TEventConsumerResult
 } from "@app/domains/platform/events/ce/module";
 import { Meter, TUsageMeteringService } from "@app/domains/platform/license/ce/module";

@@ -2,9 +2,9 @@ import { z } from "zod";
 
 import {
   EventResultStatus,
-  TEventConsumer,
   runEventsSerially,
   TEvent,
+  TEventConsumer,
   TEventConsumerResult
 } from "@app/domains/platform/events/ce/module";
 import { AlertDispatchOutcome, recordAlertDispatchOutcomeMetric } from "@app/lib/telemetry/metrics";

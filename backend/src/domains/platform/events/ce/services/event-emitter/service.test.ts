@@ -94,8 +94,7 @@ describe("EventEmitterService.emit", () => {
     await expect(result).resolves.toBeUndefined();
   });
 
-  // A bad event fails the caller's write: a write that commits without its event is a change consumers
-  // never hear about.
+  // A write that commits without its event is a change consumers never hear about, so a bad event fails it.
   test("should refuse an event whose data does not match a consumer's schema", async () => {
     // Setup
     const { eventEmitterService, outboxEntryStore, metrics } = buildEvents({

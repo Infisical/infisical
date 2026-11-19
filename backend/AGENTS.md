@@ -734,7 +734,7 @@ summarise them.
    });
    ```
 
-5. **Consume it with an `TEventConsumer`** whose `subscribesTo` matches the definition's `type` and
+5. **Consume it with a `TEventConsumer`** whose `subscribesTo` matches the definition's `type` and
    whose `dataSchema` is the definition's `data` schema. Nothing is written for an event no consumer
    subscribes to. Only `subscribesTo` runs before the insert, in memory: whether a customer configured
    anything for the resource is decided in the worker, and a row nobody wanted is marked `Delivered` and

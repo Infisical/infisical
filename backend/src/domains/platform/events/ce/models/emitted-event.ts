@@ -22,10 +22,10 @@ const EventInputSchema = z.object({
   time: z.date().optional()
 });
 
-// `id` is set when the event is built, so every consumer's row for it shares the same one.
+// `id` is set at build time, so every consumer's row for the event shares it.
 export type TEventInput = z.input<typeof EventInputSchema>;
 
-// Why an emit was refused. `DataRejected` is a subscribing consumer's schema refusing the data.
+// `DataRejected`: a subscribing consumer's schema refused the data.
 export enum EventRejectionReason {
   InvalidEvent = "invalid_event",
   DataTooLarge = "data_too_large",
@@ -45,7 +45,7 @@ export class EmittedEvent {
     readonly occurredAt: Date
   ) {}
 
-  // Refuses with the reason in `details`, since the caller reports it and the user never sees the message.
+  // The reason goes in `details` for the caller to report. Users never see this message.
   static create(input: TEventInput): EmittedEvent {
     const parsed = EventInputSchema.safeParse(input);
     if (!parsed.success) {

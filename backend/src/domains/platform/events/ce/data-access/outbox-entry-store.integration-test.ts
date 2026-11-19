@@ -7,7 +7,7 @@ import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { describeOutboxEntryStoreContract, TStoredOutboxRow } from "../testing/outbox-entry-store-contract";
 import { OutboxEntryStore } from "./outbox-entry-store";
 
-// Pruning and the stale sweep look at every consumer's rows, so this file gets a database of its own.
+// Pruning and the stale sweep touch every consumer's rows, so this file gets its own database.
 const h = setupIntegration({ freshDatabase: true });
 
 describeOutboxEntryStoreContract("OutboxEntryStore", async () => {
@@ -19,7 +19,7 @@ describeOutboxEntryStoreContract("OutboxEntryStore", async () => {
       (await h.db(TableName.EventOutbox).where({ consumer }).orderBy("id", "asc").select<TEventOutbox[]>("*")).map(
         (row) => ({ ...row, id: String(row.id) }) as TStoredOutboxRow
       ),
-    // The table's trigger stamps updatedAt on every update, so backdating it needs the trigger off.
+    // A trigger stamps updatedAt on every update, so backdating needs it off.
     patch: (id, values) =>
       h.db.transaction(async (trx) => {
         await trx.raw("ALTER TABLE ?? DISABLE TRIGGER USER", [TableName.EventOutbox]);
@@ -30,8 +30,7 @@ describeOutboxEntryStoreContract("OutboxEntryStore", async () => {
 });
 
 describe("OutboxEntryStore.claimBatch", () => {
-  // Old pods still insert without an eventId during a rolling deploy, and consumers rely on every event
-  // having one.
+  // Old pods still insert without an eventId during a rolling deploy.
   test("should give an entry written without an event id one of its own", async () => {
     // Setup
     const store = new OutboxEntryStore(poolStoreConnection(h.db));

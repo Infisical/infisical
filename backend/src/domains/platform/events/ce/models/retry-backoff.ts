@@ -1,6 +1,6 @@
 export const OUTBOX_BACKOFF_BASE_MS = 30_000;
 
-// Rows that failed the same attempt share one delay, so a batch settles in one statement per outcome.
+// Same attempt, same delay, so a batch settles in one statement per outcome.
 export class RetryBackoff {
   private readonly delays = new Map<number, number>();
 
@@ -10,7 +10,7 @@ export class RetryBackoff {
     return new RetryBackoff();
   }
 
-  // Exponential with jitter. `attempts` counts the one that just failed.
+  // Exponential with jitter. `attempts` includes the one that just failed.
   static delayMs(attempts: number): number {
     const exponent = Math.min(attempts - 1, 10);
     const base = OUTBOX_BACKOFF_BASE_MS * 2 ** exponent;

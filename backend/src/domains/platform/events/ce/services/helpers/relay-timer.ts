@@ -4,8 +4,8 @@ const OUTBOX_RELAY_INTERVAL_MS = 10_000;
 
 const RELAY_START_JITTER_MS = 5_000;
 
-// A setInterval, not a cron job: the relay needs a sub-minute cadence, and FOR UPDATE SKIP LOCKED plus the
-// flush job id already make concurrent pollers safe. A tick that is still running is not started again.
+// setInterval instead of a cron because the relay needs a sub-minute cadence. FOR UPDATE SKIP LOCKED plus the
+// flush job id already make concurrent pollers safe. A tick that is still running isn't started again.
 export class RelayTimer {
   private relayTimer: NodeJS.Timeout | undefined;
 

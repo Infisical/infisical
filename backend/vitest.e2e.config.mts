@@ -96,8 +96,8 @@ export default defineConfig({
         find: /^@app\/services\/reminder\/reminder-queue$/,
         replacement: path.resolve(__dirname, "./e2e-test/fakes/reminder-queue")
       },
-      // Adds a consumer that records the secret events so specs can read them, and hands a spec the service to
-      // deliver pending events on demand. Only domains.ts imports this specifier.
+      // Records the secret events so specs can read them, and lets a spec deliver pending events on demand. Only
+      // domains.ts imports this specifier.
       {
         find: /^\.\/platform\/events\/ce\/module$/,
         replacement: path.resolve(__dirname, "./e2e-test/fakes/events-module")

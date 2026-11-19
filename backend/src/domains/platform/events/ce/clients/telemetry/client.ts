@@ -31,12 +31,12 @@ export class TelemetryClient implements TEventsMetrics {
     recordEventOutboxExhaustedMetric(params);
   }
 
-  // The gauge reports these until the next relay tick replaces them.
+  // The gauge reports these until the next relay tick.
   recordOldestPending(ages: TOldestPendingAge[]): void {
     this.oldestPending = ages;
   }
 
-  // Only the process that runs the relay registers it: nothing else refreshes the ages.
+  // Only the relay process registers it, nothing else refreshes the ages.
   registerOldestPendingGauge(): void {
     const gauge = resolveCoreMeter().createObservableGauge("infisical.event_outbox.oldest_pending_age", {
       description:

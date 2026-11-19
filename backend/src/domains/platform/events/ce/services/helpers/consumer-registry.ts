@@ -1,8 +1,7 @@
 import { TEventConsumer } from "../dependencies";
 
-// Consumers are built after the services that emit to them, so they register at wiring time instead of
-// arriving through a constructor. Sealed once the workers start: a consumer added later would have missed
-// every event emitted before it.
+// Consumers are built after the services that emit to them, so they register while wiring instead of coming
+// through a constructor. Sealed on start: a late consumer would have missed every event emitted before it.
 export class ConsumerRegistry {
   private readonly consumers = new Map<string, TEventConsumer>();
 

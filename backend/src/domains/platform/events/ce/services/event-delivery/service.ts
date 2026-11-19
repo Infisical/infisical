@@ -34,10 +34,9 @@ const STALE_SWEEP_MAX_BATCHES = 10;
 // A quarter of the threshold so one missed beat doesn't get a live claim swept.
 const CLAIM_HEARTBEAT_INTERVAL_MS = STALE_CLAIM_THRESHOLD_MS / 4;
 
-// Deliberately longer than the stale threshold: the heartbeat exists so a legitimately slow batch can
-// outlive it. This is the backstop for a handle() that never settles, which would otherwise keep the
-// heartbeat, and with it the per-consumer flush job, alive until the process restarts. It cannot
-// cancel the work in flight, so an abandoned batch may still deliver and be delivered again on retry.
+// Longer than the stale threshold on purpose: the heartbeat lets a slow batch outlive it. This is the backstop
+// for a handle() that never settles, which would otherwise hold the per-consumer flush job until a restart.
+// It can't cancel the work, so an abandoned batch may still deliver and then deliver again on retry.
 const CONSUMER_HANDLE_TIMEOUT_MS = 3 * STALE_CLAIM_THRESHOLD_MS;
 
 const COMMIT_ATTEMPTS = 3;
@@ -76,7 +75,7 @@ export class EventDeliveryService implements TEventDeliveryService {
     private readonly metrics: TEventsMetrics
   ) {}
 
-  // Discovery only sees consumers registered in this process; rows for other names wait.
+  // Only sees consumers registered in this process. Rows for other names wait.
   async relayDueEvents(): Promise<void> {
     const consumers = await this.outboxEntryStore.findDueConsumers(this.consumerRegistry.names());
 
@@ -89,7 +88,7 @@ export class EventDeliveryService implements TEventDeliveryService {
     }
   }
 
-  // Bounded so a deep backlog can't hold a worker forever; the relay's next tick picks up the rest.
+  // Bounded so a deep backlog can't hog a worker. The next relay tick picks up the rest.
   async drain(consumerName: string): Promise<{ handled: number; unknownConsumer: boolean }> {
     const consumer = this.consumerRegistry.get(consumerName);
     if (!consumer) {
@@ -240,8 +239,8 @@ export class EventDeliveryService implements TEventDeliveryService {
     }
   }
 
-  // The consumer already delivered by now, so a transient failure here is retried rather than left to the
-  // sweeper, which would deliver the batch again.
+  // The consumer already delivered, so retry a transient failure here instead of leaving it to the sweeper,
+  // which would deliver the batch again.
   private async saveSettledWithRetry(consumer: string, claim: OutboxClaim): Promise<number> {
     for (let attempt = 1; ; attempt += 1) {
       try {

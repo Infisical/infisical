@@ -25,8 +25,8 @@ vi.mock("@app/lib/telemetry/metrics", () => ({
   recordEventOutboxRejectedMetric: () => {}
 }));
 
-// The module builds the Postgres store itself. Every query here fails with `queryError`, which is enough to
-// see whether the relay or a flush reached the database.
+// The module builds the Postgres store itself. Every query throws `queryError`, which is enough to tell whether
+// the relay or a flush reached the database.
 const buildModule = (flags: { isSecondaryInstance?: boolean; isGeneralWorkerRunModeEnabled?: boolean } = {}) => {
   const queryError = new Error("relation event_outbox does not exist");
   let queries = 0;
@@ -83,8 +83,7 @@ describe("EventsModule.start", () => {
     expect(queries()).toBeGreaterThan(0);
   });
 
-  // Every other cron sits behind this flag, and the docs promise a secondary region runs no background
-  // jobs beyond audit logs.
+  // Every other cron sits behind this flag, and the docs promise a secondary region only runs audit log jobs.
   test("should register its crons disabled and never start the relay on a secondary instance", async () => {
     // Setup
     const { module, crons, queries } = buildModule({ isSecondaryInstance: true });
@@ -128,8 +127,7 @@ describe("EventsModule.start", () => {
     expect(queries()).toBe(before);
   });
 
-  // The flush job is removeOnFail with one attempt, so without the log a crashed drain leaves nothing but
-  // a counter behind.
+  // The flush job is removeOnFail with one attempt, so the log is the only trace of a crashed drain.
   test("should log and rethrow when a flush crashes", async () => {
     // Setup
     const { module, queue, queryError } = buildModule({ isGeneralWorkerRunModeEnabled: false });

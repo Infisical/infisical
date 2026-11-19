@@ -11,12 +11,11 @@ import { OutboxClaim } from "../models/outbox-claim";
 import { EventOutboxStatus, OutboxEntry } from "../models/outbox-entry";
 import { TOldestPendingAge, TOutboxDelivery, TOutboxEntryStore } from "../services/dependencies";
 
-// Postgres caps a statement at 65535 bind parameters and a row takes five, so a bulk write of ~13k+
-// secrets would otherwise fail.
+// Postgres caps a statement at 65535 bind params and a row takes five, so big bulk writes get chunked.
 const INSERT_BATCH_SIZE = 1000;
 
-// Every claim fills in eventId (see claimBatch). Only a row an old pod claimed can still lack one, and the
-// sweeper, the one reader of such a row, never looks at it.
+// Claims fill in eventId (see claimBatch). Only a row an old pod claimed can lack one, and only the sweeper
+// reads those, without looking at it.
 const toModel = (row: TEventOutbox) =>
   OutboxEntry.restore({
     id: String(row.id),
@@ -97,10 +96,8 @@ export class OutboxEntryStore implements TOutboxEntryStore {
     }
   }
 
-  // One statement on purpose so the row locks only live as long as the UPDATE. The fresh lockToken is
-  // how extendClaim and saveSettled tell this claim apart from a later one on the same rows. Old pods
-  // write rows without an eventId during a rolling deploy, so the claim fills it in; consumers rely on
-  // every event having one.
+  // One statement, so the row locks only last as long as the UPDATE. lockToken fences this claim from a later
+  // one on the same rows. Old pods insert rows without an eventId during a rolling deploy, so fill it in here.
   async claimBatch(consumer: string, limit: number): Promise<OutboxClaim> {
     const lockToken = crypto.randomUUID();
     try {
@@ -126,7 +123,7 @@ export class OutboxEntryStore implements TOutboxEntryStore {
         })
         .returning("*");
 
-      // RETURNING order is arbitrary, and handle() is promised id order.
+      // RETURNING order is arbitrary and handle() is promised id order.
       const rows = (claimed as unknown as TEventOutbox[]).sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1));
       return OutboxClaim.restore({ lockToken, entries: rows.map(toModel) });
     } catch (error) {
@@ -134,8 +131,8 @@ export class OutboxEntryStore implements TOutboxEntryStore {
     }
   }
 
-  // Keeps lockedAt fresh so the sweeper doesn't hand a slow batch to another worker mid-delivery.
-  // Scoped to this claim's token so a late heartbeat can't refresh a lock someone else now holds.
+  // Heartbeat, so the sweeper doesn't recycle a slow batch. Scoped to the token so a late one can't refresh
+  // someone else's claim.
   async extendClaim(claim: OutboxClaim): Promise<void> {
     if (claim.isEmpty) return;
     try {
@@ -150,8 +147,7 @@ export class OutboxEntryStore implements TOutboxEntryStore {
     }
   }
 
-  // The count comes up short when the sweeper recycled the claim mid-delivery and another worker now
-  // owns the rows.
+  // Comes up short when the sweeper recycled the claim mid-delivery.
   async saveSettled(claim: OutboxClaim): Promise<number> {
     try {
       return await this.saveOutcomes(
@@ -236,8 +232,7 @@ export class OutboxEntryStore implements TOutboxEntryStore {
     }
   }
 
-  // One UPDATE per distinct outcome instead of one per row. The retry clock is computed in the database,
-  // and `attempts` is incremented there, so a row the claim no longer holds is never overwritten.
+  // One UPDATE per distinct outcome. The retry clock and `attempts` are computed in the database.
   private async saveOutcomes(entries: OutboxEntry[], holding: (query: Knex.QueryBuilder) => void): Promise<number> {
     const groups = new Map<string, OutboxEntry[]>();
     for (const entry of entries) {

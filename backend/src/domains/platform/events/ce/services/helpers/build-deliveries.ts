@@ -10,8 +10,8 @@ import {
 import { TEventsMetrics, TOutboxDelivery } from "../dependencies";
 import { ConsumerRegistry } from "./consumer-registry";
 
-// A malformed event is a bug at the emit site. Throwing fails the caller's transaction on purpose: a
-// write that commits without its event is a change consumers never hear about.
+// A malformed event is a bug at the emit site. Throwing fails the caller's transaction on purpose: a write
+// that commits without its event is a change consumers never hear about.
 const reject = (
   metrics: TEventsMetrics,
   rejection: { type: string; reason: EventRejectionReason; detail: string; consumer?: string }
@@ -37,8 +37,8 @@ const createEvent = (metrics: TEventsMetrics, input: TEventInput): EmittedEvent 
   }
 };
 
-// One delivery per subscribing consumer. Runs before any database access, and only `subscribesTo` decides
-// who gets a row.
+// One delivery per subscribing consumer. Runs before any DB access, and only `subscribesTo` decides who gets
+// a row.
 export const buildDeliveries = (
   consumerRegistry: ConsumerRegistry,
   metrics: TEventsMetrics,

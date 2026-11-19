@@ -46,8 +46,7 @@ describe("OutboxEntry.settle", () => {
     expect(entry.retryDelayMs).toBeGreaterThanOrEqual(30_000);
   });
 
-  // Otherwise entries the consumer forgot would sit in 'processing' until the sweeper noticed, looking
-  // exactly like a crashed worker.
+  // Otherwise a forgotten entry sits in 'processing' until the sweeper notices, looking like a crashed worker.
   test("should retry when the consumer returned no result", () => {
     // Setup
     const entry = makeEntry();
@@ -88,7 +87,7 @@ describe("OutboxEntry.settle", () => {
 });
 
 describe("OutboxEntry.expireClaim", () => {
-  // Backoff applies here too, otherwise a consumer that always hangs gets retried instantly.
+  // Backoff applies here too, or a consumer that always hangs gets retried instantly.
   test("should back the entry off when it has attempts left", () => {
     // Setup
     const entry = makeEntry();

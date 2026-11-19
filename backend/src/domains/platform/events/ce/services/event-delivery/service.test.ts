@@ -167,8 +167,7 @@ describe("EventDeliveryService.drain", () => {
     expect(metrics.exhausted).toEqual([{ consumer: "alert", count: 1 }]);
   });
 
-  // A short settle means the sweeper handed the entries to another worker mid-delivery, so the batch went
-  // out twice. This log is the only place that shows up.
+  // A short settle means the batch went out twice. This log is the only place that shows up.
   test("should report a claim that was taken away mid-delivery, leaving the new owner's entry alone", async () => {
     // Setup
     const built = buildEvents();
@@ -226,8 +225,7 @@ describe("EventDeliveryService.drain", () => {
       vi.useRealTimers();
     });
 
-    // A slow batch (slow webhook, many entries) has to keep its claim fresh or the sweeper hands it to a
-    // second worker mid-delivery.
+    // A slow batch has to keep its claim fresh, or the sweeper hands it to a second worker mid-delivery.
     test("should keep the claim fresh while the consumer is still handling a batch", async () => {
       // Setup
       let release: () => void = () => {};
@@ -251,8 +249,8 @@ describe("EventDeliveryService.drain", () => {
       expect(outboxEntryStore.all()).toMatchObject([{ status: EventOutboxStatus.Delivered, lockedAt: null }]);
     });
 
-    // Without this, a handle() that never settles keeps the heartbeat alive forever and, because the
-    // flush job id is per consumer, blocks every later flush for that consumer until a restart.
+    // Otherwise a handle() that never settles keeps the heartbeat alive and blocks every later flush for that
+    // consumer until a restart.
     test("should give up on a consumer that never settles and retry the batch", async () => {
       // Setup
       const { eventDeliveryService, outboxEntryStore } = await buildWithPending(() => new Promise(() => {}), 2);
@@ -268,8 +266,8 @@ describe("EventDeliveryService.drain", () => {
       expect(rows[0].lastError).toContain("did not finish handling the batch");
     });
 
-    // The consumer already sent by now. Letting a transient failure escape would leave the entries to the
-    // sweeper and notify again ten minutes later.
+    // The consumer already sent by now, so a transient failure must not leave the entries to the sweeper, which
+    // would notify again ten minutes later.
     test("should try again when saving the results fails once", async () => {
       // Setup
       const { eventDeliveryService, outboxEntryStore } = await buildWithPending(deliverAll);
@@ -339,8 +337,7 @@ describe("EventDeliveryService.sweepStaleClaims", () => {
     expect(failed).toMatchObject({ status: EventOutboxStatus.Failed, attempts: MAX_OUTBOX_ATTEMPTS });
   });
 
-  // An entry the sweeper gives up on is just as lost as one a consumer gives up on, and the exhausted
-  // metric promises to count every one.
+  // An entry the sweeper gives up on is just as lost, so the exhausted metric has to count it too.
   test("should count the entries it gives up on, per consumer", async () => {
     // Setup
     const { eventDeliveryService, outboxEntryStore, metrics } = await claimAll(2);
@@ -438,9 +435,7 @@ describe("EventDeliveryService.pruneTerminalRows", () => {
 });
 
 describe("EventDeliveryService.relayDueEvents", () => {
-  // One flush per consumer at a time keeps drain's batches serial and dedupes a consumer the relay
-  // rediscovers while its flush is still queued. Retry lives on the entry, where it survives a Redis
-  // flush, so BullMQ gets a single attempt.
+  // One flush per consumer at a time (the job id). Retries live on the entry, so BullMQ gets a single attempt.
   test("should enqueue one flush job per consumer with due work", async () => {
     // Setup
     const { eventEmitterService, eventDeliveryService, queue } = buildEvents({

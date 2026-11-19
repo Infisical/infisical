@@ -20,9 +20,9 @@ export type TStoredOutboxRow = {
 
 export type TOutboxEntryStoreHarness = {
   store: TOutboxEntryStore;
-  // Runs the work on a store bound to one transaction, as a service's run does.
+  // Runs the work on a store bound to one transaction.
   transaction: <T>(work: (store: TOutboxEntryStore) => Promise<T>) => Promise<T>;
-  // In the order the rows were written.
+  // In write order.
   rows: (consumer: string) => Promise<TStoredOutboxRow[]>;
   // Moves a row in time, or into a state only another worker could have put it in.
   patch: (
@@ -214,9 +214,9 @@ export const describeOutboxEntryStoreContract = (name: string, setup: TSetup) =>
       expect(await harness.rows(consumer)).toMatchObject([{ status: EventOutboxStatus.Retry, attempts: 1 }]);
     });
 
-    // The race the token exists for: the sweeper recycles a claim, another worker picks the entry up, then
-    // the first worker reports late. Both claims look 'processing', so without the token the late result
-    // would overwrite the new owner's.
+    // The race the token exists for: the sweeper recycles a claim, another worker picks the entry up, then the
+    // first worker reports late. Both claims look 'processing', so only the token stops the late result from
+    // overwriting the new owner's.
     test("should leave an entry alone once another worker has reclaimed it", async () => {
       // Setup
       const harness = await setup();
@@ -267,8 +267,8 @@ export const describeOutboxEntryStoreContract = (name: string, setup: TSetup) =>
       expect(b.lockedAt).toBeNull();
     });
 
-    // Otherwise a late heartbeat from the old owner keeps the new claim looking fresh, and the sweeper
-    // never recovers it if that worker really is gone.
+    // Otherwise a late heartbeat from the old owner keeps the new claim looking fresh, and the sweeper never
+    // recovers it if that worker is really gone.
     test("should not refresh a claim another worker now holds", async () => {
       // Setup
       const harness = await setup();

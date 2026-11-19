@@ -39,7 +39,7 @@ describe("EventDefinition.define", () => {
 });
 
 describe("EventDefinition.build", () => {
-  // Every emitted event is validated; a definition must never produce one that is refused.
+  // A definition must never build an event that emit refuses.
   test("should name the event by the ADR convention and build an input that can be emitted", () => {
     // Action
     const input = ExampleEvent.build({ secretImportId: "import-1" });

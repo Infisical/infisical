@@ -1,8 +1,8 @@
 import {
-  TEventConsumer,
   parseEventPayload,
   runEventsConcurrentlyByKey,
   TEvent,
+  TEventConsumer,
   TEventConsumerResult
 } from "@app/domains/platform/events/ce/module";
 import {

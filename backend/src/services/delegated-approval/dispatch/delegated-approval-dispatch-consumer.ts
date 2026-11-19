@@ -3,11 +3,11 @@ import { UnrecoverableError } from "bullmq";
 import { ProjectType } from "@app/db/schemas";
 import {
   EventResultStatus,
-  TEventConsumer,
   MAX_OUTBOX_ATTEMPTS,
   parseEventPayload,
   runEventsConcurrentlyByKey,
   TEvent,
+  TEventConsumer,
   TEventConsumerResult
 } from "@app/domains/platform/events/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";

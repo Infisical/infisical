@@ -16,7 +16,7 @@ const EVENT_TYPE = "it.resource.happened";
 describe("Events services on Postgres", () => {
   const h = setupIntegration();
 
-  // Never started, so the queue and cron are not touched.
+  // Never started, so the queue and cron go unused.
   const build = () => {
     const consumer = `it-${randomUUID().slice(0, 8)}`;
     const received: TEvent[] = [];
