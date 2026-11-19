@@ -68,6 +68,7 @@ import {
   assertNoOverrideConflicts,
   bindInlineOauthVariables,
   inlineOauthVariableIdsOf,
+  inlineServiceDisplayName,
   prepareInlineServices,
   TInlineOauthVariableKeys,
   toInlineServiceSummary
@@ -784,27 +785,20 @@ export const agentVaultSessionServiceFactory = ({
     }));
 
     const encryptedInlineHookSecret = inlineHook ? seal({ value: inlineHook.secret }) : null;
-    // An inline hook lives with this session, so a name becomes a project service's ID only when that service is in
-    // the session. Otherwise it stays a name, and an inline service of the same name keeps its rule.
+    // A name becomes the ID of the project service it names, so the rule follows a rename, unless one of this session's
+    // inline services has that name: the session reaches that one, so the rule has to stay a name to match it.
     const $inlineHookRules = async () => {
       if (!inlineHook?.rules?.length) return [];
-      const sessionProjectServices = [
-        ...listedServices,
-        ...(
-          await Promise.all(
-            accessBundles.map((name) => agentVaultServiceDAL.findByAccessBundleId(bundlesByName.get(name)!.id))
-          )
-        ).flat()
-      ].map(({ id, name }) => ({ id, name }));
-      const idTargets = await agentVaultHookDAL.findProjectServicesForHookRules({
+      const projectServices = await agentVaultHookDAL.findProjectServicesForHookRules({
         projectId,
         ids: inlineHook.rules.flatMap((rule) => (rule.serviceId ? [rule.serviceId] : [])),
-        names: []
+        names: inlineHook.rules.flatMap((rule) => (rule.service ? [rule.service] : []))
       });
+      const inlineNames = new Set(preparedInlineServices.map(inlineServiceDisplayName));
       return toStoredHookRulesForSave(
         inlineHook.rules,
-        [...idTargets, ...sessionProjectServices],
-        sessionProjectServices
+        projectServices,
+        projectServices.filter((service) => !inlineNames.has(service.name))
       ).rules;
     };
     const inlineHookRules = await $inlineHookRules();
