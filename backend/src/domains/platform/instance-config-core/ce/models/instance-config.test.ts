@@ -3,8 +3,8 @@ import { RuleViolationError } from "@app/domains/lib/errors";
 import { EnvOverrides } from "./env-overrides";
 import { INSTANCE_CONFIG_ID, InstanceConfig, TInstanceConfigRecord } from "./instance-config";
 
-const seal = (plainText: Buffer) => Buffer.from(`sealed:${plainText.toString()}`);
-const open = (cipherText: Buffer) => Buffer.from(cipherText.toString().replace(/^sealed:/, ""));
+const encrypt = (plainText: Buffer) => Buffer.from(`encrypted:${plainText.toString()}`);
+const decrypt = (cipherText: Buffer) => Buffer.from(cipherText.toString().replace(/^encrypted:/, ""));
 
 const distinctRecord = (): TInstanceConfigRecord => ({
   id: INSTANCE_CONFIG_ID,
@@ -271,16 +271,16 @@ describe("InstanceConfig.revokeAdminIdentity", () => {
 });
 
 describe("InstanceConfig.changeSlackCredentials", () => {
-  test("should store the credentials sealed and read them back", () => {
+  test("should store the credentials encrypted and read them back", () => {
     // Setup
     const config = freshConfig();
 
     // Action
-    config.changeSlackCredentials({ clientId: "id", clientSecret: "secret" }, seal);
+    config.changeSlackCredentials({ clientId: "id", clientSecret: "secret" }, encrypt);
 
     // Assert
-    expect(config.toJSON().encryptedSlackClientId?.toString()).toBe("sealed:id");
-    expect(config.slackCredentials(open).toJSON()).toEqual({ clientId: "id", clientSecret: "secret" });
+    expect(config.toJSON().encryptedSlackClientId?.toString()).toBe("encrypted:id");
+    expect(config.slackCredentials(decrypt).toJSON()).toEqual({ clientId: "id", clientSecret: "secret" });
   });
 
   test.each([
@@ -289,14 +289,14 @@ describe("InstanceConfig.changeSlackCredentials", () => {
   ])("should refuse an empty %s by name and change nothing", (field, message) => {
     // Setup
     const config = freshConfig();
-    config.changeSlackCredentials({ clientId: "id", clientSecret: "secret" }, seal);
+    config.changeSlackCredentials({ clientId: "id", clientSecret: "secret" }, encrypt);
 
     // Action
-    const act = () => config.changeSlackCredentials({ clientId: "new-id", [field]: "" }, seal);
+    const act = () => config.changeSlackCredentials({ clientId: "new-id", [field]: "" }, encrypt);
 
     // Assert
     expect(act).toThrow(message);
-    expect(config.slackCredentials(open).toJSON()).toEqual({ clientId: "id", clientSecret: "secret" });
+    expect(config.slackCredentials(decrypt).toJSON()).toEqual({ clientId: "id", clientSecret: "secret" });
   });
 });
 
@@ -304,13 +304,13 @@ describe("InstanceConfig.changeMicrosoftTeamsCredentials", () => {
   test("should keep the values left undefined", () => {
     // Setup
     const config = freshConfig();
-    config.changeMicrosoftTeamsCredentials({ appId: "app", clientSecret: "secret", botId: "bot" }, seal);
+    config.changeMicrosoftTeamsCredentials({ appId: "app", clientSecret: "secret", botId: "bot" }, encrypt);
 
     // Action
-    config.changeMicrosoftTeamsCredentials({ botId: "new-bot" }, seal);
+    config.changeMicrosoftTeamsCredentials({ botId: "new-bot" }, encrypt);
 
     // Assert
-    expect(config.microsoftTeamsCredentials(open).toJSON()).toEqual({
+    expect(config.microsoftTeamsCredentials(decrypt).toJSON()).toEqual({
       appId: "app",
       clientSecret: "secret",
       botId: "new-bot"
@@ -324,14 +324,14 @@ describe("InstanceConfig.changeMicrosoftTeamsCredentials", () => {
   ])("should refuse an empty %s by name and change nothing", (field, message) => {
     // Setup
     const config = freshConfig();
-    config.changeMicrosoftTeamsCredentials({ appId: "app", clientSecret: "secret", botId: "bot" }, seal);
+    config.changeMicrosoftTeamsCredentials({ appId: "app", clientSecret: "secret", botId: "bot" }, encrypt);
 
     // Action
-    const act = () => config.changeMicrosoftTeamsCredentials({ [field]: "" }, seal);
+    const act = () => config.changeMicrosoftTeamsCredentials({ [field]: "" }, encrypt);
 
     // Assert
     expect(act).toThrow(message);
-    expect(config.microsoftTeamsCredentials(open).toJSON()).toEqual({
+    expect(config.microsoftTeamsCredentials(decrypt).toJSON()).toEqual({
       appId: "app",
       clientSecret: "secret",
       botId: "bot"
@@ -345,14 +345,14 @@ describe("InstanceConfig.changeGitHubAppCredentials", () => {
     const config = freshConfig();
     config.changeGitHubAppCredentials(
       { clientId: "id", clientSecret: "secret", appSlug: "slug", appId: "app", privateKey: "key" },
-      seal
+      encrypt
     );
 
     // Action
-    config.changeGitHubAppCredentials({ clientSecret: "" }, seal);
+    config.changeGitHubAppCredentials({ clientSecret: "" }, encrypt);
 
     // Assert
-    expect(config.gitHubAppCredentials(open).toJSON()).toEqual({
+    expect(config.gitHubAppCredentials(decrypt).toJSON()).toEqual({
       clientId: "id",
       clientSecret: "",
       appSlug: "slug",
@@ -363,17 +363,17 @@ describe("InstanceConfig.changeGitHubAppCredentials", () => {
 });
 
 describe("InstanceConfig.replaceEnvOverrides", () => {
-  test("should seal the overrides and read them back", () => {
+  test("should encrypt the overrides and read them back", () => {
     // Setup
     const config = freshConfig();
     const overrides = EnvOverrides.restore({ CLIENT_ID_GITHUB_LOGIN: "abc" });
 
     // Action
-    config.replaceEnvOverrides(overrides, seal);
+    config.replaceEnvOverrides(overrides, encrypt);
 
     // Assert
-    expect(config.envOverrides(open).toJSON()).toEqual({ CLIENT_ID_GITHUB_LOGIN: "abc" });
-    expect(config.toJSON().encryptedEnvOverrides?.toString().startsWith("sealed:")).toBe(true);
+    expect(config.envOverrides(decrypt).toJSON()).toEqual({ CLIENT_ID_GITHUB_LOGIN: "abc" });
+    expect(config.toJSON().encryptedEnvOverrides?.toString().startsWith("encrypted:")).toBe(true);
   });
 
   test("should read no overrides when none were stored", () => {
@@ -381,7 +381,7 @@ describe("InstanceConfig.replaceEnvOverrides", () => {
     const config = freshConfig();
 
     // Action
-    const overrides = config.envOverrides(open);
+    const overrides = config.envOverrides(decrypt);
 
     // Assert
     expect(overrides.toJSON()).toEqual({});
@@ -391,11 +391,11 @@ describe("InstanceConfig.replaceEnvOverrides", () => {
   test("should change the version when the overrides change", () => {
     // Setup
     const config = freshConfig();
-    config.replaceEnvOverrides(EnvOverrides.restore({ A: "1" }), seal);
+    config.replaceEnvOverrides(EnvOverrides.restore({ A: "1" }), encrypt);
     const before = config.envOverridesVersion();
 
     // Action
-    config.replaceEnvOverrides(EnvOverrides.restore({ A: "2" }), seal);
+    config.replaceEnvOverrides(EnvOverrides.restore({ A: "2" }), encrypt);
 
     // Assert
     expect(config.envOverridesVersion()).not.toBe(before);

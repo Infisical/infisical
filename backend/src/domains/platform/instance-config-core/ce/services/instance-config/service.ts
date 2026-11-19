@@ -112,11 +112,11 @@ export class InstanceConfigService implements TInstanceConfigService {
 
   async getIntegrationCredentials(): Promise<TIntegrationCredentials> {
     const config = await this.readConfig();
-    const open = this.kmsRootKeyService.decryptWithRootKey();
+    const decrypt = this.kmsRootKeyService.decryptWithRootKey();
     return {
-      slack: config.slackCredentials(open),
-      microsoftTeams: config.microsoftTeamsCredentials(open),
-      gitHubAppConnection: config.gitHubAppCredentials(open)
+      slack: config.slackCredentials(decrypt),
+      microsoftTeams: config.microsoftTeamsCredentials(decrypt),
+      gitHubAppConnection: config.gitHubAppCredentials(decrypt)
     };
   }
 
@@ -133,7 +133,7 @@ export class InstanceConfigService implements TInstanceConfigService {
       });
     }
     const overrides = patch.envOverrides !== undefined ? EnvOverrides.create(patch.envOverrides) : undefined;
-    const seal = this.kmsRootKeyService.encryptWithRootKey();
+    const encrypt = this.kmsRootKeyService.encryptWithRootKey();
 
     const updated = await this.change((config) => {
       config.changeSignUpPolicy({
@@ -148,14 +148,14 @@ export class InstanceConfigService implements TInstanceConfigService {
         config.changeAllowedStorageHostnames(patch.allowedStorageHostnames);
       }
       if (patch.onboardingCompleted !== undefined) config.changeOnboardingStatus(patch.onboardingCompleted);
-      config.changeSlackCredentials({ clientId: patch.slackClientId, clientSecret: patch.slackClientSecret }, seal);
+      config.changeSlackCredentials({ clientId: patch.slackClientId, clientSecret: patch.slackClientSecret }, encrypt);
       config.changeMicrosoftTeamsCredentials(
         {
           appId: patch.microsoftTeamsAppId,
           clientSecret: patch.microsoftTeamsClientSecret,
           botId: patch.microsoftTeamsBotId
         },
-        seal
+        encrypt
       );
       config.changeGitHubAppCredentials(
         {
@@ -165,9 +165,9 @@ export class InstanceConfigService implements TInstanceConfigService {
           appId: patch.gitHubAppConnectionId,
           privateKey: patch.gitHubAppConnectionPrivateKey
         },
-        seal
+        encrypt
       );
-      if (overrides) config.replaceEnvOverrides(overrides, seal);
+      if (overrides) config.replaceEnvOverrides(overrides, encrypt);
     });
     return updated.toSettings();
   }

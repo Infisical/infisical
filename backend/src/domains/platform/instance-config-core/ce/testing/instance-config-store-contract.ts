@@ -9,7 +9,7 @@ type TSetup = () => Promise<{
   addSamlOrg: () => Promise<{ id: string; slug: string }>;
 }>;
 
-const seal = (plainText: Buffer) => Buffer.from(`sealed:${plainText.toString()}`);
+const encrypt = (plainText: Buffer) => Buffer.from(`encrypted:${plainText.toString()}`);
 
 const ownColumns = (config: InstanceConfig) => ({
   ...config.toJSON(),
@@ -86,16 +86,16 @@ export const describeInstanceConfigStoreContract = (name: string, setup: TSetup)
       config.changeOnboardingStatus(true);
       config.completeSetup({ closeSignUp: false });
       config.grantAdminIdentity(randomUUID());
-      config.changeSlackCredentials({ clientId: "slack-id", clientSecret: "slack-secret" }, seal);
+      config.changeSlackCredentials({ clientId: "slack-id", clientSecret: "slack-secret" }, encrypt);
       config.changeMicrosoftTeamsCredentials(
         { appId: "teams-app", clientSecret: "teams-secret", botId: "teams-bot" },
-        seal
+        encrypt
       );
       config.changeGitHubAppCredentials(
         { clientId: "gh-id", clientSecret: "gh-secret", appSlug: "gh-slug", appId: "gh-app", privateKey: "gh-key" },
-        seal
+        encrypt
       );
-      config.replaceEnvOverrides(EnvOverrides.restore({ SOME_KEY: "some-value" }), seal);
+      config.replaceEnvOverrides(EnvOverrides.restore({ SOME_KEY: "some-value" }), encrypt);
 
       // Action
       await store.save(config);

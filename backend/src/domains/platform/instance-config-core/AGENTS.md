@@ -7,7 +7,7 @@ env overrides) shared by every pod through Redis, and every env value an instanc
 
 | Piece | Holds |
 | --- | --- |
-| `models/instance-config.ts` | `InstanceConfig`, the row: intent methods (`changeSignUpPolicy`, `completeSetup`, `revokeAdminIdentity`, `changeSlackCredentials`, `replaceEnvOverrides`, ...), `toSettings()` (an allowlist) and the decrypting reads, each given the root key's `seal` / `open` |
+| `models/instance-config.ts` | `InstanceConfig`, the row: intent methods (`changeSignUpPolicy`, `completeSetup`, `revokeAdminIdentity`, `changeSlackCredentials`, `replaceEnvOverrides`, ...), `toSettings()` (an allowlist) and the decrypting reads, each given the root key's `encrypt` / `decrypt` |
 | `models/*-credentials.ts` | Value objects for decrypted credentials |
 | `models/env-overrides.ts` | `EnvOverrides`: the overridable keys, their groups and schema, and `resolve(processEnv)`, the stored overrides on top of the process env |
 | `data-access/instance-config-store.ts` | `super_admin`, with the default auth org joined in; static `readFipsSetting` / `readInitialized` for boot |

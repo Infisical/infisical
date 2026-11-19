@@ -78,7 +78,7 @@ describe("InstanceConfigService.updateConfig", () => {
     });
   });
 
-  test("should store the overrides sealed and resolve them", async () => {
+  test("should store the overrides encrypted and resolve them", async () => {
     // Setup
     const { instanceConfigService } = await buildModule();
 

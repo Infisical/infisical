@@ -68,7 +68,7 @@ describe("InstanceConfigService.getInstanceConfig", () => {
 
   test.each([
     ["cannot be decrypted", () => Buffer.from("not a ciphertext")],
-    ["decrypts to something that is not JSON", (seal: (plain: Buffer) => Buffer) => seal(Buffer.from("not json"))]
+    ["decrypts to something that is not JSON", (encrypt: (plain: Buffer) => Buffer) => encrypt(Buffer.from("not json"))]
   ])("should fall back to the env defaults when the stored overrides %s", async (_name, makeColumn) => {
     // Setup
     const { module, memory, kmsCore } = await buildInstanceConfigCore();

@@ -43,8 +43,8 @@ export type TInstanceConfigSettings = {
 };
 
 // Encrypts and decrypts with the instance root key. The service hands them in from KMS Core.
-export type TSeal = (plainText: Buffer) => Buffer;
-export type TOpen = (cipherText: Buffer) => Buffer;
+export type TEncrypt = (plainText: Buffer) => Buffer;
+export type TDecrypt = (cipherText: Buffer) => Buffer;
 
 // A change of a Slack or Teams credential cannot clear it: an empty value is refused by name.
 const assertNotCleared = (label: string, value: string | undefined) => {
@@ -203,76 +203,84 @@ export class InstanceConfig {
   }
 
   // Values left undefined stay as they are.
-  changeSlackCredentials(input: { clientId?: string; clientSecret?: string }, seal: TSeal): void {
+  changeSlackCredentials(input: { clientId?: string; clientSecret?: string }, encrypt: TEncrypt): void {
     assertNotCleared("Slack client ID", input.clientId);
     assertNotCleared("Slack client secret", input.clientSecret);
-    if (input.clientId !== undefined) this.encryptedSlackClientId = seal(Buffer.from(input.clientId));
-    if (input.clientSecret !== undefined) this.encryptedSlackClientSecret = seal(Buffer.from(input.clientSecret));
+    if (input.clientId !== undefined) this.encryptedSlackClientId = encrypt(Buffer.from(input.clientId));
+    if (input.clientSecret !== undefined) this.encryptedSlackClientSecret = encrypt(Buffer.from(input.clientSecret));
   }
 
-  changeMicrosoftTeamsCredentials(input: { appId?: string; clientSecret?: string; botId?: string }, seal: TSeal): void {
+  changeMicrosoftTeamsCredentials(
+    input: { appId?: string; clientSecret?: string; botId?: string },
+    encrypt: TEncrypt
+  ): void {
     assertNotCleared("Microsoft Teams app ID", input.appId);
     assertNotCleared("Microsoft Teams client secret", input.clientSecret);
     assertNotCleared("Microsoft Teams bot ID", input.botId);
-    if (input.appId !== undefined) this.encryptedMicrosoftTeamsAppId = seal(Buffer.from(input.appId));
+    if (input.appId !== undefined) this.encryptedMicrosoftTeamsAppId = encrypt(Buffer.from(input.appId));
     if (input.clientSecret !== undefined) {
-      this.encryptedMicrosoftTeamsClientSecret = seal(Buffer.from(input.clientSecret));
+      this.encryptedMicrosoftTeamsClientSecret = encrypt(Buffer.from(input.clientSecret));
     }
-    if (input.botId !== undefined) this.encryptedMicrosoftTeamsBotId = seal(Buffer.from(input.botId));
+    if (input.botId !== undefined) this.encryptedMicrosoftTeamsBotId = encrypt(Buffer.from(input.botId));
   }
 
   // Unlike Slack and Teams, "" is stored: it clears the value.
   changeGitHubAppCredentials(
     input: { clientId?: string; clientSecret?: string; appSlug?: string; appId?: string; privateKey?: string },
-    seal: TSeal
+    encrypt: TEncrypt
   ): void {
-    const sealIfGiven = (value: string | undefined, current: Buffer | null) =>
-      value !== undefined ? seal(Buffer.from(value)) : current;
-    this.encryptedGitHubAppConnectionClientId = sealIfGiven(input.clientId, this.encryptedGitHubAppConnectionClientId);
-    this.encryptedGitHubAppConnectionClientSecret = sealIfGiven(
+    const encryptIfGiven = (value: string | undefined, current: Buffer | null) =>
+      value !== undefined ? encrypt(Buffer.from(value)) : current;
+    this.encryptedGitHubAppConnectionClientId = encryptIfGiven(
+      input.clientId,
+      this.encryptedGitHubAppConnectionClientId
+    );
+    this.encryptedGitHubAppConnectionClientSecret = encryptIfGiven(
       input.clientSecret,
       this.encryptedGitHubAppConnectionClientSecret
     );
-    this.encryptedGitHubAppConnectionSlug = sealIfGiven(input.appSlug, this.encryptedGitHubAppConnectionSlug);
-    this.encryptedGitHubAppConnectionId = sealIfGiven(input.appId, this.encryptedGitHubAppConnectionId);
-    this.encryptedGitHubAppConnectionPrivateKey = sealIfGiven(
+    this.encryptedGitHubAppConnectionSlug = encryptIfGiven(input.appSlug, this.encryptedGitHubAppConnectionSlug);
+    this.encryptedGitHubAppConnectionId = encryptIfGiven(input.appId, this.encryptedGitHubAppConnectionId);
+    this.encryptedGitHubAppConnectionPrivateKey = encryptIfGiven(
       input.privateKey,
       this.encryptedGitHubAppConnectionPrivateKey
     );
   }
 
-  replaceEnvOverrides(overrides: EnvOverrides, seal: TSeal): void {
-    this.encryptedEnvOverrides = seal(overrides.toBytes());
+  replaceEnvOverrides(overrides: EnvOverrides, encrypt: TEncrypt): void {
+    this.encryptedEnvOverrides = encrypt(overrides.toBytes());
   }
 
   // Each integration decrypts only its own columns, so a column that cannot be decrypted breaks only its integration.
-  slackCredentials(open: TOpen): SlackAppCredentials {
+  slackCredentials(decrypt: TDecrypt): SlackAppCredentials {
     return SlackAppCredentials.restore({
-      clientId: InstanceConfig.openText(this.encryptedSlackClientId, open),
-      clientSecret: InstanceConfig.openText(this.encryptedSlackClientSecret, open)
+      clientId: InstanceConfig.decryptText(this.encryptedSlackClientId, decrypt),
+      clientSecret: InstanceConfig.decryptText(this.encryptedSlackClientSecret, decrypt)
     });
   }
 
-  microsoftTeamsCredentials(open: TOpen): MicrosoftTeamsAppCredentials {
+  microsoftTeamsCredentials(decrypt: TDecrypt): MicrosoftTeamsAppCredentials {
     return MicrosoftTeamsAppCredentials.restore({
-      appId: InstanceConfig.openText(this.encryptedMicrosoftTeamsAppId, open),
-      clientSecret: InstanceConfig.openText(this.encryptedMicrosoftTeamsClientSecret, open),
-      botId: InstanceConfig.openText(this.encryptedMicrosoftTeamsBotId, open)
+      appId: InstanceConfig.decryptText(this.encryptedMicrosoftTeamsAppId, decrypt),
+      clientSecret: InstanceConfig.decryptText(this.encryptedMicrosoftTeamsClientSecret, decrypt),
+      botId: InstanceConfig.decryptText(this.encryptedMicrosoftTeamsBotId, decrypt)
     });
   }
 
-  gitHubAppCredentials(open: TOpen): GitHubAppCredentials {
+  gitHubAppCredentials(decrypt: TDecrypt): GitHubAppCredentials {
     return GitHubAppCredentials.restore({
-      clientId: InstanceConfig.openText(this.encryptedGitHubAppConnectionClientId, open),
-      clientSecret: InstanceConfig.openText(this.encryptedGitHubAppConnectionClientSecret, open),
-      appSlug: InstanceConfig.openText(this.encryptedGitHubAppConnectionSlug, open),
-      appId: InstanceConfig.openText(this.encryptedGitHubAppConnectionId, open),
-      privateKey: InstanceConfig.openText(this.encryptedGitHubAppConnectionPrivateKey, open)
+      clientId: InstanceConfig.decryptText(this.encryptedGitHubAppConnectionClientId, decrypt),
+      clientSecret: InstanceConfig.decryptText(this.encryptedGitHubAppConnectionClientSecret, decrypt),
+      appSlug: InstanceConfig.decryptText(this.encryptedGitHubAppConnectionSlug, decrypt),
+      appId: InstanceConfig.decryptText(this.encryptedGitHubAppConnectionId, decrypt),
+      privateKey: InstanceConfig.decryptText(this.encryptedGitHubAppConnectionPrivateKey, decrypt)
     });
   }
 
-  envOverrides(open: TOpen): EnvOverrides {
-    return this.encryptedEnvOverrides ? EnvOverrides.fromBytes(open(this.encryptedEnvOverrides)) : EnvOverrides.none();
+  envOverrides(decrypt: TDecrypt): EnvOverrides {
+    return this.encryptedEnvOverrides
+      ? EnvOverrides.fromBytes(decrypt(this.encryptedEnvOverrides))
+      : EnvOverrides.none();
   }
 
   // Identifies the stored overrides without decrypting them, so a resolution can be reused until they change.
@@ -324,7 +332,7 @@ export class InstanceConfig {
     } satisfies Record<keyof TInstanceConfigRecord, unknown>;
   }
 
-  private static openText(cipherText: Buffer | null, open: TOpen): string {
-    return cipherText ? open(cipherText).toString() : "";
+  private static decryptText(cipherText: Buffer | null, decrypt: TDecrypt): string {
+    return cipherText ? decrypt(cipherText).toString() : "";
   }
 }

@@ -43,7 +43,7 @@ export class FakeInstanceConfigService implements TInstanceConfigService {
 
   constructor({ settings = {}, env = {}, slack, microsoftTeams, gitHubApp }: TOptions = {}) {
     const { kmsRootKeyService } = new FakeKmsCore();
-    const seal = kmsRootKeyService.encryptWithRootKey();
+    const encrypt = kmsRootKeyService.encryptWithRootKey();
     const now = new Date();
     this.env = { ...EnvOverrides.none().resolve({}), ...env };
 
@@ -60,7 +60,7 @@ export class FakeInstanceConfigService implements TInstanceConfigService {
     });
     config.changeSlackCredentials(
       { clientId: slack?.clientId || undefined, clientSecret: slack?.clientSecret || undefined },
-      seal
+      encrypt
     );
     config.changeMicrosoftTeamsCredentials(
       {
@@ -68,7 +68,7 @@ export class FakeInstanceConfigService implements TInstanceConfigService {
         clientSecret: microsoftTeams?.clientSecret || undefined,
         botId: microsoftTeams?.botId || undefined
       },
-      seal
+      encrypt
     );
     config.changeGitHubAppCredentials(
       {
@@ -78,7 +78,7 @@ export class FakeInstanceConfigService implements TInstanceConfigService {
         appId: gitHubApp?.appId,
         privateKey: gitHubApp?.privateKey
       },
-      seal
+      encrypt
     );
     this.memory.instanceConfigStore.seed(config);
     if (settings.defaultAuthOrgId) {
