@@ -32,7 +32,15 @@ import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-da
 import { TApprovalRequestDALFactory } from "../approval-policy/approval-request-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { lockMembershipsById, TMembershipDALFactory } from "../membership/membership-dal";
-import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
+import {
+  customRolesNeedRbacPlan,
+  withAgentVaultMemberAlias,
+  assertProductWillRetainAdmin,
+  assertSecretsTemporaryAccessAllowed,
+  findProjectKeepingBundleRoles,
+  lockProjectRoleChanges,
+  replaceMembershipRoles
+} from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { ApplicationMemberKind } from "../pki-application/pki-application-types";
@@ -58,7 +66,7 @@ type TMembershipGroupServiceFactoryDep = {
     "findPoliciesWhereSubjectIsApprover" | "deleteStepApproversBySubject" | "deleteBypassersBySubject"
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findOpenSecretChangeRequestsWhereSubjectIsApprover">;
-  roleDAL: Pick<TRoleDALFactory, "find">;
+  roleDAL: Pick<TRoleDALFactory, "find" | "findOne" | "findById" | "create">;
   permissionService: TPermissionServiceFactory;
   orgDAL: TOrgDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findById">;
@@ -128,6 +136,7 @@ export const membershipGroupServiceFactory = ({
   const createMembership = async (dto: TCreateMembershipGroupDTO) => {
     const { scopeData, data } = dto;
     const factory = scopeFactory[scopeData.scope];
+    data.roles = await withAgentVaultMemberAlias({ projectDAL, roleDAL }, scopeData, data.roles);
 
     const hasNoPermanentRole = data.roles.every((el) => el.isTemporary);
     if (hasNoPermanentRole) {
@@ -166,7 +175,7 @@ export const membershipGroupServiceFactory = ({
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
       const plan = await licenseService.getPlan(scopeData.orgId);
-      if (!plan?.has(PlanFeature.Rbac))
+      if (!plan?.has(PlanFeature.Rbac) && (await customRolesNeedRbacPlan(projectDAL, scopeData)))
         throw new BadRequestError({
           message:
             "Failed to assign custom role to group due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
@@ -253,6 +262,8 @@ export const membershipGroupServiceFactory = ({
   const updateMembership = async (dto: TUpdateMembershipGroupDTO) => {
     const { scopeData, data } = dto;
     const factory = scopeFactory[scopeData.scope];
+    const keepBundleRolesInProjectId = await findProjectKeepingBundleRoles(projectDAL, scopeData, data.roles);
+    data.roles = await withAgentVaultMemberAlias({ projectDAL, roleDAL }, scopeData, data.roles);
 
     const { group } = await factory.onUpdateMembershipGroupGuard(dto);
 
@@ -260,7 +271,7 @@ export const membershipGroupServiceFactory = ({
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
       const plan = await licenseService.getPlan(scopeData.orgId);
-      if (!plan?.has(PlanFeature.Rbac))
+      if (!plan?.has(PlanFeature.Rbac) && (await customRolesNeedRbacPlan(projectDAL, scopeData)))
         throw new BadRequestError({
           message:
             "Failed to assign custom role to group due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
@@ -321,6 +332,7 @@ export const membershipGroupServiceFactory = ({
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membershipDoc = await membershipGroupDAL.transaction(async (tx) => {
+      if (keepBundleRolesInProjectId) await lockProjectRoleChanges(keepBundleRolesInProjectId, tx);
       const newIsActive = data.isActive ?? existingMembership.isActive;
       const newRolesHavePermanentAdmin =
         newIsActive && data.roles.some((r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary);
@@ -372,13 +384,11 @@ export const membershipGroupServiceFactory = ({
           });
         }
       });
-      await membershipRoleDAL.delete(
-        {
-          membershipId: doc.id
-        },
+      const roles = await replaceMembershipRoles(
+        { membershipRoleDAL },
+        { membershipId: doc.id, roleDocs, keepBundleRolesInProjectId },
         tx
       );
-      const roles = await membershipRoleDAL.insertMany(roleDocs, tx);
       return { ...doc, roles };
     });
 

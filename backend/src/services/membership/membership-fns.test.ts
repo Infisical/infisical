@@ -4,7 +4,11 @@ import { vi } from "vitest";
 import { ProjectType } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 
-import { assertProductWillRetainAdmin, resolveMembershipRoleSlugs } from "./membership-fns";
+import {
+  assertAgentVaultAdminOnlyChange,
+  assertProductWillRetainAdmin,
+  resolveMembershipRoleSlugs
+} from "./membership-fns";
 
 describe("product admin retention", () => {
   const buildTx = (adminCount: number, removingAdmins = 1) => {
@@ -136,5 +140,51 @@ describe("resolveMembershipRoleSlugs", () => {
         { role: "admin", isTemporary: true, temporaryAccessEndTime: new Date(Date.now() - 1) }
       ])
     ).toEqual([]);
+  });
+});
+
+describe("assertAgentVaultAdminOnlyChange", () => {
+  const agentVault = { type: ProjectType.AgentVault };
+  const notAdmin = () => false;
+
+  test("refuses a non-admin who gives the admin role or touches an admin in Agent Vault", () => {
+    expect(() =>
+      assertAgentVaultAdminOnlyChange({ project: agentVault, hasRole: notAdmin, givesAdmin: true, touchesAdmin: false })
+    ).toThrow("Only an Agent Vault admin can give the admin role.");
+    expect(() =>
+      assertAgentVaultAdminOnlyChange({ project: agentVault, hasRole: notAdmin, givesAdmin: false, touchesAdmin: true })
+    ).toThrow("Only an Agent Vault admin can change or remove another admin.");
+  });
+
+  test("lets an admin through, and any change that leaves admin alone", () => {
+    expect(() =>
+      assertAgentVaultAdminOnlyChange({
+        project: agentVault,
+        hasRole: (role) => role === "admin",
+        givesAdmin: true,
+        touchesAdmin: true
+      })
+    ).not.toThrow();
+    expect(() =>
+      assertAgentVaultAdminOnlyChange({
+        project: agentVault,
+        hasRole: notAdmin,
+        givesAdmin: false,
+        touchesAdmin: false
+      })
+    ).not.toThrow();
+  });
+
+  test("leaves other products to their own rules, without asking for the actor's roles", () => {
+    const hasRole = vi.fn(() => false);
+    expect(() =>
+      assertAgentVaultAdminOnlyChange({
+        project: { type: ProjectType.SecretManager },
+        hasRole,
+        givesAdmin: true,
+        touchesAdmin: true
+      })
+    ).not.toThrow();
+    expect(hasRole).not.toHaveBeenCalled();
   });
 });

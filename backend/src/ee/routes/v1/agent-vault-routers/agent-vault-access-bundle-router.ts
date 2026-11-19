@@ -13,7 +13,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
+import { actorContext, resolveRequestedProjectId, withDeprecatedRole } from "./agent-vault-router-fns";
 import {
   AGENT_VAULT_MAX_ADDS_PER_BUNDLE_REQUEST,
   AgentVaultActorRefSchema,
@@ -604,12 +604,56 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
 
   server.route({
     method: "GET",
-    url: "/:accessBundleId/members",
+    url: "/:accessBundleId/roles",
     config: { rateLimit: readLimit },
     schema: {
       hide: false,
+      operationId: "listAgentVaultAccessBundleRoles",
+      description:
+        "List the roles that let someone use an Agent Vault access bundle, and how many members hold each. Give one of these roles to let a user, group or machine identity use the bundle.",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({
+        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
+      }),
+      response: {
+        200: z.object({
+          roles: z
+            .object({
+              id: z.string().uuid().nullable().describe(AGENT_VAULT.ACCESS_BUNDLE.roleId),
+              slug: z.string().describe(AGENT_VAULT.ACCESS_BUNDLE.roleSlug),
+              name: z.string().describe(AGENT_VAULT.ACCESS_BUNDLE.roleName),
+              isBuiltIn: z.boolean().describe(AGENT_VAULT.ACCESS_BUNDLE.roleIsBuiltIn),
+              isBundleRole: z.boolean().describe(AGENT_VAULT.ACCESS_BUNDLE.roleIsBundleRole),
+              memberCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.roleMemberCount)
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.params.accessBundleId
+      );
+      return server.services.agentVaultAccessBundle.listBundleRoles({
+        projectId,
+        ctx: actorContext(req),
+        accessBundleId: req.params.accessBundleId
+      });
+    }
+  });
+
+  // The grant routes below work through the bundle's role (agent-vault-bundle-role-fns.ts) for clients built before
+  // roles. They are left out of the API reference and go after 2027-01-04.
+  server.route({
+    method: "GET",
+    url: "/:accessBundleId/members",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: true,
       operationId: "listAgentVaultAccessBundleMembers",
-      description: "List who can reach an Agent Vault access bundle",
+      description: "Deprecated: list who holds an Agent Vault access bundle's role. List the bundle's roles instead.",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
@@ -640,9 +684,9 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     url: "/:accessBundleId/members/available",
     config: { rateLimit: readLimit },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "listAvailableAgentVaultAccessBundleMembers",
-      description: "List the Agent Vault members who can still be granted an access bundle",
+      description: "Deprecated: list the Agent Vault members who don't hold an access bundle's role yet.",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
@@ -664,12 +708,13 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         actorContext(req),
         req.params.accessBundleId
       );
-      return server.services.agentVaultAccessBundle.listAvailableMembers({
+      const { members, totalCount } = await server.services.agentVaultAccessBundle.listAvailableMembers({
         projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
         ...req.query
       });
+      return { members: members.map(withDeprecatedRole), totalCount };
     }
   });
 
@@ -678,9 +723,10 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     url: "/:accessBundleId/members",
     config: { rateLimit: writeLimit },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "addAgentVaultAccessBundleMembers",
-      description: "Grant an Agent Vault access bundle to users, machine identities or groups",
+      description:
+        "Deprecated: give users, machine identities or groups an Agent Vault access bundle's role. Give members a role that can use the bundle instead.",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
@@ -740,9 +786,10 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     url: "/:accessBundleId/members",
     config: { rateLimit: writeLimit },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "revokeAgentVaultAccessBundleMembers",
-      description: "Revoke an Agent Vault access bundle from users, machine identities or groups",
+      description:
+        "Deprecated: take an Agent Vault access bundle's role from users, machine identities or groups. Change members' roles instead.",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)

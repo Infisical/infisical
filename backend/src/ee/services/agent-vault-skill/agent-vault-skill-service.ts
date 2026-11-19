@@ -9,8 +9,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { PgSqlLock } from "@app/keystore/keystore";
-import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -19,10 +18,16 @@ import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent
 import { findOnBehalfOfListScope } from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import {
+  agentVaultAccessBundleSubject,
+  agentVaultSkillSubject,
   getAgentVaultPermission,
   getAgentVaultReachability,
-  skillIdsReachedThrough
+  TAgentVaultReach,
+  unionWithin,
+  usableSkillIdsOf,
+  visibleIdsWithin
 } from "../agent-vault/agent-vault-permission";
+import { TAgentVaultReachDALFactory } from "../agent-vault/agent-vault-reach-dal";
 import { assertSkillNameNotReserved, getAgentVaultBuiltinSkill } from "./agent-vault-builtin-skill";
 import { TAgentVaultSkillBundleDALFactory } from "./agent-vault-skill-bundle-dal";
 import { TAgentVaultSkillDALFactory, TAgentVaultSkillSummaryRow } from "./agent-vault-skill-dal";
@@ -59,7 +64,10 @@ type TAgentVaultSkillServiceFactoryDep = {
   agentVaultSkillBundleDAL: TAgentVaultSkillBundleDALFactory;
   agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "findByIdInProject" | "lockByIdInProject">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+  agentVaultReachDAL: Pick<
+    TAgentVaultReachDALFactory,
+    "findAccessBundleIds" | "findServiceIds" | "findSkillIds" | "findSkillIdsInAnyBundle"
+  >;
   kmsDataKeyService: TKmsDataKeyService;
   agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "findForIdentity" | "coversUser">;
   userDAL: Pick<TUserDALFactory, "findOne">;
@@ -74,7 +82,7 @@ export const agentVaultSkillServiceFactory = ({
   agentVaultSkillBundleDAL,
   agentVaultAccessBundleDAL,
   permissionService,
-  membershipDAL,
+  agentVaultReachDAL,
   kmsDataKeyService,
   agentVaultDelegationDAL,
   userDAL,
@@ -91,30 +99,66 @@ export const agentVaultSkillServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AgentVaultSkills);
   };
 
-  // A member sees only the skills on bundles they can reach, so accessBundleIds is null for an admin and the
-  // reachable bundles otherwise.
-  const $authorizeRead = async (scoped: TAgentVaultSkillScoped) => {
-    const { permission, accessBundleIds } = await getAgentVaultReachability(
-      { permissionService, membershipDAL },
-      scoped
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultSkillActions.Read,
-      ProjectPermissionSub.AgentVaultSkills
-    );
-    return accessBundleIds;
+  const skillSubject = agentVaultSkillSubject;
+  const bundleSubject = agentVaultAccessBundleSubject;
+
+  // Checked on the skills subject first, so an id the caller could never act on doesn't get a 404 that confirms it
+  // exists, then on the skill itself.
+  const $authorizeSkill = async (
+    scoped: TAgentVaultSkillScoped,
+    action: ProjectPermissionAgentVaultSkillActions,
+    skillId: string
+  ) => {
+    const permission = await $getPermission(scoped);
+    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AgentVaultSkills);
+    ForbiddenError.from(permission).throwUnlessCan(action, skillSubject(skillId));
+    return permission;
   };
 
-  // Adding a skill changes what a bundle hands out, so it is a bundle edit, and the skill has to be one the caller can see.
-  const $authorizeBundleLink = async (scoped: TAgentVaultSkillScoped) => {
+  // The skills the caller can see: those they can read or use, and those a bundle they can use holds (null for all of
+  // them). A read by id uses it as is, so a skill the caller can't see is a 404 whatever their roles, never a 403 that
+  // would confirm the id exists.
+  const $readScope = async (scoped: TAgentVaultSkillScoped) => {
+    const reachability = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, scoped);
+    const { permission } = reachability;
+    const visibleSkillIds = unionWithin(
+      await visibleIdsWithin(permission, {
+        subjectType: ProjectPermissionSub.AgentVaultSkills,
+        field: "skillId",
+        loadIds: () => agentVaultReachDAL.findSkillIds(scoped.projectId)
+      }),
+      await usableSkillIdsOf({ agentVaultSkillBundleDAL, agentVaultReachDAL }, reachability, scoped.projectId)
+    );
+    return { reachability, visibleSkillIds };
+  };
+
+  // A list: someone who can't read or use any skill, or use any bundle, gets a 403 rather than an empty list.
+  const $authorizeRead = async (scoped: TAgentVaultSkillScoped) => {
+    const scope = await $readScope(scoped);
+    const { permission } = scope.reachability;
+    if (
+      permission.cannot(ProjectPermissionAgentVaultSkillActions.Read, ProjectPermissionSub.AgentVaultSkills) &&
+      permission.cannot(ProjectPermissionAgentVaultSkillActions.Use, ProjectPermissionSub.AgentVaultSkills) &&
+      permission.cannot(
+        ProjectPermissionAgentVaultAccessBundleActions.Use,
+        ProjectPermissionSub.AgentVaultAccessBundles
+      )
+    ) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAgentVaultSkillActions.Read,
+        ProjectPermissionSub.AgentVaultSkills
+      );
+    }
+    return scope;
+  };
+
+  // Adding or removing a skill changes what a bundle hands out, so it is an edit of that bundle, as linking a service is.
+  // addToBundle also checks each skill it adds.
+  const $authorizeBundleLink = async (scoped: TAgentVaultSkillScoped, accessBundleId: string) => {
     const permission = await $getPermission(scoped);
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultSkillActions.Read,
-      ProjectPermissionSub.AgentVaultSkills
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.Edit,
-      ProjectPermissionSub.AgentVaultAccessBundles
+      bundleSubject(accessBundleId)
     );
   };
 
@@ -292,7 +336,7 @@ export const agentVaultSkillServiceFactory = ({
   };
 
   const updateSkill = async ({ skillId, files, baseVersion, ...scoped }: TUpdateSkillDTO) => {
-    await $authorize(scoped, ProjectPermissionAgentVaultSkillActions.Edit);
+    await $authorizeSkill(scoped, ProjectPermissionAgentVaultSkillActions.Edit, skillId);
 
     const skill = await $findSkill({ skillId, projectId: scoped.projectId });
     const validated = validateSkillFiles(files);
@@ -337,7 +381,7 @@ export const agentVaultSkillServiceFactory = ({
   };
 
   const restoreVersion = async ({ skillId, version, ...scoped }: TSkillVersionDTO) => {
-    await $authorize(scoped, ProjectPermissionAgentVaultSkillActions.Edit);
+    await $authorizeSkill(scoped, ProjectPermissionAgentVaultSkillActions.Edit, skillId);
 
     const skill = await $findSkill({ skillId, projectId: scoped.projectId });
     const source = await $findVersion({ skill, version });
@@ -420,19 +464,22 @@ export const agentVaultSkillServiceFactory = ({
 
   // On a user's behalf it lists the skills a session for them could name, scoped like the services list.
   const listSkills = async ({ search, name, limit, offset, onBehalfOf, ...scoped }: TListSkillsDTO) => {
-    const accessBundleIds = await $authorizeRead(scoped);
-    const scopeBundleIds = onBehalfOf
-      ? (
-          await findOnBehalfOfListScope(
-            { agentVaultDelegationDAL, userDAL, orgDAL, permissionService, membershipDAL },
-            { ...scoped, onBehalfOf, callerAccessBundleIds: accessBundleIds }
-          )
-        ).scopeIds
-      : accessBundleIds;
+    const { reachability, visibleSkillIds } = await $authorizeRead(scoped);
+    let scopeReach: TAgentVaultReach = reachability;
+    let skillIds = visibleSkillIds;
+    if (onBehalfOf) {
+      scopeReach = (
+        await findOnBehalfOfListScope(
+          { agentVaultDelegationDAL, userDAL, orgDAL, permissionService, agentVaultReachDAL },
+          { ...scoped, onBehalfOf, callerReach: reachability }
+        )
+      ).reach;
+      skillIds = await usableSkillIdsOf({ agentVaultSkillBundleDAL, agentVaultReachDAL }, scopeReach, scoped.projectId);
+    }
 
     const { skills, totalCount } = await agentVaultSkillDAL.findForList({
       projectId: scoped.projectId,
-      skillIds: await skillIdsReachedThrough(agentVaultSkillBundleDAL, scopeBundleIds),
+      skillIds,
       search,
       name,
       limit,
@@ -440,7 +487,7 @@ export const agentVaultSkillServiceFactory = ({
     });
     const bundlesBySkill = await agentVaultSkillBundleDAL.findBundlesForSkills(
       skills.map((skill) => skill.id),
-      scopeBundleIds
+      scopeReach.accessBundleIds
     );
     return {
       skills: skills.map((skill): TAgentVaultSkillWithBundles => ({
@@ -451,13 +498,12 @@ export const agentVaultSkillServiceFactory = ({
     };
   };
 
-  // A skill on no bundle the member can reach is a 404, never a 403, which would confirm the id exists.
   const getSkill = async ({ skillId, ...scoped }: TSkillByIdDTO) => {
-    const accessBundleIds = await $authorizeRead(scoped);
+    const { reachability, visibleSkillIds } = await $readScope(scoped);
 
     const skill = await $findSkill({ skillId, projectId: scoped.projectId });
-    const accessBundles = await agentVaultSkillBundleDAL.findBundlesForSkill(skill.id, accessBundleIds);
-    if (accessBundleIds && !accessBundles.length) throw skillNotFound(skillId);
+    if (visibleSkillIds && !visibleSkillIds.includes(skill.id)) throw skillNotFound(skillId);
+    const accessBundles = await agentVaultSkillBundleDAL.findBundlesForSkill(skill.id, reachability.accessBundleIds);
     const latest = await $findVersion({ skill, version: skill.latestVersion });
 
     const { decryptor } = await getProjectCipher(scoped.projectId);
@@ -465,33 +511,35 @@ export const agentVaultSkillServiceFactory = ({
     return { skill: { ...projectSkill(skill), accessBundles, files }, version: latest.version };
   };
 
-  // Every agent gets the built-in skill whatever bundle it runs with, so a member doesn't need a bundle to read it.
+  // Every agent gets the built-in skill whatever it runs with, and it holds no project data, so any member of the
+  // project can read it.
   const getBuiltinSkill = async (scoped: TAgentVaultSkillScoped) => {
-    await $authorize(scoped, ProjectPermissionAgentVaultSkillActions.Read);
+    await $getPermission(scoped);
     const { id, name, description, sha256, files } = await getAgentVaultBuiltinSkill();
     return { id, name, description, sha256, files };
   };
 
   // Version history is for the people who can publish and restore, so it checks Edit rather than Read.
   const listVersions = async ({ skillId, ...scoped }: TSkillByIdDTO) => {
-    await $authorize(scoped, ProjectPermissionAgentVaultSkillActions.Edit);
+    await $authorizeSkill(scoped, ProjectPermissionAgentVaultSkillActions.Edit, skillId);
 
     const skill = await $findSkill({ skillId, projectId: scoped.projectId });
     const versions = await agentVaultSkillVersionDAL.findBySkillId(skill.id);
     return { versions: versions.map(projectVersion) };
   };
 
-  // A member reads only the latest version of a skill they can reach; anything else is a 404, as for a skill or
-  // version that does not exist.
+  // Someone who can't edit the skill reads only the latest version of one they can see; anything else is a 404, as for a
+  // skill or version that does not exist.
   const getVersionFiles = async ({ skillId, version, ...scoped }: TSkillVersionDTO) => {
-    const accessBundleIds = await $authorizeRead(scoped);
+    const { reachability, visibleSkillIds } = await $readScope(scoped);
 
     const skill = await $findSkill({ skillId, projectId: scoped.projectId });
-    if (accessBundleIds) {
-      if (!(await agentVaultSkillBundleDAL.isSkillReachable(skill.id, accessBundleIds))) throw skillNotFound(skillId);
-      if (version !== skill.latestVersion) {
-        throw new NotFoundError({ message: `Version ${version} of skill '${skill.name}' not found` });
-      }
+    if (visibleSkillIds && !visibleSkillIds.includes(skill.id)) throw skillNotFound(skillId);
+    if (
+      version !== skill.latestVersion &&
+      reachability.permission.cannot(ProjectPermissionAgentVaultSkillActions.Edit, skillSubject(skill.id))
+    ) {
+      throw new NotFoundError({ message: `Version ${version} of skill '${skill.name}' not found` });
     }
     const row = await $findVersion({ skill, version });
 
@@ -502,7 +550,7 @@ export const agentVaultSkillServiceFactory = ({
 
   // The bundle links go with the skill through the foreign key; their names are returned for the audit event.
   const deleteSkill = async ({ skillId, ...scoped }: TSkillByIdDTO) => {
-    await $authorize(scoped, ProjectPermissionAgentVaultSkillActions.Delete);
+    await $authorizeSkill(scoped, ProjectPermissionAgentVaultSkillActions.Delete, skillId);
 
     return agentVaultSkillDAL.transaction(async (tx) => {
       const locked = await agentVaultSkillDAL.lockByIdInProject({ id: skillId, projectId: scoped.projectId }, tx);
@@ -529,18 +577,20 @@ export const agentVaultSkillServiceFactory = ({
     latestVersion: latest?.version ?? 0
   });
 
-  // A bundle the caller cannot reach is a 404, as in the access bundle service.
+  // A bundle the caller cannot see is a 404, as in the access bundle service.
   const listBundleSkills = async ({ accessBundleId, ...scoped }: TBundleSkillsDTO) => {
-    const accessBundleIds = await $authorizeRead(scoped);
+    const { reachability } = await $readScope(scoped);
+    const { permission } = reachability;
 
     const bundle = await agentVaultAccessBundleDAL.findByIdInProject({
       id: accessBundleId,
       projectId: scoped.projectId
     });
-    // Postgres compares uuids case-insensitively but this list does not, so an uppercase id would miss.
-    if (!bundle || (accessBundleIds && !accessBundleIds.includes(accessBundleId.toLowerCase()))) {
-      throw bundleNotFound(accessBundleId);
-    }
+    const canSee =
+      bundle &&
+      (permission.can(ProjectPermissionAgentVaultAccessBundleActions.Read, bundleSubject(bundle.id)) ||
+        permission.can(ProjectPermissionAgentVaultAccessBundleActions.Use, bundleSubject(bundle.id)));
+    if (!bundle || !canSee) throw bundleNotFound(accessBundleId);
 
     return { skills: await agentVaultSkillBundleDAL.findSkillsForBundle(bundle.id) };
   };
@@ -550,8 +600,16 @@ export const agentVaultSkillServiceFactory = ({
   // All or nothing: one skill that's missing, or going over the bundle's limit, stops the rest. Skills already in the
   // bundle are skipped.
   const addToBundle = async ({ accessBundleId, skillIds, ...scoped }: TAddBundleSkillsDTO) => {
-    await $authorizeBundleLink(scoped);
+    await $authorizeBundleLink(scoped, accessBundleId);
     const requestedIds = [...new Set(skillIds.map((id) => id.toLowerCase()))];
+    // Everyone who can use the bundle gets its skills, so adding a skill takes being able to use it already, directly or
+    // through another bundle: a bundle editor can't hand out a skill they couldn't use themselves.
+    const reachability = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, scoped);
+    const usableIds = await usableSkillIdsOf(
+      { agentVaultSkillBundleDAL, agentVaultReachDAL },
+      reachability,
+      scoped.projectId
+    );
 
     const add = () =>
       agentVaultSkillDAL.transaction(async (tx) => {
@@ -567,6 +625,15 @@ export const agentVaultSkillServiceFactory = ({
           // eslint-disable-next-line no-await-in-loop
           const skill = await agentVaultSkillDAL.lockByIdInProject({ id, projectId: scoped.projectId }, tx);
           if (!skill) throw skillNotFound(id);
+          if (usableIds !== null && !usableIds.includes(skill.id)) {
+            // One the caller can't see answers as a missing one would, so the request can't confirm the id exists.
+            if (reachability.permission.cannot(ProjectPermissionAgentVaultSkillActions.Read, skillSubject(skill.id))) {
+              throw skillNotFound(id);
+            }
+            throw new ForbiddenRequestError({
+              message: `You can't add the skill '${skill.name}' to an access bundle, because you can't use it yourself.`
+            });
+          }
           lockedById.set(id, skill);
         }
 
@@ -617,7 +684,7 @@ export const agentVaultSkillServiceFactory = ({
   };
 
   const removeFromBundle = async ({ accessBundleId, skillId, ...scoped }: TBundleSkillDTO) => {
-    await $authorizeBundleLink(scoped);
+    await $authorizeBundleLink(scoped, accessBundleId);
 
     return agentVaultSkillDAL.transaction(async (tx) => {
       const bundle = await agentVaultAccessBundleDAL.lockByIdInProject(
@@ -627,12 +694,14 @@ export const agentVaultSkillServiceFactory = ({
       if (!bundle) throw bundleNotFound(accessBundleId);
 
       const skill = await agentVaultSkillDAL.findSummaryByIdInProject({ id: skillId, projectId: scoped.projectId }, tx);
-      if (!skill) throw skillNotFound(skillId);
-
-      const [removed] = await agentVaultSkillBundleDAL.delete({ accessBundleId: bundle.id, skillId: skill.id }, tx);
-      if (!removed) {
+      const [removed] = skill
+        ? await agentVaultSkillBundleDAL.delete({ accessBundleId: bundle.id, skillId: skill.id }, tx)
+        : [];
+      // One answer for a missing skill and one outside the bundle, without its name: a bundle editor may not be able to
+      // see every skill in the project.
+      if (!skill || !removed) {
         throw new NotFoundError({
-          message: `The skill '${skill.name}' isn't in the access bundle '${bundle.name}'.`
+          message: `Skill with ID '${skillId}' isn't in the access bundle '${bundle.name}'.`
         });
       }
 

@@ -14,6 +14,8 @@ export const createProjectIdentitySchema = z
       z.object({ id: z.string(), name: z.string() }).optional()
     ),
     role: z.object({ slug: z.string(), name: z.string() }),
+    // Agent Vault takes several roles; every other product uses `role`.
+    agentVaultRoles: z.array(z.string()).default([]),
     templateIds: z.array(z.string()).default([])
   })
   .superRefine((data, ctx) => {

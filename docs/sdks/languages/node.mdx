@@ -793,12 +793,12 @@ console.log(publicKey); // Returns the public key string
 
 `client.agentVault().sessions` manages [Agent Vault sessions](/documentation/platform/agent-vault/sessions). A session lets an AI agent use the [services](/documentation/platform/agent-vault/services) in one [access bundle](/documentation/platform/agent-vault/access-bundles), the [inline services](/documentation/platform/agent-vault/inline-services) sent with the session, or both, until the session expires or someone revokes it.
 
-What the client can do with sessions depends on the [role](/documentation/platform/agent-vault/access-control#product-membership) that the user or machine identity the client logs in as has in the Agent Vault project:
+What the client can do with sessions depends on the [role](/documentation/platform/agent-vault/access-control#roles) that the user or machine identity the client logs in as has in the Agent Vault project:
 
 | Role | Can create sessions with | Can list, get, label, and revoke |
 | --- | --- | --- |
 | **Admin** | Any access bundle (on behalf of a user, [only access bundles that the user can use too](#create-a-session-on-behalf-of-a-user)), and [inline services](#create-a-session-with-inline-services) | Every session |
-| **Member** | The access bundles [granted](/documentation/platform/agent-vault/access-bundles#grant-access) to the member | The member's own sessions |
+| **Member** | The access bundles [granted](/documentation/platform/agent-vault/access-bundles#who-can-use-an-access-bundle) to the member | The member's own sessions |
 
 <Note>
   `agentVault` requires `@infisical/sdk` version 5.3.0 or newer.
@@ -969,7 +969,7 @@ try {
 
 `client.agentVault().proxies` manages [Agent Vault proxies](/documentation/platform/agent-vault/proxies). A proxy attaches API credentials to the requests that agents send through it.
 
-To use any method in this section except `list`, the client must log in as a user or machine identity with the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership).
+To use any method in this section except `list`, the client must log in as a user or machine identity with the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#roles).
 
 <Note>
   `agentVault` requires `@infisical/sdk` version 5.3.0 or newer.
@@ -1105,9 +1105,9 @@ const proxy = await client.agentVault().proxies.revoke("<proxy-id>");
 
 ### `agentVault.accessBundles`
 
-`client.agentVault().accessBundles` manages [Agent Vault access bundles](/documentation/platform/agent-vault/access-bundles) and who they're [granted](/documentation/platform/agent-vault/access-bundles#grant-access) to. An access bundle is a list of services that an agent can use during a session.
+`client.agentVault().accessBundles` manages [Agent Vault access bundles](/documentation/platform/agent-vault/access-bundles) and who they're [granted](/documentation/platform/agent-vault/access-bundles#who-can-use-an-access-bundle) to. An access bundle is a list of services that an agent can use during a session.
 
-To use any method in this section except `list` and `get`, the client must log in as a user or machine identity with the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership).
+To use any method in this section except `list` and `get`, the client must log in as a user or machine identity with the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#roles).
 
 <Note>
   `agentVault` requires `@infisical/sdk` version 5.3.0 or newer.
@@ -1271,7 +1271,7 @@ const { members, totalCount } = await client.agentVault().accessBundles.listAvai
 
 Grant an access bundle to users, machine identities, or groups. Pass at least one ID, and at most 100 in total.
 
-Each user, machine identity, and group must be a member of the Agent Vault project. If a user or machine identity is in the Agent Vault project only through a group, `grant` fails and grants nothing. Grant the access bundle to the group instead, or first [add the user or machine identity to the Agent Vault project](/documentation/platform/agent-vault/access-control#adding-members).
+Each user, machine identity, and group must be a member of the Agent Vault project. If a user or machine identity is in the Agent Vault project only through a group, `grant` fails and grants nothing. Grant the access bundle to the group instead, or first [add the user or machine identity to the Agent Vault project](/documentation/platform/agent-vault/access-control#add-members).
 
 ```typescript
 const { members, skipped } = await client.agentVault().accessBundles.grant("<access-bundle-id>", {
@@ -1320,7 +1320,7 @@ const { members, skipped } = await client.agentVault().accessBundles.revoke("<ac
 
 `client.agentVault().delegations` manages [delegations](/documentation/platform/agent-vault/sessions-on-behalf-of-users), which let a machine identity [create sessions on behalf of users](#create-a-session-on-behalf-of-a-user).
 
-To use any method in this section, the client must log in as a user or machine identity with the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership). A machine identity without the role can still get its own delegation.
+To use any method in this section, the client must log in as a user or machine identity with the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#roles). A machine identity without the role can still get its own delegation.
 
 <Note>
   `agentVault` requires `@infisical/sdk` version 5.3.0 or newer.

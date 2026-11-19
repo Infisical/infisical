@@ -1,14 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import {
-  AccessScope,
-  OrgMembershipStatus,
-  ProjectMembershipRole,
-  RESOURCE_SCOPE,
-  ResourceType,
-  TableName
-} from "@app/db/schemas";
+import { AccessScope, OrgMembershipStatus, TableName } from "@app/db/schemas";
 import {
   AGENT_VAULT_ACTOR_COLUMN,
   AgentVaultMemberType,
@@ -40,7 +33,8 @@ export type TAgentVaultProductActor =
   | { type: AgentVaultMemberType.Group; id: string; name: string };
 
 export type TAgentVaultProductMember = TAgentVaultProductActor & {
-  role: string;
+  // Built-in slugs (admin, no-access) and custom role slugs, oldest first.
+  roles: string[];
   isActive: boolean;
   addedAt: Date;
 };
@@ -91,26 +85,17 @@ type TFindProductMembersDTO = {
   search?: string;
   limit: number;
   offset: number;
-  // Set to list the members who could still be granted that bundle.
-  excludeAccessBundleId?: string;
+  // Set to list the members who don't hold that role yet.
+  excludeRoleId?: string;
   // Set to list the members who could still be added to that delegation.
   excludeDelegationId?: string;
 };
 
-type TFindAvailableActorsDTO = Omit<TFindProductMembersDTO, "excludeAccessBundleId" | "excludeDelegationId">;
+type TFindAvailableActorsDTO = Omit<TFindProductMembersDTO, "excludeRoleId" | "excludeDelegationId">;
 
 export const agentVaultMemberDALFactory = (db: TDbClient) => {
   const findProductMembers = async (
-    {
-      projectId,
-      orgId,
-      actorTypes,
-      search,
-      limit,
-      offset,
-      excludeAccessBundleId,
-      excludeDelegationId
-    }: TFindProductMembersDTO,
+    { projectId, orgId, actorTypes, search, limit, offset, excludeRoleId, excludeDelegationId }: TFindProductMembersDTO,
     tx?: Knex
   ): Promise<{ members: TAgentVaultProductMember[]; totalCount: number }> => {
     if (!actorTypes.length) return { members: [], totalCount: 0 };
@@ -120,12 +105,12 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
 
       const alreadyGranted = (column: TAgentVaultActorColumn) =>
         conn(TableName.Membership)
-          .where(`${TableName.Membership}.scope`, RESOURCE_SCOPE)
+          .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+          .where(`${TableName.Membership}.scope`, AccessScope.Project)
           .where(`${TableName.Membership}.scopeProjectId`, projectId)
-          .where(`${TableName.Membership}.scopeResourceType`, ResourceType.AgentVaultAccessBundle)
-          .where(`${TableName.Membership}.scopeResourceId`, excludeAccessBundleId!)
+          .where(`${TableName.MembershipRole}.customRoleId`, excludeRoleId!)
           .whereNotNull(`${TableName.Membership}.${column}`)
-          .select(column);
+          .select(`${TableName.Membership}.${column}`);
 
       const applyFilters = (query: Knex.QueryBuilder) => {
         void query
@@ -144,7 +129,7 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
               void typeQb.whereNotNull(`${TableName.Membership}.${column}`);
               // Inside the block, where the column is known non-null: a bare whereNotIn would read
               // NULL NOT IN (...) as NULL for the other two types and drop every one of their rows.
-              if (excludeAccessBundleId) {
+              if (excludeRoleId) {
                 void typeQb.whereNotIn(`${TableName.Membership}.${column}`, alreadyGranted(column));
               }
             });
@@ -205,8 +190,9 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
           db.ref("orgId").withSchema(TableName.Identity).as("machineIdentityOrgId"),
           db.ref("name").withSchema(TableName.Groups).as("groupName"),
           db.raw(
-            `(SELECT mr."role" FROM ?? mr WHERE mr."membershipId" = ??."id" ORDER BY mr."createdAt" ASC LIMIT 1) as "role"`,
-            [TableName.MembershipRole, TableName.Membership]
+            `(SELECT COALESCE(array_agg(COALESCE(r."slug", mr."role") ORDER BY mr."createdAt" ASC, mr."id" ASC), '{}')
+               FROM ?? mr LEFT JOIN ?? r ON r."id" = mr."customRoleId" WHERE mr."membershipId" = ??."id") as "roles"`,
+            [TableName.MembershipRole, TableName.Role, TableName.Membership]
           ),
           // Pinned to this org: membership is unique per (org, actor), and a user can hold several in a sub-org family.
           db.raw(
@@ -236,14 +222,14 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
         machineIdentityProjectId: string | null;
         machineIdentityOrgId: string | null;
         groupName: string | null;
-        role: string | null;
+        roles: string[];
         isOrgMembershipPending: boolean;
       }[];
 
       return {
         members: rows.map((row) => ({
           ...actorOf(row, projectId),
-          role: row.role ?? ProjectMembershipRole.Member,
+          roles: row.roles,
           isActive: row.isActive,
           addedAt: row.createdAt
         })),

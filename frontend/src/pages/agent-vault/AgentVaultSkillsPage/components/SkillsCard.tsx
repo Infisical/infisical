@@ -58,6 +58,7 @@ import {
   useProjectPermission,
   useProject
 } from "@app/context";
+import { canOnAgentVaultSkill } from "@app/helpers/agentVaultPermissions";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -82,14 +83,6 @@ export const SkillsCard = () => {
   const { permission } = useProjectPermission();
   const canCreate = permission.can(
     ProjectPermissionAgentVaultSkillActions.Create,
-    ProjectPermissionSub.AgentVaultSkills
-  );
-  const canEdit = permission.can(
-    ProjectPermissionAgentVaultSkillActions.Edit,
-    ProjectPermissionSub.AgentVaultSkills
-  );
-  const canDelete = permission.can(
-    ProjectPermissionAgentVaultSkillActions.Delete,
     ProjectPermissionSub.AgentVaultSkills
   );
 
@@ -264,7 +257,11 @@ export const SkillsCard = () => {
                         align="end"
                         onClick={(event) => event.stopPropagation()}
                       >
-                        {canEdit && (
+                        {canOnAgentVaultSkill(
+                          permission,
+                          ProjectPermissionAgentVaultSkillActions.Edit,
+                          skill.id
+                        ) && (
                           <DropdownMenuItem onClick={() => openSkill(skill)}>
                             <PencilIcon />
                             Edit
@@ -274,7 +271,11 @@ export const SkillsCard = () => {
                           <DownloadIcon />
                           Download
                         </DropdownMenuItem>
-                        {canDelete && (
+                        {canOnAgentVaultSkill(
+                          permission,
+                          ProjectPermissionAgentVaultSkillActions.Delete,
+                          skill.id
+                        ) && (
                           <>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem

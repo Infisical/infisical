@@ -300,12 +300,13 @@ export enum ProjectPermissionProxiedServiceActions {
   ReportUsage = "report-usage"
 }
 
+// Use lets a session carry the bundle, and name its services and skills one by one, without access to them directly.
 export enum ProjectPermissionAgentVaultAccessBundleActions {
   Read = "read",
+  Use = "use",
   Create = "create",
   Edit = "edit",
-  Delete = "delete",
-  ManageMembers = "manage-members"
+  Delete = "delete"
 }
 
 // Read, Edit and Revoke reach only the actor's own sessions; the Any actions reach everyone's.
@@ -342,6 +343,16 @@ export enum ProjectPermissionAgentVaultProxyActions {
 
 export enum ProjectPermissionAgentVaultSkillActions {
   Read = "read",
+  Use = "use",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
+// Edit can repoint a service at another host and so read its credential there: it is as strong as read on the value.
+export enum ProjectPermissionAgentVaultServiceActions {
+  Read = "read",
+  Use = "use",
   Create = "create",
   Edit = "edit",
   Delete = "delete"
@@ -427,6 +438,7 @@ export enum ProjectPermissionSub {
   AgentVaultSessions = "agent-vault-sessions",
   AgentVaultProxies = "agent-vault-proxies",
   AgentVaultSkills = "agent-vault-skills",
+  AgentVaultServices = "agent-vault-services",
   AgentVaultVariables = "agent-vault-variables",
   Insights = "insights"
 }
@@ -474,7 +486,29 @@ export const ActionAllowedConditions: ActionAllowedConditionsType = {
   [ProjectPermissionSub.Groups]: {
     [ProjectPermissionGroupActions.GrantPrivileges]: ["groupName", "assignableRole"],
     [ProjectPermissionGroupActions.AssignRole]: ["groupName", "assignableRole"]
+  },
+  // Create has no id to name yet.
+  [ProjectPermissionSub.AgentVaultAccessBundles]: {
+    [ProjectPermissionAgentVaultAccessBundleActions.Create]: []
+  },
+  [ProjectPermissionSub.AgentVaultServices]: {
+    [ProjectPermissionAgentVaultServiceActions.Create]: []
+  },
+  [ProjectPermissionSub.AgentVaultSkills]: {
+    [ProjectPermissionAgentVaultSkillActions.Create]: []
   }
+};
+
+export type AgentVaultAccessBundleSubjectFields = {
+  accessBundleId: string;
+};
+
+export type AgentVaultServiceSubjectFields = {
+  serviceId: string;
+};
+
+export type AgentVaultSkillSubjectFields = {
+  skillId: string;
 };
 
 export type SecretSubjectFields = {
@@ -747,10 +781,29 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.ProxiedServices> & ProxiedServiceSubjectFields)
       )
     ]
-  | [ProjectPermissionAgentVaultAccessBundleActions, ProjectPermissionSub.AgentVaultAccessBundles]
+  | [
+      ProjectPermissionAgentVaultAccessBundleActions,
+      (
+        | ProjectPermissionSub.AgentVaultAccessBundles
+        | (ForcedSubject<ProjectPermissionSub.AgentVaultAccessBundles> & AgentVaultAccessBundleSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionAgentVaultServiceActions,
+      (
+        | ProjectPermissionSub.AgentVaultServices
+        | (ForcedSubject<ProjectPermissionSub.AgentVaultServices> & AgentVaultServiceSubjectFields)
+      )
+    ]
   | [ProjectPermissionAgentVaultSessionActions, ProjectPermissionSub.AgentVaultSessions]
   | [ProjectPermissionAgentVaultProxyActions, ProjectPermissionSub.AgentVaultProxies]
-  | [ProjectPermissionAgentVaultSkillActions, ProjectPermissionSub.AgentVaultSkills]
+  | [
+      ProjectPermissionAgentVaultSkillActions,
+      (
+        | ProjectPermissionSub.AgentVaultSkills
+        | (ForcedSubject<ProjectPermissionSub.AgentVaultSkills> & AgentVaultSkillSubjectFields)
+      )
+    ]
   | [ProjectPermissionAgentVaultVariableActions, ProjectPermissionSub.AgentVaultVariables]
   | [
       ProjectPermissionCertificateProfileActions,
@@ -977,6 +1030,36 @@ const HoneyTokenConditionSchema = z
     secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA
   })
   .partial();
+
+// Stored lowercase, the way Postgres returns ids: CASL compares condition values exactly, so a rule saved with an id in
+// capitals would never match the row it names.
+const AGENT_VAULT_ID_SCHEMA = z
+  .string()
+  .uuid()
+  .transform((id) => id.toLowerCase());
+
+// Ids only, equal or one of: a role names the bundles, services and skills it covers, never a pattern that could start
+// matching one created later.
+const AGENT_VAULT_ID_CONDITION_SCHEMA = z.union([
+  AGENT_VAULT_ID_SCHEMA,
+  z
+    .object({
+      [PermissionConditionOperators.$EQ]: AGENT_VAULT_ID_SCHEMA,
+      [PermissionConditionOperators.$IN]: AGENT_VAULT_ID_SCHEMA.array().min(1)
+    })
+    .partial()
+    .strict()
+    .refine((value) => Object.keys(value).length > 0, "Name at least one by ID")
+]);
+
+const AgentVaultAccessBundleConditionSchema = z
+  .object({ accessBundleId: AGENT_VAULT_ID_CONDITION_SCHEMA })
+  .partial()
+  .strict();
+
+const AgentVaultServiceConditionSchema = z.object({ serviceId: AGENT_VAULT_ID_CONDITION_SCHEMA }).partial().strict();
+
+const AgentVaultSkillConditionSchema = z.object({ skillId: AGENT_VAULT_ID_CONDITION_SCHEMA }).partial().strict();
 
 const ProxiedServiceConditionSchema = z
   .object({
@@ -1690,7 +1773,20 @@ const GeneralPermissionSchema = [
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAgentVaultAccessBundleActions).describe(
       "Describe what action an entity can take."
-    )
+    ),
+    conditions: AgentVaultAccessBundleConditionSchema.describe(
+      "When specified, only the access bundles with these IDs are covered."
+    ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.AgentVaultServices).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAgentVaultServiceActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: AgentVaultServiceConditionSchema.describe(
+      "When specified, only the services with these IDs are covered."
+    ).optional()
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.AgentVaultSessions).describe("The entity this permission pertains to."),
@@ -1711,7 +1807,10 @@ const GeneralPermissionSchema = [
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAgentVaultSkillActions).describe(
       "Describe what action an entity can take."
-    )
+    ),
+    conditions: AgentVaultSkillConditionSchema.describe(
+      "When specified, only the skills with these IDs are covered."
+    ).optional()
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.AgentVaultVariables).describe("The entity this permission pertains to."),

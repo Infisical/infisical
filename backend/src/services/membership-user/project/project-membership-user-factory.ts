@@ -23,8 +23,10 @@ import { BadRequestError, InternalServerError, NotFoundError, PermissionBoundary
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
+  assertAgentVaultAdminOnlyChange,
   filterRolesNeedingPrivilegeBoundary,
-  resolveMembershipRoleSlugs
+  resolveMembershipRoleSlugs,
+  rolesGiveAdmin
 } from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
@@ -77,7 +79,7 @@ export const newProjectMembershipUserFactory = ({
     newUserEmails
   ) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasRole } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
       actionProjectType: ActionProjectType.Any,
@@ -132,6 +134,13 @@ export const newProjectMembershipUserFactory = ({
         });
       }
     }
+
+    assertAgentVaultAdminOnlyChange({
+      project,
+      hasRole,
+      givesAdmin: rolesGiveAdmin(dto.data.roles),
+      touchesAdmin: false
+    });
 
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(
       requestMemoKeys.orgFindById(dto.permission.orgId),
@@ -231,7 +240,7 @@ export const newProjectMembershipUserFactory = ({
 
   const onUpdateMembershipUserGuard: TMembershipUserScopeFactory["onUpdateMembershipUserGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasRole } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
       actionProjectType: ActionProjectType.Any,
@@ -279,6 +288,12 @@ export const newProjectMembershipUserFactory = ({
       userId: dto.selector.userId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    assertAgentVaultAdminOnlyChange({
+      project,
+      hasRole,
+      givesAdmin: rolesGiveAdmin(dto.data.roles),
+      touchesAdmin: targetRoles.includes(ProjectMembershipRole.Admin)
+    });
     const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
       ignoreUnresolvedRoles: true
     });
@@ -325,7 +340,7 @@ export const newProjectMembershipUserFactory = ({
 
   const onDeleteMembershipUserGuard: TMembershipUserScopeFactory["onDeleteMembershipUserGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasRole } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
       actionProjectType: ActionProjectType.Any,
@@ -340,6 +355,15 @@ export const newProjectMembershipUserFactory = ({
       userId: dto.selector.userId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
+      projectDAL.findById(scope.value)
+    );
+    assertAgentVaultAdminOnlyChange({
+      project,
+      hasRole,
+      givesAdmin: false,
+      touchesAdmin: targetRoles.includes(ProjectMembershipRole.Admin)
+    });
     const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
       ignoreUnresolvedRoles: true
     });

@@ -17,8 +17,10 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import {
+  assertAgentVaultAdminOnlyChange,
   filterRolesNeedingPrivilegeBoundary,
-  resolveMembershipRoleSlugs
+  resolveMembershipRoleSlugs,
+  rolesGiveAdmin
 } from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -73,7 +75,7 @@ export const newProjectMembershipIdentityFactory = ({
     dto
   ) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasRole } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
       actionProjectType: ActionProjectType.Any,
@@ -106,6 +108,13 @@ export const newProjectMembershipIdentityFactory = ({
         });
       }
     }
+
+    assertAgentVaultAdminOnlyChange({
+      project,
+      hasRole,
+      givesAdmin: rolesGiveAdmin(dto.data.roles),
+      touchesAdmin: false
+    });
 
     await assertOrgAccess(dto.data.identityId, dto.permission.orgId);
 
@@ -154,7 +163,7 @@ export const newProjectMembershipIdentityFactory = ({
     dto
   ) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasRole } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
       actionProjectType: ActionProjectType.Any,
@@ -208,6 +217,12 @@ export const newProjectMembershipIdentityFactory = ({
       identityId: dto.selector.identityId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    assertAgentVaultAdminOnlyChange({
+      project,
+      hasRole,
+      givesAdmin: rolesGiveAdmin(dto.data.roles),
+      touchesAdmin: targetRoles.includes(ProjectMembershipRole.Admin)
+    });
     const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
       ignoreUnresolvedRoles: true
     });
@@ -255,7 +270,7 @@ export const newProjectMembershipIdentityFactory = ({
     dto
   ) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasRole } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
       actionProjectType: ActionProjectType.Any,
@@ -281,6 +296,15 @@ export const newProjectMembershipIdentityFactory = ({
       identityId: dto.selector.identityId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
+      projectDAL.findById(scope.value)
+    );
+    assertAgentVaultAdminOnlyChange({
+      project,
+      hasRole,
+      givesAdmin: false,
+      touchesAdmin: targetRoles.includes(ProjectMembershipRole.Admin)
+    });
     const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
       ignoreUnresolvedRoles: true
     });

@@ -3,12 +3,10 @@ import { Link } from "@tanstack/react-router";
 import axios from "axios";
 import { BotIcon, TriangleAlertIcon } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
-  Button,
   Combobox,
   Field,
   FieldContent,
@@ -16,7 +14,7 @@ import {
   FieldLabel
 } from "@app/components/v3";
 import {
-  ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
   useOrganization,
@@ -25,19 +23,18 @@ import {
 } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
-  useAddAgentVaultAccessBundleMembers,
-  useIsAgentVaultAccessBundleMember,
+  useListAgentVaultAccessBundleRoles,
   useListAgentVaultMembers
 } from "@app/hooks/api/agentVault";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultAccessBundleListItem } from "@app/hooks/api/agentVault/types";
 import { useGetIdentityUniversalAuth } from "@app/hooks/api/identities";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { AgentVaultAccessControlTab } from "@app/pages/agent-vault/AgentVaultAccessControlPage/AgentVaultAccessControlPage";
 import { CreateProjectIdentityForm } from "@app/pages/project/AccessControlPage/components/IdentityTab/components/CreateProjectIdentity/CreateProjectIdentityForm";
 
-// The role travels with the pick, because the search results it came from change as the user types.
-export type TSnippetIdentity = { id: string; name: string; role?: string };
+// The roles travel with the pick, because the search results it came from change as the user types.
+export type TSnippetIdentity = { id: string; name: string; roles?: string[] };
 
 type TSnippetClientId = {
   identity: TSnippetIdentity | null;
@@ -107,11 +104,7 @@ export const SessionMachineIdentityField = ({
     ProjectPermissionIdentityActions.Create,
     ProjectPermissionSub.Identity
   );
-  // The grant check reads the bundle's members, which takes ManageMembers, as does granting from the warning.
-  const canManageBundleMembers = permission.can(
-    ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
-    ProjectPermissionSub.AgentVaultAccessBundles
-  );
+  const canReadRoles = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
 
   const [search, setSearch] = useState("");
   const [isCreatingIdentity, setIsCreatingIdentity] = useState(false);
@@ -121,58 +114,18 @@ export const SessionMachineIdentityField = ({
     search: debouncedSearch.trim() || undefined,
     limit: 50
   });
-  const isAdminIdentity = identity?.role === ProjectMembershipRole.Admin;
 
-  const { data: isGranted, isPlaceholderData: isGrantCheckStale } =
-    useIsAgentVaultAccessBundleMember(
-      projectId,
-      accessBundle?.id ?? "",
-      identity && canManageBundleMembers
-        ? { type: AgentVaultMemberType.MachineIdentity, id: identity.id, name: identity.name }
-        : null
-    );
-  const latestGrant = {
-    identity,
-    accessBundle,
-    needsGrant:
-      canManageBundleMembers &&
-      Boolean(identity && accessBundle) &&
-      isGranted !== undefined &&
-      !isAdminIdentity &&
-      !isGranted
-  };
-  // The check keeps the previous identity and bundle's answer until the new one loads, which would
-  // flash the warning for a pair that has the grant. Until then the warning keeps naming the pair
-  // it was answered for.
-  const [settledGrant, setSettledGrant] = useState(latestGrant);
-  if (
-    !isGrantCheckStale &&
-    (settledGrant.identity?.id !== latestGrant.identity?.id ||
-      settledGrant.accessBundle?.id !== latestGrant.accessBundle?.id ||
-      settledGrant.needsGrant !== latestGrant.needsGrant)
-  )
-    setSettledGrant(latestGrant);
-  const grant = isGrantCheckStale ? settledGrant : latestGrant;
-  const isGrantForCurrentPick =
-    grant.identity?.id === identity?.id && grant.accessBundle?.id === accessBundle?.id;
-
-  const grantAccess = useAddAgentVaultAccessBundleMembers(projectId);
-
-  const onGrant = async () => {
-    if (!identity || !accessBundle) return;
-    try {
-      await grantAccess.mutateAsync({
-        accessBundleId: accessBundle.id,
-        machineIdentityIds: [identity.id]
-      });
-      createNotification({
-        text: `Granted ${accessBundle.name} to ${identity.name}`,
-        type: "success"
-      });
-    } catch {
-      // A failed request returns a 4xx that the global request handler surfaces as a toast
-    }
-  };
+  // Whether the identity can use the bundle follows from its roles: the warning shows when none of the roles it holds
+  // directly can. Which roles can use a bundle takes Read on roles. A role it gets through a group isn't on the pick,
+  // so the warning says that a group could still give it one.
+  const { data: bundleRoles } = useListAgentVaultAccessBundleRoles(
+    projectId,
+    accessBundle?.id ?? "",
+    canReadRoles && Boolean(identity?.roles)
+  );
+  const needsRole =
+    Boolean(identity?.roles && accessBundle && bundleRoles) &&
+    !(identity?.roles ?? []).some((slug) => (bundleRoles ?? []).some((role) => role.slug === slug));
 
   const renderIdentityPageLink = (target: TSnippetIdentity | null, text?: string) =>
     target && (
@@ -188,7 +141,7 @@ export const SessionMachineIdentityField = ({
       </Link>
     );
 
-  const hasNotice = snippet.hasNoUniversalAuth || grant.needsGrant;
+  const hasNotice = snippet.hasNoUniversalAuth || needsRole;
 
   // A fragment, because both parts sit in the dialog's grid: the picker in its column and the
   // notices on a row of their own under both columns.
@@ -225,7 +178,7 @@ export const SessionMachineIdentityField = ({
             )}
             onValueChange={(option) =>
               onIdentityChange(
-                option ? { id: option.id, name: option.name, role: option.role } : null
+                option ? { id: option.id, name: option.name, roles: option.roles } : null
               )
             }
             onClear={() => onIdentityChange(null)}
@@ -305,25 +258,29 @@ export const SessionMachineIdentityField = ({
             </Alert>
           )}
 
-          {grant.needsGrant && (
+          {needsRole && (
             <Alert variant="warning">
               <TriangleAlertIcon />
               <AlertTitle>
-                {grant.identity?.name} can&apos;t use {grant.accessBundle?.name}
+                {identity?.name} can&apos;t use {accessBundle?.name}
               </AlertTitle>
               <AlertDescription>
-                <p>Creating a session fails until the access bundle is granted to it.</p>
-                <Button
-                  variant="warning"
-                  size="xs"
-                  className="mt-2"
-                  isPending={grantAccess.isPending}
-                  // While the next pick's grants load, the warning still names the previous one.
-                  isDisabled={!isGrantForCurrentPick}
-                  onClick={onGrant}
-                >
-                  Grant Access
-                </Button>
+                <p>
+                  None of its roles can use this access bundle, so creating a session fails unless a
+                  group it belongs to has a role that can. Give it one under{" "}
+                  <Link
+                    to="/organizations/$orgId/projects/agent-vault/$projectId/access-management"
+                    params={{ orgId: currentOrg.id, projectId }}
+                    search={{ selectedTab: AgentVaultAccessControlTab.MachineIdentities }}
+                    // A new tab, so the dialog keeps its picks while the user changes roles.
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2 hover:text-foreground"
+                  >
+                    Access Control
+                  </Link>
+                  .
+                </p>
               </AlertDescription>
             </Alert>
           )}

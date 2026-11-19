@@ -17,8 +17,10 @@ import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
+  assertAgentVaultAdminOnlyChange,
   filterRolesNeedingPrivilegeBoundary,
-  resolveMembershipRoleSlugs
+  resolveMembershipRoleSlugs,
+  rolesGiveAdmin
 } from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -59,7 +61,7 @@ export const newProjectMembershipGroupFactory = ({
 
   const onCreateMembershipGroupGuard: TMembershipGroupScopeFactory["onCreateMembershipGroupGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasRole } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
       actionProjectType: ActionProjectType.Any,
@@ -97,6 +99,13 @@ export const newProjectMembershipGroupFactory = ({
     });
     if (!orgMembership)
       throw new BadRequestError({ message: `Group ${dto.data.groupId} is missing organization membership` });
+
+    assertAgentVaultAdminOnlyChange({
+      project,
+      hasRole,
+      givesAdmin: rolesGiveAdmin(dto.data.roles),
+      touchesAdmin: false
+    });
 
     const groupDetails = await groupDAL.findById(dto.data.groupId);
     if (!groupDetails) throw new BadRequestError({ message: "Group details not found" });
@@ -136,7 +145,7 @@ export const newProjectMembershipGroupFactory = ({
 
   const onUpdateMembershipGroupGuard: TMembershipGroupScopeFactory["onUpdateMembershipGroupGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasRole } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
       actionProjectType: ActionProjectType.Any,
@@ -188,6 +197,12 @@ export const newProjectMembershipGroupFactory = ({
       groupId: dto.selector.groupId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    assertAgentVaultAdminOnlyChange({
+      project,
+      hasRole,
+      givesAdmin: rolesGiveAdmin(dto.data.roles),
+      touchesAdmin: targetRoles.includes(ProjectMembershipRole.Admin)
+    });
     const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
       ignoreUnresolvedRoles: true
     });
@@ -233,7 +248,7 @@ export const newProjectMembershipGroupFactory = ({
 
   const onDeleteMembershipGroupGuard: TMembershipGroupScopeFactory["onDeleteMembershipGroupGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasRole } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
       actionProjectType: ActionProjectType.Any,
@@ -252,6 +267,15 @@ export const newProjectMembershipGroupFactory = ({
       groupId: dto.selector.groupId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
+      projectDAL.findById(scope.value)
+    );
+    assertAgentVaultAdminOnlyChange({
+      project,
+      hasRole,
+      givesAdmin: false,
+      touchesAdmin: targetRoles.includes(ProjectMembershipRole.Admin)
+    });
     const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
       ignoreUnresolvedRoles: true
     });

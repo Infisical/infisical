@@ -14,13 +14,22 @@ import {
 } from "../agent-vault/agent-vault-enums";
 import { agentVaultPersonalValueServiceFactory } from "./agent-vault-personal-value-service";
 
+// The caller can use the one bundle these tests use, which holds the service.
 vi.mock("../agent-vault/agent-vault-permission", () => ({
-  getAgentVaultGrantedReachability: vi.fn(async () => ({
-    reachesEveryBundle: false,
+  getAgentVaultReachability: vi.fn(async () => ({
+    reachesEverything: false,
     accessBundleIds: ["22222222-2222-4222-8222-222222222222"],
-    grantedAccessBundleIds: ["22222222-2222-4222-8222-222222222222"],
-    permission: createMongoAbility([{ action: "read", subject: "agent-vault-access-bundles" }])
-  }))
+    serviceIds: [],
+    skillIds: [],
+    permission: createMongoAbility([
+      {
+        action: "use",
+        subject: "agent-vault-access-bundles",
+        conditions: { accessBundleId: "22222222-2222-4222-8222-222222222222" }
+      }
+    ])
+  })),
+  usableServiceIdsOf: vi.fn(async () => ["33333333-3333-4333-8333-333333333333"])
 }));
 
 const PROJECT_ID = "11111111-1111-4111-8111-111111111111";
@@ -53,12 +62,12 @@ const builtConfig = { issuer: "https://auth.example.com", status: "connected", r
 const setup = ({
   readService = memberService(),
   lockedService = readService,
-  grants = [{ id: "grant" }],
+  memberships = [{ id: "membership" }],
   createFails = false
 }: {
   readService?: ReturnType<typeof memberService>;
   lockedService?: ReturnType<typeof memberService>;
-  grants?: unknown[];
+  memberships?: unknown[];
   createFails?: boolean;
 } = {}) => {
   const restore = vi.fn(async () => {});
@@ -74,8 +83,7 @@ const setup = ({
   const service = agentVaultPersonalValueServiceFactory({
     agentVaultPersonalValueDAL: {
       transaction: async (fn: (t: unknown) => Promise<unknown>) => fn(tx),
-      lockGrantsForOwner: vi.fn(async () => grants),
-      lockRolesReachingEveryBundleForOwner: vi.fn(async () => []),
+      lockProjectMembershipsForOwner: vi.fn(async () => memberships),
       lockForOwnerAndService: vi.fn(async () => []),
       delete: vi.fn(async () => []),
       create,
@@ -97,7 +105,7 @@ const setup = ({
       }))
     } as never,
     permissionService: {} as never,
-    membershipDAL: {} as never,
+    agentVaultReachDAL: {} as never,
     kmsDataKeyService: {} as never
   });
 
@@ -170,8 +178,8 @@ describe("connectOauth", () => {
     expect(restore).toHaveBeenCalled();
   });
 
-  test("refuses a member who lost the bundle before the lock", async () => {
-    const { connect, create, restore } = setup({ grants: [] });
+  test("refuses a member who left the project before the lock", async () => {
+    const { connect, create, restore } = setup({ memberships: [] });
 
     await expect(connect()).rejects.toThrow(NotFoundError);
     expect(create).not.toHaveBeenCalled();
@@ -217,7 +225,7 @@ describe("findStatusesForOwner", () => {
       agentVaultServiceDAL: {} as never,
       agentVaultOauthService: {} as never,
       permissionService: {} as never,
-      membershipDAL: {} as never,
+      agentVaultReachDAL: {} as never,
       kmsDataKeyService: {} as never
     }).findStatusesForOwner({
       projectId: PROJECT_ID,

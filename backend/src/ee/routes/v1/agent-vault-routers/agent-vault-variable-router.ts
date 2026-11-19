@@ -32,7 +32,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
       hide: false,
       operationId: "listAgentVaultVariables",
       description:
-        "List the Agent Vault variables you can see: your own personal ones, and the global ones if you're an admin",
+        "List the Agent Vault variables you can see: your own personal ones, and the global ones if your role can read variables",
       tags: [ApiDocsTags.AgentVaultVariables],
       querystring: z.object({
         projectId: AgentVaultProjectIdSchema,

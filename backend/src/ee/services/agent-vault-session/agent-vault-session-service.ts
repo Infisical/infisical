@@ -13,7 +13,6 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -21,7 +20,11 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent-vault-service-dal";
 import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
-import { findCallerDelegation, resolveOnBehalfOfUser } from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
+import {
+  findCallerDelegation,
+  reachesNothing,
+  resolveOnBehalfOfUser
+} from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
 import { TAgentVaultResolveDALFactory } from "../agent-vault-proxy/agent-vault-resolve-dal";
 import { generateSessionLogKey, wrapSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { TAgentVaultSkillBundleDALFactory } from "../agent-vault-skill/agent-vault-skill-bundle-dal";
@@ -33,10 +36,15 @@ import { assertAgentVaultHooksOnPlan } from "../agent-vault/agent-vault-hook-fns
 import {
   getAgentVaultPermission,
   getAgentVaultReachability,
-  intersectAccessBundleIds,
-  serviceIdsReachedThrough,
-  skillIdsReachedThrough
+  intersectReach,
+  serviceVisibilityOf,
+  skillVisibilityOf,
+  TAgentVaultPermission,
+  TAgentVaultReach,
+  usableServiceIdsOf,
+  usableSkillIdsOf
 } from "../agent-vault/agent-vault-permission";
+import { TAgentVaultReachDALFactory } from "../agent-vault/agent-vault-reach-dal";
 import { TAgentVaultSessionAccessBundleDALFactory } from "./agent-vault-session-access-bundle-dal";
 import { TAgentVaultSessionDALFactory, TAgentVaultSessionListRow } from "./agent-vault-session-dal";
 import {
@@ -105,7 +113,7 @@ type TAgentVaultSessionServiceFactoryDep = {
   agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "findForIdentity" | "coversUser">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany" | "delete">;
   agentVaultResolveDAL: Pick<TAgentVaultResolveDALFactory, "findServiceOverrides">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+  agentVaultReachDAL: TAgentVaultReachDALFactory;
   userDAL: Pick<TUserDALFactory, "findOne">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -114,6 +122,9 @@ type TAgentVaultSessionServiceFactoryDep = {
 };
 
 export type TAgentVaultSessionServiceFactory = ReturnType<typeof agentVaultSessionServiceFactory>;
+
+// Who reads a session, for leaving out the listed services and skills they can't see.
+type TSessionReader = { permission: TAgentVaultPermission["permission"]; reach: TAgentVaultReach; projectId: string };
 
 const readHostPattern = (type: AgentVaultServiceType, hostPattern?: string | null) =>
   type === AgentVaultServiceType.Http || type === AgentVaultServiceType.Mcp ? (hostPattern ?? null) : null;
@@ -132,7 +143,7 @@ export const agentVaultSessionServiceFactory = ({
   agentVaultDelegationDAL,
   resourceMetadataDAL,
   agentVaultResolveDAL,
-  membershipDAL,
+  agentVaultReachDAL,
   userDAL,
   orgDAL,
   permissionService,
@@ -201,9 +212,9 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   // Each session's services or skills, listed by name or sent inline, as one list in the order they were sent. A listed
-  // one is read from the live catalog, so one the reader no longer reaches is left out, the same as a deleted one: its
-  // later name, description and hosts are the catalog's to show, not the session's. The reach is read only when a
-  // session lists something.
+  // one is read from the live catalog, so one the reader can't see is left out, the same as a deleted one: its later
+  // name, description and hosts are the catalog's to show, not the session's. Visibility is read only when a session
+  // lists something.
   const findSessionEntries = async <
     TInlineRow extends { sessionId: string; position: number },
     TListedRow extends { sessionId: string; position: number; id: string },
@@ -212,21 +223,20 @@ export const agentVaultSessionServiceFactory = ({
     sessionIds,
     loadInline,
     loadListed,
-    loadReachableIds,
+    loadIsVisible,
     fromInline,
     fromListed
   }: {
     sessionIds: string[];
     loadInline: (sessionIds: string[]) => Promise<TInlineRow[]>;
     loadListed: (sessionIds: string[]) => Promise<TListedRow[]>;
-    loadReachableIds: () => Promise<string[] | null>;
+    loadIsVisible: () => Promise<(id: string) => boolean>;
     fromInline: (row: TInlineRow) => TEntry;
     fromListed: (row: TListedRow) => TEntry;
   }) => {
     const [inlineRows, allListedRows] = await Promise.all([loadInline(sessionIds), loadListed(sessionIds)]);
-    const reachableIds = allListedRows.length ? await loadReachableIds() : null;
-    const reachable = reachableIds === null ? null : new Set(reachableIds);
-    const listedRows = reachable ? allListedRows.filter((row) => reachable.has(row.id)) : allListedRows;
+    const isVisible = allListedRows.length ? await loadIsVisible() : null;
+    const listedRows = isVisible ? allListedRows.filter((row) => isVisible(row.id)) : allListedRows;
     const bySession = new Map<string, { position: number; entry: TEntry }[]>();
     const add = (sessionId: string, position: number, entry: TEntry) => {
       bySession.set(sessionId, [...(bySession.get(sessionId) ?? []), { position, entry }]);
@@ -237,12 +247,12 @@ export const agentVaultSessionServiceFactory = ({
       (bySession.get(sessionId) ?? []).sort((a, b) => a.position - b.position).map(({ entry }) => entry);
   };
 
-  const findSessionServices = (sessionIds: string[], readerAccessBundleIds: string[] | null) =>
+  const findSessionServices = (sessionIds: string[], reader: TSessionReader) =>
     findSessionEntries({
       sessionIds,
       loadInline: (ids) => agentVaultSessionInlineServiceDAL.findSummariesBySessionIds(ids),
       loadListed: (ids) => agentVaultSessionServiceDAL.findSummariesBySessionIds(ids),
-      loadReachableIds: () => serviceIdsReachedThrough(agentVaultServiceDAL, readerAccessBundleIds),
+      loadIsVisible: () => serviceVisibilityOf({ agentVaultServiceDAL, agentVaultReachDAL }, reader),
       fromInline: (row): TAgentVaultSessionServiceSummary => ({ ...toInlineServiceSummary(row), isInline: true }),
       fromListed: ({ id, name, type, description, hostPattern }): TAgentVaultSessionServiceSummary => ({
         id,
@@ -254,12 +264,12 @@ export const agentVaultSessionServiceFactory = ({
       })
     });
 
-  const findSessionSkills = (sessionIds: string[], readerAccessBundleIds: string[] | null) =>
+  const findSessionSkills = (sessionIds: string[], reader: TSessionReader) =>
     findSessionEntries({
       sessionIds,
       loadInline: (ids) => agentVaultSessionInlineSkillDAL.findSummariesBySessionIds(ids),
       loadListed: (ids) => agentVaultSessionSkillDAL.findSummariesBySessionIds(ids),
-      loadReachableIds: () => skillIdsReachedThrough(agentVaultSkillBundleDAL, readerAccessBundleIds),
+      loadIsVisible: () => skillVisibilityOf({ agentVaultSkillBundleDAL, agentVaultReachDAL }, reader),
       fromInline: (row): TAgentVaultSessionSkillSummary => toInlineSkillSummary(row),
       fromListed: ({ id, name, description }): TAgentVaultSessionSkillSummary => ({
         id,
@@ -269,24 +279,18 @@ export const agentVaultSessionServiceFactory = ({
       })
     });
 
-  const withSessionServicesAndSkills = async <T extends { id: string }>(
-    sessions: T[],
-    readerAccessBundleIds: string[] | null
-  ) => {
+  const withSessionServicesAndSkills = async <T extends { id: string }>(sessions: T[], reader: TSessionReader) => {
     const sessionIds = sessions.map((session) => session.id);
     const [servicesOf, skillsOf] = await Promise.all([
-      findSessionServices(sessionIds, readerAccessBundleIds),
-      findSessionSkills(sessionIds, readerAccessBundleIds)
+      findSessionServices(sessionIds, reader),
+      findSessionSkills(sessionIds, reader)
     ]);
     return sessions.map((session) => ({ ...session, services: servicesOf(session.id), skills: skillsOf(session.id) }));
   };
 
-  const withServicesSkillsAndMetadata = async <T extends { id: string }>(
-    sessions: T[],
-    readerAccessBundleIds: string[] | null
-  ) => {
+  const withServicesSkillsAndMetadata = async <T extends { id: string }>(sessions: T[], reader: TSessionReader) => {
     const [withServices, metadataBySession] = await Promise.all([
-      withSessionServicesAndSkills(sessions, readerAccessBundleIds),
+      withSessionServicesAndSkills(sessions, reader),
       findSessionMetadata(sessions.map((session) => session.id))
     ]);
     return withServices.map((session) => ({ ...session, metadata: metadataBySession.get(session.id) ?? {} }));
@@ -382,8 +386,8 @@ export const agentVaultSessionServiceFactory = ({
       ? await agentVaultAccessBundleDAL.find({ projectId, $in: { name: accessBundles } })
       : [];
     const bundlesByName = new Map(bundles.map((bundle) => [bundle.name, bundle]));
-    // An unknown name reads like an ungranted one, so the error never confirms that a bundle exists.
-    const firstUnreachable = (reachable: string[] | null) =>
+    // An unknown name reads like one the actor can't use, so the error never confirms that a bundle exists.
+    const firstUnreachable = ({ accessBundleIds: reachable }: TAgentVaultReach) =>
       accessBundles.find((name) => {
         const bundle = bundlesByName.get(name);
         return !bundle || (reachable !== null && !reachable.includes(bundle.id));
@@ -393,11 +397,11 @@ export const agentVaultSessionServiceFactory = ({
       ? await agentVaultServiceDAL.findCatalogByNames({ projectId, names: serviceEntries.map(({ name }) => name) })
       : [];
     const servicesByName = new Map(listedServices.map((service) => [service.name, service]));
-    // A service is listed through the bundles it is in, the same reach a session's bundle needs. An unknown name reads
-    // like one out of reach, so the error never confirms that a service exists.
-    const firstUnreachableService = async (reachableBundleIds: string[] | null) => {
+    // A service can be listed by anyone who can use it, directly or through a bundle that holds it. An unknown name
+    // reads like one out of reach, so the error never confirms that a service exists.
+    const firstUnreachableService = async (reach: TAgentVaultReach) => {
       if (!serviceEntries.length) return undefined;
-      const reachableIds = await serviceIdsReachedThrough(agentVaultServiceDAL, reachableBundleIds);
+      const reachableIds = await usableServiceIdsOf({ agentVaultServiceDAL, agentVaultReachDAL }, reach, projectId);
       const reachable = reachableIds === null ? null : new Set(reachableIds);
       return serviceEntries.find(({ name }) => {
         const service = servicesByName.get(name);
@@ -410,9 +414,9 @@ export const agentVaultSessionServiceFactory = ({
       : [];
     const skillsByName = new Map(listedSkills.map((skill) => [skill.name, skill]));
     // The same reach as a listed service.
-    const firstUnreachableSkill = async (reachableBundleIds: string[] | null) => {
+    const firstUnreachableSkill = async (reach: TAgentVaultReach) => {
       if (!skillEntries.length) return undefined;
-      const reachableIds = await skillIdsReachedThrough(agentVaultSkillBundleDAL, reachableBundleIds);
+      const reachableIds = await usableSkillIdsOf({ agentVaultSkillBundleDAL, agentVaultReachDAL }, reach, projectId);
       const reachable = reachableIds === null ? null : new Set(reachableIds);
       return skillEntries.find(({ name }) => {
         const skill = skillsByName.get(name);
@@ -421,119 +425,116 @@ export const agentVaultSessionServiceFactory = ({
     };
 
     let onBehalfOfUser: Awaited<ReturnType<typeof resolveOnBehalfOfUser>> | null = null;
-    // The bundles resolve will reach for this session's owner: the caller's, or on a user's behalf the ones both reach.
-    let ownerReach: string[] | null;
+    // What resolve will reach for this session's owner: the caller's, or on a user's behalf what both reach.
+    let ownerReach: TAgentVaultReach;
     if (onBehalfOf) {
-      // A session on a user's behalf can use only the bundles both the user and the identity reach. The delegation is
-      // checked first and the identity's own bundles next, so an identity learns nothing about who is in the org until
-      // an admin has delegated it and granted it the bundle it asks for.
+      // A session on a user's behalf can use only what both the user and the identity can use. The delegation is
+      // checked first and the identity's own reach next, so an identity learns nothing about who is in the org until an
+      // admin has delegated it and given it a role that can use what it asks for.
       const delegation = await findCallerDelegation({ agentVaultDelegationDAL }, { projectId, ctx });
-      const { accessBundleIds: identityReach } = await getAgentVaultReachability(
-        { permissionService, membershipDAL },
+      const identityReachability = await getAgentVaultReachability(
+        { permissionService, agentVaultReachDAL },
         { projectId, ctx }
       );
-      const notGrantedToIdentity = firstUnreachable(identityReach);
-      if (notGrantedToIdentity) {
+      const notUsableByIdentity = firstUnreachable(identityReachability);
+      if (notUsableByIdentity) {
         throw new BadRequestError({
           name: "AccessBundleNotGranted",
-          message: `No access bundle named '${notGrantedToIdentity}' is granted to this machine identity. A session on behalf of a user can use only bundles granted to both the user and the machine identity, so check the name, or ask an Agent Vault admin to grant the bundle to the machine identity.`
+          message: `This machine identity can't use an access bundle named '${notUsableByIdentity}'. A session on behalf of a user can use only bundles both the user and the machine identity can use, so check the name, or ask an Agent Vault admin to give the machine identity a role that can use the bundle.`
         });
       }
-      const serviceOutOfIdentityReach = await firstUnreachableService(identityReach);
+      const serviceOutOfIdentityReach = await firstUnreachableService(identityReachability);
       if (serviceOutOfIdentityReach) {
         throw new BadRequestError({
           name: "ServiceNotGranted",
-          message: `This machine identity can't use a service called '${serviceOutOfIdentityReach}'. A session on behalf of a user can use only services in an access bundle granted to both the user and the machine identity, so check the name, or ask an Agent Vault admin to grant the machine identity a bundle that holds it.`
+          message: `This machine identity can't use a service called '${serviceOutOfIdentityReach}'. A session on behalf of a user can use only services both the user and the machine identity can use, so check the name, or ask an Agent Vault admin to give the machine identity a role that can use it.`
         });
       }
-      const skillOutOfIdentityReach = await firstUnreachableSkill(identityReach);
+      const skillOutOfIdentityReach = await firstUnreachableSkill(identityReachability);
       if (skillOutOfIdentityReach) {
         throw new BadRequestError({
           name: "SkillNotGranted",
-          message: `This machine identity can't use a skill called '${skillOutOfIdentityReach}'. A session on behalf of a user can use only skills in an access bundle granted to both the user and the machine identity, so check the name, or ask an Agent Vault admin to grant the machine identity a bundle that holds it.`
+          message: `This machine identity can't use a skill called '${skillOutOfIdentityReach}'. A session on behalf of a user can use only skills both the user and the machine identity can use, so check the name, or ask an Agent Vault admin to give the machine identity a role that can use it.`
         });
       }
-      // A request with only inline skills names nothing the checks above refuse, so without this an identity granted no
-      // bundle would reach the user lookup, whose answers tell who is in the org. The lists hold back the same way.
-      if (identityReach?.length === 0) {
+      // A request with only inline skills names nothing the checks above refuse, so without this an identity that can
+      // use nothing would reach the user lookup, whose answers tell who is in the org. The lists hold back the same way.
+      if (reachesNothing(identityReachability)) {
         throw new BadRequestError({
           name: "AccessBundleNotGranted",
           message:
-            "No access bundle in this project is granted to this machine identity. A session on behalf of a user needs at least one, even when it sends its own services or skills, so ask an Agent Vault admin to grant the machine identity a bundle."
+            "This machine identity can't use any access bundle, service or skill in this project. A session on behalf of a user needs at least one, even when it sends its own services or skills, so ask an Agent Vault admin to give the machine identity a role."
         });
       }
 
       onBehalfOfUser = await resolveOnBehalfOfUser(
-        { agentVaultDelegationDAL, userDAL, orgDAL, permissionService, membershipDAL },
+        { agentVaultDelegationDAL, userDAL, orgDAL, permissionService, agentVaultReachDAL },
         { projectId, ctx, onBehalfOf, delegation }
       );
       // getProjectPermission leaves the last actor it ran for in the request context, where the audit log reads the
       // caller's permission metadata. Running the caller's check again, memoized so it costs no query, puts it back.
       await getAgentVaultPermission({ permissionService }, { projectId, ctx });
 
-      const notGrantedToUser = firstUnreachable(onBehalfOfUser.accessBundleIds);
-      if (notGrantedToUser) {
+      const userReach = onBehalfOfUser.reach;
+      const notUsableByUser = firstUnreachable(userReach);
+      if (notUsableByUser) {
         throw new BadRequestError({
           name: "AccessBundleNotGranted",
-          message: `No access bundle named '${notGrantedToUser}' is granted to '${onBehalfOfUser.identifier}'. Check the name, or ask an Agent Vault admin to grant it to them.`
+          message: `'${onBehalfOfUser.identifier}' can't use an access bundle named '${notUsableByUser}'. Check the name, or ask an Agent Vault admin to give them a role that can use it.`
         });
       }
-      const serviceOutOfUserReach = await firstUnreachableService(onBehalfOfUser.accessBundleIds);
+      const serviceOutOfUserReach = await firstUnreachableService(userReach);
       if (serviceOutOfUserReach) {
         throw new BadRequestError({
           name: "ServiceNotGranted",
-          message: `'${onBehalfOfUser.identifier}' can't use a service called '${serviceOutOfUserReach}'. Check the name, or ask an Agent Vault admin to grant them an access bundle that holds it.`
+          message: `'${onBehalfOfUser.identifier}' can't use a service called '${serviceOutOfUserReach}'. Check the name, or ask an Agent Vault admin to give them a role that can use it.`
         });
       }
-      const skillOutOfUserReach = await firstUnreachableSkill(onBehalfOfUser.accessBundleIds);
+      const skillOutOfUserReach = await firstUnreachableSkill(userReach);
       if (skillOutOfUserReach) {
         throw new BadRequestError({
           name: "SkillNotGranted",
-          message: `'${onBehalfOfUser.identifier}' can't use a skill called '${skillOutOfUserReach}'. Check the name, or ask an Agent Vault admin to grant them an access bundle that holds it.`
+          message: `'${onBehalfOfUser.identifier}' can't use a skill called '${skillOutOfUserReach}'. Check the name, or ask an Agent Vault admin to give them a role that can use it.`
         });
       }
-      // Resolve reaches only the bundles both of them are granted, so a service each reaches through a different bundle
-      // would never arrive. The skills fetch reaches the same bundles.
-      ownerReach = intersectAccessBundleIds(identityReach, onBehalfOfUser.accessBundleIds);
+      // Resolve reaches only what both of them reach the same way, so a service the identity uses directly and the user
+      // only through a bundle, or each through a different bundle, would never arrive. The skills fetch is the same.
+      ownerReach = intersectReach(identityReachability, userReach);
       const serviceOutOfSharedReach = await firstUnreachableService(ownerReach);
       if (serviceOutOfSharedReach) {
         throw new BadRequestError({
           name: "ServiceNotGranted",
-          message: `The service '${serviceOutOfSharedReach}' isn't in an access bundle granted to both this machine identity and '${onBehalfOfUser.identifier}'. A session on behalf of a user can use only services in an access bundle granted to both.`
+          message: `This machine identity and '${onBehalfOfUser.identifier}' don't both reach the service '${serviceOutOfSharedReach}' the same way. A session on behalf of a user can use a service only if both can use it directly, or through an access bundle both can use.`
         });
       }
       const skillOutOfSharedReach = await firstUnreachableSkill(ownerReach);
       if (skillOutOfSharedReach) {
         throw new BadRequestError({
           name: "SkillNotGranted",
-          message: `The skill '${skillOutOfSharedReach}' isn't in an access bundle granted to both this machine identity and '${onBehalfOfUser.identifier}'. A session on behalf of a user can use only skills in an access bundle granted to both.`
+          message: `This machine identity and '${onBehalfOfUser.identifier}' don't both reach the skill '${skillOutOfSharedReach}' the same way. A session on behalf of a user can use a skill only if both can use it directly, or through an access bundle both can use.`
         });
       }
     } else {
-      const { accessBundleIds } = await getAgentVaultReachability(
-        { permissionService, membershipDAL },
-        { projectId, ctx }
-      );
-      ownerReach = accessBundleIds;
-      const notGranted = firstUnreachable(accessBundleIds);
-      if (notGranted) {
+      ownerReach = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, { projectId, ctx });
+      const notUsable = firstUnreachable(ownerReach);
+      if (notUsable) {
         throw new BadRequestError({
           name: "AccessBundleNotGranted",
-          message: `No access bundle named '${notGranted}' is granted to you. Check the name, or ask an Agent Vault admin to grant it.`
+          message: `You can't use an access bundle named '${notUsable}'. Check the name, or ask an Agent Vault admin for a role that can use it.`
         });
       }
-      const serviceOutOfReach = await firstUnreachableService(accessBundleIds);
+      const serviceOutOfReach = await firstUnreachableService(ownerReach);
       if (serviceOutOfReach) {
         throw new BadRequestError({
           name: "ServiceNotGranted",
-          message: `You can't use a service called '${serviceOutOfReach}'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it.`
+          message: `You can't use a service called '${serviceOutOfReach}'. Check the name, or ask an Agent Vault admin for a role that can use it.`
         });
       }
-      const skillOutOfReach = await firstUnreachableSkill(accessBundleIds);
+      const skillOutOfReach = await firstUnreachableSkill(ownerReach);
       if (skillOutOfReach) {
         throw new BadRequestError({
           name: "SkillNotGranted",
-          message: `You can't use a skill called '${skillOutOfReach}'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it.`
+          message: `You can't use a skill called '${skillOutOfReach}'. Check the name, or ask an Agent Vault admin for a role that can use it.`
         });
       }
     }
@@ -578,7 +579,7 @@ export const agentVaultSessionServiceFactory = ({
         if (!fresh) {
           throw new BadRequestError({
             name: "ServiceNotGranted",
-            message: `You can't use a service called '${service.name}'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it.`
+            message: `You can't use a service called '${service.name}'. Check the name, or ask an Agent Vault admin for a role that can use it.`
           });
         }
         return { ...service, hostPattern: fresh.hostPattern ?? null };
@@ -605,14 +606,15 @@ export const agentVaultSessionServiceFactory = ({
       assertNoServiceConflicts(preparedInlineServices, freshServices);
       // Resolve lets an override win over an inline service of its name, so one that takes the name is refused here
       // rather than left out of the session without a word. A listed service that the session's bundle also holds is sent as
-      // the bundle's, whose services the bundle check below covers.
-      if (preparedInlineServices.length && ownerReach !== null) {
+      // the bundle's, whose services the bundle check below covers, and one the owner uses directly brings no overrides.
+      const directIds = ownerReach.serviceIds === null ? null : new Set(ownerReach.serviceIds);
+      if (preparedInlineServices.length && directIds) {
         const overrides = await agentVaultResolveDAL.findServiceOverrides(
           {
             projectId,
-            accessBundleIds: ownerReach,
+            accessBundleIds: ownerReach.accessBundleIds,
             services: freshServices
-              .filter(({ id }) => !throughBundleIds.has(id))
+              .filter(({ id }) => !throughBundleIds.has(id) && !directIds.has(id))
               .map(({ id, hostPattern }) => ({ id, hostPattern: hostPattern ?? null }))
           },
           tx
@@ -851,10 +853,9 @@ export const agentVaultSessionServiceFactory = ({
     limit,
     offset
   }: TListSessionsDTO) => {
-    const { permission, accessBundleIds } = await getAgentVaultReachability(
-      { permissionService, membershipDAL },
-      { projectId, ctx }
-    );
+    const reachability = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, { projectId, ctx });
+    const { permission } = reachability;
+    const reader = { permission, reach: reachability, projectId };
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionSub.AgentVaultSessions
@@ -878,7 +879,7 @@ export const agentVaultSessionServiceFactory = ({
       offset
     });
 
-    return { sessions: await withServicesSkillsAndMetadata(sessions.map(toSessionView), accessBundleIds), totalCount };
+    return { sessions: await withServicesSkillsAndMetadata(sessions.map(toSessionView), reader), totalCount };
   };
 
   // A session you may not see reads exactly like one that does not exist.
@@ -902,10 +903,9 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   const getSessionById = async ({ projectId, ctx, sessionId }: TGetSessionByIdDTO) => {
-    const { permission, accessBundleIds } = await getAgentVaultReachability(
-      { permissionService, membershipDAL },
-      { projectId, ctx }
-    );
+    const reachability = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, { projectId, ctx });
+    const { permission } = reachability;
+    const reader = { permission, reach: reachability, projectId };
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionSub.AgentVaultSessions
@@ -917,7 +917,7 @@ export const agentVaultSessionServiceFactory = ({
 
     const [session] = await withServicesSkillsAndMetadata(
       [toSessionView(await findVisibleSession({ projectId, ctx, sessionId, reachesAnySession }))],
-      accessBundleIds
+      reader
     );
     return { session };
   };
@@ -981,10 +981,9 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   const updateSession = async ({ projectId, ctx, sessionId, label, metadata }: TUpdateSessionDTO) => {
-    const { permission, accessBundleIds } = await getAgentVaultReachability(
-      { permissionService, membershipDAL },
-      { projectId, ctx }
-    );
+    const reachability = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, { projectId, ctx });
+    const { permission } = reachability;
+    const reader = { permission, reach: reachability, projectId };
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Edit,
       ProjectPermissionSub.AgentVaultSessions
@@ -1031,10 +1030,7 @@ export const agentVaultSessionServiceFactory = ({
 
     const { previousLabel } = result.written;
     const currentLabel = label === undefined ? previousLabel : label;
-    const [view] = await withSessionServicesAndSkills(
-      [toSessionView({ ...session, label: currentLabel })],
-      accessBundleIds
-    );
+    const [view] = await withSessionServicesAndSkills([toSessionView({ ...session, label: currentLabel })], reader);
     return {
       session: { ...view, metadata: result.currentMetadata },
       previousLabel,

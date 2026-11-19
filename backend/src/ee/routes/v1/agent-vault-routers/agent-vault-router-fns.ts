@@ -1,5 +1,7 @@
 import { FastifyRequest } from "fastify";
 
+import { ProjectMembershipRole } from "@app/db/schemas";
+import { AGENT_VAULT_MEMBER_ROLE_SLUG } from "@app/ee/services/agent-vault-member/agent-vault-member-role-fns";
 import {
   AgentVaultHttpMethod,
   AgentVaultMcpTransport,
@@ -99,4 +101,25 @@ export const serviceTransformationNamesOf = (service: {
 }) => ({
   customHeaderNames: service.customHeaders?.map((header) => header.name) ?? [],
   substitutionPlaceholders: service.substitutions?.map((substitution) => substitution.placeholder) ?? []
+});
+
+// The single `role` that clients, audit readers and analytics knew when a member had one role, admin or member. The
+// Member role the role migration made reads as member again, and a member holding neither gets their first role.
+export const deprecatedRoleOf = (roles: string[]) => {
+  if (roles.includes(ProjectMembershipRole.Admin)) return ProjectMembershipRole.Admin;
+  if (roles.includes(AGENT_VAULT_MEMBER_ROLE_SLUG)) return ProjectMembershipRole.Member;
+  return roles[0] ?? "";
+};
+
+// Analytics takes the built-in values and `custom` for anything else: a custom role's slug is something a user typed,
+// with no bound on how many there are.
+export const telemetryRoleOf = (roles: string[]) => {
+  const role = deprecatedRoleOf(roles);
+  const builtIn: string[] = [ProjectMembershipRole.Admin, ProjectMembershipRole.Member, ProjectMembershipRole.NoAccess];
+  return builtIn.includes(role) ? role : ProjectMembershipRole.Custom;
+};
+
+export const withDeprecatedRole = <T extends { roles: string[] }>(member: T) => ({
+  ...member,
+  role: deprecatedRoleOf(member.roles)
 });

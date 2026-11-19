@@ -2,6 +2,7 @@ import {
   AccessScope,
   ActionProjectType,
   getAdminMemberOnlyProductLabel,
+  getAdminRequiredProductLabel,
   OrganizationActionScope,
   OrgMembershipRole,
   ProjectMembershipRole,
@@ -50,7 +51,14 @@ import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/ide
 import { getIdentityActiveLockoutAuthMethods } from "../identity/identity-fns";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
-import { assertProductWillRetainAdmin, filterRolesNeedingPrivilegeBoundary } from "../membership/membership-fns";
+import {
+  assertAgentVaultAdminOnlyChange,
+  assertProductWillRetainAdmin,
+  customRolesNeedRbacPlan,
+  filterRolesNeedingPrivilegeBoundary,
+  rolesGiveAdmin,
+  withAgentVaultMemberAlias
+} from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TIdentityV2DALFactory } from "./identity-dal";
 import { filterIdentitiesByProjectPermission, TProjectPermissionAbility } from "./identity-fns";
@@ -84,7 +92,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
   projectDAL: Pick<TProjectDALFactory, "findActorAccessibleProjectIds" | "findOrgProjectIds" | "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  roleDAL: Pick<TRoleDALFactory, "find">;
+  roleDAL: Pick<TRoleDALFactory, "find" | "findOne" | "findById" | "create">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
 };
 
@@ -114,7 +122,8 @@ export const identityV2ServiceFactory = ({
   const projectFactory = newProjectIdentityFactory({
     permissionService,
     orgDAL,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    projectDAL
   });
 
   const scopeFactory = {
@@ -140,13 +149,17 @@ export const identityV2ServiceFactory = ({
 
     let resolvedRoleDocs: Omit<TMembershipRolesInsert, "membershipId">[] | null = null;
 
+    if (scopeData.scope === AccessScope.Project && data.roles?.length) {
+      data.roles = await withAgentVaultMemberAlias({ projectDAL, roleDAL }, scopeData, data.roles);
+    }
+
     if (scopeData.scope === AccessScope.Project && data.roles && data.roles.length > 0) {
       const hasNoPermanentRole = data.roles.every((el) => el.isTemporary);
       if (hasNoPermanentRole) {
         throw new BadRequestError({ message: "Identity must have at least one permanent role" });
       }
 
-      const { permission: actorPermission } = await permissionService.getProjectPermission({
+      const { permission: actorPermission, hasRole } = await permissionService.getProjectPermission({
         actor: dto.permission.type,
         actorId: dto.permission.id,
         actionProjectType: ActionProjectType.Any,
@@ -169,6 +182,12 @@ export const identityV2ServiceFactory = ({
           });
         }
       }
+      assertAgentVaultAdminOnlyChange({
+        project,
+        hasRole,
+        givesAdmin: rolesGiveAdmin(data.roles),
+        touchesAdmin: false
+      });
 
       const { shouldUseNewPrivilegeSystem } = await requestMemoize(
         requestMemoKeys.orgFindById(dto.permission.orgId),
@@ -203,7 +222,7 @@ export const identityV2ServiceFactory = ({
 
       const customInputRoles = data.roles.filter((el) => isCustomProjectRole(el.role));
       const hasCustomRole = customInputRoles.length > 0;
-      if (hasCustomRole && !plan?.has(PlanFeature.Rbac)) {
+      if (hasCustomRole && !plan?.has(PlanFeature.Rbac) && (await customRolesNeedRbacPlan(projectDAL, scopeData))) {
         throw new BadRequestError({
           message:
             "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
@@ -249,11 +268,7 @@ export const identityV2ServiceFactory = ({
     let projectMemberRole = ProjectMembershipRole.NoAccess as string;
     if (scopeData.scope === AccessScope.Project && !resolvedRoleDocs) {
       const project = await projectDAL.findById(scopeData.projectId);
-      if (
-        project?.type === ProjectType.CertificateManager ||
-        project?.type === ProjectType.PAM ||
-        project?.type === ProjectType.AgentVault
-      ) {
+      if (project?.type === ProjectType.CertificateManager || project?.type === ProjectType.PAM) {
         projectMemberRole = ProjectMembershipRole.Member;
       }
     }
@@ -417,7 +432,7 @@ export const identityV2ServiceFactory = ({
     const deletedIdentity = await identityDAL.transaction(async (tx) => {
       if (scopeData.scope === AccessScope.Project) {
         const project = await projectDAL.findById(scopeData.projectId, tx);
-        if (getAdminMemberOnlyProductLabel(project?.type)) {
+        if (getAdminRequiredProductLabel(project?.type)) {
           const memberships = await membershipIdentityDAL.find(
             {
               scope: AccessScope.Project,

@@ -1,7 +1,13 @@
 import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
-import { AccessScope, getAdminMemberOnlyProductLabel, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
+import {
+  AccessScope,
+  getAdminMemberOnlyProductLabel,
+  getAdminRequiredProductLabel,
+  ProjectMembershipRole,
+  ProjectType
+} from "@app/db/schemas";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { newProjectMembershipGroupFactory } from "@app/services/membership-group/project/project-membership-group-factory";
 import { newProjectMembershipIdentityFactory } from "@app/services/membership-identity/project/project-membership-identity-factory";
@@ -71,13 +77,13 @@ describe("getAdminMemberOnlyProductLabel", () => {
   // permission resolver then upgrades to the member rule set.
   test.each([
     [ProjectType.CertificateManager, "Certificate Manager"],
-    [ProjectType.PAM, "Privileged Access Manager"],
-    [ProjectType.AgentVault, "Agent Vault"]
+    [ProjectType.PAM, "Privileged Access Manager"]
   ])("covers %s", (type, label) => {
     expect(getAdminMemberOnlyProductLabel(type)).toBe(label);
   });
 
-  test.each([[ProjectType.SecretManager], [ProjectType.KMS], [ProjectType.SecretScanning]])(
+  // Agent Vault resolves a custom role to its own rules, so it takes custom roles and no-access like Secrets Management.
+  test.each([[ProjectType.SecretManager], [ProjectType.KMS], [ProjectType.SecretScanning], [ProjectType.AgentVault]])(
     "leaves %s alone",
     (type) => {
       expect(getAdminMemberOnlyProductLabel(type)).toBeUndefined();
@@ -90,18 +96,35 @@ describe("getAdminMemberOnlyProductLabel", () => {
   });
 });
 
+describe("getAdminRequiredProductLabel", () => {
+  test.each([
+    [ProjectType.CertificateManager, "Certificate Manager"],
+    [ProjectType.PAM, "Privileged Access Manager"],
+    [ProjectType.AgentVault, "Agent Vault"]
+  ])("keeps an admin on %s", (type, label) => {
+    expect(getAdminRequiredProductLabel(type)).toBe(label);
+  });
+
+  test("leaves Secrets Management alone", () => {
+    expect(getAdminRequiredProductLabel(ProjectType.SecretManager)).toBeUndefined();
+  });
+});
+
 describe.each(guards)("$name membership guard", ({ build }) => {
-  test.each([[ProjectType.AgentVault], [ProjectType.PAM], [ProjectType.CertificateManager]])(
-    "refuses a viewer role on %s",
-    async (type) => {
-      await expect(build(type)(dto(ProjectMembershipRole.Viewer))).rejects.toThrow(
-        "only supports Admin and Member roles"
-      );
-    }
-  );
+  test.each([[ProjectType.PAM], [ProjectType.CertificateManager]])("refuses a viewer role on %s", async (type) => {
+    await expect(build(type)(dto(ProjectMembershipRole.Viewer))).rejects.toThrow(
+      "only supports Admin and Member roles"
+    );
+  });
 
   test("refuses a custom role slug too", async () => {
-    await expect(build(ProjectType.AgentVault)(dto("some-custom-role"))).rejects.toThrow(
+    await expect(build(ProjectType.PAM)(dto("some-custom-role"))).rejects.toThrow(
+      "only supports Admin and Member roles"
+    );
+  });
+
+  test("lets Agent Vault take a custom role", async () => {
+    await expect(build(ProjectType.AgentVault)(dto("some-custom-role"))).rejects.not.toThrow(
       "only supports Admin and Member roles"
     );
   });
@@ -111,9 +134,7 @@ describe.each(guards)("$name membership guard", ({ build }) => {
     async (role) => {
       // The guard runs before the rest of the collaborators, which are undefined here, so getting past
       // it surfaces as some other failure rather than the role message.
-      await expect(build(ProjectType.AgentVault)(dto(role))).rejects.not.toThrow(
-        "only supports Admin and Member roles"
-      );
+      await expect(build(ProjectType.PAM)(dto(role))).rejects.not.toThrow("only supports Admin and Member roles");
     }
   );
 

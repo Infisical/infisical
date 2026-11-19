@@ -5,6 +5,7 @@ import {
   AGENT_VAULT_MAX_GRANTEES,
   OAUTH_NEEDS_AUTHORIZATION_OR_MEMBERS_MESSAGE
 } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
+import { AGENT_VAULT_MAX_MEMBER_ROLES } from "@app/ee/services/agent-vault-member/agent-vault-member-role-fns";
 import {
   MAX_CLIENT_ID_LENGTH,
   MAX_CLIENT_SECRET_LENGTH,
@@ -1549,11 +1550,40 @@ const namedCount = (body: {
   (body.emails?.length ?? 0) +
   (body.usernames?.length ?? 0);
 
-// x-default only shapes the docs: Mintlify pre-fills its request example from a default, and a required
-// enum without one is left out, so the copied example fails with a 422. Validation still requires role.
-export const AgentVaultProductRoleSchema = z
-  .enum([ProjectMembershipRole.Admin, ProjectMembershipRole.Member])
-  .describe(JSON.stringify({ description: AGENT_VAULT.MEMBERSHIP.role, "x-default": ProjectMembershipRole.Member }));
+const AgentVaultRoleSlugSchema = z.string().trim().min(1).max(64);
+
+// The role list, or the single deprecated role older clients send. Exactly one of the two.
+const memberRolesShape = {
+  roles: AgentVaultRoleSlugSchema.array()
+    .min(1)
+    .max(AGENT_VAULT_MAX_MEMBER_ROLES)
+    .optional()
+    .describe(
+      JSON.stringify({ description: AGENT_VAULT.MEMBERSHIP.roles, "x-default": [ProjectMembershipRole.NoAccess] })
+    ),
+  // What older clients send, with the values it always had.
+  role: z
+    .enum([ProjectMembershipRole.Admin, ProjectMembershipRole.Member])
+    .optional()
+    .describe(AGENT_VAULT.MEMBERSHIP.role)
+};
+
+const refineMemberRoles = (body: { roles?: string[]; role?: string }, ctx: z.RefinementCtx) => {
+  if (body.roles && body.role) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["role"], message: "Send roles or role, not both" });
+  }
+  if (!body.roles && !body.role) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["roles"], message: "Send the roles to give" });
+  }
+};
+
+// `role` set the project role and left bundle grants alone. Grants are each bundle's role now, so a request that
+// still sends `role` keeps them (`keepBundleRoles`), and one that sends `roles` sets the whole list.
+const foldMemberRoles = <T extends { roles?: string[]; role?: string }>({ role, roles, ...body }: T) => ({
+  ...body,
+  roles: roles ?? (role ? [role] : []),
+  keepBundleRoles: !roles && Boolean(role)
+});
 
 const atLeastOne = "Name at least one user, machine identity, or group";
 
@@ -1609,10 +1639,12 @@ export const AgentVaultProductMemberAddSchema = z
       .default([])
       .refine((val) => val.every((el) => el === el.toLowerCase()), "Username must be lowercase")
       .describe(AGENT_VAULT.MEMBERSHIP.usernames),
-    role: AgentVaultProductRoleSchema
+    ...memberRolesShape
   })
   .refine((body) => namedCount(body) > 0, atLeastOne)
-  .refine((body) => namedCount(body) <= AGENT_VAULT_MAX_GRANTEES, atMost("Act on"));
+  .refine((body) => namedCount(body) <= AGENT_VAULT_MAX_GRANTEES, atMost("Act on"))
+  .superRefine(refineMemberRoles)
+  .transform(foldMemberRoles);
 
 export const AgentVaultProductMemberRoleUpdateSchema = z
   .object({
@@ -1621,10 +1653,12 @@ export const AgentVaultProductMemberRoleUpdateSchema = z
       machineIdentityIds: AGENT_VAULT.MEMBERSHIP.machineIdentityIds,
       groupIds: AGENT_VAULT.MEMBERSHIP.groupIds
     }),
-    role: AgentVaultProductRoleSchema
+    ...memberRolesShape
   })
   .refine((body) => namedCount(body) > 0, atLeastOne)
-  .refine((body) => namedCount(body) <= AGENT_VAULT_MAX_GRANTEES, atMost("Act on"));
+  .refine((body) => namedCount(body) <= AGENT_VAULT_MAX_GRANTEES, atMost("Act on"))
+  .superRefine(refineMemberRoles)
+  .transform(foldMemberRoles);
 
 export const AgentVaultMemberRevokeIdsSchema = z
   .object(
@@ -1748,14 +1782,16 @@ export const AgentVaultProductActorSchema = z.discriminatedUnion("type", [
   groupActorSchema
 ]);
 
-// Not the two-value input enum: the generic project membership routes reach these same rows, so one can
-// carry any role slug, and narrowing this would fail the whole list rather than render it.
-const productRoleSchema = z.string().describe(AGENT_VAULT.MEMBERSHIP.role);
+// Any role slug: the generic project membership routes reach these same rows, so narrowing this would fail the whole
+// list rather than render it.
+const productRolesSchema = z.string().array().describe(AGENT_VAULT.MEMBERSHIP.rolesRead);
+const deprecatedRoleSchema = z.string().describe(AGENT_VAULT.MEMBERSHIP.roleRead);
 
 const addedAtSchema = z.date().describe(AGENT_VAULT.MEMBERSHIP.addedAt);
 
 const productMemberFields = {
-  role: productRoleSchema,
+  roles: productRolesSchema,
+  role: deprecatedRoleSchema,
   isActive: z.boolean().describe(AGENT_VAULT.MEMBERSHIP.isActive),
   addedAt: addedAtSchema
 };
@@ -1768,7 +1804,7 @@ export const AgentVaultProductMemberSchema = z.discriminatedUnion("type", [
   groupActorSchema.extend(productMemberFields)
 ]);
 
-const productMemberRefFields = { role: productRoleSchema, addedAt: addedAtSchema };
+const productMemberRefFields = { roles: productRolesSchema, role: deprecatedRoleSchema, addedAt: addedAtSchema };
 
 export const AgentVaultProductMemberRefSchema = z.discriminatedUnion("type", [
   actorRefSchemas.user.extend(productMemberRefFields),

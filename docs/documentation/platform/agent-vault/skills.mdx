@@ -11,7 +11,7 @@ Skills follow the [Agent Skills](https://agentskills.io) format, so the same fol
 
 ## Prerequisites
 
-- The [Admin role](/documentation/platform/agent-vault/access-control#product-membership) in your Agent Vault project, to add, change, and delete skills, and to add them to access bundles
+- A [role](/documentation/platform/agent-vault/access-control#roles) that can create, edit, and delete skills and edit access bundles, such as **Admin**, to add, change, and delete skills, and to add them to access bundles
 - The [Infisical CLI](/cli/install) on each host where you start agents
 
 ## Skill format
@@ -65,7 +65,7 @@ If you self-host Infisical behind a reverse proxy or load balancer, set its requ
 
 <Tabs>
   <Tab title="CLI">
-    Log in to the CLI as an admin of the Agent Vault project, then run [`infisical agent-vault skills push`](/cli/reference#agent-vault-skills-push) on the host that has the skill folder, replacing `<project-id>` with the [project's ID](/documentation/platform/agent-vault/projects#find-the-project-id):
+    Log in to the CLI as a user whose role can create and edit skills, such as **Admin**, then run [`infisical agent-vault skills push`](/cli/reference#agent-vault-skills-push) on the host that has the skill folder, replacing `<project-id>` with the [project's ID](/documentation/platform/agent-vault/projects#find-the-project-id):
 
     ```bash
     infisical agent-vault skills push ./skills/code-review --project-id <project-id>
@@ -105,7 +105,7 @@ If you self-host Infisical behind a reverse proxy or load balancer, set its requ
 
 To open a skill, go to **Skills** in your Agent Vault project and select the skill. You can also open it from an access bundle: in the **Skills** section, open the skill's actions menu and select **View Skill**.
 
-If you're a member of the project rather than an admin, open the skill from an access bundle that's granted to you. The **Skills** page is only for admins.
+If your roles can use the skill only through an access bundle, open the skill from that access bundle.
 
 The skill opens in a side panel that shows the latest version of its files. To get a copy of the files, select **Options** in the panel, then select **Download**. Infisical downloads the files as a zip file, and scripts that are executable in Infisical stay executable.
 
@@ -261,7 +261,7 @@ Instead of an access bundle, or alongside it, you can give a session skills from
 
 ### Pick skills from the project
 
-When you [create a session](/documentation/platform/agent-vault/create-a-session), pick skills under **Skills**, or list their names in `skills` through the API. Admins of the project can pick any of its skills. Anyone else can pick only the skills in the access bundles granted to them, directly or through a group.
+When you [create a session](/documentation/platform/agent-vault/create-a-session), pick skills under **Skills**, or list their names in `skills` through the API. You can pick a skill if your [roles](/documentation/platform/agent-vault/access-control#use-an-access-bundle-service-or-skill) can use it, either directly or through an access bundle you can use.
 
 Each time an agent starts with the session, it gets the latest version of each skill you picked. If the user or machine identity that created the session loses access to a skill, or someone deletes the skill, agents that start afterwards don't get it.
 

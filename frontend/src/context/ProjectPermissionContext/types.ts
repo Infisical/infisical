@@ -299,16 +299,28 @@ export enum ProjectPermissionProxiedServiceActions {
   ReportUsage = "report-usage"
 }
 
+// Use lets a session start from the bundle, with every service and skill in it; Read only shows it.
 export enum ProjectPermissionAgentVaultAccessBundleActions {
   Read = "read",
+  Use = "use",
   Create = "create",
   Edit = "edit",
-  Delete = "delete",
-  ManageMembers = "manage-members"
+  Delete = "delete"
 }
 
+// Use puts the skill in a session; Read only shows it.
 export enum ProjectPermissionAgentVaultSkillActions {
   Read = "read",
+  Use = "use",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
+// Use lets a session reach the service; Read only shows it.
+export enum ProjectPermissionAgentVaultServiceActions {
+  Read = "read",
+  Use = "use",
   Create = "create",
   Edit = "edit",
   Delete = "delete"
@@ -502,12 +514,25 @@ export enum ProjectPermissionSub {
   AgentVaultSessions = "agent-vault-sessions",
   AgentVaultProxies = "agent-vault-proxies",
   AgentVaultSkills = "agent-vault-skills",
+  AgentVaultServices = "agent-vault-services",
   AgentVaultVariables = "agent-vault-variables",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   ProjectFolderGrant = "project-folder-grant",
   Insights = "insights"
 }
+
+export type AgentVaultAccessBundleSubjectFields = {
+  accessBundleId: string;
+};
+
+export type AgentVaultServiceSubjectFields = {
+  serviceId: string;
+};
+
+export type AgentVaultSkillSubjectFields = {
+  skillId: string;
+};
 
 export type SecretSubjectFields = {
   environment: string;
@@ -784,10 +809,30 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.ProxiedServices> & ProxiedServiceSubjectFields)
       )
     ]
-  | [ProjectPermissionAgentVaultAccessBundleActions, ProjectPermissionSub.AgentVaultAccessBundles]
+  | [
+      ProjectPermissionAgentVaultAccessBundleActions,
+      (
+        | ProjectPermissionSub.AgentVaultAccessBundles
+        | (ForcedSubject<ProjectPermissionSub.AgentVaultAccessBundles> &
+            AgentVaultAccessBundleSubjectFields)
+      )
+    ]
   | [ProjectPermissionAgentVaultSessionActions, ProjectPermissionSub.AgentVaultSessions]
   | [ProjectPermissionAgentVaultProxyActions, ProjectPermissionSub.AgentVaultProxies]
-  | [ProjectPermissionAgentVaultSkillActions, ProjectPermissionSub.AgentVaultSkills]
+  | [
+      ProjectPermissionAgentVaultSkillActions,
+      (
+        | ProjectPermissionSub.AgentVaultSkills
+        | (ForcedSubject<ProjectPermissionSub.AgentVaultSkills> & AgentVaultSkillSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionAgentVaultServiceActions,
+      (
+        | ProjectPermissionSub.AgentVaultServices
+        | (ForcedSubject<ProjectPermissionSub.AgentVaultServices> & AgentVaultServiceSubjectFields)
+      )
+    ]
   | [ProjectPermissionAgentVaultVariableActions, ProjectPermissionSub.AgentVaultVariables]
   | [
       ProjectPermissionProjectFolderGrantActions,

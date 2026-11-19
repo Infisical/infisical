@@ -50,16 +50,59 @@ export type TResolveSkillRow = {
   accessBundleName: string | null;
 };
 
-type TResolveScope = { sessionId: string; projectId: string; accessBundleIds: string[] | null };
+// What the session's owner reaches now (see TAgentVaultReach): the bundles they can use, and the services and skills
+// they can use directly. Each is null when it covers every one in the project.
+type TResolveScope = {
+  sessionId: string;
+  projectId: string;
+  accessBundleIds: string[] | null;
+  serviceIds: string[] | null;
+  skillIds: string[] | null;
+};
+
+// A listed service or skill stays while the owner can use it directly or through a bundle that holds it.
+const whereUsable = (
+  conn: Knex,
+  query: Knex.QueryBuilder,
+  {
+    table,
+    linkTable,
+    linkColumn,
+    directIds,
+    accessBundleIds
+  }: {
+    table: TableName;
+    linkTable: TableName;
+    linkColumn: string;
+    directIds: string[] | null;
+    accessBundleIds: string[] | null;
+  }
+) => {
+  if (directIds === null) return;
+  void query.where((qb) => {
+    if (directIds.length) void qb.whereIn(`${table}.id`, directIds);
+    void qb.orWhereExists(
+      conn(linkTable)
+        .whereRaw("??.?? = ??.??", [linkTable, linkColumn, table, "id"])
+        .modify((link) => {
+          if (accessBundleIds) void link.whereIn(`${linkTable}.accessBundleId`, accessBundleIds);
+        })
+        .select(conn.raw("1"))
+    );
+  });
+};
 
 // A session found only on the primary is newer than the replica, and so are the bundle links written with it.
 type TResolveReadOptions = { onPrimary?: boolean };
 
 export const agentVaultResolveDALFactory = (db: TDbClient) => {
-  // The session's bundles that the actor can still reach: the bundle set fixed at mint, intersected with the bundles
-  // the actor's live grants allow (accessBundleIds, null when every bundle in the project is allowed). Services and
-  // skills both hang off this, so a lost grant takes both away together.
-  const reachableSessionBundles = (conn: Knex, { sessionId, projectId, accessBundleIds }: TResolveScope) => {
+  // The session's bundles that the actor can still use: the bundle set fixed at mint, intersected with the bundles the
+  // actor's roles let them use now (accessBundleIds, null when every bundle in the project is allowed). Services and
+  // skills both hang off this, so losing the bundle takes both away together.
+  const reachableSessionBundles = (
+    conn: Knex,
+    { sessionId, projectId, accessBundleIds }: Pick<TResolveScope, "sessionId" | "projectId" | "accessBundleIds">
+  ) => {
     const query = conn(TableName.AgentVaultSessionAccessBundle)
       .where(`${TableName.AgentVaultSessionAccessBundle}.sessionId`, sessionId)
       .whereNotNull(`${TableName.AgentVaultSessionAccessBundle}.accessBundleId`)
@@ -111,7 +154,7 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
    */
   const findOverridesOfServices = async (
     conn: Knex,
-    { projectId, accessBundleIds }: { projectId: string; accessBundleIds: string[] },
+    { projectId, accessBundleIds }: { projectId: string; accessBundleIds: string[] | null },
     listedServices: Pick<TResolveServiceRow, "id" | "hostPattern" | "position">[],
     presentIds: Set<string>
   ): Promise<TResolveServiceRow[]> => {
@@ -130,7 +173,9 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
         `${TableName.AgentVaultAccessBundleService}.serviceId`
       )
       .where(`${TableName.AgentVaultAccessBundle}.projectId`, projectId)
-      .whereIn(`${TableName.AgentVaultAccessBundle}.id`, accessBundleIds)
+      .modify((query) => {
+        if (accessBundleIds) void query.whereIn(`${TableName.AgentVaultAccessBundle}.id`, accessBundleIds);
+      })
       .whereIn(
         `${TableName.AgentVaultAccessBundle}.id`,
         conn({ holder: TableName.AgentVaultAccessBundleService })
@@ -183,10 +228,10 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
 
   /**
    * The hot path, and an intersection: the services a session reaches through its bundle and the ones it lists are a
-   * ceiling fixed at mint, re-checked against live grants on every resolve, so losing a grant empties a running session
-   * without touching its rows. A listed service stays only while the owner reaches it through a bundle they are granted
-   * (any of them when accessBundleIds is null), and brings that bundle's overrides of its hosts with it. Services through
-   * the bundle come first, then the listed ones, then the overrides.
+   * ceiling fixed at mint, re-checked against the owner's roles on every resolve, so losing access empties a running
+   * session without touching its rows. A listed service stays only while the owner can use it, directly or through a
+   * bundle that holds it. One reached only through bundles brings those bundles' overrides of its hosts with it. Services
+   * through the bundle come first, then the listed ones, then the overrides.
    *
    * Read on the replica unless onPrimary, so replica lag adds to the one-poll-interval staleness promise.
    */
@@ -202,7 +247,7 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
       },
     tx?: Knex
   ): Promise<TResolveServiceRow[]> => {
-    if (scope.accessBundleIds?.length === 0) return [];
+    if (scope.accessBundleIds?.length === 0 && scope.serviceIds?.length === 0) return [];
     try {
       const conn = tx || (onPrimary ? db : db.replicaNode());
       const serviceColumns = SERVICE_COLUMNS.map((column) => db.ref(column).withSchema(TableName.AgentVaultService));
@@ -239,19 +284,13 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
         )
         .where(`${TableName.AgentVaultService}.projectId`, scope.projectId)
         .whereNull(`${TableName.AgentVaultService}.sessionId`);
-      if (scope.accessBundleIds) {
-        void listedQuery.whereExists(
-          conn(TableName.AgentVaultAccessBundleService)
-            .whereRaw("??.?? = ??.??", [
-              TableName.AgentVaultAccessBundleService,
-              "serviceId",
-              TableName.AgentVaultService,
-              "id"
-            ])
-            .whereIn(`${TableName.AgentVaultAccessBundleService}.accessBundleId`, scope.accessBundleIds)
-            .select(db.raw("1"))
-        );
-      }
+      whereUsable(conn, listedQuery, {
+        table: TableName.AgentVaultService,
+        linkTable: TableName.AgentVaultAccessBundleService,
+        linkColumn: "serviceId",
+        directIds: scope.serviceIds,
+        accessBundleIds: scope.accessBundleIds
+      });
       const listedRows = (await listedQuery
         .select(
           ...serviceColumns,
@@ -266,12 +305,15 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
       const throughBundleIds = new Set(throughBundle.map((row) => row.id));
       const listedOnly = listedRows.filter((row) => !throughBundleIds.has(row.id));
       const present = [...throughBundle, ...listedOnly];
-      // An owner who reaches every bundle could name the wildcard service alone anyway, so theirs get none.
-      const overrides = scope.accessBundleIds
+      // An owner who can use a service directly could name it alone anyway, so it brings no overrides. One reached
+      // only through bundles brings theirs, as a session carrying the bundle would.
+      const directIds = scope.serviceIds === null ? null : new Set(scope.serviceIds);
+      const reachedThroughBundles = directIds ? listedOnly.filter((row) => !directIds.has(row.id)) : [];
+      const overrides = reachedThroughBundles.length
         ? await findOverridesOfServices(
             conn,
             { projectId: scope.projectId, accessBundleIds: scope.accessBundleIds },
-            listedOnly,
+            reachedThroughBundles,
             new Set(present.map((row) => row.id))
           )
         : [];
@@ -283,17 +325,21 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
     }
   };
 
-  // The overrides resolve would send beside these listed services for an owner who reaches accessBundleIds, so a mint can
-  // check what it is about to send against them.
+  // The overrides resolve would send beside these listed services, reached only through the bundles in accessBundleIds
+  // (null for every bundle), so a mint can check what it is about to send against them.
   const findServiceOverrides = async (
     {
       projectId,
       accessBundleIds,
       services
-    }: { projectId: string; accessBundleIds: string[]; services: Pick<TResolveServiceRow, "id" | "hostPattern">[] },
+    }: {
+      projectId: string;
+      accessBundleIds: string[] | null;
+      services: Pick<TResolveServiceRow, "id" | "hostPattern">[];
+    },
     tx?: Knex
   ) => {
-    if (!accessBundleIds.length || !services.length) return [];
+    if (accessBundleIds?.length === 0 || !services.length) return [];
     try {
       return await findOverridesOfServices(
         tx || db.replicaNode(),
@@ -308,13 +354,13 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
 
   /**
    * The latest version of each skill the session reaches through its bundle or names, once. Like the services, both are
-   * a ceiling fixed at mint and re-checked against live grants: a listed skill stays only while a bundle the owner
-   * reaches holds it (any of them when accessBundleIds is null). A skill through the bundle is credited to the first of
-   * the session's bundles that carries it, and one the bundle also holds is sent once, as the bundle's. Reads the
-   * primary: this runs once per agent start, and a skill published a moment before must not arrive a version late.
+   * a ceiling fixed at mint and re-checked against the owner's roles: a listed skill stays only while the owner can use
+   * it, directly or through a bundle that holds it. A skill through the bundle is credited to the first of the session's
+   * bundles that carries it, and one the bundle also holds is sent once, as the bundle's. Reads the primary: this runs
+   * once per agent start, and a skill published a moment before must not arrive a version late.
    */
   const findSessionSkills = async (scope: TResolveScope, tx?: Knex): Promise<TResolveSkillRow[]> => {
-    if (scope.accessBundleIds?.length === 0) return [];
+    if (scope.accessBundleIds?.length === 0 && scope.skillIds?.length === 0) return [];
     try {
       const conn = tx || db;
       const latestVersion = function joinLatestVersion(this: Knex.JoinClause) {
@@ -369,19 +415,13 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
         .where(`${TableName.AgentVaultSkill}.projectId`, scope.projectId)
         .whereNull(`${TableName.AgentVaultSkill}.sessionId`)
         .join(TableName.AgentVaultSkillVersion, latestVersion);
-      if (scope.accessBundleIds) {
-        void listedQuery.whereExists(
-          conn(TableName.AgentVaultAccessBundleSkill)
-            .whereRaw("??.?? = ??.??", [
-              TableName.AgentVaultAccessBundleSkill,
-              "skillId",
-              TableName.AgentVaultSkill,
-              "id"
-            ])
-            .whereIn(`${TableName.AgentVaultAccessBundleSkill}.accessBundleId`, scope.accessBundleIds)
-            .select(db.raw("1"))
-        );
-      }
+      whereUsable(conn, listedQuery, {
+        table: TableName.AgentVaultSkill,
+        linkTable: TableName.AgentVaultAccessBundleSkill,
+        linkColumn: "skillId",
+        directIds: scope.skillIds,
+        accessBundleIds: scope.accessBundleIds
+      });
       const listedRows = (await listedQuery.select(
         ...skillColumns,
         db.raw("NULL::uuid AS ??", ["accessBundleId"]),
@@ -400,7 +440,7 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
   // The session's bundles the actor can still reach, in the order they were minted with, whether or not they hold a
   // service.
   const findReachableBundles = async (
-    { onPrimary, ...scope }: TResolveScope & TResolveReadOptions,
+    { onPrimary, ...scope }: Pick<TResolveScope, "sessionId" | "projectId" | "accessBundleIds"> & TResolveReadOptions,
     tx?: Knex
   ): Promise<{ id: string; name: string }[]> => {
     if (scope.accessBundleIds?.length === 0) return [];

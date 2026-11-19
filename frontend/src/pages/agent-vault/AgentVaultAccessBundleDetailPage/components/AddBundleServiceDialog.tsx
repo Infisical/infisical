@@ -36,7 +36,8 @@ type Props = {
   bundleServiceIds: string[];
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onCreateNew: () => void;
+  // Left out for someone who can't create services, so the picker offers only existing ones.
+  onCreateNew?: () => void;
 };
 
 export const AddBundleServiceDialog = ({
@@ -149,15 +150,19 @@ export const AddBundleServiceDialog = ({
               modal
               isError={isOverLimit}
               onValueChange={setServices}
-              creation={{
-                mode: "action",
-                emptyLabel: CREATE_LABEL,
-                formatLabel: () => CREATE_LABEL,
-                onAction: () => {
-                  handleClose();
-                  onCreateNew();
-                }
-              }}
+              creation={
+                onCreateNew
+                  ? {
+                      mode: "action",
+                      emptyLabel: CREATE_LABEL,
+                      formatLabel: () => CREATE_LABEL,
+                      onAction: () => {
+                        handleClose();
+                        onCreateNew();
+                      }
+                    }
+                  : undefined
+              }
             />
             {isOverLimit ? (
               <FieldError>

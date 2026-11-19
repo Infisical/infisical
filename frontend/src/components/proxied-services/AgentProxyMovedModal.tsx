@@ -13,7 +13,7 @@ const CHANGES = [
   {
     title: "Access Bundles Replace Proxied Services",
     description:
-      "Describe the services an agent may reach in an access bundle, then grant it to the people who run agents."
+      "Describe the services an agent may reach in an access bundle, then give the people who run agents a role that can use it."
   },
   {
     title: "Credentials Stay Out of Agents",

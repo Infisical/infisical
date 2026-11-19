@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 import { agentVaultKeys } from "@app/hooks/api/agentVault/queries";
 import { isCertManagerProject, userMembershipsBase } from "@app/hooks/api/certManagerAccess";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { projectKeys } from "../projects";
 import { userKeys } from "./query-keys";
@@ -14,12 +15,12 @@ export const useAddUserToWsNonE2EE = () => {
 
   return useMutation<object, object, AddUserToWsDTONonE2EE>({
     mutationFn: async ({ projectId, projectType, usernames, roleSlugs }) => {
-      // Agent Vault adds members through its own service, which takes one admin or member role.
+      // Agent Vault adds members through its own service. Without a role, they get No Access.
       if (projectType === ProjectType.AgentVault) {
         const { data } = await apiRequest.post("/api/v1/agent-vault/members", {
           projectId,
           usernames,
-          role: roleSlugs?.[0] ?? "member"
+          roles: roleSlugs?.length ? roleSlugs : [ProjectMembershipRole.NoAccess]
         });
         return data;
       }

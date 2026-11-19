@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { ProductRolesField } from "@app/components/agent-vault/ProductRolesField";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -14,43 +15,41 @@ import {
   FieldLabel
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { actorIdsPayload } from "@app/helpers/agentVaultMembers";
+import {
+  actorIdsPayload,
+  defaultAgentVaultRoles,
+  isSameRoleSet
+} from "@app/helpers/agentVaultMembers";
 import { useUpdateAgentVaultMemberRoles } from "@app/hooks/api/agentVault";
 import { TAgentVaultProductMember } from "@app/hooks/api/agentVault/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-
-import { ProductRoleField } from "./ProductRoleField";
 
 type Props = {
-  member: Pick<TAgentVaultProductMember, "type" | "id" | "role"> | null;
+  member: Pick<TAgentVaultProductMember, "type" | "id" | "roles"> | null;
   onOpenChange: (isOpen: boolean) => void;
   subject: string;
 };
 
 export const ProductRoleDialog = ({ member, onOpenChange, subject }: Props) => {
   const { projectId } = useProject();
-  const updateRole = useUpdateAgentVaultMemberRoles(projectId);
-  const currentRole = member?.role ?? ProjectMembershipRole.Member;
-  const [role, setRole] = useState(currentRole);
+  const updateRoles = useUpdateAgentVaultMemberRoles(projectId);
+  const currentRoles = member?.roles ?? defaultAgentVaultRoles();
+  const [roles, setRoles] = useState(currentRoles);
 
   useEffect(() => {
-    if (member) setRole(member.role);
+    if (member) setRoles(member.roles);
   }, [member]);
 
   const handleSave = async () => {
     try {
       // Guarded here, not by returning null, so the exit animation still runs.
       if (!member) return;
-      const { members } = await updateRole.mutateAsync({ ...actorIdsPayload([member]), role });
-      // Save is disabled for the current role, so a skip means the member changed under the dialog.
+      const { members } = await updateRoles.mutateAsync({ ...actorIdsPayload([member]), roles });
+      // Save is disabled for the current roles, so a skip means the member changed under the dialog.
       createNotification(
         members.length
-          ? {
-              text: `${subject} is now ${role === "admin" ? "an Admin" : "a Member"}`,
-              type: "success"
-            }
+          ? { text: `Updated the roles of ${subject}`, type: "success" }
           : {
-              text: `Role not changed. ${subject} may have been removed from this project or already has that role.`,
+              text: `Roles not changed. ${subject} may have been removed from this project or already has those roles.`,
               type: "info"
             }
       );
@@ -64,13 +63,18 @@ export const ProductRoleDialog = ({ member, onOpenChange, subject }: Props) => {
     <Dialog open={Boolean(member)} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Change Role</DialogTitle>
+          <DialogTitle>Edit Roles</DialogTitle>
           <DialogDescription>Choose what {subject} can do in this project.</DialogDescription>
         </DialogHeader>
         <Field>
-          <FieldLabel>Product Role</FieldLabel>
+          <FieldLabel htmlFor="agent-vault-edit-roles">Roles</FieldLabel>
           <FieldContent>
-            <ProductRoleField value={role} onChange={setRole} idPrefix="change-role" />
+            <ProductRolesField
+              id="agent-vault-edit-roles"
+              projectId={projectId}
+              value={roles}
+              onChange={setRoles}
+            />
           </FieldContent>
         </Field>
         <DialogFooter>
@@ -79,8 +83,8 @@ export const ProductRoleDialog = ({ member, onOpenChange, subject }: Props) => {
           </Button>
           <Button
             variant="av"
-            isPending={updateRole.isPending}
-            isDisabled={role === currentRole}
+            isPending={updateRoles.isPending}
+            isDisabled={isSameRoleSet(roles, currentRoles)}
             onClick={handleSave}
           >
             Save

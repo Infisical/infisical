@@ -12,7 +12,7 @@ You can reuse access bundles across as many sessions as you like. This makes the
 - A **marketing** bundle that grants access to Twilio and Google Docs
 
 <Frame>
-  <img src="/images/platform/agent-vault/access-bundles-list.png" alt="The Access Bundles page of the Engineering Agents project, listing the code-review, on-call, and release-notes access bundles with their service icons and member counts" />
+  <img src="/images/platform/agent-vault/access-bundles-list.png" alt="The Access Bundles page of the Engineering Agents project, listing the release-notes, on-call, and code-review access bundles with their descriptions and service icons" />
 </Frame>
 
 ## Create an access bundle
@@ -38,34 +38,28 @@ To create a new access bundle:
 
 Now you can [add services](/documentation/platform/agent-vault/services#add-a-service-to-an-access-bundle) to the access bundle so agents using it can make authenticated requests. You can also [add skills](/documentation/platform/agent-vault/skills#add-a-skill-to-an-access-bundle) to the access bundle, so the CLI installs your team's instructions for every agent that starts with it.
 
-## Manage access to access bundles
+## Who can use an access bundle
 
-Since access bundles provide authentication to external APIs, members of your Agent Vault project can't create sessions with them by default. They need explicit access for each bundle.
+Access bundles give agents credentials for external APIs, so members of a project can't create sessions with an access bundle until one of their [roles](/documentation/platform/agent-vault/access-control#roles) lets them use it. A role that can use an access bundle can use every service and skill in the bundle.
 
-### Grant access
-
-To allow a user, group, or machine identity to create sessions for a given access bundle:
+To let someone use an access bundle:
 
 <Steps>
   <Step>
-    Make sure the user, group, or machine identity is a member of the Agent Vault project. If not, [add them under Access Control](/documentation/platform/agent-vault/access-control#adding-members).
+    Make sure the user, group, or machine identity is a member of the Agent Vault project. If not, [add them under Access Control](/documentation/platform/agent-vault/access-control#add-members).
   </Step>
   <Step>
-    Open the access bundle from **Access Bundles** and select **Options** > **Manage Access**.
-  </Step>
-  <Step>
-    Under **No Access**, find the user, group, or machine identity, and select **Grant Access** next to it. The change saves right away.
-
-    <Frame>
-      <img src="/images/platform/agent-vault/access-bundle-manage-access.png" alt="The Manage Access sheet for code-review, listing four members with Has Access and, under No Access, the other members with a Grant Access button each" />
-    </Frame>
-
+    Give them a role with **Use** on the access bundle. If no role has it yet, [create a custom role](/documentation/platform/agent-vault/access-control#create-a-custom-role) with **Use** on this access bundle.
   </Step>
 </Steps>
 
-### Revoke access
+To see who can use an access bundle, open it from **Access Bundles**. The **Who Can Use This Bundle** section lists each role that can use the bundle and how many members hold the role.
 
-To revoke access from a user, group, or machine identity, open the bundle and select **Options** > **Manage Access**. Find them with the search box, select **Has Access** next to them, and select **Revoke Access**. If any of their agents are running, those agents lose the bundle's credentials within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
+<Frame>
+  <img src="/images/platform/agent-vault/access-bundle-who-can-use.png" alt="The code-review access bundle's page, with its services and skills and a Who Can Use This Bundle section that lists the built-in Admin role and the custom Release Engineers role, each held by one member" />
+</Frame>
+
+To stop someone from using an access bundle, take away each of their roles that can use it. If any of their agents are running, those agents lose the bundle's credentials within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
 
 ## Set up your personal values
 
@@ -108,7 +102,7 @@ If the provider stops accepting your login, the service shows **Requires Setup**
 
 Infisical never shows your personal values to anyone else, admins included.
 
-Infisical keeps your personal values for a service while any access bundle granted to you holds the service. If an admin removes the service from an access bundle, revokes your access to the access bundle, or deletes the access bundle, Infisical deletes your personal values for the service, unless another access bundle still gives you the service. Admins keep their personal values in all three cases.
+Infisical keeps your personal values until you leave the project. If you lose access to a service, your sessions stop using your values for it, and they use them again if you get access back.
 
 - To change your personal values, open the service's actions menu, select **Update My Personal Values**, and enter the values you want to change
 - To delete your personal values, select **Remove** in the same dialog, then select **Remove Personal Values** (**Disconnect Account** for an OAuth service)

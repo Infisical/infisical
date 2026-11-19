@@ -1,18 +1,12 @@
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { TAgentVaultPersonalValueReferencesInsert } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionAgentVaultAccessBundleActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { hasPostgresConstraintViolation, hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import { TAgentVaultProjectScoped } from "../agent-vault-access-bundle/agent-vault-access-bundle-types";
 import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent-vault-service-dal";
@@ -32,7 +26,8 @@ import {
   TAgentVaultMemberProvidedField
 } from "../agent-vault/agent-vault-enums";
 import { ownerColumns, ownerOf, TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
-import { getAgentVaultGrantedReachability } from "../agent-vault/agent-vault-permission";
+import { getAgentVaultReachability, usableServiceIdsOf } from "../agent-vault/agent-vault-permission";
+import { TAgentVaultReachDALFactory } from "../agent-vault/agent-vault-reach-dal";
 import { getServiceServerUrl } from "../agent-vault/agent-vault-service-type-fns";
 import {
   findStoredVariableIds,
@@ -60,14 +55,17 @@ type TAgentVaultPersonalValueServiceFactoryDep = {
   agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findKeys" | "lockForReference">;
   agentVaultServiceDAL: Pick<
     TAgentVaultServiceDALFactory,
-    "findByIdInProject" | "findBundlesForServices" | "lockForPersonalValues"
+    "findByIdInProject" | "findBundlesForServices" | "lockForPersonalValues" | "findIdsInBundles"
   >;
   agentVaultOauthService: Pick<
     TAgentVaultOauthServiceFactory,
     "claimAuthorization" | "buildCredentialFromAuthorization"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+  agentVaultReachDAL: Pick<
+    TAgentVaultReachDALFactory,
+    "findAccessBundleIds" | "findServiceIds" | "findSkillIds" | "findServiceIdsInAnyBundle"
+  >;
   kmsDataKeyService: TKmsDataKeyService;
 };
 
@@ -99,21 +97,15 @@ export const agentVaultPersonalValueServiceFactory = ({
   agentVaultServiceDAL,
   agentVaultOauthService,
   permissionService,
-  membershipDAL,
+  agentVaultReachDAL,
   kmsDataKeyService
 }: TAgentVaultPersonalValueServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
     kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
+  // Personal values are the caller's own, so what decides is whether they can use the service, not any permission.
   const resolveCaller = async ({ projectId, ctx }: TAgentVaultProjectScoped) => {
-    const reachability = await getAgentVaultGrantedReachability(
-      { permissionService, membershipDAL },
-      { projectId, ctx }
-    );
-    ForbiddenError.from(reachability.permission).throwUnlessCan(
-      ProjectPermissionAgentVaultAccessBundleActions.Read,
-      ProjectPermissionSub.AgentVaultAccessBundles
-    );
+    const reachability = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, { projectId, ctx });
     return { ...reachability, owner: ownerOf(ctx) };
   };
 
@@ -167,6 +159,7 @@ export const agentVaultPersonalValueServiceFactory = ({
       accessBundleIds: string[] | null;
       serviceId?: string;
       includeUnlinked?: boolean;
+      directServiceIds?: string[];
       withVariableReferences?: boolean;
     },
     tx?: Knex
@@ -187,71 +180,40 @@ export const agentVaultPersonalValueServiceFactory = ({
 
   /**
    * The caller's status for every service in these bundles that takes values from members. No permission check: the
-   * access bundle service calls it for bundles it has already resolved the caller's reach to. Without variable
-   * references, each field's list is empty. `includeUnlinked` adds the services no bundle holds, for a caller who
-   * reaches every service (null `accessBundleIds`).
+   * access bundle service calls it for what it has already resolved the caller's reach to. Without variable references,
+   * each field's list is empty. `includeUnlinked` adds the services no bundle holds, for a caller who reaches every
+   * service (null `accessBundleIds`), and `directServiceIds` the services the caller uses directly.
    */
   const findStatusesForOwner = (args: {
     projectId: string;
     owner: TAgentVaultOwner;
     accessBundleIds: string[] | null;
     includeUnlinked?: boolean;
+    directServiceIds?: string[];
     withVariableReferences?: boolean;
   }) => loadServices(args);
 
-  // A service outside the caller's reach, through every bundle it is in, reads exactly like one that does not exist.
+  // A service the caller can't use, directly or through a bundle that holds it, reads exactly like one that does not
+  // exist.
   const findReachableService = async (dto: TPersonalValuesByServiceDTO) => {
     const caller = await resolveCaller(dto);
     const service = await agentVaultServiceDAL.findByIdInProject({ id: dto.serviceId, projectId: dto.projectId });
-    const bundleIds = service
-      ? ((await agentVaultServiceDAL.findBundlesForServices([service.id], null)).get(service.id) ?? []).map(
-          (bundle) => bundle.id
-        )
+    const usable = service
+      ? await usableServiceIdsOf({ agentVaultServiceDAL, agentVaultReachDAL }, caller, dto.projectId)
       : [];
-    const reachingBundleIds = caller.accessBundleIds
-      ? bundleIds.filter((id) => caller.accessBundleIds!.includes(id))
-      : bundleIds;
-    if (!service || (caller.accessBundleIds && !reachingBundleIds.length)) {
+    if (!service || (usable !== null && !usable.includes(service.id))) {
       throw new NotFoundError({ message: `Service with ID '${dto.serviceId}' not found` });
     }
-    return { ...caller, service, reachingBundleIds };
+    return { ...caller, service };
   };
 
-  // Under the service lock, after the reach check: the caller's grants on the bundles the service is in, or for a
-  // caller without one whose role reaches every bundle, those role rows. A revoke, a removal, a demotion or taking the
-  // service out of a bundle clears what the caller saved for services they lose, so none of those can land between the
-  // reach check and the write and leave values behind. The bundles are read again here, under the lock that taking the
-  // service out of a bundle also takes: the list read before the transaction can still name a bundle that has since let
-  // it go.
-  const lockReach = async (
-    {
-      projectId,
-      callerAccessBundleIds,
-      owner,
-      reachesEveryBundle,
-      serviceId
-    }: {
-      projectId: string;
-      callerAccessBundleIds: string[] | null;
-      owner: TAgentVaultOwner;
-      reachesEveryBundle: boolean;
-      serviceId: string;
-    },
-    tx: Knex
-  ) => {
-    const linked = (
-      (await agentVaultServiceDAL.findBundlesForServices([serviceId], null, tx)).get(serviceId) ?? []
-    ).map((bundle) => bundle.id);
-    const accessBundleIds = callerAccessBundleIds ? linked.filter((id) => callerAccessBundleIds.includes(id)) : linked;
-    const grants = accessBundleIds.length
-      ? await agentVaultPersonalValueDAL.lockGrantsForOwner({ projectId, accessBundleIds, owner }, tx)
-      : [];
-    const reachingRoles =
-      !grants.length && reachesEveryBundle
-        ? await agentVaultPersonalValueDAL.lockRolesReachingEveryBundleForOwner({ projectId, owner }, tx)
-        : [];
-    if (!grants.length && !reachingRoles.length) {
-      throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
+  // Under the service lock, after the reach check: the caller's project memberships, so that leaving the project, which
+  // deletes them before it clears what the caller saved, can't land between the check and the write and leave a value
+  // behind.
+  const lockMembership = async ({ projectId, owner }: { projectId: string; owner: TAgentVaultOwner }, tx: Knex) => {
+    const memberships = await agentVaultPersonalValueDAL.lockProjectMembershipsForOwner({ projectId, owner }, tx);
+    if (!memberships.length) {
+      throw new NotFoundError({ message: "You are no longer a member of this Agent Vault project" });
     }
   };
 
@@ -261,7 +223,7 @@ export const agentVaultPersonalValueServiceFactory = ({
    * is single use and only its creator can do it, so a link sent to someone else can't attach their account.
    */
   const connectOauth = async ({ authorizationId, credentialType, ...dto }: TConnectPersonalOauthDTO) => {
-    const { owner, service, reachesEveryBundle, accessBundleIds } = await findReachableService(dto);
+    const { owner, service } = await findReachableService(dto);
     if (credentialType && credentialType !== service.credentialType) {
       throw new ConflictError({ message: SERVICE_CHANGED_DURING_SAVE_MESSAGE });
     }
@@ -302,16 +264,7 @@ export const agentVaultPersonalValueServiceFactory = ({
               "An admin changed how members sign in to this service while you were connecting your account. Connect it again."
           });
         }
-        await lockReach(
-          {
-            projectId: dto.projectId,
-            callerAccessBundleIds: accessBundleIds,
-            owner,
-            reachesEveryBundle,
-            serviceId: dto.serviceId
-          },
-          tx
-        );
+        await lockMembership({ projectId: dto.projectId, owner }, tx);
 
         const existing = await agentVaultPersonalValueDAL.lockForOwnerAndService({ serviceId: service.id, owner }, tx);
         const previous = existing.find((row) => row.field === AgentVaultVariableReferenceField.CredentialValue)
@@ -363,7 +316,7 @@ export const agentVaultPersonalValueServiceFactory = ({
   const setPersonalValues = async (input: TSetPersonalValuesDTO) => {
     const { values, credentialType, ...dto } = input;
 
-    const { owner, service, reachesEveryBundle, accessBundleIds } = await findReachableService(dto);
+    const { owner, service } = await findReachableService(dto);
     if (credentialType && credentialType !== service.credentialType) {
       throw new ConflictError({ message: SERVICE_CHANGED_DURING_SAVE_MESSAGE });
     }
@@ -438,16 +391,7 @@ export const agentVaultPersonalValueServiceFactory = ({
         ) {
           throw new ConflictError({ message: SERVICE_CHANGED_DURING_SAVE_MESSAGE });
         }
-        await lockReach(
-          {
-            projectId: dto.projectId,
-            callerAccessBundleIds: accessBundleIds,
-            owner,
-            reachesEveryBundle,
-            serviceId: dto.serviceId
-          },
-          tx
-        );
+        await lockMembership({ projectId: dto.projectId, owner }, tx);
 
         // Before the values: a variable delete locks the variable and then deletes values.
         const present = await agentVaultVariableDAL.lockForReference(

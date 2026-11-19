@@ -10,16 +10,16 @@ never in anything the agent holds.
 
 | Noun              | What it is                                                                                                                         |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| **Access bundle** | A named set of the project's services and skills. The unit you grant                                                               |
+| **Access bundle** | A named set of the project's services and skills. A role that can use it can use all of them                                       |
 | **Service**       | One host pattern set (or database or SSH server) plus its credential, defined once per project and linked to any number of bundles |
 | **Session**       | A minted token naming one actor, one of their bundles, services of its own, or both, and an expiry. The token _is_ the session     |
 | **Proxy**         | One egress identity and its CA. Any number of processes can run it from its proxy token                                            |
 
 ```
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
-agent-vault-access-bundle/   bundles, services, credential encryption, grants
+agent-vault-access-bundle/   bundles, services, credential encryption, the deprecated grant endpoints
 agent-vault-variable/        global and personal variables and the reads behind Used By
-agent-vault-member/          project membership (list, add, role, remove)
+agent-vault-member/          project membership (list, add, roles, remove)
 agent-vault-delegation/      which users a machine identity may start sessions on behalf of
 agent-vault-personal-value/  each actor's own values for the fields a service leaves to members
 agent-vault-skill/           the skill library, versions, bundle links, file validation and hashing
@@ -64,29 +64,31 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 - Org admins enter a project they aren't in through Join as Admin, which is audited and emails the project's
   admins. Nothing joins them silently.
 - Every removal outside Agent Vault's own members route (leaving, the generic project membership routes, a group's
-  removal, org exit) clears personal values through `applicationMembershipCleanupService`, which deletes the
-  actor's grants and then runs `clearPersonalValuesInProjects`: it looks up the projects where these actors saved a
-  value (`agentVaultPersonalValueDAL.findProjectIdsWithValues`) and runs `clearPersonalValuesAfterRevoke` in only
-  those, sorted, so org exit doesn't lock every Agent Vault project in the org. Callers run it after the project
-  membership delete, since the clear keeps values for anyone still an admin.
+  removal, org exit) clears personal values through `applicationMembershipCleanupService`, which runs
+  `clearPersonalValuesInProjects`: it looks up the projects where these actors saved a value
+  (`agentVaultPersonalValueDAL.findProjectIdsWithValues`) and runs `clearPersonalValuesAfterLeaving` in only those,
+  sorted, so org exit doesn't lock every Agent Vault project in the org. Callers run it after the project membership
+  delete, since the clear keeps values for anyone still in the project.
 - Leaving a group or deleting one (`removeUsersFromGroupByUserIds`, `removeIdentitiesFromGroup`, `deleteOwnedGroup`,
   so SCIM, LDAP, SAML and OIDC sync too, and GitHub team sync on its own path) runs `clearPersonalValuesInProjects`
-  over the group's projects after the group rows are deleted, in the same transaction, so anyone who still reaches
-  the bundle another way keeps theirs. SAML and LDAP login sync remove one user from several groups in one
+  over the group's projects after the group rows are deleted, in the same transaction, so anyone still in the project
+  another way keeps theirs. SAML and LDAP login sync remove one user from several groups in one
   transaction, so they pass `deferPersonalValueClear` and clear once over the union of those groups' projects after
   the loop: every group's membership row locks come before the clear's per-project advisory lock, the same order as
   every other removal. It reads the groups' members only when one of those projects holds a value
   (`findProjectIdsWithAnyValues`). Org exit deletes the actor's rows in the org's groups before
   `revokeActorsInOrgs`, so the clear it runs sees them out of those groups.
 - Invites into an Agent Vault project, at signup and from the org's Members page, go through Agent Vault's member
-  service (`addProductMembers`), so they get its audit event and telemetry.
+  service (`addProductMembers`), so they get its audit event and telemetry. They join with No Access: no built-in role
+  but admin grants anything, and an admin decides which role the invitee gets.
 - The traffic policy defaults to any-host (formerly Allow), in the DB default, the service and the dialog.
   Deliberate: the product brokers credentials, it is not an egress firewall, and under service-hosts the
   quickstart's agent could reach neither Anthropic nor npm until a bypass list exists. Settled with the
   product owner; service-hosts is documented as the hardening step.
-- Wherever code branches on `ProjectType.PAM` for roles, check whether Agent Vault needs the same: the
-  admin-or-member predefined roles filter, `AuditLogStreamProduct`. Agent Vault has no identity meter; it bills
-  per brokered request (see Billing).
+- Wherever code branches on `ProjectType.PAM`, check whether Agent Vault needs an arm too, such as
+  `AuditLogStreamProduct`. Don't copy a PAM branch for roles: PAM has admin and member, while Agent Vault's
+  predefined roles are admin and no-access (`project-role-fns.ts`) and the rest are custom roles. Agent Vault has no
+  identity meter; it bills per brokered request (see Billing).
 
 ## Billing
 
@@ -110,59 +112,85 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   `read-any`, `edit-any` and `revoke-any` on sessions (other actors' sessions and their session logs; plain `read`,
   `edit` and `revoke` reach only your own), `create-with-inline-services` on sessions, the `agent-vault-variables`
   subject (global variables), the project's `Settings` subject (session log settings, `read` to view and `edit` to
-  change), `edit` on proxies (the proxy list carries a proxy's settings only for it), `manage-members` on access bundles
-  (a delegation's missing bundles), and `create`, `edit` and `delete` on members, groups or identities, for only the
-  kinds a membership change names. Typing a global variable reference into a service or an MCP tool load also takes
-  `read-value` on `agent-vault-variables`, checked before the key lookup so a missing key can't be told apart.
+  change), `edit` on proxies (the proxy list carries a proxy's settings only for it), and `create`, `edit` and `delete`
+  on members, groups or identities, for only the kinds a membership change names. Typing a global variable reference
+  into a service or an MCP tool load also takes `read-value` on `agent-vault-variables`, checked before the key lookup
+  so a missing key can't be told apart.
+- **Admin and No Access are the only built-in roles, and a custom role is exactly its own rules.**
+  `resolveAgentVaultProjectRoleRules` (`permission-service.ts`) gives admin `buildAgentVaultProjectAdminPermissionRules`,
+  unpacks a custom role or an additional privilege, and gives any other slug nothing, a leftover `member` row included.
+  So a new action goes into the admin rule set and nowhere else built in; anything narrower is a custom role, never a
+  branch in a service. Before it every role but admin resolved to Member's rules, so the role migration
+  (`20261118120000_agent-vault-roles-replace-bundle-grants.ts`) moved Member and Viewer rows onto a per-project custom
+  role, slug `member-role`, with Member's rules, and gave it to holders of custom roles that existed then, whose own
+  rules had taken no effect.
+- **Agent Vault's custom roles need no `rbac` plan** (`isRbacExempt` in `role-service.ts`, `customRolesNeedRbacPlan` in
+  `membership-fns.ts`): with Member gone, a custom role is the only way to give anyone less than admin.
 - **Giving, changing or removing a member's role is bounded like Secrets Management's membership routes**
   (`assertRoleBoundary` in the membership service): `assign-role` on that kind of member, and on the legacy privilege
   system every permission of each role involved. The change actions alone would let a role that only manages
-  identities add or promote an admin.
-- **Only the admin rule set holds them.** In an Agent Vault project any role but admin resolves to the member set,
-  custom roles and additional privileges included, so `buildAgentVaultProjectAdminPermissionRules` is the one place an
-  action is granted. A new role is a new rule set, not a new branch in a service.
-- **`create-with-inline-skills` on sessions is the one session action both rule sets hold.** A skill sent with a session
-  carries instructions, not credentials or hosts, so any member may send one; it is still an action so a later role
-  can be denied it, and the skills fetch checks it like resolve checks `create-with-inline-services`.
-- **Reaching every bundle without a grant is the one rule that follows the role** (see below), because queries lock and
-  read the role rows that confer it.
-- Keep each refusal's error type when a gate changes: an id you may not act on stays a 404.
+  identities add or promote an admin. On top of that, only an admin can give the admin role or change or remove an
+  admin (`assertAdminOnlyChange`), so a custom role that manages members can't make or unmake one.
+- **Members take a list of roles** (`roles`, at most `AGENT_VAULT_MAX_MEMBER_ROLES`, resolved by
+  `resolveAgentVaultMemberRoles`): admin, no-access or a custom role's slug, and No Access only alone. The deprecated
+  `role` field still takes admin or member, where member is the migrated `member-role`, and keeps the member's bundle
+  roles (`keepBundleRoles`), since it never touched grants. Responses carry `roles` and the deprecated `role`
+  (`withDeprecatedRole`), which reads admin or member whenever the member holds one of them so old clients keep working.
+  The generic project membership routes read `member` and `viewer` for an Agent Vault project as `member-role` too
+  (`withAgentVaultMemberAlias` in `membership-fns.ts`): a raw `member` row grants nothing there now.
+- **`create-with-inline-skills` on sessions is held by admin and the migrated Member role.** A skill sent with a
+  session carries instructions, not credentials or hosts, so Member always could send one; it is an action so a role can
+  be denied it, and the skills fetch checks it like resolve checks `create-with-inline-services`.
+- Keep each refusal's error type when a gate changes: an id you may not act on stays a 404. A by-id read answers 404
+  even for a role with nothing on that subject (`getService`, the skill reads), since a 403 there would confirm the id
+  exists; only a list answers 403 for a role that can see none of it.
 
-## Grants and reachability
+## Access bundles, roles and reach
 
-- A grant is a `memberships` row (`scope = resource`, `scopeResourceType = agent-vault-access-bundle`,
-  `scopeResourceId = <bundle id>`) with one `membership_roles` row, slug `consumer`. The slug is a label;
-  bundle access is decided in SQL, not CASL. Because it is the platform's table, the platform reaps grants
-  on project removal, org removal, SCIM and every FK cascade. Do not add an Agent Vault reaper.
-- `scopeResourceId` has no FK, so `deleteAccessBundle` deletes the grants itself, in the bundle delete's transaction,
-  and `addMembers` locks the bundle row (`lockByIdInProject`) before inserting. Every path takes these rows in one
-  order, bundle, services, grants, values, and a new one must too: the delete locks the bundle row and then its
-  services before deleting the grants and then the bundle, whose cascade takes only the links, then clears the values of
-  grantees who no longer reach those services. A personal values save takes its service and then the caller's grants,
-  and a removal deletes grants before values, so a delete that reached the grants before the services would deadlock
-  with a save.
-- Granting is batch: one POST carries `{ userIds, machineIdentityIds, groupIds }`. The bundle row lock is what
-  makes the dedupe read inside it authoritative, so an actor who already holds the bundle is returned in
-  `skipped` rather than erroring; the unique index is only the backstop.
+- **What an actor can put in a session comes from their roles' `use` rules** on `agent-vault-access-bundles`,
+  `agent-vault-services` and `agent-vault-skills`. Using a bundle covers its services and skills, so a role that uses a
+  bundle needs nothing on what it holds. `getAgentVaultReachability` (`agent-vault-permission.ts`) turns the permission
+  into a `TAgentVaultReach`: a list of ids per kind, null when the rules cover every one, ones created later included.
+  Mint, resolve, the skills fetch, member-facing reads and delegations all go through it, so they can't disagree.
+- **Conditions name ids only** (`accessBundleId`, `serviceId`, `skillId`, with `$eq` or `$in`;
+  `AGENT_VAULT_ID_CONDITION_SCHEMA`), and `create` takes none. `coverageOf` reads one action's rules with `rulesFor`:
+  an unconditioned allow and no deny covers everything without a query; otherwise every id in the project
+  (`agentVaultReachDAL`, on the primary so a bundle created a moment ago counts) is checked one by one. That is a
+  service-layer filter, not SQL, because SQL can't evaluate a role's rules.
+- **Usable and visible are different sets.** Usable services and skills are those with `use` plus those a usable bundle
+  holds (`usableServiceIdsOf`, `usableSkillIdsOf`); a session can list exactly those. Visible adds `read`
+  (`serviceVisibilityOf`, `skillVisibilityOf`, `visibleIdsWithin`), because a session can't name what its creator can't
+  find. A read of something that names services or skills (a session, a delegation, Used By) leaves out the ones the
+  reader can't see, the way it leaves out deleted ones.
+- **A role change reaches a cached permission within 10 seconds.** Reach is read through the platform's permission
+  cache (`withCacheFingerprint`, 10 second marker), grants through the deprecated endpoints included. Don't read roles
+  around the cache to make one path immediate, or two paths would disagree. The e2e request helper expires the
+  project's markers before each request (`expireProjectPermissionMarkers`) so tests can act on a change at once.
+- **Grants are gone; the deprecated grant endpoints work through a role.** `POST`, `DELETE` and `GET
+  /access-bundles/:id/members` (and `/members/available`) give, take and list the bundle's role (`grantRoleId`,
+  `agent-vault-bundle-role-fns.ts`): `ensureBundleRole` makes `<bundle> users` (read and use on that bundle) the first
+  time one is needed, and taking the last role from a membership leaves it No Access, since a membership needs a role.
+  They need bundle `edit` plus `edit` on each kind of member named, and member `read` to list. Each locks the bundle
+  row first, so two calls can't make two roles and the dedupe read inside it is authoritative. They are hidden from the
+  API reference and go after 2027-01-04 with the role helpers.
+- **Never read the resource-scoped `agent-vault-access-bundle` memberships.** They are the grants as the roles migration
+  (`20261118120000_agent-vault-roles-replace-bundle-grants.ts`) found them, kept for API instances still on the previous
+  release during a rolling deploy. Nothing updates them, so they no longer say who can use a bundle, and a later
+  migration deletes them.
+- **The bundle's creator gets its role when their own roles can't use it** (`createAccessBundle`), so whoever built a
+  bundle can try it. Only a creator with a direct project membership gets one: the role on a group's membership would
+  reach the whole group.
+- **Deleting a bundle keeps every role that names it**, the bundle's own included: a role is the admin's to change, and
+  a rule that picks out an id no bundle has covers nothing, so a bundle made later with the same name isn't covered either.
+- `GET /access-bundles/:id/roles` (`listBundleRoles`) answers who can use a bundle: admin and every custom role whose
+  rules allow `use` on it, with member counts and `isBundleRole`. It takes role `read` and a bundle the caller can see.
 - Member responses, for bundles and for the product, are the actor itself, flat (`type`, the actor's `id`,
-  its profile) plus what the membership adds (`role`, `addedAt`, `grantedAt`). There is no membership id:
+  its profile) plus what the membership adds (`roles`, `addedAt`, `grantedAt`). There is no membership id:
   every write names a member by its actor, so the id a client reads is the one it sends back.
 - Audit events name actors through `agent-vault-actor-name-fns.ts`. Resolve names before the write, so a
   failed lookup can't leave a committed change unaudited, and attach a name only to an actor already proven
   to be in the org: the lookup isn't org-scoped.
-- Reachability has one implementation, `findReachableAccessBundleIds` over the platform's
-  `findResourceMembershipsForActor`, and mint, member-facing reads and resolve all call it. A group's grants
-  count only while the group confers a live role (`liveGroupIdsFrom`). Write no group-expansion SQL here.
-- Reachability is a service-layer filter (`whereIn` on ids, `null` for a role that reaches every bundle), not a CASL
-  condition: conditions can interpolate only `identity.id`, `username` and `metadata`.
-- **The roles that reach every bundle are `AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE`** (admin alone), checked through
-  `hasRoleReachingEveryBundle`. A personal value save locks those role rows, the cleanup after a revoke keeps the values
-  of anyone holding one, and a delegation reads a group's reach from them, all filtering by that list, so a role added
-  to it is added everywhere at once. Granting a role that reach is a decision about bundles, never a side effect of a
-  permission.
-- The creator grant exists only for a creator with a direct project membership. A group-inherited admin gets
-  none, so no individual grant row ever outlives its owner's membership.
-- A cross-org or ungranted id is 404, never 403, and mint uses one message for an unknown and an ungranted
+- A cross-org or unusable id is 404, never 403, and mint uses one message for an unknown and an unusable
   name, so the error never confirms a bundle exists.
 - Mint is the only endpoint addressed by bundle name; every resource path stays on ids. It is the only one a
   human or the CLI hand-writes, and names are slugs unique per project, so the CLI posts the name straight
@@ -181,12 +209,12 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   a request the other bundle's unrestricted service would have served.
 - The bundle on a session is a ceiling fixed at mint and intersected with live reachability on every resolve.
   It can shrink and grow back, never past what was minted.
-- Grants are read fresh on every resolve. The actor's role comes through the platform's permission cache
-  (10 second marker), so a promotion or demotion can lag by that much on top of the proxy's poll.
+- Every resolve reads the owner's reach through the permission cache, so a role change can lag by up to 10 seconds on
+  top of the proxy's poll.
 - Resolve requires a live session-read permission, not a membership row: a lapsed time-limited role leaves
-  its row behind, and `hasRoleReachingEveryBundle` alone would fall through as member. An actor removed from the project
-  surfaces as `ProjectMembershipNotFound`, which resolve turns into a 401 so the proxy drops the session on
-  the next poll instead of riding its grace window.
+  its row behind. An actor removed from the project surfaces as `ProjectMembershipNotFound`, which resolve turns into
+  a 401 so the proxy drops the session on the next poll instead of riding its grace window. Losing a role that used
+  the session's bundle drops the bundle's services with no 401, and gaining one back brings them back.
 - Removing an actor from an Agent Vault project does not revoke their sessions. The sessions resolve to nothing while
   the actor is out and work again if the actor is added back.
 - Session actor columns are `SET NULL` so history survives the actor. Resolve refuses a session with neither
@@ -258,24 +286,25 @@ is one `agent_vault_delegations` row per identity and project, with a scope of `
   shares, so neither can reach a bundle the other wouldn't). The identity gets the checks every owner gets. Any miss
   is a 401, like an actor removed from Agent Vault. Removing a delegation revokes nothing, so its sessions work again
   if it comes back; revoking is what ends one. Settled the same way as removal from Agent Vault.
-- **Reach is the intersection of the identity's and the user's** (`intersectAccessBundleIds`): a bundle needs both,
-  through the admin role or a grant, at mint and on every resolve. The user losing
-  a grant drops the bundle's services like an owner's lost grant, with no 401.
+- **Reach is the intersection of the identity's and the user's** (`intersectReach`), kind by kind: a bundle needs both
+  to use it, and a service or skill both to use it directly or through a bundle both can use, at mint and on every
+  resolve. Each using it some other way isn't enough, since the shared bundle is what brings its overrides. The user
+  losing a role drops the bundle's services like an owner's lost role, with no 401.
 - **Listing access bundles with `onBehalfOfUserId` or `onBehalfOfUserEmail` runs mint's delegation and user checks**
   (`agent-vault-on-behalf-of-fns.ts`, shared by both), then returns the bundles the user and the identity both reach,
   with setup state from the user's personal values, so an orchestrator can choose a bundle before it mints. The
   services list does the same, and its `personalValues` say only which of the user's values are set: never the
   personal variables those values use or the user's OAuth connection, which only the user may read.
-- **Mint checks the delegation, then the identity's own bundles, then the user**, so an identity learns nothing about
-  who is in the org until an admin has delegated it and granted it the bundle, and an unknown user gets the same message
-  as an uncovered one. A request that names nothing, only inline skills, is refused before the user lookup when the
-  identity holds no bundle at all, as `findOnBehalfOfListScope` does for the lists; keep that guard for anything else a
-  member can send without a grant. Only a machine identity may send `onBehalfOf`. The user must be an active, accepted
+- **Mint checks the delegation, then the identity's own reach, then the user**, so an identity learns nothing about
+  who is in the org until an admin has delegated it and given it a role that can use the bundle, and an unknown user
+  gets the same message as an uncovered one. A request that names nothing, only inline skills, is refused before the
+  user lookup when the identity can use nothing at all (`reachesNothing`), as `findOnBehalfOfListScope` does for the
+  lists; keep that guard for anything else a member can send without a role that uses something. Only a machine identity may send `onBehalfOf`. The user must be an active, accepted
   org member, as resolve requires.
 - **The delegation read and write return `missingAccessBundles`**, per user and group and in total: the bundles they
-  can use and the identity can't. Users and the identity go through `getAgentVaultReachability`, the function mint
-  uses, so the view can't disagree with mint; a group's reach is its own live role and grants, read directly since a
-  group never holds a session. The list leaves it out, because it reads every covered user's access. The write works
+  can use and the identity can't, among the bundles the caller can see. Users and the identity go through
+  `getAgentVaultReachability`, the function mint uses, so the view can't disagree with mint; a group's reach comes from
+  its own live roles, built into rules the way an actor's are (`groupReachOf`), since a group has no permission to load. The list leaves it out, because it reads every covered user's access. The write works
   it out after its transaction commits and after the router writes the audit event, so a failure there can't leave a
   committed save unaudited.
 - **Mint runs `getProjectPermission` for the user, then once more for the caller.** The permission service leaves
@@ -292,7 +321,7 @@ is one `agent_vault_delegations` row per identity and project, with a scope of `
   matches the on-behalf-of user too.
 - **Coverage reads group membership without `isPending`**, the way the permission engine grants access through a
   group. Filtering it would refuse accepted users, since the flag is no longer cleared.
-- **A subject is named by its own Agent Vault membership**, the rule bundle grants use: a user who reaches Agent
+- **A subject is named by its own Agent Vault membership**, the rule roles use: a user who reaches Agent
   Vault only through a group is covered by naming the group. Coverage itself is read live, so leaving the group
   ends it.
 - **Leaving an Agent Vault project by any path deletes its delegation rows**, through the membership FK cascade: Agent Vault's own
@@ -326,6 +355,11 @@ A service belongs to the project (`agent_vault_services.projectId`) and a bundle
 dialog never leaves a half-added batch; ids already linked come back in `skipped`. Personal values, OAuth sign-ins and tool loading are
 keyed by the service, so a member sets them once however many bundles give them the service.
 
+- **Services take their own subject, `agent-vault-services`** (`read`, `use`, `create`, `edit`, `delete`), checked on the
+  subject and then on the service (`requireServiceWrite`, `requireOnService`). Putting a service in a bundle or taking it
+  out also takes `edit` on each bundle (`requireBundleEdits`), since it changes what everyone who uses the bundle
+  reaches. A service's setup (its OAuth sign-in state and hook) is shown only to a role that can edit it
+  (`canSeeSetup`).
 - **Names are unique per project** among the project's services (`agent_vault_services_project_name_unique`, partial on
   `sessionId IS NULL`). A bundle read still puts `accessBundleId` (the bundle read) on each service, hidden from the
   API docs: Python SDK v1.4.0 and older require it, so keep it until 2027-01-04.
@@ -341,9 +375,8 @@ keyed by the service, so a member sets them once however many bundles give them 
   bundle, re-checked in its transaction under `AgentVaultServiceNames`, because the caller can rename it right there.
   Adding and removing a link take that lock too, so `updateService` can read a service's bundles and lock them.
   Deleting a bundle or a service drops its links by cascade without the lock, which only ever removes a link.
-- **Removing a service from a bundle keeps it in the project**, and clears the personal values of everyone who no longer
-  reaches it through any bundle (`clearPersonalValuesAfterRevoke` with `everyActor`), admins excepted. Deleting a
-  service cascades to its links and everyone's values.
+- **Removing a service from a bundle keeps it in the project**, and everyone's personal values for it: resolve sends a
+  value only while its owner can use the service. Deleting a service cascades to its links and everyone's values.
 - `agent_vault_services.accessBundleId` and the `agent_vault_session_inline_services` table are kept for one release, so
   pods on the previous release keep resolving while this one rolls out. Nothing in this release reads them. Two writes
   keep an old pod from brokering a service a bundle no longer holds: removing a link clears a matching
@@ -360,12 +393,13 @@ reads or writes them. They belong to that session alone: nothing edits them, no 
 only resolve opens their secrets. The `agent_vault_services_inline_only_check` keeps member fields and OAuth off them in
 the database too.
 
-- **They take `create-with-inline-services` on sessions, at mint and on every resolve, and only the admin role holds it.**
+- **They take `create-with-inline-services` on sessions, at mint and on every resolve.** Of the built-in roles only
+  admin holds it.
   Whoever starts the session decides which hosts it reaches and with which credentials, the same call as writing a
   bundle's services. It also keeps `service-hosts` meaningful: a proxy lets through any host a session's services
   cover, so an inline service from anyone else would open any host they chose. Resolve and the services list send
   inline services only while the session's owner (the identity, on an on-behalf-of session) holds it, so a demotion
-  keeps the bundle and drops the inline services until the owner holds it again, the way a lost grant drops a bundle.
+  keeps the bundle and drops the inline services until the owner holds it again, the way a lost role drops a bundle.
 - **No value may wrap text in double braces, and resolve never expands one.** Whoever starts the session names its
   hosts, so a variable reference would let them send any variable's value to a host of their choosing, and the stored
   `{{<uuid>}}` form is refused by the same rule (`acceptsNoVariableReferences` on every value field). Resolve adds
@@ -402,31 +436,30 @@ Mint's `services` also takes a project service's name as a plain string, beside 
 inline objects. `agent_vault_session_services` links the session to each one with the `position` it was sent at, which
 inline services share, so reads (`withSessionServices`) return both kinds in the order sent.
 
-- **A listed service has to be in a bundle the owner could carry.** An admin (a role in
-  `AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE`) can list any project service, even one in no bundle; anyone else only a
-  service in a bundle granted to them, directly or through a group; an on-behalf-of session only one in a bundle both the
-  identity and the user reach. An unknown name and an unreachable one get the same 400, so mint never confirms a service
-  exists. Keep this rule identical to the access bundle's, or listing becomes a way round a bundle grant.
-- **Resolve re-checks it on every poll.** `findResolvableServices` returns a listed service only while a link to a bundle
-  in the owner's live reach holds it (no check when the reach is every bundle), so losing the bundle drops the service
-  and deleting the service drops it by cascade. A listed service resolves with `accessBundleId` and `accessBundleName`
+- **A listed service has to be one the owner can use**: `use` on it, or a bundle they can use that holds it
+  (`usableServiceIdsOf`); an on-behalf-of session only one both the identity and the user can use that way. An unknown
+  name and an unusable one get the same 400, so mint never confirms a service exists. Keep this rule identical to the
+  access bundle's, or listing becomes a way round a role that uses only the bundle.
+- **Resolve re-checks it on every poll.** `findResolvableServices` returns a listed service only while the owner can
+  still use it, directly or through a link to a bundle in their live reach (`whereUsable`; no check when the reach is
+  everything), so losing the role drops the service and deleting the service drops it by cascade. A listed service resolves with `accessBundleId` and `accessBundleName`
   null, like an inline one, so a null bundle never means a service was sent with the session; catalog names are unique
   per project, so the proxy's inline-first rule never has two candidates.
-- **A listed service brings its bundles' overrides.** An exact host beats a wildcard, so a bundle restricts or
-  re-credentials one host of a wildcard service with a second service for that host. Listing the wildcard service alone
-  would drop that, so `findOverridesOfServices` adds every service that a bundle in the owner's reach holding the
-  listed service uses for one of its hosts, and their own overrides in turn, read live on each resolve. They resolve with
-  `isOverride`, credited to that bundle, and go out after inline services, so they only take a host no other service in
-  the session names exactly. Not when the reach is every bundle: that owner could list the wildcard service alone
-  anyway. Keep any new path that resolves a session's services on `findResolvableServices`, or listing becomes a way
+- **A listed service the owner reaches only through bundles brings those bundles' overrides.** An exact host beats a
+  wildcard, so a bundle restricts or re-credentials one host of a wildcard service with a second service for that host.
+  Listing the wildcard service alone would drop that, so `findOverridesOfServices` adds every service that a bundle
+  in the owner's reach holding the listed service uses for one of its hosts, and their own overrides in turn, read live
+  on each resolve. They resolve with `isOverride`, credited to that bundle, and go out after inline services, so they
+  only take a host no other service in the session names exactly. Not when the owner can use the service directly
+  (`reachedThroughBundles`), admin included: they could list the wildcard service alone anyway. Keep any new path that resolves a session's services on `findResolvableServices`, or listing becomes a way
   round a bundle's override. A mint checks inline names against them through `findServiceOverrides`.
 - **Names are unique across the whole `services` array**, listed and inline together, refused in the schema (422) like a
   duplicate inline name. Host patterns are checked like a bundle's services: listed ones against the bundle's and each other at
   mint, and inline ones against both (`assertNoServiceConflicts`). The check of listed ones runs off the replica to fail fast,
   then again in the mint's transaction under `AgentVaultServiceNames` on the primary, because an admin can add a
   service to the bundle or change a host right then.
-- **Reads return only what identifies a listed service** (`id`, `name`, `type`, `description`, `hostPattern`, `isInline: false`); the
-  service's settings belong to the services API, which a member reaches through their bundles.
+- **Reads return only what identifies a listed service** (`id`, `name`, `type`, `description`, `hostPattern`, `isInline: false`),
+  and only while the reader can see it; the service's settings belong to the services API.
 
 ## Skills a session lists or sends
 
@@ -441,10 +474,9 @@ each with one `agent_vault_skill_versions` row holding its files, so reads retur
   picker sees them. Project names are unique only among project skills (`agent_vault_skills_project_name_unique`,
   partial on `sessionId IS NULL`), so a project skill may share a name with a live inline skill, and inline skills
   don't count toward `AGENT_VAULT_MAX_SKILLS`.
-- **A listed skill follows the listed-service rule exactly** (`skillIdsReachedThrough`, shared with the skills list's
-  scope): admin any skill, member only skills in a bundle they reach, on-behalf-of only skills in a bundle both reach,
-  and an unknown name gets the same 400 as an unreachable one. `findSessionSkills` re-checks it on every fetch, so a
-  lost bundle or a deleted skill drops it from the next agent start.
+- **A listed skill follows the listed-service rule exactly** (`usableSkillIdsOf`): `use` on it or a usable bundle that
+  holds it, on-behalf-of only a skill both can use that way, and an unknown name gets the same 400 as an unusable one.
+  `findSessionSkills` re-checks it on every fetch, so a lost role or a deleted skill drops it from the next agent start.
 - **Inline skills are validated like an upload** (`prepareInlineSkills` runs `validateSkillFiles` and
   `assertSkillNameNotReserved`, prefixing each error with the skill) and sealed whole with the project's SecretManager
   key. At most 5 per session, and their files share the session create body limit (`AGENT_VAULT_SKILL_UPLOAD_BODY_LIMIT`,
@@ -717,11 +749,14 @@ one: a host pattern, method or path decides what a service can reach, so it stay
   query can land on a different replica. An id with no variable behind it on either stays as text and is
   logged rather than dropping the service, which would also drop the service's method and path restrictions.
   Values saved before variables existed hold no id tokens, so they pass through untouched.
-- Global variables take the `agent-vault-variables` subject, reads included, and only the admin role holds it. Without
-  its `read`, the bundle read leaves each service's `variableReferences` out (left out, not empty, since an empty list
-  would claim they use none). Used By on a global variable lists the services of every bundle, which is right only
-  while every role that can read variables reaches every bundle. Every value is sealed and no response but the value
-  route (`read-value`) returns one. That route is a GET with no-store headers and one audit event per read.
+- Global variables take the `agent-vault-variables` subject, reads included; of the built-in roles only admin holds it.
+  Without its `read`, the bundle read leaves each service's `variableReferences` out (left out, not empty, since an
+  empty list would claim they use none). Used By on a global variable lists only the services and bundles the caller
+  can see (`usedByScopeOf`), since reading variables doesn't let a role see every service, and a delete refused for a
+  service they can't see counts it without naming it. Every value is sealed and no response but the value route
+  (`read-value`) returns one. That route is a GET with no-store headers and one audit event per read.
+- Personal variables need nothing but a project membership, like personal values: they are the caller's own, so a
+  member who lost every role that uses something can still list and delete theirs.
 
 ## Member-provided values
 
@@ -762,42 +797,39 @@ personal values can reference.
   credential, never the admin's.
 - **A save is a PATCH**: a field sent replaces that field's saved value, a field left out keeps it, and every
   member-provided field must be set once it's applied. The save takes the service row `FOR SHARE` and re-checks
-  the fields it validated against, so an admin changing them either waits for it or makes it 409. It also takes
-  whatever grants the caller's reach `FOR SHARE`: their grants on the bundle, or for an admin without one, their
-  admin role rows. A revoke, removal or demotion then either waits for the save and clears it, or lands first and
-  the save 404s.
+  the fields it validated against, so an admin changing them either waits for it or makes it 409. It also takes the
+  caller's project memberships `FOR SHARE`, direct and through groups (`lockProjectMembershipsForOwner`), so a removal
+  from the project either waits for the save and clears it, or lands first and the save 404s.
 - **A service update deletes only the values that no longer apply**, in the same transaction that writes the
   service row: a credential type change deletes every member's values for the service, and taking a field back
   from members deletes that field's. Adding a member-provided field keeps what members saved, and they add only
   the new one.
-- **Losing a service through Agent Vault clears what an actor saved for it** (`clearPersonalValuesAfterRevoke`): a
-  value stays while its owner reaches the service through a grant on any bundle it is in, or is an admin. It runs on a bundle revoke, on removal from the project, on leaving it, and on a
-  demotion from admin, for the actors named and the members of a named group, after that change is written. It takes the project's
-  `ClearAgentVaultPersonalValues` advisory lock last, after those writes, so of two changes that each leave the
-  other's access in place (a demotion and the revoke of the last grant) the second checks against the first once
-  committed. It skips anyone who still reaches the service through another bundle, and anyone who is still a project
-  admin, since an admin reaches every bundle. Platform paths run it too: removal from the project through the generic
-  membership routes, leaving or deleting a group, and org exit (see [The project](#the-project)). A lapsed temporary
-  role and a role change through the generic routes don't, so values can outlive the grant there and return with a
-  later one. They are only ever the same actor's, and resolve still checks reach. Deleting a personal
-  variable also clears the owner's values on bundles they no longer reach, which otherwise would hold the variable in
-  place with nothing able to edit them. Personal variables survive all of this, and their Used By lists only the
-  services the owner still reaches.
+- **Leaving the project clears what an actor saved in it** (`clearPersonalValuesAfterLeaving`); losing a role or a
+  bundle keeps it. Roles can't be evaluated in SQL, and resolve sends a value only for a service its owner can use, so
+  a kept value does nothing until the owner can use the service again. The clear runs on removal through Agent Vault's
+  members route and through the generic membership routes, on leaving, on leaving or deleting a group, and on org exit
+  (see [The project](#the-project)), for the actors named and a named group's members, after the removal is written.
+  Anyone still in the project another way, directly or through another group, keeps theirs. It takes the project's
+  `ClearAgentVaultPersonalValues` advisory lock last, after those writes, so of two removals that each leave the
+  other's membership in place the second checks against the first once committed. Deleting a personal variable also
+  clears the owner's values on services they can no longer use, which otherwise would hold the variable in place with
+  nothing able to edit them. Personal variables survive all of this, and their Used By lists only the services the
+  owner can still use.
 - Personal variables follow the global variables' reference rules: sealed text names them by id, a reference row
   per personal value (`agent_vault_personal_value_references`, a deferred foreign key), the delete takes the variable
   row `FOR UPDATE` and a personal values save takes the rows it references `FOR SHARE`. The save takes them before
-  its own value rows, because a delete on a bundle the owner no longer reaches goes on to delete values, so the
-  other order deadlocks. Used By on a variable reads both reference tables; any one variable only ever appears in
+  its own value rows, because a delete of a variable whose services the owner can no longer use goes on to delete
+  values, so the other order deadlocks. Used By on a variable reads both reference tables; any one variable only ever appears in
   one of them.
 - **The API calls them personal values**, the UI's word: a sub-resource of the service
   (`PATCH`/`DELETE .../services/:serviceId/personal-values`), always the caller's own, with no collection route.
   Reads ride along: the bundle read puts the caller's status on each service (`personalValues`, null when nothing
   is member-provided), and the bundle list gives `servicesRequiringSetup` (`{ id, name }`) per bundle plus a
-  `requiresSetup` filter for the sidebar and banners (`false` is the rest of what the caller reaches). Both count
-  every bundle the caller reaches, because an admin can start a session on one they were never granted. A
-  `granted` filter keeps only the bundles granted to the caller (`false`, only the ones an admin reaches by role).
-  The sidebar asks for `requiresSetup=true&granted=true` and reads the count, so an admin isn't nagged in the nav
-  about bundles they reach only by role, while the page's banner and badges still show them.
+  `requiresSetup` filter for the sidebar and banners (`false` is the rest of what the caller sees). Both count every
+  bundle listed. A `granted` filter on the bundle and service lists keeps only what the caller's roles pick out one by one
+  (bundles, or services directly or through a bundle a role picks out; `false`, on bundles, the rest). A role that can
+  use every bundle or service picks out none, so the sidebar, which asks the services list for `requiresSetup=true&granted=true` and
+  reads the count, doesn't nag its holder about every service, while the page's banner and badges still show them.
 
 ### An OAuth sign-in left to members
 
@@ -816,8 +848,9 @@ set and how its connection is doing come from the same row.
   registration and no admin-entered client, fails the save. A guessed `/register` is probed by registering a client
   that is then left unused, so a save can create clients at the provider. Each member's sign-in registers its own
   client, as an admin's reauthorization does, or uses the admin-entered one.
-- **A member signs in through the same authorization routes with `personal: true`**, which needs only bundle Read and
-  a service that leaves sign-in to members. The record carries `personal`, and a claim refuses the wrong intent both
+- **A member signs in through the same authorization routes with `personal: true`**, which needs only a service the
+  member can use that leaves sign-in to members; connecting the service itself takes services `edit`, or `create` for
+  one not saved yet. The record carries `personal`, and a claim refuses the wrong intent both
   ways, so a member's sign-in never becomes the service's credential and an admin's never a personal value. The claim
   goes through its own hidden route, `POST .../personal-values/oauth-connection` with `{ authorizationId }` (the
   public PATCH takes typed values only), which re-checks under the service lock that the
@@ -895,15 +928,16 @@ an installed copy.
   every session start would record it. Infisical holds the only copy; the CLI and the proxy keep none. The name is
   reserved: create and update refuse it (`assertSkillNameNotReserved`), and a library skill created under it before
   the reservation is replaced by the built-in in the response.
-- **`GET /skills/builtin` serves the built-in skill outside a session** (`getBuiltinSkill`): skill `Read` without the
-  bundle reachability filter, since every agent gets it whatever its bundle, not audited, and no `version` in the
+- **`GET /skills/builtin` serves the built-in skill outside a session** (`getBuiltinSkill`): any member of the project,
+  since every agent gets it whatever it runs with and it holds no project data, not audited, and no `version` in the
   response. The dashboard doesn't show the built-in skill; the docs point readers to this endpoint and to the copy
   `agent-vault run` installs.
-- Skills use the `agent-vault-skills` CASL subject. Members keep CASL `Read`, narrowed by reachability
-  (`getAgentVaultReachability`): they see only skills in a bundle they can reach, each with only those
-  bundles, and only the latest version's files. Anything else, an unreachable bundle's skill list included, is a 404.
-  Listing versions checks `Edit`, so it is admin only. Creating, updating, restoring and deleting are admin only. Adding a skill to a bundle or removing it needs `Edit` on access bundles and `Read` on skills, and a
-  bundle holds at most 25 skills (`AGENT_VAULT_MAX_SKILLS_PER_BUNDLE`, checked under the bundle lock). A project
+- Skills use the `agent-vault-skills` CASL subject (`read`, `use`, `create`, `edit`, `delete`). A reader sees a skill
+  they can read or use, or one in a bundle they can use (`$readScope`), each with only the bundles they can use, and
+  without `edit` only the latest version's files. Anything else, a bundle's skill list they can't see included, is a
+  404. Listing versions checks `edit`; creating, updating, restoring and deleting take their own actions. Adding a
+  skill to a bundle or removing it needs `edit` on that bundle and a skill the caller can see (`$authorizeBundleLink`),
+  and a bundle holds at most 25 skills (`AGENT_VAULT_MAX_SKILLS_PER_BUNDLE`, checked under the bundle lock). A project
   holds at most 250 skills (`AGENT_VAULT_MAX_SKILLS`, checked under a per-project advisory lock on create).
 
 ## Credentials at rest
@@ -1199,7 +1233,7 @@ input: nothing it sends may erase or hide its own records, so the proxy logs eve
 
 - The UI checks permissions (`permission.can`), never the role; the role badge only displays it. Where the server
   shapes a response by permission, the UI branches on the same action: a proxy's settings on proxy `edit`, a service's
-  `variableReferences` on variables `read`, its OAuth sign-in state on bundle `edit`. Predicates used in more than one
+  `variableReferences` on variables `read`, its OAuth sign-in state on services `edit`. Predicates used in more than one
   place live in `helpers/agentVaultPermissions.ts`.
 - The service template catalog (`helpers/agentVaultTemplates.ts`) is frontend-only and never persisted; icons
   re-derive from the stored host pattern. The backend must never learn a service name.

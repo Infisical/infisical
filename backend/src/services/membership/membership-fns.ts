@@ -2,19 +2,27 @@ import { Knex } from "knex";
 
 import {
   AccessScope,
-  getAdminMemberOnlyProductLabel,
+  getAdminRequiredProductLabel,
   OrgMembershipRole,
   ProjectMembershipRole,
   ProjectType,
-  TableName
+  TableName,
+  TMembershipRolesInsert
 } from "@app/db/schemas";
 import { PlanProduct, TLicenseService } from "@app/domains/platform/license/ce/module";
+import {
+  agentVaultNoSuchRoleMessage,
+  findAgentVaultMemberRole
+} from "@app/ee/services/agent-vault-member/agent-vault-member-role-fns";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { PgSqlLock } from "@app/keystore/keystore";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TRoleDALFactory } from "@app/services/role/role-dal";
+
+import { TMembershipRoleDALFactory } from "./membership-role-dal";
 
 // secretsTemporaryAccess gates temporary (time-bound) role assignment in Secret Management projects.
 // It is ignored when null (no restriction); an explicit boolean enforces it, blocking temporary role
@@ -140,7 +148,7 @@ export const assertProductWillRetainAdmin = async ({
   tx: Knex;
 }) => {
   if (!project) return;
-  const productLabel = getAdminMemberOnlyProductLabel(project.type);
+  const productLabel = getAdminRequiredProductLabel(project.type);
   if (!productLabel) return;
   // An org holds many Agent Vault projects, so the message names the project rather than the product.
   await assertWillRetainProjectAdmin({
@@ -149,4 +157,142 @@ export const assertProductWillRetainAdmin = async ({
     productLabel: project.type === ProjectType.AgentVault ? "This project" : productLabel,
     tx
   });
+};
+
+const isAgentVaultLegacyRole = (role: string) =>
+  role === ProjectMembershipRole.Member || role === ProjectMembershipRole.Viewer;
+
+// Agent Vault retired its built-in Member role, and `member` now names the Member role the role migration made in a
+// project that had Member rows, as on Agent Vault's own members routes, so a client that still sends it keeps working
+// there. Viewer resolved to Member's rules too, so it gets the same role. A project without one, as every project
+// created since, refuses both like any role it doesn't have. Drop with the Agent Vault alias after 2027-01-04.
+export const withAgentVaultMemberAlias = async <T extends { role: string }>(
+  {
+    projectDAL,
+    roleDAL
+  }: {
+    projectDAL: Pick<TProjectDALFactory, "findById">;
+    roleDAL: Pick<TRoleDALFactory, "findById">;
+  },
+  scopeData: { scope: AccessScope; orgId?: string; projectId?: string },
+  roles: T[]
+): Promise<T[]> => {
+  if (
+    scopeData.scope !== AccessScope.Project ||
+    !scopeData.projectId ||
+    !roles.some((el) => isAgentVaultLegacyRole(el.role))
+  ) {
+    return roles;
+  }
+  const project = await projectDAL.findById(scopeData.projectId);
+  if (project?.type !== ProjectType.AgentVault) return roles;
+  // A project in another org is left to the guards, so the request learns nothing about it before they run.
+  if (scopeData.orgId && project.orgId !== scopeData.orgId) return roles;
+  const memberRole = await findAgentVaultMemberRole(roleDAL, project.id);
+  if (!memberRole) {
+    const legacy = roles.find((el) => isAgentVaultLegacyRole(el.role))!.role;
+    throw new BadRequestError({ message: agentVaultNoSuchRoleMessage(legacy) });
+  }
+  return roles.map((el) => (isAgentVaultLegacyRole(el.role) ? { ...el, role: memberRole.slug } : el));
+};
+
+/**
+ * The Agent Vault project whose access bundle roles this role change keeps, if any. A client that still sends `member`
+ * or `viewer` to an Agent Vault project predates its custom roles and knows nothing of access bundle roles, which took
+ * the place of grants kept apart from a member's role, so its change keeps the ones the member holds
+ * (replaceMembershipRoles), as the deprecated `role` on Agent Vault's own members routes does. Ask before
+ * withAgentVaultMemberAlias rewrites the aliases. Drop with the alias after 2027-01-04.
+ */
+export const findProjectKeepingBundleRoles = async (
+  projectDAL: Pick<TProjectDALFactory, "findById">,
+  scopeData: { scope: AccessScope; projectId?: string },
+  roles: { role: string }[]
+): Promise<string | undefined> => {
+  if (scopeData.scope !== AccessScope.Project || !scopeData.projectId) return undefined;
+  if (!roles.some((el) => isAgentVaultLegacyRole(el.role))) return undefined;
+  const { projectId } = scopeData;
+  const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+    projectDAL.findById(projectId)
+  );
+  return project?.type === ProjectType.AgentVault ? projectId : undefined;
+};
+
+// The lock every Agent Vault role change takes before it reads roles. Take it before locking the membership row: a
+// change holding it can wait on that row, so the other order deadlocks.
+export const lockProjectRoleChanges = async (projectId: string, tx: Knex) => {
+  await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("project", projectId)]);
+};
+
+/**
+ * Replaces a membership's roles with these. With keepBundleRolesInProjectId (see findProjectKeepingBundleRoles), the
+ * access bundle roles the membership holds stay as they are, temporary access included, and are never given twice. The
+ * caller holds lockProjectRoleChanges for that project.
+ */
+export const replaceMembershipRoles = async (
+  { membershipRoleDAL }: { membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find" | "delete" | "insertMany"> },
+  {
+    membershipId,
+    roleDocs,
+    keepBundleRolesInProjectId
+  }: { membershipId: string; roleDocs: TMembershipRolesInsert[]; keepBundleRolesInProjectId?: string },
+  tx: Knex
+) => {
+  if (!keepBundleRolesInProjectId) {
+    await membershipRoleDAL.delete({ membershipId }, tx);
+    return membershipRoleDAL.insertMany(roleDocs, tx);
+  }
+
+  const current = await membershipRoleDAL.find({ membershipId }, { tx });
+  const bundleRoleIds = new Set(
+    (
+      (await tx(TableName.AgentVaultAccessBundle)
+        .where({ projectId: keepBundleRolesInProjectId })
+        .whereNotNull("grantRoleId")
+        .select("grantRoleId")) as { grantRoleId: string }[]
+    ).map((row) => row.grantRoleId)
+  );
+  const kept = current.filter((row) => row.customRoleId && bundleRoleIds.has(row.customRoleId));
+  const replaced = current.filter((row) => !kept.includes(row));
+  if (replaced.length) await membershipRoleDAL.delete({ $in: { id: replaced.map((row) => row.id) } }, tx);
+  const added = roleDocs.filter(
+    (doc) => !kept.some((row) => Boolean(doc.customRoleId) && row.customRoleId === doc.customRoleId)
+  );
+  return [...kept, ...(added.length ? await membershipRoleDAL.insertMany(added, tx) : [])];
+};
+
+// Admin reaches everything in an Agent Vault project, so only an admin of the project can give it, or change or remove a
+// member who holds it, here as on Agent Vault's own members routes. A role that can manage members and assign roles
+// still can't make or unmake an admin.
+export const assertAgentVaultAdminOnlyChange = ({
+  project,
+  hasRole,
+  givesAdmin,
+  touchesAdmin
+}: {
+  project: { type?: string | null } | undefined | null;
+  hasRole: (role: string) => boolean;
+  givesAdmin: boolean;
+  touchesAdmin: boolean;
+}) => {
+  if (project?.type !== ProjectType.AgentVault || (!givesAdmin && !touchesAdmin)) return;
+  if (hasRole(ProjectMembershipRole.Admin)) return;
+  throw new ForbiddenRequestError({
+    message: givesAdmin
+      ? "Only an Agent Vault admin can give the admin role."
+      : "Only an Agent Vault admin can change or remove another admin."
+  });
+};
+
+export const rolesGiveAdmin = (roles: { role: string }[]) =>
+  roles.some((el) => el.role === ProjectMembershipRole.Admin);
+
+// Access in an Agent Vault project comes from custom roles (its only built-in roles are Admin and No Access), so giving
+// one there works on every plan. Everywhere else custom roles need the RBAC plan.
+export const customRolesNeedRbacPlan = async (
+  projectDAL: Pick<TProjectDALFactory, "findById">,
+  scopeData: { scope: AccessScope; projectId?: string }
+) => {
+  if (scopeData.scope !== AccessScope.Project || !scopeData.projectId) return true;
+  const project = await projectDAL.findById(scopeData.projectId);
+  return project?.type !== ProjectType.AgentVault;
 };

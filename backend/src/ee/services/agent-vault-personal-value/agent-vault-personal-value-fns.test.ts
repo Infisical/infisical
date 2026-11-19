@@ -18,7 +18,7 @@ const build = (projectsWithValues: string[], projectsWithAnyValues = projectsWit
     agentVaultPersonalValueDAL: {
       findProjectIdsWithValues: vi.fn().mockResolvedValue(projectsWithValues),
       findProjectIdsWithAnyValues: vi.fn().mockResolvedValue(projectsWithAnyValues),
-      deleteForActorsWithoutGrant: vi.fn().mockResolvedValue(0)
+      deleteForActorsOutsideProject: vi.fn().mockResolvedValue(0)
     },
     userGroupMembershipDAL: {
       find: vi.fn().mockResolvedValue([{ userId: GROUP_USER_ID }, { userId: USER_ID }])
@@ -48,9 +48,9 @@ describe("clearPersonalValuesInProjects", () => {
       ["SELECT pg_advisory_xact_lock(?)", [PgSqlLock.ClearAgentVaultPersonalValues(PROJECT_A)]],
       ["SELECT pg_advisory_xact_lock(?)", [PgSqlLock.ClearAgentVaultPersonalValues(PROJECT_C)]]
     ]);
-    expect(deps.agentVaultPersonalValueDAL.deleteForActorsWithoutGrant.mock.calls).toEqual([
-      [{ projectId: PROJECT_A, accessBundleId: undefined, userIds: [USER_ID], identityIds: [IDENTITY_ID] }, tx],
-      [{ projectId: PROJECT_C, accessBundleId: undefined, userIds: [USER_ID], identityIds: [IDENTITY_ID] }, tx]
+    expect(deps.agentVaultPersonalValueDAL.deleteForActorsOutsideProject.mock.calls).toEqual([
+      [{ projectId: PROJECT_A, userIds: [USER_ID], identityIds: [IDENTITY_ID] }, tx],
+      [{ projectId: PROJECT_C, userIds: [USER_ID], identityIds: [IDENTITY_ID] }, tx]
     ]);
     expect(tx.raw.mock.invocationCallOrder[0]).toBeGreaterThan(
       deps.agentVaultPersonalValueDAL.findProjectIdsWithValues.mock.invocationCallOrder[0]
@@ -77,8 +77,8 @@ describe("clearPersonalValuesInProjects", () => {
       { projectIds: [PROJECT_A], ...actors },
       tx
     );
-    expect(deps.agentVaultPersonalValueDAL.deleteForActorsWithoutGrant).toHaveBeenCalledWith(
-      { projectId: PROJECT_A, accessBundleId: undefined, ...actors },
+    expect(deps.agentVaultPersonalValueDAL.deleteForActorsOutsideProject).toHaveBeenCalledWith(
+      { projectId: PROJECT_A, ...actors },
       tx
     );
     expect(deps.userGroupMembershipDAL.find).toHaveBeenCalledTimes(1);
@@ -101,7 +101,7 @@ describe("clearPersonalValuesInProjects", () => {
     await clearPersonalValuesInProjects(deps as never, { projectIds: [PROJECT_A], userIds: [USER_ID] }, tx as never);
 
     expect(tx.raw).not.toHaveBeenCalled();
-    expect(deps.agentVaultPersonalValueDAL.deleteForActorsWithoutGrant).not.toHaveBeenCalled();
+    expect(deps.agentVaultPersonalValueDAL.deleteForActorsOutsideProject).not.toHaveBeenCalled();
   });
 
   test.each([

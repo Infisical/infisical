@@ -36,6 +36,7 @@ import {
 import {
   ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultServiceActions,
   ProjectPermissionSub,
   useOrganization,
   useProjectPermission,
@@ -135,11 +136,17 @@ export const SessionLogsPanel = ({ session }: Props) => {
     canReadSessionLogSettings
   );
   const { accessBundle } = session;
+  // The service is created into the session's bundle: a service create and a bundle edit.
   const canAddService =
+    permission.can(
+      ProjectPermissionAgentVaultServiceActions.Create,
+      ProjectPermissionSub.AgentVaultServices
+    ) &&
     permission.can(
       ProjectPermissionAgentVaultAccessBundleActions.Edit,
       ProjectPermissionSub.AgentVaultAccessBundles
-    ) && Boolean(accessBundle?.id);
+    ) &&
+    Boolean(accessBundle?.id);
   // Not cleared on close: a prefilled host drops the sheet's template step, so clearing the host
   // while the sheet animates out would change the step on screen.
   const [serviceHost, setServiceHost] = useState<string | null>(null);

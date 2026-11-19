@@ -60,7 +60,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
       hide: false,
       operationId: "listAgentVaultServices",
       description:
-        "List the services in an Agent Vault project and the access bundles each is in. A member sees only the services in access bundles they have been granted.",
+        "List the services in an Agent Vault project that you can see, and the access bundles each is in that you can use. You see a service your roles let you read or use, directly or through an access bundle you can use.",
       tags: [ApiDocsTags.AgentVaultServices],
       querystring: z
         .object({
@@ -70,7 +70,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
             .transform((value) => value === "true")
             .optional()
             .describe(AGENT_VAULT.SERVICE.requiresSetup),
-          // Only true: false would read like "only the ones I reach as an admin", which the list doesn't do.
+          // Only true: false would read like "only the ones a role covers without naming", which the list doesn't do.
           granted: z
             .literal("true")
             .transform(() => true)
@@ -127,7 +127,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
       hide: false,
       operationId: "getAgentVaultService",
       description:
-        "Get a service in an Agent Vault project and the access bundles it is in. A member can get only a service in an access bundle they have been granted.",
+        "Get a service in an Agent Vault project and the access bundles it is in that you can use. You can get a service your roles let you read or use, directly or through an access bundle you can use.",
       tags: [ApiDocsTags.AgentVaultServices],
       params: ServiceIdParamsSchema,
       response: { 200: z.object({ service: AgentVaultProjectServiceSchema }) }

@@ -6,6 +6,7 @@ import { Plan } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultServiceActions,
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -22,6 +23,7 @@ import {
   AGENT_VAULT_HOOK_SIGNING_SECRET_REQUIRED_MESSAGE,
   AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE
 } from "../agent-vault/agent-vault-hook-fns";
+import { agentVaultTestReachDAL } from "../agent-vault/testing/agent-vault-test-roles";
 import { agentVaultAccessBundleServiceFactory } from "./agent-vault-access-bundle-service";
 
 const PROJECT_ID = "project-1";
@@ -138,8 +140,12 @@ const buildService = ({
             (member
               ? [
                   {
-                    action: ProjectPermissionAgentVaultAccessBundleActions.Read,
-                    subject: ProjectPermissionSub.AgentVaultAccessBundles
+                    action: [
+                      ProjectPermissionAgentVaultAccessBundleActions.Read,
+                      ProjectPermissionAgentVaultAccessBundleActions.Use
+                    ],
+                    subject: ProjectPermissionSub.AgentVaultAccessBundles,
+                    conditions: { accessBundleId: BUNDLE_ID }
                   }
                 ]
               : [{ action: "manage", subject: "all" }])
@@ -148,9 +154,7 @@ const buildService = ({
         memberships: []
       })
     },
-    membershipDAL: {
-      findResourceMembershipsForActor: vi.fn().mockResolvedValue([{ isActive: true, scopeResourceId: BUNDLE_ID }])
-    },
+    agentVaultReachDAL: agentVaultTestReachDAL({ accessBundleIds: [BUNDLE_ID], serviceIds: [SERVICE_ID] }),
     agentVaultPersonalValueService: { findStatusesForOwner: vi.fn().mockResolvedValue([]) },
     kmsDataKeyService,
     licenseService
@@ -510,10 +514,11 @@ describe("service reads, hooks", () => {
 });
 
 describe("global variable references", () => {
+  // Can write services, but not read variable values.
   const bundleEditor = [
     {
-      action: ProjectPermissionAgentVaultAccessBundleActions.Edit,
-      subject: ProjectPermissionSub.AgentVaultAccessBundles
+      action: [ProjectPermissionAgentVaultServiceActions.Create, ProjectPermissionAgentVaultServiceActions.Edit],
+      subject: ProjectPermissionSub.AgentVaultServices
     }
   ];
   const withReadValue = [

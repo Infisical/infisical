@@ -1,14 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import {
-  AccessScope,
-  ActionProjectType,
-  ProjectMembershipRole,
-  RESOURCE_SCOPE,
-  ResourceType,
-  TMemberships
-} from "@app/db/schemas";
+import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectType, TMemberships } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -21,36 +14,48 @@ import {
 import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TGenericPermission } from "@app/lib/types";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { lockMembershipsById, TMembershipDALFactory } from "@app/services/membership/membership-dal";
-import { assertWillRetainProjectAdmin, roleNeedsPrivilegeBoundary } from "@app/services/membership/membership-fns";
+import {
+  assertAgentVaultAdminOnlyChange,
+  assertWillRetainProjectAdmin,
+  roleNeedsPrivilegeBoundary
+} from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
+import { TRoleDALFactory } from "@app/services/role/role-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { resolveUsersBySsoExternalId } from "@app/services/user-alias/user-alias-fns";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import {
-  clearPersonalValuesAfterRevoke,
+  clearPersonalValuesAfterLeaving,
   TClearPersonalValuesDeps
 } from "../agent-vault-personal-value/agent-vault-personal-value-fns";
 import { resolveAgentVaultActorNames, TAgentVaultActorName } from "../agent-vault/agent-vault-actor-name-fns";
 import {
   AGENT_VAULT_ACTOR_COLUMN,
-  AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE,
   AgentVaultMemberType,
   TAgentVaultActorColumn
 } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultMemberDALFactory } from "./agent-vault-member-dal";
+import {
+  AGENT_VAULT_ROLE_ASSIGNMENT,
+  isAgentVaultSelf,
+  resolveAgentVaultMemberRoles,
+  TAgentVaultResolvedRole
+} from "./agent-vault-member-role-fns";
 
 type TAgentVaultMembershipServiceFactoryDep = {
   agentVaultMemberDAL: Pick<TAgentVaultMemberDALFactory, "findProductMembers" | "findAvailableActors">;
   membershipDAL: Pick<TMembershipDALFactory, "insertMany" | "find" | "transaction" | "delete">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find" | "insertMany" | "delete">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find" | "insertMany" | "delete" | "findRolesByMembershipIds">;
+  roleDAL: Pick<TRoleDALFactory, "find" | "findOne" | "findById" | "create">;
+  agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
   projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "delete">;
   userDAL: Pick<TUserDALFactory, "find">;
@@ -85,17 +90,20 @@ export type TAgentVaultMemberIds = {
   machineIdentityIds: string[];
 };
 
+// Role slugs: admin, no-access, a custom role's, or the deprecated member (the project's Member role).
 export type TAddAgentVaultProductMembersDTO = TAgentVaultMemberIds & {
   projectId: string;
   emails: string[];
   usernames?: string[];
-  role: ProjectMembershipRole.Admin | ProjectMembershipRole.Member;
+  roles: string[];
   ctx: TGenericPermission;
 };
 
 export type TUpdateAgentVaultProductMembersDTO = TAgentVaultMemberIds & {
   projectId: string;
-  role: string;
+  roles: string[];
+  // Keep the roles the members hold for access bundles, which the deprecated `role` never changed.
+  keepBundleRoles?: boolean;
   ctx: TGenericPermission;
 };
 
@@ -108,7 +116,7 @@ export type TRevokeAgentVaultProductMembersDTO = TAgentVaultMemberIds & {
 type TAgentVaultAuditedActor = TAgentVaultActorRef & { actorName?: TAgentVaultActorName };
 
 type TAgentVaultWrittenMember = TAgentVaultAuditedActor & {
-  role: string;
+  roles: string[];
   addedAt: Date;
 };
 
@@ -137,28 +145,6 @@ const MEMBER_CHANGE_ACTIONS = {
   }
 } as const;
 
-// The role-assignment action on each kind of member, and the fields its conditions can match on, as Secrets Management's
-// membership routes check them.
-const ROLE_ASSIGNMENT = {
-  [AgentVaultMemberType.User]: {
-    actions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
-    subject: ProjectPermissionSub.Member,
-    fields: (_id: string, name?: TAgentVaultActorName) => ({ userEmail: name?.email ?? undefined })
-  },
-  [AgentVaultMemberType.Group]: {
-    actions: [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
-    subject: ProjectPermissionSub.Groups,
-    fields: (_id: string, name?: TAgentVaultActorName) => ({ groupName: name?.name })
-  },
-  [AgentVaultMemberType.MachineIdentity]: {
-    actions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
-    subject: ProjectPermissionSub.Identity,
-    fields: (id: string) => ({ identityId: id })
-  }
-} as const;
-
-const VALID_PRODUCT_ROLES: string[] = [ProjectMembershipRole.Admin, ProjectMembershipRole.Member];
-
 const ALL_ACTOR_TYPES = [AgentVaultMemberType.User, AgentVaultMemberType.Group, AgentVaultMemberType.MachineIdentity];
 
 // An empty request is checked as every kind, so it still needs the full set rather than none.
@@ -176,10 +162,6 @@ const memberTypesOf = ({
   return types.length ? types : ALL_ACTOR_TYPES;
 };
 
-const isSelf = (actor: TAgentVaultActorRef, ctx: TGenericPermission) =>
-  (actor.type === AgentVaultMemberType.User && ctx.actor === ActorType.USER && actor.id === ctx.actorId) ||
-  (actor.type === AgentVaultMemberType.MachineIdentity && ctx.actor === ActorType.IDENTITY && actor.id === ctx.actorId);
-
 export const agentVaultMembershipServiceFactory = ({
   agentVaultMemberDAL,
   membershipDAL,
@@ -190,6 +172,8 @@ export const agentVaultMembershipServiceFactory = ({
   userDAL,
   userAliasDAL,
   orgDAL,
+  roleDAL,
+  agentVaultAccessBundleDAL,
   permissionService,
   agentVaultPersonalValueDAL,
   userGroupMembershipDAL,
@@ -241,10 +225,27 @@ export const agentVaultMembershipServiceFactory = ({
     change: TMemberChange,
     types: AgentVaultMemberType[]
   ) => {
-    const { permission } = await getActorPermission(projectId, ctx);
+    const { permission, hasRole } = await getActorPermission(projectId, ctx);
     assertCanChangeActorTypes(permission, change, types);
-    return permission;
+    return { permission, isAdmin: hasRole(ProjectMembershipRole.Admin) };
   };
+
+  // The rule the generic membership routes apply to Agent Vault projects too.
+  const assertAdminOnlyChange = ({
+    isAdmin,
+    givesAdmin,
+    touchesAdmin
+  }: {
+    isAdmin: boolean;
+    givesAdmin: boolean;
+    touchesAdmin: boolean;
+  }) =>
+    assertAgentVaultAdminOnlyChange({
+      project: { type: ProjectType.AgentVault },
+      hasRole: (role) => isAdmin && role === ProjectMembershipRole.Admin,
+      givesAdmin,
+      touchesAdmin
+    });
 
   const canReadActorType = (permission: TProjectPermission, type: AgentVaultMemberType) => {
     if (type === AgentVaultMemberType.User) {
@@ -320,14 +321,6 @@ export const agentVaultMembershipServiceFactory = ({
       limit,
       offset
     });
-  };
-
-  const assertValidRole = (role: string) => {
-    if (!VALID_PRODUCT_ROLES.includes(role)) {
-      throw new BadRequestError({
-        message: `Invalid product role '${role}'. Expected: ${VALID_PRODUCT_ROLES.join(", ")}`
-      });
-    }
   };
 
   const actorKey = (actor: TAgentVaultActorRef) => `${actor.type}:${actor.id}`;
@@ -562,7 +555,7 @@ export const agentVaultMembershipServiceFactory = ({
     const abilityOf = new Map(roleAbilities.map((el) => [el.role?.slug, el]));
 
     entries.forEach(({ actor, roles }) => {
-      const op = ROLE_ASSIGNMENT[actor.type];
+      const op = AGENT_VAULT_ROLE_ASSIGNMENT[actor.type];
       assertRoleSetBoundary({
         shouldUseNewPrivilegeSystem: Boolean(org?.shouldUseNewPrivilegeSystem),
         opActions: [...op.actions],
@@ -579,37 +572,47 @@ export const agentVaultMembershipServiceFactory = ({
   };
 
   // Read outside the write's transaction: the boundary check reads roles and the org, and the write re-reads under lock.
+  // Custom roles by their slug, the way the boundary check names them.
   const currentRolesOf = async (projectId: string, actors: TAgentVaultActorRef[]) => {
     const memberships = await findMembershipsForActors(projectId, actors);
     const membershipIds = [...memberships.values()].map((membership) => membership.id);
-    const roles = membershipIds.length ? await membershipRoleDAL.find({ $in: { membershipId: membershipIds } }) : [];
+    const roles = membershipIds.length ? await membershipRoleDAL.findRolesByMembershipIds(membershipIds) : [];
     return actors.flatMap((actor) => {
       const membership = memberships.get(actorKey(actor));
       if (!membership) return [];
       return [
         {
           actor,
-          roles: roles.filter((role) => role.membershipId === membership.id).map((role) => role.role)
+          roles: roles
+            .filter((role) => role.membershipId === membership.id)
+            .map((role) => role.customRoleSlug || role.role)
         }
       ];
     });
   };
 
+  const roleRowsFor = (membershipIds: string[], resolved: TAgentVaultResolvedRole[]) =>
+    membershipIds.flatMap((membershipId) =>
+      resolved.map(({ role, customRoleId }) => ({ membershipId, role, ...(customRoleId ? { customRoleId } : {}) }))
+    );
+
   const addProductMembers = async ({
     projectId,
-    role,
+    roles,
     ctx,
     emails,
     usernames = [],
     ...ids
   }: TAddAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultWrittenMember> => {
-    const permission = await checkCanChangeMembers(
+    const { permission, isAdmin } = await checkCanChangeMembers(
       projectId,
       ctx,
       "add",
       memberTypesOf({ ...ids, emails: [...emails, ...usernames] })
     );
-    assertValidRole(role);
+    const resolved = await resolveAgentVaultMemberRoles(roleDAL, { projectId, slugs: roles });
+    const slugs = resolved.map((entry) => entry.slug);
+    assertAdminOnlyChange({ isAdmin, givesAdmin: slugs.includes(ProjectMembershipRole.Admin), touchesAdmin: false });
 
     // A username is matched the same way as an email, by the user's username and then their SSO aliases.
     const actors = await resolveNamedActors({ ...ids, emails: [...emails, ...usernames] }, ctx.actorOrgId);
@@ -618,7 +621,7 @@ export const agentVaultMembershipServiceFactory = ({
       projectId,
       ctx,
       permission,
-      entries: actors.map((actor) => ({ actor, roles: [role] })),
+      entries: actors.map((actor) => ({ actor, roles: slugs })),
       baseMessage: "Failed to add the member with this role"
     });
 
@@ -652,7 +655,10 @@ export const agentVaultMembershipServiceFactory = ({
       );
 
       await membershipRoleDAL.insertMany(
-        memberships.map((membership) => ({ membershipId: membership.id, role })),
+        roleRowsFor(
+          memberships.map((membership) => membership.id),
+          resolved
+        ),
         tx
       );
 
@@ -674,7 +680,7 @@ export const agentVaultMembershipServiceFactory = ({
           return {
             type: actor.type,
             id: actor.id,
-            role,
+            roles: slugs,
             addedAt: membership.createdAt,
             actorName: nameByKey.get(actorKey(actor))
           };
@@ -688,37 +694,46 @@ export const agentVaultMembershipServiceFactory = ({
 
   const updateProductMemberRoles = async ({
     projectId,
-    role,
+    roles,
+    keepBundleRoles = false,
     ctx,
     ...ids
   }: TUpdateAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultWrittenMember> => {
-    const permission = await checkCanChangeMembers(projectId, ctx, "edit", memberTypesOf(ids));
-    assertValidRole(role);
+    const { permission, isAdmin } = await checkCanChangeMembers(projectId, ctx, "edit", memberTypesOf(ids));
+    const resolved = await resolveAgentVaultMemberRoles(roleDAL, { projectId, slugs: roles });
+    const slugs = resolved.map((entry) => entry.slug);
+    const givesAdmin = slugs.includes(ProjectMembershipRole.Admin);
 
     const actors = await resolveNamedActors({ ...ids, emails: [] }, ctx.actorOrgId);
 
-    if (actors.some((actor) => isSelf(actor, ctx))) {
+    if (actors.some((actor) => isAgentVaultSelf(actor, ctx))) {
       throw new ForbiddenRequestError({ message: "You cannot change your own role" });
     }
 
+    const current = await currentRolesOf(projectId, actors);
+    assertAdminOnlyChange({
+      isAdmin,
+      givesAdmin,
+      touchesAdmin: current.some((entry) => entry.roles.includes(ProjectMembershipRole.Admin))
+    });
     await assertRoleBoundary({
       projectId,
       ctx,
       permission,
-      entries: await currentRolesOf(projectId, actors),
+      entries: current,
       baseMessage: "Failed to change the role of a more privileged member"
     });
     await assertRoleBoundary({
       projectId,
       ctx,
       permission,
-      entries: actors.map((actor) => ({ actor, roles: [role] })),
+      entries: actors.map((actor) => ({ actor, roles: slugs })),
       baseMessage: "Failed to give the member this role"
     });
 
     // Promotion only: a deactivated member must not be made an admin, but taking admin away from one has
     // to work without reactivating them first.
-    if (role === ProjectMembershipRole.Admin) {
+    if (givesAdmin) {
       await assertActorsAreAddable(actors, ctx.actorOrgId, projectId);
     }
 
@@ -735,10 +750,31 @@ export const agentVaultMembershipServiceFactory = ({
       const currentRoles = heldMembershipIds.length
         ? await membershipRoleDAL.find({ $in: { membershipId: heldMembershipIds } }, { tx })
         : [];
+      // Slug by role id, for every access bundle's role in the project.
+      const bundleRoles = new Map<string, string>();
+      if (keepBundleRoles) {
+        const bundleRoleIds = (await agentVaultAccessBundleDAL.find({ projectId }, { tx })).flatMap((bundle) =>
+          bundle.grantRoleId ? [bundle.grantRoleId] : []
+        );
+        if (bundleRoleIds.length) {
+          (await roleDAL.find({ $in: { id: bundleRoleIds } }, { tx })).forEach((role) =>
+            bundleRoles.set(role.id, role.slug)
+          );
+        }
+      }
+      const keptOf = (membershipId: string) =>
+        currentRoles.filter(
+          (row) => row.membershipId === membershipId && row.customRoleId && bundleRoles.has(row.customRoleId)
+        );
+      const keyOfRole = ({ role, customRoleId }: { role: string; customRoleId?: string | null }) =>
+        customRoleId ? `custom:${customRoleId}` : role;
+      const wantedOf = (membershipId: string) =>
+        new Set([...resolved.map(keyOfRole), ...keptOf(membershipId).map(keyOfRole)]);
       const alreadyInRole = new Set(
         heldMembershipIds.filter((membershipId) => {
-          const roles = currentRoles.filter((el) => el.membershipId === membershipId);
-          return roles.length === 1 && roles[0].role === role;
+          const heldRoles = new Set(currentRoles.filter((el) => el.membershipId === membershipId).map(keyOfRole));
+          const wanted = wantedOf(membershipId);
+          return heldRoles.size === wanted.size && [...wanted].every((key) => heldRoles.has(key));
         })
       );
 
@@ -750,7 +786,7 @@ export const agentVaultMembershipServiceFactory = ({
       const membershipIds = toChange.map((actor) => existing.get(actorKey(actor))!.id);
 
       // One check for the whole batch: per actor, two admins each pass on the other still standing.
-      if (role !== ProjectMembershipRole.Admin) {
+      if (!givesAdmin) {
         await assertWillRetainProjectAdmin({
           scopeProjectId: projectId,
           excludeMembershipIds: membershipIds,
@@ -759,31 +795,28 @@ export const agentVaultMembershipServiceFactory = ({
         });
       }
 
-      await membershipRoleDAL.delete({ $in: { membershipId: membershipIds } }, tx);
-      await membershipRoleDAL.insertMany(
-        membershipIds.map((membershipId) => ({ membershipId, role })),
-        tx
+      // A kept row stays as it is, temporary access included, and is never given twice.
+      const keptRows = membershipIds.flatMap(keptOf);
+      const keptIds = new Set(keptRows.map((row) => row.id));
+      const replaced = currentRoles.filter((row) => membershipIds.includes(row.membershipId) && !keptIds.has(row.id));
+      if (replaced.length) await membershipRoleDAL.delete({ $in: { id: replaced.map((row) => row.id) } }, tx);
+      const newRows = roleRowsFor(membershipIds, resolved).filter(
+        (row) => !keptRows.some((kept) => kept.membershipId === row.membershipId && keyOfRole(kept) === keyOfRole(row))
       );
+      await membershipRoleDAL.insertMany(newRows, tx);
 
-      // A demoted admin no longer reaches the bundles they hold no grant on, so what they saved there goes.
-      if (!AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE.includes(role)) {
-        await clearPersonalValuesAfterRevoke(
-          { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
-          {
-            projectId,
-            userIds: named(toChange, AgentVaultMemberType.User),
-            identityIds: named(toChange, AgentVaultMemberType.MachineIdentity),
-            groupIds: named(toChange, AgentVaultMemberType.Group)
-          },
-          tx
-        );
-      }
+      const rolesOf = (membershipId: string) => [
+        ...slugs,
+        ...keptOf(membershipId)
+          .map((row) => bundleRoles.get(row.customRoleId!)!)
+          .filter((slug) => !slugs.includes(slug))
+      ];
 
       return {
         updated: toChange.map((actor) => ({
           type: actor.type,
           id: actor.id,
-          role,
+          roles: rolesOf(existing.get(actorKey(actor))!.id),
           addedAt: existing.get(actorKey(actor))!.createdAt,
           actorName: nameByKey.get(actorKey(actor))
         })),
@@ -799,20 +832,26 @@ export const agentVaultMembershipServiceFactory = ({
     ctx,
     ...ids
   }: TRevokeAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultAuditedActor> => {
-    const permission = await checkCanChangeMembers(projectId, ctx, "remove", memberTypesOf(ids));
+    const { permission, isAdmin } = await checkCanChangeMembers(projectId, ctx, "remove", memberTypesOf(ids));
 
     const actors = await resolveNamedActors({ ...ids, emails: [] }, ctx.actorOrgId);
 
     // Naming yourself is a mistake, not a no-op: skipping it would let an admin believe they had left.
-    if (actors.some((actor) => isSelf(actor, ctx))) {
+    if (actors.some((actor) => isAgentVaultSelf(actor, ctx))) {
       throw new ForbiddenRequestError({ message: "You cannot remove your own access" });
     }
 
+    const current = await currentRolesOf(projectId, actors);
+    assertAdminOnlyChange({
+      isAdmin,
+      givesAdmin: false,
+      touchesAdmin: current.some((entry) => entry.roles.includes(ProjectMembershipRole.Admin))
+    });
     await assertRoleBoundary({
       projectId,
       ctx,
       permission,
-      entries: await currentRolesOf(projectId, actors),
+      entries: current,
       baseMessage: "Failed to remove a more privileged member"
     });
 
@@ -852,28 +891,12 @@ export const agentVaultMembershipServiceFactory = ({
       // its rows in whatever order its plan reads them, so without this the two could each hold a row the other wants.
       await lockMembershipsById(membershipIds, tx);
 
-      await Promise.all(
-        ALL_ACTOR_TYPES.map(async (type) => {
-          const typeIds = named(held, type);
-          if (!typeIds.length) return;
-          await membershipDAL.delete(
-            {
-              scope: RESOURCE_SCOPE,
-              scopeProjectId: projectId,
-              scopeResourceType: ResourceType.AgentVaultAccessBundle,
-              $in: { [AGENT_VAULT_ACTOR_COLUMN[type]]: typeIds }
-            },
-            tx
-          );
-        })
-      );
-
       // membership_roles and the delegation rows cascade on the membership FK, so the roles go with these rows, as do
       // an identity's delegation and the users and groups a delegation names.
       await membershipDAL.delete({ $in: { id: membershipIds } }, tx);
 
-      // Their bundle grants went above. Their own variables stay, as they would if they only lost a bundle.
-      await clearPersonalValuesAfterRevoke(
+      // Their own variables stay, as they would if they only lost a role.
+      await clearPersonalValuesAfterLeaving(
         { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
         {
           projectId,

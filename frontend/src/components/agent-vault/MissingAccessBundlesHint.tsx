@@ -40,7 +40,7 @@ export const MissingAccessBundlesHint = ({ bundles, machineIdentityName, onBehal
       <HoverCardContent align="end">
         <div className="flex flex-col gap-2.5">
           <p className="text-xs text-muted">
-            {`Sessions on behalf of ${onBehalfOf} can't use these access bundles, because "${machineIdentityName}" isn't granted them.`}
+            {`Sessions on behalf of ${onBehalfOf} can't use these access bundles, because "${machineIdentityName}" has no role that can.`}
           </p>
           {/* An all-members delegation can miss every bundle in a large org; scrolling keeps each one a link. The card
               portals outside the sheet, whose scroll lock would otherwise swallow the wheel. */}
@@ -66,7 +66,7 @@ export const MissingAccessBundlesHint = ({ bundles, machineIdentityName, onBehal
             ))}
           </ScrollableContent>
           <p className="text-xs text-muted">
-            {`To include one, grant it to "${machineIdentityName}" from the bundle's Manage Access.`}
+            {`To include one, give "${machineIdentityName}" a role that can use it under Access Control.`}
           </p>
         </div>
       </HoverCardContent>

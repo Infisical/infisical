@@ -16,11 +16,12 @@ The way you create sessions depends on [where you start your agents](/documentat
 
 ## Prerequisites
 
-- An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each API the agent calls, and a [grant](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) on the bundle for whoever creates the session (admins of the project can use any of its bundles)
+- An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each API the agent calls
+- For whoever creates the session, a [role](/documentation/platform/agent-vault/access-control) that can create sessions and use the access bundle, services, and skills you give the session (the **Admin** role can use all of them)
 - A running [proxy](/documentation/platform/agent-vault/proxies) in the same project as the access bundle, which the agent's machine can reach
 - The ID of your Agent Vault project, if you create the session with the CLI, the API, or an SDK (see [Find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id))
 - The [Infisical CLI](/cli/install) on the agent's machine, if you start the agent with the CLI
-- To create sessions as a machine identity, the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership) to set up the machine identity, or an admin of the project who can set it up for you
+- To create sessions as a machine identity, the **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#roles) to set up the machine identity, or an admin of the project who can set it up for you
 
 ## Create the session
 
@@ -77,7 +78,7 @@ If a scheduled job, CI, or your own code creates sessions, it creates them as a 
     <MachineIdentitySetup />
 
     <Note>
-      The agent can read the machine identity's credentials from its environment, and use them to create a session with any access bundle that the machine identity has a grant on. Create a machine identity for each agent, and grant it only the access bundle that agent uses.
+      The agent can read the machine identity's credentials from its environment, and use them to create a session with any access bundle that the machine identity's roles can use. Create a machine identity for each agent, with a role that can use only the access bundle that agent uses.
     </Note>
 
     On the agent's machine, set the machine identity's credentials, the ID of your Agent Vault project, and the proxy's address in the environment:
@@ -362,17 +363,17 @@ In your Agent Vault project, go to **Sessions**. If you're an admin of the proje
 ## Troubleshooting
 
 <AccordionGroup>
-  <Accordion title="Creating the session fails with &quot;No access bundle named ... is granted to you&quot;">
-    The user or machine identity doesn't have a grant on the access bundle, the name you sent is wrong, or the access bundle is in a different project from the one you sent. Check the name on the project's **Access Bundles** page, and [grant the bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) to whoever creates the session.
+  <Accordion title="Creating the session fails with &quot;You can't use an access bundle named ...&quot;">
+    None of the roles of whoever creates the session can use the access bundle, the name you sent is wrong, or the access bundle is in a different project from the one you sent. Check the name on the project's **Access Bundles** page, and give whoever creates the session a [role that can use the bundle](/documentation/platform/agent-vault/access-bundles#who-can-use-an-access-bundle).
   </Accordion>
   <Accordion title="Creating the session fails with &quot;You can't use a service called ...&quot;">
-    No access bundle granted to whoever creates the session holds the service, or no service in the project has that name. Check the name on the project's **Services** page, and [grant an access bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) that holds the service to whoever creates the session.
+    None of the roles of whoever creates the session can use the service, directly or through an access bundle, or no service in the project has that name. Check the name on the project's **Services** page, and give whoever creates the session a [role that can use the service](/documentation/platform/agent-vault/access-control#use-an-access-bundle-service-or-skill).
   </Accordion>
   <Accordion title="Creating the session fails with 422 and &quot;More than one service in this session is named ...&quot;">
     Two of the session's services have the same name. This happens if you list a service twice, or if you list a service from the project and an [inline service](/documentation/platform/agent-vault/inline-services) with the same name. Remove one of the two, or give the inline service a different name.
   </Accordion>
   <Accordion title="Creating the session fails with &quot;You can't use a skill called ...&quot;">
-    No access bundle granted to whoever creates the session holds the skill, or no skill in the project has that name. Check the name on the project's **Skills** page, and [grant an access bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) that holds the skill to whoever creates the session.
+    None of the roles of whoever creates the session can use the skill, directly or through an access bundle, or no skill in the project has that name. Check the name on the project's **Skills** page, and give whoever creates the session a [role that can use the skill](/documentation/platform/agent-vault/access-control#use-an-access-bundle-service-or-skill).
   </Accordion>
   <Accordion title="Creating the session fails with 422 and &quot;More than one skill in this session is named ...&quot;">
     Two of the session's skills have the same name. This happens if you list a skill twice, or if you list a skill from the project and [send a skill](/documentation/platform/agent-vault/skills#send-skills-with-a-session) whose `SKILL.md` has the same `name`. Remove one of the two, or rename the skill you send.

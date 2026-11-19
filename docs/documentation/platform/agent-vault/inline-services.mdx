@@ -13,7 +13,7 @@ A session can use only inline services, or [combine them with services in the pr
 
 ## Prerequisites
 
-- A machine identity with the **Admin** role in an [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership)
+- A machine identity with the **Admin** role in an [Agent Vault project](/documentation/platform/agent-vault/access-control#roles)
 - An access token for the machine identity, from the Universal Auth [Login](/api-reference/endpoints/universal-auth/login) endpoint, or an SDK client logged in as the machine identity ([Python](/documentation/platform/agent-vault/create-a-session#create-a-session-with-the-python-sdk) or [Node.js](/documentation/platform/agent-vault/create-a-session#create-a-session-with-the-node-js-sdk))
 - A running [proxy](/documentation/platform/agent-vault/proxies) in the same project, which the agent's machine can reach
 
@@ -141,7 +141,7 @@ If you set `ttl` to `never`, revoke the session when the agent finishes, so that
 
 <AccordionGroup>
   <Accordion title="Creating the session fails with &quot;You are not allowed to create-with-inline-services on agent-vault-sessions&quot;">
-    The machine identity has the **Member** role in the Agent Vault project. Either give it the **Admin** role, or add the services to an access bundle, [grant the bundle](/documentation/platform/agent-vault/access-bundles#grant-access) to the machine identity, and name the access bundle or the services instead.
+    None of the machine identity's roles can send inline services. Either give it the **Admin** role, or add the services to an access bundle, give the machine identity a [role that can use the bundle](/documentation/platform/agent-vault/access-bundles#who-can-use-an-access-bundle), and create the session with the access bundle or those services instead.
 
     To give the machine identity the **Admin** role:
 
@@ -150,10 +150,10 @@ If you set `ttl` to `never`, revoke the session when the agent finishes, so that
         In your Agent Vault project, go to **Access Control** > **Machine Identities**.
       </Step>
       <Step>
-        Open the machine identity's menu and select **Change Role**.
+        Open the machine identity's menu and select **Edit Roles**.
       </Step>
       <Step>
-        Choose **Admin** in **Product Role**, then select **Save**.
+        Pick **Admin** in **Roles**, then select **Save**.
       </Step>
     </Steps>
   </Accordion>

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultServiceActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
@@ -19,6 +20,7 @@ import {
   AgentVaultOauthStatus,
   AgentVaultServiceType
 } from "../agent-vault/agent-vault-enums";
+import { agentVaultTestReachDAL } from "../agent-vault/testing/agent-vault-test-roles";
 import { MAX_OAUTH_SCOPES } from "./agent-vault-oauth-discovery-fns";
 import { TOauthHttpClient, TOauthHttpResponse } from "./agent-vault-oauth-http-fns";
 import {
@@ -196,6 +198,8 @@ const setup = ({
     kmsDataKeyService: kms as never,
     agentVaultServiceDAL: {
       findByIdInProject: async ({ id }: { id: string }) => rows.get(id) as never,
+      findIdsInBundles: async (accessBundleIds: string[]) =>
+        accessBundleIds.includes(BUNDLE_ID) ? [...rows.keys()] : [],
       // Every service is in the one bundle these tests use, and a filter narrows to the bundles it names, as the SQL does.
       findBundlesForServices: async (serviceIds: string[], accessBundleIds: string[] | null) =>
         new Map(
@@ -341,15 +345,26 @@ const setup = ({
       getProjectPermission: async () =>
         ({
           permission: createMongoAbility([
-            {
-              action: ProjectPermissionAgentVaultAccessBundleActions.Read,
-              subject: ProjectPermissionSub.AgentVaultAccessBundles
-            },
+            ...(isAdmin
+              ? [
+                  {
+                    action: ProjectPermissionAgentVaultAccessBundleActions.Use,
+                    subject: ProjectPermissionSub.AgentVaultAccessBundles
+                  }
+                ]
+              : grantedBundleIds.map((accessBundleId) => ({
+                  action: ProjectPermissionAgentVaultAccessBundleActions.Use,
+                  subject: ProjectPermissionSub.AgentVaultAccessBundles,
+                  conditions: { accessBundleId }
+                }))),
             ...(canEditBundles
               ? [
                   {
-                    action: ProjectPermissionAgentVaultAccessBundleActions.Edit,
-                    subject: ProjectPermissionSub.AgentVaultAccessBundles
+                    action: [
+                      ProjectPermissionAgentVaultServiceActions.Edit,
+                      ProjectPermissionAgentVaultServiceActions.Create
+                    ],
+                    subject: ProjectPermissionSub.AgentVaultServices
                   }
                 ]
               : [])
@@ -358,9 +373,10 @@ const setup = ({
           memberships: []
         }) as never
     },
-    membershipDAL: {
-      findResourceMembershipsForActor: async () =>
-        grantedBundleIds.map((scopeResourceId) => ({ scopeResourceId, isActive: true, actorGroupId: null })) as never
+    // Every service is in the one bundle these tests use.
+    agentVaultReachDAL: {
+      ...agentVaultTestReachDAL({ accessBundleIds: [BUNDLE_ID] }),
+      findServiceIdsInAnyBundle: async () => [...rows.keys()]
     }
   });
 

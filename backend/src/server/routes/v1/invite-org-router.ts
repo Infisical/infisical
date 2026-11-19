@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
+import { deprecatedRoleOf, telemetryRoleOf } from "@app/ee/routes/v1/agent-vault-routers/agent-vault-router-fns";
 import { auditActorFields } from "@app/ee/services/agent-vault/agent-vault-actor-name-fns";
 import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -122,7 +123,9 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
                 groupIds: [],
                 machineIdentityIds: [],
                 emails: req.body.inviteeEmails,
-                role: ProjectMembershipRole.Member
+                // Agent Vault has no built-in Member role: an invitee starts with no access until an admin gives them
+                // roles.
+                roles: [ProjectMembershipRole.NoAccess]
               });
 
               for await (const member of members) {
@@ -132,12 +135,20 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
                   projectId,
                   event: {
                     type: EventType.AGENT_VAULT_MEMBER_ADD,
-                    metadata: { ...auditActorFields(member), role: member.role }
+                    metadata: {
+                      ...auditActorFields(member),
+                      role: deprecatedRoleOf(member.roles),
+                      roles: member.roles
+                    }
                   }
                 });
                 emitAgentVaultTelemetry(server.services.telemetry, req, {
                   event: PostHogEventTypes.AgentVaultProductMemberAdded,
-                  properties: { memberType: AgentVaultMemberType.User, role: member.role }
+                  properties: {
+                    memberType: AgentVaultMemberType.User,
+                    role: telemetryRoleOf(member.roles),
+                    roleCount: member.roles.length
+                  }
                 });
               }
               // eslint-disable-next-line no-continue

@@ -32,12 +32,12 @@ import {
   TAgentVaultAccess,
   TAgentVaultAccessBundleDetails,
   TAgentVaultAccessBundleListItem,
+  TAgentVaultAccessBundleRole,
   TAgentVaultBundleSkill,
   TAgentVaultProjectService,
   TListAgentVaultServicesDTO,
   TAgentVaultDecryptedSessionLogPage,
   TAgentVaultDelegationDetail,
-  TAgentVaultMember,
   TAgentVaultOauthAuthorization,
   TAgentVaultProductActor,
   TAgentVaultProductMember,
@@ -112,40 +112,10 @@ export const agentVaultKeys = {
     [...agentVaultKeys.all(orgId, projectId), "proxies"] as const,
   proxyList: (orgId: string, projectId: string, params?: TListAgentVaultProxiesDTO) =>
     [...agentVaultKeys.proxies(orgId, projectId), params] as const,
-  accessBundleMembers: (orgId: string, projectId: string, accessBundleId: string) =>
-    [...agentVaultKeys.accessBundle(orgId, projectId, accessBundleId), "members"] as const,
-  accessBundleMemberList: (
-    orgId: string,
-    projectId: string,
-    accessBundleId: string,
-    params?: TListAgentVaultMembersDTO
-  ) => [...agentVaultKeys.accessBundleMembers(orgId, projectId, accessBundleId), params] as const,
-  // Nested under accessBundleMembers() so a grant invalidates the candidate list too.
-  availableAccessBundleMemberList: (
-    orgId: string,
-    projectId: string,
-    accessBundleId: string,
-    params?: TListAgentVaultMembersDTO
-  ) =>
-    [
-      ...agentVaultKeys.accessBundleMembers(orgId, projectId, accessBundleId),
-      "available",
-      params
-    ] as const,
-  // Nested under accessBundle(), the prefix a grant or revoke invalidates, so either refetches it.
-  accessBundleMemberCheck: (
-    orgId: string,
-    projectId: string,
-    accessBundleId: string,
-    actorType: AgentVaultMemberType,
-    actorId: string
-  ) =>
-    [
-      ...agentVaultKeys.accessBundleMembers(orgId, projectId, accessBundleId),
-      "check",
-      actorType,
-      actorId
-    ] as const,
+  // Nested under accessBundle(), so a member's role change and a role edit, which both refresh access bundles,
+  // refresh it too.
+  accessBundleRoles: (orgId: string, projectId: string, accessBundleId: string) =>
+    [...agentVaultKeys.accessBundle(orgId, projectId, accessBundleId), "roles"] as const,
   variables: (orgId: string, projectId: string) =>
     [...agentVaultKeys.all(orgId, projectId), "variables"] as const,
   variableList: (orgId: string, projectId: string, params: TListAgentVaultVariablesDTO) =>
@@ -314,34 +284,6 @@ export const useGetAgentVaultDelegation = (
 // dialogs page the same way.
 const AVAILABLE_MEMBER_LIMIT = 50;
 
-export const useListAvailableAgentVaultAccessBundleMembers = (
-  projectId: string,
-  accessBundleId: string,
-  { limit = AVAILABLE_MEMBER_LIMIT, ...rest }: TListAgentVaultMembersDTO = {},
-  enabled = true
-) => {
-  const { currentOrg } = useOrganization();
-  const params = { ...rest, limit };
-
-  return useQuery({
-    queryKey: agentVaultKeys.availableAccessBundleMemberList(
-      currentOrg.id,
-      projectId,
-      accessBundleId,
-      params
-    ),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{
-        members: TAgentVaultProductMember[];
-        totalCount: number;
-      }>(`/api/v1/agent-vault/access-bundles/${accessBundleId}/members/available`, { params });
-      return data;
-    },
-    enabled: enabled && Boolean(accessBundleId),
-    placeholderData: keepPreviousInProject(projectId)
-  });
-};
-
 // The Agent Vault users and groups not yet in the machine identity's delegation. Admins only.
 export const useListAvailableAgentVaultDelegationSubjects = (
   projectId: string,
@@ -397,81 +339,6 @@ export const useListAvailableAgentVaultMembers = <
   });
 };
 
-const MEMBER_CHECK_PAGE_SIZE = 100;
-
-// The members endpoint can't filter by ID, and its search matches any name that contains the text,
-// so the actor can sit past the first page. Reads pages until it turns up or the matches run out.
-const findAccessBundleMember = async (
-  accessBundleId: string,
-  actor: { type: AgentVaultMemberType; id: string; name: string },
-  offset = 0
-): Promise<boolean> => {
-  const { data } = await apiRequest.get<{ members: TAgentVaultMember[]; totalCount: number }>(
-    `/api/v1/agent-vault/access-bundles/${accessBundleId}/members`,
-    {
-      params: {
-        actorType: actor.type,
-        search: actor.name,
-        limit: MEMBER_CHECK_PAGE_SIZE,
-        offset
-      }
-    }
-  );
-  if (data.members.some((member) => member.id === actor.id)) return true;
-  const nextOffset = offset + data.members.length;
-  if (data.members.length < MEMBER_CHECK_PAGE_SIZE || nextOffset >= data.totalCount) return false;
-  return findAccessBundleMember(accessBundleId, actor, nextOffset);
-};
-
-export const useIsAgentVaultAccessBundleMember = (
-  projectId: string,
-  accessBundleId: string,
-  actor: { type: AgentVaultMemberType; id: string; name: string } | null
-) => {
-  const { currentOrg } = useOrganization();
-
-  return useQuery({
-    queryKey: agentVaultKeys.accessBundleMemberCheck(
-      currentOrg.id,
-      projectId,
-      accessBundleId,
-      actor?.type ?? AgentVaultMemberType.MachineIdentity,
-      actor?.id ?? ""
-    ),
-    queryFn: () => (actor ? findAccessBundleMember(accessBundleId, actor) : false),
-    enabled: Boolean(accessBundleId && actor),
-    placeholderData: keepPreviousInProject(projectId),
-    // The access can be granted in another tab, and the answer is fresh for a minute otherwise.
-    refetchOnWindowFocus: "always"
-  });
-};
-
-export const useListAgentVaultAccessBundleMembers = (
-  projectId: string,
-  accessBundleId: string,
-  params: TListAgentVaultMembersDTO = {}
-) => {
-  const { currentOrg } = useOrganization();
-
-  return useQuery({
-    queryKey: agentVaultKeys.accessBundleMemberList(
-      currentOrg.id,
-      projectId,
-      accessBundleId,
-      params
-    ),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{ members: TAgentVaultMember[]; totalCount: number }>(
-        `/api/v1/agent-vault/access-bundles/${accessBundleId}/members`,
-        { params }
-      );
-      return data;
-    },
-    enabled: Boolean(accessBundleId),
-    placeholderData: keepPreviousInProject(projectId)
-  });
-};
-
 type TAgentVaultAccessBundleList = {
   accessBundles: TAgentVaultAccessBundleListItem[];
   totalCount: number;
@@ -501,6 +368,26 @@ export const useListAgentVaultAccessBundles = (
 // One page holds them all in practice: it is only the bundles the caller reaches that still require their values.
 export const useListAgentVaultAccessBundlesRequiringSetup = (projectId: string) =>
   useListAgentVaultAccessBundles(projectId, { requiresSetup: true, limit: 100 });
+
+// The roles whose holders can use the bundle: Admin, and every custom role that allows it. Needs Read on roles.
+export const useListAgentVaultAccessBundleRoles = (
+  projectId: string,
+  accessBundleId: string,
+  enabled = true
+) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.accessBundleRoles(currentOrg.id, projectId, accessBundleId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ roles: TAgentVaultAccessBundleRole[] }>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/roles`
+      );
+      return data.roles;
+    },
+    enabled: enabled && Boolean(accessBundleId)
+  });
+};
 
 export const useGetAgentVaultAccessBundle = (projectId: string, accessBundleId: string) => {
   const { currentOrg } = useOrganization();
@@ -1014,9 +901,15 @@ export const useListAllAgentVaultServicesRequiringSetup = (
   });
 };
 
-// The services in bundles granted to the caller that still need their personal values, for the sidebar and banners.
-export const useListGrantedAgentVaultServicesRequiringSetup = (projectId: string) =>
-  useListAgentVaultServices(projectId, { requiresSetup: true, granted: true, limit: 1 });
+// The services the caller's roles pick out one by one, directly or through a bundle they pick out, that still need their
+// personal values, for the sidebar and banners. Pass enabled false for a role that can use no service, which the list
+// would answer with a 403.
+export const useListGrantedAgentVaultServicesRequiringSetup = (projectId: string, enabled = true) =>
+  useListAgentVaultServices(
+    projectId,
+    { requiresSetup: true, granted: true, limit: 1 },
+    { enabled }
+  );
 
 export const useGetAgentVaultService = (projectId: string, serviceId: string) => {
   const { currentOrg } = useOrganization();

@@ -38,11 +38,11 @@ import {
 } from "@app/components/v3";
 import {
   ProjectPermissionAgentVaultSkillActions,
-  ProjectPermissionSub,
   useOrganization,
   useProjectPermission,
   useProject
 } from "@app/context";
+import { canOnAgentVaultSkill } from "@app/helpers/agentVaultPermissions";
 import {
   fromDraftFiles,
   getChangedSkillPaths,
@@ -97,13 +97,15 @@ const SkillSheetBody = ({
   const queryClient = useQueryClient();
   const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
-  const canEdit = permission.can(
+  const canEdit = canOnAgentVaultSkill(
+    permission,
     ProjectPermissionAgentVaultSkillActions.Edit,
-    ProjectPermissionSub.AgentVaultSkills
+    shownSkillId
   );
-  const canDelete = permission.can(
+  const canDelete = canOnAgentVaultSkill(
+    permission,
     ProjectPermissionAgentVaultSkillActions.Delete,
-    ProjectPermissionSub.AgentVaultSkills
+    shownSkillId
   );
 
   const {

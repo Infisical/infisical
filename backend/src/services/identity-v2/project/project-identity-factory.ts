@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { AccessScope, ActionProjectType } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -8,8 +8,9 @@ import { InternalServerError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TMembershipIdentityDALFactory } from "@app/services/membership-identity/membership-identity-dal";
-import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
+import { assertAgentVaultAdminOnlyChange, resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TIdentityV2Factory } from "../identity-types";
 
@@ -17,12 +18,14 @@ type TProjectIdentityFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "getIdentityById">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export const newProjectIdentityFactory = ({
   permissionService,
   orgDAL,
-  membershipIdentityDAL
+  membershipIdentityDAL,
+  projectDAL
 }: TProjectIdentityFactoryDep): TIdentityV2Factory => {
   const getScopeField: TIdentityV2Factory["getScopeField"] = (scopeData) => {
     if (scopeData.scope === AccessScope.Project) {
@@ -65,7 +68,7 @@ export const newProjectIdentityFactory = ({
 
   const onDeleteIdentityGuard: TIdentityV2Factory["onDeleteIdentityGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasRole } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
       actionProjectType: ActionProjectType.Any,
@@ -83,6 +86,15 @@ export const newProjectIdentityFactory = ({
       identityId: dto.selector.identityId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
+      projectDAL.findById(scope.value)
+    );
+    assertAgentVaultAdminOnlyChange({
+      project,
+      hasRole,
+      givesAdmin: false,
+      touchesAdmin: targetRoles.includes(ProjectMembershipRole.Admin)
+    });
     const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
       ignoreUnresolvedRoles: true
     });

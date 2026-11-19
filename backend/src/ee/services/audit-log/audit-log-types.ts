@@ -7080,7 +7080,9 @@ interface AgentVaultProductMemberAddEvent {
     groupName?: string;
     machineIdentityId?: string;
     machineIdentityName?: string;
+    // What the event carried when a member had one role: admin or member when they hold either, else their first role.
     role: string;
+    roles: string[];
   };
 }
 
@@ -7094,7 +7096,9 @@ interface AgentVaultProductMemberUpdateEvent {
     groupName?: string;
     machineIdentityId?: string;
     machineIdentityName?: string;
+    // What the event carried when a member had one role: admin or member when they hold either, else their first role.
     role: string;
+    roles: string[];
   };
 }
 

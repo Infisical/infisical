@@ -1,14 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import {
-  AccessScope,
-  OrgMembershipStatus,
-  RESOURCE_SCOPE,
-  ResourceType,
-  TableName,
-  TAgentVaultAccessBundles
-} from "@app/db/schemas";
+import { AccessScope, OrgMembershipStatus, TableName, TAgentVaultAccessBundles } from "@app/db/schemas";
 import {
   AGENT_VAULT_ACTOR_COLUMN,
   AgentVaultMemberType,
@@ -68,13 +61,6 @@ type TFindAccessBundlesDTO = {
   limit: number;
   offset: number;
 };
-
-const grantScope = (projectId: string, accessBundleId?: string) => ({
-  scope: RESOURCE_SCOPE,
-  scopeProjectId: projectId,
-  scopeResourceType: ResourceType.AgentVaultAccessBundle,
-  ...(accessBundleId ? { scopeResourceId: accessBundleId } : {})
-});
 
 export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultAccessBundle);
@@ -145,11 +131,16 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
       const pageIds = ((await pageQuery) as { id: string }[]).map((row) => row.id);
       if (!pageIds.length) return { accessBundles: [], totalCount };
 
-      const memberCounts = conn(TableName.Membership)
-        .select("scopeResourceId")
-        .where({ ...grantScope(projectId), isActive: true })
+      // How many hold the bundle's role (see agent-vault-bundle-role-fns), what the grant count used to be.
+      const memberCounts = conn(TableName.MembershipRole)
+        .join(TableName.Membership, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
+        .where(`${TableName.Membership}.isActive`, true)
+        .whereNotNull(`${TableName.MembershipRole}.customRoleId`)
+        .select(`${TableName.MembershipRole}.customRoleId`)
         .count("* as count")
-        .groupBy("scopeResourceId")
+        .groupBy(`${TableName.MembershipRole}.customRoleId`)
         .as("mc");
 
       const rows = (await conn(TableName.AgentVaultAccessBundle)
@@ -164,9 +155,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
           `${TableName.AgentVaultService}.id`,
           `${TableName.AgentVaultAccessBundleService}.serviceId`
         )
-        .leftJoin(memberCounts, function joinMemberCount() {
-          this.on(db.raw(`mc."scopeResourceId" = ??.id::text`, [TableName.AgentVaultAccessBundle]));
-        })
+        .leftJoin(memberCounts, "mc.customRoleId", `${TableName.AgentVaultAccessBundle}.grantRoleId`)
         .select(
           db.ref("id").withSchema(TableName.AgentVaultAccessBundle),
           db.ref("name").withSchema(TableName.AgentVaultAccessBundle),
@@ -252,11 +241,34 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
     }
   };
 
+  // How many active project members hold each role, built-in roles by slug and custom roles by id.
+  const countRoleHolders = async (projectId: string, tx?: Knex) => {
+    try {
+      const rows = (await (tx || db.replicaNode())(TableName.MembershipRole)
+        .join(TableName.Membership, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
+        .where(`${TableName.Membership}.isActive`, true)
+        .select(
+          db.raw(`COALESCE(??::text, ??) AS "key"`, [
+            `${TableName.MembershipRole}.customRoleId`,
+            `${TableName.MembershipRole}.role`
+          ])
+        )
+        .countDistinct(`${TableName.MembershipRole}.membershipId as count`)
+        .groupBy("key")) as { key: string; count: string }[];
+      return new Map(rows.map((row) => [row.key, Number(row.count)]));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count agent vault role holders" });
+    }
+  };
+
+  // Who holds the bundle's role, for the deprecated grant endpoints.
   const findMembers = async (
     {
       projectId,
       orgId,
-      accessBundleId,
+      roleId,
       actorType,
       search,
       limit,
@@ -264,7 +276,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
     }: {
       projectId: string;
       orgId: string;
-      accessBundleId: string;
+      roleId: string;
       actorType?: AgentVaultMemberType;
       search?: string;
       limit: number;
@@ -277,7 +289,11 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
 
       const applyFilters = (query: Knex.QueryBuilder) => {
         void query
-          .where({ ...grantScope(projectId, accessBundleId), isActive: true })
+          .where(`${TableName.Membership}.scope`, AccessScope.Project)
+          .where(`${TableName.Membership}.scopeProjectId`, projectId)
+          .where(`${TableName.Membership}.isActive`, true)
+          .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+          .where(`${TableName.MembershipRole}.customRoleId`, roleId)
           .leftJoin(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
           .leftJoin(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
           .leftJoin(TableName.Groups, `${TableName.Membership}.actorGroupId`, `${TableName.Groups}.id`);
@@ -314,7 +330,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
           db.ref("actorUserId").withSchema(TableName.Membership).as("userId"),
           db.ref("actorIdentityId").withSchema(TableName.Membership).as("identityId"),
           db.ref("actorGroupId").withSchema(TableName.Membership).as("groupId"),
-          db.ref("createdAt").withSchema(TableName.Membership),
+          db.ref("createdAt").withSchema(TableName.MembershipRole),
           db.ref("username").withSchema(TableName.Users).as("userUsername"),
           db.ref("firstName").withSchema(TableName.Users).as("userFirstName"),
           db.ref("lastName").withSchema(TableName.Users).as("userLastName"),
@@ -381,5 +397,5 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findForList, findByIdInProject, lockByIdInProject, findMembers };
+  return { ...orm, findForList, findByIdInProject, lockByIdInProject, findMembers, countRoleHolders };
 };

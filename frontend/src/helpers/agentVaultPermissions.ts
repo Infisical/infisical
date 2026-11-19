@@ -1,34 +1,164 @@
-import { MongoAbility } from "@casl/ability";
+import { MongoAbility, subject } from "@casl/ability";
 
 import {
+  ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultProxyActions,
+  ProjectPermissionAgentVaultServiceActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultSkillActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 
-// A member reads the skills on bundles they reach from those bundles. The library lists every skill in the project, so
-// it is for whoever can change it.
-export const canManageAgentVaultSkills = (permission: MongoAbility<ProjectPermissionSet>) =>
-  [
-    ProjectPermissionAgentVaultSkillActions.Create,
-    ProjectPermissionAgentVaultSkillActions.Edit,
-    ProjectPermissionAgentVaultSkillActions.Delete
-  ].some((action) => permission.can(action, ProjectPermissionSub.AgentVaultSkills));
+// The library is for anyone who can read or use some skill, which its list needs. Skills reached only through a bundle
+// show on that bundle's page.
+export const canReadAgentVaultSkills = (permission: MongoAbility<ProjectPermissionSet>) =>
+  [ProjectPermissionAgentVaultSkillActions.Read, ProjectPermissionAgentVaultSkillActions.Use].some(
+    (action) => permission.can(action, ProjectPermissionSub.AgentVaultSkills)
+  );
 
-// Services are written with Edit on access bundles, the check the API makes before any service change.
+// Services take their own subject: creating, editing and deleting them is what managing them means.
 export const canManageAgentVaultServices = (permission: MongoAbility<ProjectPermissionSet>) =>
+  [
+    ProjectPermissionAgentVaultServiceActions.Create,
+    ProjectPermissionAgentVaultServiceActions.Edit,
+    ProjectPermissionAgentVaultServiceActions.Delete
+  ].some((action) => permission.can(action, ProjectPermissionSub.AgentVaultServices));
+
+// Whether some service could be the caller's to use, directly or through a bundle, which is what personal values and
+// the setup counts are about.
+export const canUseAgentVaultServices = (permission: MongoAbility<ProjectPermissionSet>) =>
   permission.can(
-    ProjectPermissionAgentVaultAccessBundleActions.Edit,
+    ProjectPermissionAgentVaultAccessBundleActions.Use,
+    ProjectPermissionSub.AgentVaultAccessBundles
+  ) ||
+  permission.can(
+    ProjectPermissionAgentVaultServiceActions.Use,
+    ProjectPermissionSub.AgentVaultServices
+  );
+
+export const canUseAgentVaultAccessBundles = (permission: MongoAbility<ProjectPermissionSet>) =>
+  permission.can(
+    ProjectPermissionAgentVaultAccessBundleActions.Use,
     ProjectPermissionSub.AgentVaultAccessBundles
   );
 
-// The setup checklist walks through a proxy, a bundle, a service and the project's first session, and checks the last
-// by listing everyone's sessions, so it is only for someone who can do all of that.
+// Whether some skill could be the caller's to put in a session, directly or through a bundle.
+export const canUseAgentVaultSkills = (permission: MongoAbility<ProjectPermissionSet>) =>
+  canUseAgentVaultAccessBundles(permission) ||
+  permission.can(
+    ProjectPermissionAgentVaultSkillActions.Use,
+    ProjectPermissionSub.AgentVaultSkills
+  );
+
+// Each list below refuses a role with none of these, so the nav leaves the page out and the page shows the restricted
+// state instead of a failed request.
+export const canReadAgentVaultSessions = (permission: MongoAbility<ProjectPermissionSet>) =>
+  permission.can(
+    ProjectPermissionAgentVaultSessionActions.Read,
+    ProjectPermissionSub.AgentVaultSessions
+  );
+
+export const canReadAgentVaultAccessBundles = (permission: MongoAbility<ProjectPermissionSet>) =>
+  [
+    ProjectPermissionAgentVaultAccessBundleActions.Read,
+    ProjectPermissionAgentVaultAccessBundleActions.Use
+  ].some((action) => permission.can(action, ProjectPermissionSub.AgentVaultAccessBundles));
+
+// A service in a bundle the caller can use counts as theirs to see.
+export const canReadAgentVaultServices = (permission: MongoAbility<ProjectPermissionSet>) =>
+  [
+    ProjectPermissionAgentVaultServiceActions.Read,
+    ProjectPermissionAgentVaultServiceActions.Use
+  ].some((action) => permission.can(action, ProjectPermissionSub.AgentVaultServices)) ||
+  permission.can(
+    ProjectPermissionAgentVaultAccessBundleActions.Use,
+    ProjectPermissionSub.AgentVaultAccessBundles
+  );
+
+export const canReadAgentVaultProxies = (permission: MongoAbility<ProjectPermissionSet>) =>
+  permission.can(
+    ProjectPermissionAgentVaultProxyActions.Read,
+    ProjectPermissionSub.AgentVaultProxies
+  );
+
+export const canOnAgentVaultAccessBundle = (
+  permission: MongoAbility<ProjectPermissionSet>,
+  action: ProjectPermissionAgentVaultAccessBundleActions,
+  accessBundleId: string
+) =>
+  permission.can(action, subject(ProjectPermissionSub.AgentVaultAccessBundles, { accessBundleId }));
+
+export const canOnAgentVaultService = (
+  permission: MongoAbility<ProjectPermissionSet>,
+  action: ProjectPermissionAgentVaultServiceActions,
+  serviceId: string
+) => permission.can(action, subject(ProjectPermissionSub.AgentVaultServices, { serviceId }));
+
+export const canOnAgentVaultSkill = (
+  permission: MongoAbility<ProjectPermissionSet>,
+  action: ProjectPermissionAgentVaultSkillActions,
+  skillId: string
+) => permission.can(action, subject(ProjectPermissionSub.AgentVaultSkills, { skillId }));
+
+// What a session can carry: lists also return what the caller can only read, which a session is refused.
+export const canUseAgentVaultAccessBundle = (
+  permission: MongoAbility<ProjectPermissionSet>,
+  accessBundleId: string
+) =>
+  canOnAgentVaultAccessBundle(
+    permission,
+    ProjectPermissionAgentVaultAccessBundleActions.Use,
+    accessBundleId
+  );
+
+type TBundledItem = { id: string; accessBundles: { id: string }[] };
+
+export const canUseAgentVaultService = (
+  permission: MongoAbility<ProjectPermissionSet>,
+  service: TBundledItem
+) =>
+  canOnAgentVaultService(permission, ProjectPermissionAgentVaultServiceActions.Use, service.id) ||
+  service.accessBundles.some((bundle) => canUseAgentVaultAccessBundle(permission, bundle.id));
+
+export const canUseAgentVaultSkill = (
+  permission: MongoAbility<ProjectPermissionSet>,
+  skill: TBundledItem
+) =>
+  canOnAgentVaultSkill(permission, ProjectPermissionAgentVaultSkillActions.Use, skill.id) ||
+  skill.accessBundles.some((bundle) => canUseAgentVaultAccessBundle(permission, bundle.id));
+
+// The members API takes adding a member, or changing one's roles, on users, groups and machine identities alike when a
+// request names all three kinds, so assigning a role from anywhere needs Create and Edit on all three.
+export const canChangeAgentVaultMembers = (permission: MongoAbility<ProjectPermissionSet>) =>
+  [ProjectPermissionMemberActions.Create, ProjectPermissionMemberActions.Edit].every((action) =>
+    permission.can(action, ProjectPermissionSub.Member)
+  ) &&
+  [ProjectPermissionActions.Create, ProjectPermissionActions.Edit].every((action) =>
+    permission.can(action, ProjectPermissionSub.Groups)
+  ) &&
+  [ProjectPermissionIdentityActions.Create, ProjectPermissionIdentityActions.Edit].every((action) =>
+    permission.can(action, ProjectPermissionSub.Identity)
+  );
+
+// The members list answers with the kinds of member the caller can read, so reading any one of them is enough.
+export const canReadAgentVaultMembers = (permission: MongoAbility<ProjectPermissionSet>) =>
+  permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) ||
+  permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups) ||
+  permission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
+
+// Access Control has a tab for each kind of member and one for roles, so reading any of them opens it.
+export const canOpenAgentVaultAccessControl = (permission: MongoAbility<ProjectPermissionSet>) =>
+  canReadAgentVaultMembers(permission) ||
+  permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
+
+// The setup checklist walks through a proxy, a bundle, a service created into it and the project's first session, and
+// checks the last by listing everyone's sessions, so it is only for someone who can do all of that.
 export const canSetUpAgentVault = (permission: MongoAbility<ProjectPermissionSet>) =>
   permission.can(
     ProjectPermissionAgentVaultProxyActions.Create,
@@ -41,6 +171,10 @@ export const canSetUpAgentVault = (permission: MongoAbility<ProjectPermissionSet
   permission.can(
     ProjectPermissionAgentVaultAccessBundleActions.Edit,
     ProjectPermissionSub.AgentVaultAccessBundles
+  ) &&
+  permission.can(
+    ProjectPermissionAgentVaultServiceActions.Create,
+    ProjectPermissionSub.AgentVaultServices
   ) &&
   permission.can(
     ProjectPermissionAgentVaultSessionActions.ReadAny,

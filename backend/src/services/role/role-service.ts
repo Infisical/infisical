@@ -1,7 +1,7 @@
 import { packRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
 
-import { AccessScope, ActionProjectType, OrganizationActionScope, TableName } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, OrganizationActionScope, ProjectType, TableName } from "@app/db/schemas";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -83,13 +83,21 @@ export const roleServiceFactory = ({
     [AccessScope.Project]: projectRoleFactory
   };
 
+  // Access in an Agent Vault project comes from custom roles (its only built-in roles are Admin and No Access), so its
+  // custom roles work on every plan.
+  const isRbacExempt = async (scopeData: TCreateRoleDTO["scopeData"]) => {
+    if (scopeData.scope !== AccessScope.Project) return false;
+    const project = await projectDAL.findById(scopeData.projectId);
+    return project?.type === ProjectType.AgentVault;
+  };
+
   const createRole = async (dto: TCreateRoleDTO) => {
     const { data, scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
     await factory.onCreateRoleGuard(dto);
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
-    if (!plan?.has(PlanFeature.Rbac)) {
+    if (!plan?.has(PlanFeature.Rbac) && !(await isRbacExempt(scopeData))) {
       throw new BadRequestError({
         message:
           "Failed to create custom role due to plan RBAC restriction. Upgrade to Infisical Enterprise plan to create custom roles."
@@ -128,7 +136,7 @@ export const roleServiceFactory = ({
     await factory.onUpdateRoleGuard(dto);
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
-    if (!plan?.has(PlanFeature.Rbac)) {
+    if (!plan?.has(PlanFeature.Rbac) && !(await isRbacExempt(scopeData))) {
       throw new BadRequestError({
         message:
           "Failed to update custom role due to plan RBAC restriction. Upgrade to Infisical Enterprise plan to update custom roles."
