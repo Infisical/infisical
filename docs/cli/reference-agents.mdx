@@ -644,7 +644,7 @@ infisical agent-vault skills push ./skills/code-review \
 infisical agent-vault skills get [name] [flags]
 ```
 
-List the skills in an Agent Vault project, or pass a skill's name to show one skill. Without a name, the command prints each skill's name, its latest version, and the access bundles it's in:
+List the skills in an Agent Vault project, or pass a skill's name to show one skill. Without a name, the command prints each skill's name, its latest version, and the access bundles it's in (for a member, only the ones granted to them):
 
 ```text
 NAME             VERSION  ACCESS BUNDLES
@@ -665,7 +665,7 @@ FILES
 
 To download the files, run [infisical agent-vault skills pull](#agent-vault-skills-pull).
 
-An admin of the project sees every skill. A member sees only the skills on the access bundles they've been granted.
+An admin of the project sees every skill. A member sees only the skills on the access bundles they've been granted. To run as a machine identity from a script or CI, pass `--client-id` and `--client-secret`. Otherwise the command runs as your logged-in user.
 
 The command reads the project the same way as [infisical agent-vault skills push](#agent-vault-skills-push): from `--project-id`, then `INFISICAL_AGENT_VAULT_PROJECT_ID`, then `INFISICAL_PROJECT_ID`.
 
@@ -717,11 +717,13 @@ code-review: v4 -> ./skills/code-review
 
 If the folder already exists, the command stops without downloading anything, unless you pass `--force`.
 
+`pull` and `push` skip hidden files, so a skill's hidden files are lost if you pull it and push it again.
+
 <Warning>
 `--force` deletes everything in the folder that isn't part of the skill, including hidden files and folders such as `.git`.
 </Warning>
 
-An admin of the project can pull any version of any skill. A member can pull only the latest version of the skills on the access bundles they've been granted. To pull a skill, edit it, and push it again, you need the Admin role, because `skills push` needs it.
+An admin of the project can pull any version of any skill. A member can pull only the latest version of the skills on the access bundles they've been granted. To pull a skill, edit it, and push it again, you need the Admin role, because `skills push` needs it. To run as a machine identity from a script or CI, pass `--client-id` and `--client-secret`. Otherwise the command runs as your logged-in user.
 
 The command reads the project the same way as [infisical agent-vault skills push](#agent-vault-skills-push): from `--project-id`, then `INFISICAL_AGENT_VAULT_PROJECT_ID`, then `INFISICAL_PROJECT_ID`.
 
@@ -772,7 +774,7 @@ infisical agent-vault skills delete <name> [flags]
 
 Delete a skill and every version of it from an Agent Vault project. Infisical removes the skill from every access bundle, so agents don't get the skill the next time they start. Copies of the skill that the CLI already installed on agents' hosts stay until you delete them. The user or machine identity needs the Admin role in the Agent Vault project.
 
-The command asks you to type the skill's name before it deletes anything. To skip the question, pass `--yes`. If there's no terminal to ask in, such as in a script or an agent, and you don't pass `--yes`, the command deletes nothing and prints the command to run again with `--yes`.
+The command asks you to type the skill's name before it deletes anything. To skip the question, pass `--yes`. If there's no terminal to ask in, such as in a script or an agent, and you don't pass `--yes`, the command deletes nothing, fails with `confirmation_required`, and prints the command to run again with `--yes`.
 
 The command needs `--project-id`, even if you've set the project in an environment variable.
 

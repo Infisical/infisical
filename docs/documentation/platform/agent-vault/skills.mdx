@@ -156,6 +156,8 @@ You can't rename or delete `SKILL.md`. The editor doesn't show binary files, suc
     infisical agent-vault skills pull code-review ./skills/code-review --project-id <project-id>
     ```
 
+    `pull` and `push` skip hidden files, so a skill's hidden files are lost if you pull it and push it again.
+
     Change the files in the skill folder, then push the folder again:
 
     ```bash
