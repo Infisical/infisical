@@ -116,6 +116,7 @@ export const RoleEditor = ({
   duplicate,
   remove
 }: RoleEditorProps) => {
+  const go = useGo();
   const stored = useMemo(
     () => permissionsFromApi(scope, role.permissions),
     [scope, role.permissions]
@@ -197,85 +198,84 @@ export const RoleEditor = ({
 
   return (
     <Stack gap={24}>
-      <Stack gap={8}>
-        <div>
-          <Button variant="ghost" size="sm" icon="chev-left" asChild>
-            <a href={backHref}>{backLabel ?? (scope === "org" ? "Roles" : "Project roles")}</a>
-          </Button>
-        </div>
-        <PageHeader
-          title={role.name}
-          description={`${role.slug}${role.description ? ` - ${role.description}` : ""}`}
-          actions={
-            <Inline gap={8}>
-              {importMenu}
+      <PageHeader
+        breadcrumb={[
+          {
+            label: backLabel ?? (scope === "org" ? "Roles" : "Project roles"),
+            link: go.link(backHref)
+          }
+        ]}
+        title={role.name}
+        description={`${role.slug}${role.description ? ` - ${role.description}` : ""}`}
+        actions={
+          <Inline gap={8}>
+            {importMenu}
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={!dirty || saving}
+              onClick={() => (scope === "project" ? setOverlay("discard") : discard())}
+            >
+              Discard
+            </Button>
+            <Gate allowed={editable} reason={reason}>
               <Button
                 type="button"
-                variant="ghost"
-                disabled={!dirty || saving}
-                onClick={() => (scope === "project" ? setOverlay("discard") : discard())}
+                variant="primary"
+                disabled={!editable || !dirty}
+                loading={saving}
+                onClick={save}
               >
-                Discard
+                <Icon icon={SaveIcon} />
+                Save
               </Button>
-              <Gate allowed={editable} reason={reason}>
-                <Button
-                  type="button"
-                  variant="primary"
-                  disabled={!editable || !dirty}
-                  loading={saving}
-                  onClick={save}
-                >
-                  <Icon icon={SaveIcon} />
-                  Save
+            </Gate>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" iconRight="more">
+                  Options
                 </Button>
-              </Gate>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" iconRight="more">
-                    Options
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => copy(role.id, "Copied ID to clipboard")}>
-                    <Icon name="copy" />
-                    Copy ID
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => copy(role.slug, "Copied slug to clipboard")}>
-                    <Icon name="copy" />
-                    Copy slug
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={!isCustom || !can.edit}
-                    description={builtInNote}
-                    onSelect={() => setOverlay("edit")}
-                  >
-                    <Icon name="pencil" />
-                    Edit role
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={!isCustom || !can.create}
-                    description={builtInNote}
-                    onSelect={() => setOverlay("duplicate")}
-                  >
-                    <Icon name="copy" />
-                    Duplicate role
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    disabled={!isCustom || !can.delete || isDefault}
-                    description={isDefault ? DEFAULT_ROLE : builtInNote}
-                    onSelect={() => setOverlay("delete")}
-                  >
-                    <Icon name="trash" />
-                    Delete role
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </Inline>
-          }
-        />
-      </Stack>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => copy(role.id, "Copied ID to clipboard")}>
+                  <Icon name="copy" />
+                  Copy ID
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => copy(role.slug, "Copied slug to clipboard")}>
+                  <Icon name="copy" />
+                  Copy slug
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!isCustom || !can.edit}
+                  description={builtInNote}
+                  onSelect={() => setOverlay("edit")}
+                >
+                  <Icon name="pencil" />
+                  Edit role
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!isCustom || !can.create}
+                  description={builtInNote}
+                  onSelect={() => setOverlay("duplicate")}
+                >
+                  <Icon name="copy" />
+                  Duplicate role
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={!isCustom || !can.delete || isDefault}
+                  description={isDefault ? DEFAULT_ROLE : builtInNote}
+                  onSelect={() => setOverlay("delete")}
+                >
+                  <Icon name="trash" />
+                  Delete role
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </Inline>
+        }
+      />
       <RuleTable
         scope={scope}
         draft={current}

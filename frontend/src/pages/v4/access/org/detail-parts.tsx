@@ -30,14 +30,6 @@ export const Section = ({
   </section>
 );
 
-export const BackButton = ({ label, onClick }: { label: string; onClick: () => void }) => (
-  <span className={css.start}>
-    <Button variant="ghost" size="sm" icon="chev-left" onClick={onClick}>
-      {label}
-    </Button>
-  </span>
-);
-
 export const CopyButton = ({
   value,
   label,

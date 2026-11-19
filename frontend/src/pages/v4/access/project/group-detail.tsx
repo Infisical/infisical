@@ -366,17 +366,6 @@ const CopyGroupId = ({ id }: { id: string }) => {
   );
 };
 
-const BackLink = ({ href }: { href: string }) => {
-  const scope = useProjectScope();
-  return (
-    <div>
-      <Button variant="link" icon="chev-left" asChild>
-        <a href={href}>{`${accessLabel(scope.projectType, "groups")}`}</a>
-      </Button>
-    </div>
-  );
-};
-
 export const ProjectGroupDetail = () => {
   const scope = useProjectScope();
   const { projectId } = scope;
@@ -387,12 +376,13 @@ export const ProjectGroupDetail = () => {
   const query = useV4Adapter("access").useProjectGroup(projectId, groupId, scope.projectType);
   const [removing, setRemoving] = useState(false);
   const back = accessLinks.project(scope, ProjectAccessControlTabs.Groups);
+  const breadcrumb = [{ label: accessLabel(scope.projectType, "groups"), link: go.link(back) }];
 
   if (permissionPending || query.isPending) return <PageLoader label="Loading group" />;
   if (!permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups))
     return (
-      <Stack gap={32}>
-        <BackLink href={back} />
+      <Stack gap={24}>
+        <PageHeader breadcrumb={breadcrumb} title="Group" />
         <AccessRestricted requirement="read Groups" />
       </Stack>
     );
@@ -400,8 +390,8 @@ export const ProjectGroupDetail = () => {
   const membership = query.data;
   if (!membership)
     return (
-      <Stack gap={32}>
-        <BackLink href={back} />
+      <Stack gap={24}>
+        <PageHeader breadcrumb={breadcrumb} title="Group" />
         <EmptyState icon="alert" title="Group not found" />
       </Stack>
     );
@@ -409,48 +399,46 @@ export const ProjectGroupDetail = () => {
   const { group } = membership;
   return (
     <Stack gap={24}>
-      <Stack gap={12}>
-        <BackLink href={back} />
-        <PageHeader
-          title={group.name}
-          actions={
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" iconRight="more">
-                  Options
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onSelect={async () => {
-                    if (await copyText(group.id))
-                      toast({ tone: "neutral", title: "Group ID copied to clipboard" });
-                  }}
-                >
-                  <Icon name="copy" />
-                  Copy group ID
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  disabled={
-                    !permission.can(ProjectPermissionActions.Delete, ProjectPermissionSub.Groups)
-                  }
-                  description={
-                    permission.can(ProjectPermissionActions.Delete, ProjectPermissionSub.Groups)
-                      ? undefined
-                      : RESTRICTED
-                  }
-                  onSelect={() => setRemoving(true)}
-                >
-                  <Icon name="trash" />
-                  {`Remove from ${accessNoun(scope.projectType)}`}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          }
-        />
-      </Stack>
+      <PageHeader
+        breadcrumb={breadcrumb}
+        title={group.name}
+        actions={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" iconRight="more">
+                Options
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onSelect={async () => {
+                  if (await copyText(group.id))
+                    toast({ tone: "neutral", title: "Group ID copied to clipboard" });
+                }}
+              >
+                <Icon name="copy" />
+                Copy group ID
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={
+                  !permission.can(ProjectPermissionActions.Delete, ProjectPermissionSub.Groups)
+                }
+                description={
+                  permission.can(ProjectPermissionActions.Delete, ProjectPermissionSub.Groups)
+                    ? undefined
+                    : RESTRICTED
+                }
+                onSelect={() => setRemoving(true)}
+              >
+                <Icon name="trash" />
+                {`Remove from ${accessNoun(scope.projectType)}`}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
+      />
       <DetailLayout
         asideLabel="Details"
         aside={

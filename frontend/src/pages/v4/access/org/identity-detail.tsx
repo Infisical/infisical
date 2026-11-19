@@ -181,14 +181,6 @@ const EditIdentityDialog = ({
 
 const backHref = (orgId: string) => accessLinks.org(orgId, OrgAccessControlTabSections.Identities);
 
-const BackLink = ({ orgId }: { orgId: string }) => (
-  <span className={css.start}>
-    <Button variant="ghost" size="sm" icon="chev-left" asChild>
-      <a href={backHref(orgId)}>Organization machine identities</a>
-    </Button>
-  </span>
-);
-
 const IdentityHeaderActions = ({
   identity,
   owned,
@@ -352,22 +344,22 @@ export const OrgIdentityDetail = () => {
   return (
     <div className={css.detailPage}>
       <Stack gap={24}>
-        <Stack gap={8}>
-          <BackLink orgId={orgId} />
-          <PageHeader
-            title={identity.name}
-            actions={
-              <IdentityHeaderActions
-                identity={identity}
-                owned={isOwnIdentity}
-                showAlerts={isOwnIdentity && !identity.projectId}
-                canEdit={canEdit}
-                canDelete={canDelete}
-                onDelete={() => setDeleting(true)}
-              />
-            }
-          />
-        </Stack>
+        <PageHeader
+          breadcrumb={[
+            { label: "Organization machine identities", link: go.link(backHref(orgId)) }
+          ]}
+          title={identity.name}
+          actions={
+            <IdentityHeaderActions
+              identity={identity}
+              owned={isOwnIdentity}
+              showAlerts={isOwnIdentity && !identity.projectId}
+              canEdit={canEdit}
+              canDelete={canDelete}
+              onDelete={() => setDeleting(true)}
+            />
+          }
+        />
         <DetailLayout
           asideLabel="Details"
           aside={

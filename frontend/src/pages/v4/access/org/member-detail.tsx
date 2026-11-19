@@ -63,7 +63,7 @@ import { formatDateTime, orgRoleName, orgRoleSlug, roleOptions } from "../roles"
 import { failed, saved, toast } from "../toast";
 import { Gate, ListToolbar, usePagedList, RESTRICTED } from "../ui";
 import { useCustomRoleGate } from "./custom-role-gate";
-import { BackButton, CopyButton, Dash, MetadataBadges, Value, VerifiedMark } from "./detail-parts";
+import { CopyButton, Dash, MetadataBadges, Value, VerifiedMark } from "./detail-parts";
 import { type InviteLink, InviteUsersSheet } from "./invite-users-sheet";
 import { type MetadataEntry, MetadataEditor, metadataErrors } from "./metadata-editor";
 import { ProjectMembershipsSection } from "./project-memberships";
@@ -365,74 +365,70 @@ export const OrgMemberDetail = () => {
   return (
     <div className={css.detailPage}>
       <Stack gap={24}>
-        <Stack gap={8}>
-          <BackButton label="Organization users" onClick={back} />
-          <PageHeader
-            title={name ?? user.username}
-            actions={
-              !self && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" iconRight="more">
-                      Options
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onSelect={async () => {
-                        if (await copyText(user.id))
-                          toast({ tone: "neutral", title: "User ID copied to clipboard" });
-                      }}
-                    >
-                      <Icon name="copy" />
-                      Copy user ID
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      disabled={!canEdit}
-                      description={canEdit ? undefined : RESTRICTED}
-                      onSelect={() => setEditing(true)}
-                    >
-                      <Icon name="pencil" />
-                      Edit user
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      disabled={!canEdit}
-                      description={canEdit ? undefined : RESTRICTED}
-                      onSelect={() =>
-                        membership.isActive ? setDeactivating(true) : setActive(true)
-                      }
-                    >
-                      <Icon name="user" />
-                      {membership.isActive ? "Deactivate user" : "Activate user"}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      variant="destructive"
-                      disabled={
-                        !permission.can(
-                          OrgPermissionMemberActions.Delete,
-                          OrgPermissionSubjects.Member
-                        )
-                      }
-                      description={
-                        permission.can(
-                          OrgPermissionMemberActions.Delete,
-                          OrgPermissionSubjects.Member
-                        )
-                          ? undefined
-                          : RESTRICTED
-                      }
-                      onSelect={() => setRemoving(true)}
-                    >
-                      <Icon name="trash" />
-                      Remove user
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )
-            }
-          />
-        </Stack>
+        <PageHeader
+          breadcrumb={[{ label: "Organization users", link: go.link(backHref) }]}
+          title={name ?? user.username}
+          actions={
+            !self && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" iconRight="more">
+                    Options
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onSelect={async () => {
+                      if (await copyText(user.id))
+                        toast({ tone: "neutral", title: "User ID copied to clipboard" });
+                    }}
+                  >
+                    <Icon name="copy" />
+                    Copy user ID
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!canEdit}
+                    description={canEdit ? undefined : RESTRICTED}
+                    onSelect={() => setEditing(true)}
+                  >
+                    <Icon name="pencil" />
+                    Edit user
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!canEdit}
+                    description={canEdit ? undefined : RESTRICTED}
+                    onSelect={() => (membership.isActive ? setDeactivating(true) : setActive(true))}
+                  >
+                    <Icon name="user" />
+                    {membership.isActive ? "Deactivate user" : "Activate user"}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={
+                      !permission.can(
+                        OrgPermissionMemberActions.Delete,
+                        OrgPermissionSubjects.Member
+                      )
+                    }
+                    description={
+                      permission.can(
+                        OrgPermissionMemberActions.Delete,
+                        OrgPermissionSubjects.Member
+                      )
+                        ? undefined
+                        : RESTRICTED
+                    }
+                    onSelect={() => setRemoving(true)}
+                  >
+                    <Icon name="trash" />
+                    Remove user
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )
+          }
+        />
         <DetailLayout
           asideLabel="Details"
           aside={

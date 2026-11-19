@@ -40,7 +40,6 @@ import type { TAgentVaultBundleSkill, TAgentVaultService } from "@app/hooks/api/
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
-import { BackButton } from "../../access/org/detail-parts";
 import { useProjectPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
@@ -350,50 +349,50 @@ const AccessBundleDetail = ({
       <PageTitle title={accessBundle.name || "Access Bundle"} />
       <div className={css.detailPage}>
         <Stack gap={24}>
-          <Stack gap={8}>
-            <BackButton label="Access bundles" onClick={back} />
-            <PageHeader
-              title={accessBundle.name}
-              description={accessBundle.description || undefined}
-              badges={
-                <DocumentationLink href={AgentVaultDocs.accessBundles} subject="access bundles" />
-              }
-              actions={
-                canManageBundleMembers || canEditBundle || canDeleteBundle ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" iconRight="more">
-                        Options
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {canManageBundleMembers && (
-                        <DropdownMenuItem onSelect={() => setManaging(true)}>
-                          <Icon name="users" />
-                          Manage access
-                        </DropdownMenuItem>
-                      )}
-                      {canEditBundle && (
-                        <DropdownMenuItem onSelect={() => setEditing(true)}>
-                          <Icon name="pencil" />
-                          Edit access bundle
-                        </DropdownMenuItem>
-                      )}
-                      {(canManageBundleMembers || canEditBundle) && canDeleteBundle && (
-                        <DropdownMenuSeparator />
-                      )}
-                      {canDeleteBundle && (
-                        <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
-                          <Icon name="trash" />
-                          Delete access bundle
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : undefined
-              }
-            />
-          </Stack>
+          <PageHeader
+            breadcrumb={[
+              { label: "Access bundles", link: { to: listRoute, params: { orgId, projectId } } }
+            ]}
+            title={accessBundle.name}
+            description={accessBundle.description || undefined}
+            badges={
+              <DocumentationLink href={AgentVaultDocs.accessBundles} subject="access bundles" />
+            }
+            actions={
+              canManageBundleMembers || canEditBundle || canDeleteBundle ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" iconRight="more">
+                      Options
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {canManageBundleMembers && (
+                      <DropdownMenuItem onSelect={() => setManaging(true)}>
+                        <Icon name="users" />
+                        Manage access
+                      </DropdownMenuItem>
+                    )}
+                    {canEditBundle && (
+                      <DropdownMenuItem onSelect={() => setEditing(true)}>
+                        <Icon name="pencil" />
+                        Edit access bundle
+                      </DropdownMenuItem>
+                    )}
+                    {(canManageBundleMembers || canEditBundle) && canDeleteBundle && (
+                      <DropdownMenuSeparator />
+                    )}
+                    {canDeleteBundle && (
+                      <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
+                        <Icon name="trash" />
+                        Delete access bundle
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : undefined
+            }
+          />
           {needsSetup.length > 0 && (
             <Alert
               tone="warn"

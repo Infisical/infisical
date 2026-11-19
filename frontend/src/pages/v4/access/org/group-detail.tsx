@@ -66,7 +66,7 @@ import { useOrgId, useOrgPermission } from "../permissions";
 import { formatDate, orgRoleName, orgRoleSlug } from "../roles";
 import { failed, saved, toast } from "../toast";
 import { Gate, ListToolbar, Muted, RESTRICTED, type Sort } from "../ui";
-import { BackButton, CopyButton, Value } from "./detail-parts";
+import { CopyButton, Value } from "./detail-parts";
 import { GroupDialog } from "./group-dialog";
 import { ProjectMembershipsSection } from "./project-memberships";
 import { useDebounced } from "./use-debounced";
@@ -464,61 +464,61 @@ export const OrgGroupDetail = () => {
   return (
     <div className={css.detailPage}>
       <Stack gap={24}>
-        <Stack gap={8}>
-          <BackButton label="Organization groups" onClick={back} />
-          <PageHeader
-            title={group.name}
-            actions={
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" iconRight="more">
-                    Options
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onSelect={async () => {
-                      if (await copyText(group.id))
-                        toast({ tone: "neutral", title: "Group ID copied to clipboard" });
-                    }}
-                  >
-                    <Icon name="copy" />
-                    Copy group ID
-                  </DropdownMenuItem>
-                  {!isLinked && (
-                    <DropdownMenuItem
-                      disabled={!canEdit}
-                      description={canEdit ? undefined : RESTRICTED}
-                      onSelect={() => setEditing(true)}
-                    >
-                      <Icon name="pencil" />
-                      Edit group
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    disabled={
-                      !permission.can(
-                        OrgPermissionGroupActions.Delete,
-                        OrgPermissionSubjects.Groups
-                      )
-                    }
-                    description={
-                      permission.can(OrgPermissionGroupActions.Delete, OrgPermissionSubjects.Groups)
-                        ? undefined
-                        : RESTRICTED
-                    }
-                    onSelect={() => setDeleting(true)}
-                  >
-                    <Icon name="trash" />
-                    {isLinked ? "Unlink group" : "Delete group"}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+        <PageHeader
+          breadcrumb={[
+            {
+              label: "Organization groups",
+              link: go.link(accessLinks.org(orgId, OrgAccessControlTabSections.Groups))
             }
-          />
-        </Stack>
+          ]}
+          title={group.name}
+          actions={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" iconRight="more">
+                  Options
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={async () => {
+                    if (await copyText(group.id))
+                      toast({ tone: "neutral", title: "Group ID copied to clipboard" });
+                  }}
+                >
+                  <Icon name="copy" />
+                  Copy group ID
+                </DropdownMenuItem>
+                {!isLinked && (
+                  <DropdownMenuItem
+                    disabled={!canEdit}
+                    description={canEdit ? undefined : RESTRICTED}
+                    onSelect={() => setEditing(true)}
+                  >
+                    <Icon name="pencil" />
+                    Edit group
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={
+                    !permission.can(OrgPermissionGroupActions.Delete, OrgPermissionSubjects.Groups)
+                  }
+                  description={
+                    permission.can(OrgPermissionGroupActions.Delete, OrgPermissionSubjects.Groups)
+                      ? undefined
+                      : RESTRICTED
+                  }
+                  onSelect={() => setDeleting(true)}
+                >
+                  <Icon name="trash" />
+                  {isLinked ? "Unlink group" : "Delete group"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          }
+        />
         <DetailLayout
           asideLabel="Details"
           aside={

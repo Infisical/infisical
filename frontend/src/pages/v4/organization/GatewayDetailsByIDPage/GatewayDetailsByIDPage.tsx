@@ -48,14 +48,6 @@ import { ConnectedResourcesCard } from "./resources";
 
 const backHref = (orgId: string) => orgHref(orgId, "/networking?selectedTab=gateways");
 
-const BackLink = ({ orgId }: { orgId: string }) => (
-  <Stack align="start">
-    <Button variant="ghost" size="sm" icon="chev-left" asChild>
-      <a href={backHref(orgId)}>Gateways</a>
-    </Button>
-  </Stack>
-);
-
 const dateTime = (value: string) => format(new Date(value), "PPpp");
 
 const Connection = ({ gateway }: { gateway: TGatewayV2WithAuthMethod }) => {
@@ -182,67 +174,65 @@ export const GatewayDetailsByIDPage = () => {
 
   return (
     <Stack gap={24}>
-      <Stack gap={8}>
-        <BackLink orgId={orgId} />
-        <PageHeader
-          title={gateway.name}
-          actions={
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" iconRight="more">
-                  Options
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onSelect={async () => {
-                    if (await copyText(gateway.id))
-                      toast({ tone: "neutral", title: "Gateway ID copied to clipboard" });
-                  }}
-                >
-                  <Icon name="copy" />
-                  Copy gateway ID
+      <PageHeader
+        breadcrumb={[{ label: "Gateways", link: go.link(backHref(orgId)) }]}
+        title={gateway.name}
+        actions={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" iconRight="more">
+                Options
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onSelect={async () => {
+                  if (await copyText(gateway.id))
+                    toast({ tone: "neutral", title: "Gateway ID copied to clipboard" });
+                }}
+              >
+                <Icon name="copy" />
+                Copy gateway ID
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!canEdit}
+                description={canEdit ? undefined : RESTRICTED}
+                onSelect={() => setDialog("rename")}
+              >
+                <Icon name="pencil" />
+                Rename gateway
+              </DropdownMenuItem>
+              {isGatewayRegistered(gateway) && (
+                <DropdownMenuItem disabled={heartbeat.isPending} onSelect={onHeartbeat}>
+                  <Icon icon={HeartPulseIcon} />
+                  Trigger health check
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={!canEdit}
-                  description={canEdit ? undefined : RESTRICTED}
-                  onSelect={() => setDialog("rename")}
-                >
-                  <Icon name="pencil" />
-                  Rename gateway
-                </DropdownMenuItem>
-                {isGatewayRegistered(gateway) && (
-                  <DropdownMenuItem disabled={heartbeat.isPending} onSelect={onHeartbeat}>
-                    <Icon icon={HeartPulseIcon} />
-                    Trigger health check
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                {gateway.canRevoke && (
-                  <DropdownMenuItem
-                    variant="destructive"
-                    disabled={!canRevoke}
-                    description={canRevoke ? undefined : RESTRICTED}
-                    onSelect={() => setDialog("revoke")}
-                  >
-                    <Icon icon={BanIcon} />
-                    Revoke access
-                  </DropdownMenuItem>
-                )}
+              )}
+              <DropdownMenuSeparator />
+              {gateway.canRevoke && (
                 <DropdownMenuItem
                   variant="destructive"
-                  disabled={!canDelete}
-                  description={canDelete ? undefined : RESTRICTED}
-                  onSelect={() => setDialog("delete")}
+                  disabled={!canRevoke}
+                  description={canRevoke ? undefined : RESTRICTED}
+                  onSelect={() => setDialog("revoke")}
                 >
-                  <Icon name="trash" />
-                  Delete gateway
+                  <Icon icon={BanIcon} />
+                  Revoke access
                 </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          }
-        />
-      </Stack>
+              )}
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={!canDelete}
+                description={canDelete ? undefined : RESTRICTED}
+                onSelect={() => setDialog("delete")}
+              >
+                <Icon name="trash" />
+                Delete gateway
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
+      />
       <DetailLayout
         asideLabel="Details"
         aside={

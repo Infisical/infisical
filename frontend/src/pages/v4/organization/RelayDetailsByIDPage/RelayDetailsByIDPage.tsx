@@ -386,57 +386,51 @@ export const RelayDetailsByIDPage = () => {
 
   return (
     <Stack gap={24}>
-      <Stack gap={8}>
-        <Stack align="start">
-          <Button variant="ghost" size="sm" icon="chev-left" asChild>
-            <a href={backHref(orgId)}>Relays</a>
-          </Button>
-        </Stack>
-        <PageHeader
-          title={relay.name}
-          actions={
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" iconRight="more">
-                  Options
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onSelect={async () => {
-                    if (await copyText(relay.id))
-                      toast({ tone: "neutral", title: "Relay ID copied to clipboard" });
-                  }}
-                >
-                  <Icon name="copy" />
-                  Copy relay ID
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {relay.canRevoke && (
-                  <DropdownMenuItem
-                    variant="destructive"
-                    disabled={!canRevoke}
-                    description={canRevoke ? undefined : RESTRICTED}
-                    onSelect={() => setDialog("revoke")}
-                  >
-                    <Icon icon={BanIcon} />
-                    Revoke access
-                  </DropdownMenuItem>
-                )}
+      <PageHeader
+        breadcrumb={[{ label: "Relays", link: go.link(backHref(orgId)) }]}
+        title={relay.name}
+        actions={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" iconRight="more">
+                Options
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onSelect={async () => {
+                  if (await copyText(relay.id))
+                    toast({ tone: "neutral", title: "Relay ID copied to clipboard" });
+                }}
+              >
+                <Icon name="copy" />
+                Copy relay ID
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {relay.canRevoke && (
                 <DropdownMenuItem
                   variant="destructive"
-                  disabled={!canDelete}
-                  description={canDelete ? undefined : RESTRICTED}
-                  onSelect={() => setDialog("delete")}
+                  disabled={!canRevoke}
+                  description={canRevoke ? undefined : RESTRICTED}
+                  onSelect={() => setDialog("revoke")}
                 >
-                  <Icon name="trash" />
-                  Delete relay
+                  <Icon icon={BanIcon} />
+                  Revoke access
                 </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          }
-        />
-      </Stack>
+              )}
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={!canDelete}
+                description={canDelete ? undefined : RESTRICTED}
+                onSelect={() => setDialog("delete")}
+              >
+                <Icon name="trash" />
+                Delete relay
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
+      />
       <DetailLayout
         asideLabel="Details"
         aside={

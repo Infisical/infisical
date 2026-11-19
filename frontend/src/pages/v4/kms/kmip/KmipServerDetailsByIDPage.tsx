@@ -27,7 +27,7 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import type { TKmipServerWithAuthMethod } from "@app/hooks/api/kmipServers/types";
 
-import { BackButton, CopyButton } from "../../access/org/detail-parts";
+import { CopyButton } from "../../access/org/detail-parts";
 import { useOrgId, useOrgPermission } from "../../access/permissions";
 import { formatDateTime } from "../../access/roles";
 import { failed, toast } from "../../access/toast";
@@ -163,54 +163,52 @@ export const KmipServerDetailsByIDPage = () => {
     <TooltipProvider>
       <div className={css.detailPage}>
         <Stack gap={24}>
-          <Stack gap={8}>
-            <BackButton label="KMIP servers" onClick={back} />
-            <PageHeader
-              title={server.name}
-              badges={<DocumentationLink href={KMIP_SERVER_DOCS} subject="KMIP servers" />}
-              actions={
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" iconRight="more">
-                      Options
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onSelect={async () => {
-                        if (await copyText(server.id))
-                          toast({ tone: "neutral", title: "KMIP server ID copied to clipboard" });
-                      }}
-                    >
-                      <Icon name="copy" />
-                      Copy KMIP server ID
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    {server.canRevoke && (
-                      <DropdownMenuItem
-                        variant="destructive"
-                        disabled={!canRevoke}
-                        description={canRevoke ? undefined : RESTRICTED}
-                        onSelect={() => setDialog("revoke")}
-                      >
-                        <Icon name="lock" />
-                        Revoke access
-                      </DropdownMenuItem>
-                    )}
+          <PageHeader
+            breadcrumb={[{ label: "KMIP servers", link: go.link(kmipLinks.servers(orgId)) }]}
+            title={server.name}
+            badges={<DocumentationLink href={KMIP_SERVER_DOCS} subject="KMIP servers" />}
+            actions={
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" iconRight="more">
+                    Options
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onSelect={async () => {
+                      if (await copyText(server.id))
+                        toast({ tone: "neutral", title: "KMIP server ID copied to clipboard" });
+                    }}
+                  >
+                    <Icon name="copy" />
+                    Copy KMIP server ID
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {server.canRevoke && (
                     <DropdownMenuItem
                       variant="destructive"
-                      disabled={!canDelete}
-                      description={canDelete ? undefined : RESTRICTED}
-                      onSelect={() => setDialog("delete")}
+                      disabled={!canRevoke}
+                      description={canRevoke ? undefined : RESTRICTED}
+                      onSelect={() => setDialog("revoke")}
                     >
-                      <Icon name="trash" />
-                      Delete KMIP server
+                      <Icon name="lock" />
+                      Revoke access
                     </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              }
-            />
-          </Stack>
+                  )}
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={!canDelete}
+                    description={canDelete ? undefined : RESTRICTED}
+                    onSelect={() => setDialog("delete")}
+                  >
+                    <Icon name="trash" />
+                    Delete KMIP server
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            }
+          />
           <DetailLayout
             asideLabel="Details"
             aside={
