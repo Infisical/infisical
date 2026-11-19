@@ -1179,6 +1179,7 @@ Key plugins in `src/server/plugins/`:
 - `audit-log.ts` — request audit logging to queue
 - `api-metrics.ts` — OpenTelemetry metrics collection
 - `inject-rate-limits.ts` — per-route rate limiting
+- `secrets-rate-limit.ts`: per-actor, then per-org limit on every route whose `config.rateLimit` is `secretsLimit`, on top of its per-IP limit, and only when `SECRETS_RATE_LIMIT_ENABLED` is on. The actor (`secretsActorLimit` from the plan, else `secretsLimit` plus `SECRETS_ACTOR_RATE_LIMIT_OFFSET`) is checked before the org (`secretsOrgLimit` from the plan, else `secretsLimit` plus `SECRETS_ORG_RATE_LIMIT_OFFSET`) because a check counts the request even when it refuses it, so the other order lets one actor's refused requests use up the org's limit
 - `secret-scanner.ts` / `secret-scanner-v2.ts` — secret scanning webhooks
 - `serve-ui.ts` — frontend asset serving
 - `swagger.ts` — Swagger/OpenAPI UI
