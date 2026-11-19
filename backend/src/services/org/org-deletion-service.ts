@@ -5,7 +5,6 @@ import { THoneyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/h
 import { NotFoundError } from "@app/lib/errors";
 import { EventModificationType } from "@app/services/event-outbox/event-definition";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
-import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TReminderServiceFactory } from "@app/services/reminder/reminder-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -20,7 +19,6 @@ type TOrgDeletionServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "find">;
   secretDAL: Pick<TSecretDALFactory, "find">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
-  projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
   honeyTokenCleanupService: Pick<THoneyTokenCleanupServiceFactory, "revokeOrgHoneyTokens">;
   eventEmitter: TEventEmitter;
@@ -35,7 +33,6 @@ export const orgDeletionServiceFactory = ({
   projectDAL,
   secretDAL,
   folderDAL,
-  projectBotService,
   reminderService,
   honeyTokenCleanupService,
   eventEmitter
@@ -63,10 +60,9 @@ export const orgDeletionServiceFactory = ({
     // pool conn while waiting on another.
     const projects = await projectDAL.find({ orgId });
     for await (const project of projects) {
-      await fnDeleteProjectSecretReminders(project.id, {
+      await fnDeleteProjectSecretReminders(project, {
         secretDAL,
         reminderService,
-        projectBotService,
         folderDAL
       });
     }
