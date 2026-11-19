@@ -1,3 +1,4 @@
+import { isIPv6 } from "@app/helpers/ip";
 import {
   TCertificatePolicy,
   TCertificatePolicyRule,
@@ -76,11 +77,29 @@ const normalizeUri = (value: string): string => {
 const normalizeValue = (value: string, isUri: boolean) =>
   isUri ? normalizeUri(value) : value.toLowerCase();
 
+const canonicalIp = (value: string): string => {
+  try {
+    return new URL(`http://[${value}]`).hostname;
+  } catch {
+    return value.toLowerCase();
+  }
+};
+
+const normalizeSanValue = (value: string, sanType?: CertSubjectAlternativeNameType) => {
+  if (sanType === CertSubjectAlternativeNameType.URI) return normalizeUri(value);
+  if (sanType === CertSubjectAlternativeNameType.IP_ADDRESS && isIPv6(value))
+    return canonicalIp(value);
+  if (sanType === CertSubjectAlternativeNameType.DNS_NAME)
+    return value.toLowerCase().replace(/\.$/, "");
+  return value.toLowerCase();
+};
+
 const matchesAny = (
   value: string,
   patterns?: string[],
   isUri = false,
-  request: TCertRequestReferenceValues = {}
+  request: TCertRequestReferenceValues = {},
+  sanType?: CertSubjectAlternativeNameType
 ): boolean =>
   Boolean(
     patterns?.some((pattern) => {
@@ -91,7 +110,10 @@ const matchesAny = (
         );
       }
       const resolved = REQUEST_REFERENCES[pattern].resolve(request);
-      return resolved ? normalizeValue(value, isUri) === normalizeValue(resolved, isUri) : false;
+      const referenceType = sanType ?? (isUri ? CertSubjectAlternativeNameType.URI : undefined);
+      return resolved
+        ? normalizeSanValue(value, referenceType) === normalizeSanValue(resolved, referenceType)
+        : false;
     })
   );
 
@@ -448,11 +470,11 @@ const validateSanValue = (
   const isUri = type === CertSubjectAlternativeNameType.URI;
   const label = `${formatSANType(type)} SAN`;
   if (!rule) return hasSanPolicy ? `${label} is not allowed by this policy` : undefined;
-  if (matchesAny(trimmed, rule.denied, isUri, request)) {
+  if (matchesAny(trimmed, rule.denied, isUri, request, type)) {
     return `${label} "${trimmed}" is denied by this policy`;
   }
-  if (matchesAny(trimmed, rule.required, isUri, request)) return undefined;
-  if (rule.allowed?.length && !matchesAny(trimmed, rule.allowed, isUri, request)) {
+  if (matchesAny(trimmed, rule.required, isUri, request, type)) return undefined;
+  if (rule.allowed?.length && !matchesAny(trimmed, rule.allowed, isUri, request, type)) {
     const accepted = [...(rule.required ?? []), ...rule.allowed];
     return `${label} ${patternClause("must match", "one of", accepted)}`;
   }
@@ -798,7 +820,7 @@ export const evaluateSubjectStep = ({
     profileAddedSans.some(
       (san) =>
         san.type === type &&
-        matchesAny(san.value, [pattern], type === CertSubjectAlternativeNameType.URI, request)
+        matchesAny(san.value, [pattern], type === CertSubjectAlternativeNameType.URI, request, type)
     );
 
   const domainComponentRule = rules.subject[CertSubjectAttributeType.DOMAIN_COMPONENT];
@@ -931,7 +953,8 @@ export const evaluateSubjectStep = ({
       let unclaimedBlankRows = rows.length - presentValues.length;
 
       rule.required.forEach((pattern) => {
-        if (presentValues.some((value) => matchesAny(value, [pattern], isUri, request))) return;
+        if (presentValues.some((value) => matchesAny(value, [pattern], isUri, request, type)))
+          return;
         if (isAddedByProfile(type, pattern)) return;
         if (unclaimedBlankRows > 0) {
           unclaimedBlankRows -= 1;
