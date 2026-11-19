@@ -2,7 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 
 import { AccessScope } from "@app/db/schemas";
 import { TActorContext } from "@app/domains/lib/actor-context";
-import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { PERMISSION_BOUNDARY_ERROR_NAME, PermissionDeniedError } from "@app/domains/lib/errors";
 import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   orgAdminPermissions,
@@ -19,7 +19,6 @@ import {
   projectMemberPermissions
 } from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
-import { PermissionBoundaryError } from "@app/lib/errors";
 
 import { assertIdentityAuthAccessAllowed } from "./identity-auth-permission-fns";
 
@@ -129,9 +128,9 @@ describe("assertIdentityAuthAccessAllowed", () => {
     });
 
     test("an edit-auth-only actor may not configure an admin identity's auth", async () => {
-      await expect(runBoundary({ actorPermission: orgEditAuthOnly, targetPermissions: [orgAdmin] })).rejects.toThrow(
-        PermissionBoundaryError
-      );
+      await expect(
+        runBoundary({ actorPermission: orgEditAuthOnly, targetPermissions: [orgAdmin] })
+      ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
     });
 
     test("every role the target holds is bounded, not just the first", async () => {
@@ -140,7 +139,7 @@ describe("assertIdentityAuthAccessAllowed", () => {
       ).resolves.toBeUndefined();
       await expect(
         runBoundary({ actorPermission: orgEditAuthOnly, targetPermissions: [orgEditAuthOnly, orgAdmin] })
-      ).rejects.toThrow(PermissionBoundaryError);
+      ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
     });
 
     test("the target's roles are resolved in organization scope", async () => {
@@ -195,7 +194,7 @@ describe("assertIdentityAuthAccessAllowed", () => {
     test("an edit-auth-only actor may not configure an admin identity's auth", async () => {
       await expect(
         runBoundary({ actorPermission: projectEditAuthOnly, targetPermissions: [projectAdmin], projectId: "project-1" })
-      ).rejects.toThrow(PermissionBoundaryError);
+      ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
     });
 
     test("the target's roles are resolved in project scope", async () => {
@@ -297,14 +296,14 @@ describe("assertIdentityAuthAccessAllowed", () => {
           projectId: "project-1",
           action: OrgPermissionIdentityActions.CreateToken
         })
-      ).rejects.toThrow(PermissionBoundaryError);
+      ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
       await expect(
         runBoundary({
           actorPermission: orgCreateTokenOnly,
           targetPermissions: [orgAdmin],
           action: OrgPermissionIdentityActions.CreateToken
         })
-      ).rejects.toThrow(PermissionBoundaryError);
+      ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
     });
 
     test("an admin actor may mint a credential for a member identity", async () => {

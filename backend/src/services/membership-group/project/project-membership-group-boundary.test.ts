@@ -2,6 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { AccessScope, ProjectMembershipRole } from "@app/db/schemas";
+import { PERMISSION_BOUNDARY_ERROR_NAME } from "@app/domains/lib/errors";
 import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionGroupActions,
@@ -11,7 +12,6 @@ import {
   projectNoAccessPermissions
 } from "@app/domains/platform/projects/ce/module";
 import { conditionsMatcher } from "@app/lib/casl";
-import { PermissionBoundaryError } from "@app/lib/errors";
 
 import { newProjectMembershipGroupFactory } from "./project-membership-group-factory";
 
@@ -116,7 +116,7 @@ describe("onUpdateMembershipGroupGuard privilege boundary", () => {
   test("on the legacy system, a weaker actor cannot downgrade an Admin group to no-access", async () => {
     const guard = createGuard({ actorPermission: groupEditorOnly, shouldUseNewPrivilegeSystem: false });
 
-    await expect(guard()).rejects.toThrow(PermissionBoundaryError);
+    await expect(guard()).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
   });
 
   test("downgrading to a role the actor may grant is still bounded by what the target holds", async () => {
@@ -126,7 +126,7 @@ describe("onUpdateMembershipGroupGuard privilege boundary", () => {
       incomingRole: ProjectMembershipRole.Member
     });
 
-    await expect(guard()).rejects.toThrow(PermissionBoundaryError);
+    await expect(guard()).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
   });
 
   test("an admin can still downgrade an Admin group on either system", async () => {
@@ -141,7 +141,7 @@ describe("onUpdateMembershipGroupGuard privilege boundary", () => {
   test("a groupName-scoped actor cannot strip an out-of-scope Admin group down to no-access", async () => {
     const guard = createGuard({ actorPermission: contractorScopedEditor, shouldUseNewPrivilegeSystem: true });
 
-    await expect(guard()).rejects.toThrow(PermissionBoundaryError);
+    await expect(guard()).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
   });
 
   test("nothing outranks the actor, so an ordinary downgrade is let through", async () => {

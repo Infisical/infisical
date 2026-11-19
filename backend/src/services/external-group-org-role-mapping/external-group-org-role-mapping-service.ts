@@ -11,7 +11,6 @@ import { BadRequestError } from "@app/lib/errors";
 import { constructGroupOrgMembershipRoleMappings } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-fns";
 import { TSyncExternalGroupOrgMembershipRoleMappingsDTO } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-types";
 import { roleNeedsPrivilegeBoundary, toBoundsTargets } from "@app/services/membership/membership-fns";
-import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 
 import { TRoleDALFactory } from "../role/role-dal";
 import { TExternalGroupOrgRoleMappingDALFactory } from "./external-group-org-role-mapping-dal";
@@ -137,7 +136,7 @@ export const externalGroupOrgRoleMappingServiceFactory = ({
       });
 
       for (const { roleSlug, baseMessage } of boundaryChecks) {
-        assertPermissionBounds(permission, {
+        permission.assertBounds({
           usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
           actions: OrgPermissionMemberActions.GrantPrivileges,
           subject: OrgPermissionSubjects.Member,

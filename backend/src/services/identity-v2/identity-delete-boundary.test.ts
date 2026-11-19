@@ -2,6 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
+import { PERMISSION_BOUNDARY_ERROR_NAME } from "@app/domains/lib/errors";
 import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   orgAdminPermissions,
@@ -15,7 +16,6 @@ import {
   projectAdminPermissions,
   projectNoAccessPermissions
 } from "@app/domains/platform/projects/ce/module";
-import { PermissionBoundaryError } from "@app/lib/errors";
 
 import { newOrgIdentityFactory } from "./org/org-identity-factory";
 import { newProjectIdentityFactory } from "./project/project-identity-factory";
@@ -124,11 +124,11 @@ describe("identity v2 delete guards privilege boundary", () => {
   test("on the legacy system, a weaker actor cannot delete an Admin identity", async () => {
     await expect(
       createOrgGuard({ actorPermission: orgIdentityDeleter, shouldUseNewPrivilegeSystem: false })()
-    ).rejects.toThrow(PermissionBoundaryError);
+    ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
 
     await expect(
       createProjectGuard({ actorPermission: projectIdentityDeleter, shouldUseNewPrivilegeSystem: false })()
-    ).rejects.toThrow(PermissionBoundaryError);
+    ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
   });
 
   test("an admin actor is unaffected", async () => {

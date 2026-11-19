@@ -2,6 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { OrgMembershipRole } from "@app/db/schemas";
+import { PERMISSION_BOUNDARY_ERROR_NAME } from "@app/domains/lib/errors";
 import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
@@ -12,7 +13,7 @@ import {
   OrgPermissionMemberActions,
   OrgPermissionSubjects
 } from "@app/domains/platform/organizations/ce/module";
-import { BadRequestError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError } from "@app/lib/errors";
 
 import { externalGroupOrgRoleMappingServiceFactory } from "./external-group-org-role-mapping-service";
 
@@ -148,9 +149,9 @@ describe("updateExternalGroupOrgRoleMappings privilege boundary", () => {
     async (shouldUseNewPrivilegeSystem) => {
       const { run, persist } = createService({ actorPermission: scimEditor, shouldUseNewPrivilegeSystem });
 
-      await expect(run([{ groupName: "admins", roleSlug: OrgMembershipRole.Admin }])).rejects.toThrow(
-        PermissionBoundaryError
-      );
+      await expect(run([{ groupName: "admins", roleSlug: OrgMembershipRole.Admin }])).rejects.toMatchObject({
+        name: PERMISSION_BOUNDARY_ERROR_NAME
+      });
       expect(persist).not.toHaveBeenCalled();
     }
   );
@@ -164,7 +165,7 @@ describe("updateExternalGroupOrgRoleMappings privilege boundary", () => {
         currentMappings: [{ groupName: "admins", role: OrgMembershipRole.Admin }]
       });
 
-      await expect(run([])).rejects.toThrow(PermissionBoundaryError);
+      await expect(run([])).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
       expect(persist).not.toHaveBeenCalled();
     }
   );
@@ -178,9 +179,9 @@ describe("updateExternalGroupOrgRoleMappings privilege boundary", () => {
         currentMappings: [{ groupName: "admins", role: OrgMembershipRole.Admin }]
       });
 
-      await expect(run([{ groupName: "admins", roleSlug: OrgMembershipRole.NoAccess }])).rejects.toThrow(
-        PermissionBoundaryError
-      );
+      await expect(run([{ groupName: "admins", roleSlug: OrgMembershipRole.NoAccess }])).rejects.toMatchObject({
+        name: PERMISSION_BOUNDARY_ERROR_NAME
+      });
     }
   );
 
@@ -191,7 +192,7 @@ describe("updateExternalGroupOrgRoleMappings privilege boundary", () => {
       currentMappings: [{ groupName: "highs", role: OrgMembershipRole.Custom, roleId: HIGH_ROLE.id }]
     });
 
-    await expect(run([])).rejects.toThrow(PermissionBoundaryError);
+    await expect(run([])).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
     expect(getOrgPermissionByRoles).toHaveBeenCalledWith({ orgId: ORG_ID, roles: [HIGH_ROLE.slug] });
   });
 
@@ -222,9 +223,9 @@ describe("updateExternalGroupOrgRoleMappings privilege boundary", () => {
   test("on the legacy system, grant-privileges alone does not outrank admin", async () => {
     const { run } = createService({ actorPermission: scimEditorWithGrant, shouldUseNewPrivilegeSystem: false });
 
-    await expect(run([{ groupName: "admins", roleSlug: OrgMembershipRole.Admin }])).rejects.toThrow(
-      PermissionBoundaryError
-    );
+    await expect(run([{ groupName: "admins", roleSlug: OrgMembershipRole.Admin }])).rejects.toMatchObject({
+      name: PERMISSION_BOUNDARY_ERROR_NAME
+    });
   });
 
   test.each(BOTH_SYSTEMS)(

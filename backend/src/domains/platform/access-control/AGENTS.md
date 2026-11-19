@@ -20,8 +20,10 @@ from what Access Control returns.
   (it decides where it matches). Product-specific orderings (Secrets' folder grants, a project admin's resource
   rules) live in the product, built from these two.
 - **`Permission` is the check.** `can` / `assert({ action, subject, fields })`; `assert` throws
-  `PermissionDeniedError` with the denial the 403 body and the permission-denied audit log report. `boundsViolations`
-  says what stops the actor changing another actor's roles or privileges, under either privilege system;
+  `PermissionDeniedError` with the denial the 403 body and the permission-denied audit log report. `assertBounds`
+  refuses a change to another actor's roles or privileges under either privilege system, with
+  `PermissionDeniedError` named `PermissionBoundaryError` (`boundsViolations` returns the missing permissions
+  instead);
   `toAbility()` is for legacy code that still reads a CASL ability.
 - **Caching:** `getCachedProjectGrants` serves an actor's project grants from `ActorGrantsCache` (Redis, marker 10s,
   data 10 min) while their fingerprint (memberships at the org, project and its resources, role assignments, custom

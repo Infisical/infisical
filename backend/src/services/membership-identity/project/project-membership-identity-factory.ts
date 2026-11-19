@@ -14,7 +14,6 @@ import {
   resolveMembershipRoleSlugs,
   toBoundsTargets
 } from "@app/services/membership/membership-fns";
-import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -109,7 +108,7 @@ export const newProjectMembershipIdentityFactory = ({
       roles: filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role)
     });
     for (const permissionRole of permissionRoles) {
-      assertPermissionBounds(permission, {
+      permission.assertBounds({
         usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
         subject: ProjectPermissionSub.Identity,
@@ -180,7 +179,7 @@ export const newProjectMembershipIdentityFactory = ({
       roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
-    assertPermissionBounds(permission, {
+    permission.assertBounds({
       usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
       subject: ProjectPermissionSub.Identity,
@@ -194,7 +193,7 @@ export const newProjectMembershipIdentityFactory = ({
       roles: filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role)
     });
     for (const permissionRole of permissionRoles) {
-      assertPermissionBounds(permission, {
+      permission.assertBounds({
         usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
         subject: ProjectPermissionSub.Identity,
@@ -242,7 +241,7 @@ export const newProjectMembershipIdentityFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
-    assertPermissionBounds(permission, {
+    permission.assertBounds({
       usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: ProjectPermissionIdentityActions.Delete,
       subject: ProjectPermissionSub.Identity,
