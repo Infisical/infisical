@@ -5253,7 +5253,7 @@ export const AGENT_VAULT = {
       "The name of the service the rule applies to, for a service sent with the session (by its name, or its first host when it was sent without one). A name that matches one of the project's services is saved as that service's ID. A name that isn't in the session matches nothing. Send this or `serviceId`, not both.",
     ruleServiceIdRead: "The ID of the project service the rule applies to, or null for a rule that names a service.",
     ruleServiceRead:
-      "The name of the service the rule applies to: the project service's current name, or the name the rule was saved with. Null when the project service was deleted. Such a rule is skipped, and a hook left with no other rules asks about every request.",
+      "The name of the service the rule applies to: the project service's current name, or the name the rule was saved with. Null when the project service was deleted. Such a rule is skipped, and a hook left with no other rules is not asked at all.",
     ruleMethods:
       "HTTP services only: match only these methods. With `paths`, a request must match both. A service of another type ignores it and the rule matches every request to it.",
     rulePaths:
@@ -5506,7 +5506,7 @@ export const AGENT_VAULT = {
     inlineHook:
       "A hook of the session's own, for this session only. The proxy asks it before it sends the requests its rules pick. Can't be sent with `hookId`. Its secret is deleted when the session ends.",
     hookRead:
-      "The hook the session was started with, or null when it has none or its saved hook was deleted. `url`, `mode` and `rules` are left out for anyone who can't read hooks.",
+      "The hook the session was started with, or null when it has none or its saved hook was deleted. `url` and `rules` are left out for anyone who can't read hooks.",
     hookIsInline: "True when the hook was sent with the session rather than attached from the project's saved hooks.",
     hookNameRead: "The saved hook's name. Null for a hook sent with the session.",
     ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d, or to 1h for a session started on behalf of a user.",

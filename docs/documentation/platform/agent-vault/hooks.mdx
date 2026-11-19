@@ -52,7 +52,7 @@ If a rule has both `methods` and `paths`, a request has to match both. The proxy
 ]
 ```
 
-A rule never matches a service that the session doesn't have. If someone deletes a project service, the hook's rules for that service show **Deleted service** and stop matching. If every rule in a hook is for a deleted service, the proxy asks the hook about every request and connection in the session. To fix a rule for a deleted service, edit the hook and pick another service or remove the rule.
+A rule never matches a service that the session doesn't have. If someone deletes a project service, the hook's rules for that service show **Deleted service** and stop matching. If every rule in a hook is for a deleted service, the proxy stops asking the hook. To fix a rule for a deleted service, edit the hook and pick another service or remove the rule.
 
 ## Save a hook
 

@@ -29,11 +29,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
 import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
-import {
-  collectHookRuleServiceIds,
-  toResolvedHookRules,
-  toStoredHookRules
-} from "../agent-vault-hook/agent-vault-hook-fns";
+import { toResolvedHookRules, toStoredHookRules } from "../agent-vault-hook/agent-vault-hook-fns";
 import { TResolvedSessionHook } from "../agent-vault-hook/agent-vault-hook-types";
 import {
   AGENT_VAULT_SERVICE_MOVED_MESSAGE,
@@ -141,7 +137,6 @@ type TAgentVaultProxyServiceFactoryDep = {
     | "findSessionSkills"
     | "findReachableBundles"
     | "findSessionHook"
-    | "findHookRuleServiceNames"
     | "findSessionMetadata"
   >;
   agentVaultServiceCustomHeaderDAL: Pick<TAgentVaultServiceCustomHeaderDALFactory, "findByServiceIds">;
@@ -1249,27 +1244,22 @@ export const agentVaultProxyServiceFactory = ({
       }
     }
 
-    // A rule stores a project service by ID and the proxy matches by name, so each goes out under the service's
-    // current name, read from the same node as the hook.
+    // A rule stores a project service by ID and the proxy matches by name, so each goes out under the name of the
+    // service row sent in this same response. A separate read could land on another replica mid-rename and send an
+    // old name the proxy never matches; a rule for a service outside the session could never match anyway.
+    const serviceNamesById = new Map(rows.flatMap((row) => (row.name ? [[row.id, row.name] as const] : [])));
     const $findSessionHook = async (hookId: string) => {
       const scope = { hookId, sessionId: session.id, projectId: session.projectId };
       let row = await agentVaultResolveDAL.findSessionHook({ ...scope, onPrimary });
-      let readFromPrimary = onPrimary;
       if (!row && !onPrimary) {
         // The session and its hook can come from different replicas, so a hook missing here may just not have arrived.
         row = await agentVaultResolveDAL.findSessionHook({ ...scope, onPrimary: true });
-        readFromPrimary = true;
       }
       if (!row) return undefined;
       const rules = toStoredHookRules(row.rules);
-      const serviceNamesById = await agentVaultResolveDAL.findHookRuleServiceNames({
-        projectId: session.projectId,
-        ids: collectHookRuleServiceIds(rules),
-        onPrimary: readFromPrimary
-      });
       const resolvedRules = toResolvedHookRules(rules, serviceNamesById);
-      // No rules means every request, so a hook whose rules all named since-deleted services goes out as no hook
-      // rather than suddenly checking everything.
+      // No rules means every request, so a hook none of whose rules can match in this session (their services were
+      // deleted, or aren't in it) goes out as no hook rather than suddenly checking everything.
       if (rules.length > 0 && resolvedRules.length === 0) return undefined;
       return { ...row, rules: resolvedRules };
     };

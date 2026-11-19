@@ -82,9 +82,10 @@ const RuleRow = ({
     ? services.find((option) => option.id === serviceId)
     : services.find((option) => option.name === service);
   let selected: TServiceOption | null = known ?? null;
+  // The picker lists only the first page of services, so one missing from it still exists if the server sent its name.
   // A project service that is gone keeps its rule, so it can be moved to another service or removed.
   if (!selected && serviceId) {
-    selected = { id: serviceId, name: DELETED_SERVICE_LABEL, type: serviceType, hostPattern: null };
+    selected = { id: serviceId, name: service || DELETED_SERVICE_LABEL, type: serviceType, hostPattern: null };
   } else if (!selected && service) {
     selected = { id: null, name: service, type: serviceType, hostPattern: null };
   }

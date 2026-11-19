@@ -88,7 +88,6 @@ const setup = (
     session = {},
     hookRow,
     hookOnlyOnPrimary = false,
-    hookRuleServiceNames = {},
     licenseService = new FakeLicenseService(),
     metadata = {},
     freeLimitReached = false,
@@ -114,8 +113,6 @@ const setup = (
     hookRow?: Record<string, unknown>;
     // The hook was written a moment ago and hasn't reached the replica the resolve read from.
     hookOnlyOnPrimary?: boolean;
-    // The current names of the project services the hook's rules reference by ID.
-    hookRuleServiceNames?: Record<string, string>;
     licenseService?: FakeLicenseService;
     metadata?: Record<string, string>;
     proxy?: {
@@ -144,10 +141,6 @@ const setup = (
   const findSessionHook = vi.fn(async ({ onPrimary }: { onPrimary?: boolean }) =>
     hookOnlyOnPrimary && !onPrimary ? undefined : hookRow
   );
-  const findHookRuleServiceNames = vi.fn(
-    async ({ ids }: { ids: string[] }) =>
-      new Map(Object.entries(hookRuleServiceNames).filter(([id]) => ids.includes(id)))
-  );
   const findSessionMetadata = vi.fn(async () => metadata);
   const sessionRow = {
     id: "session-1",
@@ -175,7 +168,6 @@ const setup = (
       findSessionSkills: async () => [],
       findReachableBundles,
       findSessionHook,
-      findHookRuleServiceNames,
       findSessionMetadata
     } as never,
     agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
@@ -233,7 +225,6 @@ const setup = (
     findResolvableServices,
     findReachableBundles,
     findSessionHook,
-    findHookRuleServiceNames,
     findSessionMetadata,
     createCipherPairWithDataKey,
     findCaFingerprintsByProjectId,
@@ -617,7 +608,6 @@ describe("resolve for a session on a user's behalf", () => {
         findSessionSkills: async () => [],
         findReachableBundles: async () => [],
         findSessionHook: async () => undefined,
-        findHookRuleServiceNames: async () => new Map(),
         findSessionMetadata: async () => ({})
       },
       agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
@@ -989,10 +979,10 @@ describe("hooks on resolve", () => {
     expect((await resolve(service)).hook).toMatchObject({ id: savedHook.id });
   });
 
-  test("a rule on a project service goes out under the service's current name, and one on a deleted service is dropped", async () => {
+  test("a rule goes out under the name of the service row sent with it, and one whose service isn't sent is dropped", async () => {
     const stripeId = "11111111-1111-4111-8111-111111111111";
     const deletedId = "22222222-2222-4222-8222-222222222222";
-    const { service, findHookRuleServiceNames } = setup(noRefresh, [hookedRow], [], {
+    const { service } = setup(noRefresh, [{ ...hookedRow, id: stripeId, name: "stripe-payments" }], [], {
       session: { hookId: savedHook.id },
       hookRow: {
         ...savedHook,
@@ -1001,23 +991,20 @@ describe("hooks on resolve", () => {
           { serviceId: deletedId, tools: ["x"] },
           { service: "inline-api" }
         ]
-      },
-      hookRuleServiceNames: { [stripeId]: "stripe-payments" }
+      }
     });
-    expect((await resolve(service)).hook?.rules).toEqual([
+    const resolved = await resolve(service);
+    expect(resolved.services.map((s) => s.name)).toContain("stripe-payments");
+    expect(resolved.hook?.rules).toEqual([
       { service: "stripe-payments", methods: ["POST"] },
       { service: "inline-api" }
     ]);
-    expect(findHookRuleServiceNames).toHaveBeenCalledWith(
-      expect.objectContaining({ projectId: PROJECT_ID, ids: [stripeId, deletedId] })
-    );
   });
 
   test("a hook whose rules all named deleted services goes out as no hook, not as one checking everything", async () => {
     const { service } = setup(noRefresh, [hookedRow], [], {
       session: { hookId: savedHook.id },
-      hookRow: { ...savedHook, rules: [{ serviceId: "22222222-2222-4222-8222-222222222222", methods: ["POST"] }] },
-      hookRuleServiceNames: {}
+      hookRow: { ...savedHook, rules: [{ serviceId: "22222222-2222-4222-8222-222222222222", methods: ["POST"] }] }
     });
     expect((await resolve(service)).hook).toBeNull();
   });

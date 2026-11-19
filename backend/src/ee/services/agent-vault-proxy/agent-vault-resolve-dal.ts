@@ -4,7 +4,6 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 
-import { findHookRuleServiceNames as findHookRuleServiceNamesOn } from "../agent-vault-hook/agent-vault-hook-dal";
 import {
   AgentVaultPatternRelation,
   parseHostPatterns,
@@ -443,12 +442,6 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findHookRuleServiceNames = async ({
-    onPrimary,
-    ...scope
-  }: { projectId: string; ids: string[] } & TResolveReadOptions): Promise<Map<string, string>> =>
-    findHookRuleServiceNamesOn(onPrimary ? db : db.replicaNode(), scope);
-
   // In the order they were written, which is the order they were sent in.
   const findSessionMetadata = async ({
     sessionId,
@@ -474,7 +467,6 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
     findSessionSkills,
     findReachableBundles,
     findSessionHook,
-    findHookRuleServiceNames,
     findSessionMetadata
   };
 };
