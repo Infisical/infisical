@@ -302,8 +302,7 @@ describe("NeonProvider role leases", () => {
       DB_HOST: "ep-cool-1-pooler.us-east-2.aws.neon.tech",
       DB_NAME: "neondb",
       DB_USERNAME: entityId,
-      DB_PASSWORD: ROLE_CRED,
-      BRANCH_ID: "br-main-123456"
+      DB_PASSWORD: ROLE_CRED
     });
   });
 

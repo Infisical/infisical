@@ -184,8 +184,7 @@ export const NeonProvider = (): TDynamicProviderFns => {
       DB_HOST: uri.hostname,
       DB_NAME: decodeURIComponent(uri.pathname.replace(/^\//, "")),
       DB_USERNAME: decodeURIComponent(uri.username),
-      DB_PASSWORD: decodeURIComponent(uri.password),
-      BRANCH_ID: branchId
+      DB_PASSWORD: decodeURIComponent(uri.password)
     };
   };
 
@@ -312,6 +311,7 @@ export const NeonProvider = (): TDynamicProviderFns => {
         entityId,
         data: {
           ...(await $leaseData(providerInputs, data.branch.id, providerInputs.roleName)),
+          BRANCH_ID: data.branch.id,
           BRANCH_NAME: data.branch.name
         }
       };
