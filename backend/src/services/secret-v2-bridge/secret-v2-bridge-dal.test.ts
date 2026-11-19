@@ -130,4 +130,26 @@ describe("invalidateSecretCacheByProjectId", () => {
       KeyStorePrefixes.SecretDalVersion("project-B")
     ]);
   });
+
+  it("cleans up ETags for successfully updated projects even if a subsequent version increment fails", async () => {
+    const grants = {
+      "project-A": [{ targetProjectId: "project-B" }]
+    };
+    const db = createMockDb(grants);
+    const { keyStore, deleteItemCalls } = createMockKeyStore();
+
+    vi.mocked(keyStore.pgIncrementBy).mockImplementation(async (key: string) => {
+      if (key === KeyStorePrefixes.SecretDalVersion("project-B")) {
+        throw new Error("Target project connection error");
+      }
+      return 1;
+    });
+
+    const dal = secretV2BridgeDALFactory({ db, keyStore });
+    await expect(dal.invalidateSecretCacheByProjectId("project-A")).rejects.toThrow(
+      "Target project connection error"
+    );
+
+    expect(deleteItemCalls).toEqual([expect.stringContaining("project-A")]);
+  });
 });

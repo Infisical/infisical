@@ -59,13 +59,20 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     ).sort();
 
     const stamp = utcDayStamp();
-    for (const id of allProjectIds) {
-      const versionKey = KeyStorePrefixes.SecretDalVersion(id);
-      /* oxlint-disable-next-line eslint(no-await-in-loop) */
-      // eslint-disable-next-line no-await-in-loop
-      await keyStore.pgIncrementBy(versionKey, { incr: 1, tx, expiry: SECRET_DAL_VERSION_TTL });
+    const updatedProjectIds: string[] = [];
+    try {
+      for (const id of allProjectIds) {
+        const versionKey = KeyStorePrefixes.SecretDalVersion(id);
+        /* oxlint-disable-next-line eslint(no-await-in-loop) */
+        // eslint-disable-next-line no-await-in-loop
+        await keyStore.pgIncrementBy(versionKey, { incr: 1, tx, expiry: SECRET_DAL_VERSION_TTL });
+        updatedProjectIds.push(id);
+      }
+    } finally {
+      if (updatedProjectIds.length > 0) {
+        await Promise.all(updatedProjectIds.map((id) => keyStore.deleteItem(KeyStorePrefixes.SecretEtag(id, stamp))));
+      }
     }
-    await Promise.all(allProjectIds.map((id) => keyStore.deleteItem(KeyStorePrefixes.SecretEtag(id, stamp))));
   };
 
   const findOne = async (filter: Partial<TSecretsV2>, tx?: Knex) => {
