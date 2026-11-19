@@ -1,6 +1,6 @@
 import { logger } from "@app/lib/logger";
 
-export const OUTBOX_RELAY_INTERVAL_MS = 10_000;
+const OUTBOX_RELAY_INTERVAL_MS = 10_000;
 
 const RELAY_START_JITTER_MS = 5_000;
 

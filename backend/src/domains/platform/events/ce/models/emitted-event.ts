@@ -52,7 +52,7 @@ export class EmittedEvent {
         details: {
           reason: EmittedEventRejection.InvalidEvent,
           type: input.type
-        } as TEmittedEventRejectionDetails
+        } satisfies TEmittedEventRejectionDetails
       });
     }
     const { id, type, data, time } = parsed.data;
@@ -64,7 +64,7 @@ export class EmittedEvent {
         details: {
           reason: EmittedEventRejection.DataTooLarge,
           type
-        } as TEmittedEventRejectionDetails
+        } satisfies TEmittedEventRejectionDetails
       });
     }
 

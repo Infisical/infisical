@@ -8,7 +8,7 @@ import { ConsumerRegistry } from "../services/helpers/consumer-registry";
 import { FlushQueue } from "../services/helpers/flush-queue";
 import { InMemoryOutboxEntryStore } from "./in-memory-outbox-entry-store";
 
-export type TBuildEventsOptions = {
+type TBuildEventsOptions = {
   consumers?: IEventConsumer[];
   isTelemetryEnabled?: boolean;
 };

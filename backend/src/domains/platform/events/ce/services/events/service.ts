@@ -13,13 +13,13 @@ import { FlushQueue } from "../helpers/flush-queue";
 import { TimeoutError, withTimeout } from "../helpers/with-timeout";
 import { EventsTransaction, TEventsTransaction } from "./events-transaction";
 
-export const MAX_BATCHES_PER_FLUSH = 10;
-export const OUTBOX_CLAIM_BATCH_SIZE = 100;
+const MAX_BATCHES_PER_FLUSH = 10;
+const OUTBOX_CLAIM_BATCH_SIZE = 100;
 
-export const STALE_CLAIM_THRESHOLD_MS = 10 * 60_000;
+const STALE_CLAIM_THRESHOLD_MS = 10 * 60_000;
 
-export const DELIVERED_RETENTION_MS = 24 * 60 * 60_000;
-export const FAILED_RETENTION_MS = 30 * 24 * 60 * 60_000;
+const DELIVERED_RETENTION_MS = 24 * 60 * 60_000;
+const FAILED_RETENTION_MS = 30 * 24 * 60 * 60_000;
 
 const PRUNE_BATCH_SIZE = 5_000;
 const PRUNE_MAX_BATCHES = 20;
