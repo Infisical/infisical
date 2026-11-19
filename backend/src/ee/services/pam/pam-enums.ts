@@ -14,7 +14,8 @@ export enum PamAccountType {
   GcpServiceAccount = "gcp-service-account",
   AzureCli = "azure-cli",
   Windows = "windows",
-  WindowsAd = "windows-ad"
+  WindowsAd = "windows-ad",
+  WebApp = "web-app"
 }
 
 export enum PamResourceRole {
@@ -63,6 +64,10 @@ export enum PamSnowflakeAuthMethod {
 export enum GcpServiceAccountAuthMethod {
   Impersonation = "impersonation",
   StaticKey = "static-key"
+}
+
+export enum PamWebAppAuthMethod {
+  None = "none"
 }
 
 export enum PamAccessMethod {

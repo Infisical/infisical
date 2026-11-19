@@ -158,6 +158,13 @@ may only be saved against a gateway advertising the `clickhouseNativeProtocol` c
 in for schemas, and the explorer grid is read-only for every table (`supportsRowEditing`):
 `is_in_primary_key` is a sorting key, not a unique constraint.
 
+**Web App is a remote browser**: the gateway launches one Chromium per session and streams its screen to a
+canvas in the viewer, which sends mouse and keyboard input back (CLI `packages/pam/handlers/webapp/`). The
+backend only relays bytes between the WebSocket and the tunnel, reusing `handleRdpSession`, and the gateway
+activates the session after its credential fetch, as RDP does. The `allowedHosts` allowlist is enforced only by
+the gateway, so never widen or rewrite it backend-side: the gateway target is the start URL's host and nothing
+else. The recording is a web activity log with screenshots embedded in its chunks, stored in Postgres.
+
 ## Approvals
 
 **PAM approvals run on the shared approval system** (`backend/src/services/approval-policy/`), which

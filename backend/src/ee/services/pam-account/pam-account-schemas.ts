@@ -18,7 +18,8 @@ import {
   PamAccountType,
   PamPostgresAuthMethod,
   PamSnowflakeAuthMethod,
-  PamSshAuthMethod
+  PamSshAuthMethod,
+  PamWebAppAuthMethod
 } from "../pam/pam-enums";
 import { getApplicablePolicies, PamPolicyDescriptorSchema } from "../pam/pam-policies";
 
@@ -107,6 +108,61 @@ type TFieldForcedRuleHint = { when: TFieldConditionHint; value: string | number 
 export const ORACLE_MAX_PASSWORD_LENGTH = 30;
 
 export const ORACLE_MIN_GATEWAY_VERSION = "v0.43.133";
+
+const WEB_APP_MAX_ALLOWED_HOSTS = 50;
+
+const webAppStartUrl = z
+  .string()
+  .trim()
+  .min(1)
+  .max(2048)
+  .superRefine((val, ctx) => {
+    let parsed: URL;
+    try {
+      parsed = new URL(val);
+    } catch {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Must be a valid URL, such as https://grafana.internal" });
+      return;
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Must start with http:// or https://" });
+      return;
+    }
+    if (parsed.username || parsed.password) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Remove the username and password from the URL. Web app accounts don't support credentials in the URL"
+      });
+    }
+  });
+
+const webAppAllowedHostPattern = new RE2(
+  /^(\*\.)?[a-z0-9_]([a-z0-9_-]*[a-z0-9_])?(\.[a-z0-9_]([a-z0-9_-]*[a-z0-9_])?)*(:[0-9]{1,5})?$/
+);
+
+const webAppAllowedHost = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(1)
+  .max(255)
+  .regex(webAppAllowedHostPattern, "Each entry must be a host, *.domain or host:port, such as *.grafana.internal")
+  .refine(
+    (val) => {
+      const portIdx = val.lastIndexOf(":");
+      if (portIdx === -1) return true;
+      const port = Number(val.slice(portIdx + 1));
+      return port >= 1 && port <= 65535;
+    },
+    { message: "Ports must be between 1 and 65535" }
+  );
+
+const webAppAllowedHosts = z
+  .preprocess(
+    normalizeDelimitedStringList,
+    z.array(webAppAllowedHost).max(WEB_APP_MAX_ALLOWED_HOSTS, `Add at most ${WEB_APP_MAX_ALLOWED_HOSTS} allowed hosts`)
+  )
+  .optional();
 
 const postgresConnectionDetails = z.object({
   host: z.string().trim().min(1).max(255),
@@ -1011,6 +1067,38 @@ export const ACCOUNT_TYPE_CONFIGS = {
         tooltip: "A client secret for the service principal. Stored encrypted and never returned in read responses."
       }
     }
+  },
+
+  [PamAccountType.WebApp]: {
+    name: "Web App",
+    icon: "Web.png",
+    connectionDetails: z.object({
+      startUrl: webAppStartUrl,
+      allowedHosts: webAppAllowedHosts
+    }),
+    credentials: z.discriminatedUnion("authMethod", [z.object({ authMethod: z.literal(PamWebAppAuthMethod.None) })]),
+    sanitizedCredentials: z.object({
+      authMethod: z.string()
+    }),
+    ui: {
+      startUrl: {
+        label: "Start URL",
+        tooltip:
+          "The page a session opens, such as https://grafana.internal. The gateway opens it in a browser next to the gateway, so it only needs to be reachable from there."
+      },
+      allowedHosts: {
+        label: "Allowed Hosts",
+        widget: PamFieldWidget.Textarea,
+        tooltip:
+          "Other hosts the session may load, besides the start URL's host. One per line or comma-separated, as host, *.domain (subdomains only) or host:port. Everything else is blocked."
+      },
+      authMethod: {
+        label: "Auth Method",
+        defaultValue: PamWebAppAuthMethod.None,
+        tooltip: "None opens the app without signing in, so the user signs in to the app themselves if it asks.",
+        options: [{ label: "None", value: PamWebAppAuthMethod.None }]
+      }
+    }
   }
 } as const satisfies Partial<
   Record<
@@ -1176,6 +1264,11 @@ export const extractGatewayTarget = async (
       return { host: `${(validated as { account: string }).account}.snowflakecomputing.com`, port: 443 };
     case PamAccountType.AzureCli:
       return { host: "management.azure.com", port: 443 };
+    case PamAccountType.WebApp: {
+      const parsed = new URL((validated as { startUrl: string }).startUrl);
+      const defaultPort = parsed.protocol === "http:" ? 80 : 443;
+      return { host: parsed.hostname, port: parsed.port ? Number(parsed.port) : defaultPort };
+    }
     default:
       throw new Error(`No gateway target extraction defined for account type '${accountType as PamAccountType}'`);
   }

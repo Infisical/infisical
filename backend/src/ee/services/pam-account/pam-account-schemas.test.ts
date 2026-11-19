@@ -1,11 +1,12 @@
 import { describe, expect, test } from "vitest";
 
-import { PamAccountType, PamPostgresAuthMethod, PamSnowflakeAuthMethod } from "../pam/pam-enums";
+import { PamAccountType, PamPostgresAuthMethod, PamSnowflakeAuthMethod, PamWebAppAuthMethod } from "../pam/pam-enums";
 import {
   accountTypeRequiresRecording,
   applyForcedFields,
   buildPamAccountTypeMetadata,
   collectCredentialSecrets,
+  extractGatewayTarget,
   gatewaySupportsAccountType,
   gatewaySupportsClickHouseNative,
   getAccountAccessibilityIssues,
@@ -626,5 +627,105 @@ describe("gatewaySupportsAccountType", () => {
 
   test("Windows AD is proxied over the Windows protocol, so that is what a gateway reports", () => {
     expect(gatewaySupportsAccountType(PamAccountType.WindowsAd, ["windows"])).toBe(true);
+  });
+});
+
+describe("Web App accounts", () => {
+  const parseConnection = (data: Record<string, unknown>) =>
+    validateConnectionDetails(PamAccountType.WebApp, data) as { startUrl: string; allowedHosts?: string[] };
+
+  test("a start URL with an allowlist validates, and entries are lowercased and split", () => {
+    expect(
+      parseConnection({
+        startUrl: "https://grafana.internal/d/abc?orgId=1",
+        allowedHosts: "*.Grafana.Internal\ncdn.internal:8443, assets.internal"
+      })
+    ).toEqual({
+      startUrl: "https://grafana.internal/d/abc?orgId=1",
+      allowedHosts: ["*.grafana.internal", "cdn.internal:8443", "assets.internal"]
+    });
+  });
+
+  test("the allowlist is optional", () => {
+    expect(parseConnection({ startUrl: "http://grafana:3000" })).toEqual({ startUrl: "http://grafana:3000" });
+  });
+
+  test.each(["ftp://grafana.internal", "file:///etc/passwd", "data:text/html,hello", "grafana.internal", ""])(
+    "refuses the start URL %s",
+    (startUrl) => {
+      expect(() => parseConnection({ startUrl })).toThrow();
+    }
+  );
+
+  test("refuses a start URL carrying a username or password", () => {
+    expect(() => parseConnection({ startUrl: "https://admin:secret@grafana.internal" })).toThrow(
+      /username and password/
+    );
+    expect(() => parseConnection({ startUrl: "https://admin@grafana.internal" })).toThrow(/username and password/);
+  });
+
+  test("refuses a start URL over 2,048 characters", () => {
+    expect(() => parseConnection({ startUrl: `https://grafana.internal/${"a".repeat(2048)}` })).toThrow();
+  });
+
+  test.each([
+    "https://grafana.internal",
+    "grafana.internal/path",
+    "*grafana.internal",
+    "grafana.*.internal",
+    "*.",
+    "grafana.internal:0",
+    "grafana.internal:65536",
+    "grafana.internal:",
+    "-grafana.internal",
+    "user@grafana.internal"
+  ])("refuses the allowlist entry %s", (entry) => {
+    expect(() => parseConnection({ startUrl: "https://grafana.internal", allowedHosts: [entry] })).toThrow();
+  });
+
+  test("refuses more than 50 allowlist entries", () => {
+    const allowedHosts = Array.from({ length: 51 }, (_, i) => `host${i}.internal`);
+    expect(() => parseConnection({ startUrl: "https://grafana.internal", allowedHosts })).toThrow();
+    expect(
+      parseConnection({ startUrl: "https://grafana.internal", allowedHosts: allowedHosts.slice(0, 50) }).allowedHosts
+    ).toHaveLength(50);
+  });
+
+  test("the form shows a required start URL, an optional allowlist textarea and a single auth method", () => {
+    const webApp = buildPamAccountTypeMetadata(new Set()).find((m) => m.type === PamAccountType.WebApp);
+    expect(webApp).toMatchObject({ name: "Web App", icon: "Web.png", requiresGateway: true });
+    expect(webApp?.connectionFields).toMatchObject([
+      { key: "startUrl", label: "Start URL", widget: "text", required: true, secret: false },
+      { key: "allowedHosts", label: "Allowed Hosts", widget: "textarea", required: false, secret: false }
+    ]);
+    expect(webApp?.credentialFields).toMatchObject([
+      {
+        key: "authMethod",
+        widget: "select",
+        defaultValue: PamWebAppAuthMethod.None,
+        options: [{ label: "None", value: PamWebAppAuthMethod.None }]
+      }
+    ]);
+  });
+
+  test("credentials take the none auth method and nothing else", () => {
+    expect(validateCredentials(PamAccountType.WebApp, { authMethod: PamWebAppAuthMethod.None })).toEqual({
+      authMethod: PamWebAppAuthMethod.None
+    });
+    expect(() => validateCredentials(PamAccountType.WebApp, { authMethod: "basic" })).toThrow();
+    expect(() => validateCredentials(PamAccountType.WebApp, {})).toThrow();
+  });
+
+  test("an account with no stored secret still counts as configured", () => {
+    expect(isCredentialConfigured(PamAccountType.WebApp, { authMethod: PamWebAppAuthMethod.None })).toBe(true);
+  });
+
+  test.each([
+    ["https://grafana.internal/d/abc", { host: "grafana.internal", port: 443 }],
+    ["http://grafana.internal", { host: "grafana.internal", port: 80 }],
+    ["http://grafana.internal:3000/login", { host: "grafana.internal", port: 3000 }],
+    ["https://grafana.internal:8443", { host: "grafana.internal", port: 8443 }]
+  ])("the gateway target for %s is the start URL's host and port", async (startUrl, expected) => {
+    await expect(extractGatewayTarget(PamAccountType.WebApp, { startUrl })).resolves.toEqual(expected);
   });
 });
