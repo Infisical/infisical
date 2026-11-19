@@ -4708,8 +4708,8 @@
                       "api-reference/endpoints/agent-vault-variables/update",
                       "api-reference/endpoints/agent-vault-variables/delete",
                       "api-reference/endpoints/agent-vault-variables/get-value",
-                      "api-reference/endpoints/agent-vault-variables/start-sign-in",
-                      "api-reference/endpoints/agent-vault-variables/complete-sign-in"
+                      "api-reference/endpoints/agent-vault-variables/start-oauth-sign-in",
+                      "api-reference/endpoints/agent-vault-variables/complete-oauth-sign-in"
                     ]
                   },
                   {

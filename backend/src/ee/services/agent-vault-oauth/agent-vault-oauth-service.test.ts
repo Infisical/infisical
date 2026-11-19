@@ -2637,6 +2637,23 @@ describe("starting an OAuth variable's sign-in", () => {
     );
   });
 
+  test("a client secret sent for an app whose method is none is refused, not dropped", async () => {
+    const env = setup();
+    addVariable(env, {
+      authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+      tokenEndpoint: "https://oauth2.googleapis.com/token",
+      clientId: "public-client",
+      tokenEndpointAuthMethod: AgentVaultOauthClientAuthMethod.None,
+      scopes: ["openid"],
+      redirectUri: API_REDIRECT_URI
+    });
+
+    await expect(startVariableSignIn(env, identityCtx, { clientSecret: "typed-secret" })).rejects.toThrow(
+      /'tokenEndpointAuthMethod' is 'none'/
+    );
+    await expect(startVariableSignIn(env)).resolves.toMatchObject({ authorization: expect.anything() });
+  });
+
   test("a variable set up by hand with no issuer checks only the origin of an iss, and one with an issuer checks it all", async () => {
     const env = setup();
     const manual = {

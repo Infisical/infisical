@@ -392,7 +392,8 @@ export const OAuthVariableFields = ({
             </FieldDescription>
           ) : (
             <FieldDescription>
-              Separate scopes with spaces. Leave empty to ask for the ones the server asks for.
+              Separate scopes with spaces. Leave empty to use the server&apos;s or provider&apos;s
+              default scopes.
             </FieldDescription>
           )}
           <FieldError>{errors.scopes?.message}</FieldError>

@@ -1237,6 +1237,14 @@ export const agentVaultOauthServiceFactory = ({
           details: { field: "clientSecret" }
         });
       }
+      // Dropped silently, the provider would answer with "invalid client", which reads like a wrong secret.
+      if (method === AgentVaultOauthClientAuthMethod.None && requestedClientSecret) {
+        throw new BadRequestError({
+          message:
+            "The variable's 'tokenEndpointAuthMethod' is 'none', so its OAuth app has no client secret. Leave 'clientSecret' out, or change the method.",
+          details: { field: "clientSecret" }
+        });
+      }
       client = method
         ? {
             clientId: settings.clientId,

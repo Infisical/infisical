@@ -4919,12 +4919,12 @@ export const AGENT_VAULT = {
     updateAuthorizationId:
       "The ID of a completed OAuth authorization, to reauthorize the service or switch it to OAuth. To keep the stored tokens, leave `credential` out.",
     oauthStatus:
-      "Whether the OAuth connection works: `connected`, `needs-reauthorization` (the tokens can no longer be refreshed), or `needs-additional-scopes` (the MCP server asked for scopes the connection lacks).",
+      "Whether the OAuth connection works: `connected`, `needs-reauthorization` (the tokens can no longer be refreshed), or `needs-additional-scopes` (the server asked for scopes the connection lacks).",
     oauthSummaryStatus:
-      "Whether the OAuth connection works: `connected`, `needs-reauthorization` (the tokens can no longer be refreshed), or `needs-additional-scopes` (the MCP server asked for scopes the connection lacks). Absent when each member signs in for themselves.",
+      "Whether the OAuth connection works: `connected`, `needs-reauthorization` (the tokens can no longer be refreshed), or `needs-additional-scopes` (the server asked for scopes the connection lacks). Absent when each member signs in for themselves.",
     oauthIssuer: "The OAuth authorization server that issued the tokens.",
     oauthGrantedScopes: "The scopes the authorization server granted.",
-    oauthRequiredScopes: "Scopes the MCP server asked for that the connection lacks. Reauthorize to request them.",
+    oauthRequiredScopes: "Scopes the server asked for that the connection lacks. Reauthorize to request them.",
     oauthExpiresAt:
       "When the current access token expires, or null if the server didn't say. Not returned to Agent Vault members.",
     oauthAuthorizedAt: "When the connection was last authorized. Not returned to Agent Vault members.",

@@ -1,4 +1,4 @@
-import { ComponentProps, forwardRef, useState } from "react";
+import { ComponentProps, forwardRef, useEffect, useState } from "react";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@app/components/v3";
@@ -12,6 +12,11 @@ type Props = Omit<ComponentProps<typeof InputGroupInput>, "type" | "value"> & { 
 export const ClientSecretInput = forwardRef<HTMLInputElement, Props>(
   ({ className, value = "", onChange, ...props }, ref) => {
     const [isVisible, setIsVisible] = useState(false);
+    // An emptied field masks again, typed out or cleared by the form after a sign-in, since what comes next may be a
+    // real secret.
+    useEffect(() => {
+      if (!value) setIsVisible(false);
+    }, [value]);
     return (
       <InputGroup>
         <InputGroupInput
@@ -26,11 +31,7 @@ export const ClientSecretInput = forwardRef<HTMLInputElement, Props>(
           data-1p-ignore
           data-lpignore="true"
           data-bwignore
-          onChange={(event) => {
-            // An emptied field masks again, since what is typed next may be a real secret.
-            if (!event.target.value) setIsVisible(false);
-            onChange?.(event);
-          }}
+          onChange={onChange}
           {...props}
         />
         <InputGroupAddon align="inline-end">
