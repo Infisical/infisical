@@ -9,7 +9,7 @@ import { Badge } from "@infisical/cipher/ui/badge";
 import { Checkbox } from "@infisical/cipher/ui/checkbox";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
-import { CircleCheckIcon, CircleXIcon, EyeOffIcon } from "lucide-react";
+import { EyeOffIcon } from "lucide-react";
 
 import {
   FOLDER_FIELD_LABELS,
@@ -352,16 +352,12 @@ export function DiffPanes({
   fields,
   resourceLabel,
   showChangedMarkers,
-  previousEmptyMessage,
-  nextEmptyMessage,
   newPaneBadge
 }: {
   operationType: ResourceOperationType;
   fields: DiffPaneField[];
   resourceLabel: string;
   showChangedMarkers?: boolean;
-  previousEmptyMessage: string;
-  nextEmptyMessage: string;
   newPaneBadge?: ReactNode;
 }) {
   const renderFields = (side: "previous" | "next") => {
@@ -380,40 +376,29 @@ export function DiffPanes({
       </div>
     ));
   };
+  if (operationType !== "update")
+    return (
+      <div className={styles.pane}>
+        {operationType === "create" && newPaneBadge && (
+          <span className={styles.paneHead}>{newPaneBadge}</span>
+        )}
+        {renderFields(operationType === "create" ? "next" : "previous")}
+      </div>
+    );
   return (
     <div className={styles.panes}>
       <div className={styles.paneRow}>
-        {operationType === "create" ? (
-          <div className={styles.emptyPane}>{previousEmptyMessage}</div>
-        ) : (
-          <div className={styles.pane} data-side="previous">
-            <div className={styles.paneHead}>
-              <span className={styles.paneTitle}>{`Previous ${resourceLabel}`}</span>
-              <Badge tone="bad">
-                <Icon icon={CircleXIcon} size={12} />
-                Previous
-              </Badge>
-            </div>
-            {renderFields("previous")}
-          </div>
-        )}
-        {operationType === "delete" ? (
-          <div className={styles.emptyPane}>{nextEmptyMessage}</div>
-        ) : (
-          <div className={styles.pane} data-side="next">
-            <div className={styles.paneHead}>
-              <span className={styles.paneTitle}>{`New ${resourceLabel}`}</span>
-              <span className={styles.paneBadges}>
-                {newPaneBadge}
-                <Badge tone="ok">
-                  <Icon icon={CircleCheckIcon} size={12} />
-                  New
-                </Badge>
-              </span>
-            </div>
-            {renderFields("next")}
-          </div>
-        )}
+        <div className={styles.pane}>
+          <span className={styles.paneTitle}>{`Previous ${resourceLabel}`}</span>
+          {renderFields("previous")}
+        </div>
+        <div className={styles.pane}>
+          <span className={styles.paneHead}>
+            <span className={styles.paneTitle}>{`New ${resourceLabel}`}</span>
+            {newPaneBadge}
+          </span>
+          {renderFields("next")}
+        </div>
       </div>
     </div>
   );
@@ -515,8 +500,6 @@ export function SecretDiffView({
       }))}
       resourceLabel={resourceLabel}
       showChangedMarkers={showChangedMarkers}
-      previousEmptyMessage="Secret did not exist in the previous version."
-      nextEmptyMessage="Secret does not exist in this version."
       newPaneBadge={
         newVersion?.isRedacted && (
           <Tooltip content="This secret version has been redacted. Rolling back to this version will result in an empty secret value.">
@@ -575,8 +558,6 @@ export function FolderDiffView({
       }))}
       resourceLabel={resourceLabel}
       showChangedMarkers={showChangedMarkers}
-      previousEmptyMessage="Folder did not exist in the previous version."
-      nextEmptyMessage="Folder does not exist in this version."
     />
   );
 }
@@ -652,6 +633,71 @@ const toFolderData = (version?: Version): FolderVersionData | undefined =>
     description: version.description as string | undefined
   };
 
+const resolveVersions = (item: DiffViewItem, versions: Version[]) => {
+  const sorted = [...versions].sort((a, b) => b.version - a.version);
+  let operationType: ResourceOperationType = "update";
+  if (item.isAdded) operationType = "create";
+  else if (item.isDeleted) operationType = "delete";
+  if (item.isUpdated && sorted.length >= 2) {
+    const [oldVersion, newVersion] = item.isRollback ? sorted : [sorted[1], sorted[0]];
+    return { operationType, oldVersion, newVersion };
+  }
+  if (item.isAdded) return { operationType, oldVersion: undefined, newVersion: sorted[0] };
+  if (item.isDeleted) return { operationType, oldVersion: sorted[0], newVersion: undefined };
+  return null;
+};
+
+function VersionTitle({ item }: { item: DiffViewItem }) {
+  const isSecret = item.type === "secret";
+  const name = isSecret ? item.secretKey || "Unnamed secret" : item.folderName || "Unnamed folder";
+  let badge: { tone: "bad" | "ok" | "warn"; label: string } | undefined;
+  if (item.isDeleted) badge = { tone: "bad", label: "Deleted" };
+  else if (item.isAdded) badge = { tone: "ok", label: "Added" };
+  else if (item.isUpdated) badge = { tone: "warn", label: "Updated" };
+  return (
+    <span className={styles.cardTitle}>
+      <Icon name={isSecret ? "key" : "folder"} size={16} className={styles.secretIcon} />
+      <span className={styles.cardName} data-deleted={item.isDeleted || undefined}>
+        {name}
+      </span>
+      {badge && <Badge tone={badge.tone}>{badge.label}</Badge>}
+    </span>
+  );
+}
+
+function VersionDiff({
+  type,
+  compact,
+  operationType,
+  oldVersion,
+  newVersion
+}: {
+  type: DiffViewItem["type"];
+  compact: boolean;
+  operationType: ResourceOperationType;
+  oldVersion?: Version;
+  newVersion?: Version;
+}) {
+  if (type === "secret") {
+    const SecretDiff = compact ? CompactSecretDiffView : SecretDiffView;
+    return (
+      <SecretDiff
+        operationType={operationType}
+        oldVersion={toSecretData(oldVersion)}
+        newVersion={toSecretData(newVersion)}
+      />
+    );
+  }
+  const FolderDiff = compact ? CompactFolderDiffView : FolderDiffView;
+  return (
+    <FolderDiff
+      operationType={operationType}
+      oldVersion={toFolderData(oldVersion)}
+      newVersion={toFolderData(newVersion)}
+    />
+  );
+}
+
 export function SecretVersionDiffView({
   item,
   isCollapsed = false,
@@ -676,29 +722,9 @@ export function SecretVersionDiffView({
   const [viewed, setViewed] = useState(false);
   const [internalValue, setInternalValue] = useState(isCollapsed ? "" : item.id);
   if (!item.versions?.length) return <div className={styles.noDetails}>No details available</div>;
-  const sorted = [...item.versions].sort((a, b) => b.version - a.version);
-  let oldVersion: Version | undefined;
-  let newVersion: Version | undefined;
-  let operationType: ResourceOperationType = "update";
-  if (item.isAdded) operationType = "create";
-  else if (item.isDeleted) operationType = "delete";
-  if (item.isUpdated && sorted.length >= 2) {
-    [oldVersion, newVersion] = item.isRollback ? sorted : [sorted[1], sorted[0]];
-  } else if (item.isAdded) {
-    [newVersion] = sorted;
-  } else if (item.isDeleted) {
-    [oldVersion] = sorted;
-  } else {
-    return null;
-  }
-  const isSecret = item.type === "secret";
-  const SecretDiff = compact ? CompactSecretDiffView : SecretDiffView;
-  const FolderDiff = compact ? CompactFolderDiffView : FolderDiffView;
-  const name = isSecret ? item.secretKey || "Unnamed secret" : item.folderName || "Unnamed folder";
-  let badge: { tone: "bad" | "ok" | "warn"; label: string } | undefined;
-  if (item.isDeleted) badge = { tone: "bad", label: "Deleted" };
-  else if (item.isAdded) badge = { tone: "ok", label: "Added" };
-  else if (item.isUpdated) badge = { tone: "warn", label: "Updated" };
+  const resolved = resolveVersions(item, item.versions);
+  if (!resolved) return null;
+  const { operationType, oldVersion, newVersion } = resolved;
   const expanded = onToggleCollapse ? !isCollapsed : internalValue === item.id;
   const setExpanded = (open: boolean) => {
     if (onToggleCollapse) {
@@ -715,21 +741,7 @@ export function SecretVersionDiffView({
       <AccordionItem value={item.id} className={styles.card} data-viewed={viewed || undefined}>
         {showHeader && (
           <div className={styles.cardHead}>
-            <AccordionTrigger>
-              {customHeader ?? (
-                <span className={styles.cardTitle}>
-                  <Icon
-                    name={isSecret ? "key" : "folder"}
-                    size={16}
-                    className={styles.secretIcon}
-                  />
-                  <span className={styles.cardName} data-deleted={item.isDeleted || undefined}>
-                    {name}
-                  </span>
-                  {badge && <Badge tone={badge.tone}>{badge.label}</Badge>}
-                </span>
-              )}
-            </AccordionTrigger>
+            <AccordionTrigger>{customHeader ?? <VersionTitle item={item} />}</AccordionTrigger>
             {!customHeader && headerExtra}
             {!customHeader && showViewed && (
               <span className={styles.viewed}>
@@ -750,19 +762,13 @@ export function SecretVersionDiffView({
         )}
         <AccordionContent className={styles.accordionBody}>
           <div className={styles.cardBody}>
-            {isSecret ? (
-              <SecretDiff
-                operationType={operationType}
-                oldVersion={toSecretData(oldVersion)}
-                newVersion={toSecretData(newVersion)}
-              />
-            ) : (
-              <FolderDiff
-                operationType={operationType}
-                oldVersion={toFolderData(oldVersion)}
-                newVersion={toFolderData(newVersion)}
-              />
-            )}
+            <VersionDiff
+              type={item.type}
+              compact={compact}
+              operationType={operationType}
+              oldVersion={oldVersion}
+              newVersion={newVersion}
+            />
           </div>
         </AccordionContent>
       </AccordionItem>
