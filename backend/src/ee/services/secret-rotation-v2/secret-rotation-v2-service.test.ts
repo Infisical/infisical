@@ -533,6 +533,7 @@ describe("updating the rotation interval", () => {
     await update(service, { rotationInterval: 30 });
 
     expect(rotateCredentials).toHaveBeenCalledTimes(1);
+    expect(deps.secretRotationV2DAL.findById).toHaveBeenCalledTimes(2);
     expect(deps.secretRotationV2DAL.updateById).toHaveBeenLastCalledWith(
       "rotation-1",
       expect.objectContaining({ isLastRotationManual: true, rotationStatus: SecretRotationStatus.Success }),

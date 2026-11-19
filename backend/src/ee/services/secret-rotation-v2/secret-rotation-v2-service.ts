@@ -942,11 +942,15 @@ export const secretRotationV2ServiceFactory = ({
         payload.rotationInterval !== secretRotation.rotationInterval
       ) {
         try {
+          // reloaded so a rotation that finished while this update ran isn't overwritten with older credentials
+          const currentSecretRotation = await secretRotationV2DAL.findById(rotationId);
+          if (!currentSecretRotation)
+            throw new NotFoundError({ message: `Could not find secret rotation with ID ${rotationId}` });
+
           // eslint-disable-next-line @typescript-eslint/no-use-before-define
-          const rotatedSecretRotation = await rotateGeneratedCredentials(
-            { ...secretRotation, ...updatedSecretRotation },
-            { isManualRotation: true }
-          );
+          const rotatedSecretRotation = await rotateGeneratedCredentials(currentSecretRotation, {
+            isManualRotation: true
+          });
 
           return await expandSecretRotation(rotatedSecretRotation, kmsDataKeyService);
         } catch (error: unknown) {
