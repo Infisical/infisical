@@ -123,6 +123,12 @@ type TPamSessionServiceFactoryDep = {
 
 export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFactory>;
 
+// A gateway that predates AWS IAM brokering leaves it out of the account types it advertises
+const gatewayServesAwsIam = (gateway: { capabilities?: unknown }) =>
+  (gateway.capabilities as { supported_account_types?: string[] } | null)?.supported_account_types?.includes(
+    PamAccountType.AwsIam
+  ) === true;
+
 export const pamSessionServiceFactory = ({
   pamSessionDAL,
   pamAccountDAL,
@@ -768,13 +774,29 @@ export const pamSessionServiceFactory = ({
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: account.gatewayId ?? account.templateGatewayId,
       gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId,
-      ...outputMaskingGatewayOptions(account)
+      // Output masking never applies to AWS IAM, so its options would be empty there
+      ...(awsIamThroughGateway
+        ? {
+            filter: gatewayServesAwsIam,
+            unavailableMessage:
+              "No healthy gateway in this account's gateway pool can serve AWS IAM sessions. Update the pool's gateways to the latest version."
+          }
+        : outputMaskingGatewayOptions(account))
     });
     if (!effectiveGatewayId) {
       throw new BadRequestError({ message: "Gateway not configured for this account" });
     }
 
     await assertGatewayEnforcesOutputMasking(effectiveGatewayId, account);
+
+    if (awsIamThroughGateway) {
+      const gateway = await gatewayV2DAL.findById(effectiveGatewayId);
+      if (!gateway || !gatewayServesAwsIam(gateway)) {
+        throw new BadRequestError({
+          message: `Gateway '${gateway?.name ?? effectiveGatewayId}' must be updated to the latest version before it can serve AWS IAM sessions`
+        });
+      }
+    }
 
     const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
     const rawCredentials = await decrypt(projectId, account.encryptedCredentials);
