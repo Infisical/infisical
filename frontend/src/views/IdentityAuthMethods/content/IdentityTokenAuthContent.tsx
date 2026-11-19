@@ -8,16 +8,15 @@ import {
   EmptyTitle,
   PageLoader
 } from "@app/components/v3";
-import { useGetIdentityTokenAuth, useGetIdentityTokensTokenAuth } from "@app/hooks/api";
+import { useGetIdentityTokenAuth } from "@app/hooks/api";
 
 import { IdentityAuthAccessTokenFields, IdentityTokenAuthTokensTable } from "../helpers";
 import { ViewAuthMethodProps } from "../types";
 
 export const IdentityTokenAuthContent = ({ identityId }: ViewAuthMethodProps) => {
   const { data, isPending } = useGetIdentityTokenAuth(identityId);
-  const { data: tokens = [], isPending: tokensPending } = useGetIdentityTokensTokenAuth(identityId);
 
-  if (isPending || tokensPending) {
+  if (isPending) {
     return <PageLoader />;
   }
 
@@ -42,7 +41,7 @@ export const IdentityTokenAuthContent = ({ identityId }: ViewAuthMethodProps) =>
         accessTokenNumUsesLimit={data.accessTokenNumUsesLimit}
         accessTokenTrustedIps={data.accessTokenTrustedIps}
       />
-      <IdentityTokenAuthTokensTable tokens={tokens} identityId={identityId} />
+      <IdentityTokenAuthTokensTable identityId={identityId} />
     </DetailGroup>
   );
 };

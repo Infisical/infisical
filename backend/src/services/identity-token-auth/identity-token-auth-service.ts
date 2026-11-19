@@ -608,10 +608,11 @@ export const identityTokenAuthServiceFactory = ({
         identityId,
         authMethod: IdentityAuthMethod.TOKEN_AUTH
       },
-      { offset, limit, sort: [["updatedAt", "desc"]] }
+      { offset, limit, sort: [["updatedAt", "desc"]], count: true }
     );
 
-    return { tokens, identityMembershipOrg };
+    const totalCount = tokens?.[0]?.count ? parseInt(tokens[0].count, 10) : 0;
+    return { tokens, totalCount, identityMembershipOrg };
   };
 
   const getTokenAuthTokenById = async ({
