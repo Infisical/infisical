@@ -136,7 +136,8 @@ export class LicenseService implements TLicenseService {
     try {
       const rootOrgId = await this.organizationsProjectsService.resolveRootOrgId(orgId);
       const { plan } = await this.planCache.read(rootOrgId);
-      // With no plan cached, the next fetch counts.
+      // With no plan cached, the next fetch counts. Without a project limit nothing enforces or gates on the count,
+      // so it catches up at the next refresh instead of counting a large org after every project change.
       if (!plan || !plan.isLimited(PlanLimit.Projects)) return;
       // Right after the commit: a replica may not have the change yet, and nothing recounts until the next one.
       const workspacesUsed = await this.organizationsProjectsService.countWorkspaces(rootOrgId, {
@@ -208,12 +209,9 @@ export class LicenseService implements TLicenseService {
     return org ? { id: rootOrgId, name: org.name, slug: org.slug } : { id: rootOrgId };
   }
 
-  // Only a project limit reads the count, and counting an org with many projects is expensive.
+  // Every fetch counts, since the plan API reports workspacesUsed. A fetch runs once per root org per plan lifetime,
+  // mostly in the background, so the count stays off the request path.
   private async cachePlan(rootOrgId: string, fetched: Plan): Promise<Plan> {
-    if (!fetched.isLimited(PlanLimit.Projects)) {
-      await this.planCache.write(rootOrgId, fetched, null);
-      return fetched;
-    }
     const workspacesUsed = await this.organizationsProjectsService.countWorkspaces(rootOrgId);
     const plan = fetched.withWorkspacesUsed(workspacesUsed);
     await this.planCache.write(rootOrgId, plan, workspacesUsed);

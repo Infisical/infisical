@@ -51,14 +51,12 @@ export class PlanCache implements TPlanCache {
     return { plan: fallback ? plan.asFallback() : plan, passThrough: Boolean(passThrough), stale: !fresh };
   }
 
-  // A null workspacesUsed means the plan doesn't need the count, so any stored one is dropped.
-  async write(rootOrgId: string, plan: Plan, workspacesUsed: number | null) {
+  async write(rootOrgId: string, plan: Plan, workspacesUsed: number) {
     const json = JSON.stringify(plan.toJSON());
     const ttl = jitteredPlanTtl();
     await this.keyStore.setItemWithExpiry(PlanKeys.plan(rootOrgId), ttl, json);
     await this.markFresh(rootOrgId, ttl);
-    if (workspacesUsed === null) await this.keyStore.deleteItem(PlanKeys.workspacesUsed(rootOrgId));
-    else await this.writeWorkspacesUsed(rootOrgId, workspacesUsed);
+    await this.writeWorkspacesUsed(rootOrgId, workspacesUsed);
     await this.keyStore.setItemWithExpiry(
       PlanKeys.lastKnown(rootOrgId),
       PlanKeyTtls.lastKnownInSeconds,

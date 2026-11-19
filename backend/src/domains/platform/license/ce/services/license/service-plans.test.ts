@@ -118,7 +118,7 @@ describe("LicenseService.getPlan", () => {
     expect(await keyStore.getItem(`infisical-cloud-plan-${ROOT.id}`)).not.toBeNull();
   });
 
-  test("should not count projects for a plan without a project limit", async () => {
+  test("should report the project count for a plan without a project limit", async () => {
     // Setup
     const counts = countingWorkspaces();
     const { licenseService } = await buildLicense({ organizations: counts.organizations });
@@ -127,8 +127,8 @@ describe("LicenseService.getPlan", () => {
     const plan = await licenseService.getPlan(ROOT.id);
 
     // Assert
-    expect(plan.toJSON().workspacesUsed).toBe(0);
-    expect(counts.calls).toBe(0);
+    expect(plan.toJSON().workspacesUsed).toBe(WORKSPACES_USED);
+    expect(counts.calls).toBe(1);
   });
 
   test("should fetch once and serve the last known plan to concurrent reads on a cache miss", async () => {
@@ -562,11 +562,12 @@ describe("LicenseService.refreshWorkspacesUsed", () => {
     expect((await licenseService.getPlan(ROOT.id)).slug).toBe("enterprise");
   });
 
-  test("should not count for a plan without a project limit", async () => {
+  test("should not recount after a project change for a plan without a project limit", async () => {
     // Setup
     const counts = countingWorkspaces();
     const { licenseService } = await buildLicense({ organizations: counts.organizations });
     await licenseService.getPlan(ROOT.id);
+    counts.calls = 0;
 
     // Action
     await licenseService.refreshWorkspacesUsed(ROOT.id);
