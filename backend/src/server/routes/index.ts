@@ -2722,6 +2722,7 @@ export const registerRoutes = async (
     dynamicSecretDAL,
     secretRotationV2DAL,
     honeyTokenDAL,
+    projectFolderGrantDAL,
     secretImportDAL,
     secretV2BridgeService,
     secretValidationRuleService,

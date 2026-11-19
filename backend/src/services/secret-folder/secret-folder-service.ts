@@ -52,6 +52,7 @@ import {
   TFolderCommitServiceFactory
 } from "../folder-commit/folder-commit-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
@@ -128,6 +129,7 @@ type TSecretFolderServiceFactoryDep = {
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "find">;
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "existsByFolderIds">;
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "find">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   secretImportDAL: Pick<TSecretImportDALFactory, "findFolderIdsWithImports" | "findImportByFolderIds">;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "dispatchSecretMoveSideEffects">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
@@ -159,6 +161,7 @@ export const secretFolderServiceFactory = ({
   dynamicSecretDAL,
   secretRotationV2DAL,
   honeyTokenDAL,
+  projectFolderGrantDAL,
   secretImportDAL,
   secretV2BridgeService,
   secretValidationRuleService,
@@ -929,6 +932,7 @@ export const secretFolderServiceFactory = ({
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) throw new NotFoundError({ message: `Environment with slug '${environment}' not found` });
 
+    let grantTargetProjectIds: string[] = [];
     const folder = await folderDAL.transaction(async (tx) => {
       const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath, tx);
       if (!parentFolder)
@@ -984,6 +988,12 @@ export const secretFolderServiceFactory = ({
         if (subfolder) throw error;
       }
 
+      // Deleting the folder cascades the cross-project grants on it and its subfolders, after which
+      // invalidateSecretCacheByProjectId can no longer find the projects that imported from them.
+      grantTargetProjectIds = (await projectFolderGrantDAL.find({ sourceProjectId: projectId }, { tx })).map(
+        (grant) => grant.targetProjectId
+      );
+
       const [doc] = await folderDAL.delete(
         {
           envId: env.id,
@@ -1032,6 +1042,11 @@ export const secretFolderServiceFactory = ({
     });
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
+    await Promise.all(
+      [...new Set(grantTargetProjectIds)].map((targetProjectId) =>
+        secretV2BridgeDAL.invalidateSecretCacheByProjectId(targetProjectId)
+      )
+    );
     await permissionService.invalidateProjectFolderPermissionCache(projectId);
 
     // A recursive sync rooted above this folder just lost every secret it held, and no secret-level

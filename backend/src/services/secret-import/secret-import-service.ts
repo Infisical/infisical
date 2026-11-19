@@ -1082,10 +1082,15 @@ export const secretImportServiceFactory = ({
     return { secrets: importedSecrets, etag: computedEtag };
   };
 
-  const $getRawSecretsV1FromImports = async (
-    { path: secretPath, environment, projectId, actor, actorAuthMethod, actorId, actorOrgId }: TGetSecretsFromImportDTO,
-    botKey?: string
-  ) => {
+  const $getRawSecretsV1FromImports = async ({
+    path: secretPath,
+    environment,
+    projectId,
+    actor,
+    actorAuthMethod,
+    actorId,
+    actorOrgId
+  }: TGetSecretsFromImportDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -1107,6 +1112,8 @@ export const secretImportServiceFactory = ({
         actorOrgId
       )
     ).filter((imp) => !imp.isAccessRevoked);
+
+    const { botKey } = await projectBotService.getBotKey(projectId);
 
     if (!botKey)
       throw new NotFoundError({
@@ -1144,9 +1151,12 @@ export const secretImportServiceFactory = ({
     etag?: string;
     notModified?: boolean;
   }> => {
-    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(dto.projectId);
-    if (shouldUseSecretV2Bridge) return $getRawSecretsV2FromImports(dto);
-    return { secrets: await $getRawSecretsV1FromImports(dto, botKey) };
+    // Chosen from the project row rather than getBotKey, which can create or reactivate a legacy project's bot and
+    // so must not run before the caller is authorized. A missing project takes the V2 path, whose permission check
+    // refuses it.
+    const project = await projectDAL.findById(dto.projectId);
+    if (project && project.version !== 3) return { secrets: await $getRawSecretsV1FromImports(dto) };
+    return $getRawSecretsV2FromImports(dto);
   };
 
   const getImportsMultiEnv = async ({
