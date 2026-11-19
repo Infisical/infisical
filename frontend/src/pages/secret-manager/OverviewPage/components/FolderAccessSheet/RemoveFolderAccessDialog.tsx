@@ -26,6 +26,7 @@ type Props = {
   environmentName: string;
   // callers that do not load the member's project roles cannot tell an override from a plain grant
   isRoleContextKnown?: boolean;
+  isSelf?: boolean;
 };
 
 export const RemoveFolderAccessDialog = ({
@@ -35,7 +36,8 @@ export const RemoveFolderAccessDialog = ({
   isPending,
   folderPath,
   environmentName,
-  isRoleContextKnown = true
+  isRoleContextKnown = true,
+  isSelf = false
 }: Props) => {
   const isOpen = Boolean(actor);
 
@@ -143,6 +145,11 @@ export const RemoveFolderAccessDialog = ({
           {isTemporary && expiry && (
             <AlertDialogDescription>
               It would otherwise expire in {expiry.value}, on {formatExpiryFull(expiry.expiresAt)}.
+            </AlertDialogDescription>
+          )}
+          {!isExpired && isSelf && (
+            <AlertDialogDescription>
+              This is your own access. Removing it can stop you from managing access to this folder.
             </AlertDialogDescription>
           )}
         </AlertDialogHeader>

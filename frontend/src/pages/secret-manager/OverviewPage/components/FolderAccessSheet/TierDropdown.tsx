@@ -49,6 +49,8 @@ type Props = {
   removeVariant?: "default" | "danger" | "warning";
   // a change is still saving, so picking again would send a second, conflicting request
   isPending?: boolean;
+  // a pick that opens a confirmation closes the menu so the dialog does not sit on top of it
+  closeOnSelect?: boolean;
 };
 
 // option rows follow the Combobox rich option shape: label over a muted text-xs description, with the
@@ -57,14 +59,15 @@ type Props = {
 const TierOptions = ({
   activeTier,
   onSelectTier,
-  isPending
-}: Pick<Props, "activeTier" | "onSelectTier" | "isPending">) =>
+  isPending,
+  closeOnSelect
+}: Pick<Props, "activeTier" | "onSelectTier" | "isPending" | "closeOnSelect">) =>
   FOLDER_ROLE_TIERS.map((tier) => (
     <DropdownMenuItem
       key={tier.value}
       isDisabled={isPending}
       onClick={(e) => {
-        e.preventDefault();
+        if (!closeOnSelect) e.preventDefault();
         onSelectTier(tier.value);
       }}
     >
@@ -84,13 +87,14 @@ const RecursiveItem = ({
   label,
   checked,
   onCheckedChange,
-  isPending
-}: TRecursiveControl & { isPending?: boolean }) => (
+  isPending,
+  closeOnSelect
+}: TRecursiveControl & { isPending?: boolean; closeOnSelect?: boolean }) => (
   <DropdownMenuCheckboxItem
     checked={checked}
     disabled={isPending}
     onClick={(e) => {
-      e.preventDefault();
+      if (!closeOnSelect) e.preventDefault();
       onCheckedChange(!checked);
     }}
   >
@@ -118,7 +122,8 @@ export const TierDropdown = ({
   onRemove,
   removeLabel = "Remove access",
   removeVariant = "danger",
-  isPending
+  isPending,
+  closeOnSelect
 }: Props) => {
   // an inherited grant is edited where it was made, so this menu only explains it and offers an
   // exact grant on top
@@ -160,7 +165,11 @@ export const TierDropdown = ({
         )}
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Add a Role on This Folder</DropdownMenuLabel>
-        <TierOptions onSelectTier={onSelectTier} isPending={isPending} />
+        <TierOptions
+          onSelectTier={onSelectTier}
+          isPending={isPending}
+          closeOnSelect={closeOnSelect}
+        />
       </DropdownMenuContent>
     );
   }
@@ -169,10 +178,15 @@ export const TierDropdown = ({
   if (!activeTier) {
     return (
       <DropdownMenuContent align="end" className="w-80">
-        <TierOptions onSelectTier={onSelectTier} isPending={isPending} />
+        <TierOptions
+          onSelectTier={onSelectTier}
+          isPending={isPending}
+          closeOnSelect={closeOnSelect}
+        />
         {recursive && (
           <>
             <DropdownMenuSeparator />
+            {/* without a grant this toggle only stages the next pick, and closing would reset it */}
             <RecursiveItem {...recursive} isPending={isPending} />
           </>
         )}
@@ -194,6 +208,7 @@ export const TierDropdown = ({
               activeTier={activeTier}
               onSelectTier={onSelectTier}
               isPending={isPending}
+              closeOnSelect={closeOnSelect}
             />
           </DropdownMenuSubContent>
         </DropdownMenuPortal>
@@ -204,7 +219,9 @@ export const TierDropdown = ({
           {temporaryLabel}
         </DropdownMenuItem>
       )}
-      {recursive && <RecursiveItem {...recursive} isPending={isPending} />}
+      {recursive && (
+        <RecursiveItem {...recursive} isPending={isPending} closeOnSelect={closeOnSelect} />
+      )}
       {onRemove && (
         <DropdownMenuItem variant={removeVariant} onClick={onRemove}>
           <Trash2Icon />

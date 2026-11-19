@@ -135,6 +135,7 @@ export const ActorIdentity = ({ actor }: { actor: TFolderAccessActor }) => (
 
 type Props = {
   actor: TFolderAccessActor;
+  isSelf?: boolean;
   isDisabled?: boolean;
   isPending?: boolean;
   folderPath: string;
@@ -146,13 +147,14 @@ type Props = {
   onManageInheritedAccess?: (secretPath: string) => void;
 };
 
-type GrantRowProps = Pick<Props, "actor" | "isDisabled" | "isPending" | "folderPath"> & {
+type GrantRowProps = Pick<Props, "actor" | "isSelf" | "isDisabled" | "isPending" | "folderPath"> & {
   footerNote?: string;
   onSetTier: (tier: SecretFolderRole, isRecursive: boolean) => void;
 };
 
 export const FolderAccessGrantRow = ({
   actor,
+  isSelf,
   isDisabled,
   isPending,
   folderPath,
@@ -181,6 +183,7 @@ export const FolderAccessGrantRow = ({
         <TierDropdown
           footerNote={note || undefined}
           isPending={isPending}
+          closeOnSelect={isSelf}
           recursive={{
             label: subfolderToggleLabelOf(folderPath),
             checked: isRecursive,
@@ -195,6 +198,7 @@ export const FolderAccessGrantRow = ({
 
 export const FolderAccessRow = ({
   actor,
+  isSelf,
   isDisabled,
   isPending,
   folderPath,
@@ -347,6 +351,7 @@ export const FolderAccessRow = ({
             activeTier={access?.permission ?? null}
             footerNote={grantedFooterNote}
             isPending={isPending}
+            closeOnSelect={isSelf}
             inherited={
               !access && inheritedAccess
                 ? {
