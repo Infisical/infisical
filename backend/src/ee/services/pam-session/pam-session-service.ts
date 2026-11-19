@@ -18,6 +18,7 @@ import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+import { TUserServiceFactory } from "@app/services/user/user-service";
 
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
@@ -109,12 +110,16 @@ type TPamSessionServiceFactoryDep = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
   userDAL: Pick<TUserDALFactory, "findById">;
+  userService: Pick<TUserServiceFactory, "getEnrolledMfaMethods">;
   pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
   mfaSessionService: Pick<
     TMfaSessionServiceFactory,
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
+  orgDAL: Pick<
+    TOrgDALFactory,
+    "findById" | "findRootOrgDetails" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess"
+  >;
   pamAccessRequestService: Pick<
     TPamAccessRequestServiceFactory,
     "checkGrant" | "getAccessStatusBatch" | "getFolderPolicyConfigured"
@@ -138,6 +143,7 @@ export const pamSessionServiceFactory = ({
   userDAL,
   pamSessionExpirationService,
   mfaSessionService,
+  userService,
   orgDAL,
   pamAccessRequestService,
   telemetryService
@@ -532,7 +538,7 @@ export const pamSessionServiceFactory = ({
         });
       }
       await enforceMfa(
-        { mfaSessionService, orgDAL, userDAL },
+        { mfaSessionService, orgDAL, userDAL, userService },
         {
           userId: actor.actorId,
           orgId: actor.actorOrgId,
