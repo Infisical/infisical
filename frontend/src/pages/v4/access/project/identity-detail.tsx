@@ -455,7 +455,12 @@ export const ProjectIdentityDetail = () => {
   if (permissionPending || isPending) return <PageLoader label="Loading machine identity" />;
 
   if (!permission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity))
-    return <AccessRestricted requirement="read Identity" />;
+    return (
+      <Stack gap={24}>
+        <PageHeader breadcrumb={breadcrumb} title="Machine identity" />
+        <AccessRestricted requirement="read Identity" />
+      </Stack>
+    );
 
   if (!membership)
     return (

@@ -17,6 +17,7 @@ import { parsePathFromReplicatedPath } from "@app/lib/fn/string";
 
 import { useV4Adapter } from "../../../data/adapters";
 import { useV4Session } from "../../../data/session/contract";
+import { useGo } from "../../../links";
 import { PageLoader } from "../../../shell/project-gate";
 import { ChangeItem } from "./ChangeItem";
 import { MergeButtons, ReopenButton } from "./MergeButtons";
@@ -95,7 +96,8 @@ export const RequestDetail = ({
     enabled: Boolean(request?.isReplicated)
   });
 
-  const breadcrumb = [{ label: "Change requests", href: listHref }];
+  const go = useGo();
+  const breadcrumb = [{ label: "Change requests", link: go.link(listHref) }];
   if (isPending && !error) return <PageLoader label="Loading change request" />;
   if (!request)
     return (
