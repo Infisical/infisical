@@ -203,7 +203,7 @@ Example values:
   How long, in milliseconds, a request to list secrets can wait for its turn before it fails. Only used when `SECRET_READ_CONCURRENCY_LIMIT_ENABLED` is `true`.
 </ParamField>
 
-<ParamField query="SECRET_READ_MAX_QUEUE_DEPTH" type="int" default="20" optional>
+<ParamField query="SECRET_READ_MAX_QUEUE_DEPTH" type="int" default="500" optional>
   Maximum number of requests to list secrets that can wait for their turn in one organization. It also caps how many organizations can wait for a free slot on each instance. Only used when `SECRET_READ_CONCURRENCY_LIMIT_ENABLED` is `true`.
 </ParamField>
 

@@ -339,7 +339,7 @@ const envSchema = z
       .number()
       .int()
       .min(0)
-      .default(20)
+      .default(500)
       .describe(
         "Most requests to list secrets that may wait for their turn per organization, and most organizations that may wait for a free slot on an instance"
       ),
