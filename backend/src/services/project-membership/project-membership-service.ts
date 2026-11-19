@@ -15,7 +15,6 @@ import { groupBy, unique } from "@app/lib/fn";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
-import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 
 import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
@@ -269,7 +268,7 @@ export const projectMembershipServiceFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = actor.org;
     for (const addedUser of orgMembershipUsernames) {
-      assertPermissionBounds(permission, {
+      permission.assertBounds({
         usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
         subject: ProjectPermissionSub.Member,
@@ -395,7 +394,7 @@ export const projectMembershipServiceFactory = ({
           .filter(Boolean),
         ...unattributableRoles
       ];
-      assertPermissionBounds(permission, {
+      permission.assertBounds({
         usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: ProjectPermissionMemberActions.Delete,
         subject: ProjectPermissionSub.Member,

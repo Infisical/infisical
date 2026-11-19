@@ -2,6 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { AccessScope, ProjectMembershipRole } from "@app/db/schemas";
+import { PERMISSION_BOUNDARY_ERROR_NAME } from "@app/domains/lib/errors";
 import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionMemberActions,
@@ -11,7 +12,6 @@ import {
   projectNoAccessPermissions
 } from "@app/domains/platform/projects/ce/module";
 import { conditionsMatcher } from "@app/lib/casl";
-import { PermissionBoundaryError } from "@app/lib/errors";
 
 import { newProjectMembershipUserFactory } from "./project-membership-user-factory";
 
@@ -106,7 +106,7 @@ describe("onUpdateMembershipUserGuard privilege boundary", () => {
   test("a userEmail-scoped actor cannot strip an out-of-scope Admin down to no-access", async () => {
     const guard = createGuard({ actorPermission: contractorScopedEditor, shouldUseNewPrivilegeSystem: true });
 
-    await expect(guard()).rejects.toThrow(PermissionBoundaryError);
+    await expect(guard()).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
   });
 
   test("the same actor can still change a member who is inside its scope", async () => {

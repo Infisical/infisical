@@ -303,7 +303,7 @@ maps them at the HTTP boundary.
 | `RuleViolationError` | The caller asked for something the rules refuse: bad input, a limit reached, a feature not on the plan | 400 |
 | `EntityNotFoundError` | The thing doesn't exist, or belongs to another org or project (same answer, so another tenant's ids don't reveal they exist) | 404 |
 | `StateConflictError` | The request is valid, but the current state prevents it: the name is taken, it is in use, or it changed since it was read | 409 |
-| `PermissionDeniedError` | The actor may not do this: a refused permission check (`permission.assert`, carrying a `denial` the 403 body and the permission-denied audit log report), or a refusal with no check behind it (not a member, another org's project), which carries only its message | 403 |
+| `PermissionDeniedError` | The actor may not do this: a refused permission check (`permission.assert`, carrying a `denial` the 403 body and the permission-denied audit log report), a refused privilege change (`permission.assertBounds`, named `PermissionBoundaryError` and answered as that HTTP class), or a refusal with no check behind it (not a member, another org's project), which carries only its message | 403 |
 | `ExternalSystemError` | Something the domain depends on failed (the License Server, a cloud API); nothing the caller sent is wrong | 500 |
 
 Who throws:

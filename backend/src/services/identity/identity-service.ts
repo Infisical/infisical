@@ -24,7 +24,6 @@ import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/v
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
-import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
@@ -106,7 +105,7 @@ export const identityServiceFactory = ({
         });
     }
     if (role !== OrgMembershipRole.NoAccess) {
-      assertPermissionBounds(permission, {
+      permission.assertBounds({
         usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionIdentityActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Identity,
@@ -227,7 +226,7 @@ export const identityServiceFactory = ({
         ignoreUnresolvedRoles: true
       });
 
-      assertPermissionBounds(permission, {
+      permission.assertBounds({
         usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionIdentityActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Identity,
@@ -235,7 +234,7 @@ export const identityServiceFactory = ({
         message: "Failed to change the roles of a more privileged identity"
       });
 
-      assertPermissionBounds(permission, {
+      permission.assertBounds({
         usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionIdentityActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Identity,
@@ -347,7 +346,7 @@ export const identityServiceFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = actor.org;
 
-    assertPermissionBounds(permission, {
+    permission.assertBounds({
       usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionIdentityActions.Delete,
       subject: OrgPermissionSubjects.Identity,

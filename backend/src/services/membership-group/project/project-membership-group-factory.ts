@@ -14,7 +14,6 @@ import {
   resolveMembershipRoleSlugs,
   toBoundsTargets
 } from "@app/services/membership/membership-fns";
-import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TMembershipGroupDALFactory } from "../membership-group-dal";
@@ -95,7 +94,7 @@ export const newProjectMembershipGroupFactory = ({
       roles: filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role)
     });
     for (const permissionRole of permissionRoles) {
-      assertPermissionBounds(permission, {
+      permission.assertBounds({
         usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
         subject: ProjectPermissionSub.Groups,
@@ -161,7 +160,7 @@ export const newProjectMembershipGroupFactory = ({
       ignoreUnresolvedRoles: true
     });
 
-    assertPermissionBounds(permission, {
+    permission.assertBounds({
       usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
       subject: ProjectPermissionSub.Groups,
@@ -175,7 +174,7 @@ export const newProjectMembershipGroupFactory = ({
       roles: filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role)
     });
     for (const permissionRole of permissionRoles) {
-      assertPermissionBounds(permission, {
+      permission.assertBounds({
         usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
         subject: ProjectPermissionSub.Groups,
@@ -212,7 +211,7 @@ export const newProjectMembershipGroupFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
-    assertPermissionBounds(permission, {
+    permission.assertBounds({
       usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: ProjectPermissionGroupActions.Delete,
       subject: ProjectPermissionSub.Groups,

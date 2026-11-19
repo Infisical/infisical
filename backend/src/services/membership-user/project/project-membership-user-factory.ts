@@ -19,7 +19,6 @@ import {
   resolveMembershipRoleSlugs,
   toBoundsTargets
 } from "@app/services/membership/membership-fns";
-import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -132,7 +131,7 @@ export const newProjectMembershipUserFactory = ({
     for (const permissionRole of permissionRoles) {
       // Per-user checks
       for (const newUser of newUsers) {
-        assertPermissionBounds(permission, {
+        permission.assertBounds({
           usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
           actions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
           subject: ProjectPermissionSub.Member,
@@ -253,7 +252,7 @@ export const newProjectMembershipUserFactory = ({
       roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
-    assertPermissionBounds(permission, {
+    permission.assertBounds({
       usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
       subject: ProjectPermissionSub.Member,
@@ -268,7 +267,7 @@ export const newProjectMembershipUserFactory = ({
     });
 
     for (const permissionRole of permissionRoles) {
-      assertPermissionBounds(permission, {
+      permission.assertBounds({
         usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
         subject: ProjectPermissionSub.Member,
@@ -302,7 +301,7 @@ export const newProjectMembershipUserFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
-    assertPermissionBounds(permission, {
+    permission.assertBounds({
       usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: ProjectPermissionMemberActions.Delete,
       subject: ProjectPermissionSub.Member,

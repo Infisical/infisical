@@ -25,7 +25,6 @@ import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { lockMembershipsById, TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { assertWillRetainProjectAdmin, roleNeedsPrivilegeBoundary } from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
-import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
@@ -555,7 +554,7 @@ export const agentVaultMembershipServiceFactory = ({
 
     entries.forEach(({ actor, roles }) => {
       const op = ROLE_ASSIGNMENT[actor.type];
-      assertPermissionBounds(permission, {
+      permission.assertBounds({
         usesNewPrivilegeSystem: ctx.org.shouldUseNewPrivilegeSystem,
         actions: [...op.actions],
         subject: op.subject,
