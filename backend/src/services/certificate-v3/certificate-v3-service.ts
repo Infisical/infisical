@@ -102,7 +102,6 @@ import {
   removeRootCaFromChain,
   validateCertificateRequestLicense
 } from "../certificate-common/certificate-utils";
-import { addCommonNameAsDnsSan } from "../certificate-policy/certificate-policy-fns";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import {
   holdCertificateRequestForApproval,
@@ -127,7 +126,7 @@ import {
 } from "../resource-metadata/resource-metadata-fns";
 import { certificateRenewalServiceFactory } from "./certificate-renewal-service";
 import { processSelfSignedCertificate } from "./certificate-self-signed-fns";
-import { applyProfileDefaults, resolveEffectiveTtl } from "./certificate-v3-fns";
+import { applyCommonNameDefaultSan, applyProfileDefaults, resolveEffectiveTtl } from "./certificate-v3-fns";
 import {
   TCertificateIssuanceResponse,
   TIssueCertificateFromProfileDTO,
@@ -657,23 +656,13 @@ export const certificateV3ServiceFactory = ({
       { projectId: profile.projectId, profileName: profile.slug, applicationId, actor }
     );
 
-    const policy = await certificatePolicyService.getPolicyById({
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      policyId: profile.certificatePolicyId,
-      internal: true
-    });
-
     const profileDefaultedRequest = applyProfileDefaults(certificateRequest, profile.defaults);
-    const certificateSubject = buildCertificateSubjectFromTemplate(profileDefaultedRequest, policy.subject);
     const certificateRequestWithDefaults = {
       ...profileDefaultedRequest,
-      altNames: addCommonNameAsDnsSan({
-        policy,
+      altNames: applyCommonNameDefaultSan({
+        defaults: profile.defaults,
         enrollmentType: EnrollmentType.API,
-        commonName: certificateSubject.common_name,
+        commonName: profileDefaultedRequest.commonName,
         subjectAlternativeNames: profileDefaultedRequest.altNames
       }).subjectAlternativeNames
     };
@@ -693,6 +682,18 @@ export const certificateV3ServiceFactory = ({
         ...certificateRequestWithDefaults,
         subjectAlternativeNames: certificateRequestWithDefaults.altNames
       });
+
+      const policy = await certificatePolicyService.getPolicyById({
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId,
+        policyId: profile.certificatePolicyId,
+        internal: true
+      });
+      if (!policy) {
+        throw new NotFoundError({ message: "Certificate policy not found for this profile" });
+      }
 
       const validationResult = await certificatePolicyService.validateCertificateRequest(
         profile.certificatePolicyId,
@@ -846,6 +847,18 @@ export const certificateV3ServiceFactory = ({
       subjectAlternativeNames: certificateRequestWithDefaults.altNames
     });
 
+    const policy = await certificatePolicyService.getPolicyById({
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      policyId: profile.certificatePolicyId,
+      internal: true
+    });
+    if (!policy) {
+      throw new NotFoundError({ message: "Certificate policy not found for this profile" });
+    }
+
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
       mappedCertificateRequest,
@@ -877,8 +890,12 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
+    const certificateSubject = buildCertificateSubjectFromTemplate(certificateRequestWithDefaults, policy?.subject);
     const subjectAlternativeNames = buildSubjectAlternativeNamesFromTemplate(
-      { subjectAlternativeNames: certificateRequestWithDefaults.altNames },
+      {
+        commonName: certificateRequestWithDefaults.commonName,
+        subjectAlternativeNames: certificateRequestWithDefaults.altNames
+      },
       policy?.sans
     );
 
@@ -1409,8 +1426,8 @@ export const certificateV3ServiceFactory = ({
     const {
       subjectAlternativeNames: subjectAlternativeNamesWithCommonName,
       altNameEntries: altNameEntriesWithCommonName
-    } = addCommonNameAsDnsSan({
-      policy,
+    } = applyCommonNameDefaultSan({
+      defaults: profile.defaults,
       enrollmentType,
       commonName: certificateRequest.commonName,
       csrCommonName: csrCertificateRequest.commonName,
@@ -1917,17 +1934,9 @@ export const certificateV3ServiceFactory = ({
       certificateRequest = applyProfileDefaults(rawRequest, profile.defaults);
     }
 
-    const policy = await certificatePolicyService.getPolicyById({
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      policyId: profile.certificatePolicyId,
-      internal: true
-    });
     const preflightCa = profile.caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId) : undefined;
-    certificateRequest.subjectAlternativeNames = addCommonNameAsDnsSan({
-      policy,
+    certificateRequest.subjectAlternativeNames = applyCommonNameDefaultSan({
+      defaults: profile.defaults,
       enrollmentType: EnrollmentType.API,
       commonName: certificateRequest.commonName,
       subjectAlternativeNames: certificateRequest.subjectAlternativeNames,

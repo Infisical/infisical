@@ -20,7 +20,6 @@ import {
   buildRenewalCertificateRequest,
   buildRenewalPreview,
   certificateSpanToTtl,
-  haveRenewalNamesChanged,
   importKeyPairFromPem,
   isCertificateContentEdit,
   keepCertificateFactsInCsrRenewal,
@@ -70,60 +69,6 @@ describe("resolveRenewalAltNames", () => {
       { type: CertSubjectAlternativeNameType.DNS_NAME, value: issued }
     ]);
     expect(resolveRenewalAltNames({ exists: false, altNames: null }, null)).toEqual([]);
-  });
-});
-
-describe("haveRenewalNamesChanged", () => {
-  const dnsSan = (value: string) => ({ type: CertSubjectAlternativeNameType.DNS_NAME, value });
-  const certificateNames = {
-    commonName: "app.example.com",
-    subjectAlternativeNames: [dnsSan("app.example.com"), dnsSan("api.example.com")]
-  };
-
-  it("treats the same names in another order or case as unchanged", () => {
-    expect(
-      haveRenewalNamesChanged(certificateNames, {
-        commonName: "APP.example.com",
-        subjectAlternativeNames: [dnsSan("api.example.com"), dnsSan("app.example.com")]
-      })
-    ).toBe(false);
-  });
-
-  it("compares values only, so a SAN read back with another type is unchanged", () => {
-    expect(
-      haveRenewalNamesChanged(
-        {
-          commonName: "app.example.com",
-          subjectAlternativeNames: [{ type: CertSubjectAlternativeNameType.UPN, value: "jsmith@example.com" }]
-        },
-        {
-          commonName: "app.example.com",
-          subjectAlternativeNames: [{ type: CertSubjectAlternativeNameType.EMAIL, value: "jsmith@example.com" }]
-        }
-      )
-    ).toBe(false);
-  });
-
-  it("treats a case change in a URI SAN as a change, since URI paths are case-sensitive", () => {
-    const uriSan = (value: string) => ({ type: CertSubjectAlternativeNameType.URI, value });
-    expect(
-      haveRenewalNamesChanged(
-        { commonName: "app.example.com", subjectAlternativeNames: [uriSan("spiffe://example.com/Service")] },
-        { commonName: "app.example.com", subjectAlternativeNames: [uriSan("spiffe://example.com/service")] }
-      )
-    ).toBe(true);
-  });
-
-  it("detects a changed common name or SAN list", () => {
-    expect(haveRenewalNamesChanged(certificateNames, { ...certificateNames, commonName: "new.example.com" })).toBe(
-      true
-    );
-    expect(
-      haveRenewalNamesChanged(certificateNames, {
-        ...certificateNames,
-        subjectAlternativeNames: [dnsSan("app.example.com")]
-      })
-    ).toBe(true);
   });
 });
 

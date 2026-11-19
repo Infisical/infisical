@@ -14,6 +14,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "@app/services/certificate-authority/certificate-authority-maps";
+import { RequestReference } from "@app/services/certificate-policy/certificate-policy-fns";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS } from "@app/services/secret-validation-rule/secret-validation-rule-constants";
@@ -2513,8 +2514,7 @@ export const CERTIFICATES = {
     renewalKeySource:
       "How the renewed certificate's key pair is handled. 'new' generates a fresh pair, 'reuse' keeps the current one so the renewed certificate carries the same public key, and 'csr' takes the key from a supplied signing request. Defaults to 'new'.",
     csr: "A PEM-encoded certificate signing request to renew from. Its subject, key and extensions take precedence, so only TTL and basic constraints may be set alongside it.",
-    attributes:
-      "Certificate fields to change on renewal. Anything omitted is copied from the certificate being renewed. Profile defaults are not applied.",
+    attributes: `Certificate fields to change on renewal. Anything omitted is copied from the certificate being renewed. Profile defaults are not applied, except a default SAN of ${RequestReference.CommonName}, which adds the common name as a SAN when the certificate lacks it.`,
     removeRootsFromChain: "Whether to remove the root certificate from the returned certificate chain.",
     externalConfiguration: "Options for certificates issued by an external certificate authority.",
     reissue:
@@ -2587,9 +2587,18 @@ const domainComponentRule = (rule: string) =>
 
 const DOMAIN_COMPONENT_DENIED_RULE = `Domain component sequences that are rejected, each comma-joined most specific first. A sequence is rejected wherever it appears in the chain, so "example,com" rejects DC=example,DC=com and DC=host,DC=example,DC=com alike.`;
 
+const sanRuleValues = (rule: string, reference: string) =>
+  `SAN values ${rule}, with * as a wildcard. ${RequestReference.CommonName} as the whole value ${reference}, ignoring case, except that in a URI only the scheme and host ignore case. Any other value containing "{{" is refused.`;
+
 export const CERTIFICATE_POLICIES = {
-  ADD_COMMON_NAME_AS_DNS_SAN:
-    "When true, issuance adds the certificate's common name as a DNS name subject alternative name unless a DNS name SAN already matches it (case-insensitive). The added name is checked against the SAN rules like a requested one, and a common name that is not a valid DNS host name is refused. ACME issuance adds only the common name of the CSR, and an IP address common name there is left as it is. Microsoft AD CS signs a CSR as sent, so a request to an AD CS CA that includes a CSR is not changed. Requires a dns_name SAN rule when the policy restricts SANs. A renewal adds it only when it changes the common name or SANs. Defaults to false on create; omit it on update to keep the current value.",
+  SAN_RULE: {
+    allowed: `${sanRuleValues("this type may take", "allows a SAN equal to the request's common name")} That reference is only as strict as the policy's common name rule.`,
+    required: sanRuleValues(
+      "the request must include",
+      "requires a SAN of this type equal to the request's common name (a request without a common name is refused)"
+    ),
+    denied: sanRuleValues("that are rejected", "rejects a SAN of this type equal to the request's common name")
+  },
   CUSTOM_EXTENSION_RULES:
     "Rules for custom X.509 extensions, one per OID. Omit the field to leave custom extensions unconstrained; send an empty array to forbid them entirely.",
   CUSTOM_EXTENSION_RULE: {
@@ -2605,6 +2614,10 @@ export const CERTIFICATE_POLICIES = {
     required: domainComponentRule("required"),
     denied: DOMAIN_COMPONENT_DENIED_RULE
   }
+};
+
+export const CERTIFICATE_PROFILES = {
+  DEFAULT_SUBJECT_ALT_NAMES: `Subject alternative names added to a request that has none. An entry whose value is ${RequestReference.CommonName} works differently: on every enrollment method and on renewal, when the request has a common name that is valid for the entry's SAN type and no SAN of that type equal to it, the common name is added as a SAN of that type, even if the request lists other SANs. ACME adds only the CSR's own common name, and only for dns_name and ip_address. A request with a CSR to a Microsoft AD CS or Venafi TPP certificate authority is signed as sent, so nothing is added. Saving the entry requires the profile's policy to allow a common name and SANs of that type. Any other value containing "{{" is refused.`
 };
 
 export const CERTIFICATE_TEMPLATES = {

@@ -45,7 +45,6 @@ import {
 import { recordCertificateIssuanceFailure } from "@app/services/certificate-common/certificate-issuance-audit-fns";
 import { validateCertificateRequestLicense } from "@app/services/certificate-common/certificate-utils";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
-import { addCommonNameAsDnsSan } from "@app/services/certificate-policy/certificate-policy-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
@@ -56,7 +55,11 @@ import {
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { applyProfileDefaults, resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
+import {
+  applyCommonNameDefaultSan,
+  applyProfileDefaults,
+  resolveEffectiveTtl
+} from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -966,22 +969,7 @@ export const pkiScepServiceFactory = ({
       throw new BadRequestError({ message: "Certificate policy is required for external CA issuance" });
     }
 
-    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
-    if (!policy) {
-      throw new NotFoundError({ message: "Certificate policy not found for this profile" });
-    }
-
-    const csrRequest = extractCertificateRequestFromCSR(csrPem);
-    const certRequest = {
-      ...csrRequest,
-      subjectAlternativeNames: addCommonNameAsDnsSan({
-        policy,
-        enrollmentType: EnrollmentType.SCEP,
-        commonName: csrRequest.commonName,
-        subjectAlternativeNames: csrRequest.subjectAlternativeNames,
-        isCsrSignedAsSent: caSignsCsrAsSent(caType)
-      }).subjectAlternativeNames
-    };
+    const certRequest = extractCertificateRequestFromCSR(csrPem);
     const { keyAlgorithm, signatureAlgorithm } = extractAlgorithmsFromCSR(csrPem);
     const certRequestWithDefaults = applyProfileDefaults(
       {
@@ -997,15 +985,16 @@ export const pkiScepServiceFactory = ({
       { approvalPolicyService, approvalPolicyDAL },
       { projectId: profile.projectId, profileName: profile.slug, applicationId, actor: ActorType.SCEP_ACCOUNT }
     );
-    if (approvalPolicy) {
-      certRequestWithDefaults.subjectAlternativeNames = addCommonNameAsDnsSan({
-        policy,
-        enrollmentType: EnrollmentType.SCEP,
-        commonName: certRequestWithDefaults.commonName,
-        subjectAlternativeNames: certRequestWithDefaults.subjectAlternativeNames,
-        isCsrSignedAsSent: caSignsCsrAsSent(caType)
-      }).subjectAlternativeNames;
-    }
+
+    const { subjectAlternativeNames } = applyCommonNameDefaultSan({
+      defaults: profile.defaults,
+      enrollmentType: EnrollmentType.SCEP,
+      commonName: approvalPolicy ? certRequestWithDefaults.commonName : certRequest.commonName,
+      subjectAlternativeNames: certRequest.subjectAlternativeNames,
+      isCsrSignedAsSent: caSignsCsrAsSent(caType)
+    });
+    certRequest.subjectAlternativeNames = subjectAlternativeNames;
+    certRequestWithDefaults.subjectAlternativeNames = subjectAlternativeNames;
 
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
@@ -1019,10 +1008,9 @@ export const pkiScepServiceFactory = ({
     }
     assertCaSupportsCustomExtensions(caType, validationResult.resolvedCustomExtensions?.length ?? 0);
 
-    const issuedRequest = approvalPolicy ? certRequestWithDefaults : certRequest;
     await validateCertificateRequestLicense({
-      request: { ...issuedRequest, keyAlgorithm, signatureAlgorithm },
-      altNames: (issuedRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
+      request: { ...certRequest, keyAlgorithm, signatureAlgorithm },
+      altNames: (certRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
       projectId: profile.projectId,
       projectDAL,
       licenseService,

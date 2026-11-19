@@ -106,8 +106,7 @@ export const policySchema = z.object({
   validity: uiValiditySchema.optional(),
   signatureAlgorithm: uiSignatureAlgorithmSchema.optional(),
   keyAlgorithm: uiKeyAlgorithmSchema.optional(),
-  customExtensions: z.array(uiCustomExtensionSchema).optional(),
-  addCommonNameAsDnsSan: z.boolean().optional()
+  customExtensions: z.array(uiCustomExtensionSchema).optional()
 });
 
 export type PolicyFormData = z.infer<typeof policySchema>;

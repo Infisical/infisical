@@ -46,8 +46,9 @@ import {
 } from "../certificate-common/certificate-extension-fns";
 import { isSignatureAlgorithmCompatibleWithCaKey } from "../certificate-common/certificate-issuance-utils";
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
+import { describeUnsupportedCommonNameDefaultSans } from "../certificate-policy/certificate-policy-fns";
 import { TCertificatePolicyServiceFactory } from "../certificate-policy/certificate-policy-service";
-import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
+import { TCertificatePolicy, TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { getCertificateCredentials, isCertChainValid } from "../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
@@ -468,6 +469,21 @@ export const certificateProfileServiceFactory = ({
     }
   };
 
+  const validateProfileDefaultSanReferences = ({
+    policy,
+    defaults
+  }: {
+    policy?: TCertificatePolicy | null;
+    defaults?: TCertificateProfileDefaults | null;
+  }) => {
+    if (!policy) return;
+
+    const error = describeUnsupportedCommonNameDefaultSans(policy, defaults?.subjectAltNames ?? []);
+    if (error) {
+      throw new BadRequestError({ message: error });
+    }
+  };
+
   const createProfile = async ({
     actor,
     actorId,
@@ -510,8 +526,8 @@ export const certificateProfileServiceFactory = ({
     const enrollmentType = data.enrollmentType ?? EnrollmentType.API;
 
     // Validate that certificate policy exists and belongs to the same project
+    const policy = data.certificatePolicyId ? await certificatePolicyDAL.findById(data.certificatePolicyId) : undefined;
     if (data.certificatePolicyId) {
-      const policy = await certificatePolicyDAL.findById(data.certificatePolicyId);
       if (!policy) {
         throw new NotFoundError({ message: "Certificate policy not found" });
       }
@@ -538,7 +554,6 @@ export const certificateProfileServiceFactory = ({
 
     // Validate defaults against policy constraints
     if (data.defaults && data.certificatePolicyId) {
-      const policy = await certificatePolicyDAL.findById(data.certificatePolicyId);
       if (policy) {
         const request: TCertificateRequest = {
           commonName: data.defaults.commonName,
@@ -567,6 +582,8 @@ export const certificateProfileServiceFactory = ({
       caId: data.caId,
       defaults: data.defaults
     });
+
+    validateProfileDefaultSanReferences({ policy, defaults: data.defaults });
 
     await validateDefaultSignatureAlgorithmAgainstCa(
       data.defaults?.signatureAlgorithm,
@@ -798,12 +815,14 @@ export const certificateProfileServiceFactory = ({
       );
     }
 
+    const finalCertificatePolicyId =
+      data.certificatePolicyId !== undefined ? data.certificatePolicyId : existingProfile.certificatePolicyId;
+    const finalCertificatePolicy = await certificatePolicyDAL.findById(finalCertificatePolicyId);
     if (data.certificatePolicyId) {
-      const policy = await certificatePolicyDAL.findById(data.certificatePolicyId);
-      if (!policy) {
+      if (!finalCertificatePolicy) {
         throw new NotFoundError({ message: "Certificate policy not found" });
       }
-      if (policy.projectId !== existingProfile.projectId) {
+      if (finalCertificatePolicy.projectId !== existingProfile.projectId) {
         throw new ForbiddenRequestError({
           message: "Certificate policy must belong to the same project"
         });
@@ -860,8 +879,7 @@ export const certificateProfileServiceFactory = ({
     }
     // Validate defaults against policy constraints if provided
     if (data.defaults) {
-      const policyId = data.certificatePolicyId || existingProfile.certificatePolicyId;
-      const policy = await certificatePolicyDAL.findById(policyId);
+      const policy = finalCertificatePolicy;
       if (policy) {
         const request: TCertificateRequest = {
           commonName: data.defaults.commonName,
@@ -885,13 +903,16 @@ export const certificateProfileServiceFactory = ({
       }
     }
 
+    const finalDefaults =
+      data.defaults !== undefined ? data.defaults : (existingProfile.defaults as TCertificateProfileDefaults | null);
+
     await validateProfileCustomExtensions({
-      certificatePolicyId:
-        data.certificatePolicyId !== undefined ? data.certificatePolicyId : existingProfile.certificatePolicyId,
+      certificatePolicyId: finalCertificatePolicyId,
       caId: data.caId !== undefined ? data.caId : existingProfile.caId,
-      defaults:
-        data.defaults !== undefined ? data.defaults : (existingProfile.defaults as TCertificateProfileDefaults | null)
+      defaults: finalDefaults
     });
+
+    validateProfileDefaultSanReferences({ policy: finalCertificatePolicy, defaults: finalDefaults });
 
     await validateDefaultSignatureAlgorithmAgainstCa(
       data.defaults?.signatureAlgorithm,

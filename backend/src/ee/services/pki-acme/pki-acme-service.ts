@@ -47,7 +47,6 @@ import {
 } from "@app/services/certificate-common/certificate-issuance-audit-fns";
 import { validateCertificateRequestLicense } from "@app/services/certificate-common/certificate-utils";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
-import { addCommonNameAsDnsSan } from "@app/services/certificate-policy/certificate-policy-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import {
@@ -61,7 +60,11 @@ import {
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { applyProfileDefaults, resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
+import {
+  applyCommonNameDefaultSan,
+  applyProfileDefaults,
+  resolveEffectiveTtl
+} from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -1020,7 +1023,6 @@ export const pkiAcmeServiceFactory = ({
     finalizingOrder,
     certificateRequest,
     profile,
-    certificatePolicy,
     ca,
     tx,
     applicationId
@@ -1037,12 +1039,13 @@ export const pkiAcmeServiceFactory = ({
     };
     certificateRequest: ReturnType<typeof extractCertificateRequestFromCSR>;
     profile: TCertificateProfileWithConfigs;
-    certificatePolicy: NonNullable<Awaited<ReturnType<typeof certificatePolicyDAL.findById>>>;
     ca: Awaited<ReturnType<typeof certificateAuthorityDAL.findByIdWithAssociatedCa>>;
     tx?: Knex;
     applicationId?: string;
   }): Promise<{ certificateId?: string; certIssuanceJobData?: TIssueCertificateFromProfileJobData }> => {
     if (caType === CaType.INTERNAL) {
+      const internalPolicy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
+
       const result = await certificateV3Service.signCertificateFromProfile({
         actor: ActorType.ACME_ACCOUNT,
         actorId: accountId,
@@ -1057,7 +1060,7 @@ export const pkiAcmeServiceFactory = ({
               ttl: resolveEffectiveTtl({
                 requestTtl: undefined,
                 profileDefaultTtlDays: profile.defaults?.ttlDays,
-                policyMaxValidity: certificatePolicy.validity?.max,
+                policyMaxValidity: internalPolicy?.validity?.max,
                 flowDefaultTtl: "47d"
               })
             }
@@ -1080,6 +1083,11 @@ export const pkiAcmeServiceFactory = ({
     const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: extractedSignatureAlgorithm } =
       extractAlgorithmsFromCSR(csr);
 
+    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
+    if (!policy) {
+      throw new NotFoundError({ message: "Certificate policy not found" });
+    }
+
     const updatedCertificateRequest = {
       ...certificateRequest,
       keyAlgorithm: extractedKeyAlgorithm,
@@ -1096,7 +1104,7 @@ export const pkiAcmeServiceFactory = ({
             ttl: resolveEffectiveTtl({
               requestTtl: certificateRequest.validity?.ttl,
               profileDefaultTtlDays: profile.defaults?.ttlDays,
-              policyMaxValidity: certificatePolicy.validity?.max,
+              policyMaxValidity: policy?.validity?.max,
               flowDefaultTtl: "47d"
             })
           }
@@ -1104,7 +1112,7 @@ export const pkiAcmeServiceFactory = ({
     // Policy check only. DigiCert and GoDaddy fall back to the first SAN when commonName is empty,
     // so forwarding a defaulted one would replace the identifier the client just validated.
     const validationResult = await certificatePolicyService.validateCertificateRequest(
-      certificatePolicy.id,
+      policy.id,
       applyProfileDefaults(updatedCertificateRequest, profile.defaults),
       { profileCustomExtensions: profile.defaults?.customExtensions }
     );
@@ -1312,22 +1320,13 @@ export const pkiAcmeServiceFactory = ({
         throw await $rejectCsr("Invalid CSR: Common name + SANs mismatch with order identifiers");
       }
 
-      const certificatePolicy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
-      if (!certificatePolicy) {
-        throw new NotFoundError({ message: "Certificate policy not found" });
-      }
-      try {
-        certificateRequest.subjectAlternativeNames = addCommonNameAsDnsSan({
-          policy: certificatePolicy,
-          enrollmentType: EnrollmentType.ACME,
-          csrCommonName: certificateRequest.commonName,
-          subjectAlternativeNames: certificateRequest.subjectAlternativeNames,
-          isCsrSignedAsSent: caSignsCsrAsSent(finalizeCaType)
-        }).subjectAlternativeNames;
-      } catch (error) {
-        if (error instanceof BadRequestError) throw await $rejectCsr(`Invalid CSR: ${error.message}`);
-        throw error;
-      }
+      certificateRequest.subjectAlternativeNames = applyCommonNameDefaultSan({
+        defaults: profile.defaults,
+        enrollmentType: EnrollmentType.ACME,
+        csrCommonName: certificateRequest.commonName,
+        subjectAlternativeNames: certificateRequest.subjectAlternativeNames,
+        isCsrSignedAsSent: caSignsCsrAsSent(finalizeCaType)
+      }).subjectAlternativeNames;
 
       // Issuance context. These are reads only, and they deliberately run outside a transaction:
       // holding a pooled connection across signing is what let concurrent finalizations exhaust
@@ -1349,10 +1348,15 @@ export const pkiAcmeServiceFactory = ({
 
       const approvalContext = matchedApprovalPolicy
         ? await (async () => {
+            const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
+            if (!policy) {
+              throw new NotFoundError({ message: "Certificate policy not found" });
+            }
+
             // The CSR's own algorithms are spread in so a profile default cannot override what the
             // key actually is, which would fail a policy the CSR itself satisfies.
             const validationResult = await certificatePolicyService.validateCertificateRequest(
-              certificatePolicy.id,
+              policy.id,
               applyProfileDefaults({ ...certificateRequest, ...extractAlgorithmsFromCSR(csr) }, profile.defaults),
               { profileCustomExtensions: profile.defaults?.customExtensions }
             );
@@ -1366,6 +1370,7 @@ export const pkiAcmeServiceFactory = ({
 
             return {
               approvalPolicy: matchedApprovalPolicy,
+              policy,
               resolvedCustomExtensions: validationResult.resolvedCustomExtensions
             };
           })().catch(async (error: unknown) => {
@@ -1392,7 +1397,7 @@ export const pkiAcmeServiceFactory = ({
       let certIssuanceJobData: TIssueCertificateFromProfileJobData | undefined;
 
       if (approvalContext) {
-        const { approvalPolicy } = approvalContext;
+        const { approvalPolicy, policy } = approvalContext;
         const $recordApprovalFailure = async (error: unknown) => {
           if (!(error instanceof AcmeOrderNotReadyError)) await $recordFinalizeFailure(error);
           throw error;
@@ -1415,7 +1420,7 @@ export const pkiAcmeServiceFactory = ({
               : resolveEffectiveTtl({
                   requestTtl: undefined,
                   profileDefaultTtlDays: profile.defaults?.ttlDays,
-                  policyMaxValidity: certificatePolicy.validity?.max,
+                  policyMaxValidity: policy?.validity?.max,
                   flowDefaultTtl: "47d"
                 });
 
@@ -1542,7 +1547,6 @@ export const pkiAcmeServiceFactory = ({
             finalizingOrder,
             certificateRequest,
             profile,
-            certificatePolicy,
             ca,
             applicationId: accountApplicationId ?? undefined
           });

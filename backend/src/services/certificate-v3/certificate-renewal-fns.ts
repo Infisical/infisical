@@ -39,8 +39,14 @@ import {
 } from "../certificate-common/certificate-extension-fns";
 import { mapEnumsForValidation } from "../certificate-common/certificate-utils";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
-import { parseExtendedKeyUsages, parseKeyUsages } from "./certificate-v3-fns";
-import { CertificateRenewalKeySource, TRenewalAttributes, TRenewalAuditChange } from "./certificate-v3-types";
+import { EnrollmentType, TCertificateProfileDefaults } from "../certificate-profile/certificate-profile-types";
+import { applyCommonNameDefaultSan, parseExtendedKeyUsages, parseKeyUsages } from "./certificate-v3-fns";
+import {
+  CertificateRenewalKeySource,
+  TAltNameEntry,
+  TRenewalAttributes,
+  TRenewalAuditChange
+} from "./certificate-v3-types";
 
 export enum CertificateRenewalMode {
   SelfSigned = "self-signed",
@@ -478,19 +484,21 @@ export const keepCertificateFactsInCsrRenewal = (
   basicConstraints: csrRequest.basicConstraints ?? certificate.basicConstraints
 });
 
-export const haveRenewalNamesChanged = (
-  original: Pick<TCertificateRequest, "commonName" | "subjectAlternativeNames">,
-  renewed: Pick<TCertificateRequest, "commonName" | "subjectAlternativeNames">
-): boolean => {
-  const toNameKey = ({ commonName, subjectAlternativeNames }: typeof original) =>
-    [
-      (commonName ?? "").toLowerCase(),
-      ...(subjectAlternativeNames ?? [])
-        .map((san) => (san.type === CertSubjectAlternativeNameType.URI ? san.value : san.value.toLowerCase()))
-        .sort()
-    ].join("\n");
-
-  return toNameKey(original) !== toNameKey(renewed);
+export const withCommonNameDefaultSan = <T extends Pick<TCertificateRequest, "commonName" | "subjectAlternativeNames">>(
+  request: T,
+  {
+    defaults,
+    isCsrSignedAsSent = false
+  }: { defaults: TCertificateProfileDefaults | null | undefined; isCsrSignedAsSent?: boolean }
+): { request: T; altNameEntries?: TAltNameEntry[] } => {
+  const { subjectAlternativeNames, altNameEntries } = applyCommonNameDefaultSan({
+    defaults,
+    enrollmentType: EnrollmentType.API,
+    commonName: request.commonName,
+    subjectAlternativeNames: request.subjectAlternativeNames,
+    isCsrSignedAsSent
+  });
+  return { request: { ...request, subjectAlternativeNames }, altNameEntries };
 };
 
 export const buildRenewalAuditChanges = (

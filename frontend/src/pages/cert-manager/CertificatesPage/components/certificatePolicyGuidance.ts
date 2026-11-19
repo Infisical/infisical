@@ -1,5 +1,3 @@
-import { isValidHostname } from "@app/helpers/hostname";
-import { isIPv4, isIPv6 } from "@app/helpers/ip";
 import {
   TCertificatePolicy,
   TCertificatePolicyRule,
@@ -8,11 +6,21 @@ import {
 import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
+  formatRequestReferenceValue,
   formatSANType,
+  isRequestReference,
+  REQUEST_REFERENCES,
+  withIndefiniteArticle,
+  TCertRequestReferenceValues,
   validateCustomExtensionValue
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
-import { SUBJECT_ATTRIBUTE_LABELS, SubjectAltName, SubjectAttribute } from "./certificateUtils";
+import {
+  isValidSanValue,
+  SUBJECT_ATTRIBUTE_LABELS,
+  SubjectAltName,
+  SubjectAttribute
+} from "./certificateUtils";
 
 type SanRule = NonNullable<TCertificatePolicyRule["sans"]>[number];
 
@@ -25,7 +33,7 @@ type ValueRule = {
 const MAX_LISTED_PATTERNS = 6;
 
 const formatPatterns = (patterns: string[]): string => {
-  const shown = patterns.slice(0, MAX_LISTED_PATTERNS);
+  const shown = patterns.slice(0, MAX_LISTED_PATTERNS).map(formatRequestReferenceValue);
   const remaining = patterns.length - shown.length;
   return remaining > 0 ? `${shown.join(", ")} (+${remaining} more)` : shown.join(", ");
 };
@@ -41,7 +49,7 @@ const labelledLine = (label: "Required" | "Allowed" | "Denied", patterns: string
 
 const patternClause = (verb: string, connector: string, patterns: string[]): string =>
   patterns.length === 1
-    ? `${verb} ${patterns[0]}`
+    ? `${verb} ${formatRequestReferenceValue(patterns[0])}`
     : `${verb} ${connector}: ${formatPatterns(patterns)}`;
 
 const isWildcardPattern = (pattern: string) => pattern.includes("*");
@@ -68,11 +76,23 @@ const normalizeUri = (value: string): string => {
 const normalizeValue = (value: string, isUri: boolean) =>
   isUri ? normalizeUri(value) : value.toLowerCase();
 
-const matchesAny = (value: string, patterns?: string[], isUri = false): boolean =>
+const matchesAny = (
+  value: string,
+  patterns?: string[],
+  isUri = false,
+  request: TCertRequestReferenceValues = {}
+): boolean =>
   Boolean(
-    patterns?.some((pattern) =>
-      matchesNormalizedPattern(normalizeValue(value, isUri), normalizeValue(pattern, isUri))
-    )
+    patterns?.some((pattern) => {
+      if (!isRequestReference(pattern)) {
+        return matchesNormalizedPattern(
+          normalizeValue(value, isUri),
+          normalizeValue(pattern, isUri)
+        );
+      }
+      const resolved = REQUEST_REFERENCES[pattern].resolve(request);
+      return resolved ? normalizeValue(value, isUri) === normalizeValue(resolved, isUri) : false;
+    })
   );
 
 const parseSequence = (value: string): string[] =>
@@ -96,15 +116,6 @@ const listPatterns = (patterns: string[]): string[] => {
 
 const listSequences = (sequences: string[][]): string[] =>
   listPatterns(sequences.map(formatSequence));
-
-const isMetByCommonName = (
-  type: CertSubjectAlternativeNameType,
-  pattern: string,
-  commonName: string
-): boolean =>
-  type === CertSubjectAlternativeNameType.DNS_NAME &&
-  commonName !== "" &&
-  matchesAny(commonName, [pattern]);
 
 /** A finding no single row can own, such as an ordered sequence or a set-level requirement. */
 export type PolicyNotice = {
@@ -429,48 +440,23 @@ const validateSanValue = (
   value: string,
   rule: SanRule | undefined,
   hasSanPolicy: boolean,
-  label = `${formatSANType(type)} SAN`
+  request: TCertRequestReferenceValues
 ): string | undefined => {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
 
   const isUri = type === CertSubjectAlternativeNameType.URI;
+  const label = `${formatSANType(type)} SAN`;
   if (!rule) return hasSanPolicy ? `${label} is not allowed by this policy` : undefined;
-  if (matchesAny(trimmed, rule.denied, isUri)) {
+  if (matchesAny(trimmed, rule.denied, isUri, request)) {
     return `${label} "${trimmed}" is denied by this policy`;
   }
-  if (matchesAny(trimmed, rule.required, isUri)) return undefined;
-  if (rule.allowed?.length && !matchesAny(trimmed, rule.allowed, isUri)) {
+  if (matchesAny(trimmed, rule.required, isUri, request)) return undefined;
+  if (rule.allowed?.length && !matchesAny(trimmed, rule.allowed, isUri, request)) {
     const accepted = [...(rule.required ?? []), ...rule.allowed];
     return `${label} ${patternClause("must match", "one of", accepted)}`;
   }
   return undefined;
-};
-
-const WILDCARD_LABEL_PREFIX = "*.";
-
-const validateCommonNameAsDnsSan = (
-  value: string,
-  rules: CertificatePolicyRules
-): string | undefined => {
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-
-  const hostname = trimmed.startsWith(WILDCARD_LABEL_PREFIX)
-    ? trimmed.slice(WILDCARD_LABEL_PREFIX.length)
-    : trimmed;
-  const isHostName = !isIPv4(hostname) && !isIPv6(hostname) && isValidHostname(hostname);
-  if (!isHostName) {
-    return `${SUBJECT_ATTRIBUTE_LABELS[CertSubjectAttributeType.COMMON_NAME]} must be a host name, such as app.example.com`;
-  }
-
-  return validateSanValue(
-    CertSubjectAlternativeNameType.DNS_NAME,
-    trimmed,
-    rules.sans[CertSubjectAlternativeNameType.DNS_NAME],
-    rules.hasSanPolicy,
-    `${SUBJECT_ATTRIBUTE_LABELS[CertSubjectAttributeType.COMMON_NAME]} (added as a DNS Name SAN)`
-  );
 };
 
 const DOMAIN_COMPONENT_ORDER_NOTE =
@@ -612,7 +598,7 @@ export const withRequiredRows = (
   rules: CertificatePolicyRules,
   subjectAttributes: SubjectAttribute[],
   subjectAltNames: SubjectAltName[],
-  isCommonNameAddedAsDnsSan = false
+  profileReferenceSans: SubjectAltName[] = []
 ): { subjectAttributes: SubjectAttribute[]; subjectAltNames: SubjectAltName[] } => {
   const subject = subjectAttributes.map((attr) => ({ ...attr }));
 
@@ -645,15 +631,14 @@ export const withRequiredRows = (
     let unclaimedBlankRows = sans.filter((san) => san.type === type && !san.value.trim()).length;
 
     rule.required.forEach((pattern) => {
+      const isLeftToProfile =
+        isWildcardPattern(pattern) && profileReferenceSans.some((san) => san.type === type);
+      if (isRequestReference(pattern) || isLeftToProfile) return;
       const isSatisfied = sans.some(
         (san) =>
           san.type === type && san.value.trim() && matchesAny(san.value.trim(), [pattern], isUri)
       );
-      const isLeftToCommonName =
-        isCommonNameAddedAsDnsSan &&
-        type === CertSubjectAlternativeNameType.DNS_NAME &&
-        isWildcardPattern(pattern);
-      if (isSatisfied || isLeftToCommonName) return;
+      if (isSatisfied) return;
 
       if (!isWildcardPattern(pattern)) {
         sans.push({ type, value: pattern });
@@ -787,20 +772,35 @@ export const evaluateSubjectStep = ({
   subjectAltNames,
   isSubjectSectionShown,
   isSanSectionShown,
-  isCommonNameAddedAsDnsSan = false
+  profileReferenceSans = []
 }: {
   rules: CertificatePolicyRules;
   subjectAttributes: SubjectAttribute[];
   subjectAltNames: SubjectAltName[];
   isSubjectSectionShown: boolean;
   isSanSectionShown: boolean;
-  isCommonNameAddedAsDnsSan?: boolean;
+  profileReferenceSans?: SubjectAltName[];
 }): SubjectPolicyGuidance => {
-  const commonName = isCommonNameAddedAsDnsSan
-    ? (subjectAttributes
-        .find((attr) => attr.type === CertSubjectAttributeType.COMMON_NAME)
-        ?.value.trim() ?? "")
-    : "";
+  const request: TCertRequestReferenceValues = {
+    commonName: subjectAttributes
+      .find((attr) => attr.type === CertSubjectAttributeType.COMMON_NAME)
+      ?.value.trim()
+  };
+  const profileAddedSans = profileReferenceSans.flatMap((san) => {
+    const resolved = isRequestReference(san.value)
+      ? REQUEST_REFERENCES[san.value].resolve(request)
+      : undefined;
+    return resolved && isValidSanValue(san.type, resolved)
+      ? [{ type: san.type, value: resolved }]
+      : [];
+  });
+  const isAddedByProfile = (type: CertSubjectAlternativeNameType, pattern: string) =>
+    profileAddedSans.some(
+      (san) =>
+        san.type === type &&
+        matchesAny(san.value, [pattern], type === CertSubjectAlternativeNameType.URI, request)
+    );
+
   const domainComponentRule = rules.subject[CertSubjectAttributeType.DOMAIN_COMPONENT];
 
   // Domain components are one ordered sequence spread across rows, so they are judged in row order
@@ -824,17 +824,7 @@ export const evaluateSubjectStep = ({
     if (attr.type !== CertSubjectAttributeType.DOMAIN_COMPONENT) {
       return {
         hint: getSubjectAttributeHint(rule),
-        error:
-          validateSubjectAttributeValue(attr.type, attr.value, rule, rules.hasSubjectPolicy) ??
-          (isCommonNameAddedAsDnsSan &&
-          attr.type === CertSubjectAttributeType.COMMON_NAME &&
-          !subjectAltNames.some(
-            (san) =>
-              san.type === CertSubjectAlternativeNameType.DNS_NAME &&
-              san.value.trim().toLowerCase() === attr.value.trim().toLowerCase()
-          )
-            ? validateCommonNameAsDnsSan(attr.value, rules)
-            : undefined),
+        error: validateSubjectAttributeValue(attr.type, attr.value, rule, rules.hasSubjectPolicy),
         isLocked: Boolean(rule?.required?.length)
       };
     }
@@ -907,10 +897,11 @@ export const evaluateSubjectStep = ({
     };
 
     rule.required.forEach((pattern) => {
-      if (isMetByCommonName(type, pattern, commonName)) return;
+      if (isRequestReference(pattern)) return;
       const isSatisfiedBy = (san: SubjectAltName) =>
         Boolean(san.value.trim()) && matchesAny(san.value.trim(), [pattern], isUri);
-      if (!claim(isSatisfiedBy)) claim((san) => !san.value.trim());
+      if (claim(isSatisfiedBy) || isAddedByProfile(type, pattern)) return;
+      claim((san) => !san.value.trim());
     });
   });
 
@@ -919,7 +910,7 @@ export const evaluateSubjectStep = ({
 
     return {
       hint: getSanHint(rule),
-      error: validateSanValue(san.type, san.value, rule, rules.hasSanPolicy),
+      error: validateSanValue(san.type, san.value, rule, rules.hasSanPolicy, request),
       isLocked: lockedSanRows.has(index)
     };
   });
@@ -940,15 +931,21 @@ export const evaluateSubjectStep = ({
       let unclaimedBlankRows = rows.length - presentValues.length;
 
       rule.required.forEach((pattern) => {
-        if (presentValues.some((value) => matchesAny(value, [pattern], isUri))) return;
-        if (isMetByCommonName(type, pattern, commonName)) return;
+        if (presentValues.some((value) => matchesAny(value, [pattern], isUri, request))) return;
+        if (isAddedByProfile(type, pattern)) return;
         if (unclaimedBlankRows > 0) {
           unclaimedBlankRows -= 1;
           return;
         }
-        sanNotices.push(
-          toNotice({ message: `A ${formatSANType(type)} SAN matching ${pattern} is required` })
-        );
+        const sanLabel = withIndefiniteArticle(`${formatSANType(type)} SAN`);
+        let message = `A ${formatSANType(type)} SAN matching ${pattern} is required`;
+        if (isRequestReference(pattern)) {
+          const commonName = REQUEST_REFERENCES[pattern].resolve(request)?.trim();
+          message = commonName
+            ? `The common name '${commonName}' is required as ${sanLabel}`
+            : `This policy requires ${sanLabel} equal to the common name. Enter a common name.`;
+        }
+        sanNotices.push(toNotice({ message }));
       });
     });
   }

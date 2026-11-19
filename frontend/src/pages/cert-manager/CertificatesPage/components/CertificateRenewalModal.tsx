@@ -71,10 +71,9 @@ import {
   capTtlToDays,
   getRemovedCertificateNames,
   getRemovedCertificateNamesFromCsr,
-  haveRenewalNamesChanged,
   unionUsageOptions
 } from "./certificateRenewalUtils";
-import { isExternalTemplateCa, rowErrorsOf } from "./certificateUtils";
+import { getProfileReferenceSans, isExternalTemplateCa, rowErrorsOf } from "./certificateUtils";
 import { CertificateWizardSheet, WizardStep } from "./CertificateWizardSheet";
 import { IssuerModifiedNotice } from "./IssuerModifiedNotice";
 import { KeyUsageSection } from "./KeyUsageSection";
@@ -462,6 +461,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
 
   const isPolicyResolved =
     Boolean(policyData) || (Boolean(profile) && !profile?.certificatePolicyId);
+  const profileReferenceSans = useMemo(() => getProfileReferenceSans(profile?.defaults), [profile]);
   const {
     filteredKeyUsages,
     filteredExtendedKeyUsages,
@@ -702,15 +702,8 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     isSanSectionShown: constraints.shouldShowSanSection,
     isSubjectEvaluated: keySource !== CertificateRenewalKeySource.Csr && !renewsFromStoredCsr,
     isValidityEvaluated: !isExternalTemplateProfile,
-    isCommonNameAddedAsDnsSan:
-      Boolean(policyData?.addCommonNameAsDnsSan) &&
-      Boolean(certificate) &&
-      haveRenewalNamesChanged(
-        certificate!,
-        watch("subjectAttributes") ?? [],
-        watch("subjectAltNames") ?? []
-      ),
-    resetKey: certificate?.id
+    resetKey: certificate?.id,
+    profileReferenceSans
   });
 
   const { step, setStep, currentStepKey, goBack, goNext, onFormInvalid } = useWizardSteps({
@@ -791,7 +784,8 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     const seeded = withRequiredRows(
       buildPolicyRules(policyData),
       renewalDefaults.subjectAttributes ?? [],
-      renewalDefaults.subjectAltNames ?? []
+      renewalDefaults.subjectAltNames ?? [],
+      profileReferenceSans
     );
     reset({
       ...renewalDefaults,
@@ -809,6 +803,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     renewalPreview,
     constraints,
     policyData,
+    profileReferenceSans,
     reset,
     getValues
   ]);
@@ -1100,11 +1095,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
               policyRows={policy.sans.rows}
               policyNotices={policy.sans.notices}
               revealPolicyErrors={policy.isRevealed("subjectAltNames")}
-              description={
-                policyData?.addCommonNameAsDnsSan
-                  ? "If you change the common name or SANs, this policy adds the common name as a DNS name SAN."
-                  : undefined
-              }
+              profileReferenceSans={profileReferenceSans}
             />
           )}
           {removedNames.length > 0 && !nameRemovalError && (

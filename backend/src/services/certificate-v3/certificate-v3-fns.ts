@@ -5,10 +5,18 @@ import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/ce
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
+  CertSubjectAlternativeNameType,
   mapLegacyExtendedKeyUsageToStandard,
   mapLegacyKeyUsageToStandard
 } from "../certificate-common/certificate-constants";
-import { TCertificateProfileDefaults } from "../certificate-profile/certificate-profile-types";
+import {
+  includesSan,
+  isRequestReference,
+  isValidSanValue,
+  RequestReference
+} from "../certificate-policy/certificate-policy-fns";
+import { EnrollmentType, TCertificateProfileDefaults } from "../certificate-profile/certificate-profile-types";
+import { TAltNameEntry } from "./certificate-v3-types";
 
 export const calculateRenewalThreshold = (
   profileRenewBeforeDays: number | undefined,
@@ -114,7 +122,10 @@ export const applyProfileDefaults = <
 ): T => {
   if (!defaults) return request;
 
-  const altNames = request.altNames && request.altNames.length > 0 ? request.altNames : defaults.subjectAltNames;
+  const altNames =
+    request.altNames && request.altNames.length > 0
+      ? request.altNames
+      : defaults.subjectAltNames?.filter((san) => !isRequestReference(san.value));
 
   // For scalar fields, key-presence distinguishes "omitted" (use default) from "explicitly set/cleared".
   // CSR extraction (extractCertificateRequestFromCSR) omits keys for absent fields,
@@ -134,6 +145,49 @@ export const applyProfileDefaults = <
     extendedKeyUsages: request.extendedKeyUsages !== undefined ? request.extendedKeyUsages : defaults.extendedKeyUsages,
     basicConstraints: request.basicConstraints !== undefined ? request.basicConstraints : defaults.basicConstraints,
     altNames
+  };
+};
+
+const ACME_COMMON_NAME_SAN_TYPES: CertSubjectAlternativeNameType[] = [
+  CertSubjectAlternativeNameType.DNS_NAME,
+  CertSubjectAlternativeNameType.IP_ADDRESS
+];
+
+export const applyCommonNameDefaultSan = ({
+  defaults,
+  enrollmentType,
+  commonName: requestedCommonName,
+  csrCommonName,
+  subjectAlternativeNames,
+  isCsrSignedAsSent = false
+}: {
+  defaults: TCertificateProfileDefaults | null | undefined;
+  enrollmentType: EnrollmentType;
+  commonName?: string | null;
+  csrCommonName?: string | null;
+  subjectAlternativeNames?: TAltNameEntry[];
+  isCsrSignedAsSent?: boolean;
+}): { subjectAlternativeNames?: TAltNameEntry[]; altNameEntries?: TAltNameEntry[] } => {
+  const isAcme = enrollmentType === EnrollmentType.ACME;
+  const commonName = isAcme ? csrCommonName : requestedCommonName;
+  if (!commonName || isCsrSignedAsSent) return { subjectAlternativeNames };
+
+  const subjectAlternativeNamesWithCommonName = (defaults?.subjectAltNames ?? [])
+    .filter(
+      ({ type, value }) =>
+        value === RequestReference.CommonName && (!isAcme || ACME_COMMON_NAME_SAN_TYPES.includes(type))
+    )
+    .reduce<TAltNameEntry[]>((sans, { type }) => {
+      const san = { type, value: commonName };
+      return isValidSanValue(type, commonName) && !includesSan(sans, san) ? [...sans, san] : sans;
+    }, subjectAlternativeNames ?? []);
+
+  if (subjectAlternativeNamesWithCommonName.length === (subjectAlternativeNames?.length ?? 0)) {
+    return { subjectAlternativeNames };
+  }
+  return {
+    subjectAlternativeNames: subjectAlternativeNamesWithCommonName,
+    altNameEntries: subjectAlternativeNamesWithCommonName
   };
 };
 

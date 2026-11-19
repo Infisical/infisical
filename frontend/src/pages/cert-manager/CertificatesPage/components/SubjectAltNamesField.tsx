@@ -20,7 +20,11 @@ import {
   SelectValue
 } from "@app/components/v3";
 import { useSubscription } from "@app/context";
-import { CertSubjectAlternativeNameType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+import {
+  CertSubjectAlternativeNameType,
+  formatSANType,
+  withIndefiniteArticle
+} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import { PolicyNotice, PolicyRowGuidance } from "./certificatePolicyGuidance";
 import { getSanPlaceholder, getSanTypeLabels, SubjectAltName } from "./certificateUtils";
@@ -40,7 +44,13 @@ type SubjectAltNamesFieldProps = {
   revealPolicyErrors?: boolean;
   shouldUnregister?: boolean;
   namePrefix?: string;
-  description?: string;
+  profileReferenceSans?: SubjectAltName[];
+};
+
+const describeProfileReferenceSans = (sans: SubjectAltName[]): string | undefined => {
+  if (sans.length === 0) return undefined;
+  const types = [...new Set(sans.map((san) => formatSANType(san.type)))];
+  return `This profile adds the common name as ${withIndefiniteArticle(types.join(" or "))} SAN when it is valid for that type.`;
 };
 
 export const SubjectAltNamesField = ({
@@ -53,8 +63,9 @@ export const SubjectAltNamesField = ({
   revealPolicyErrors,
   shouldUnregister,
   namePrefix = "subjectAltNames",
-  description
+  profileReferenceSans = []
 }: SubjectAltNamesFieldProps) => {
+  const profileReferenceNote = describeProfileReferenceSans(profileReferenceSans);
   const sanTypeLabels = getSanTypeLabels();
   const { subscription } = useSubscription();
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
@@ -77,7 +88,7 @@ export const SubjectAltNamesField = ({
           return (
             <Field className="mb-4">
               <FieldLabel>Subject Alternative Names (SANs)</FieldLabel>
-              {description && <FieldDescription>{description}</FieldDescription>}
+              {profileReferenceNote && <FieldDescription>{profileReferenceNote}</FieldDescription>}
               <div className="space-y-3">
                 {currentValues.map((san, index) => {
                   const policy = policyRows?.[index];

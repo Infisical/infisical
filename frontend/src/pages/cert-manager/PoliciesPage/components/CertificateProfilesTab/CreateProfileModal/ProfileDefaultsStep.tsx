@@ -30,6 +30,7 @@ import {
   getCaSignatureIncompatibilityReason,
   KEY_USAGES_OPTIONS
 } from "@app/hooks/api/certificates/constants";
+import { RequestReferenceCombobox } from "@app/pages/cert-manager/components/RequestReferenceCombobox";
 import {
   CertExtensionCriticality,
   CertSubjectAlternativeNameType,
@@ -104,6 +105,7 @@ type AttributeListEditorProps<T extends string> = {
   showAddButton: boolean;
   addButtonLabel: string;
   onAdd: () => void;
+  allowsRequestReferences?: boolean;
 };
 
 const AttributeListEditor = <T extends string>({
@@ -119,7 +121,8 @@ const AttributeListEditor = <T extends string>({
   onItemsChange,
   showAddButton,
   addButtonLabel,
-  onAdd
+  onAdd,
+  allowsRequestReferences
 }: AttributeListEditorProps<T>) => (
   <div>
     <SectionHeading title={title} description={description} />
@@ -149,16 +152,30 @@ const AttributeListEditor = <T extends string>({
                 ))}
               </SelectContent>
             </Select>
-            <Input
-              placeholder={getPlaceholder(entry.type)}
-              value={entry.value}
-              className="flex-1"
-              onChange={(e) => {
-                const next = [...items];
-                next[index] = { ...entry, value: e.target.value };
-                onItemsChange(next);
-              }}
-            />
+            {allowsRequestReferences ? (
+              <RequestReferenceCombobox
+                aria-label="Default value"
+                placeholder={getPlaceholder(entry.type)}
+                referenceHint="The common name of each request is added as this SAN type when it is valid for it, even when the request lists other SANs."
+                value={entry.value}
+                onChange={(value) => {
+                  const next = [...items];
+                  next[index] = { ...entry, value };
+                  onItemsChange(next);
+                }}
+              />
+            ) : (
+              <Input
+                placeholder={getPlaceholder(entry.type)}
+                value={entry.value}
+                className="flex-1"
+                onChange={(e) => {
+                  const next = [...items];
+                  next[index] = { ...entry, value: e.target.value };
+                  onItemsChange(next);
+                }}
+              />
+            )}
             <IconButton
               type="button"
               variant="ghost"
@@ -379,7 +396,7 @@ export const ProfileDefaultsStep = ({
       {policyConstraints.shouldShowSanSection && (
         <AttributeListEditor<CertSubjectAlternativeNameType>
           title="Subject Alternative Names"
-          description="Default subject alternative names applied when a request omits them."
+          description='Default subject alternative names applied when a request omits them. A "Same as common name" default is added even when the request lists its own SANs.'
           emptyMessage="No SAN defaults configured."
           keyPrefix="def-san-"
           selectTriggerClassName="w-40"
@@ -390,6 +407,7 @@ export const ProfileDefaultsStep = ({
           onItemsChange={(next) => setValue("defaults.subjectAltNames", next)}
           showAddButton
           addButtonLabel="Add SAN"
+          allowsRequestReferences
           onAdd={() =>
             setValue("defaults.subjectAltNames", [
               ...watchedDefaultSans,

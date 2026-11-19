@@ -12,12 +12,13 @@ import {
   CertPolicyState,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
+  isRequestReference,
   mapPolicyKeyAlgorithmToApi,
   mapPolicySignatureAlgorithmToApi
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import { buildPolicyRules, withRequiredRows } from "./certificatePolicyGuidance";
-import { SubjectAltName, SubjectAttribute } from "./certificateUtils";
+import { getProfileReferenceSans, SubjectAltName, SubjectAttribute } from "./certificateUtils";
 
 const convertTemplateTtlToCertificateTtl = (templateTtl: string): string => {
   const match = templateTtl.match(/^(\d+)([dmyh])$/);
@@ -233,6 +234,11 @@ export const useCertificatePolicy = (
     setConstraints(DEFAULT_TEMPLATE_CONSTRAINTS);
   };
 
+  const profileReferenceSans = useMemo(
+    () => getProfileReferenceSans(selectedProfile?.defaults),
+    [selectedProfile]
+  );
+
   const prevProfileIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -325,8 +331,9 @@ export const useCertificatePolicy = (
           defaults.subjectAltNames.length > 0
         ) {
           // Filter to only allowed SAN types
-          nextSans = defaults.subjectAltNames.filter((san: SubjectAltName) =>
-            newConstraints.allowedSanTypes.includes(san.type)
+          nextSans = defaults.subjectAltNames.filter(
+            (san: SubjectAltName) =>
+              newConstraints.allowedSanTypes.includes(san.type) && !isRequestReference(san.value)
           );
         } else {
           nextSans = [];
@@ -359,7 +366,7 @@ export const useCertificatePolicy = (
         buildPolicyRules(templateData),
         nextSubjectAttrs,
         nextSans,
-        Boolean(templateData.addCommonNameAsDnsSan)
+        getProfileReferenceSans(defaults)
       );
       if (!isSameRows(watch("subjectAltNames"), seeded.subjectAltNames)) {
         setValue("subjectAltNames", seeded.subjectAltNames);
@@ -456,6 +463,7 @@ export const useCertificatePolicy = (
     filteredExtendedKeyUsages,
     availableSignatureAlgorithms,
     availableKeyAlgorithms,
-    resetConstraints
+    resetConstraints,
+    profileReferenceSans
   };
 };

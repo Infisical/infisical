@@ -81,7 +81,7 @@ const CA_SIGNS_CSR_AS_SENT: Record<CaType, boolean> = {
   [CaType.AWS_PCA]: false,
   [CaType.DIGICERT]: false,
   [CaType.AWS_ACM_PUBLIC_CA]: false,
-  [CaType.VENAFI_TPP]: false,
+  [CaType.VENAFI_TPP]: true,
   [CaType.GODADDY]: false
 };
 

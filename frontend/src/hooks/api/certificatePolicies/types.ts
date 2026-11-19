@@ -101,7 +101,6 @@ export type TCertificatePolicy = {
   updatedAt: string;
   basicConstraints?: TBasicConstraints | null;
   customExtensions?: TCustomExtensionRule[] | null;
-  addCommonNameAsDnsSan: boolean;
 };
 
 export type TCreateCertificatePolicyDTO = {
@@ -116,7 +115,6 @@ export type TCreateCertificatePolicyDTO = {
   validity?: TCertificatePolicyRule["validity"] | null;
   basicConstraints?: TBasicConstraints | null;
   customExtensions?: TCustomExtensionRule[] | null;
-  addCommonNameAsDnsSan?: boolean;
 };
 
 export type TUpdateCertificatePolicyDTO = {
@@ -131,7 +129,6 @@ export type TUpdateCertificatePolicyDTO = {
   validity?: TCertificatePolicyRule["validity"] | null;
   basicConstraints?: TBasicConstraints | null;
   customExtensions?: TCustomExtensionRule[] | null;
-  addCommonNameAsDnsSan?: boolean;
 };
 
 export type TDeleteCertificatePolicyDTO = {

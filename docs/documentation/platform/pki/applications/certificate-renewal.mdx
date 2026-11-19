@@ -6,7 +6,7 @@ description: "Manually renew a certificate, and change its subject, names, valid
 
 Certificates expire, and the details they carry go out of date. A manual renewal issues a replacement for a certificate you already have, and lets you correct it at the same time: add a name the service now answers to, extend the validity, or decide whether the replacement keeps the current key pair.
 
-This is the counterpart to automatic renewal, which renews a certificate exactly as it is on a schedule. Reach for a manual renewal when something about the certificate needs to change, or when you want the replacement now rather than at the next renewal window.
+This is the counterpart to automatic renewal, which renews a certificate on a schedule. Reach for a manual renewal when something about the certificate needs to change, or when you want the replacement now rather than at the next renewal window.
 
 <Note>
   A certificate can be renewed when it was issued from a [certificate profile](/documentation/platform/pki/applications/enrollment-methods/api), is still active, and hasn't already been renewed. Certificates obtained through [ACME](/documentation/platform/pki/applications/enrollment-methods/acme), [EST](/documentation/platform/pki/applications/enrollment-methods/est), or [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) are renewed by the client that requested them, not from here.
@@ -14,7 +14,7 @@ This is the counterpart to automatic renewal, which renews a certificate exactly
 
 ## How a renewal is built
 
-The renewed certificate starts as an exact copy of the one being renewed. Only what you explicitly change is different.
+The renewed certificate starts as a copy of the one being renewed. Only what you explicitly change is different, apart from the common name SAN described below.
 
 | What you do | What happens |
 |-------------|--------------|
@@ -23,9 +23,9 @@ The renewed certificate starts as an exact copy of the one being renewed. Only w
 | Clear a field | The attribute is dropped from the renewed certificate |
 | Edit a list, such as names or key usages | The list you submit replaces the current one |
 
-If the certificate's policy has [Add common name as DNS SAN](/documentation/platform/pki/settings/policies#subject-alternative-names-sans) turned on and you change the common name or SANs, the common name is also added as a DNS SAN.
+If the certificate profile has a [default SAN that copies the common name](/documentation/platform/pki/settings/profiles#add-the-common-name-as-a-san) and the certificate doesn't have that SAN, the renewal adds it. That counts as a change to the certificate's names, the same as adding a name yourself, so it can require approval and counts toward your certificate limits.
 
-Defaults configured on the certificate profile are deliberately not applied. They describe what a **new** certificate should look like, so applying them during a renewal would rewrite fields you never touched. The profile's [certificate policy](/documentation/platform/pki/settings/policies) still validates the result, so a renewal can't produce a certificate the policy would have rejected at issuance.
+Other defaults configured on the certificate profile are deliberately not applied. They describe what a **new** certificate should look like, so applying them during a renewal would rewrite fields you never touched. The profile's [certificate policy](/documentation/platform/pki/settings/policies) still validates the result, so a renewal can't produce a certificate the policy would have rejected at issuance.
 
 ## Choosing how the key pair is handled
 

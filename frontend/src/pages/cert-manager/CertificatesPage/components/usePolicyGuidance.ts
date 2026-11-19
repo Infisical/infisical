@@ -46,7 +46,7 @@ type UsePolicyGuidanceParams = {
   isValidityEvaluated?: boolean;
   /** Identity of the current policy source; a change here starts every violation hidden again. */
   resetKey?: string;
-  isCommonNameAddedAsDnsSan?: boolean;
+  profileReferenceSans?: SubjectAltName[];
 };
 
 export type PolicyGuidance = {
@@ -79,7 +79,7 @@ export const usePolicyGuidance = ({
   isSubjectEvaluated = true,
   isValidityEvaluated = true,
   resetKey,
-  isCommonNameAddedAsDnsSan = false
+  profileReferenceSans = EMPTY_SUBJECT_ALT_NAMES
 }: UsePolicyGuidanceParams): PolicyGuidance => {
   const subjectAttributes: SubjectAttribute[] =
     watch("subjectAttributes") ?? EMPTY_SUBJECT_ATTRIBUTES;
@@ -101,7 +101,7 @@ export const usePolicyGuidance = ({
         subjectAltNames,
         isSubjectSectionShown,
         isSanSectionShown,
-        isCommonNameAddedAsDnsSan
+        profileReferenceSans
       }),
     [
       rules,
@@ -109,7 +109,7 @@ export const usePolicyGuidance = ({
       subjectAltNames,
       isSubjectSectionShown,
       isSanSectionShown,
-      isCommonNameAddedAsDnsSan
+      profileReferenceSans
     ]
   );
 

@@ -33,11 +33,20 @@ import {
 } from "../certificate-common/certificate-extension-fns";
 import { TCertificatePolicyDALFactory } from "./certificate-policy-dal";
 import {
+  describeDeniedSan,
+  describeDisallowedSan,
+  describeCommonNameSanRuleWithoutCommonName,
+  describeMissingRequiredSan,
+  describeUnsupportedCommonNameDefaultSans,
+  describeValueNotAllowed,
   isDomainComponentRule,
   isWildcardPattern,
   matchesNormalizedPattern,
-  validateDomainComponentsAgainstRule,
-  withCommonNameDnsSanReason
+  matchesSanRuleValue,
+  normalizeUriForComparison,
+  resolveSanRules,
+  TSanRuleValue,
+  validateDomainComponentsAgainstRule
 } from "./certificate-policy-fns";
 import {
   TCertificatePolicy,
@@ -159,18 +168,6 @@ export const certificatePolicyServiceFactory = ({
           }
         }
       }
-    }
-  };
-
-  const validateCommonNameDnsSanRule = ({
-    addCommonNameAsDnsSan,
-    sans
-  }: Pick<TCertificatePolicyUpdate, "addCommonNameAsDnsSan" | "sans">) => {
-    if (addCommonNameAsDnsSan && sans && !sans.some((san) => san.type === CertSubjectAlternativeNameType.DNS_NAME)) {
-      throw new BadRequestError({
-        message:
-          "This policy restricts subject alternative names without a DNS Name rule, so the common name could never be added as a DNS name. Add a DNS Name rule, or turn off 'Add common name as DNS SAN'."
-      });
     }
   };
 
@@ -328,14 +325,6 @@ export const certificatePolicyServiceFactory = ({
     }
   };
 
-  const normalizeUriForComparison = (value: string): string => {
-    const match = new RE2("^([a-zA-Z][a-zA-Z0-9+.-]*://[^/?#]*)([/?#].*)?$").exec(value);
-    if (!match) {
-      return value;
-    }
-    return `${match[1].toLowerCase()}${match[2] ?? ""}`;
-  };
-
   const validateValueAgainstConstraints = (
     value: string,
     allowedValues: string[],
@@ -356,15 +345,9 @@ export const certificatePolicyServiceFactory = ({
       }
     }
 
-    if (hasWildcards) {
-      return {
-        isValid: false,
-        error: `${fieldName} value '${value}' does not match allowed patterns: ${allowedValues.join(", ")}`
-      };
-    }
     return {
       isValid: false,
-      error: `${fieldName} value '${value}' is not in allowed values list`
+      error: describeValueNotAllowed({ fieldName, value, allowedValues, hasPatterns: hasWildcards })
     };
   };
 
@@ -470,7 +453,7 @@ export const certificatePolicyServiceFactory = ({
 
     // Validate Subject Alternative Names. An undefined SAN policy means no constraint (allow all);
     // an empty array means nothing is allowed, so every request SAN below is rejected as uncovered.
-    const sansPolicies = template.sans;
+    const sansPolicies = template.sans && resolveSanRules(template.sans, request);
     if (sansPolicies) {
       const requestSansByType = new Map<string, string[]>();
 
@@ -489,22 +472,20 @@ export const certificatePolicyServiceFactory = ({
         const requestSans = requestSansByType.get(sanPolicy.type) || [];
 
         const isUriSan = sanPolicy.type === CertSubjectAlternativeNameType.URI;
+        const matchesRuleValue = (sanValue: string, ruleValue: TSanRuleValue) =>
+          matchesSanRuleValue({
+            sanType: sanPolicy.type,
+            sanValue,
+            ruleValue,
+            matchesPattern: (value, pattern) =>
+              validateValueAgainstConstraints(value, [pattern], `${sanPolicy.type} SAN`, isUriSan).isValid
+          });
 
         // Check REQUIRED values - at least one SAN must match each required pattern
         if (!options?.skipRequired && sanPolicy.required && sanPolicy.required.length > 0) {
           for (const requiredValue of sanPolicy.required) {
-            const hasMatchingRequiredSan = requestSans.some((sanValue) => {
-              const validation = validateValueAgainstConstraints(
-                sanValue,
-                [requiredValue],
-                `${sanPolicy.type} SAN`,
-                isUriSan
-              );
-              return validation.isValid;
-            });
-
-            if (!hasMatchingRequiredSan) {
-              errors.push(`Required ${sanPolicy.type} SAN matching pattern '${requiredValue}' not found in request`);
+            if (!requestSans.some((sanValue) => matchesRuleValue(sanValue, requiredValue))) {
+              errors.push(describeMissingRequiredSan(sanPolicy.type, requiredValue));
             }
           }
         }
@@ -512,60 +493,19 @@ export const certificatePolicyServiceFactory = ({
         // Check DENIED values - no SAN should match denied patterns
         if (sanPolicy.denied && sanPolicy.denied.length > 0) {
           for (const sanValue of requestSans) {
-            const validation = validateValueAgainstConstraints(
-              sanValue,
-              sanPolicy.denied,
-              `${sanPolicy.type} SAN`,
-              isUriSan
-            );
-            if (validation.isValid) {
-              errors.push(
-                withCommonNameDnsSanReason({
-                  policy: template,
-                  sanType: sanPolicy.type,
-                  sanValue,
-                  request,
-                  error: `${sanPolicy.type} SAN matching denied pattern '${sanValue}' found in request`
-                })
-              );
+            const deniedValue = sanPolicy.denied.find((ruleValue) => matchesRuleValue(sanValue, ruleValue));
+            if (deniedValue) {
+              errors.push(describeDeniedSan(sanPolicy.type, sanValue, deniedValue));
             }
           }
         }
 
         // Check ALLOWED values - if present, all SANs must match at least one allowed pattern
         if (sanPolicy.allowed && sanPolicy.allowed.length > 0 && requestSans.length > 0) {
+          const permittedValues = [...(sanPolicy.required ?? []), ...sanPolicy.allowed];
           for (const sanValue of requestSans) {
-            let satisfiesRequired = false;
-            if (sanPolicy.required && sanPolicy.required.length > 0) {
-              satisfiesRequired = sanPolicy.required.some((requiredValue) => {
-                const validation = validateValueAgainstConstraints(
-                  sanValue,
-                  [requiredValue],
-                  `${sanPolicy.type} SAN`,
-                  isUriSan
-                );
-                return validation.isValid;
-              });
-            }
-
-            if (!satisfiesRequired) {
-              const validation = validateValueAgainstConstraints(
-                sanValue,
-                sanPolicy.allowed,
-                `${sanPolicy.type} SAN`,
-                isUriSan
-              );
-              if (!validation.isValid && validation.error) {
-                errors.push(
-                  withCommonNameDnsSanReason({
-                    policy: template,
-                    sanType: sanPolicy.type,
-                    sanValue,
-                    request,
-                    error: validation.error
-                  })
-                );
-              }
+            if (!permittedValues.some((ruleValue) => matchesRuleValue(sanValue, ruleValue))) {
+              errors.push(describeDisallowedSan(sanPolicy.type, sanValue, sanPolicy.allowed));
             }
           }
         }
@@ -804,7 +744,13 @@ export const certificatePolicyServiceFactory = ({
       validateSanPolicy(consolidatedData.sans);
     }
 
-    validateCommonNameDnsSanRule(consolidatedData);
+    const commonNameSanRuleError = describeCommonNameSanRuleWithoutCommonName({
+      subject: consolidatedData.subject ?? undefined,
+      sans: consolidatedData.sans ?? undefined
+    });
+    if (commonNameSanRuleError) {
+      throw new BadRequestError({ message: commonNameSanRuleError });
+    }
 
     if (consolidatedData.keyUsages) {
       validateKeyUsagePolicy(consolidatedData.keyUsages);
@@ -885,11 +831,6 @@ export const certificatePolicyServiceFactory = ({
       validateSanPolicy(consolidatedData.sans);
     }
 
-    validateCommonNameDnsSanRule({
-      addCommonNameAsDnsSan: consolidatedData.addCommonNameAsDnsSan ?? existingTemplate.addCommonNameAsDnsSan,
-      sans: consolidatedData.sans === undefined ? existingTemplate.sans : consolidatedData.sans
-    });
-
     if (consolidatedData.keyUsages) {
       validateKeyUsagePolicy(consolidatedData.keyUsages);
     }
@@ -898,10 +839,15 @@ export const certificatePolicyServiceFactory = ({
       validateExtendedKeyUsagePolicy(consolidatedData.extendedKeyUsages);
     }
 
+    const isChangingNames = consolidatedData.subject !== undefined || consolidatedData.sans !== undefined;
+    const boundProfiles =
+      consolidatedData.customExtensions || isChangingNames
+        ? await certificatePolicyDAL.getProfilesUsingPolicy(policyId)
+        : [];
+
     if (consolidatedData.customExtensions) {
       validateCustomExtensionPolicy(consolidatedData.customExtensions);
 
-      const boundProfiles = await certificatePolicyDAL.getProfilesUsingPolicy(policyId);
       for (const boundProfile of boundProfiles) {
         const declarations = boundProfile.defaults?.customExtensions;
         if (declarations?.length) {
@@ -915,6 +861,29 @@ export const certificatePolicyServiceFactory = ({
               message: `Certificate profile '${boundProfile.slug}' uses this policy and would no longer be valid. ${errors.join(" ")}`
             });
           }
+        }
+      }
+    }
+
+    if (isChangingNames) {
+      const updatedPolicy: Pick<TCertificatePolicy, "subject" | "sans"> = {
+        subject:
+          (consolidatedData.subject === undefined ? existingTemplate.subject : consolidatedData.subject) ?? undefined,
+        sans: (consolidatedData.sans === undefined ? existingTemplate.sans : consolidatedData.sans) ?? undefined
+      };
+      const commonNameSanRuleError = describeCommonNameSanRuleWithoutCommonName(updatedPolicy);
+      if (commonNameSanRuleError) {
+        throw new BadRequestError({ message: commonNameSanRuleError });
+      }
+      for (const boundProfile of boundProfiles) {
+        const error = describeUnsupportedCommonNameDefaultSans(
+          updatedPolicy,
+          boundProfile.defaults?.subjectAltNames ?? []
+        );
+        if (error) {
+          throw new BadRequestError({
+            message: `Certificate profile '${boundProfile.slug}' uses this policy and would no longer be valid. ${error}`
+          });
         }
       }
     }

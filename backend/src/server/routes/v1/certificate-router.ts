@@ -1246,7 +1246,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       operationId: "renewCertificate",
       tags: [ApiDocsTags.PkiCertificates],
       description:
-        "Renew a certificate. The renewed certificate copies the one being renewed, then applies only the changes supplied here. Profile defaults are not applied.",
+        "Renew a certificate. The renewed certificate copies the one being renewed, then applies only the changes supplied here. Profile defaults are not applied, except a default SAN that copies the common name.",
       params: z.object({
         id: z.string().uuid().describe(CERTIFICATES.RENEW.id)
       }),

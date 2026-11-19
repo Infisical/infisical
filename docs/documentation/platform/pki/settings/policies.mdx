@@ -129,16 +129,15 @@ Each SAN rule specifies the type, a pattern (fixed or wildcard), and whether to 
 
 Once you define SAN rules, only the SAN types you explicitly include are permitted — any other SAN type in a request will be rejected. An empty SAN configuration forbids all SANs; leave the section unconfigured to allow any SAN type.
 
-Turn on **Add common name as DNS SAN** to add each certificate's common name to its DNS SANs. The common name is added before the request is checked, so it can satisfy a required **DNS Name** rule and is refused by a denied pattern like any requested name.
+To match a request's own common name, select **Same as common name** in the value field of a SAN rule. The API stores it as `{{request.commonName}}`, the whole value. It matches a SAN of the rule's type that equals the common name, ignoring case, except that in a URI only the scheme and host ignore case. Any other value that contains `{{` is refused.
 
-- If the request already lists the common name as a DNS SAN, ignoring case, no second copy is added
-- If the common name is a wildcard such as `*.example.com`, it's added as it is
-- If the common name isn't a valid DNS host name, such as a person's name or an IP address, the request is refused
-- If the request is an ACME order, only the common name in the CSR is added, and an IP address common name is left as it is
-- If a renewal keeps the certificate's names, its SANs stay as they are
-- If a renewal changes the common name or SANs, the common name is added
-- If the request goes to a Microsoft AD CS CA with a CSR, the CSR is signed as sent, so list the common name as a DNS SAN in the CSR
-- If the policy defines SAN rules, it needs a **DNS Name** rule for as long as the option is on
+- If the value is required, the request must include a SAN equal to its common name, so a request without a common name is refused
+- If the value is allowed, a SAN equal to the common name is accepted, so the rule accepts any name that the policy's common name rule accepts
+- If the value is denied, a SAN equal to the common name is refused
+
+To use **Same as common name**, the policy's subject rules must allow or require a common name.
+
+To add the common name to the SANs without asking requesters to enter it, set a [default SAN](/documentation/platform/pki/settings/profiles#add-the-common-name-as-a-san) on the certificate profile.
 
 ### Key & signature algorithms
 

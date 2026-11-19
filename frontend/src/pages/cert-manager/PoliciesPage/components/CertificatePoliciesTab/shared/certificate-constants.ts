@@ -191,6 +191,38 @@ export enum CertSanInclude {
 export const SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS = Object.values(CertSubjectAttributeInclude);
 export const SAN_INCLUDE_OPTIONS = Object.values(CertSanInclude);
 
+export enum CertRequestReference {
+  COMMON_NAME = "{{request.commonName}}"
+}
+
+export type TCertRequestReferenceValues = {
+  commonName?: string;
+};
+
+export const REQUEST_REFERENCES: Record<
+  CertRequestReference,
+  {
+    label: string;
+    description: string;
+    resolve: (request: TCertRequestReferenceValues) => string | undefined;
+  }
+> = {
+  [CertRequestReference.COMMON_NAME]: {
+    label: "Same as common name",
+    description: "The common name of each request",
+    resolve: (request) => request.commonName
+  }
+};
+
+export const isRequestReference = (value: string): value is CertRequestReference =>
+  Object.prototype.hasOwnProperty.call(REQUEST_REFERENCES, value);
+
+export const withIndefiniteArticle = (label: string): string =>
+  `${/^[AEIO]/i.test(label) ? "an" : "a"} ${label}`;
+
+export const formatRequestReferenceValue = (value: string): string =>
+  isRequestReference(value) ? REQUEST_REFERENCES[value].label : value;
+
 export const USAGE_STATES = {
   REQUIRED: "required",
   OPTIONAL: "optional"

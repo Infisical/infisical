@@ -1,6 +1,5 @@
 import { AnyZodObject, z } from "zod";
 
-import { isValidHostname } from "@app/helpers/hostname";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 export const HOST_COMMAND_MAX_LENGTH = 8192;
@@ -56,10 +55,17 @@ export const PkiSyncTargetHostSchema = z
   .string()
   .trim()
   .max(253, "Target host is too long")
-  .refine((value) => !value || isValidHostname(value), {
-    message:
-      "Target host must be a hostname or IP address (for example server01.corp.example.com or 10.0.0.5)"
-  })
+  .refine(
+    (value) =>
+      !value ||
+      /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/.test(
+        value
+      ),
+    {
+      message:
+        "Target host must be a hostname or IP address (for example server01.corp.example.com or 10.0.0.5)"
+    }
+  )
   .transform((value) => value || undefined)
   .optional();
 

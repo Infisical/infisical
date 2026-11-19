@@ -414,7 +414,8 @@ export const CertificateIssuanceModal = ({
     filteredExtendedKeyUsages,
     availableSignatureAlgorithms,
     availableKeyAlgorithms,
-    resetConstraints
+    resetConstraints,
+    profileReferenceSans
   } = useCertificatePolicy(
     policyData,
     actualSelectedProfile,
@@ -433,7 +434,7 @@ export const CertificateIssuanceModal = ({
     isSubjectEvaluated: requestMethod === RequestMethod.MANAGED,
     isValidityEvaluated: !isAdcsProfile,
     resetKey: actualSelectedProfileId,
-    isCommonNameAddedAsDnsSan: Boolean(policyData?.addCommonNameAsDnsSan)
+    profileReferenceSans
   });
 
   const resetAllState = useCallback(() => {
@@ -851,11 +852,7 @@ export const CertificateIssuanceModal = ({
               policyRows={policy.sans.rows}
               policyNotices={policy.sans.notices}
               revealPolicyErrors={policy.isRevealed("subjectAltNames")}
-              description={
-                policyData?.addCommonNameAsDnsSan
-                  ? "This policy adds the common name as a DNS name SAN, so you don't need to list it here."
-                  : undefined
-              }
+              profileReferenceSans={profileReferenceSans}
             />
           )}
 
