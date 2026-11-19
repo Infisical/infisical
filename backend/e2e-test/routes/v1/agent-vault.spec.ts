@@ -12451,7 +12451,7 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("a service write answers without variable keys or bundles the caller can't see", async () => {
+    test("a service write answers without variable keys, bundles or setup the caller can't see", async () => {
       const projectId = await getProjectId();
       const key = `HIDDEN_${unique()}`;
       const variable = await inject("POST", "/api/v1/agent-vault/variables", { scope: "global", key, value: "v" });
@@ -12463,11 +12463,13 @@ describe("Agent Vault V1 Router", async () => {
         type: "http",
         name,
         hostPattern: `${name}.example.com`,
-        credential: { type: "bearer", value: `{{${key}}}` }
+        credential: { type: "bearer", value: `{{${key}}}` },
+        hook: { url: `https://hooks.example.com/${name}`, signingSecret: `whsec_${"b".repeat(40)}` }
       });
       expect(created.statusCode, created.payload).toBe(200);
       const serviceId = (created.json() as { service: { id: string } }).service.id;
       expect(created.payload).toContain(key);
+      expect(created.payload).toContain(`hooks.example.com/${name}`);
 
       const role = await createAgentVaultRole(projectId, `service-editor-${unique()}`, [
         ...SESSION_RULES,
@@ -12487,10 +12489,17 @@ describe("Agent Vault V1 Router", async () => {
         expect(updated.json().service.accessBundles).toEqual([]);
         expect(updated.payload).not.toContain(unseenBundle.id);
 
+        // Deleting takes no edit, and the hook is setup that only those who can edit the service see, as on a read.
+        const deleter = await createAgentVaultRole(projectId, `service-deleter-${unique()}`, [
+          ...SESSION_RULES,
+          { subject: "agent-vault-services", action: ["read", "delete"] }
+        ]);
+        await setMemberRoles({ machineIdentityIds: [editor.id] }, [deleter.slug]);
         const deleted = await editor.as("DELETE", `/api/v1/agent-vault/services/${serviceId}`);
         expect(deleted.statusCode, deleted.payload).toBe(200);
         expect(deleted.payload).not.toContain(key);
         expect(deleted.payload).not.toContain(unseenBundle.id);
+        expect(deleted.payload).not.toContain(`hooks.example.com/${name}`);
       } finally {
         await editor.cleanup();
       }

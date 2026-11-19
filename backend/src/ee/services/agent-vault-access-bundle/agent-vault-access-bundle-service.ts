@@ -666,8 +666,21 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       : { ...service, accessBundles: service.accessBundles.filter((bundle) => accessBundleIds.includes(bundle.id)) };
   };
 
-  // A service as the caller may see it. The OAuth sign-in state is the account of whoever set up the service, and the
-  // hook is part of that setup, so only those who can edit services get them.
+  // The OAuth sign-in state is the account of whoever set up the service, and the hook is part of that setup, so only
+  // those who can edit the service get them.
+  const hideSetup = <T extends ReturnType<typeof projectService>>(projected: T, canSeeSetup: boolean) =>
+    canSeeSetup
+      ? projected
+      : {
+          ...projected,
+          credential:
+            projected.credential.type === AgentVaultCredentialType.OAuth
+              ? { ...projected.credential, expiresAt: undefined, authorizedAt: undefined, lastError: undefined }
+              : projected.credential,
+          hook: undefined
+        };
+
+  // A service as the caller may see it.
   const viewService = (
     service: TAgentVaultCatalogService,
     transformations: Awaited<ReturnType<typeof loadTransformations>>,
@@ -681,24 +694,21 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       status?: Awaited<ReturnType<TAgentVaultPersonalValueServiceFactory["findStatusesForOwner"]>>[number];
     }
   ) => {
-    const projected = hideVariables(
-      projectService(
-        service,
-        transformations.customHeaders.filter((header) => header.serviceId === service.id),
-        transformations.substitutions.filter((substitution) => substitution.serviceId === service.id),
-        transformations.variableReferences.filter((reference) => reference.serviceId === service.id),
-        transformations.oauthVariables
+    const projected = hideSetup(
+      hideVariables(
+        projectService(
+          service,
+          transformations.customHeaders.filter((header) => header.serviceId === service.id),
+          transformations.substitutions.filter((substitution) => substitution.serviceId === service.id),
+          transformations.variableReferences.filter((reference) => reference.serviceId === service.id),
+          transformations.oauthVariables
+        ),
+        canReadVariables
       ),
-      canReadVariables
+      canSeeSetup
     );
-    let { credential } = projected;
-    if (credential.type === AgentVaultCredentialType.OAuth && !canSeeSetup) {
-      credential = { ...credential, expiresAt: undefined, authorizedAt: undefined, lastError: undefined };
-    }
     return {
       ...projected,
-      credential,
-      ...(canSeeSetup ? {} : { hook: undefined }),
       // The caller's own values, null when the admin sets the whole credential.
       personalValues: status ? { isConfigured: status.isConfigured, fields: status.fields } : null
     };
@@ -1591,7 +1601,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     // `service` is for the audit log, which records the variables it uses; `visibleService` is what the caller gets.
     return {
       service: createdService,
-      visibleService: hideVariables(createdService, serviceVisibilityOf(permission).canReadVariables)
+      visibleService: hideSetup(
+        hideVariables(createdService, serviceVisibilityOf(permission).canReadVariables),
+        serviceVisibilityOf(permission).canSeeSetup(createdService.id)
+      )
     };
   };
 
@@ -2329,9 +2342,12 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     };
     return {
       service: updatedService,
-      visibleService: hideVariables(
-        await withReachableBundles(rest, updatedService),
-        serviceVisibilityOf(permission).canReadVariables
+      visibleService: hideSetup(
+        hideVariables(
+          await withReachableBundles(rest, updatedService),
+          serviceVisibilityOf(permission).canReadVariables
+        ),
+        serviceVisibilityOf(permission).canSeeSetup(updatedService.id)
       ),
       update: {
         hostPattern: requestedHostPattern,
@@ -2645,9 +2661,12 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     };
     return {
       service: deletedService,
-      visibleService: hideVariables(
-        await withReachableBundles(rest, deletedService),
-        serviceVisibilityOf(permission).canReadVariables
+      visibleService: hideSetup(
+        hideVariables(
+          await withReachableBundles(rest, deletedService),
+          serviceVisibilityOf(permission).canReadVariables
+        ),
+        serviceVisibilityOf(permission).canSeeSetup(deletedService.id)
       )
     };
   };

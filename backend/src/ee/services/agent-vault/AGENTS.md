@@ -165,12 +165,13 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   an unconditioned allow and no deny covers everything without a query; otherwise every id in the project
   (`agentVaultReachDAL`, on the primary so a bundle created a moment ago counts) is checked one by one. That is a
   service-layer filter, not SQL, because SQL can't evaluate a role's rules.
-- **Usable and visible are different sets.** Usable services and skills are those with `use` plus those a usable bundle
-  holds (`usableServiceIdsOf`, `usableSkillIdsOf`); a session can list exactly those. Visible adds `read`
-  (`serviceVisibilityOf`, `skillVisibilityOf`, `visibleIdsWithin`), because a session can't name what its creator can't
-  find. A read of something that names services or skills (a session, a delegation, Used By) leaves out the ones the
-  reader can't see, the way it leaves out deleted ones. Every response that returns a service, writes included, goes
-  through `hideVariables` (or `viewService`), since a role can edit services without being able to read variables.
+- **Usable and visible are different sets.** Usable services and skills are those with `use` plus those a usable
+  bundle holds (`usableServiceIdsOf`, `usableSkillIdsOf`); a session can list exactly those. Visible adds `read`
+  (`serviceVisibilityOf`, `skillVisibilityOf`, `visibleIdsWithin`), because a session can't name what its creator
+  can't find. A read of something that names services or skills (a session, a delegation, Used By) leaves out the ones
+  the reader can't see, the way it leaves out deleted ones. Every response that returns a service, writes included,
+  goes through `hideVariables` and `hideSetup` (or `viewService`): a role can edit services without reading variables,
+  and delete them without editing them.
 - **A role change reaches a cached permission within 10 seconds.** Reach is read through the platform's permission
   cache (`withCacheFingerprint`, 10 second marker), grants through the deprecated endpoints included. Don't read roles
   around the cache to make one path immediate, or two paths would disagree. The e2e request helper expires the
