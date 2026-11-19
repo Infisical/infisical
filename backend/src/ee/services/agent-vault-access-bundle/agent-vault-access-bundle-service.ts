@@ -3045,6 +3045,25 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       })
     ).hasRole(ProjectMembershipRole.Admin);
 
+  // A bundle's role is a role an admin can extend, with more access or with denies, so giving it to yourself or taking it
+  // away could raise what you can do. As on the members API, which refuses any change to your own roles, only an admin,
+  // who can already do everything, changes their own.
+  const assertNotOwnBundleRole = ({
+    actors,
+    callerIsAdmin,
+    ctx
+  }: {
+    actors: TGrantActor[];
+    callerIsAdmin: boolean;
+    ctx: TGetAccessBundleDTO["ctx"];
+  }) => {
+    if (!callerIsAdmin && actors.some((actor) => isAgentVaultSelf(toActorRefFromGrant(actor), ctx))) {
+      throw new ForbiddenRequestError({
+        message: "You can't change your own access to an access bundle. Ask an Agent Vault admin to do it."
+      });
+    }
+  };
+
   // Giving or taking a bundle's role changes the target's roles, so only an admin can do it to an admin, as on the
   // members API. Read under the write's lock, so a promotion can't slip in after the check.
   const assertAdminTargetsAllowed = async (
@@ -3209,14 +3228,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const callerIsAdmin = await isProjectAdmin(rest);
 
     const actors = actorsOf({ userIds, groupIds, machineIdentityIds });
-    // The role boundary lets someone who can assign roles give one to themselves, so the caller can't name themselves
-    // for a bundle they can't already use. An admin, or anyone whose roles use the bundle, gains nothing by it.
-    if (
-      permission.cannot(ProjectPermissionAgentVaultAccessBundleActions.Use, bundleSubject(bundle.id)) &&
-      actors.some((actor) => isAgentVaultSelf(toActorRefFromGrant(actor), rest.ctx))
-    ) {
-      throw new ForbiddenRequestError({ message: "You can't grant yourself an access bundle you can't already use." });
-    }
+    assertNotOwnBundleRole({ actors, callerIsAdmin, ctx: rest.ctx });
     await assertActorsInProject({ projectId: rest.projectId, actors });
     const nameByKey = await resolveActorNames(actors);
     await assertBundleRoleBoundary({
@@ -3279,6 +3291,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const callerIsAdmin = await isProjectAdmin(rest);
 
     const actors = actorsOf({ userIds, groupIds, machineIdentityIds });
+    assertNotOwnBundleRole({ actors, callerIsAdmin, ctx: rest.ctx });
     const nameByKey = await resolveActorNames(actors);
     await assertBundleRoleBoundary({
       bundle,

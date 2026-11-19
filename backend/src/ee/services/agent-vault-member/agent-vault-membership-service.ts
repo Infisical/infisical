@@ -52,7 +52,10 @@ import {
 } from "./agent-vault-member-role-fns";
 
 type TAgentVaultMembershipServiceFactoryDep = {
-  agentVaultMemberDAL: Pick<TAgentVaultMemberDALFactory, "findProductMembers" | "findAvailableActors">;
+  agentVaultMemberDAL: Pick<
+    TAgentVaultMemberDALFactory,
+    "findProductMembers" | "findAvailableActors" | "findOrgIdentityIds"
+  >;
   membershipDAL: Pick<TMembershipDALFactory, "insertMany" | "find" | "transaction" | "delete">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find" | "insertMany" | "delete" | "findRolesByMembershipIds">;
@@ -280,17 +283,13 @@ export const agentVaultMembershipServiceFactory = ({
     forbidden.throwUnlessCan(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
   };
 
-  // The machine identities a role can read among these memberships' actors, null for every one (readableIdentityIdsOf).
+  // The machine identities a role can read among the candidates loadIds lists, null for every one
+  // (readableIdentityIdsOf).
   const readableIdentitiesAmong = (
     permission: TProjectPermission,
     types: AgentVaultMemberType[],
-    memberships: { scope: AccessScope; scopeProjectId?: string; scopeOrgId?: string }
-  ) =>
-    types.includes(AgentVaultMemberType.MachineIdentity)
-      ? readableIdentityIdsOf(permission, async () =>
-          (await membershipDAL.find(memberships)).flatMap((row) => (row.actorIdentityId ? [row.actorIdentityId] : []))
-        )
-      : null;
+    loadIds: () => Promise<string[]>
+  ) => (types.includes(AgentVaultMemberType.MachineIdentity) ? readableIdentityIdsOf(permission, loadIds) : null);
 
   const listProductMembers = async ({
     projectId,
@@ -305,10 +304,11 @@ export const agentVaultMembershipServiceFactory = ({
     const asked = actorType ? [actorType] : ALL_ACTOR_TYPES;
     const readable = asked.filter((type) => canReadActorType(permission, type));
     if (!readable.length) assertCanReadActorType(permission, asked[0]);
-    const identityIds = await readableIdentitiesAmong(permission, readable, {
-      scope: AccessScope.Project,
-      scopeProjectId: projectId
-    });
+    const identityIds = await readableIdentitiesAmong(permission, readable, async () =>
+      (await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId })).flatMap((row) =>
+        row.actorIdentityId ? [row.actorIdentityId] : []
+      )
+    );
 
     return agentVaultMemberDAL.findProductMembers({
       projectId,
@@ -340,10 +340,10 @@ export const agentVaultMembershipServiceFactory = ({
       assertCanChangeActorTypes(permission, "add", [asked[0]]);
     }
 
-    const identityIds = await readableIdentitiesAmong(permission, readable, {
-      scope: AccessScope.Organization,
-      scopeOrgId: ctx.actorOrgId
-    });
+    // Identities in the org only through a group are candidates too, as the list below reaches them.
+    const identityIds = await readableIdentitiesAmong(permission, readable, () =>
+      agentVaultMemberDAL.findOrgIdentityIds(ctx.actorOrgId)
+    );
 
     return agentVaultMemberDAL.findAvailableActors({
       projectId,

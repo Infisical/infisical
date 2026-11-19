@@ -423,5 +423,32 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { findProductMembers, findAvailableActors };
+  // Every machine identity in the org, directly or only through a group, as findAvailableActors reaches them: the
+  // candidates an identity read limited to some identities is worked out over.
+  const findOrgIdentityIds = async (orgId: string, tx?: Knex): Promise<string[]> => {
+    try {
+      const conn = tx || db.replicaNode();
+      const rows = (await conn(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+        .select(conn.ref("actorIdentityId").withSchema(TableName.Membership).as("id"))
+        .union([
+          conn(TableName.IdentityGroupMembership)
+            .join(
+              `${TableName.Membership} as groupOrg`,
+              "groupOrg.actorGroupId",
+              `${TableName.IdentityGroupMembership}.groupId`
+            )
+            .where("groupOrg.scope", AccessScope.Organization)
+            .where("groupOrg.scopeOrgId", orgId)
+            .select(conn.ref("identityId").withSchema(TableName.IdentityGroupMembership).as("id"))
+        ])) as { id: string }[];
+      return rows.map((row) => row.id);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault org identity ids" });
+    }
+  };
+
+  return { findProductMembers, findAvailableActors, findOrgIdentityIds };
 };

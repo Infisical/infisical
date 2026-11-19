@@ -180,11 +180,12 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   `agent-vault-bundle-role-fns.ts`): `ensureBundleRole` makes `<bundle> users` (read and use on that bundle) the first
   time one is needed, and taking the last role from a membership leaves it No Access, since a membership needs a role.
   They need bundle `edit` plus `edit` on users and groups and on each identity named, and a list shows only the kinds
-  of member the caller can read (`readableGranteeTypes`), as the members API does. Only an admin can give one to or
-  take one from an admin (`assertAdminTargetsAllowed`). A grant that would take a member past
-  `AGENT_VAULT_MAX_MEMBER_ROLES` is refused whole (`giveBundleRole` returns them in `full`). Each locks the bundle row
-  first, so two calls can't make two roles and the dedupe read inside it is authoritative. They are hidden from the
-  API reference and go after 2027-01-04 with the role helpers.
+  of member the caller can read (`readableGranteeTypes`) and, of machine identities, only those their role can read by
+  ID (`readableIdentityIdsOf`), as the members API does. Only an admin can give one to or take one from an admin
+  (`assertAdminTargetsAllowed`), and only an admin can give or take their own (`assertNotOwnBundleRole`). A grant that
+  would take a member past `AGENT_VAULT_MAX_MEMBER_ROLES` is refused whole (`giveBundleRole` returns them in `full`).
+  Each locks the bundle row first, so two calls can't make two roles and the dedupe read inside it is authoritative.
+  They are hidden from the API reference and go after 2027-01-04 with the role helpers.
 - **The bundle's creator gets its role when their own roles can't use it** (`createAccessBundle`), so whoever built a
   bundle can try it, unless they already hold `AGENT_VAULT_MAX_MEMBER_ROLES` roles. It counts their roles under the
   project's `LastAdminGuard` lock, like every role change. Only a creator with a direct project membership gets one:

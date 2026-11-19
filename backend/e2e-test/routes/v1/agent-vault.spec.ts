@@ -12238,7 +12238,7 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("the deprecated grant endpoints take edit on that bundle, the right to give its role, and a bundle you use to grant yourself", async () => {
+    test("the deprecated grant endpoints take edit on that bundle and the right to give its role, and only an admin changes their own", async () => {
       const projectId = await getProjectId();
       const [own, other] = [
         await createAccessBundle(`grant-own-${unique()}`),
@@ -12280,12 +12280,24 @@ describe("Agent Vault V1 Router", async () => {
         expect(granted.statusCode, granted.payload).toBe(200);
         expect(await grantRows(own.id, { actorIdentityId: target.id })).toHaveLength(1);
 
-        const escalating = await grant(other.id, editor.id);
-        expect(escalating.statusCode).toBe(403);
-        expect(escalating.json().message).toBe("You can't grant yourself an access bundle you can't already use.");
-        expect(await grantRows(other.id, { actorIdentityId: editor.id })).toHaveLength(0);
-        // One the editor already uses gains them nothing, so it goes through, as an admin's own grant does.
-        expect((await grant(own.id, editor.id)).statusCode).toBe(200);
+        // A bundle's role is one an admin can extend, with more access or with denies, so only an admin gives or takes
+        // their own, as on the members API: not even a bundle the editor already uses.
+        const OWN_ACCESS = "You can't change your own access to an access bundle. Ask an Agent Vault admin to do it.";
+        for (const bundleId of [other.id, own.id]) {
+          // eslint-disable-next-line no-await-in-loop
+          const selfGrant = await grant(bundleId, editor.id);
+          expect(selfGrant.statusCode).toBe(403);
+          expect(selfGrant.json().message).toBe(OWN_ACCESS);
+          // eslint-disable-next-line no-await-in-loop
+          expect(await grantRows(bundleId, { actorIdentityId: editor.id })).toHaveLength(0);
+        }
+        expect((await inject("POST", `/api/v1/agent-vault/access-bundles/${own.id}/members`, { machineIdentityIds: [editor.id] })).statusCode).toBe(200);
+        const selfRevoke = await editor.as("DELETE", `/api/v1/agent-vault/access-bundles/${own.id}/members`, {
+          machineIdentityIds: [editor.id]
+        });
+        expect(selfRevoke.statusCode).toBe(403);
+        expect(selfRevoke.json().message).toBe(OWN_ACCESS);
+        expect(await grantRows(own.id, { actorIdentityId: editor.id })).toHaveLength(1);
       } finally {
         await editor.cleanup();
         await target.cleanup();
@@ -12397,6 +12409,45 @@ describe("Agent Vault V1 Router", async () => {
         await reader.cleanup();
         await deleteOrgIdentity(readable.id);
         await deleteOrgIdentity(hidden.id);
+      }
+    });
+
+    test("the add list offers a readable identity that's in the org only through a group", async () => {
+      const projectId = await getProjectId();
+      const orgId = seedData1.organization.id;
+      const name = `av-group-only-${unique()}`;
+      const [identity] = (await testDb("identities").insert({ name, orgId }).returning("id")) as { id: string }[];
+      const [group] = (await testDb("groups")
+        .insert({ orgId, name: `av-group-only-${unique()}`, slug: `av-group-only-${unique()}` })
+        .returning("id")) as { id: string }[];
+      const [groupOrg] = (await testDb("memberships")
+        .insert({ scope: AccessScope.Organization, scopeOrgId: orgId, actorGroupId: group.id, isActive: true })
+        .returning("id")) as { id: string }[];
+      await testDb("membership_roles").insert({ membershipId: groupOrg.id, role: OrgMembershipRole.NoAccess });
+      await testDb("identity_group_membership").insert({ groupId: group.id, identityId: identity.id });
+      const reader = await createMemberIdentity(`group-only-reader-${unique()}`);
+      try {
+        const role = await createAgentVaultRole(projectId, `group-only-reader-${unique()}`, [
+          ...SESSION_RULES,
+          { subject: "identity", action: ["read"], conditions: { identityId: identity.id } },
+          { subject: "identity", action: ["create"] }
+        ]);
+        await setMemberRoles({ machineIdentityIds: [reader.id] }, [role.slug]);
+
+        const available = await reader.as(
+          "GET",
+          `/api/v1/agent-vault/members/available?actorType=machineIdentity&search=${name}&limit=100`
+        );
+        expect(available.statusCode, available.payload).toBe(200);
+        expect((available.json() as { actors: { id: string }[] }).actors.map((actor) => actor.id)).toEqual([
+          identity.id
+        ]);
+      } finally {
+        await reader.cleanup();
+        await testDb("identity_group_membership").where({ identityId: identity.id }).delete();
+        await testDb("memberships").where({ actorGroupId: group.id }).delete();
+        await testDb("groups").where({ id: group.id }).delete();
+        await testDb("identities").where({ id: identity.id }).delete();
       }
     });
 
