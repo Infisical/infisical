@@ -313,7 +313,7 @@ export type TListAgentVaultAccessBundlesDTO = Omit<TListAgentVaultProxiesDTO, "o
    * Only the bundles the caller's roles pick out one by one, or with false, only the rest. A role that can use every
    * bundle picks out none.
    */
-  granted?: boolean;
+  assigned?: boolean;
 };
 
 export type TListAgentVaultVariablesDTO = {
@@ -376,15 +376,16 @@ export type TAgentVaultAccessBundleDetails = TAgentVaultAccessBundle & {
   services: TAgentVaultService[];
 };
 
-/** A role that lets its holders use an access bundle: Admin, or a custom role whose rules allow it. */
-export type TAgentVaultAccessBundleRole = {
+/**
+ * A role that lets its holders use an access bundle, service or skill: Admin, or a custom role whose rules allow it,
+ * for a service or skill directly or through an access bundle that holds it.
+ */
+export type TAgentVaultRoleThatCanUse = {
   // Null for the built-in Admin role.
   id: string | null;
   slug: string;
   name: string;
   isBuiltIn: boolean;
-  // The role the deprecated grant endpoints give for this bundle.
-  isBundleRole: boolean;
   memberCount: number;
 };
 
@@ -1117,7 +1118,7 @@ export type TListAgentVaultServicesDTO = {
   // Only services that need (true) or don't need (false) the caller's personal values.
   requiresSetup?: boolean;
   // Only the services the caller's roles pick out one by one, directly or through a bundle they pick out.
-  granted?: boolean;
+  assigned?: boolean;
   orderBy?: "name" | "type" | "createdAt";
   orderDirection?: "asc" | "desc";
   limit?: number;

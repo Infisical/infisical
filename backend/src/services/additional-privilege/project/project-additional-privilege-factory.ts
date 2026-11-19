@@ -1,6 +1,6 @@
 import { ForbiddenError, MongoAbility, RawRule, subject } from "@casl/ability";
 
-import { AccessScope, ActionProjectType } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, ProjectType } from "@app/db/schemas";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
@@ -29,6 +29,16 @@ import { TAdditionalPrivilegesScopeFactory } from "../additional-privilege-types
 type TPermissionRule = RawRule & {
   subject?: string | string[];
   action?: string | string[];
+};
+
+// Agent Vault gives access through roles alone, and its permissions leave out any additional privilege a member holds,
+// so one written there would sit in the database granting nothing.
+const assertProjectTakesAdditionalPrivileges = (project: { type: string }) => {
+  if (project.type === ProjectType.AgentVault) {
+    throw new BadRequestError({
+      message: "Agent Vault doesn't support additional privileges. Give the access through a role instead."
+    });
+  }
 };
 
 type TProjectAdditionalPrivilegesScopeFactoryDep = {
@@ -445,6 +455,7 @@ export const newProjectAdditionalPrivilegesFactory = ({
       if (!project) {
         throw new NotFoundError({ message: `Project with ID '${scope.value}' not found` });
       }
+      assertProjectTakesAdditionalPrivileges(project);
       if (!project.isLegacyAdditionalPrivilegesEnabled) {
         throw new BadRequestError({
           message: `Additional privileges are not available for project '${project.name}'. Use project roles or folder access controls instead.`
@@ -496,6 +507,11 @@ export const newProjectAdditionalPrivilegesFactory = ({
           ? ([ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member] as const)
           : ([ProjectPermissionIdentityActions.Edit, ProjectPermissionSub.Identity] as const);
       ForbiddenError.from(permission).throwUnlessCan(...permissionSet);
+
+      const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
+        projectDAL.findById(scope.value)
+      );
+      if (project) assertProjectTakesAdditionalPrivileges(project);
 
       const { shouldUseNewPrivilegeSystem } = await requestMemoize(
         requestMemoKeys.orgFindById(dto.permission.orgId),

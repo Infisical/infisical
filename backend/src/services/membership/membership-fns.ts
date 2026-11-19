@@ -288,15 +288,21 @@ export const assertAgentVaultAdminOnlyChange = ({
 };
 
 // The members API's limits on one member's roles (assertAgentVaultRoleSetLimits), so a generic route can't save a set the
-// members API and the dashboard would refuse.
+// members API and the dashboard would refuse. That includes a time limit: the members API takes none, and nothing in
+// Agent Vault shows when a role ends.
 export const assertAgentVaultRoleLimits = ({
   project,
   roles
 }: {
   project: { type?: string | null } | undefined | null;
-  roles: { role: string }[];
+  roles: { role: string; isTemporary?: boolean }[];
 }) => {
   if (project?.type !== ProjectType.AgentVault) return;
+  if (roles.some((el) => el.isTemporary)) {
+    throw new BadRequestError({
+      message: "Agent Vault doesn't support temporary roles yet. Give the role without a time limit."
+    });
+  }
   assertAgentVaultRoleSetLimits(roles.map((el) => el.role));
 };
 

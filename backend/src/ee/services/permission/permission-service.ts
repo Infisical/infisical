@@ -829,7 +829,13 @@ export const permissionServiceFactory = ({
         slug: projectDetails.slug
       };
 
-      const permissionFromRoles = flattenActiveRolesFromMemberships(permissionData, ProjectMembershipRole.Custom);
+      // Agent Vault gives access through roles alone, so an additional privilege a member holds there grants nothing.
+      const permissionFromRoles = flattenActiveRolesFromMemberships(
+        projectDetails.type === ProjectType.AgentVault
+          ? permissionData.map((membership) => ({ ...membership, additionalPrivileges: [] }))
+          : permissionData,
+        ProjectMembershipRole.Custom
+      );
 
       const hasRole = (role: string) => membershipsHaveActiveRole(permissionData, role);
 

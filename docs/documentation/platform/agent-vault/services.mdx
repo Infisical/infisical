@@ -75,6 +75,8 @@ To add services through the API, call the [Add services to access bundle](/api-r
 
 To edit a service, go to **Services**, open the service's actions menu, and select **Edit**. A change to a service applies in every access bundle that holds it. To let your own server allow or refuse the agent's requests or connections to the service, add a [hook](/documentation/platform/agent-vault/hooks) on the **Hook** step.
 
+If you change where a service connects (its hosts, its MCP server URL, or its database or SSH server), enter its credential, custom header values, and substitution values again in the same edit. Infisical doesn't send a saved value to a new destination. The edit also deletes members' [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for the service, so each member enters theirs again.
+
 ## Remove or delete a service
 
 Open the service's actions menu and select one of these:
@@ -82,7 +84,7 @@ Open the service's actions menu and select one of these:
 - **Remove From Bundle**, on an access bundle's page, takes the service out of that access bundle only (the service stays in the project)
 - **Delete**, on the **Services** page, deletes the service from the project and from every access bundle that holds it
 
-Sessions stop getting the service's credential within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval). If a member can no longer reach the service through any access bundle, Infisical also deletes their [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for it.
+Sessions stop getting the service's credential within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval). If you delete the service, Infisical also deletes members' [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for it. If you only remove it from an access bundle, the personal values stay.
 
 ## Service names
 

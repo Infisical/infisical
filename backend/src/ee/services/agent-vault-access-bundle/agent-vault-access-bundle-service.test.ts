@@ -188,7 +188,7 @@ const buildService = ({
     agentVaultServiceVariableReferenceDAL,
     agentVaultVariableDAL,
     agentVaultOauthService,
-    agentVaultPersonalValueDAL: { delete: vi.fn(), deleteForServiceExceptFields: vi.fn() },
+    agentVaultPersonalValueDAL: { delete: vi.fn().mockResolvedValue([]), deleteForServiceExceptFields: vi.fn() },
     permissionService: {
       getProjectPermission: vi.fn().mockResolvedValue({
         permission: createMongoAbility(
@@ -226,7 +226,8 @@ const buildService = ({
   };
 };
 
-const updatePort = (
+// A save that keeps where the service connects, so it can leave the key out.
+const saveSshKey = (
   service: ReturnType<typeof buildService>["service"],
   credential: TUpdateServiceInput["credential"]
 ) =>
@@ -235,7 +236,7 @@ const updatePort = (
     ctx,
     serviceId: SERVICE_ID,
     type: AgentVaultServiceType.Ssh,
-    port: 2222,
+    description: "edited",
     credential
   });
 
@@ -258,12 +259,12 @@ describe("updateService, an SSH key save that writes no secret", () => {
       locked: sshService({ hasCertificate: true, secret: "key-and-certificate" })
     });
 
-    const result = await updatePort(service, { type: AgentVaultCredentialType.SshKey });
+    const result = await saveSshKey(service, { type: AgentVaultCredentialType.SshKey });
 
     const columns = writtenColumns(agentVaultServiceDAL);
     expect(columns.credentialConfig).toEqual({ type: AgentVaultCredentialType.SshKey, hasCertificate: true });
     expect(columns).not.toHaveProperty("encryptedCredential");
-    expect(columns.config).toEqual({ host: "bastion.internal", port: 2222 });
+    expect(columns.description).toBe("edited");
     expect(result.service.credential).toEqual({ type: AgentVaultCredentialType.SshKey, hasCertificate: true });
     expect(result.credentialReplaced).toBe(false);
   });
@@ -274,7 +275,7 @@ describe("updateService, an SSH key save that writes no secret", () => {
       locked: sshService({ hasCertificate: false, secret: "key" })
     });
 
-    await updatePort(service, { type: AgentVaultCredentialType.SshKey });
+    await saveSshKey(service, { type: AgentVaultCredentialType.SshKey });
 
     expect(writtenColumns(agentVaultServiceDAL).credentialConfig).toEqual({
       type: AgentVaultCredentialType.SshKey,
@@ -289,7 +290,7 @@ describe("updateService, an SSH key save that writes no secret", () => {
     });
 
     await expect(
-      updatePort(service, { type: AgentVaultCredentialType.SshKey, certificate: null })
+      saveSshKey(service, { type: AgentVaultCredentialType.SshKey, certificate: null })
     ).rejects.toBeInstanceOf(ConflictError);
     expect(agentVaultServiceDAL.updateById).not.toHaveBeenCalled();
   });
@@ -301,7 +302,7 @@ describe("updateService, an SSH key save that writes no secret", () => {
     });
 
     await expect(
-      updatePort(service, { type: AgentVaultCredentialType.SshKey, certificate: null })
+      saveSshKey(service, { type: AgentVaultCredentialType.SshKey, certificate: null })
     ).rejects.toBeInstanceOf(ConflictError);
     expect(agentVaultServiceDAL.updateById).not.toHaveBeenCalled();
   });
@@ -310,7 +311,7 @@ describe("updateService, an SSH key save that writes no secret", () => {
     const stored = sshService({ hasCertificate: false, secret: "key" });
     const { service, agentVaultServiceDAL, kmsDataKeyService } = buildService({ firstRead: stored, locked: stored });
 
-    const result = await updatePort(service, { type: AgentVaultCredentialType.SshKey, certificate: null });
+    const result = await saveSshKey(service, { type: AgentVaultCredentialType.SshKey, certificate: null });
 
     const columns = writtenColumns(agentVaultServiceDAL);
     expect(columns).not.toHaveProperty("encryptedCredential");
@@ -320,12 +321,36 @@ describe("updateService, an SSH key save that writes no secret", () => {
   });
 });
 
+describe("updateService, a save that moves the service", () => {
+  test("takes the key again, and keeping it is refused before anything is written", async () => {
+    const stored = sshService({ hasCertificate: false, secret: "key" });
+    const { service, agentVaultServiceDAL } = buildService({ firstRead: stored, locked: stored });
+
+    await expect(
+      updateSsh(service, { port: 2222, credential: { type: AgentVaultCredentialType.SshKey } })
+    ).rejects.toThrow(
+      "Changing where the service 'bastion' connects needs its credential sent again in the same change, since the new destination would receive it."
+    );
+    await expect(updateSsh(service, { host: "bastion-2.internal" })).rejects.toBeInstanceOf(BadRequestError);
+    expect(agentVaultServiceDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("keeps its destination when the port it sends is the one stored", async () => {
+    const stored = sshService({ hasCertificate: false, secret: "key" });
+    const { service, agentVaultServiceDAL } = buildService({ firstRead: stored, locked: stored });
+
+    await updateSsh(service, { port: 22, credential: { type: AgentVaultCredentialType.SshKey } });
+
+    expect(writtenColumns(agentVaultServiceDAL)).not.toHaveProperty("encryptedCredential");
+  });
+});
+
 describe("updateService, the service it returns", () => {
   test("an SSH service carries only its own type's fields", async () => {
     const stored = sshService({ hasCertificate: false, secret: "key" });
     const { service } = buildService({ firstRead: stored, locked: stored });
 
-    const result = await updatePort(service, { type: AgentVaultCredentialType.SshKey });
+    const result = await saveSshKey(service, { type: AgentVaultCredentialType.SshKey });
 
     expect(Object.keys(result.service).sort()).toEqual(
       [
@@ -343,7 +368,7 @@ describe("updateService, the service it returns", () => {
         "updatedAt"
       ].sort()
     );
-    expect(result.service).toMatchObject({ type: AgentVaultServiceType.Ssh, host: "bastion.internal", port: 2222 });
+    expect(result.service).toMatchObject({ type: AgentVaultServiceType.Ssh, host: "bastion.internal", port: 22 });
   });
 });
 
@@ -353,7 +378,7 @@ describe("updateService, what the audit is told changed", () => {
     const { service, agentVaultServiceDAL, kmsDataKeyService } = buildService({ firstRead: stored, locked: stored });
 
     const result = await updateSsh(service, {
-      port: 2222,
+      description: "edited",
       credential: { type: AgentVaultCredentialType.SshKey, certificate: "" }
     });
 
@@ -366,7 +391,7 @@ describe("updateService, what the audit is told changed", () => {
     const stored = sshService({ hasCertificate: false, secret: "key" });
     const { service } = buildService({ firstRead: stored, locked: stored });
 
-    const result = await updateSsh(service, { port: 2222, customHeaders: [] });
+    const result = await updateSsh(service, { description: "edited", customHeaders: [] });
 
     expect(result.update.customHeaders).toBeUndefined();
   });
@@ -452,7 +477,7 @@ describe("updateService, hooks", () => {
   test("null on a service with no hook writes no hook columns and reports nothing", async () => {
     const { service, agentVaultServiceDAL } = buildService({ firstRead: plainService(), locked: plainService() });
 
-    const result = await updateSsh(service, { port: 2222, hook: null });
+    const result = await updateSsh(service, { description: "edited", hook: null });
 
     const columns = writtenColumns(agentVaultServiceDAL);
     expect(columns).not.toHaveProperty("hookUrl");
@@ -658,7 +683,7 @@ describe("global variable references", () => {
       rules: bundleEditor
     });
 
-    await updatePort(built.service, undefined);
+    await saveSshKey(built.service, undefined);
     expect(built.agentVaultServiceDAL.updateById).toHaveBeenCalled();
   });
 
@@ -671,7 +696,7 @@ describe("global variable references", () => {
     });
 
     await expect(
-      updatePort(built.service, {
+      saveSshKey(built.service, {
         type: AgentVaultCredentialType.Basic,
         username: "agent",
         password: "{{DB_PASSWORD}}"
@@ -886,21 +911,29 @@ describe("an OAuth credential from an OAuth variable", () => {
     expect(result.credentialReplaced).toBe(false);
   });
 
-  test("an MCP service using a variable can move to another server without authorizing again", async () => {
+  test("an MCP service using a variable moves to another server once the variable is named again", async () => {
     const built = buildService({
       firstRead: mcpUsingVariable(VARIABLE_A),
       locked: mcpUsingVariable(VARIABLE_A),
       oauthVariableKeys: ["GDRIVE_A"]
     });
+    const move = (credential?: TUpdateServiceInput["credential"]) =>
+      built.service.updateService({
+        projectId: PROJECT_ID,
+        ctx,
+        serviceId: SERVICE_ID,
+        type: AgentVaultServiceType.Mcp,
+        serverUrl: "https://mcp2.example.com/mcp",
+        credential
+      });
 
-    await built.service.updateService({
-      projectId: PROJECT_ID,
-      ctx,
-      serviceId: SERVICE_ID,
-      type: AgentVaultServiceType.Mcp,
-      serverUrl: "https://mcp2.example.com/mcp"
-    });
+    await expect(move()).rejects.toThrow(
+      "Changing where the service 'drive-mcp' connects needs its OAuth variable named again in the same change, since the new destination would receive the variable's tokens."
+    );
+    expect(built.agentVaultServiceDAL.updateById).not.toHaveBeenCalled();
 
+    // No new sign-in: an OAuth variable's tokens aren't bound to the server.
+    await move({ type: AgentVaultCredentialType.OAuth, variable: "GDRIVE_A" });
     expect(writtenColumns(built.agentVaultServiceDAL).config).toMatchObject({
       serverUrl: "https://mcp2.example.com/mcp"
     });
@@ -1011,6 +1044,37 @@ describe("an OAuth credential from an OAuth variable", () => {
     expect((listMcpServerTools.mock.lastCall![0] as { headers: unknown }).headers).toEqual({
       Authorization: "Bearer refreshed-access"
     });
+  });
+
+  test("tools for a saved service load from another server URL only once the variable is named again", async () => {
+    listMcpServerTools.mockResolvedValueOnce([{ name: "search" }]);
+    const built = buildService({
+      firstRead: mcpUsingVariable(VARIABLE_A),
+      locked: mcpUsingVariable(VARIABLE_A),
+      oauthVariableKeys: ["GDRIVE_A"],
+      oauthVariableTokens: { GDRIVE_A: "variable-access" }
+    });
+    const load = (credential?: TUpdateServiceInput["credential"]) =>
+      built.service.listMcpTools({
+        projectId: PROJECT_ID,
+        ctx,
+        serviceId: SERVICE_ID,
+        serverUrl: "https://collector.example.net/mcp",
+        transport: AgentVaultMcpTransport.StreamableHttp,
+        credential
+      });
+
+    await expect(load()).rejects.toThrow(
+      "Loading the tools of the service 'drive-mcp' from another server URL needs its OAuth variable named again, since that server would receive the variable's tokens."
+    );
+    expect(listMcpServerTools).not.toHaveBeenCalledWith(
+      expect.objectContaining({ serverUrl: "https://collector.example.net/mcp" })
+    );
+
+    await load({ type: AgentVaultCredentialType.OAuth, variable: "GDRIVE_A" });
+    expect(listMcpServerTools).toHaveBeenLastCalledWith(
+      expect.objectContaining({ serverUrl: "https://collector.example.net/mcp" })
+    );
   });
 
   test("tools can't load with a variable that isn't connected", async () => {

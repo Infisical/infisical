@@ -798,7 +798,7 @@ What the client can do with sessions depends on the [role](/documentation/platfo
 | Role | Can create sessions with | Can list, get, label, and revoke |
 | --- | --- | --- |
 | **Admin** | Any access bundle (on behalf of a user, [only access bundles that the user can use too](#create-a-session-on-behalf-of-a-user)), and [inline services](#create-a-session-with-inline-services) | Every session |
-| **Member** | The access bundles [granted](/documentation/platform/agent-vault/access-bundles#who-can-use-an-access-bundle) to the member | The member's own sessions |
+| Custom role | The access bundles, services, and skills that the role can [use](/documentation/platform/agent-vault/access-control#use-an-access-bundle-service-or-skill) | The member's own sessions, or every session if the role allows it |
 
 <Note>
   `agentVault` requires `@infisical/sdk` version 5.3.0 or newer.
@@ -1295,8 +1295,8 @@ const { members, skipped } = await client.agentVault().accessBundles.grant("<acc
 
 Revoke an access bundle from users, machine identities, or groups. Pass at least one ID, and at most 100 in total.
 
-- If someone with the **Member** role no longer has any grant on the access bundle, the proxy stops attaching the bundle's credentials to their sessions and to the sessions that machine identities created on their behalf, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes (a session's inline services keep working, so to stop every credential, [revoke the session](#revoke-session))
-- Admins can use every access bundle without a grant, so their sessions keep getting credentials after you revoke their grants (to stop one of their agents, [revoke its session](#revoke-session))
+- If they have no other role that can use the access bundle, the proxy [stops attaching](/documentation/platform/agent-vault/sessions#access-changes) the bundle's credentials to their sessions, and to the sessions that machine identities created on their behalf (a session's inline services keep working, so to stop every credential, [revoke the session](#revoke-session))
+- Admins can use every access bundle, so their sessions keep getting credentials after you revoke the access bundle from them (to stop one of their agents, [revoke its session](#revoke-session))
 
 ```typescript
 const { members, skipped } = await client.agentVault().accessBundles.revoke("<access-bundle-id>", {

@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 
+import { packRules } from "@casl/ability/extra";
 import * as x509 from "@peculiar/x509";
 
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
@@ -1756,11 +1757,29 @@ describe("Agent Vault V1 Router", async () => {
       const withPort = await createMcpService(bundle.id, "internal", "https://mcp.example.com:8443/mcp");
       expect(withPort.hostPattern).toBe("mcp.example.com:8443");
 
-      const moved = await inject("PATCH", `/api/v1/agent-vault/services/${service.id}`, {
+      // Loading tools from another server URL would send the saved token there too.
+      const toolsElsewhere = await inject("POST", "/api/v1/agent-vault/services/mcp-tools/list", {
+        serviceId: service.id,
+        serverUrl: "https://collector.example.net/mcp",
+        transport: "sse"
+      });
+      expect(toolsElsewhere.statusCode).toBe(400);
+      expect(toolsElsewhere.json().message).toBe(
+        "Loading the tools of the service 'linear' from another server URL needs its credential sent again, since that server would receive it."
+      );
+
+      // The token would go to the new server, so moving takes it again.
+      const keptToken = await inject("PATCH", `/api/v1/agent-vault/services/${service.id}`, {
         type: "mcp",
         serverUrl: "https://mcp.linear.dev/mcp"
       });
-      expect(moved.statusCode).toBe(200);
+      expect(keptToken.statusCode).toBe(400);
+      const moved = await inject("PATCH", `/api/v1/agent-vault/services/${service.id}`, {
+        type: "mcp",
+        serverUrl: "https://mcp.linear.dev/mcp",
+        credential: { type: "bearer", value: "lin_api_secret" }
+      });
+      expect(moved.statusCode, moved.payload).toBe(200);
       expect(JSON.parse(moved.payload).service.hostPattern).toBe("mcp.linear.dev");
     });
 
@@ -4647,7 +4666,7 @@ describe("Agent Vault V1 Router", async () => {
         return { ids: accessBundles.map((bundle) => bundle.id).sort(), totalCount };
       };
 
-      // Admin can use every bundle without picking any out, so every bundle is in the plain list and none is granted.
+      // Admin can use every bundle without picking any out, so every bundle is in the plain list and none is assigned.
       const listed = await inject("GET", "/api/v1/agent-vault/access-bundles?search=mp-mine&limit=100");
       expect(JSON.parse(listed.payload).accessBundles).toEqual(
         expect.arrayContaining([
@@ -4656,10 +4675,10 @@ describe("Agent Vault V1 Router", async () => {
         ])
       );
       expect((await pendingOf(inject)).get(other.id)).toEqual(["openai"]);
-      expect(await listOf(inject, "granted=true")).toEqual({ ids: [], totalCount: 0 });
-      expect(await listOf(inject, "requiresSetup=true&granted=true")).toEqual({ ids: [], totalCount: 0 });
-      expect(await listOf(inject, "granted=false")).toEqual({ ids: [other.id, picked.id].sort(), totalCount: 2 });
-      expect(await listOf(inject, "requiresSetup=false&granted=false")).toEqual({ ids: [], totalCount: 0 });
+      expect(await listOf(inject, "assigned=true")).toEqual({ ids: [], totalCount: 0 });
+      expect(await listOf(inject, "requiresSetup=true&assigned=true")).toEqual({ ids: [], totalCount: 0 });
+      expect(await listOf(inject, "assigned=false")).toEqual({ ids: [other.id, picked.id].sort(), totalCount: 2 });
+      expect(await listOf(inject, "requiresSetup=false&assigned=false")).toEqual({ ids: [], totalCount: 0 });
       expect((await statusesOf(inject, other.id)).get(service.id)?.isConfigured).toBe(false);
 
       const servicesOf = async (as: typeof inject, query: string) => {
@@ -4667,23 +4686,30 @@ describe("Agent Vault V1 Router", async () => {
         expect(res.statusCode, res.payload).toBe(200);
         return (res.json().services as { id: string }[]).map((row) => row.id);
       };
-      expect(await servicesOf(inject, "requiresSetup=true&granted=true")).toEqual([]);
+      expect(await servicesOf(inject, "requiresSetup=true&assigned=true")).toEqual([]);
       expect(await servicesOf(inject, "requiresSetup=true")).toEqual(expect.arrayContaining([service.id, pickedService.id]));
 
       // A member whose role names one bundle is asked about that one.
       const member = await createMemberIdentity(`mp-mine-member-${Date.now()}`);
       try {
         expect((await inject("POST", membersUrl(picked.id), { machineIdentityIds: [member.id] })).statusCode).toBe(200);
-        expect(await listOf(member.as, "granted=true")).toEqual({ ids: [picked.id], totalCount: 1 });
-        expect(await listOf(member.as, "requiresSetup=true&granted=true")).toEqual({ ids: [picked.id], totalCount: 1 });
-        expect(await listOf(member.as, "granted=false")).toEqual({ ids: [], totalCount: 0 });
-        expect(await servicesOf(member.as, "requiresSetup=true&granted=true")).toEqual([pickedService.id]);
+        expect(await listOf(member.as, "assigned=true")).toEqual({ ids: [picked.id], totalCount: 1 });
+        expect(await listOf(member.as, "requiresSetup=true&assigned=true")).toEqual({ ids: [picked.id], totalCount: 1 });
+        expect(await listOf(member.as, "assigned=false")).toEqual({ ids: [], totalCount: 0 });
+        expect(await servicesOf(member.as, "requiresSetup=true&assigned=true")).toEqual([pickedService.id]);
       } finally {
         await member.cleanup();
       }
 
       expect((await inject("GET", "/api/v1/agent-vault/access-bundles?requiresSetup=maybe")).statusCode).toBe(422);
-      expect((await inject("GET", "/api/v1/agent-vault/access-bundles?granted=maybe")).statusCode).toBe(422);
+      expect((await inject("GET", "/api/v1/agent-vault/access-bundles?assigned=maybe")).statusCode).toBe(422);
+
+      // granted is the older name, which the SDKs still send. It filters the same, and isn't sent beside assigned.
+      expect(await listOf(inject, "granted=false")).toEqual({ ids: [other.id, picked.id].sort(), totalCount: 2 });
+      expect(await servicesOf(inject, "requiresSetup=true&granted=true")).toEqual([]);
+      const both = await inject("GET", "/api/v1/agent-vault/access-bundles?assigned=true&granted=true");
+      expect(both.statusCode).toBe(422);
+      expect(both.payload).toContain("granted is the older name of assigned, so send only assigned");
     });
 
     test("a service out of reach is a 404, and one without member-provided fields takes no values", async () => {
@@ -5078,7 +5104,7 @@ describe("Agent Vault V1 Router", async () => {
       ]);
       // granted keeps what a role names, and admin names nothing, so the sidebar's count leaves it out.
       expect(
-        (await inject("GET", `${servicesUrl}?search=ps-unlinked-setup&requiresSetup=true&granted=true`)).json()
+        (await inject("GET", `${servicesUrl}?search=ps-unlinked-setup&requiresSetup=true&assigned=true`)).json()
           .totalCount
       ).toBe(0);
 
@@ -5133,7 +5159,7 @@ describe("Agent Vault V1 Router", async () => {
         needsToken.name,
         elsewhere.name
       ]);
-      const grantedOnly = await inject("GET", `${servicesUrl}?search=ps-setup&requiresSetup=true&granted=true`);
+      const grantedOnly = await inject("GET", `${servicesUrl}?search=ps-setup&requiresSetup=true&assigned=true`);
       expect(grantedOnly.statusCode).toBe(200);
       expect(names(grantedOnly)).toEqual([]);
 
@@ -7496,8 +7522,8 @@ describe("Agent Vault V1 Router", async () => {
             )
           ).statusCode
         ).toBe(422);
-        const withGranted = await bot.as("GET", bundlesUrl(`onBehalfOfUserId=${alice.userId}&granted=true`));
-        expect(withGranted.statusCode).toBe(422);
+        const withAssigned = await bot.as("GET", bundlesUrl(`onBehalfOfUserId=${alice.userId}&assigned=true`));
+        expect(withAssigned.statusCode).toBe(422);
 
         // The setup state is the user's: the seeded admin reaches every bundle, so the identity's grants decide the
         // list, and the service asks for a value the admin hasn't saved yet.
@@ -7641,8 +7667,8 @@ describe("Agent Vault V1 Router", async () => {
           servicesUrl(`onBehalfOfUserId=${alice.userId}&onBehalfOfUserEmail=${encodeURIComponent(alice.username)}`)
         );
         expect(both.statusCode).toBe(422);
-        const withGranted = await bot.as("GET", servicesUrl(`onBehalfOfUserId=${alice.userId}&granted=true`));
-        expect(withGranted.statusCode).toBe(422);
+        const withAssigned = await bot.as("GET", servicesUrl(`onBehalfOfUserId=${alice.userId}&assigned=true`));
+        expect(withAssigned.statusCode).toBe(422);
 
         // The setup state is the user's: the seeded admin reaches every bundle, so the identity's grants decide the
         // list, and one service asks for a value the admin hasn't saved yet.
@@ -12932,7 +12958,7 @@ describe("Agent Vault V1 Router", async () => {
       const admin = await createMemberIdentity(`granted-admin-${unique()}`);
       const broad = await createMemberIdentity(`granted-broad-${unique()}`);
       const grantedIds = async (as: typeof admin.as) => {
-        const res = await as("GET", "/api/v1/agent-vault/access-bundles?granted=true&limit=100");
+        const res = await as("GET", "/api/v1/agent-vault/access-bundles?assigned=true&limit=100");
         expect(res.statusCode, res.payload).toBe(200);
         return (res.json().accessBundles as { id: string }[]).map((bundle) => bundle.id);
       };
@@ -14216,6 +14242,329 @@ describe("Agent Vault V1 Router", async () => {
       const read = await inject("GET", `${sessionsUrl}/${session.id}`);
       expect(read.json().session).toMatchObject({ status: "revoked", services: [{ hook: { url: hookUrl } }] });
       expect(read.payload).not.toContain(signingSecret);
+    });
+  });
+
+  describe("roles only, delegations and moving a service", async () => {
+    const unique = () => `${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    const servicesUrl = "/api/v1/agent-vault/services";
+
+    const createHttpService = async (name: string, extra: Record<string, unknown> = {}) => {
+      const created = await inject("POST", servicesUrl, {
+        type: "http",
+        name,
+        hostPattern: `${name}.example.com`,
+        credential: { type: "bearer", value: "sk_live_saved" },
+        ...extra
+      });
+      expect(created.statusCode, created.payload).toBe(200);
+      return (created.json() as { service: { id: string } }).service.id;
+    };
+
+    test("moving a service takes its credential again, and naming a variable for it still takes read-value", async () => {
+      const projectId = await getProjectId();
+      const name = `move-${unique()}`;
+      const serviceId = await createHttpService(name);
+      const key = `MOVE_${unique()}`;
+      const variable = await inject("POST", "/api/v1/agent-vault/variables", { scope: "global", key, value: "v" });
+      expect(variable.statusCode, variable.payload).toBe(200);
+      const role = await createAgentVaultRole(projectId, `mover-${unique()}`, [
+        ...SESSION_RULES,
+        { subject: "agent-vault-services", action: ["read", "use", "edit"] }
+      ]);
+      const editor = await createMemberIdentity(`mover-${unique()}`);
+      const patch = (body: Record<string, unknown>) =>
+        editor.as("PATCH", `${servicesUrl}/${serviceId}`, { type: "http", ...body });
+      try {
+        await setMemberRoles({ machineIdentityIds: [editor.id] }, [role.slug]);
+
+        // Editing and using a service would otherwise let a role send its saved credential to a host of its own.
+        const moved = await patch({ hostPattern: "collector.example.net" });
+        expect(moved.statusCode).toBe(400);
+        expect(moved.json().message).toBe(
+          `Changing where the service '${name}' connects needs its credential sent again in the same change, since the new destination would receive it.`
+        );
+        const [stored] = await testDb("agent_vault_services").where({ id: serviceId });
+        expect(stored.hostPattern).toBe(`${name}.example.com`);
+
+        const viaReference = await patch({
+          hostPattern: "collector.example.net",
+          credential: { type: "bearer", value: `{{${key}}}` }
+        });
+        expect(viaReference.statusCode).toBe(403);
+
+        // The same host written another way isn't a move.
+        const same = await patch({ hostPattern: `${name}.example.com:443`, description: "same host" });
+        expect(same.statusCode, same.payload).toBe(200);
+
+        const retyped = await patch({
+          hostPattern: `api.${name}.example.com`,
+          credential: { type: "bearer", value: "sk_live_new" }
+        });
+        expect(retyped.statusCode, retyped.payload).toBe(200);
+        expect(retyped.json().service.hostPattern).toBe(`api.${name}.example.com`);
+      } finally {
+        await editor.cleanup();
+        await inject("DELETE", `${servicesUrl}/${serviceId}`);
+      }
+    });
+
+    test("a move takes custom header and substitution values again, and clears members' saved values", async () => {
+      const name = `move-tx-${unique()}`;
+      const serviceId = await createHttpService(name, {
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] },
+        customHeaders: [{ name: "X-Org-Id", value: "org_saved" }],
+        substitutions: [{ placeholder: "__ACCOUNT__", surfaces: ["path"], value: "acct_saved" }]
+      });
+      try {
+        const read = await inject("GET", `${servicesUrl}/${serviceId}`);
+        const { customHeaders, substitutions } = read.json().service as {
+          customHeaders: { id: string }[];
+          substitutions: { id: string }[];
+        };
+        const saved = await inject("PATCH", `${servicesUrl}/${serviceId}/personal-values`, {
+          values: [{ field: "credential-value", value: "member_token" }]
+        });
+        expect(saved.statusCode, saved.payload).toBe(200);
+        expect(await testDb("agent_vault_personal_values").where({ serviceId })).toHaveLength(1);
+
+        const newSubstitution = {
+          id: substitutions[0].id,
+          placeholder: "__ACCOUNT__",
+          surfaces: ["path"],
+          value: "acct_new"
+        };
+        const keptHeader = await inject("PATCH", `${servicesUrl}/${serviceId}`, {
+          type: "http",
+          hostPattern: `api.${name}.example.com`,
+          customHeaders: [{ id: customHeaders[0].id, name: "X-Org-Id" }],
+          substitutions: [newSubstitution]
+        });
+        expect(keptHeader.statusCode).toBe(400);
+        expect(keptHeader.json().message).toBe(
+          `Changing where the service '${name}' connects needs the value of the custom header 'X-Org-Id' sent again in the same change, since the new destination would receive it.`
+        );
+
+        const leftOut = await inject("PATCH", `${servicesUrl}/${serviceId}`, {
+          type: "http",
+          hostPattern: `api.${name}.example.com`,
+          customHeaders: [{ id: customHeaders[0].id, name: "X-Org-Id", value: "org_new" }]
+        });
+        expect(leftOut.statusCode).toBe(400);
+        expect(leftOut.json().message).toBe(
+          `Changing where the service '${name}' connects needs its substitutions sent again with their values in the same change, since the new destination would receive them.`
+        );
+        expect(await testDb("agent_vault_personal_values").where({ serviceId })).toHaveLength(1);
+
+        const moved = await inject("PATCH", `${servicesUrl}/${serviceId}`, {
+          type: "http",
+          hostPattern: `api.${name}.example.com`,
+          customHeaders: [{ id: customHeaders[0].id, name: "X-Org-Id", value: "org_new" }],
+          substitutions: [newSubstitution]
+        });
+        expect(moved.statusCode, moved.payload).toBe(200);
+        expect(await testDb("agent_vault_personal_values").where({ serviceId })).toHaveLength(0);
+      } finally {
+        await inject("DELETE", `${servicesUrl}/${serviceId}`);
+      }
+    });
+
+    test("changing a delegation takes Manage Delegations as well as editing the machine identity", async () => {
+      const projectId = await getProjectId();
+      const bot = await createOrgIdentity(`av-delegate-bot-${unique()}`);
+      const manager = await createMemberIdentity(`av-delegate-manager-${unique()}`);
+      const delegationUrl = `/api/v1/agent-vault/delegations/${bot.id}`;
+      const delegationsOfBot = () =>
+        testDb("agent_vault_delegations").whereIn(
+          "membershipId",
+          testDb("memberships").where({ actorIdentityId: bot.id }).select("id")
+        );
+      try {
+        const added = await inject("POST", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [bot.id],
+          roles: [ProjectMembershipRole.NoAccess]
+        });
+        expect(added.statusCode, added.payload).toBe(200);
+        const identityEditor = await createAgentVaultRole(projectId, `identity-editor-${unique()}`, [
+          ...SESSION_RULES,
+          { subject: "identity", action: ["read", "edit"] }
+        ]);
+        await setMemberRoles({ machineIdentityIds: [manager.id] }, [identityEditor.slug]);
+
+        const refused = await manager.as("PUT", delegationUrl, { scope: "all-members" });
+        expect(refused.statusCode).toBe(403);
+        expect(await delegationsOfBot()).toHaveLength(0);
+
+        const delegator = await createAgentVaultRole(projectId, `delegator-${unique()}`, [
+          ...SESSION_RULES,
+          { subject: "identity", action: ["read", "edit"] },
+          { subject: "agent-vault-sessions", action: ["manage-delegations"] }
+        ]);
+        await setMemberRoles({ machineIdentityIds: [manager.id] }, [delegator.slug]);
+        const set = await manager.as("PUT", delegationUrl, { scope: "all-members" });
+        expect(set.statusCode, set.payload).toBe(200);
+        expect(await delegationsOfBot()).toHaveLength(1);
+
+        // Reading one takes only reading the machine identity.
+        await setMemberRoles({ machineIdentityIds: [manager.id] }, [identityEditor.slug]);
+        expect((await manager.as("GET", delegationUrl)).statusCode).toBe(200);
+        expect((await manager.as("DELETE", delegationUrl)).statusCode).toBe(403);
+        expect(await delegationsOfBot()).toHaveLength(1);
+      } finally {
+        await manager.cleanup();
+        await deleteOrgIdentity(bot.id);
+      }
+    });
+
+    test("an additional privilege isn't taken, and one already stored grants nothing", async () => {
+      const projectId = await getProjectId();
+      const member = await createMemberIdentity(`av-privilege-${unique()}`);
+      const bundleRead = [{ subject: "agent-vault-access-bundles", action: ["read"] }];
+      try {
+        const created = await inject("POST", "/api/v2/identity-project-additional-privilege", {
+          identityId: member.id,
+          projectId,
+          slug: `av-privilege-${unique()}`,
+          permissions: bundleRead,
+          type: { isTemporary: false }
+        });
+        expect(created.statusCode).toBe(400);
+        expect(created.json().message).toBe(
+          "Agent Vault doesn't support additional privileges. Give the access through a role instead."
+        );
+        expect(await testDb("additional_privileges").where({ actorIdentityId: member.id })).toHaveLength(0);
+
+        expect((await member.as("GET", "/api/v1/agent-vault/access-bundles")).statusCode).toBe(403);
+        await testDb("additional_privileges").insert({
+          name: `av-stored-${unique()}`,
+          actorIdentityId: member.id,
+          projectId,
+          isTemporary: false,
+          permissions: JSON.stringify(packRules(bundleRead as never))
+        });
+        expect((await member.as("GET", "/api/v1/agent-vault/access-bundles")).statusCode).toBe(403);
+      } finally {
+        await testDb("additional_privileges").where({ actorIdentityId: member.id }).delete();
+        await member.cleanup();
+      }
+    });
+
+    test("lists the roles that can use a service or skill, directly or through a bundle that holds it", async () => {
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle(`who-${unique()}`);
+      const otherBundle = await createAccessBundle(`who-other-${unique()}`);
+      const serviceId = await createHttpService(`who-svc-${unique()}`, { accessBundleIds: [bundle.id] });
+      const skillName = `who-skill-${unique()}`;
+      const skill = await inject("POST", "/api/v1/agent-vault/skills", {
+        files: [
+          {
+            path: "SKILL.md",
+            mode: "0644",
+            contentBase64: Buffer.from(`---\nname: ${skillName}\ndescription: Who uses it.\n---\nBody.\n`).toString(
+              "base64"
+            )
+          }
+        ]
+      });
+      expect(skill.statusCode, skill.payload).toBe(200);
+      const skillId = skill.json().skill.id as string;
+      const linked = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/skills`, {
+        skillIds: [skillId]
+      });
+      expect(linked.statusCode, linked.payload).toBe(200);
+
+      const throughBundle = await createAgentVaultRole(projectId, `who-bundle-${unique()}`, [
+        { subject: "agent-vault-access-bundles", action: ["read", "use"], conditions: { accessBundleId: bundle.id } }
+      ]);
+      const serviceUser = await createAgentVaultRole(projectId, `who-service-${unique()}`, [
+        { subject: "agent-vault-services", action: ["use"], conditions: { serviceId } }
+      ]);
+      const skillUser = await createAgentVaultRole(projectId, `who-skill-${unique()}`, [
+        { subject: "agent-vault-skills", action: ["use"], conditions: { skillId } }
+      ]);
+      const readOnly = await createAgentVaultRole(projectId, `who-read-${unique()}`, READ_ONLY_RULES);
+      const elsewhere = await createAgentVaultRole(projectId, `who-elsewhere-${unique()}`, [
+        { subject: "agent-vault-access-bundles", action: ["use"], conditions: { accessBundleId: otherBundle.id } }
+      ]);
+
+      const rolesAt = async (as: typeof inject, url: string) => {
+        const res = await as("GET", url);
+        expect(res.statusCode, res.payload).toBe(200);
+        return res.json().roles as { slug: string; isBuiltIn: boolean }[];
+      };
+      const serviceRolesUrl = `${servicesUrl}/${serviceId}/roles`;
+      const skillRolesUrl = `/api/v1/agent-vault/skills/${skillId}/roles`;
+      const reader = await createMemberIdentity(`who-reader-${unique()}`);
+      try {
+        const forService = await rolesAt(inject, serviceRolesUrl);
+        expect(forService[0]).toEqual({ id: null, slug: "admin", name: "Admin", isBuiltIn: true, memberCount: expect.any(Number) });
+        const serviceSlugs = forService.map((role) => role.slug);
+        expect(serviceSlugs).toEqual(expect.arrayContaining([throughBundle.slug, serviceUser.slug]));
+        [skillUser, readOnly, elsewhere].forEach((role) => expect(serviceSlugs).not.toContain(role.slug));
+
+        const skillSlugs = (await rolesAt(inject, skillRolesUrl)).map((role) => role.slug);
+        expect(skillSlugs).toEqual(expect.arrayContaining(["admin", throughBundle.slug, skillUser.slug]));
+        [serviceUser, readOnly, elsewhere].forEach((role) => expect(skillSlugs).not.toContain(role.slug));
+
+        // Something the caller can't see reads like something that doesn't exist, as on a read.
+        expect((await reader.as("GET", serviceRolesUrl)).statusCode).toBe(404);
+        expect((await reader.as("GET", skillRolesUrl)).statusCode).toBe(404);
+        // Seeing it isn't enough: who can use it takes reading roles.
+        await setMemberRoles({ machineIdentityIds: [reader.id] }, [readOnly.slug]);
+        expect((await reader.as("GET", serviceRolesUrl)).statusCode).toBe(403);
+        expect((await reader.as("GET", skillRolesUrl)).statusCode).toBe(403);
+      } finally {
+        await reader.cleanup();
+        await inject("DELETE", `/api/v1/agent-vault/skills/${skillId}`);
+        await inject("DELETE", `${servicesUrl}/${serviceId}`);
+      }
+    });
+
+    test("member lists and role counts leave out a role that has ended", async () => {
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle(`ended-${unique()}`);
+      const role = await createAgentVaultRole(projectId, `ended-${unique()}`, [
+        ...SESSION_RULES,
+        { subject: "agent-vault-access-bundles", action: ["use"], conditions: { accessBundleId: bundle.id } }
+      ]);
+      const name = `av-ended-${unique()}`;
+      const identity = await createOrgIdentity(name);
+      const rolesOfMember = async () => {
+        const res = await inject("GET", `/api/v1/agent-vault/members?search=${name}`);
+        expect(res.statusCode, res.payload).toBe(200);
+        return (res.json().members as { id: string; roles: string[] }[]).find((member) => member.id === identity.id)
+          ?.roles;
+      };
+      const holdersOfRole = async () => {
+        const res = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}/roles`);
+        expect(res.statusCode, res.payload).toBe(200);
+        return (res.json().roles as { slug: string; memberCount: number }[]).find((row) => row.slug === role.slug)
+          ?.memberCount;
+      };
+      try {
+        const added = await inject("POST", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [identity.id],
+          roles: [role.slug]
+        });
+        expect(added.statusCode, added.payload).toBe(200);
+        expect(await rolesOfMember()).toEqual([role.slug]);
+        expect(await holdersOfRole()).toBe(1);
+
+        const membership = await testDb("memberships")
+          .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorIdentityId: identity.id })
+          .first();
+        await testDb("membership_roles").where({ membershipId: membership.id }).update({
+          isTemporary: true,
+          temporaryMode: "relative",
+          temporaryRange: "1h",
+          temporaryAccessStartTime: new Date(Date.now() - 7_200_000),
+          temporaryAccessEndTime: new Date(Date.now() - 3_600_000)
+        });
+        expect(await rolesOfMember()).toEqual([ProjectMembershipRole.NoAccess]);
+        expect(await holdersOfRole()).toBe(0);
+      } finally {
+        await deleteOrgIdentity(identity.id);
+      }
     });
   });
 });

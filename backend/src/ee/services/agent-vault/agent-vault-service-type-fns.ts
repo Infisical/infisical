@@ -108,6 +108,19 @@ export const getServiceServerUrl = (config: unknown): string | null =>
 export const getServiceTransport = (config: unknown): AgentVaultMcpTransport | null =>
   (config as TAgentVaultServiceConfig | null)?.transport ?? null;
 
+// Where a service connects, and so where its credential goes: its hosts and their ports, MCP server URL, or database or
+// SSH host and port. Two services with the same value send their credential to the same place, however their host
+// patterns are written: a portless host is port 443, and order doesn't count.
+export const serviceDestinationOf = (service: { hostPattern?: string | null; config?: unknown }) => {
+  const config = (service.config ?? {}) as TAgentVaultServiceConfig;
+  const hosts = service.hostPattern
+    ? parseHostPatterns(service.hostPattern)
+        .patterns.map((pattern) => pattern.key)
+        .sort()
+    : null;
+  return JSON.stringify([hosts, config.serverUrl ?? null, config.host ?? null, config.port ?? null]);
+};
+
 export type TAgentVaultServiceTypeDefinition = {
   type: AgentVaultServiceType;
   label: string;

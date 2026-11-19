@@ -22,6 +22,7 @@ export type TCapabilityRowKey =
   | "sessions"
   | "inlineServices"
   | "inlineSkills"
+  | "delegations"
   | "variables"
   | "proxies"
   | "members"
@@ -109,12 +110,11 @@ export const SUBJECT_RULES: Partial<Record<ProjectPermissionSub, TSubjectRules>>
   },
   [Sub.AgentVaultVariables]: { readAction: VariableAction.Read },
   [Sub.AgentVaultProxies]: { readAction: ProxyAction.Read },
+  // Agent Vault gives access through roles alone, so nothing there checks additional privileges.
   [Sub.Member]: {
     readAction: MemberAction.Read,
-    legacy: {
-      action: MemberAction.GrantPrivileges,
-      replacedBy: [MemberAction.AssignRole, MemberAction.AssignAdditionalPrivileges]
-    }
+    ignored: [MemberAction.AssignAdditionalPrivileges],
+    legacy: { action: MemberAction.GrantPrivileges, replacedBy: [MemberAction.AssignRole] }
   },
   [Sub.Groups]: {
     readAction: GroupAction.Read,
@@ -122,10 +122,8 @@ export const SUBJECT_RULES: Partial<Record<ProjectPermissionSub, TSubjectRules>>
   },
   [Sub.Identity]: {
     readAction: IdentityAction.Read,
-    legacy: {
-      action: IdentityAction.GrantPrivileges,
-      replacedBy: [IdentityAction.AssignRole, IdentityAction.AssignAdditionalPrivileges]
-    }
+    ignored: [IdentityAction.AssignAdditionalPrivileges],
+    legacy: { action: IdentityAction.GrantPrivileges, replacedBy: [IdentityAction.AssignRole] }
   },
   [Sub.Role]: { readAction: GeneralAction.Read },
   [Sub.AppConnections]: { readAction: ConnectionAction.Read },
@@ -148,7 +146,7 @@ const RESOURCE_COPY = {
   services: {
     read: "See the service and its settings.",
     use: "Put the service in a session so agents can reach it.",
-    edit: "Change the service, including where it sends its credential.",
+    edit: "Change the service. Pointing it somewhere else takes entering its credential again.",
     delete: "Delete the service from the project.",
     create: "Add new services to the project."
   },
@@ -295,12 +293,6 @@ const directoryBasics = (group: TDirectoryGroup) => [
 const directoryPrivileges = (group: TDirectoryGroup) => [
   directoryAction(
     group,
-    MemberAction.AssignAdditionalPrivileges,
-    "Assign Additional Privileges",
-    `Add, change and remove the additional privileges ${group.one} holds.`
-  ),
-  directoryAction(
-    group,
     MemberAction.AssumePrivileges,
     "Assume Privileges",
     `Act in this project with the permissions of ${group.one}.`
@@ -318,7 +310,7 @@ const directoryLegacy = (group: TDirectoryGroup, replacedBy: string) =>
 const DIRECTORY_ACTIONS: TPermissionAction[] = [
   ...directoryBasics(USERS),
   ...directoryPrivileges(USERS),
-  directoryLegacy(USERS, "Assign Roles and Assign Additional Privileges"),
+  directoryLegacy(USERS, "Assign Roles"),
   ...directoryBasics(GROUPS),
   directoryLegacy(GROUPS, "Assign Roles"),
   ...directoryBasics(IDENTITIES),
@@ -353,7 +345,7 @@ const DIRECTORY_ACTIONS: TPermissionAction[] = [
     "Edit Auth",
     "Add or change the sign-in methods of a machine identity."
   ),
-  directoryLegacy(IDENTITIES, "Assign Roles and Assign Additional Privileges")
+  directoryLegacy(IDENTITIES, "Assign Roles")
 ];
 
 const DIRECTORY_GROUPS = [USERS, GROUPS, IDENTITIES];
@@ -518,6 +510,33 @@ export const PERMISSION_ROWS: TPermissionRow[] = [
         allow: [SessionAction.CreateWithInlineSkills]
       }
     ]
+  },
+  {
+    key: "delegations",
+    label: "Sessions on Behalf of Users",
+    description: "Choose which users a machine identity can start sessions on behalf of.",
+    actions: [
+      single(
+        Sub.AgentVaultSessions,
+        SessionAction.ManageDelegations,
+        "Manage Delegations",
+        "Set which users a machine identity can start sessions on behalf of. Also takes editing that machine identity."
+      )
+    ],
+    levels: [
+      { value: NONE_LEVEL, label: "No", summary: "", allow: [] },
+      {
+        value: "yes",
+        label: "Yes",
+        summary: "Can let machine identities act for users",
+        allow: [SessionAction.ManageDelegations]
+      }
+    ],
+    risk: {
+      actions: [SessionAction.ManageDelegations],
+      message:
+        "A session on a user's behalf sends that user's personal values, so whoever sets this decides who can act with them."
+    }
   },
   {
     key: "variables",

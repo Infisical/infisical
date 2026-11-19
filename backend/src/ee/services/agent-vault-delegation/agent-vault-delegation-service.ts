@@ -8,6 +8,7 @@ import { buildProjectPermissionRules } from "@app/ee/services/permission/permiss
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionSet,
   ProjectPermissionSub
@@ -110,8 +111,9 @@ export const agentVaultDelegationServiceFactory = ({
   userGroupMembershipDAL,
   permissionService
 }: TAgentVaultDelegationServiceFactoryDep) => {
-  // A delegation says whom an identity can act as, so managing one is managing the identity, which in Agent Vault only
-  // the admin role can do.
+  // A delegation says whom an identity can act as, so managing one is managing the identity. Changing one also takes
+  // manage-delegations on sessions: a delegation's sessions send the covered users' personal values, which editing an
+  // identity alone must not reach.
   const checkIdentityPermission = async (
     { projectId, ctx, machineIdentityId }: { projectId: string; ctx: TGenericPermission; machineIdentityId?: string },
     action: ProjectPermissionIdentityActions
@@ -123,6 +125,12 @@ export const agentVaultDelegationServiceFactory = ({
         ? subject(ProjectPermissionSub.Identity, { identityId: machineIdentityId })
         : ProjectPermissionSub.Identity
     );
+    if (action !== ProjectPermissionIdentityActions.Read) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAgentVaultSessionActions.ManageDelegations,
+        ProjectPermissionSub.AgentVaultSessions
+      );
+    }
   };
 
   // Project-scoped, so an identity from another org is a 404 like one that doesn't exist.

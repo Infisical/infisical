@@ -28,8 +28,7 @@ const MEMBER_PERMISSIONS = [
 ];
 const MEMBER_ROLE_NAME = "Member";
 const MEMBER_ROLE_SLUG = "member-role";
-const MEMBER_ROLE_DESCRIPTION =
-  "Start and manage their own sessions, and view proxies. Created from the built-in Member role.";
+const MEMBER_ROLE_DESCRIPTION = "Start and manage their own sessions, and view proxies.";
 // The Member role's id is derived from the project's, as agentVaultMemberRoleIdOf derives it at runtime, so the legacy
 // `member` alias finds the role this makes whatever an admin later edits on it.
 const MEMBER_ROLE_ID_NAMESPACE = "8f4f5a2e-61b4-4c2e-9d0e-3b7a1c9e5d42";
@@ -211,7 +210,7 @@ const grantsToRoles = async (knex: Knex) => {
       .insert({
         name: `${accessBundleName} users`,
         slug,
-        description: `${BUNDLE_ROLE_DESCRIPTION_PREFIX} '${accessBundleName}'. Created from its grants.`,
+        description: `${BUNDLE_ROLE_DESCRIPTION_PREFIX} '${accessBundleName}'.`,
         permissions: JSON.stringify([["read,use", "agent-vault-access-bundles", { accessBundleId }]]),
         projectId
       })

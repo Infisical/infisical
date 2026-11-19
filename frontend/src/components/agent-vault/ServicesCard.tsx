@@ -11,7 +11,8 @@ import {
   SearchIcon,
   TrashIcon,
   TriangleAlertIcon,
-  UnlinkIcon
+  UnlinkIcon,
+  UsersIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -24,6 +25,7 @@ import {
   SERVICE_TYPE_LABELS
 } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
+import { TWhoCanUseTarget, WhoCanUseDialog } from "@app/components/agent-vault/WhoCanUseDialog";
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
@@ -61,7 +63,13 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import {
   AgentVaultCredentialType,
   AgentVaultOauthStatus,
@@ -238,10 +246,14 @@ export const ServicesCard = ({
 }: Props) => {
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
+  const { permission } = useProjectPermission();
+  const canReadRoles = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
   const [localSearch, setLocalSearch] = useState("");
   const search = serverPaging?.search ?? localSearch;
   const setSearch = serverPaging?.onSearchChange ?? setLocalSearch;
   const [serviceToDelete, setServiceToDelete] = useState<TListedService | null>(null);
+  const [whoCanUse, setWhoCanUse] = useState<TWhoCanUseTarget | null>(null);
+  const [isWhoCanUseOpen, setIsWhoCanUseOpen] = useState(false);
   const deleteService = useDeleteAgentVaultService(projectId);
   const removeService = useRemoveAgentVaultAccessBundleService(projectId);
   const isBundle = Boolean(accessBundleId);
@@ -548,7 +560,8 @@ export const ServicesCard = ({
                   <TableCell variant="action">
                     {(service.personalValues ||
                       canEditService(service) ||
-                      canRemoveService(service)) && (
+                      canRemoveService(service) ||
+                      canReadRoles) && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton variant="ghost" size="xs" aria-label="Open service actions">
@@ -568,6 +581,21 @@ export const ServicesCard = ({
                             <DropdownMenuItem onClick={() => onEdit(service)}>
                               <PencilIcon />
                               Edit
+                            </DropdownMenuItem>
+                          )}
+                          {canReadRoles && (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setWhoCanUse({
+                                  kind: "service",
+                                  id: service.id,
+                                  name: service.name
+                                });
+                                setIsWhoCanUseOpen(true);
+                              }}
+                            >
+                              <UsersIcon />
+                              Who Can Use
                             </DropdownMenuItem>
                           )}
                           {canRemoveService(service) && (
@@ -601,6 +629,11 @@ export const ServicesCard = ({
         </CardContent>
       )}
 
+      <WhoCanUseDialog
+        isOpen={isWhoCanUseOpen}
+        onOpenChange={setIsWhoCanUseOpen}
+        target={whoCanUse}
+      />
       <ConfirmationAlertDialog
         isOpen={Boolean(serviceToDelete)}
         onOpenChange={(isOpen) => {

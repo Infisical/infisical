@@ -391,20 +391,23 @@ export const memberOauthChangeOf = ({
   };
 };
 
-// Which saved personal values an admin's save deletes: a new credential type, no member fields left, or a member
-// sign-in rebound to something else drops all of them, and a field the admin takes back drops that field's.
+// Which saved personal values an admin's save deletes: a new credential type, no member fields left, a member sign-in
+// rebound to something else, or a new destination drops all of them, and a field the admin takes back drops that
+// field's.
 export const personalValuesToClearOf = ({
   credentialTypeChanged,
   memberFieldsChanged,
   nextMemberFields,
-  oauthMembersRebound
+  oauthMembersRebound,
+  destinationChanged
 }: {
   credentialTypeChanged: boolean;
   memberFieldsChanged: boolean;
   nextMemberFields: TAgentVaultMemberProvidedField[] | null;
   oauthMembersRebound: boolean;
+  destinationChanged: boolean;
 }): "none" | "all" | "fields-taken-back" => {
-  if (credentialTypeChanged || oauthMembersRebound) return "all";
+  if (credentialTypeChanged || oauthMembersRebound || destinationChanged) return "all";
   if (!memberFieldsChanged) return "none";
   if (!nextMemberFields?.length) return "all";
   return "fields-taken-back";

@@ -241,7 +241,8 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
     }
   };
 
-  // How many active project members hold each role, built-in roles by slug and custom roles by id.
+  // How many active project members hold each role, built-in roles by slug and custom roles by id. An ended temporary
+  // role isn't held.
   const countRoleHolders = async (projectId: string, tx?: Knex) => {
     try {
       const rows = (await (tx || db.replicaNode())(TableName.MembershipRole)
@@ -249,6 +250,11 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
         .where(`${TableName.Membership}.isActive`, true)
+        .where((qb) => {
+          void qb
+            .whereRaw(`?? IS NOT TRUE`, [`${TableName.MembershipRole}.isTemporary`])
+            .orWhere(`${TableName.MembershipRole}.temporaryAccessEndTime`, ">", new Date());
+        })
         .select(
           db.raw(`COALESCE(??::text, ??) AS "key"`, [
             `${TableName.MembershipRole}.customRoleId`,

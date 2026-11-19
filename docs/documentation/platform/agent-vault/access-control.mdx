@@ -37,6 +37,15 @@ To create sessions with an access bundle, a service, or a skill, a member needs 
 
 **View** lets a member see an access bundle, service, or skill without using it. Each permission can cover every access bundle, service, or skill in the project, including ones created later, or only the ones you pick.
 
+### See who can use an access bundle, service, or skill
+
+Infisical lists the roles that can use each access bundle, service, and skill, and how many members hold each role:
+
+- **Access bundle:** open the bundle's page and check **Who Can Use This Bundle**
+- **Service or skill:** on the **Services** or **Skills** page, open its actions menu and select **Who Can Use** (the list includes roles that can use it through an access bundle)
+
+Through the API, call the [List access bundle roles](/api-reference/endpoints/agent-vault-access-bundles/list-roles), [List service roles](/api-reference/endpoints/agent-vault-services/list-roles), or [List skill roles](/api-reference/endpoints/agent-vault-skills/list-roles) endpoint.
+
 ### Create a custom role
 
 <Steps>
@@ -60,15 +69,6 @@ To create sessions with an access bundle, a service, or a skill, a member needs 
 </Steps>
 
 To give the role to members, [add them](#add-members) with the role, or change the roles of existing members.
-
-### Roles from before custom roles
-
-Before custom roles, projects had a built-in **Member** role, and admins granted access bundles one by one. Infisical turned both into custom roles in each project, so nobody's access changed:
-
-- **Member**, with the permissions of the built-in Member role: create and manage your own sessions, send skills with a session, and view proxies
-- A role for each access bundle that was granted, such as **code-review users**, which can use the bundle and is held by everyone the bundle was granted to
-
-You can edit or delete these roles like any other custom role.
 
 ## Add members
 

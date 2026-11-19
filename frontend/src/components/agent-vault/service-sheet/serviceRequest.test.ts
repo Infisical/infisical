@@ -17,7 +17,15 @@ import {
   buildUpdateServiceRequest,
   membersClearedNotice
 } from "./serviceRequest";
-import { HTTP_METHODS, McpToolScope, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
+import {
+  buildServiceSchema,
+  HTTP_METHODS,
+  isServiceDestinationChanged,
+  McpToolScope,
+  MOVED_SERVICE_VALUE_MESSAGE,
+  TServiceForm,
+  UNCHANGED_SECRET
+} from "./serviceSchema";
 
 const SERVER_URL = "https://mcp.linear.app/mcp";
 
@@ -1070,5 +1078,91 @@ describe("OAuth variable credentials", () => {
 
   it("asks nothing when a variable service is left to each member", () => {
     expect(membersClearedNotice(mcpForm({ memberProvidedFields: MEMBER }), variableMcp)).toBe(null);
+  });
+});
+
+describe("moving a service to another destination", () => {
+  const stripe = {
+    ...storedHttp,
+    name: "stripe",
+    hostPattern: "api.stripe.com:443,files.stripe.com"
+  };
+  const memberToken = {
+    ...stripe,
+    credential: {
+      ...stripe.credential,
+      memberProvidedFields: [AgentVaultVariableReferenceField.CredentialValue as const]
+    }
+  } satisfies TAgentVaultService;
+  const keptValues = {
+    secret: UNCHANGED_SECRET,
+    customHeaders: [{ id: "h-1", name: "X-Org", prefix: "", value: UNCHANGED_SECRET }],
+    substitutions: [
+      {
+        id: "s-1",
+        placeholder: "ACCOUNT",
+        value: UNCHANGED_SECRET,
+        surfaces: [AgentVaultSubstitutionSurface.Path]
+      }
+    ]
+  };
+  const issuesOf = (data: TServiceForm) => {
+    const result = buildServiceSchema(stripe).safeParse(data);
+    return result.success ? [] : result.error.issues.map((issue) => issue.path.join("."));
+  };
+
+  it("counts other hosts as a move, but not the same hosts written differently", () => {
+    expect(
+      isServiceDestinationChanged(form({ hosts: ["FILES.stripe.com", "api.stripe.com"] }), stripe)
+    ).toBe(false);
+    expect(isServiceDestinationChanged(form({ hosts: ["api.stripe.com"] }), stripe)).toBe(true);
+    expect(
+      isServiceDestinationChanged(form({ hosts: ["api.stripe.com", "evil.example.com"] }), stripe)
+    ).toBe(true);
+  });
+
+  it("asks for every saved value again after a move", () => {
+    const moved = form({ ...keptValues, hosts: ["evil.example.com"] });
+    expect(issuesOf(moved)).toEqual(["secret", "customHeaders.0.value", "substitutions.0.value"]);
+    const result = buildServiceSchema(stripe).safeParse(moved);
+    expect(result.success ? [] : result.error.issues.map(({ message }) => message)).toEqual([
+      MOVED_SERVICE_VALUE_MESSAGE,
+      MOVED_SERVICE_VALUE_MESSAGE,
+      MOVED_SERVICE_VALUE_MESSAGE
+    ]);
+  });
+
+  it("keeps saved values when the hosts stay", () => {
+    expect(
+      issuesOf(form({ ...keptValues, hosts: ["api.stripe.com", "files.stripe.com"] }))
+    ).toEqual([]);
+  });
+
+  it("doesn't ask for a value each member sets", () => {
+    const result = buildServiceSchema(memberToken).safeParse(
+      form({
+        secret: "",
+        memberProvidedFields: [AgentVaultVariableReferenceField.CredentialValue],
+        hosts: ["evil.example.com"]
+      })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("warns that members' saved values go", () => {
+    expect(
+      membersClearedNotice(
+        form({
+          secret: "",
+          memberProvidedFields: [AgentVaultVariableReferenceField.CredentialValue],
+          hosts: ["api2.stripe.com"]
+        }),
+        memberToken
+      )
+    ).toEqual({
+      title: "Remove Members' Values?",
+      description:
+        "Every member's token for this service will be removed, since the service now connects somewhere else. Each member has to enter theirs again."
+    });
   });
 });

@@ -40,7 +40,7 @@ import {
 import { useDebounce, useResetPageHelper } from "@app/hooks";
 import {
   useListAgentVaultServices,
-  useListGrantedAgentVaultServicesRequiringSetup
+  useListAssignedAgentVaultServicesRequiringSetup
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -94,7 +94,7 @@ const AgentVaultServicesPageContent = () => {
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
 
   // Counted over what the caller's roles pick out one by one, the same count the sidebar shows.
-  const { data: requiringSetup } = useListGrantedAgentVaultServicesRequiringSetup(
+  const { data: requiringSetup } = useListAssignedAgentVaultServicesRequiringSetup(
     projectId,
     canUseAgentVaultServices(permission)
   );

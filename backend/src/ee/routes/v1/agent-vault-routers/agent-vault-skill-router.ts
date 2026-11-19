@@ -18,6 +18,7 @@ import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fn
 import {
   agentVaultListQuery,
   AgentVaultProjectIdSchema,
+  AgentVaultRoleThatCanUseSchema,
   AgentVaultSkillDetailSchema,
   AgentVaultSkillFilesResponseSchema,
   AgentVaultSkillSchema,
@@ -211,6 +212,33 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       });
 
       return { skill };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:skillId/roles",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "listAgentVaultSkillRoles",
+      description:
+        "List the roles that let someone use a skill in an Agent Vault project, directly or through an access bundle that holds it, and how many members hold each.",
+      tags: [ApiDocsTags.AgentVaultSkills],
+      params: SkillIdParamsSchema,
+      response: { 200: z.object({ roles: AgentVaultRoleThatCanUseSchema.array() }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromSkill(
+        actorContext(req),
+        req.params.skillId
+      );
+      return server.services.agentVaultSkill.listSkillRoles({
+        projectId,
+        ctx: actorContext(req),
+        skillId: req.params.skillId
+      });
     }
   });
 

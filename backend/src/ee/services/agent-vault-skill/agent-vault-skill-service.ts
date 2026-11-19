@@ -4,6 +4,7 @@ import { TAgentVaultSkillVersions } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
+  ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionSub
@@ -11,6 +12,7 @@ import {
 import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TRoleDALFactory } from "@app/services/role/role-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
@@ -28,6 +30,7 @@ import {
   visibleIdsWithin
 } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultReachDALFactory } from "../agent-vault/agent-vault-reach-dal";
+import { bundleUseTargets, findRolesThatCanUse } from "../agent-vault/agent-vault-role-use-fns";
 import { assertSkillNameNotReserved, getAgentVaultBuiltinSkill } from "./agent-vault-builtin-skill";
 import { TAgentVaultSkillBundleDALFactory } from "./agent-vault-skill-bundle-dal";
 import { TAgentVaultSkillDALFactory, TAgentVaultSkillSummaryRow } from "./agent-vault-skill-dal";
@@ -62,7 +65,11 @@ type TAgentVaultSkillServiceFactoryDep = {
   agentVaultSkillDAL: TAgentVaultSkillDALFactory;
   agentVaultSkillVersionDAL: TAgentVaultSkillVersionDALFactory;
   agentVaultSkillBundleDAL: TAgentVaultSkillBundleDALFactory;
-  agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "findByIdInProject" | "lockByIdInProject">;
+  agentVaultAccessBundleDAL: Pick<
+    TAgentVaultAccessBundleDALFactory,
+    "findByIdInProject" | "lockByIdInProject" | "countRoleHolders"
+  >;
+  roleDAL: Pick<TRoleDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   agentVaultReachDAL: Pick<
     TAgentVaultReachDALFactory,
@@ -86,7 +93,8 @@ export const agentVaultSkillServiceFactory = ({
   kmsDataKeyService,
   agentVaultDelegationDAL,
   userDAL,
-  orgDAL
+  orgDAL,
+  roleDAL
 }: TAgentVaultSkillServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
     kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -511,6 +519,32 @@ export const agentVaultSkillServiceFactory = ({
     return { skill: { ...projectSkill(skill), accessBundles, files }, version: latest.version };
   };
 
+  // Who can put a skill in a session: roles that use it, or use a bundle that holds it. A skill the caller can't see is a
+  // 404, as on a read.
+  const listSkillRoles = async ({ skillId, ...scoped }: TSkillByIdDTO) => {
+    const { reachability, visibleSkillIds } = await $readScope(scoped);
+    const skill = await $findSkill({ skillId, projectId: scoped.projectId });
+    if (visibleSkillIds && !visibleSkillIds.includes(skill.id)) throw skillNotFound(skillId);
+    ForbiddenError.from(reachability.permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.Role
+    );
+
+    const bundles = await agentVaultSkillBundleDAL.findBundlesForSkill(skill.id, null);
+    return {
+      roles: await findRolesThatCanUse(
+        { roleDAL, agentVaultAccessBundleDAL },
+        {
+          projectId: scoped.projectId,
+          targets: [
+            { subjectType: ProjectPermissionSub.AgentVaultSkills, field: "skillId", id: skill.id },
+            ...bundleUseTargets(bundles.map((bundle) => bundle.id))
+          ]
+        }
+      )
+    };
+  };
+
   // Every agent gets the built-in skill whatever it runs with, and it holds no project data, so any member of the
   // project can read it.
   const getBuiltinSkill = async (scoped: TAgentVaultSkillScoped) => {
@@ -716,6 +750,7 @@ export const agentVaultSkillServiceFactory = ({
     restoreVersion,
     listSkills,
     getSkill,
+    listSkillRoles,
     getBuiltinSkill,
     listVersions,
     getVersionFiles,

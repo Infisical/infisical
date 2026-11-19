@@ -4793,20 +4793,18 @@ const AGENT_VAULT_VARIABLE_REFERENCES = `Can use up to ${AGENT_VAULT_MAX_REFEREN
 
 export const AGENT_VAULT = {
   projectId: "The ID of the Agent Vault project.",
+  ROLE_THAT_CAN_USE: {
+    id: "The custom role's ID, or null for the built-in Admin role.",
+    slug: "The role's slug, as the members API takes it.",
+    name: "The role's name.",
+    isBuiltIn: "Whether the role is built in (Admin) rather than one of the project's custom roles.",
+    memberCount: "How many members hold the role, users, groups and machine identities together."
+  },
   ACCESS_BUNDLE: {
-    roleId: "The custom role's ID, or null for the built-in Admin role.",
-    roleSlug: "The role's slug, as the members API takes it.",
-    roleName: "The role's name.",
-    roleIsBuiltIn: "Whether the role is built in (Admin) rather than one of the project's custom roles.",
-    roleIsBundleRole:
-      "Whether this is the role made for this bundle when it was last granted through the deprecated grant endpoints.",
-    roleMemberCount: "How many members hold the role, users, groups and machine identities together.",
     accessBundleId: "The ID of the access bundle.",
     name: "The name of the access bundle.",
     description: "A description of what this access bundle is for.",
     serviceCount: "How many services the access bundle holds.",
-    memberCount:
-      "How many users, machine identities and groups hold the access bundle's own role, the one the deprecated grant endpoints give. Others can use the bundle through other roles.",
     orderBy: "What to sort access bundles by: name, serviceCount or createdAt.",
     orderDirection: "Which way to sort: asc or desc.",
     search: "Match access bundles by name or description.",
@@ -4819,12 +4817,12 @@ export const AGENT_VAULT = {
     nativeServiceType: "The type of the service: `postgres`, `mysql`, or `ssh`.",
     requiresSetup:
       "true lists only the access bundles you can see that have services still requiring your personal values. false lists the rest of them. Omit to list them all.",
-    granted:
+    assigned:
       "true lists only the access bundles your roles pick out one by one, directly or through a group. false lists the rest of the ones you can see. A role that can use every access bundle picks out none, so its bundles are left out of true. Omit to list them all.",
     servicesRequiringSetup: "The services in this access bundle that still require your personal values.",
     servicesRequiringSetupId: "The ID of the service, for setting your personal values on it.",
     onBehalfOfUserId:
-      "List the access bundles a session on behalf of this user could use: those both the user and your machine identity can use. requiresSetup and servicesRequiringSetup then refer to the user's personal values. Only a machine identity whose delegation covers the user can do this, and granted can't be combined with it. Set this or onBehalfOfUserEmail, not both.",
+      "List the access bundles a session on behalf of this user could use: those both the user and your machine identity can use. requiresSetup and servicesRequiringSetup then refer to the user's personal values. Only a machine identity whose delegation covers the user can do this, and assigned can't be combined with it. Set this or onBehalfOfUserEmail, not both.",
     onBehalfOfUserEmail:
       "Like onBehalfOfUserId, naming the user by email address instead. Set this or onBehalfOfUserId, not both.",
     servicesRequiringSetupName: "The name of the service."
@@ -4847,10 +4845,10 @@ export const AGENT_VAULT = {
     totalCount: "The number of services that match, across every page.",
     requiresSetup:
       "true lists only the services that still need your personal values; false leaves them out. Leave it out to list both.",
-    granted:
+    assigned:
       "true lists only the services your roles pick out one by one, directly or through an access bundle they pick out. A role that can use every service or every access bundle picks out none.",
     onBehalfOfUserId:
-      "List the services a session on behalf of this user could use: those both the user and your machine identity can use, directly or through an access bundle both can use. accessBundles then lists those shared bundles, and requiresSetup and personalValues refer to the user's personal values, which say only whether each value is set. Only a machine identity whose delegation covers the user can do this, and granted can't be combined with it. Set this or onBehalfOfUserEmail, not both.",
+      "List the services a session on behalf of this user could use: those both the user and your machine identity can use, directly or through an access bundle both can use. accessBundles then lists those shared bundles, and requiresSetup and personalValues refer to the user's personal values, which say only whether each value is set. Only a machine identity whose delegation covers the user can do this, and assigned can't be combined with it. Set this or onBehalfOfUserEmail, not both.",
     onBehalfOfUserEmail:
       "Like onBehalfOfUserId, naming the user by email address instead. Set this or onBehalfOfUserId, not both.",
     orderBy: "What to sort services by: name, type, or createdAt.",

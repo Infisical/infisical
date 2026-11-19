@@ -309,7 +309,8 @@ export enum ProjectPermissionAgentVaultAccessBundleActions {
   Delete = "delete"
 }
 
-// Read, Edit and Revoke reach only the actor's own sessions; the Any actions reach everyone's.
+// Read, Edit and Revoke reach only the actor's own sessions; the Any actions reach everyone's. ManageDelegations sets which
+// users a machine identity may start sessions on behalf of, whose sessions then send those users' personal values.
 export enum ProjectPermissionAgentVaultSessionActions {
   Read = "read",
   Create = "create",
@@ -319,7 +320,8 @@ export enum ProjectPermissionAgentVaultSessionActions {
   EditAny = "edit-any",
   RevokeAny = "revoke-any",
   CreateWithInlineServices = "create-with-inline-services",
-  CreateWithInlineSkills = "create-with-inline-skills"
+  CreateWithInlineSkills = "create-with-inline-skills",
+  ManageDelegations = "manage-delegations"
 }
 
 // Global variables only. A personal variable belongs to the actor who saved it, and no permission reaches another's.

@@ -27,6 +27,7 @@ import {
   isMemberProvidedOAuthService,
   isOAuthVariableCredential,
   isOAuthVariableService,
+  isServiceDestinationChanged,
   McpToolScope,
   newOAuthAuthorizationId,
   serverUrlOf,
@@ -546,6 +547,13 @@ export const membersClearedNotice = (
     return {
       title: "Remove Members' Values?",
       description: `Every member's ${noun} for this service will be removed${nextCredentialTail(data)}`
+    };
+  }
+  if (isServiceDestinationChanged(data, service)) {
+    const noun = typedValuesNoun(storedFields, storedType);
+    return {
+      title: "Remove Members' Values?",
+      description: `Every member's ${noun} for this service will be removed, since the service now connects somewhere else. Each member has to enter theirs again.`
     };
   }
   const takenBack = storedFields.filter((field) => !data.memberProvidedFields.includes(field));

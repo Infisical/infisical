@@ -33,7 +33,7 @@ import {
   TAgentVaultAccess,
   TAgentVaultAccessBundleDetails,
   TAgentVaultAccessBundleListItem,
-  TAgentVaultAccessBundleRole,
+  TAgentVaultRoleThatCanUse,
   TAgentVaultBundleSkill,
   TAgentVaultProjectService,
   TListAgentVaultServicesDTO,
@@ -135,6 +135,9 @@ export const agentVaultKeys = {
     [...agentVaultKeys.services(orgId, projectId), "all-requiring-setup"] as const,
   service: (orgId: string, projectId: string, serviceId: string) =>
     [...agentVaultKeys.services(orgId, projectId), "detail", serviceId] as const,
+  // Nested under services() and skills(), which a role change and a bundle's link changes both refresh.
+  serviceRoles: (orgId: string, projectId: string, serviceId: string) =>
+    [...agentVaultKeys.services(orgId, projectId), "roles", serviceId] as const,
   skills: (orgId: string, projectId: string) =>
     [...agentVaultKeys.all(orgId, projectId), "skills"] as const,
   skillLists: (orgId: string, projectId: string) =>
@@ -143,6 +146,8 @@ export const agentVaultKeys = {
     [...agentVaultKeys.skillLists(orgId, projectId), params] as const,
   skill: (orgId: string, projectId: string, skillId: string) =>
     [...agentVaultKeys.skills(orgId, projectId), "detail", skillId] as const,
+  skillRoles: (orgId: string, projectId: string, skillId: string) =>
+    [...agentVaultKeys.skills(orgId, projectId), "roles", skillId] as const,
   skillVersions: (orgId: string, projectId: string, skillId: string) =>
     [...agentVaultKeys.skill(orgId, projectId, skillId), "versions"] as const,
   skillVersion: (orgId: string, projectId: string, skillId: string, version: number) =>
@@ -381,12 +386,46 @@ export const useListAgentVaultAccessBundleRoles = (
   return useQuery({
     queryKey: agentVaultKeys.accessBundleRoles(currentOrg.id, projectId, accessBundleId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ roles: TAgentVaultAccessBundleRole[] }>(
+      const { data } = await apiRequest.get<{ roles: TAgentVaultRoleThatCanUse[] }>(
         `/api/v1/agent-vault/access-bundles/${accessBundleId}/roles`
       );
       return data.roles;
     },
     enabled: enabled && Boolean(accessBundleId)
+  });
+};
+
+export const useListAgentVaultServiceRoles = (
+  projectId: string,
+  serviceId: string,
+  enabled = true
+) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.serviceRoles(currentOrg.id, projectId, serviceId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ roles: TAgentVaultRoleThatCanUse[] }>(
+        `/api/v1/agent-vault/services/${serviceId}/roles`
+      );
+      return data.roles;
+    },
+    enabled: enabled && Boolean(serviceId)
+  });
+};
+
+export const useListAgentVaultSkillRoles = (projectId: string, skillId: string, enabled = true) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.skillRoles(currentOrg.id, projectId, skillId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ roles: TAgentVaultRoleThatCanUse[] }>(
+        `/api/v1/agent-vault/skills/${skillId}/roles`
+      );
+      return data.roles;
+    },
+    enabled: enabled && Boolean(skillId)
   });
 };
 
@@ -924,10 +963,13 @@ export const useListAllAgentVaultServicesRequiringSetup = (
 // The services the caller's roles pick out one by one, directly or through a bundle they pick out, that still need their
 // personal values, for the sidebar and banners. Pass enabled false for a role that can use no service, which the list
 // would answer with a 403.
-export const useListGrantedAgentVaultServicesRequiringSetup = (projectId: string, enabled = true) =>
+export const useListAssignedAgentVaultServicesRequiringSetup = (
+  projectId: string,
+  enabled = true
+) =>
   useListAgentVaultServices(
     projectId,
-    { requiresSetup: true, granted: true, limit: 1 },
+    { requiresSetup: true, assigned: true, limit: 1 },
     { enabled }
   );
 

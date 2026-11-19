@@ -11,6 +11,7 @@ import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { pick } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { openApiHidden } from "@app/server/lib/schemas";
 import { emitAgentVaultTelemetry } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -32,6 +33,7 @@ import {
   AgentVaultListedProjectServiceSchema,
   AgentVaultProjectIdSchema,
   AgentVaultProjectServiceSchema,
+  AgentVaultRoleThatCanUseSchema,
   AgentVaultUpdateServiceBodySchema
 } from "./agent-vault-schemas";
 
@@ -82,11 +84,17 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
             .optional()
             .describe(AGENT_VAULT.SERVICE.requiresSetup),
           // Only true: false would read like "only the ones a role covers without naming", which the list doesn't do.
+          assigned: z
+            .literal("true")
+            .transform(() => true)
+            .optional()
+            .describe(AGENT_VAULT.SERVICE.assigned),
+          // The older name of assigned, which the SDKs still send. It goes on 2027-01-04 with the grant endpoints.
           granted: z
             .literal("true")
             .transform(() => true)
             .optional()
-            .describe(AGENT_VAULT.SERVICE.granted),
+            .describe(openApiHidden()),
           onBehalfOfUserId: z.string().uuid().optional().describe(AGENT_VAULT.SERVICE.onBehalfOfUserId),
           onBehalfOfUserEmail: z
             .string()
@@ -103,10 +111,17 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
         .refine((query) => !(query.onBehalfOfUserId && query.onBehalfOfUserEmail), {
           message: "Name the user by onBehalfOfUserId or by onBehalfOfUserEmail, not both"
         })
-        .refine((query) => query.granted === undefined || !(query.onBehalfOfUserId || query.onBehalfOfUserEmail), {
-          message:
-            "granted filters your own services, so it can't be combined with onBehalfOfUserId or onBehalfOfUserEmail"
-        }),
+        .refine((query) => query.assigned === undefined || query.granted === undefined, {
+          message: "granted is the older name of assigned, so send only assigned"
+        })
+        .refine(
+          (query) =>
+            (query.assigned ?? query.granted) === undefined || !(query.onBehalfOfUserId || query.onBehalfOfUserEmail),
+          {
+            message:
+              "assigned filters your own services, so it can't be combined with onBehalfOfUserId or onBehalfOfUserEmail"
+          }
+        ),
       response: {
         200: z.object({
           services: AgentVaultListedProjectServiceSchema.array(),
@@ -116,12 +131,20 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { projectId: requestedProjectId, onBehalfOfUserId, onBehalfOfUserEmail, ...query } = req.query;
+      const {
+        projectId: requestedProjectId,
+        onBehalfOfUserId,
+        onBehalfOfUserEmail,
+        assigned,
+        granted,
+        ...query
+      } = req.query;
       const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
       return server.services.agentVaultAccessBundle.listServices({
         projectId,
         ctx: actorContext(req),
         ...query,
+        assigned: assigned ?? granted,
         onBehalfOf:
           onBehalfOfUserId || onBehalfOfUserEmail
             ? { userId: onBehalfOfUserId, userEmail: onBehalfOfUserEmail }
@@ -150,6 +173,33 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
         req.params.serviceId
       );
       return server.services.agentVaultAccessBundle.getService({
+        projectId,
+        ctx: actorContext(req),
+        serviceId: req.params.serviceId
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:serviceId/roles",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "listAgentVaultServiceRoles",
+      description:
+        "List the roles that let someone use a service in an Agent Vault project, directly or through an access bundle that holds it, and how many members hold each.",
+      tags: [ApiDocsTags.AgentVaultServices],
+      params: ServiceIdParamsSchema,
+      response: { 200: z.object({ roles: AgentVaultRoleThatCanUseSchema.array() }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromService(
+        actorContext(req),
+        req.params.serviceId
+      );
+      return server.services.agentVaultAccessBundle.listServiceRoles({
         projectId,
         ctx: actorContext(req),
         serviceId: req.params.serviceId

@@ -27,7 +27,7 @@ sequenceDiagram
 
 ## Prerequisites
 
-- The **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#roles), or an admin of the project who can [set up the delegation](#set-up-a-delegation) for you
+- The **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#roles), or a [custom role](/documentation/platform/agent-vault/access-control#create-a-custom-role) with **Sessions on Behalf of Users** and **Edit** on machine identities (or someone with one of these roles who can [set up the delegation](#set-up-a-delegation) for you)
 - A machine identity that's a member of the project and can log in with [Universal Auth](/documentation/platform/identities/universal-auth)
 - A [role](/documentation/platform/agent-vault/access-bundles#who-can-use-an-access-bundle) for the machine identity that can use each access bundle its sessions use
 - Users who are [members of the project](/documentation/platform/agent-vault/access-control#roles) and have a role that can use the access bundles their agents use

@@ -4694,6 +4694,7 @@
                     "pages": [
                       "api-reference/endpoints/agent-vault-services/list",
                       "api-reference/endpoints/agent-vault-services/get",
+                      "api-reference/endpoints/agent-vault-services/list-roles",
                       "api-reference/endpoints/agent-vault-services/create",
                       "api-reference/endpoints/agent-vault-services/update",
                       "api-reference/endpoints/agent-vault-services/delete",
@@ -4718,6 +4719,7 @@
                     "pages": [
                       "api-reference/endpoints/agent-vault-skills/list",
                       "api-reference/endpoints/agent-vault-skills/get",
+                      "api-reference/endpoints/agent-vault-skills/list-roles",
                       "api-reference/endpoints/agent-vault-skills/get-builtin",
                       "api-reference/endpoints/agent-vault-skills/create",
                       "api-reference/endpoints/agent-vault-skills/delete",

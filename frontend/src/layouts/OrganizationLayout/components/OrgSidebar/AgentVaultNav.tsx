@@ -45,7 +45,7 @@ import { isAgentVaultSessionLogBlockedByPlan } from "@app/helpers/agentVaultSess
 import {
   useGetAgentVaultSessionLogHealth,
   useGetAgentVaultSessionLogSettings,
-  useListGrantedAgentVaultServicesRequiringSetup
+  useListAssignedAgentVaultServicesRequiringSetup
 } from "@app/hooks/api/agentVault";
 
 import { ProjectNavList } from "./ProjectNavLink";
@@ -76,11 +76,11 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   const { subscription } = useSubscription();
   // Services is where a member sets up their personal values. The nav only nags about the services a role names one by
   // one, so a role that can use every service, such as Admin, isn't asked about each.
-  const { data: grantedRequiringSetup } = useListGrantedAgentVaultServicesRequiringSetup(
+  const { data: assignedRequiringSetup } = useListAssignedAgentVaultServicesRequiringSetup(
     projectId,
     canUseAgentVaultServices(permission)
   );
-  const needsSetup = Boolean(grantedRequiringSetup?.totalCount);
+  const needsSetup = Boolean(assignedRequiringSetup?.totalCount);
   const setupProgress = useAgentVaultSetupProgress();
 
   const accessItems: NavItem[] = [

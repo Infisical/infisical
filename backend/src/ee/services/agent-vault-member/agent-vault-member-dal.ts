@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessScope, OrgMembershipStatus, TableName } from "@app/db/schemas";
+import { AccessScope, OrgMembershipStatus, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import {
   AGENT_VAULT_ACTOR_COLUMN,
   AgentVaultMemberType,
@@ -204,10 +204,13 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
           db.ref("projectId").withSchema(TableName.Identity).as("machineIdentityProjectId"),
           db.ref("orgId").withSchema(TableName.Identity).as("machineIdentityOrgId"),
           db.ref("name").withSchema(TableName.Groups).as("groupName"),
+          // Live roles only, as isActiveRole decides: an ended temporary role grants nothing, so a member left with none
+          // reads as No Access.
           db.raw(
-            `(SELECT COALESCE(array_agg(COALESCE(r."slug", mr."role") ORDER BY mr."createdAt" ASC, mr."id" ASC), '{}')
-               FROM ?? mr LEFT JOIN ?? r ON r."id" = mr."customRoleId" WHERE mr."membershipId" = ??."id") as "roles"`,
-            [TableName.MembershipRole, TableName.Role, TableName.Membership]
+            `(SELECT COALESCE(array_agg(COALESCE(r."slug", mr."role") ORDER BY mr."createdAt" ASC, mr."id" ASC), ARRAY[?])
+               FROM ?? mr LEFT JOIN ?? r ON r."id" = mr."customRoleId" WHERE mr."membershipId" = ??."id"
+               AND (mr."isTemporary" IS NOT TRUE OR mr."temporaryAccessEndTime" > NOW())) as "roles"`,
+            [ProjectMembershipRole.NoAccess, TableName.MembershipRole, TableName.Role, TableName.Membership]
           ),
           // Pinned to this org: membership is unique per (org, actor), and a user can hold several in a sub-org family.
           db.raw(

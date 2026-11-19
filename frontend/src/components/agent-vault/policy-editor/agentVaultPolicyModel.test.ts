@@ -66,7 +66,8 @@ const ADMIN_RULES: TProjectPermission[] = [
       "edit-any",
       "revoke-any",
       "create-with-inline-services",
-      "create-with-inline-skills"
+      "create-with-inline-skills",
+      "manage-delegations"
     ]
   },
   { subject: PROXIES, action: ["read", "create", "edit", "delete", "issue-token", "revoke"] },
@@ -130,7 +131,13 @@ const MEMBER_RULES: TProjectPermission[] = [
   { subject: PROXIES, action: ["read"] }
 ];
 
-const IGNORED_ACTIONS = ["settings|create", "settings|delete"];
+// Agent Vault checks neither: session log settings are only read and changed, and it gives access through roles alone.
+const IGNORED_ACTIONS = [
+  "settings|create",
+  "settings|delete",
+  "member|assign-additional-privileges",
+  "identity|assign-additional-privileges"
+];
 
 const NAMES: Record<string, string> = {
   [BUNDLE]: "release",
@@ -342,7 +349,7 @@ describe("policyToRules", () => {
     );
 
     expect(rules).toEqual([
-      { subject: "member", action: ["read", "assign-role", "assign-additional-privileges"] },
+      { subject: "member", action: ["read", "assign-role"] },
       { subject: "groups", action: ["grant-privileges"] },
       { subject: "identity", action: ["assign-role"], inverted: true }
     ]);
@@ -378,7 +385,7 @@ describe("round trips", () => {
   it("reads back allow and deny sets across the members row", () => {
     const row = PERMISSION_ROWS.find(({ key }) => key === "members");
     const keys = row?.actions.map(({ key }) => key) ?? [];
-    expect(keys).toHaveLength(27);
+    expect(keys).toHaveLength(25);
 
     keys.forEach((key) => {
       expectRoundTrip(withRow("members", { allow: [key], deny: [] }));
@@ -453,6 +460,7 @@ describe("round trips", () => {
       sessions: { allow: ["read", "create", "edit", "revoke", "read-any"], deny: ["revoke-any"] },
       inlineServices: { allow: ["create-with-inline-services"], deny: [] },
       inlineSkills: { allow: ["create-with-inline-skills"], deny: [] },
+      delegations: { allow: [], deny: [] },
       variables: { allow: ["read", "read-value"], deny: ["delete"] },
       proxies: { allow: ["read", "issue-token"], deny: [] },
       members: {
@@ -1087,13 +1095,9 @@ describe("editing", () => {
 
     expect(legacy.members.allow).toEqual(["users.read", "users.grant-privileges"]);
     const upgraded = setActionAllowed(legacy, members, "users.assign-role", true);
-    expect(upgraded.members.allow).toEqual([
-      "users.read",
-      "users.assign-role",
-      "users.assign-additional-privileges"
-    ]);
+    expect(upgraded.members.allow).toEqual(["users.read", "users.assign-role"]);
     expect(getActionState(upgraded, members, "users.grant-privileges").allowLock).toBe(
-      "Replaced by Assign Roles, Assign Additional Privileges"
+      "Replaced by Assign Roles"
     );
   });
 });
@@ -1377,11 +1381,10 @@ describe("templates", () => {
 
   it("grant what their names say", () => {
     const ownSessions = ["read", "create", "edit", "revoke", "create-with-inline-skills"];
-    expect(policyToRules(template("member"))).toEqual([
+    expect(policyToRules(template("service-user"))).toEqual([
       { subject: SESSIONS, action: ownSessions },
       { subject: PROXIES, action: ["read"] }
     ]);
-    expect(template("service-user")).toEqual(template("member"));
     expect(policyToRules(template("builder"))).toEqual([
       { subject: BUNDLES, action: ["read", "use", "edit", "create"] },
       { subject: SERVICES, action: ["read", "use", "edit", "create"] },
@@ -1403,8 +1406,8 @@ describe("templates", () => {
     expect(getRowLevel(template("proxy-operator"), "proxies")).toBe("manage");
   });
 
-  it("match the Member role the role migration makes", () => {
-    expect(canonicalRulesKey(policyToRules(template("member")))).toBe(
+  it("start a Service User with what the Member role the role migration makes grants", () => {
+    expect(canonicalRulesKey(policyToRules(template("service-user")))).toBe(
       canonicalRulesKey(MEMBER_RULES)
     );
   });
@@ -1425,6 +1428,7 @@ describe("a Member role", () => {
       sessions: "own",
       inlineServices: NONE_LEVEL,
       inlineSkills: "yes",
+      delegations: NONE_LEVEL,
       variables: NONE_LEVEL,
       proxies: "view",
       members: NONE_LEVEL,

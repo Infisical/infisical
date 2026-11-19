@@ -474,6 +474,43 @@ describe("Agent Vault through the generic membership routes", () => {
       const membership = await projectMembershipOf({ actorIdentityId: identityId });
       expect(await roleSlugsOf(membership.id)).toEqual([slugs[0]]);
     });
+
+    test("a role can't be given for a limited time", async () => {
+      const TEMPORARY = "Agent Vault doesn't support temporary roles yet. Give the role without a time limit.";
+      const extra = await asAdmin("POST", `/api/v1/projects/${projectId}/roles`, {
+        slug: `generic-temporary-${Date.now()}`,
+        name: "generic-temporary",
+        permissions: [{ subject: "agent-vault-sessions", action: ["read"] }]
+      });
+      expect(extra.statusCode, extra.payload).toBe(200);
+      const temporary = {
+        role: extra.json().role.slug as string,
+        isTemporary: true,
+        temporaryMode: "relative",
+        temporaryRange: "1h",
+        temporaryAccessStartTime: new Date().toISOString()
+      };
+      const identityId = await createOrgIdentity("av-generic-temporary");
+      const added = await asAdmin("POST", identityPath(identityId), {
+        roles: [{ role: "membership-manager" }, temporary]
+      });
+      expect(added.statusCode).toBe(400);
+      expect(added.json().message).toBe(TEMPORARY);
+      expect(await testDb(TableName.Membership).where({ scopeProjectId: projectId, actorIdentityId: identityId })).toEqual(
+        []
+      );
+
+      const permanent = await asAdmin("POST", identityPath(identityId), { roles: [{ role: "membership-manager" }] });
+      expect(permanent.statusCode, permanent.payload).toBe(200);
+      const updated = await asAdmin("PATCH", identityPath(identityId), {
+        roles: [{ role: "membership-manager" }, temporary]
+      });
+      expect(updated.statusCode).toBe(400);
+      expect(updated.json().message).toBe(TEMPORARY);
+      const membership = await projectMembershipOf({ actorIdentityId: identityId });
+      const [row] = await testDb(TableName.MembershipRole).where({ membershipId: membership.id });
+      expect(row).toMatchObject({ isTemporary: false, temporaryAccessEndTime: null });
+    });
   });
 
   describe("the deprecated role field names the Member role by its id", () => {

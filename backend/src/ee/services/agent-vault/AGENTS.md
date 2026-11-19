@@ -118,12 +118,20 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   so a missing key can't be told apart.
 - **Admin and No Access are the only built-in roles, and a custom role is exactly its own rules.**
   `resolveAgentVaultProjectRoleRules` (`permission-service.ts`) gives admin `buildAgentVaultProjectAdminPermissionRules`,
-  unpacks a custom role or an additional privilege, and gives any other slug nothing, a leftover `member` row included.
+  unpacks a custom role, and gives any other slug nothing, a leftover `member` row included.
   So a new action goes into the admin rule set and nowhere else built in; anything narrower is a custom role, never a
   branch in a service. Before it every role but admin resolved to Member's rules, so the role migration
   (`20261118120000_agent-vault-roles-replace-bundle-grants.ts`) moved Member and Viewer rows onto a per-project custom
   role, slug `member-role`, with Member's rules, and gave it to holders of custom roles that existed then, whose own
   rules had taken no effect.
+- **Roles are the only thing that grants access.** `getProjectPermission` leaves a member's additional privileges out of an
+  Agent Vault project's permission, and the project additional privilege factory refuses to create or update one there
+  (`assertProjectTakesAdditionalPrivileges`), so the Who Can Use lists stay complete. A role takes no time limit either:
+  the members API takes role slugs only and `assertAgentVaultRoleLimits` refuses a temporary role on the generic routes,
+  since nothing in Agent Vault shows when one ends. Member lists and role counts leave out a row that has ended.
+- **Changing a delegation takes `manage-delegations` on sessions as well as `edit` on the identity**
+  (`checkIdentityPermission` in the delegation service): a delegation's sessions send the covered users' personal
+  values, which editing an identity alone must not reach. Reading one takes identity `read`.
 - **Agent Vault's custom roles need no `rbac` plan** (`isRbacExempt` in `role-service.ts`, `customRolesNeedRbacPlan` in
   `membership-fns.ts`): with Member gone, a custom role is the only way to give anyone less than admin.
 - **Giving, changing or removing a member's role is bounded like Secrets Management's membership routes**
@@ -193,8 +201,9 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   the role on a group's membership would reach the whole group.
 - **Deleting a bundle keeps every role that names it**, the bundle's own included: a role is the admin's to change, and
   a rule that picks out an id no bundle has covers nothing, so a bundle made later with the same name isn't covered either.
-- `GET /access-bundles/:id/roles` (`listBundleRoles`) answers who can use a bundle: admin and every custom role whose
-  rules allow `use` on it, with member counts and `isBundleRole`. It takes role `read` and a bundle the caller can see.
+- `GET /access-bundles/:id/roles`, `GET /services/:id/roles` and `GET /skills/:id/roles` (`findRolesThatCanUse`) answer
+  who can use something: admin and every custom role whose rules allow `use` on it or, for a service or skill, on a
+  bundle that holds it, with member counts. They take role `read` and an item the caller can see (a 404 otherwise).
 - Member responses, for bundles and for the product, are the actor itself, flat (`type`, the actor's `id`,
   its profile) plus what the membership adds (`roles`, `addedAt`, `grantedAt`). There is no membership id:
   every write names a member by its actor, so the id a client reads is the one it sends back.
@@ -371,6 +380,14 @@ keyed by the service, so a member sets them once however many bundles give them 
   out also takes `edit` on each bundle (`requireBundleEdits`), since it changes what everyone who uses the bundle
   reaches. A service's setup (its OAuth sign-in state and hook) is shown only to a role that can edit it
   (`canSeeSetup`).
+- **A save that changes where a service connects sends every sealed value again** (`serviceDestinationOf`, checked in
+  `updateService` before the write and again under the lock): the credential, each custom header value and each
+  substitution value. Otherwise a role that can edit and use a service could point it at a host of its own and receive
+  the credential, and a typed reference still takes `read-value`. The move deletes every member's personal values for
+  the service. A members' OAuth sign-in seals only the admin's client secret, which goes to the issuer, so it needn't
+  be sent. Host patterns compare as parsed host and port pairs, so `api.example.com:443` is the same destination as
+  `api.example.com`. Loading an MCP service's tools follows the same rule (`listMcpTools`): from any server URL but the
+  saved one, it uses no saved value. Any new path that sends a saved value somewhere a request names needs it too.
 - **Names are unique per project** among the project's services (`agent_vault_services_project_name_unique`, partial on
   `sessionId IS NULL`). A bundle read still puts `accessBundleId` (the bundle read) on each service, hidden from the
   API docs: Python SDK v1.4.0 and older require it, so keep it until 2027-01-04.
@@ -668,9 +685,9 @@ stores the hook and sends it on resolve.
   `encryptedHookSecret`, never returned, audited only as `hookSecretReplaced`. A PATCH without `signingSecret`
   keeps it; `hook: null` removes URL and secret together. The URL refuses a query string, userinfo and a fragment
   because it is shown in reads, audits and session details.
-- **Members never see a hook.** `viewService` leaves `hook` out for anyone without Edit on access bundles
-  (`canSeeSetup`, which also hides an OAuth service's sign-in state); the response schemas take it as optional for
-  that reason.
+- **Members never see a hook.** `viewService` and every service write response leave `hook` out for anyone without edit
+  on the service (`hideSetup`, which also hides an OAuth service's sign-in state); the response schemas take it as
+  optional for that reason.
 - **A PATCH that echoes the stored hook changes nothing** (`classifyHookUpdate`): the same URL with no secret, or
   `null` with none stored, is dropped like the other read-backs, before the "Provide at least one field" check.
   `updateService` re-checks under the lock that a hook it sets still has none and one it changes or removes still
@@ -851,10 +868,12 @@ personal values can reference.
   Reads ride along: the bundle read puts the caller's status on each service (`personalValues`, null when nothing
   is member-provided), and the bundle list gives `servicesRequiringSetup` (`{ id, name }`) per bundle plus a
   `requiresSetup` filter for the sidebar and banners (`false` is the rest of what the caller sees). Both count every
-  bundle listed. A `granted` filter on the bundle and service lists keeps only what the caller's roles pick out one by one
-  (bundles, or services directly or through a bundle a role picks out; `false`, on bundles, the rest). A role that can
-  use every bundle or service picks out none, so the sidebar, which asks the services list for `requiresSetup=true&granted=true` and
-  reads the count, doesn't nag its holder about every service, while the page's banner and badges still show them.
+  bundle listed. An `assigned` filter on the bundle and service lists keeps only what the caller's roles pick out one by
+  one (bundles, or services directly or through a bundle a role picks out; `false`, on bundles, the rest). A role that
+  can use every bundle or service picks out none, so the sidebar, which asks the services list for
+  `requiresSetup=true&assigned=true` and reads the count, doesn't nag its holder about every service, while the page's
+  banner and badges still show them. `granted` is its older name, accepted and hidden from the API reference until
+  2027-01-04 because the SDKs still send it.
 
 ### An OAuth sign-in left to members
 

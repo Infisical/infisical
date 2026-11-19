@@ -26,6 +26,7 @@ import {
   TableRow
 } from "@app/components/v3";
 import {
+  ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
   useProject,
@@ -44,8 +45,9 @@ type Props = {
   machineIdentityName: string;
 };
 
-// A delegation is read with Read on its machine identity and changed with Edit, so without Read the section is hidden.
-// Changes happen in the Manage Delegation sheet; this lists who the delegation covers.
+// A delegation is read with Read on its machine identity and changed with Edit on it plus Manage Delegations on sessions,
+// so without Read the section is hidden. Changes happen in the Manage Delegation sheet; this lists who the delegation
+// covers.
 export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityName }: Props) => {
   const { projectId } = useProject();
   const { permission } = useProjectPermission();
@@ -53,7 +55,12 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
     identityId: machineIdentityId
   });
   const canReadDelegation = permission.can(ProjectPermissionIdentityActions.Read, identitySubject);
-  const canEditDelegation = permission.can(ProjectPermissionIdentityActions.Edit, identitySubject);
+  const canEditDelegation =
+    permission.can(ProjectPermissionIdentityActions.Edit, identitySubject) &&
+    permission.can(
+      ProjectPermissionAgentVaultSessionActions.ManageDelegations,
+      ProjectPermissionSub.AgentVaultSessions
+    );
 
   const { data, isPending, isError, isFetching, refetch } = useGetAgentVaultDelegation(
     projectId,

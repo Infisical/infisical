@@ -444,7 +444,8 @@ describe("which personal values an admin save deletes", () => {
     credentialTypeChanged: false,
     memberFieldsChanged: false,
     nextMemberFields: fields(VALUE),
-    oauthMembersRebound: false
+    oauthMembersRebound: false,
+    destinationChanged: false
   };
 
   test.each([
@@ -453,6 +454,7 @@ describe("which personal values an admin save deletes", () => {
     ["the credential type changed with the same member fields", { credentialTypeChanged: true }, "all"],
     ["every member field was taken back", { memberFieldsChanged: true, nextMemberFields: null }, "all"],
     ["the member OAuth sign-in was rebound", { oauthMembersRebound: true }, "all"],
+    ["the service now connects somewhere else", { destinationChanged: true }, "all"],
     ["one field was taken back", { memberFieldsChanged: true, nextMemberFields: fields(VALUE) }, "fields-taken-back"]
   ])("%s", (_, change, expected) => {
     expect(personalValuesToClearOf({ ...base, ...change })).toBe(expected);

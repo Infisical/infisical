@@ -28,6 +28,7 @@ import {
   AgentVaultPersonalValuesSchema,
   AgentVaultProductMemberSchema,
   AgentVaultProjectIdSchema,
+  AgentVaultRoleThatCanUseSchema,
   agentVaultServiceResponseSchema,
   AgentVaultProjectServiceSchema,
   AgentVaultSkippedBundleItemSchema
@@ -60,11 +61,17 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             .transform((value) => value === "true")
             .optional()
             .describe(AGENT_VAULT.ACCESS_BUNDLE.requiresSetup),
+          assigned: z
+            .enum(["true", "false"])
+            .transform((value) => value === "true")
+            .optional()
+            .describe(AGENT_VAULT.ACCESS_BUNDLE.assigned),
+          // The older name of assigned, which the SDKs still send. It goes on 2027-01-04 with the grant endpoints.
           granted: z
             .enum(["true", "false"])
             .transform((value) => value === "true")
             .optional()
-            .describe(AGENT_VAULT.ACCESS_BUNDLE.granted),
+            .describe(openApiHidden()),
           orderBy: z
             .enum(["name", "serviceCount", "createdAt"])
             .default("createdAt")
@@ -85,15 +92,23 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         .refine((query) => !(query.onBehalfOfUserId && query.onBehalfOfUserEmail), {
           message: "Name the user by onBehalfOfUserId or by onBehalfOfUserEmail, not both"
         })
-        .refine((query) => query.granted === undefined || !(query.onBehalfOfUserId || query.onBehalfOfUserEmail), {
-          message:
-            "granted filters your own access bundles, so it can't be combined with onBehalfOfUserId or onBehalfOfUserEmail"
-        }),
+        .refine((query) => query.assigned === undefined || query.granted === undefined, {
+          message: "granted is the older name of assigned, so send only assigned"
+        })
+        .refine(
+          (query) =>
+            (query.assigned ?? query.granted) === undefined || !(query.onBehalfOfUserId || query.onBehalfOfUserEmail),
+          {
+            message:
+              "assigned filters your own access bundles, so it can't be combined with onBehalfOfUserId or onBehalfOfUserEmail"
+          }
+        ),
       response: {
         200: z.object({
           accessBundles: AccessBundleSchema.extend({
             serviceCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.serviceCount),
-            memberCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.memberCount),
+            // Holders of the bundle's own role, which only the deprecated grant endpoints give. Kept for SDKs until 2027-01-04.
+            memberCount: z.number().describe(openApiHidden()),
             hostPatterns: z.string().array().describe(AGENT_VAULT.ACCESS_BUNDLE.hostPatterns),
             nativeServices: z
               .object({
@@ -116,12 +131,20 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { projectId: requestedProjectId, onBehalfOfUserId, onBehalfOfUserEmail, ...query } = req.query;
+      const {
+        projectId: requestedProjectId,
+        onBehalfOfUserId,
+        onBehalfOfUserEmail,
+        assigned,
+        granted,
+        ...query
+      } = req.query;
       const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
       return server.services.agentVaultAccessBundle.listAccessBundles({
         projectId,
         ctx: actorContext(req),
         ...query,
+        assigned: assigned ?? granted,
         onBehalfOf:
           onBehalfOfUserId || onBehalfOfUserEmail
             ? { userId: onBehalfOfUserId, userEmail: onBehalfOfUserEmail }
@@ -617,16 +640,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       }),
       response: {
         200: z.object({
-          roles: z
-            .object({
-              id: z.string().uuid().nullable().describe(AGENT_VAULT.ACCESS_BUNDLE.roleId),
-              slug: z.string().describe(AGENT_VAULT.ACCESS_BUNDLE.roleSlug),
-              name: z.string().describe(AGENT_VAULT.ACCESS_BUNDLE.roleName),
-              isBuiltIn: z.boolean().describe(AGENT_VAULT.ACCESS_BUNDLE.roleIsBuiltIn),
-              isBundleRole: z.boolean().describe(AGENT_VAULT.ACCESS_BUNDLE.roleIsBundleRole),
-              memberCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.roleMemberCount)
-            })
-            .array()
+          roles: AgentVaultRoleThatCanUseSchema.array()
         })
       }
     },

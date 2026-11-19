@@ -75,6 +75,33 @@ export const isNativeService = (
 ): service is Extract<TAgentVaultService, { type: TAgentVaultNativeServiceType }> =>
   isNativeServiceType(service?.type);
 
+const hostsKey = (hostPattern: string) =>
+  displayHostPattern(hostPattern)
+    .split(", ")
+    .map((host) => host.toLowerCase().replace(/\.$/, ""))
+    .filter(Boolean)
+    .sort()
+    .join(",");
+
+/**
+ * Whether an edit points the service somewhere else: other hosts, another MCP server URL, or another database or SSH
+ * server. The API sends no saved value to a new destination, so such an edit has to enter each one again.
+ */
+export const isServiceDestinationChanged = (
+  form: { hosts: string[]; serverUrl: string; host: string; port: string },
+  service: TAgentVaultService
+) => {
+  if (isNativeService(service)) {
+    return form.host.trim() !== service.host || Number(form.port.trim()) !== service.port;
+  }
+  if (service.type === AgentVaultServiceType.Mcp)
+    return form.serverUrl.trim() !== service.serverUrl;
+  return hostsKey(form.hosts.join(",")) !== hostsKey(service.hostPattern);
+};
+
+export const MOVED_SERVICE_VALUE_MESSAGE =
+  "Enter this again, since the service now connects somewhere else.";
+
 /** A database or SSH service is reached by name, so only an HTTP or MCP service has a host pattern. */
 export const hostPatternOf = (service: TAgentVaultService | TAgentVaultSessionInlineService) =>
   service.type === AgentVaultServiceType.Http || service.type === AgentVaultServiceType.Mcp
@@ -1098,6 +1125,46 @@ export const buildServiceSchema = (
           Boolean(service?.hook)
         );
         if (hookSecretIssue) issue("hookSigningSecret", hookSecretIssue);
+      }
+
+      // A value left as saved is never sent to a new destination, so a move asks for each one again. An OAuth
+      // sign-in has its own rule for a new server URL.
+      if (service && isServiceDestinationChanged(data, service)) {
+        const reenter = (path: (string | number)[]) =>
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path, message: MOVED_SERVICE_VALUE_MESSAGE });
+        const type = data.credentialType;
+        const isMemberField = (field: TAgentVaultMemberProvidedField) =>
+          data.memberProvidedFields.includes(field);
+        if (type === service.credential.type) {
+          if (type === AgentVaultCredentialType.Bearer || type === AgentVaultCredentialType.Basic) {
+            if (
+              type === AgentVaultCredentialType.Basic &&
+              data.username === UNCHANGED_SECRET &&
+              !isMemberField(AgentVaultVariableReferenceField.CredentialUsername)
+            ) {
+              reenter(["username"]);
+            }
+            if (
+              data.secret === UNCHANGED_SECRET &&
+              !isMemberField(AgentVaultVariableReferenceField.CredentialValue)
+            ) {
+              reenter(["secret"]);
+            }
+          }
+          if (type === AgentVaultCredentialType.SshKey) {
+            if (data.username === UNCHANGED_SECRET) reenter(["username"]);
+            if (data.sshPrivateKey === UNCHANGED_SECRET) reenter(["sshPrivateKey"]);
+            if (data.sshCertificate === UNCHANGED_SECRET && !data.sshCertificateRemoved) {
+              reenter(["sshCertificate"]);
+            }
+          }
+        }
+        data.customHeaders.forEach((header, index) => {
+          if (header.value === UNCHANGED_SECRET) reenter(["customHeaders", index, "value"]);
+        });
+        data.substitutions.forEach((substitution, index) => {
+          if (substitution.value === UNCHANGED_SECRET) reenter(["substitutions", index, "value"]);
+        });
       }
 
       if (

@@ -102,6 +102,7 @@ export const createEmptyAgentVaultPolicy = (): TAgentVaultPolicy => ({
   sessions: emptySets(),
   inlineServices: emptySets(),
   inlineSkills: emptySets(),
+  delegations: emptySets(),
   variables: emptySets(),
   proxies: emptySets(),
   members: emptySets(),
@@ -1112,9 +1113,8 @@ const withLevels = (levels: Partial<Record<TPermissionRowKey, string>>) =>
     createEmptyAgentVaultPolicy()
   );
 
-// What the Member role the role migration made from the old built-in one grants: own sessions, with skills sent along,
-// and viewing proxies.
-const MEMBER_LEVELS: Partial<Record<TPermissionRowKey, string>> = {
+// What a role that starts sessions needs: its own sessions, with skills sent along, and viewing proxies.
+const SESSION_USER_LEVELS: Partial<Record<TPermissionRowKey, string>> = {
   sessions: "own",
   inlineSkills: "yes",
   proxies: "view"
@@ -1124,16 +1124,10 @@ const BASICS = "Their own sessions, and viewing proxies";
 
 export const AGENT_VAULT_ROLE_TEMPLATES: TAgentVaultRoleTemplate[] = [
   {
-    id: "member",
-    name: "Member",
-    description: "Start and manage their own sessions, and view proxies, like the Member role.",
-    policy: withLevels(MEMBER_LEVELS)
-  },
-  {
     id: "service-user",
     name: "Service User",
     description: `${BASICS}. Pick the access bundles, services and skills they use on the next page.`,
-    policy: withLevels(MEMBER_LEVELS)
+    policy: withLevels(SESSION_USER_LEVELS)
   },
   {
     id: "builder",
@@ -1141,7 +1135,7 @@ export const AGENT_VAULT_ROLE_TEMPLATES: TAgentVaultRoleTemplate[] = [
     description: `${BASICS}, plus creating access bundles and services, and using and editing every one of them.`,
     policy: (["accessBundles", "services"] as const).reduce(
       (policy, rowKey) => setActionAllowed(policy, { rowKey }, ResourceAction.Create, true),
-      withLevels({ ...MEMBER_LEVELS, accessBundles: "edit", services: "edit" })
+      withLevels({ ...SESSION_USER_LEVELS, accessBundles: "edit", services: "edit" })
     )
   },
   {
@@ -1149,7 +1143,7 @@ export const AGENT_VAULT_ROLE_TEMPLATES: TAgentVaultRoleTemplate[] = [
     name: "Auditor",
     description: `${BASICS}, plus seeing everyone's sessions, members, audit logs and session log settings.`,
     policy: withLevels({
-      ...MEMBER_LEVELS,
+      ...SESSION_USER_LEVELS,
       sessions: "see-all",
       members: "view",
       sessionLogSettings: "view",
@@ -1160,7 +1154,7 @@ export const AGENT_VAULT_ROLE_TEMPLATES: TAgentVaultRoleTemplate[] = [
     id: "proxy-operator",
     name: "Proxy Operator",
     description: `${BASICS}, plus creating, editing and deleting proxies, and issuing and revoking their tokens.`,
-    policy: withLevels({ ...MEMBER_LEVELS, proxies: "manage" })
+    policy: withLevels({ ...SESSION_USER_LEVELS, proxies: "manage" })
   }
 ];
 

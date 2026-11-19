@@ -2281,6 +2281,15 @@ export const AgentVaultBundleSkillSchema = z.object({
   latestVersion: z.number().describe(AGENT_VAULT.SKILL.latestVersion)
 });
 
+// One role that can use an access bundle, service or skill, as the roles endpoints list them.
+export const AgentVaultRoleThatCanUseSchema = z.object({
+  id: z.string().uuid().nullable().describe(AGENT_VAULT.ROLE_THAT_CAN_USE.id),
+  slug: z.string().describe(AGENT_VAULT.ROLE_THAT_CAN_USE.slug),
+  name: z.string().describe(AGENT_VAULT.ROLE_THAT_CAN_USE.name),
+  isBuiltIn: z.boolean().describe(AGENT_VAULT.ROLE_THAT_CAN_USE.isBuiltIn),
+  memberCount: z.number().describe(AGENT_VAULT.ROLE_THAT_CAN_USE.memberCount)
+});
+
 export const AgentVaultProjectIdSchema = z
   .string()
   .trim()

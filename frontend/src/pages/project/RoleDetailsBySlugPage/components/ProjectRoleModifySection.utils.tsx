@@ -311,7 +311,8 @@ const AgentVaultSessionPolicyActionSchema = z.object({
   [ProjectPermissionAgentVaultSessionActions.EditAny]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.RevokeAny]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices]: z.boolean().optional(),
-  [ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills]: z.boolean().optional()
+  [ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSessionActions.ManageDelegations]: z.boolean().optional()
 });
 
 const AgentVaultProxyPolicyActionSchema = z.object({
@@ -2628,6 +2629,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Create With Inline Skills",
         value: ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills,
         description: "Send skills that last only as long as the session"
+      },
+      {
+        label: "Manage Delegations",
+        value: ProjectPermissionAgentVaultSessionActions.ManageDelegations,
+        description: "Set which users a machine identity can start sessions on behalf of"
       }
     ]
   },
