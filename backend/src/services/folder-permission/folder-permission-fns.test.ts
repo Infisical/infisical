@@ -224,15 +224,67 @@ describe("assertManageFolderSubtree", () => {
     expect(() => assertManageFolderSubtree(caller, folder("/a/c"))).not.toThrow();
   });
 
-  // The boundary reads the caller's rules literally, with no notion of CASL's last-match-wins, so the lower-tier
-  // grant's deny on the whole environment still counts inside the subtree the full-access grant reopens.
-  test("stays fail-closed for a caller whose full access on the subtree sits below a lower-tier recursive grant", () => {
+  test("allows a caller whose recursive full access sits below a lower-tier recursive grant, inside its subtree only", () => {
     const caller = abilityFor(
       [{ role: ProjectMembershipRole.Member, permissions: [] }],
       [folderGrant(SecretFolderRole.Read, "/", true), folderGrant(SecretFolderRole.FullAccess, "/a", true)]
     );
 
+    expect(() => assertManageFolderSubtree(caller, folder("/a"))).not.toThrow();
+    expect(() => assertManageFolderSubtree(caller, folder("/a/b"))).not.toThrow();
+    expect(() => assertManageFolderSubtree(caller, folder("/a/b/c"))).not.toThrow();
+    expect(() => assertManageFolderSubtree(caller, folder("/"))).toThrow(ForbiddenRequestError);
+    expect(() => assertManageFolderSubtree(caller, folder("/b"))).toThrow(ForbiddenRequestError);
+  });
+
+  test("lets the deepest recursive grant above the folder decide when grants alternate down the tree", () => {
+    const caller = abilityFor(
+      [{ role: ProjectMembershipRole.Member, permissions: [] }],
+      [
+        folderGrant(SecretFolderRole.FullAccess, "/", true),
+        folderGrant(SecretFolderRole.Read, "/a", true),
+        folderGrant(SecretFolderRole.FullAccess, "/a/b", true)
+      ]
+    );
+
+    expect(() => assertManageFolderSubtree(caller, folder("/a/b"))).not.toThrow();
+    expect(() => assertManageFolderSubtree(caller, folder("/a/b/c"))).not.toThrow();
+    expect(() => assertManageFolderSubtree(caller, folder("/a/c"))).toThrow(ForbiddenRequestError);
     expect(() => assertManageFolderSubtree(caller, folder("/a"))).toThrow(ForbiddenRequestError);
+    expect(() => assertManageFolderSubtree(caller, folder("/"))).toThrow(ForbiddenRequestError);
+    expect(() => assertManageFolderSubtree(caller, folder("/c"))).not.toThrow();
+  });
+
+  test("rejects a subtree where a lower-tier grant on one folder sits inside a recursive full-access grant below a lower-tier one", () => {
+    const caller = abilityFor(
+      [{ role: ProjectMembershipRole.Member, permissions: [] }],
+      [
+        folderGrant(SecretFolderRole.Read, "/", true),
+        folderGrant(SecretFolderRole.FullAccess, "/a", true),
+        folderGrant(SecretFolderRole.Read, "/a/b")
+      ]
+    );
+
+    expect(() => assertManageFolderSubtree(caller, folder("/a"))).toThrow(ForbiddenRequestError);
+    expect(() => assertManageFolderSubtree(caller, folder("/a/b"))).toThrow(ForbiddenRequestError);
+    expect(() => assertManageFolderSubtree(caller, folder("/a/c"))).not.toThrow();
+  });
+
+  test("allows a recursive full-access grant over a role that forbids managing access there", () => {
+    const forbidManageAccessRole = {
+      role: ProjectMembershipRole.Custom,
+      permissions: packRules([
+        {
+          action: ProjectPermissionSecretFolderActions.ManageAccess,
+          subject: ProjectPermissionSub.SecretFolders,
+          inverted: true
+        }
+      ])
+    };
+    const caller = abilityFor([forbidManageAccessRole], [folderGrant(SecretFolderRole.FullAccess, "/a", true)]);
+
+    expect(() => assertManageFolderSubtree(caller, folder("/a/b"))).not.toThrow();
+    expect(() => assertManageFolderSubtree(caller, folder("/b"))).toThrow(ForbiddenRequestError);
   });
 
   test("names the folder and environment in the error", () => {
