@@ -1,0 +1,1976 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Life of a Request</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Architects+Daughter&family=PT+Mono&display=swap">
+<style>
+  /* Palette and type from infisical.com's brand. Diagrams: neutral outlines and edges; shape tells compute (box),
+     buffers (cylinder) and producers or consumers (circle) apart; a tone (brand, teal, blue) marks each branch of the path;
+     semantic colors (green, gold, red) only mean status. Chart colors only in charts. */
+  :root {
+    --bg: #eeeeee;
+    --card: #ffffff;
+    --sunk: #f5f5f5;
+    --stroke: #e2e2e2;
+    --stroke-strong: #d1d1d1;
+    --fg: #171717;
+    --fg2: #555555;
+    --fg3: #afafaf;
+    --brand: #56a600;
+    --brand-ink: #416719;
+    --brand-pale: #c5df58;
+    --brand-soft: rgba(86, 166, 0, 0.12);
+    --node: #afafaf;
+    --edge: #d1d1d1;
+    --blue: #147bbb;
+    --blue-ink: #0b4c76;
+    --blue-soft: rgba(20, 123, 187, 0.12);
+    --teal: #23776a;
+    --teal-ink: #0b4f36;
+    --teal-line: #4ade80;
+    --teal-soft: rgba(35, 119, 106, 0.12);
+    --chart-blue: #71bef5;
+    --chart-green: #9ee067;
+    --good: #80a927;
+    --good-soft: rgba(128, 169, 39, 0.12);
+    --warn: #b45309;
+    --warn-soft: rgba(180, 83, 9, 0.14);
+    --bad: #dc2626;
+    --bad-soft: rgba(220, 38, 38, 0.1);
+    --seg-neutral: #d1d1d1;
+    --code-bg: #0e1014;
+    --code-fg: #ebebeb;
+    --code-dim: #707174;
+    --code-accent: #f7fe62;
+    --code-teal: #4ade80;
+    --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "PT Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --hand: "Architects Daughter", "Segoe Print", system-ui, sans-serif;
+    --paper: #f5f5f5;
+    --dot: rgba(23, 23, 23, 0.07);
+    --radius: 0.5rem;
+    --radius-sm: calc(0.5rem - 2px);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b0d10;
+      --card: #1e1f22;
+      --sunk: #15181e;
+      --stroke: #26272b;
+      --stroke-strong: #707174;
+      --fg: #ebebeb;
+      --fg2: #adaeb0;
+      --fg3: #707174;
+      --brand-ink: #9ee067;
+      --brand-soft: rgba(86, 166, 0, 0.22);
+      --node: #707174;
+      --blue-ink: #71bef5;
+      --blue-soft: rgba(20, 123, 187, 0.2);
+      --teal-line: #23776a;
+      --teal-ink: #4ade80;
+      --teal-soft: rgba(35, 119, 106, 0.2);
+      --good-soft: rgba(128, 169, 39, 0.2);
+      --warn: #f59e0b;
+      --warn-soft: rgba(245, 158, 11, 0.16);
+      --bad-soft: rgba(220, 38, 38, 0.18);
+      --seg-neutral: #555555;
+      --code-bg: #0b0d10;
+      --paper: #0e1014;
+      --dot: rgba(255, 255, 255, 0.06);
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0b0d10;
+    --card: #1e1f22;
+    --sunk: #15181e;
+    --stroke: #26272b;
+    --stroke-strong: #707174;
+    --fg: #ebebeb;
+    --fg2: #adaeb0;
+    --fg3: #707174;
+    --brand-ink: #9ee067;
+    --brand-soft: rgba(86, 166, 0, 0.22);
+    --node: #707174;
+    --blue-ink: #71bef5;
+    --blue-soft: rgba(20, 123, 187, 0.2);
+    --teal-line: #23776a;
+    --teal-ink: #4ade80;
+    --teal-soft: rgba(35, 119, 106, 0.2);
+    --good-soft: rgba(128, 169, 39, 0.2);
+    --warn: #f59e0b;
+    --warn-soft: rgba(245, 158, 11, 0.16);
+    --bad-soft: rgba(220, 38, 38, 0.18);
+    --seg-neutral: #555555;
+    --code-bg: #0b0d10;
+    --paper: #0e1014;
+    --dot: rgba(255, 255, 255, 0.06);
+    color-scheme: dark;
+  }
+
+  [data-tone="brand"] { --b: var(--brand); --bs: var(--brand-soft); --bi: var(--brand-ink); --bp: var(--brand-pale); }
+  [data-tone="teal"] { --b: var(--teal); --bs: var(--teal-soft); --bi: var(--teal-ink); --bp: var(--teal-line); }
+  [data-tone="blue"] { --b: var(--blue); --bs: var(--blue-soft); --bi: var(--blue-ink); --bp: var(--chart-blue); }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+
+  body {
+    margin: 0;
+    color: var(--fg);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    background-color: var(--paper);
+    background-image: radial-gradient(var(--dot) 1px, transparent 1.2px);
+    background-size: 18px 18px;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto;
+    height: env(safe-area-inset-top, 0px);
+    z-index: 10;
+    background: var(--paper);
+  }
+
+  .gutter {
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+
+  .wide { max-width: 1240px; margin-inline: auto; }
+
+  h1, h2, h3, h4, h5 { text-wrap: balance; margin: 0; line-height: 1.25; }
+  h1 { font-family: var(--hand); font-weight: 400; font-size: clamp(34px, 5vw, 52px); }
+  h2 { font-family: var(--hand); font-weight: 400; font-size: 28px; }
+  h3 { font-size: 17px; font-weight: 600; }
+  h4 { font-size: 14px; font-weight: 600; }
+  p { margin: 0; }
+
+  code, .mono { font-family: var(--mono); font-size: 0.88em; }
+
+  p code, li code, td code, span code, dd code {
+    background: var(--sunk);
+    border: 1px solid var(--stroke);
+    border-radius: 4px;
+    padding: 0 4px;
+    overflow-wrap: anywhere;
+  }
+
+  a { color: var(--brand-ink); text-underline-offset: 2px; }
+  :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+
+  .overline {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--fg2);
+  }
+
+  /* ---------- Page frame ---------- */
+  .sk-head { padding-block: 36px 8px; }
+  .sk-head .wide { display: grid; gap: 10px; }
+  .sk-head p { color: var(--fg2); max-width: 700px; font-size: 16px; }
+
+  nav.toc {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 5;
+    background: color-mix(in srgb, var(--paper) 92%, transparent);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--stroke);
+    margin-top: 16px;
+  }
+
+  nav.toc ul {
+    list-style: none;
+    margin: 0 auto;
+    padding: 10px 0;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  nav.toc a {
+    display: block;
+    white-space: nowrap;
+    text-decoration: none;
+    color: var(--fg2);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+
+  nav.toc a:hover { background: var(--sunk); color: var(--fg); }
+
+  section.band { padding-block: 28px 32px; scroll-margin-top: 56px; }
+  .section-head { display: grid; gap: 8px; margin-bottom: 18px; }
+  .section-head p { color: var(--fg2); max-width: 740px; }
+
+  .stack { display: grid; gap: 16px; }
+  .cols-2 { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .cols-2 > * { min-width: 0; }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--stroke);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+
+  .panel h3 + * { margin-top: 10px; }
+
+  .callout { border-radius: var(--radius); padding: 12px 14px; font-size: 14px; display: grid; gap: 4px; }
+  .callout strong { font-weight: 600; }
+  .callout.warn { background: var(--warn-soft); }
+  .callout.bad { background: var(--bad-soft); }
+  .callout.good { background: var(--good-soft); }
+  .callout.note { background: var(--sunk); border: 1px solid var(--stroke); }
+
+  .talk { border-left: 3px solid var(--brand); padding: 4px 0 4px 14px; font-weight: 500; font-size: 15px; }
+  .talk::before {
+    content: "For the talk";
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--brand-ink);
+  }
+
+  .refs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .refs code { font-size: 11.5px; color: var(--fg2); }
+
+  ul.tight, ol.tight { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+
+  /* ---------- Controls ---------- */
+  .btn, .step-dot, select.sel {
+    font-family: var(--hand);
+    font-size: 15px;
+    color: var(--fg);
+    background: var(--paper);
+    border: 1.5px solid var(--fg);
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+    cursor: pointer;
+  }
+
+  .btn {
+    padding: 4px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 32px;
+  }
+
+  .btn:hover { border-color: var(--brand); }
+  .btn[aria-pressed="true"] { background: var(--brand-soft); border-color: var(--brand); color: var(--brand-ink); }
+  .btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .btn:disabled { opacity: 0.45; cursor: default; }
+
+  select.sel { padding: 4px 8px; min-height: 32px; max-width: 100%; }
+
+  .stepper { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .step-dots { display: flex; gap: 3px; flex-wrap: wrap; }
+
+  .step-dot {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    font-size: 14px;
+    color: var(--fg2);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .step-dot.done { background: var(--brand-soft); border-color: transparent; color: var(--brand-ink); }
+  .step-dot[aria-current="step"] { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+  .acct-filter { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .acct-filter label { font-family: var(--hand); font-size: 15px; color: var(--fg2); }
+
+  .acct-note {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--stroke);
+    font-size: 13px;
+    background: var(--brand-soft);
+  }
+
+  input[type="range"] { accent-color: var(--brand); width: 140px; }
+
+  /* ---------- Figure shell ---------- */
+  .fig {
+    background: var(--paper);
+    border: 2px solid var(--fg);
+    border-radius: 255px 12px 225px 12px / 12px 225px 12px 255px;
+    overflow: hidden;
+  }
+
+  .fig-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1.5px dashed var(--stroke-strong);
+  }
+
+  .fig-cap {
+    padding: 10px 16px;
+    font-size: 12.5px;
+    color: var(--fg2);
+    border-top: 1px dashed var(--stroke-strong);
+  }
+
+  .svg-scroll { overflow-x: auto; }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    padding: 10px 16px;
+    border-top: 1px dashed var(--stroke-strong);
+    font-family: var(--hand);
+    font-size: 15px;
+    color: var(--fg2);
+    align-items: center;
+  }
+
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .lg { display: inline-block; width: 18px; height: 12px; border: 1.5px solid var(--node); border-radius: 3px; }
+  .lg.buffer { border-radius: 6px / 50%; }
+  .lg.endpoint { border-color: var(--fg2); border-radius: 50%; width: 14px; height: 14px; }
+  .lg.consumer { border: 1.2px solid var(--teal-line); background: var(--teal-soft); border-radius: 50%; width: 14px; height: 14px; }
+  .lg.path { border: 0; height: 3px; background: var(--b, var(--brand)); border-radius: 2px; }
+  .lg.fail { border: 0; height: 0; border-top: 2px dashed var(--bad); border-radius: 0; }
+
+  .brand-logo { width: 26px; height: 26px; margin-left: auto; color: var(--fg); flex: none; }
+
+  /* ---------- Pipeline diagram ---------- */
+  .pipeline { display: block; width: 100%; height: auto; }
+
+  .node { cursor: pointer; transition: opacity 0.25s; --k: var(--node); }
+  .node text { pointer-events: none; }
+
+  .node .shape {
+    fill: var(--card);
+    stroke: var(--k);
+    stroke-width: 1.5;
+    transition: fill 0.25s, stroke-width 0.25s;
+  }
+
+  .node[data-kind="endpoint"] { --k: var(--fg2); }
+  .node:hover .shape { stroke-width: 2.5; }
+  .node.active .shape { fill: var(--bs, var(--brand-soft)); stroke: var(--b, var(--brand)); stroke-width: 2.5; }
+
+  .node[data-kind="consumer"] { --k: var(--teal-line); --cf: var(--teal-soft); --ca: var(--teal); }
+  .node[data-kind="consumer"].tone-ext { --k: var(--brand-pale); --cf: var(--brand-soft); --ca: var(--brand); }
+  .node[data-kind="consumer"] .shape { fill: var(--cf); stroke-width: 1.2; }
+  .node[data-kind="consumer"].active .shape { fill: var(--ca); stroke: var(--ca); stroke-width: 1.2; }
+  .node[data-kind="consumer"].active text { fill: #fff; }
+
+  .node .lane { fill: var(--sunk); stroke: var(--stroke-strong); transition: fill 0.25s, stroke 0.25s; }
+  .node .lane-t { font: 400 10px var(--mono); fill: var(--fg3); }
+  .node.active .lane.hot { fill: var(--bs, var(--brand-soft)); stroke: var(--b, var(--brand)); }
+  .node.active .lane.hot + .lane-t { fill: var(--bi, var(--brand-ink)); }
+
+  .node.dim { opacity: 0.28; }
+  .node .t-title { font: 700 13px var(--hand); fill: var(--fg); }
+  .node .t-sub { font: 400 11px var(--hand); fill: var(--fg2); }
+  .node .inner { fill: none; stroke: var(--fg2); stroke-dasharray: 2 3; }
+  .node .inner-t { font: 400 10px var(--mono); fill: var(--fg2); }
+
+  .ann { font: 400 11px var(--hand); fill: var(--fg2); transition: opacity 0.25s; }
+  .ann.strong { font-weight: 700; font-size: 11.5px; fill: var(--fg); }
+  .ann.dim { opacity: 0.28; }
+
+  .edge path { fill: none; stroke: var(--edge); stroke-width: 1.4; transition: stroke 0.25s, opacity 0.25s; }
+  .edge text { font: 400 11px var(--hand); fill: var(--fg2); transition: fill 0.25s; }
+  .edge.active path { stroke: var(--b, var(--brand)); stroke-width: 2.6; }
+  .edge.active text { fill: var(--bi, var(--brand-ink)); font-weight: 700; }
+  .edge.dashed path { stroke-dasharray: 4 3; }
+  .edge.fail path { stroke: var(--bad); }
+  .edge.fail text { fill: var(--bad); }
+  .edge.dim { opacity: 0.22; }
+  .node.fail .shape { stroke: var(--bad); stroke-dasharray: 4 3; }
+
+  .zone rect { fill: var(--sunk); stroke: var(--fg2); stroke-dasharray: 5 5; stroke-width: 1.4; }
+  .zone text { font: 700 13.5px var(--hand); fill: var(--fg); }
+  .zone-label { font: 400 12.5px var(--hand); fill: var(--fg2); }
+
+  .marker line { stroke: var(--good); stroke-dasharray: 5 4; stroke-width: 3.6; }
+  .marker text { font: 700 16px var(--hand); fill: var(--good); }
+
+  .xp-box { fill: var(--card); stroke: var(--b, var(--brand)); stroke-width: 2.5; }
+  .xp-t { font: 700 13.5px var(--hand); fill: var(--fg); }
+  .xp-s { font: 400 10.5px var(--hand); fill: var(--fg2); }
+  .xp-h { font: 600 10px var(--font); fill: var(--fg2); }
+  .xp-row rect { fill: var(--sunk); stroke: var(--stroke-strong); }
+  .xp-row text { font: 400 10px var(--mono); fill: var(--fg); }
+  .xp-row .xp-rt { font: 700 12px var(--hand); }
+  .xp-row .xp-rd { font: 400 10.5px var(--hand); fill: var(--fg2); }
+  .xp-row.old text { fill: var(--fg2); }
+  .xp-row.eph rect { stroke-dasharray: 3 2; }
+  .xp-row.hot rect { fill: var(--brand-soft); stroke: var(--brand); }
+  .xp-row.hot text { fill: var(--brand-ink); }
+  .xp-row.teal rect { fill: var(--teal-soft); stroke: var(--teal-line); }
+  .xp-ln { stroke: var(--edge); stroke-width: 1.4; fill: none; }
+  .xp.dashed .xp-box { stroke-dasharray: 5 4; stroke-width: 1.5; }
+
+  .dot {
+    fill: var(--b, var(--brand));
+    stroke: var(--card);
+    stroke-width: 2.5;
+    transition: transform 0.6s cubic-bezier(.4, 0, .2, 1), opacity 0.3s;
+  }
+
+  .node.acct-hit .shape,
+  .node.acct-hit[data-kind="consumer"] .shape,
+  .node.acct-hit.fail .shape { stroke: var(--fg); stroke-width: 2.5; stroke-dasharray: none; }
+  .edge.acct-hit path, .edge.acct-hit.fail path { stroke: var(--fg); stroke-width: 2.2; }
+  .edge.acct-hit text, .edge.acct-hit.fail text { fill: var(--fg); font-weight: 700; }
+
+  /* ---------- Step panel ---------- */
+  .step-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    border-top: 1px dashed var(--stroke-strong);
+  }
+
+  .step-body.no-card { grid-template-columns: minmax(0, 1fr); }
+  .step-body.no-card .event-card { display: none; }
+  .step-body.no-card .step-text { border-right: 0; }
+
+  .step-text {
+    padding: 20px;
+    display: grid;
+    gap: 12px;
+    align-content: start;
+    border-right: 1px solid var(--stroke);
+    min-width: 0;
+  }
+
+  .step-head { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
+  .step-head h3 { font-family: var(--hand); font-weight: 400; font-size: 24px; }
+
+  .clock {
+    font: 400 13px var(--mono);
+    color: var(--brand-ink);
+    background: var(--brand-soft);
+    border-radius: 999px;
+    padding: 2px 10px;
+    white-space: nowrap;
+  }
+
+  .step-text ul { margin: 0; padding-left: 1.15em; display: grid; gap: 7px; font-size: 14.5px; }
+  .step-text details { border: 1px solid var(--stroke); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 14px; }
+  .step-text summary { cursor: pointer; font-weight: 600; font-size: 13.5px; }
+  .step-text details[open] summary { margin-bottom: 8px; }
+
+  .event-card { padding: 20px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+  .event-card .overline { font-family: var(--hand); font-weight: 400; font-size: 17px; letter-spacing: 0; text-transform: none; color: var(--fg); }
+  .card-note { font-size: 12.5px; color: var(--fg2); }
+
+  pre.code {
+    margin: 0;
+    background: var(--code-bg);
+    color: var(--code-fg);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    font: 400 12.5px/1.6 var(--mono);
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  pre.code .c { color: var(--code-dim); }
+  pre.code .k { color: var(--code-accent); }
+  pre.code .s { color: var(--code-teal); }
+
+  .step-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    border-top: 1.5px dashed var(--stroke-strong);
+  }
+
+  .step-count { font-family: var(--hand); font-size: 15px; color: var(--fg2); }
+
+  @media (max-width: 760px) {
+    .step-body { grid-template-columns: minmax(0, 1fr); }
+    .step-text { border-right: 0; border-bottom: 1px solid var(--stroke); }
+  }
+
+  /* ---------- Tooltips and glossary ---------- */
+  .gl { border-bottom: 1.5px dotted var(--brand); cursor: help; position: relative; }
+
+  .gl:hover::after, .gl:focus::after {
+    content: attr(data-def);
+    position: absolute;
+    left: 0;
+    top: calc(100% + 6px);
+    width: max-content;
+    max-width: min(340px, 80vw);
+    background: var(--fg);
+    color: var(--bg);
+    font: 400 14px/1.45 var(--font);
+    padding: 8px 12px;
+    border-radius: 6px;
+    z-index: 30;
+    white-space: normal;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    pointer-events: none;
+  }
+
+  .gl:focus { outline: none; background: var(--brand-soft); }
+
+  .tip {
+    position: fixed;
+    z-index: 300;
+    max-width: 340px;
+    background: var(--fg);
+    color: var(--bg);
+    font: 400 14px/1.45 var(--font);
+    padding: 8px 12px;
+    border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    pointer-events: none;
+  }
+
+  .gl-svg { text-decoration: underline dotted; cursor: help; }
+
+  dl.gloss { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 18px; font-size: 14px; }
+  dl.gloss dt { font-weight: 600; }
+  dl.gloss dd { margin: 0; color: var(--fg2); }
+
+  @media (max-width: 600px) {
+    dl.gloss { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+    dl.gloss dd { margin-bottom: 8px; }
+  }
+
+  /* ---------- Hops summary ---------- */
+  .hops { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+  .hop { padding: 16px; display: grid; gap: 8px; align-content: start; border-right: 1px dashed var(--stroke-strong); min-width: 0; }
+  .hop:last-child { border-right: 0; }
+  .hop-name { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+  .hop-shape { width: 22px; height: 16px; border: 1.5px solid var(--node); border-radius: 4px; flex: none; }
+  .hop-shape.buffer { border-radius: 8px / 50%; }
+  .hop-shape.endpoint { border-color: var(--fg2); border-radius: 50%; width: 18px; height: 18px; }
+  .hop-time { font: 400 13px var(--mono); color: var(--fg2); }
+  .hop ul { margin: 0; padding-left: 1.1em; font-size: 13.5px; color: var(--fg2); display: grid; gap: 4px; }
+
+  /* ---------- Tables ---------- */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--stroke); border-radius: var(--radius); background: var(--card); }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--stroke); vertical-align: top; }
+
+  th {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--fg2);
+    background: var(--sunk);
+    white-space: nowrap;
+  }
+
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 500; }
+  tr.hl td { background: var(--brand-soft); }
+
+  /* ---------- Simulation ---------- */
+  .sim-clock { font: 400 13px var(--mono); color: var(--fg2); font-variant-numeric: tabular-nums; }
+  .sim-ctl { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 12.5px; color: var(--fg2); }
+  .sim-ctl label { display: inline-flex; gap: 8px; align-items: center; }
+  .sim-ctl output { font: 400 12px var(--mono); color: var(--fg); min-width: 5ch; font-variant-numeric: tabular-nums; }
+
+  .sim-grid { display: grid; gap: 8px; padding: 16px; min-width: 860px; }
+
+  .sim-lbl {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--bi, var(--fg2));
+    align-self: center;
+  }
+
+  .stg {
+    border: 1px solid var(--stroke-strong);
+    border-radius: var(--radius-sm);
+    background: var(--card);
+    padding: 8px 10px;
+    display: grid;
+    gap: 3px;
+    align-content: start;
+    min-height: 112px;
+    min-width: 0;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  }
+
+  .stg[data-tone] { border-left: 3px solid var(--bp); }
+  .stg h5 { font-size: 12.5px; font-weight: 600; }
+  .stg .rule { font-size: 11px; color: var(--fg2); }
+  .stg .cd { font: 400 11.5px var(--mono); color: var(--fg); font-variant-numeric: tabular-nums; }
+  .stg .pile { display: flex; flex-wrap: wrap; gap: 3px; align-content: flex-start; min-height: 22px; margin-top: 2px; }
+  .pile i { width: 6px; height: 6px; border-radius: 50%; background: var(--node); }
+  .pile i.me { width: 12px; height: 12px; background: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+  .pile .more { font: 400 10.5px var(--mono); color: var(--fg2); }
+  .stg.has-mine { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+  .stg.flash { background: var(--sunk); border-color: var(--fg2); }
+  .stg.done { background: var(--sunk); }
+  .stg.done .big { font: 600 20px var(--font); font-variant-numeric: tabular-nums; color: var(--bi, var(--fg)); }
+
+  .sim-out { padding: 4px 16px 16px; display: grid; gap: 10px; min-width: 660px; }
+  .sbar-row { display: grid; grid-template-columns: 140px minmax(0, 1fr) 96px; gap: 10px; align-items: center; font-size: 12.5px; }
+  .sbar-row .nm { font-weight: 600; color: var(--bi, var(--fg)); }
+  .sbar { position: relative; height: 28px; background: var(--sunk); border-radius: 4px; overflow: hidden; }
+
+  .sbar .sg {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    padding-left: 5px;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    border-right: 1px solid var(--card);
+  }
+
+  .sbar .sg.ink { color: #101212; }
+  .sbar .worst { position: absolute; top: 0; bottom: 0; border-left: 2px dashed var(--bad); }
+  .sbar-tot { font: 600 13px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+  .saxis { position: relative; height: 16px; font: 400 10.5px var(--mono); color: var(--fg3); }
+  .saxis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .sim-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 11.5px; color: var(--fg2); }
+  .sim-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 5px; }
+
+  .sim-runs { padding: 12px 16px 16px; border-top: 1px dashed var(--stroke-strong); display: grid; gap: 10px; }
+  .metrics { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+
+  .metric {
+    border: 1px solid var(--stroke);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    background: var(--card);
+    display: grid;
+    gap: 2px;
+  }
+
+  .metric .v { font: 600 22px var(--font); font-variant-numeric: tabular-nums; color: var(--bi, var(--fg)); }
+  .metric .k { font: 400 11.5px var(--mono); color: var(--fg2); }
+  .metric .n { font-size: 12px; color: var(--fg2); }
+
+  /* ---------- Presentation mode ---------- */
+  .pres-title { display: none; }
+
+  .fig.presenting {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    border-radius: 0;
+    border: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--paper);
+    overflow: hidden;
+  }
+
+  .fig.presenting:fullscreen { width: 100vw; height: 100vh; }
+
+  .fig.presenting .pres-title {
+    display: block;
+    font-family: var(--hand);
+    font-size: clamp(28px, 3.2vw, 46px);
+    padding: 18px 28px 0;
+    text-wrap: balance;
+  }
+
+  .fig.presenting .svg-scroll { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 8px 20px; }
+  .fig.presenting .pipeline { width: 100%; height: 100%; min-width: 0 !important; }
+  .fig.presenting .step-body, .fig.presenting .fig-cap, .fig.presenting .step-nav { display: none; }
+  .fig.presenting.notes-on .step-body { display: grid; max-height: 34vh; overflow: auto; flex: none; }
+  .fig.presenting.notes-on .step-nav { display: flex; flex: none; }
+  .fig.presenting .legend { flex: none; }
+  .fig.presenting .brand-logo { width: 34px; height: 34px; }
+  .fig:not(.presenting) .notes-btn { display: none; }
+
+  footer { padding-block: 32px 64px; color: var(--fg3); font-size: 13px; }
+
+  .doc-errors {
+    position: fixed;
+    inset: auto 12px 12px;
+    z-index: 400;
+    margin: 0;
+    padding: 12px 14px;
+    background: var(--bad);
+    color: #fff;
+    font: 400 12px/1.5 var(--mono);
+    border-radius: var(--radius-sm);
+    white-space: pre-wrap;
+    max-height: 40vh;
+    overflow: auto;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+
+  /* ---------- Sketch layer (rough.js) ---------- */
+  .sketchy .smooth { stroke: transparent !important; }
+  .fig:not(.sketchy) .rough { display: none; }
+  .sketchy .rough path { fill: none; stroke: var(--fg2); stroke-width: 1.4; }
+  .sketchy .node .rough path { stroke: var(--k); stroke-width: 1.6; }
+  .sketchy .node.active .rough path { stroke: var(--b, var(--brand)); stroke-width: 2.4; }
+  .sketchy .node[data-kind="consumer"] .rough path { stroke: var(--k); stroke-width: 1.4; }
+  .sketchy .node[data-kind="consumer"].active .rough path { stroke: var(--ca); stroke-width: 2.2; }
+  .sketchy .node .rough.lane-r path { stroke: var(--stroke-strong); stroke-width: 1; }
+  .sketchy .node.active .rough.lane-r.hot path { stroke: var(--b, var(--brand)); stroke-width: 1.6; }
+  .sketchy .node .rough.inner-r path { stroke: var(--fg2); stroke-width: 1; stroke-dasharray: 3 3; }
+  .sketchy .node.fail .rough path { stroke: var(--bad); stroke-dasharray: 6 4; }
+  .sketchy .node.acct-hit .rough path { stroke: var(--fg); stroke-width: 2.4; stroke-dasharray: none; }
+  .sketchy .edge .rough path { stroke: var(--edge); stroke-width: 1.5; }
+  .sketchy .edge.active .rough path { stroke: var(--b, var(--brand)); stroke-width: 2.6; }
+  .sketchy .edge.dashed .rough path { stroke-dasharray: 6 5; }
+  .sketchy .edge.fail .rough path { stroke: var(--bad); }
+  .sketchy .edge.acct-hit .rough path { stroke: var(--fg); stroke-width: 2.2; }
+  .sketchy .zone .rough path { stroke: var(--fg2); stroke-width: 1.4; stroke-dasharray: 7 5; }
+  .sketchy .marker .rough path { stroke: var(--good); stroke-width: 3.2; stroke-dasharray: 7 5; }
+  .sketchy .xp .rough.box-r path { stroke: var(--b, var(--brand)); stroke-width: 2.4; }
+  .sketchy .xp.dashed .rough.box-r path { stroke-width: 1.6; stroke-dasharray: 6 4; }
+  .sketchy .xp-row .rough path { stroke: var(--stroke-strong); stroke-width: 1; }
+  .sketchy .xp-row.hot .rough path { stroke: var(--brand); stroke-width: 1.4; }
+  .sketchy .xp-row.teal .rough path { stroke: var(--teal); stroke-width: 1.4; }
+  .sketchy .xp .rough.ln-r path { stroke: var(--edge); stroke-width: 1.4; }
+
+  /* ---------- Clean style for projectors: hand-drawn layer and paper off ---------- */
+  html.clean { --hand: var(--font); --paper: var(--card); }
+  html.clean body { background: var(--bg); background-image: none; }
+  html.clean nav.toc { background: color-mix(in srgb, var(--bg) 92%, transparent); }
+  html.clean h1, html.clean h2, html.clean .step-head h3, html.clean .fig.presenting .pres-title { font-weight: 700; letter-spacing: -0.01em; }
+  html.clean h1 { font-size: clamp(30px, 5vw, 44px); letter-spacing: -0.02em; }
+  html.clean h2 { font-size: 24px; }
+  html.clean .step-head h3 { font-size: 20px; }
+  html.clean .fig { border: 1px solid var(--stroke); border-radius: var(--radius); }
+  html.clean .fig-bar { background: var(--sunk); border-bottom: 1px solid var(--stroke); }
+  html.clean .legend, html.clean .fig-cap, html.clean .step-body, html.clean .step-nav, html.clean .sim-runs { border-top: 1px solid var(--stroke); }
+  html.clean .hop { border-right-style: solid; border-color: var(--stroke); }
+  html.clean .btn, html.clean select.sel { font-size: 13px; font-weight: 500; border: 1px solid var(--stroke-strong); border-radius: var(--radius-sm); background: var(--card); }
+  html.clean .btn.primary { background: var(--brand); border-color: var(--brand); }
+  html.clean .btn[aria-pressed="true"] { background: var(--brand-soft); border-color: var(--brand); }
+  html.clean .step-dot { font-size: 12px; font-weight: 600; width: 28px; height: 28px; border: 1px solid var(--stroke-strong); border-radius: 999px; background: var(--card); }
+  html.clean .step-dot.done { background: var(--brand-soft); border-color: transparent; }
+  html.clean .step-dot[aria-current="step"] { background: var(--brand); border-color: var(--brand); }
+  html.clean .acct-filter label, html.clean .legend, html.clean .step-count { font-size: 13px; }
+  html.clean .node .t-title { font-weight: 600; }
+  html.clean .edge.active text { font-weight: 600; }
+  html.clean .event-card .overline { font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--fg2); }
+</style>
+
+<header class="sk-head gutter">
+  <div class="wide">
+    <h1>Life of a Request</h1>
+    <p>How a machine identity proves who it is, and how Infisical decides whether it may read one secret. Step
+      through, click any shape, or press Present to walk through the diagram. Hover anything underlined for a
+      definition.</p>
+  </div>
+</header>
+<nav class="toc gutter" aria-label="Sections">
+  <ul class="wide"></ul>
+</nav>
+<main>
+  <section class="band gutter" id="journey" data-toc="Follow one request">
+    <div class="wide">
+      <div class="section-head">
+        <h2>Follow one request</h2>
+        <p>Every authenticated API call goes through the same two gates: an auth hook that turns a bearer token into an
+          actor, and a permission check that turns that actor's roles into a CASL ability and asks it one question.
+          This follows a backend service that logs in with Universal Auth and reads one secret.</p>
+      </div>
+
+      <div class="fig" id="journey-fig" tabindex="0"
+        aria-label="Pipeline walkthrough. Use left and right arrow keys to change step.">
+        <div class="fig-bar">
+          <div class="stepper">
+            <button class="btn" data-act="prev" type="button" aria-label="Previous step">&#8592; Back</button>
+            <button class="btn primary" data-act="next" type="button">Next &#8594;</button>
+            <button class="btn" data-act="overview" type="button" aria-pressed="true">Overview</button>
+            <div class="step-dots" role="group" aria-label="Steps"></div>
+          </div>
+          <div class="acct-filter">
+            <button class="btn" type="button" data-act="sketch" aria-pressed="true">Sketch</button>
+            <button class="btn notes-btn" type="button" data-act="notes" aria-pressed="false">Notes</button>
+            <button class="btn" type="button" data-act="present">&#x26F6; Present</button>
+            <label for="acct">Account</label>
+            <select class="sel" id="acct"></select>
+          </div>
+        </div>
+        <div class="acct-note" hidden></div>
+        <div class="pres-title"></div>
+        <div class="svg-scroll">
+          <svg class="pipeline" id="pipeline" role="img"
+            aria-label="Diagram: a backend service logs in to Universal Auth with a client ID and secret. Universal Auth checks the secret hash in Postgres and a lockout counter in Redis, then returns a signed JWT. The service sends that JWT as a bearer token. An auth hook verifies the signature, checks revocation through a Redis verdict cache, and attaches the identity to the request. The secret service asks the permission service for the identity's ability on the project; the permission service reads it through a Redis fingerprint cache backed by Postgres memberships and roles, and builds a CASL ability. If the ability allows reading the secret, the value is returned; otherwise the request ends in a 403 PermissionDenied response."></svg>
+        </div>
+        <div class="legend"></div>
+        <div class="step-body">
+          <div class="step-text" aria-live="polite"></div>
+          <div class="event-card">
+            <div class="overline card-title"></div>
+            <pre class="code card-code"></pre>
+            <p class="card-note"></p>
+          </div>
+        </div>
+        <div class="step-nav">
+          <button class="btn" data-act="prev" type="button">&#8592; Back</button>
+          <span class="step-count"></span>
+          <button class="btn primary" data-act="next" type="button">Next &#8594;</button>
+        </div>
+        <div class="fig-cap">The identity, project, secret, IDs and role are made up for this walkthrough; every route, claim, cache TTL and check cited is real.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band gutter" id="hops" data-toc="Hop by hop">
+    <div class="wide">
+      <div class="section-head">
+        <h2>Hop by hop</h2>
+        <p>What each stop on the diagram does, and how often it runs.</p>
+      </div>
+      <div class="fig">
+        <div class="hops" data-glossify>
+          <div class="hop">
+            <div class="hop-name"><i class="hop-shape endpoint"></i>Universal Auth</div>
+            <div class="hop-time">once per token</div>
+            <ul>
+              <li>Checks the client secret against its hash and issues a signed JWT. No database row is written for the token.</li>
+            </ul>
+          </div>
+          <div class="hop">
+            <div class="hop-name"><i class="hop-shape"></i>Auth hook</div>
+            <div class="hop-time">every request</div>
+            <ul>
+              <li>Verifies the JWT signature, then checks revocation through a Redis verdict cached for about 10 minutes.</li>
+            </ul>
+          </div>
+          <div class="hop">
+            <div class="hop-name"><i class="hop-shape"></i>Permission service</div>
+            <div class="hop-time">every permission check</div>
+            <ul>
+              <li>Memoized per request, then a Redis marker trusted for 10 s and data kept 10 min, checked by a fingerprint query.</li>
+            </ul>
+          </div>
+          <div class="hop">
+            <div class="hop-name"><i class="hop-shape"></i>CASL ability</div>
+            <div class="hop-time">in memory</div>
+            <ul>
+              <li>Answers can or cannot for one action on one subject, matching environment, path, name and tags.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band gutter" id="accounts" data-toc="Accounts">
+    <div class="wide">
+      <div class="section-head">
+        <h2>What runs where</h2>
+        <p>Who owns each part of the diagram. Pick one in the diagram's selector to highlight its row here.</p>
+      </div>
+      <div class="table-wrap" id="acct-table"></div>
+    </div>
+  </section>
+
+  <section class="band gutter" id="terms" data-toc="Terms">
+    <div class="wide">
+      <div class="section-head">
+        <h2>Terms</h2>
+      </div>
+      <div class="panel" id="glossary-list"></div>
+    </div>
+  </section>
+</main>
+<footer class="gutter">
+  <div class="wide">Generated with the infisical-walkthrough skill, from the <code>backend/</code> source in this repo at the time of writing. Key sources:
+    <code>identity-ua-service.ts</code>, <code>identity-access-token-service.ts</code>, <code>inject-identity.ts</code>,
+    <code>inject-permission.ts</code>, <code>verify-auth.ts</code>, <code>permission-service.ts</code>, <code>permission-dal.ts</code>,
+    <code>lib/cache/with-cache.ts</code>, <code>lib/casl/index.ts</code>, <code>error-handler.ts</code>.
+    User sessions, the other identity auth methods and the Go backend take parallel paths not shown here.</div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/roughjs@4.6.6/bundled/rough.js"></script>
+
+<!-- ============ DOC DATA: everything topic-specific lives here ============ -->
+<script>
+  window.DOC = {
+    viewBox: [1100, 600],
+    logo: true,
+
+    accounts: {
+      platform: { label: "Infisical platform", note: "Infisical platform: the Fastify API server (login route, auth hook, secret and permission services), Redis and Postgres." },
+      customer: { label: "Customer environment", note: "Customer environment: the backend service that holds the client ID and secret and calls the API." }
+    },
+
+    branches: {
+      allow: { tone: "teal", label: "allowed" }
+    },
+
+    nodes: [
+      { id: "service", kind: "compute", x: 20, y: 250, w: 150, h: 62, t: "Backend service", s: "machine identity", a: "customer" },
+      { id: "uaLogin", kind: "compute", x: 230, y: 60, w: 150, h: 62, t: "Universal Auth", s: "login route", a: "platform" },
+      { id: "authHook", kind: "compute", x: 230, y: 250, w: 150, h: 62, t: "Auth hook", s: "onRequest", a: "platform" },
+      { id: "secretSvc", kind: "compute", x: 470, y: 250, w: 150, h: 62, t: "Secret service", s: "getSecretByName", a: "platform" },
+      { id: "redis", kind: "store", x: 710, y: 40, w: 150, h: 70, t: "Redis", s: "caches + counters", a: "platform" },
+      { id: "permSvc", kind: "compute", x: 710, y: 250, w: 150, h: 62, t: "Permission service", s: "3 cache layers", a: "platform" },
+      { id: "pg", kind: "store", vcyl: true, x: 930, y: 30, w: 150, h: 84, t: "Postgres", s: "roles + privileges", a: "platform" },
+      { id: "casl", kind: "compute", x: 930, y: 250, w: 150, h: 62, t: "CASL ability", s: "rules + $glob", a: "platform" },
+      { id: "allowed", kind: "consumer", cx: 1005, cy: 470, r: 50, t: "200 OK", s: "value returned", a: "platform", b: "allow" },
+      { id: "denied", kind: "store", fail: true, x: 710, y: 440, w: 150, h: 62, t: "403 response", s: "PermissionDenied", a: "platform", step: "denied", tip: "Where a request the ability refuses ends: a 403 that names the action and subject and lists the rules that applied." }
+    ],
+
+    edges: [
+      { id: "e-svc-login", from: "service", to: "uaLogin", d: "M95 250 C95 150 150 95 230 91", lx: 88, ly: 170, la: "end", l: "login" },
+      { id: "e-login-svc", from: "uaLogin", to: "service", d: "M250 122 C230 180 190 230 150 250", lx: 222, ly: 192, la: "start", l: "JWT" },
+      { id: "e-login-redis", from: "uaLogin", to: "redis", d: "M380 85 L710 78", lx: 545, ly: 72, l: "lockout counter" },
+      { id: "e-login-pg", from: "uaLogin", to: "pg", d: "M330 60 C360 5 880 5 945 38", lx: 620, ly: 50, l: "client secret hashes" },
+      { id: "e-svc-hook", from: "service", to: "authHook", d: "M170 281 L230 281", lx: 200, ly: 273, l: "Bearer" },
+      { id: "e-hook-redis", from: "authHook", to: "redis", d: "M380 262 C450 200 620 140 710 100", lx: 545, ly: 195, la: "start", l: "revocation verdict" },
+      { id: "e-hook-secret", from: "authHook", to: "secretSvc", d: "M380 281 L470 281", lx: 425, ly: 273, l: "actor" },
+      { id: "e-secret-perm", from: "secretSvc", to: "permSvc", d: "M620 281 L710 281", lx: 665, ly: 273, l: "load ability" },
+      { id: "e-perm-redis", from: "permSvc", to: "redis", d: "M785 250 L785 110", lx: 793, ly: 185, la: "start", l: "marker + data" },
+      { id: "e-perm-pg", from: "permSvc", to: "pg", d: "M860 260 C900 230 940 170 960 114", lx: 945, ly: 200, la: "start", l: "memberships" },
+      { id: "e-perm-casl", from: "permSvc", to: "casl", d: "M860 281 L930 281", lx: 895, ly: 273, l: "rules" },
+      { id: "e-casl-allowed", from: "casl", to: "allowed", d: "M1005 312 L1005 420", lx: 1013, ly: 370, la: "start", l: "can()", b: "allow" },
+      { id: "e-allowed-svc", from: "allowed", to: "service", d: "M955 470 C700 585 200 585 95 312", lx: 470, ly: 572, l: "200 + secretValue", b: "allow" },
+      { id: "e-casl-denied", from: "casl", to: "denied", d: "M960 312 C940 400 900 460 860 471", lx: 905, ly: 395, la: "end", l: "ForbiddenError", dashed: true, fail: true }
+    ],
+
+    edgeTips: {
+      "login": "POST /api/v1/auth/universal-auth/login with a client ID and client secret. Rate limited per IP with the write limit (200 a minute by default).",
+      "Bearer": "Authorization: Bearer <JWT>. The hook also accepts x-api-key and st. service tokens, both deprecated.",
+      "actor": "req.permission = { type, id, orgId, authMethod }: the actor every service receives, whichever way it authenticated.",
+      "can()": "permission.can(action, subject(\"secrets\", { environment, secretPath, secretName, secretTags }))."
+    },
+
+    expansions: [
+      {
+        id: "revocationCache", steps: ["tokenValidated"], tone: "brand",
+        box: { x: 230, y: 335, w: 440, h: 115 }, title: "Revocation verdict cache", sub: "identity-access-token-service.ts",
+        rows: [
+          { text: "verdict per token, 10 min +/- 2 min jitter", cls: "old" },
+          { text: "an allow holds only while the identity version matches", cls: "hot" },
+          { text: "a revoke bumps the version: every allow goes stale", cls: "hot" },
+          { text: "miss: Postgres revocation markers + org membership", cls: "old" }
+        ]
+      },
+      {
+        id: "cacheLayers", steps: ["permissionLoaded"], tone: "brand",
+        box: { x: 230, y: 335, w: 440, h: 115 }, title: "Three layers before Postgres", sub: "permission-service.ts, with-cache.ts",
+        rows: [
+          { text: "1  request memo: same check twice, computed once", cls: "old" },
+          { text: "2  Redis marker, 10 s: trusted, 0 DB reads", cls: "hot" },
+          { text: "3  Redis data, 10 min: fingerprint query, 1 DB read", cls: "hot" },
+          { text: "4  Postgres: full membership and role fetch", cls: "old" }
+        ]
+      },
+      {
+        id: "ruleOrder", steps: ["abilityBuilt"], tone: "brand",
+        box: { x: 230, y: 335, w: 440, h: 140 }, title: "How the rule list is built", sub: "buildProjectPermissionRules",
+        rows: [
+          { text: "each active role: admin, member, viewer, custom...", cls: "old" },
+          { text: "+ additional privileges, as custom rules", cls: "old" },
+          { text: "- temporary grants past their end time", cls: "old" },
+          { text: "sort: allow rules first, deny rules after", cls: "hot" },
+          { text: "folder-scoped grants appended last", cls: "hot" }
+        ]
+      }
+    ],
+
+    code: {
+      login:
+        '<span class="c">// POST /api/v1/auth/universal-auth/login</span>\n' +
+        '<span class="k">clientId</span>:     <span class="s">"6f1c…"</span>\n' +
+        '<span class="k">clientSecret</span>: <span class="s">"••••••••"</span>\n\n' +
+        '<span class="c">// 200</span>\n' +
+        '<span class="k">accessToken</span>: <span class="s">"eyJhbGciOi…"</span>\n' +
+        '<span class="k">expiresIn</span>:   <span class="s">7200</span>\n' +
+        '<span class="k">tokenType</span>:   <span class="s">"Bearer"</span>',
+      claims:
+        '<span class="c">// decoded JWT, signed with AUTH_SECRET (abridged)</span>\n' +
+        '<span class="k">authTokenType</span>:  <span class="s">"identityAccessToken"</span>\n' +
+        '<span class="k">identityId</span>:     <span class="s">"id_2b7c"</span>\n' +
+        '<span class="k">authMethod</span>:     <span class="s">"universal-auth"</span>\n' +
+        '<span class="k">orgId</span>:          <span class="s">"org_91aa"</span>\n' +
+        '<span class="k">clientSecretId</span>: <span class="s">"cs_04e3"</span>\n' +
+        '<span class="k">jti</span>:            <span class="s">"tok_7d52"</span>\n' +
+        '<span class="k">exp</span>:            <span class="s">1795620000</span>',
+      header:
+        '<span class="c">GET /api/v4/secrets/DB_PASSWORD</span>\n' +
+        '<span class="c">  ?projectId=prj_8f2a&amp;environment=prod&amp;secretPath=/backend</span>\n\n' +
+        '<span class="k">Authorization</span>: <span class="s">Bearer eyJhbGciOi…</span>',
+      verdict:
+        '<span class="c">// Redis, per identity</span>\n' +
+        '<span class="k">identity-revocation-version</span>: <span class="s">1795612345</span>\n\n' +
+        '<span class="c">// Redis, per token fingerprint</span>\n' +
+        '<span class="k">verdict</span>: { v: <span class="s">1795612345</span> }  <span class="c">// allow</span>\n' +
+        '<span class="k">verdict</span>: { deny: <span class="s">"…"</span> }        <span class="c">// revoked</span>',
+      actor:
+        '<span class="c">// req.permission</span>\n' +
+        '<span class="k">type</span>:       <span class="s">"identity"</span>\n' +
+        '<span class="k">id</span>:         <span class="s">"id_2b7c"</span>\n' +
+        '<span class="k">orgId</span>:      <span class="s">"org_91aa"</span>\n' +
+        '<span class="k">authMethod</span>: <span class="s">null</span>',
+      permData:
+        '<span class="c">// one project membership (abridged)</span>\n' +
+        '<span class="k">roles</span>: [\n' +
+        '  { <span class="k">role</span>: <span class="s">"custom"</span>, <span class="k">permissions</span>: [<span class="c">/* packed rules */</span>] },\n' +
+        '  { <span class="k">role</span>: <span class="s">"viewer"</span>, <span class="k">isTemporary</span>: <span class="s">true</span>,\n' +
+        '    <span class="k">temporaryAccessEndTime</span>: <span class="s">"…"</span> }\n' +
+        ']\n' +
+        '<span class="k">additionalPrivileges</span>: []',
+      rule:
+        '<span class="c">// one rule from the custom role</span>\n' +
+        '{\n' +
+        '  <span class="k">subject</span>: <span class="s">"secrets"</span>,\n' +
+        '  <span class="k">action</span>:  [<span class="s">"describeSecret"</span>, <span class="s">"readValue"</span>],\n' +
+        '  <span class="k">conditions</span>: {\n' +
+        '    <span class="k">environment</span>: <span class="s">"prod"</span>,\n' +
+        '    <span class="k">secretPath</span>:  { <span class="k">$glob</span>: <span class="s">"/backend/**"</span> }\n' +
+        '  }\n' +
+        '}',
+      check:
+        '<span class="c">// the question asked of the ability</span>\n' +
+        'permission.can(<span class="s">"describeSecret"</span>, subject(<span class="s">"secrets"</span>, {\n' +
+        '  <span class="k">environment</span>: <span class="s">"prod"</span>,\n' +
+        '  <span class="k">secretPath</span>:  <span class="s">"/backend"</span>,\n' +
+        '  <span class="k">secretName</span>:  <span class="s">"DB_PASSWORD"</span>,\n' +
+        '  <span class="k">secretTags</span>:  []\n' +
+        '}))',
+      allowedResp:
+        '<span class="c">// 200 (abridged)</span>\n' +
+        '<span class="k">secret</span>: {\n' +
+        '  <span class="k">secretKey</span>:   <span class="s">"DB_PASSWORD"</span>,\n' +
+        '  <span class="k">secretValue</span>: <span class="s">"p@ssW0rd-9f2"</span>,\n' +
+        '  <span class="k">secretValueHidden</span>: <span class="s">false</span>\n' +
+        '}',
+      deniedResp:
+        '<span class="c">// 403</span>\n' +
+        '<span class="k">error</span>:   <span class="s">"PermissionDenied"</span>\n' +
+        '<span class="k">message</span>: <span class="s">"You are not allowed to describeSecret on secrets"</span>\n' +
+        '<span class="k">details</span>: [ <span class="c">/* the rules that apply to this action */</span> ]\n' +
+        '<span class="k">reqId</span>:   <span class="s">"req-…"</span>'
+    },
+    codeNotes: {
+      login: "Field names from the real route; the values are made up.",
+      claims: "Claim names from signIdentityAccessToken; the values are made up.",
+      verdict: "Key names abridged; the version is seeded with a timestamp.",
+      permData: "Shape from permissionDAL.getPermission; the roles are made up.",
+      rule: "A made-up custom role rule in CASL's raw form."
+    },
+
+    overview: {
+      title: "Overview", nodes: ["service", "uaLogin", "authHook", "secretSvc", "permSvc", "casl", "allowed", "denied"],
+      edges: ["e-svc-login", "e-login-svc", "e-svc-hook", "e-hook-secret", "e-secret-perm", "e-perm-casl", "e-casl-allowed", "e-casl-denied"],
+      dots: ["authHook", "casl"], card: "rule", cardTitle: "What a permission looks like",
+      html: '<ul><li>A machine identity trades a client ID and secret for a <b>signed JWT</b>. Nothing is stored for the token itself.</li>' +
+        '<li>On every request, an <b>auth hook</b> verifies the JWT, checks it hasn\'t been revoked, and attaches the identity as <code>req.permission</code>.</li>' +
+        '<li>The service handling the request asks the <b>permission service</b> for the identity\'s CASL ability on the project, served from Redis most of the time.</li>' +
+        '<li>The ability answers one question for one secret: <b style="color:var(--teal-ink)">allowed</b>, and the value is returned, or denied, and the caller gets a 403.</li></ul>' +
+        '<p>Press <b>Next</b> to follow one request for <code>DB_PASSWORD</code>.</p>'
+    },
+
+    steps: [
+      {
+        id: "loggedIn", title: "Logged in with a client secret", clock: "once per token", nodes: ["service", "uaLogin", "pg", "redis"], edges: ["e-svc-login", "e-login-pg", "e-login-redis"], dot: "uaLogin", card: "login", cardTitle: "The login",
+        html: '<ul><li>The API looks up the Universal Auth config by client ID, checks the caller\'s IP against the client secret\'s trusted IPs, and checks a lockout counter in Redis.</li>' +
+          '<li>It loads the unrevoked client secrets that share the first 4 characters, then <b>compares the secret against each stored hash</b>. The plaintext is never stored.</li>' +
+          '<li>An expired secret, or one past its usage limit, is revoked on the spot and the login fails.</li>' +
+          '<li>Wrong secrets count towards a lockout, if lockout is enabled: past the threshold, the method is locked for a configured duration.</li></ul>' +
+          '<div class="refs"><code>identity-universal-auth-router.ts:31-110</code> <code>identity-ua-service.ts:113-352</code></div>'
+      },
+      {
+        id: "tokenIssued", title: "Signed as a stateless JWT", clock: "same request", nodes: ["uaLogin", "service"], edges: ["e-login-svc"], dot: "service", card: "claims", cardTitle: "The token's claims",
+        html: '<ul><li>The access token is a JWT signed with the server\'s <code>AUTH_SECRET</code>, expiring after the configured TTL.</li>' +
+          '<li><b>No database row is written for it.</b> Only Token Auth tokens get a row at issuance; every other method writes one lazily, if the token is ever revoked.</li>' +
+          '<li>If the token has a usage limit, a counter of remaining uses is set in Redis.</li>' +
+          '<li>A <code>LOGIN_IDENTITY_UNIVERSAL_AUTH</code> audit event records the identity, the client secret and the token ID.</li></ul>' +
+          '<details><summary>Why not store every token?</summary><ul><li>A machine identity can log in constantly. A stateless token means a request never needs a token lookup in Postgres, only a cached revocation check.</li><li>The cost is that revocation has to be checked separately, which the next steps show.</li></ul></details>' +
+          '<div class="refs"><code>identity-access-token-service.ts:326-403</code> <code>identity-access-token-fns.ts:386-421</code></div>'
+      },
+      {
+        id: "tokenSent", title: "Sent as a bearer token", clock: "every request", nodes: ["service", "authHook"], edges: ["e-svc-hook"], dot: "authHook", card: "header", cardTitle: "The request",
+        html: '<ul><li>A Fastify <code>onRequest</code> hook runs before every route. A short list of paths that authenticate themselves (login, gateway and relay enrollment, some webhooks) is skipped.</li>' +
+          '<li>It verifies the JWT\'s signature with <code>AUTH_SECRET</code> and expiry, then <b>switches on the <code>authTokenType</code> claim</b> to decide what kind of caller this is.</li>' +
+          '<li>A token starting with <code>st.</code> is a service token, and an <code>x-api-key</code> header is an API key. Both are deprecated.</li></ul>' +
+          '<div class="refs"><code>inject-identity.ts:140-232</code> <code>inject-identity.ts:256-330</code></div>'
+      },
+      {
+        id: "tokenValidated", title: "Checked against revocations", clock: "every request, mostly from Redis", nodes: ["authHook", "redis", "pg"], edges: ["e-hook-redis"], dot: "redis", card: "verdict", cardTitle: "The cached verdicts",
+        html: '<ul><li>A valid signature is not enough: the token, its client secret or its auth method may have been revoked. The hook asks for a <b>cached verdict per token</b>, kept about 10 minutes.</li>' +
+          '<li>A cached allow is only trusted while it carries the identity\'s current version number. Revoking anything bumps that number, so <b>every cached allow for the identity goes stale at once</b>.</li>' +
+          '<li>On a miss, it reads revocation markers from Postgres and checks the identity is still an active member of the org.</li>' +
+          '<li>The same step decrements the usage counter, if there is one, and checks the trusted IPs for the auth method (cached 5 minutes).</li></ul>' +
+          '<div class="callout note"><strong>If Redis is down</strong><span>The check falls back to Postgres on every request rather than failing.</span></div>' +
+          '<div class="refs"><code>identity-access-token-service.ts:185-322</code> <code>identity-access-token-service.ts:442-567</code> <code>keystore.ts:291-294</code></div>'
+      },
+      {
+        id: "actorAttached", title: "Turned into an actor", clock: "every request", nodes: ["authHook", "secretSvc"], edges: ["e-hook-secret"], dot: "secretSvc", card: "actor", cardTitle: "What every service receives",
+        html: '<ul><li>The hook sets <code>req.auth</code>, and a second hook flattens it into <code>req.permission</code>: actor type, ID and org. <b>Services only ever see this</b>, never the token.</li>' +
+          '<li>The route then runs <code>verifyAuth([JWT, IDENTITY_ACCESS_TOKEN])</code>. A caller using an auth mode the route doesn\'t list gets a 403 here, before the handler runs.</li></ul>' +
+          '<div class="callout note"><strong>Authenticated is not authorized</strong><span>Up to here, Infisical only knows who is calling. Nothing has looked at a project or a secret yet.</span></div>' +
+          '<div class="refs"><code>inject-permission.ts</code> <code>verify-auth.ts</code></div>'
+      },
+      {
+        id: "permissionLoaded", title: "Permissions loaded, mostly from cache", clock: "≤ 10 s stale, 1 DB read after", nodes: ["secretSvc", "permSvc", "redis", "pg"], edges: ["e-secret-perm", "e-perm-redis", "e-perm-pg"], dots: ["redis", "pg"], card: "permData", cardTitle: "What gets loaded",
+        html: '<ul><li>The secret service calls <code>getProjectPermission</code> with the actor and the project. It checks the project belongs to the actor\'s org and is the right product type.</li>' +
+          '<li>Within one request, the same check is computed once. Across requests, a Redis <b>marker</b> lasts 10 s: while it exists, the cached data is used with no database reads.</li>' +
+          '<li>After that, one query computes a <b>fingerprint</b> of the actor\'s memberships, roles, privileges and identity metadata. If it matches the cached data (kept 10 minutes), the data is reused; if not, it\'s fetched again.</li>' +
+          '<li>Memberships include ones inherited through groups. No membership at all is a 403 here.</li></ul>' +
+          '<div class="callout warn"><span>So a role change can take <b>up to 10 seconds</b> to apply to a busy identity, until the marker expires.</span></div>' +
+          '<div class="refs"><code>permission-service.ts:646-789</code> <code>with-cache.ts:125-200</code> <code>permission-dal.ts:986-1090</code></div>'
+      },
+      {
+        id: "abilityBuilt", title: "Built into a CASL ability", clock: "in memory", nodes: ["permSvc", "casl"], edges: ["e-perm-casl"], dot: "casl", card: "rule", cardTitle: "One rule in the ability",
+        html: '<ul><li>Each active role becomes a list of rules: built-in roles have fixed lists, custom roles and additional privileges carry their own. Temporary grants past their end time are dropped on every request, not when the cache refreshes.</li>' +
+          '<li>Allow rules go first and deny rules after. <b>CASL gives the last matching rule precedence</b>, so a deny overrides an allow, and folder-scoped grants, appended last, override both at their folder.</li>' +
+          '<li>Rules can reference <code>{{identity.id}}</code>, identity metadata and auth claims, which are filled in before the ability is built.</li>' +
+          '<li>Conditions are Mongo-style queries plus <code>$glob</code>, so a secret path like <code>/backend/**</code> matches every folder under it.</li></ul>' +
+          '<div class="refs"><code>permission-service.ts:160-207</code> <code>permission-service.ts:820-861</code> <code>lib/casl/index.ts</code></div>'
+      },
+      {
+        id: "checked", title: "Asked about one secret", clock: "in memory", nodes: ["secretSvc", "casl"], edges: ["e-secret-perm", "e-perm-casl"], dot: "casl", card: "check", cardTitle: "The question",
+        html: '<ul><li>After fetching the secret, the service asks whether the actor may <code>describeSecret</code> on it, passing its environment, path, name and tags. Rules can depend on any of those.</li>' +
+          '<li>Reading the value is a <b>separate action</b>, <code>readValue</code>. A caller that can describe the secret but not read its value gets the secret back with the value hidden, not a 403.</li>' +
+          '<li>The older combined <code>read</code> action still grants both.</li></ul>' +
+          '<details><summary>Why check after fetching?</summary><ul><li>The rule can depend on the secret\'s tags, which are only known once it\'s loaded.</li></ul></details>' +
+          '<div class="refs"><code>secret-v2-bridge-service.ts:1975-2160</code> <code>permission-fns.ts:37-84</code></div>'
+      },
+      {
+        id: "allowed", title: "Allowed and returned", clock: "end of the request", branch: "allow", nodes: ["casl", "allowed", "service"], edges: ["e-casl-allowed", "e-allowed-svc"], dot: "service", card: "allowedResp", cardTitle: "The response",
+        html: '<ul><li>With both permissions, the value is decrypted with the project\'s data key and returned.</li>' +
+          '<li>Any secret references in the value are only expanded if the caller can read the referenced secrets too.</li></ul>' +
+          '<div class="refs"><code>secret-v2-bridge-service.ts:2078-2100</code></div>'
+      },
+      {
+        id: "denied", title: "Or denied with the rules", clock: "end of the request", nodes: ["casl", "denied"], edges: ["e-casl-denied"], dot: "denied", card: "deniedResp", cardTitle: "The 403",
+        html: '<ul><li>A failed check throws CASL\'s <code>ForbiddenError</code>. The global error handler turns it into a 403 with <code>error: "PermissionDenied"</code>.</li>' +
+          '<li><b>The response lists the rules that apply to the action</b>, so the caller can see which conditions didn\'t match.</li></ul>' +
+          '<div class="callout note"><strong>Different errors, different layers</strong><span>A bad signature or expired JWT is a 403 <code>TokenError</code>, a revoked token is a 401 from the revocation check, a disallowed auth mode is a 403 from <code>verifyAuth</code>, no project membership is a 403 from the permission service, and a failed rule is this 403.</span></div>' +
+          '<div class="refs"><code>error-handler.ts:270-276</code> <code>error-handler.ts:317-330</code> <code>error-handler.ts:379-397</code></div>'
+      }
+    ],
+
+    glossary: [
+      { term: "Universal Auth", match: /\bUniversal Auth\b/i, def: "A machine identity login method: a client ID and client secret, exchanged for a short-lived access token." },
+      { term: "Machine identity", match: /\bmachine identit(y|ies)\b/i, def: "A non-human actor (a service, a CI job) with its own roles in projects, authenticated by one or more auth methods." },
+      { term: "CASL", match: /\bCASL\b/, def: "The permission library behind Infisical's roles. An ability is a list of rules; can() checks one action on one subject." },
+      { term: "Ability", match: /\bability\b/i, def: "The CASL object built from an actor's rules for one project. It answers can or cannot for an action and subject." },
+      { term: "Fingerprint", match: /\bfingerprint\b/i, def: "A hash of the rows that decide an actor's permissions. If it hasn't changed, cached permissions are still valid." },
+      { term: "Additional privilege", match: /\badditional privileges?\b/i, def: "Extra rules granted to one user or identity in a project on top of their roles, optionally temporary." },
+      { term: "AUTH_SECRET", match: /\bAUTH_SECRET\b/, def: "The server secret used to sign and verify Infisical's JWTs." },
+      { term: "JWT", match: /\bJWT\b/, def: "A signed token carrying claims. The server can verify it without a database lookup." }
+    ]
+  };
+</script>
+
+<!-- Brand mark shown in the diagram legend when DOC.logo is true -->
+<script>
+  var LOGO = '<svg class="brand-logo" viewBox="0 0 30 30" role="img" aria-label="Infisical">' +
+    '<text x="15" y="21" text-anchor="middle" font-size="20" font-weight="700" font-family="var(--font)" fill="currentColor">∞</text>' +
+    "</svg>";
+</script>
+
+<!-- ============ ENGINE: generic, normally left unchanged ============ -->
+<script>
+  (function () {
+    "use strict";
+    var D = window.DOC, SVGNS = "http://www.w3.org/2000/svg", params = new URLSearchParams(location.search);
+    var errors = [], warnings = [];
+    var errBox = document.createElement("pre");
+    errBox.className = "doc-errors"; errBox.id = "doc-errors"; errBox.hidden = true;
+    var warnBox = document.createElement("pre");
+    warnBox.id = "doc-warnings"; warnBox.hidden = true;
+    document.body.append(errBox, warnBox);
+    function report(msg) {
+      errors.push(msg); console.error("[doc] " + msg);
+      errBox.textContent = errors.join("\n"); errBox.hidden = false;
+      document.documentElement.setAttribute("data-doc-status", "error");
+    }
+    function warn(msg) { warnings.push(msg); console.warn("[doc] " + msg); warnBox.textContent = warnings.join("\n"); }
+    window.addEventListener("error", function (e) { report("Runtime error: " + e.message + " (line " + e.lineno + ")"); });
+
+    function el(tag, attrs, text) {
+      var e = document.createElementNS(SVGNS, tag);
+      for (var k in attrs) if (attrs[k] != null) e.setAttribute(k, attrs[k]);
+      if (text != null) e.textContent = text;
+      return e;
+    }
+    function h(tag, cls, html) {
+      var e = document.createElement(tag);
+      if (cls) e.className = cls;
+      if (html != null) e.innerHTML = html;
+      return e;
+    }
+    function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+    function toneOf(b) { return b && D.branches && D.branches[b] ? D.branches[b].tone : null; }
+
+    /* ---------- Validation ---------- */
+    var KINDS = ["compute", "store", "buffer", "endpoint", "consumer"];
+    var NODE = {}, EDGE = {}, EXP = {};
+    (D.nodes || []).forEach(function (n) { NODE[n.id] = n; });
+    (D.edges || []).forEach(function (e) { EDGE[e.id] = e; });
+    (D.expansions || []).forEach(function (x) { EXP[x.id] = x; });
+    var STEPS = D.steps || [], OVERVIEW = D.overview || { title: "Overview", nodes: [], edges: [], html: "" };
+    function stepIndex(ref) {
+      if (typeof ref === "number") return ref;
+      for (var i = 0; i < STEPS.length; i++) if (STEPS[i].id === ref) return i;
+      return -2;
+    }
+    function validate() {
+      var seen = {};
+      (D.nodes || []).forEach(function (n) {
+        if (seen[n.id]) report('Duplicate node id "' + n.id + '"'); seen[n.id] = 1;
+        if (KINDS.indexOf(n.kind) < 0) report('Node "' + n.id + '" has unknown kind "' + n.kind + '"');
+        if (!D.accounts[n.a]) report('Node "' + n.id + '" has unknown account "' + n.a + '"');
+        if (n.b && !D.branches[n.b]) report('Node "' + n.id + '" has unknown branch "' + n.b + '"');
+        if (n.step != null && stepIndex(n.step) < 0) report('Node "' + n.id + '" points at unknown step "' + n.step + '"');
+      });
+      (D.edges || []).forEach(function (e) {
+        if (!NODE[e.from] || !NODE[e.to]) report('Edge "' + e.id + '" connects unknown nodes ' + e.from + " -> " + e.to);
+        if (e.b && !D.branches[e.b]) report('Edge "' + e.id + '" has unknown branch "' + e.b + '"');
+      });
+      [OVERVIEW].concat(STEPS).forEach(function (s, i) {
+        var name = 'Step "' + (s.id || s.title || i) + '"';
+        (s.nodes || []).forEach(function (id) { if (!NODE[id]) report(name + " lists unknown node " + id); });
+        (s.edges || []).forEach(function (id) { if (!EDGE[id]) report(name + " lists unknown edge " + id); });
+        (s.dots || (s.dot ? [s.dot] : [])).forEach(function (d) { if (typeof d === "string" && !NODE[d]) report(name + " moves a dot to unknown node " + d); });
+        if (s.card && !(D.code || {})[s.card]) report(name + ' uses unknown code card "' + s.card + '"');
+        if (s.branch && !D.branches[s.branch]) report(name + ' has unknown branch "' + s.branch + '"');
+      });
+      (D.expansions || []).forEach(function (x) {
+        (x.steps || []).forEach(function (r) { if (stepIndex(r) < 0) report('Expansion "' + x.id + '" refers to unknown step ' + r); });
+      });
+      (D.glossary || []).forEach(function (g) { if (!(g.match instanceof RegExp)) report('Glossary entry "' + g.term + '" needs a RegExp match'); });
+    }
+    validate();
+
+    /* ---------- Tooltip (instant; native SVG titles are slow and tiny) ---------- */
+    var tip = h("div", "tip"); tip.hidden = true; document.body.appendChild(tip);
+    document.addEventListener("mousemove", function (e) {
+      var t = e.target.closest ? e.target.closest("[data-tip]") : null;
+      if (!t) { tip.hidden = true; return; }
+      var host = document.fullscreenElement || document.body;
+      if (tip.parentNode !== host) host.appendChild(tip);
+      tip.textContent = t.getAttribute("data-tip"); tip.hidden = false;
+      tip.style.left = Math.max(8, Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 8)) + "px";
+      tip.style.top = Math.min(e.clientY + 18, window.innerHeight - tip.offsetHeight - 8) + "px";
+    });
+
+    /* ---------- Glossary ---------- */
+    var GLOSS = D.glossary || [];
+    function glossFor(text) {
+      for (var i = 0; i < GLOSS.length; i++) if (GLOSS[i].match.test(text)) return GLOSS[i].def;
+      return null;
+    }
+    function glossify(root) {
+      var used = {}, list = [];
+      var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode: function (n) {
+          for (var q = n.parentNode; q && q !== root; q = q.parentNode) {
+            if (/^(CODE|A|PRE|H1|H2|H3|H4|H5|BUTTON|DT)$/.test(q.tagName) || (q.classList && q.classList.contains("gl"))) return NodeFilter.FILTER_REJECT;
+          }
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      });
+      while (walker.nextNode()) list.push(walker.currentNode);
+      list.forEach(function (cur) {
+        while (cur) {
+          var best = null;
+          GLOSS.forEach(function (g, gi) {
+            if (used[gi]) return;
+            var m = new RegExp(g.match.source, g.match.flags.replace("g", "")).exec(cur.nodeValue);
+            if (m && (!best || m.index < best.m.index)) best = { m: m, gi: gi };
+          });
+          if (!best) break;
+          used[best.gi] = 1;
+          var mid = cur.splitText(best.m.index), rest = mid.splitText(best.m[0].length);
+          var sp = document.createElement("span");
+          sp.className = "gl"; sp.tabIndex = 0; sp.setAttribute("data-def", GLOSS[best.gi].def); sp.textContent = mid.nodeValue;
+          mid.parentNode.replaceChild(sp, mid);
+          cur = rest;
+        }
+      });
+    }
+    document.querySelectorAll("[data-glossify]").forEach(glossify);
+    var gList = document.getElementById("glossary-list");
+    if (gList && GLOSS.length) {
+      var dl = h("dl", "gloss");
+      GLOSS.slice().sort(function (a, b) { return a.term.localeCompare(b.term); }).forEach(function (g) {
+        dl.append(h("dt", null, esc(g.term)), h("dd", null, esc(g.def)));
+      });
+      gList.appendChild(dl);
+    }
+
+    /* ---------- Table of contents ---------- */
+    var toc = document.querySelector("nav.toc ul");
+    if (toc) {
+      var secs = document.querySelectorAll("section[data-toc]");
+      if (secs.length < 2) toc.parentNode.remove();
+      else secs.forEach(function (s) { var li = h("li"); li.innerHTML = '<a href="#' + s.id + '">' + esc(s.getAttribute("data-toc")) + "</a>"; toc.appendChild(li); });
+    }
+
+    /* ---------- Pipeline ---------- */
+    var svg = document.getElementById("pipeline"), fig = document.getElementById("journey-fig");
+    var go = function () { }, setAcct = function () { }, stepIdx = -1, acct = "all";
+    if (svg && fig) (function pipeline() {
+      var VB = D.viewBox || [1240, 560];
+      svg.setAttribute("viewBox", "0 0 " + VB[0] + " " + VB[1]);
+      svg.style.minWidth = Math.round(VB[0] * 0.82) + "px";
+      var $ = function (sel) { return fig.querySelector(sel); }, $$ = function (sel) { return fig.querySelectorAll(sel); };
+
+      var defs = el("defs", {});
+      [["muted", "var(--edge)"], ["acct", "var(--fg)"], ["brand", "var(--brand)"], ["teal", "var(--teal)"], ["blue", "var(--blue)"], ["fail", "var(--bad)"]].forEach(function (m) {
+        var mk = el("marker", { id: "ah-" + m[0], viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "7", markerHeight: "7", orient: "auto-start-reverse" });
+        mk.appendChild(el("path", { d: "M0 0 L10 5 L0 10 z", style: "fill:" + m[1] }));
+        defs.appendChild(mk);
+      });
+      svg.appendChild(defs);
+
+      (D.zones || []).forEach(function (z) {
+        var g = el("g", { "class": "zone" });
+        g.appendChild(el("rect", { x: z.x, y: z.y, width: z.w, height: z.h, rx: 12 }));
+        if (z.label) g.appendChild(el("text", { x: z.labelAt ? z.labelAt[0] : z.x + z.w / 2, y: z.labelAt ? z.labelAt[1] : z.y + 26, "text-anchor": "middle" }, z.label));
+        svg.appendChild(g);
+      });
+      (D.labels || []).forEach(function (l) { svg.appendChild(el("text", { "class": "zone-label", x: l.x, y: l.y, "text-anchor": l.anchor }, l.text)); });
+      (D.markers || []).forEach(function (m) {
+        var g = el("g", { "class": "marker" });
+        m.segments.forEach(function (s) { g.appendChild(el("line", { x1: s[0], y1: s[1], x2: s[2], y2: s[3] })); });
+        if (m.label) g.appendChild(el("text", { x: m.at[0], y: m.at[1] }, m.label));
+        svg.appendChild(g);
+      });
+
+      var edgeEls = {};
+      (D.edges || []).forEach(function (e) {
+        var g = el("g", { "class": "edge" + (e.dashed ? " dashed" : "") + (e.fail ? " fail" : ""), "data-tone": toneOf(e.b) });
+        var p = el("path", { d: e.d, "marker-end": "url(#ah-muted)" });
+        g.appendChild(p);
+        if (e.l) {
+          var tx = el("text", { x: e.lx, y: e.ly, "text-anchor": e.la || "middle" }, e.l);
+          var def = e.tip || (D.edgeTips || {})[e.l] || glossFor(e.l);
+          if (def) { tx.classList.add("gl-svg"); tx.setAttribute("data-tip", def); }
+          g.appendChild(tx);
+        }
+        if (e.l2) g.appendChild(el("text", { x: e.lx, y: e.ly + 24, "text-anchor": e.la || "middle" }, e.l2));
+        svg.appendChild(g);
+        edgeEls[e.id] = { g: g, p: p, e: e };
+      });
+
+      function center(n) { return n.cx != null ? [n.cx, n.cy] : [n.x + (n.kind === "buffer" ? (n.w - 12) / 2 : n.w / 2), n.y + n.h / 2]; }
+      function bottom(n) { return n.cx != null ? n.cy + n.r : n.y + n.h; }
+      function box(n) { return n.cx != null ? [n.cx - n.r, n.cy - n.r, 2 * n.r, 2 * n.r] : [n.x, n.y, n.w, n.h]; }
+
+      var nodeEls = {}, annEls = {};
+      (D.nodes || []).forEach(function (n) {
+        var acctLabel = D.accounts[n.a] ? D.accounts[n.a].label : n.a;
+        var g = el("g", { "class": "node", tabindex: "0", role: "button", "data-kind": n.kind, "data-tone": toneOf(n.b) });
+        var tipText = n.t + " · " + acctLabel + (n.a === "customer" || n.a === "external" ? "" : " account");
+        var def = n.tip || glossFor(n.t);
+        if (def) tipText += ". " + def;
+        g.setAttribute("data-tip", tipText); g.setAttribute("aria-label", tipText);
+        if (n.tone) g.classList.add("tone-" + n.tone);
+        if (n.fail) g.classList.add("fail");
+        if (n.cx != null) {
+          g.appendChild(el("circle", { "class": "shape", cx: n.cx, cy: n.cy, r: n.r }));
+        } else if (n.kind === "buffer") {
+          var e = 12, x = n.x, y = n.y, w = n.w, hh = n.h;
+          g.appendChild(el("path", { "class": "shape", d: "M" + (x + e) + " " + y + " H" + (x + w - e) + " A" + e + " " + hh / 2 + " 0 0 1 " + (x + w - e) + " " + (y + hh) + " H" + (x + e) + " A" + e + " " + hh / 2 + " 0 0 1 " + (x + e) + " " + y + " Z" }));
+          g.appendChild(el("ellipse", { "class": "shape", cx: x + w - e, cy: y + hh / 2, rx: e, ry: hh / 2 }));
+        } else if (n.vcyl) {
+          var ev = 8;
+          g.appendChild(el("path", { "class": "shape", d: "M" + n.x + " " + (n.y + ev) + " V" + (n.y + n.h - ev) + " A" + n.w / 2 + " " + ev + " 0 0 0 " + (n.x + n.w) + " " + (n.y + n.h - ev) + " V" + (n.y + ev) + " A" + n.w / 2 + " " + ev + " 0 0 0 " + n.x + " " + (n.y + ev) + " Z" }));
+          g.appendChild(el("ellipse", { "class": "shape", cx: n.x + n.w / 2, cy: n.y + ev, rx: n.w / 2, ry: ev }));
+        } else {
+          g.appendChild(el("rect", { "class": "shape", x: n.x, y: n.y, width: n.w, height: n.h, rx: 8 }));
+        }
+        var c = center(n);
+        if (n.inner) {
+          g.appendChild(el("text", { "class": "t-title", x: c[0], y: c[1] - 14, "text-anchor": "middle" }, n.t));
+          g.appendChild(el("rect", { "class": "inner", x: c[0] - 54, y: c[1] - 2, width: 108, height: 28, rx: 12 }));
+          g.appendChild(el("text", { "class": "inner-t", x: c[0], y: c[1] + 16, "text-anchor": "middle" }, n.inner));
+        } else if (n.lanes) {
+          g.appendChild(el("text", { "class": "t-title", x: c[0], y: n.y + 22, "text-anchor": "middle" }, n.t));
+          for (var li = 0; li < n.lanes; li++) {
+            var ly = n.y + 32 + li * 22;
+            g.appendChild(el("rect", { "class": "lane" + (li + 1 === n.hotLane ? " hot" : ""), x: n.x + 16, y: ly, width: n.w - 44, height: 16, rx: 3 }));
+            g.appendChild(el("text", { "class": "lane-t", x: n.x + 22, y: ly + 11.5 }, (n.laneLabel || "shard") + " " + (li + 1)));
+          }
+          if (n.s) g.appendChild(el("text", { "class": "t-sub", x: c[0], y: n.y + n.h - 10, "text-anchor": "middle" }, n.s));
+        } else {
+          var ty = n.s ? c[1] - 2 + (n.vcyl ? 5 : 0) : c[1] + 4 + (n.vcyl ? 4 : 0);
+          g.appendChild(el("text", { "class": "t-title", x: c[0], y: ty, "text-anchor": "middle" }, n.t));
+          if (n.s) g.appendChild(el("text", { "class": "t-sub", x: c[0], y: ty + 15, "text-anchor": "middle" }, n.s));
+        }
+        svg.appendChild(g);
+        nodeEls[n.id] = { g: g, n: n };
+        var anns = [], by = bottom(n) + 16;
+        (n.notes || []).forEach(function (t, i) { anns.push(el("text", { "class": "ann", x: c[0], y: by + i * 13, "text-anchor": "middle" }, t)); });
+        if (n.strong) anns.push(el("text", { "class": "ann strong", x: c[0], y: by + (n.notes ? n.notes.length * 13 : 0), "text-anchor": "middle" }, n.strong));
+        if (n.above) anns.push(el("text", { "class": "ann", x: c[0], y: (n.cx != null ? n.cy - n.r : n.y) - 9, "text-anchor": "middle" }, n.above));
+        anns.forEach(function (a) { svg.appendChild(a); });
+        annEls[n.id] = anns;
+      });
+
+      var expEls = {};
+      (D.expansions || []).forEach(function (x) {
+        var g = el("g", { "class": "xp" + (x.dashed ? " dashed" : ""), "data-tone": x.tone || "brand" });
+        var b = x.box;
+        g.appendChild(el("rect", { "class": "xp-box", x: b.x, y: b.y, width: b.w, height: b.h, rx: 8 }));
+        var ty = b.y + 18;
+        if (x.title) { g.appendChild(el("text", { "class": "xp-t", x: b.x + b.w / 2, y: ty, "text-anchor": "middle" }, x.title)); ty += 13; }
+        if (x.sub) { g.appendChild(el("text", { "class": "xp-s", x: b.x + b.w / 2, y: ty, "text-anchor": "middle" }, x.sub)); ty += 4; }
+        var oy = ty + 7;
+        (x.rows || []).forEach(function (r) {
+          if (r.head) { g.appendChild(el("text", { "class": "xp-h", x: b.x + 8, y: oy + 10 }, r.head)); oy += 14; return; }
+          var rg = el("g", { "class": "xp-row " + (r.cls || "") });
+          var rx = r.x != null ? r.x : b.x + 7, ry = r.y != null ? r.y : oy, rw = r.w || b.w - 14, rh = r.h || (r.title ? 22 + 14 * (r.lines || []).length : 16);
+          rg.appendChild(el("rect", { x: rx, y: ry, width: rw, height: rh, rx: r.title ? 6 : 3 }));
+          if (r.title) {
+            rg.appendChild(el("text", { "class": "xp-rt", x: rx + 10, y: ry + 16 }, r.title));
+            (r.lines || []).forEach(function (l, i) { rg.appendChild(el("text", { "class": "xp-rd", x: rx + 10, y: ry + 31 + i * 14 }, l)); });
+          } else {
+            rg.appendChild(el("text", { x: rx + 6, y: ry + 11.5 }, r.text));
+          }
+          g.appendChild(rg);
+          if (r.y == null) oy += rh + 2;
+        });
+        (x.arrows || []).forEach(function (a) { g.appendChild(el("path", { "class": "xp-ln", d: "M" + a[0] + " " + a[1] + " L" + a[2] + " " + a[3], "marker-end": "url(#ah-muted)" })); });
+        g.style.display = "none";
+        svg.appendChild(g);
+        expEls[x.id] = { g: g, x: x, on: false };
+        if (x.box.y + x.box.h < oy - 2) warn('Expansion "' + x.id + '" rows overflow its box (needs height ' + Math.ceil(oy - x.box.y + 4) + ")");
+      });
+
+      var dotEls = [0, 1, 2, 3, 4, 5].map(function () {
+        var d = el("circle", { "class": "dot", r: 7, cx: 0, cy: 0 });
+        d.style.opacity = "0"; svg.appendChild(d); return d;
+      });
+      function dotTarget(t) {
+        if (Array.isArray(t)) return { p: t, tone: null };
+        var over = null;
+        Object.keys(expEls).forEach(function (k) { if (expEls[k].on && expEls[k].x.dotAt && expEls[k].x.dotAt[t]) over = expEls[k].x.dotAt[t]; });
+        var n = NODE[t];
+        if (over) return { p: over, tone: toneOf(n.b) };
+        if (n.dot) return { p: n.dot, tone: toneOf(n.b) };
+        var p;
+        if (n.cx != null) p = [n.cx + n.r * 0.7, n.cy - n.r * 0.7];
+        else if (n.lanes) p = [n.x + n.w - 46, n.y + 40 + ((n.hotLane || 1) - 1) * 22];
+        else if (n.kind === "buffer") p = [n.x + n.w - 34, n.y + 14];
+        else p = [n.x + n.w - 12, n.y + 12];
+        return { p: p, tone: toneOf(n.b) };
+      }
+
+      var dotsWrap = $(".step-dots");
+      STEPS.forEach(function (s, i) {
+        var b = h("button", "step-dot", String(i + 1));
+        b.type = "button"; b.title = s.title; b.setAttribute("aria-label", "Step " + (i + 1) + ": " + s.title);
+        b.addEventListener("click", function () { go(i); });
+        dotsWrap.appendChild(b);
+      });
+      function firstStepFor(id) {
+        if (NODE[id].step != null) return stepIndex(NODE[id].step);
+        for (var i = 0; i < STEPS.length; i++) if ((STEPS[i].nodes || []).indexOf(id) >= 0) return i;
+        return -1;
+      }
+      Object.keys(nodeEls).forEach(function (id) {
+        var g = nodeEls[id].g;
+        function jump() { var i = firstStepFor(id); if (i >= -1) go(i); }
+        g.addEventListener("click", jump);
+        g.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); jump(); } });
+      });
+
+      var sel = document.getElementById("acct");
+      if (sel) {
+        sel.appendChild(new Option("Show all", "all"));
+        Object.keys(D.accounts).forEach(function (k) { if (D.accounts[k].select !== false) sel.appendChild(new Option(D.accounts[k].label, k)); });
+        sel.addEventListener("change", function () { setAcct(this.value); });
+      }
+      var legend = $(".legend");
+      if (legend) {
+        var used = {};
+        (D.nodes || []).forEach(function (n) { used[n.kind === "store" ? "compute" : n.kind] = 1; });
+        var names = { compute: "compute or store", buffer: "buffer", endpoint: "producer", consumer: "consumer" };
+        Object.keys(names).forEach(function (k) { if (used[k]) legend.appendChild(h("span", null, '<i class="lg ' + k + '"></i>' + names[k])); });
+        Object.keys(D.branches || {}).forEach(function (k) { legend.appendChild(h("span", null, '<i class="lg path" data-tone="' + D.branches[k].tone + '"></i>' + esc(D.branches[k].label))); });
+        if ((D.edges || []).some(function (e) { return e.fail; })) legend.appendChild(h("span", null, '<i class="lg fail"></i>failure path'));
+        if (D.logo) legend.insertAdjacentHTML("beforeend", LOGO);
+      }
+
+      function render() {
+        var s = stepIdx < 0 ? OVERVIEW : STEPS[stepIdx], all = acct === "all";
+        var sNodes = s.nodes || [], sEdges = s.edges || [];
+        Object.keys(nodeEls).forEach(function (id) {
+          var g = nodeEls[id].g, n = nodeEls[id].n, active = sNodes.indexOf(id) >= 0;
+          var dim = all ? !!(s.branch && n.b && n.b !== s.branch && !active) : n.a !== acct;
+          g.classList.toggle("active", active && all);
+          g.classList.toggle("dim", dim);
+          g.classList.toggle("acct-hit", !all && n.a === acct);
+          annEls[id].forEach(function (a) { a.classList.toggle("dim", dim); });
+        });
+        Object.keys(edgeEls).forEach(function (id) {
+          var o = edgeEls[id], e = o.e, active = sEdges.indexOf(id) >= 0 && all;
+          var hit = !all && NODE[e.from].a === acct && NODE[e.to].a === acct;
+          o.g.classList.toggle("acct-hit", hit);
+          o.g.classList.toggle("active", active);
+          o.p.setAttribute("marker-end", "url(#ah-" + (active ? (e.fail ? "fail" : toneOf(e.b) || "brand") : hit ? "acct" : e.fail ? "fail" : "muted") + ")");
+          o.g.classList.toggle("dim", all ? !!(s.branch && e.b && e.b !== s.branch) : !hit);
+        });
+        Object.keys(expEls).forEach(function (k) {
+          var x = expEls[k].x, on = all && ((x.steps || []).some(function (r) { return stepIndex(r) === stepIdx; }) || (stepIdx < 0 && x.overview));
+          expEls[k].on = on; expEls[k].g.style.display = on ? "" : "none";
+        });
+        var targets = s.dots || (s.dot ? [s.dot] : []), prev = dotEls[0]._pos;
+        dotEls.forEach(function (d, i) {
+          var t = targets[i];
+          if (t == null || !all) { d.style.opacity = "0"; return; }
+          var dt = dotTarget(t), p = dt.p;
+          if (dt.tone) d.setAttribute("data-tone", dt.tone); else d.removeAttribute("data-tone");
+          if (d.style.opacity === "0") {
+            var from = prev || p;
+            d.style.transition = "none";
+            d.style.transform = "translate(" + from[0] + "px," + from[1] + "px)";
+            d.getBoundingClientRect();
+            d.style.transition = "";
+          }
+          d.style.opacity = "1";
+          d.style.transform = "translate(" + p[0] + "px," + p[1] + "px)";
+          d._pos = p;
+        });
+        var num = stepIdx < 0 ? "" : (stepIdx + 1) + ". ";
+        var st = $(".step-text");
+        st.innerHTML = '<div class="step-head"><h3>' + num + esc(s.title) + "</h3>" + (s.clock ? '<span class="clock">' + esc(s.clock) + "</span>" : "") + "</div>" + (s.html || "");
+        glossify(st);
+        $(".pres-title").textContent = num + s.title;
+        var body = $(".step-body");
+        body.classList.toggle("no-card", !s.card);
+        if (s.card) {
+          $(".card-title").textContent = s.cardTitle || "";
+          $(".card-code").innerHTML = D.code[s.card];
+          $(".card-note").textContent = s.cardNote || (D.codeNotes || {})[s.card] || "";
+        }
+        Array.prototype.forEach.call(dotsWrap.children, function (b, i) {
+          b.classList.toggle("done", i < stepIdx);
+          if (i === stepIdx) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
+        });
+        $$('[data-act="prev"]').forEach(function (b) { b.disabled = stepIdx < 0; });
+        $$('[data-act="next"]').forEach(function (b) { b.disabled = stepIdx === STEPS.length - 1; });
+        $('[data-act="overview"]').setAttribute("aria-pressed", String(stepIdx < 0));
+        $(".step-count").textContent = stepIdx < 0 ? "Overview" : "Step " + (stepIdx + 1) + " of " + STEPS.length;
+      }
+      go = function (i) { stepIdx = Math.max(-1, Math.min(STEPS.length - 1, i)); render(); };
+      setAcct = function (a) {
+        acct = D.accounts[a] ? a : "all";
+        if (sel) sel.value = acct;
+        var note = $(".acct-note");
+        note.hidden = acct === "all"; note.textContent = acct === "all" ? "" : D.accounts[acct].note || "";
+        document.querySelectorAll("#acct-table tr[data-acct]").forEach(function (tr) { tr.classList.toggle("hl", tr.getAttribute("data-acct") === acct); });
+        render();
+      };
+
+      $$('[data-act="overview"]').forEach(function (b) { b.addEventListener("click", function () { go(-1); }); });
+      $$('[data-act="prev"]').forEach(function (b) { b.addEventListener("click", function () { go(stepIdx - 1); }); });
+      $$('[data-act="next"]').forEach(function (b) { b.addEventListener("click", function () { go(stepIdx + 1); }); });
+      var presBtn = $('[data-act="present"]'), notesBtn = $('[data-act="notes"]');
+      document.addEventListener("keydown", function (e) {
+        if (/^(SELECT|INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
+        var presenting = fig.classList.contains("presenting");
+        if (!presenting && !fig.contains(e.target)) return;
+        if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); go(stepIdx + 1); }
+        if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); go(stepIdx - 1); }
+        if (e.key === "Escape" && presenting && !document.fullscreenElement) exitPresent();
+      });
+      function exitPresent() {
+        fig.classList.remove("presenting", "notes-on");
+        notesBtn.setAttribute("aria-pressed", "false");
+        presBtn.innerHTML = "&#x26F6; Present";
+        if (document.fullscreenElement) document.exitFullscreen().catch(function () { });
+      }
+      presBtn.addEventListener("click", function () {
+        if (fig.classList.contains("presenting")) { exitPresent(); return; }
+        fig.classList.add("presenting");
+        presBtn.textContent = "Exit";
+        if (fig.requestFullscreen) fig.requestFullscreen().catch(function () { });
+        fig.focus();
+      });
+      notesBtn.addEventListener("click", function () {
+        var on = !fig.classList.contains("notes-on");
+        fig.classList.toggle("notes-on", on); notesBtn.setAttribute("aria-pressed", String(on));
+      });
+      document.addEventListener("fullscreenchange", function () {
+        if (!document.fullscreenElement && fig.classList.contains("presenting")) exitPresent();
+      });
+
+      /* Account table: generated from accounts and nodes */
+      var at = document.getElementById("acct-table");
+      if (at) {
+        var rows = Object.keys(D.accounts).map(function (k) {
+          var names = (D.nodes || []).filter(function (n) { return n.a === k; }).map(function (n) { return esc(n.t); }).join(", ");
+          return '<tr data-acct="' + k + '"><td>' + esc(D.accounts[k].label) + "</td><td>" + names + "</td><td>" + esc((D.accounts[k].note || "").replace(/^[^:]+:\s*(.)/, function (m, c) { return c.toUpperCase(); })) + "</td></tr>";
+        }).join("");
+        at.innerHTML = "<table><thead><tr><th>Account</th><th>Runs</th><th>Notes</th></tr></thead><tbody>" + rows + "</tbody></table>";
+      }
+
+      /* Layout lint: overlapping node boxes and labels wider than their shape */
+      var ids = Object.keys(NODE);
+      ids.forEach(function (a, i) {
+        ids.slice(i + 1).forEach(function (b) {
+          var p = box(NODE[a]), q = box(NODE[b]);
+          if (p[0] < q[0] + q[2] && q[0] < p[0] + p[2] && p[1] < q[1] + q[3] && q[1] < p[1] + p[3]) warn('Nodes "' + a + '" and "' + b + '" overlap');
+        });
+        var n = NODE[a];
+        if (n.x + n.w > VB[0] || n.cx + n.r > VB[0] || n.y + n.h > VB[1] || n.cy + n.r > VB[1]) warn('Node "' + a + '" extends past the viewBox');
+      });
+      function lintText() {
+        Object.keys(nodeEls).forEach(function (id) {
+          var n = nodeEls[id].n, avail = (n.cx != null ? 2 * n.r * 0.86 : n.w - 10);
+          nodeEls[id].g.querySelectorAll(".t-title, .t-sub").forEach(function (t) {
+            if (t.getComputedTextLength() > avail) warn('Label "' + t.textContent + '" is wider than node "' + id + '"');
+          });
+        });
+      }
+
+      /* Sketch layer */
+      function sketchify() {
+        if (typeof rough === "undefined") return false;
+        var rc = rough.svg(svg), seed = 11;
+        function o() { return { roughness: 1.15, bowing: 0.9, seed: ++seed, stroke: "#000", strokeWidth: 1.5 }; }
+        function num(e, a) { return Number(e.getAttribute(a)); }
+        function draw(e) {
+          switch (e.tagName.toLowerCase()) {
+            case "rect": return rc.rectangle(num(e, "x"), num(e, "y"), num(e, "width"), num(e, "height"), o());
+            case "circle": return rc.circle(num(e, "cx"), num(e, "cy"), 2 * num(e, "r"), o());
+            case "ellipse": return rc.ellipse(num(e, "cx"), num(e, "cy"), 2 * num(e, "rx"), 2 * num(e, "ry"), o());
+            case "line": return rc.line(num(e, "x1"), num(e, "y1"), num(e, "x2"), num(e, "y2"), o());
+            case "path": return rc.path(e.getAttribute("d"), o());
+          }
+          return null;
+        }
+        svg.querySelectorAll(".node .shape, .node .lane, .node .inner, .zone rect, .marker line, .edge path, .xp-box, .xp-row rect, .xp-ln").forEach(function (e) {
+          var d = draw(e); if (!d) return;
+          var c = e.classList;
+          d.setAttribute("class", "rough " + (c.contains("lane") ? "lane-r" + (c.contains("hot") ? " hot" : "") : c.contains("inner") ? "inner-r" : c.contains("xp-box") ? "box-r" : c.contains("xp-ln") ? "ln-r" : ""));
+          d.querySelectorAll("path").forEach(function (p) { p.removeAttribute("stroke"); p.removeAttribute("fill"); p.removeAttribute("stroke-width"); });
+          e.parentNode.insertBefore(d, e.nextSibling);
+          e.classList.add("smooth");
+        });
+        return true;
+      }
+      var hasRough = sketchify(), sk = $('[data-act="sketch"]');
+      function setSketch(on) {
+        fig.classList.toggle("sketchy", on && hasRough);
+        document.documentElement.classList.toggle("clean", !on);
+        sk.setAttribute("aria-pressed", String(on));
+        try { localStorage.setItem("sketch", on ? "on" : "off"); } catch (e) { }
+      }
+      var saved = null;
+      try { saved = localStorage.getItem("sketch"); } catch (e) { }
+      setSketch(params.has("clean") ? false : saved !== "off");
+      sk.addEventListener("click", function () { setSketch(sk.getAttribute("aria-pressed") !== "true"); });
+      if (!hasRough) sk.hidden = true;
+
+      var startStep = params.has("step") ? Number(params.get("step")) - 1 : -1;
+      stepIdx = Math.max(-1, Math.min(STEPS.length - 1, isNaN(startStep) ? -1 : startStep));
+      setAcct(params.get("acct") || "all");
+      (document.fonts ? document.fonts.ready : Promise.resolve()).then(lintText);
+    })();
+
+    /* ---------- Batching simulation ---------- */
+    var SIMS = [];
+    document.querySelectorAll("[data-sim]").forEach(function (mount) {
+      var cfg = (D.sims || {})[mount.getAttribute("data-sim")];
+      if (!cfg) { report('No DOC.sims entry for data-sim="' + mount.getAttribute("data-sim") + '"'); return; }
+      try { SIMS.push(buildSim(mount, cfg)); } catch (e) { report("Simulation " + mount.getAttribute("data-sim") + ": " + e.message); }
+    });
+
+    function buildSim(mount, cfg) {
+      var ST = cfg.stages, ROWS = cfg.rows, DT = 0.1;
+      ROWS.forEach(function (r) { r.stages.forEach(function (s) { if (!ST[s]) throw new Error('row "' + r.id + '" uses unknown stage "' + s + '"'); }); });
+      (cfg.params || []).forEach(function (p) { if (!ST[p.stage]) throw new Error('param "' + p.label + '" uses unknown stage "' + p.stage + '"'); });
+      var order = [], next = {}, heads = [];
+      ROWS.forEach(function (r) {
+        r.stages.forEach(function (s, i) {
+          if (order.indexOf(s) < 0) { order.push(s); next[s] = []; }
+          var nx = r.stages[i + 1];
+          if (nx && next[s].indexOf(nx) < 0) next[s].push(nx);
+        });
+        if (heads.indexOf(r.stages[0]) < 0) heads.push(r.stages[0]);
+      });
+      var rate = cfg.rate.value, worstMode = false;
+      function worstFor(r) { return r.stages.reduce(function (t, s) { return t + (ST[s].delay != null ? ST[s].delay : ST[s].every || 0); }, 0); }
+
+      function fresh(randomPhase) {
+        var S = { t: 0, acc: 0, injected: false, st: {}, rows: {} };
+        order.forEach(function (id) {
+          var c = ST[id];
+          S.st[id] = { count: 0, mine: false, since: 0, t: c.every && randomPhase ? Math.random() * c.every : 0, q: [], flash: 0 };
+        });
+        ROWS.forEach(function (r) { S.rows[r.id] = { seg: {}, done: null, cur: null }; });
+        return S;
+      }
+      function enter(S, id) {
+        var s = S.st[id];
+        s.mine = true; s.since = S.t;
+        if (worstMode && ST[id].every) s.t = 0;
+        ROWS.forEach(function (r) { if (r.stages.indexOf(id) >= 0 && S.rows[r.id].done == null) S.rows[r.id].cur = id; });
+      }
+      function leave(S, id) {
+        var s = S.st[id];
+        ROWS.forEach(function (r) {
+          if (r.stages.indexOf(id) < 0 || S.rows[r.id].done != null) return;
+          S.rows[r.id].seg[id] = S.t - s.since;
+          if (r.stages[r.stages.length - 1] === id) { S.rows[r.id].done = S.t - cfg.inject; S.rows[r.id].cur = null; }
+        });
+        s.mine = false;
+      }
+      function pass(S, id, count, mine) {
+        var nx = next[id];
+        if (mine) leave(S, id);
+        nx.forEach(function (n) {
+          var c = ST[n], s = S.st[n];
+          if (c.delay != null) s.q.push([S.t + c.delay, count, mine]);
+          else s.count += count;
+          if (mine) enter(S, n);
+        });
+      }
+      function tick(S) {
+        S.t += DT;
+        S.acc += rate * DT;
+        var arrivals = Math.floor(S.acc); S.acc -= arrivals;
+        var inject = !S.injected && S.t >= cfg.inject;
+        heads.forEach(function (id) {
+          var c = ST[id], s = S.st[id];
+          if (c.delay != null) s.q.push([S.t + c.delay, arrivals, false]); else s.count += arrivals;
+          if (inject) { if (c.delay != null) s.q.push([S.t + c.delay, 0, true]); enter(S, id); }
+        });
+        if (inject) S.injected = true;
+        order.forEach(function (id) {
+          var c = ST[id], s = S.st[id];
+          if (c.delay != null) {
+            var out = 0, mine = false;
+            s.q = s.q.filter(function (it) { if (it[0] <= S.t) { out += it[1]; mine = mine || it[2]; return false; } return true; });
+            s.count = s.q.reduce(function (t, it) { return t + it[1]; }, 0);
+            if (out || mine) pass(S, id, out, mine);
+          } else {
+            s.t += DT;
+            if (s.t >= c.every - 1e-9 || s.count >= (c.max || Infinity)) {
+              var cnt = s.count, m = s.mine;
+              s.count = 0; s.t = 0; s.flash = 3;
+              pass(S, id, cnt, m);
+            }
+          }
+          if (s.flash) s.flash--;
+        });
+      }
+      function allDone(S) { return ROWS.every(function (r) { return S.rows[r.id].done != null; }); }
+      function runOnce() {
+        var S = fresh(true), cap = cfg.inject + 4 * Math.max.apply(null, ROWS.map(worstFor)) + 10;
+        while (!allDone(S) && S.t < cap) tick(S);
+        return S;
+      }
+
+      /* UI */
+      var maxLen = Math.max.apply(null, ROWS.map(function (r) { return r.stages.length; }));
+      mount.innerHTML =
+        '<div class="fig-bar"><div class="stepper">' +
+        '<button class="btn primary" type="button" data-s="play">&#9654; Play</button>' +
+        '<button class="btn" type="button" data-s="step">+1 s</button>' +
+        '<button class="btn" type="button" data-s="reset">Reset</button>' +
+        '<select class="sel" data-s="speed" aria-label="Speed"><option value="1">1&times;</option><option value="5" selected>5&times;</option><option value="20">20&times;</option></select>' +
+        '<span class="sim-clock">t = 0.0 s</span></div>' +
+        '<div class="sim-ctl"></div></div>' +
+        '<div class="svg-scroll"><div class="sim-grid"></div></div>' +
+        '<div class="svg-scroll"><div class="sim-out"></div></div>' +
+        '<div class="sim-runs"><div class="stepper"><button class="btn" type="button" data-s="many">Run 100 times</button>' +
+        '<span class="sim-clock" data-s="many-note">Each run picks new timer phases.</span></div><div class="metrics"></div></div>' +
+        (cfg.caption ? '<div class="fig-cap">' + esc(cfg.caption) + "</div>" : "");
+      var q = function (s) { return mount.querySelector(s); };
+      var ctl = q(".sim-ctl"), grid = q(".sim-grid"), outEl = q(".sim-out");
+
+      function slider(label, value, min, max, step, unit, onInput) {
+        var lab = h("label", null, esc(label) + ' <input type="range" min="' + min + '" max="' + max + '" step="' + step + '" value="' + value + '"><output></output>');
+        var inp = lab.querySelector("input"), o = lab.querySelector("output");
+        function upd() { o.textContent = Number(inp.value).toLocaleString() + (unit ? " " + unit : ""); onInput(Number(inp.value)); }
+        inp.addEventListener("input", function () { upd(); draw(); });
+        ctl.appendChild(lab); upd();
+      }
+      slider(cfg.rate.label, cfg.rate.value, cfg.rate.min, cfg.rate.max, cfg.rate.step || 1, "/s", function (v) { rate = v; });
+      (cfg.params || []).forEach(function (p) {
+        slider(p.label, ST[p.stage][p.field], p.min, p.max, p.step || 1, p.unit, function (v) {
+          ST[p.stage][p.field] = v;
+          ST[p.stage].rule = ST[p.stage].rule.replace(/\d[\d,.]*\s*(s|ms|records)\b/, v + " " + (p.unit || ""));
+        });
+      });
+      var wb = h("button", "btn", "Worst case"); wb.type = "button"; wb.setAttribute("aria-pressed", "false");
+      wb.title = "Your record arrives just after every timer fired";
+      wb.addEventListener("click", function () { worstMode = !worstMode; wb.setAttribute("aria-pressed", String(worstMode)); reset(); });
+      ctl.appendChild(wb);
+
+      grid.style.gridTemplateColumns = "100px repeat(" + maxLen + ", minmax(0, 1fr)) 120px";
+      var cards = {};
+      ROWS.forEach(function (r, ri) {
+        var lb = h("div", "sim-lbl", esc(r.label)); lb.setAttribute("data-tone", r.tone || "");
+        lb.style.gridRow = String(ri + 1); lb.style.gridColumn = "1"; grid.appendChild(lb);
+      });
+      for (var c = 0; c < maxLen; c++) {
+        var ids = ROWS.map(function (r) { return r.stages[c]; });
+        var shared = ids.every(function (x) { return x && x === ids[0]; });
+        ROWS.forEach(function (r, ri) {
+          var id = r.stages[c];
+          if (!id || (shared && ri > 0)) return;
+          var card = h("div", "stg");
+          if (ST[id].tone) card.setAttribute("data-tone", ST[id].tone);
+          card.style.gridColumn = String(c + 2);
+          card.style.gridRow = shared ? "1 / span " + ROWS.length : String(ri + 1);
+          card.innerHTML = "<h5>" + esc(ST[id].name) + '</h5><div class="rule"></div><div class="cd"></div><div class="pile"></div>';
+          grid.appendChild(card);
+          (cards[id] = cards[id] || []).push(card);
+        });
+      }
+      var doneCards = {};
+      ROWS.forEach(function (r, ri) {
+        var card = h("div", "stg done", "<h5>" + esc(r.doneLabel || "Done") + '</h5><div class="big">&mdash;</div><div class="rule">after your record arrived</div>');
+        card.setAttribute("data-tone", r.tone || ""); card.style.gridColumn = String(maxLen + 2); card.style.gridRow = String(ri + 1);
+        grid.appendChild(card); doneCards[r.id] = card;
+      });
+
+      function fmt(t) { return t < 10 ? t.toFixed(1) + " s" : Math.round(t) + " s"; }
+      function niceStep(max) { var raw = max / 5, p = Math.pow(10, Math.floor(Math.log10(raw))); return [1, 2, 5, 10].map(function (m) { return m * p; }).filter(function (s) { return s >= raw; })[0]; }
+      var SEG = { brand: ["var(--brand)", "var(--brand-pale)"], teal: ["var(--teal)", "var(--teal-line)"], blue: ["var(--blue)", "var(--chart-blue)"] };
+
+      var S = fresh(true), playing = false, speed = 5, last = 0, acc = 0;
+      function draw() {
+        q(".sim-clock").textContent = "t = " + S.t.toFixed(1) + " s";
+        order.forEach(function (id) {
+          var c = ST[id], s = S.st[id];
+          (cards[id] || []).forEach(function (card) {
+            card.querySelector(".rule").textContent = c.rule;
+            card.querySelector(".cd").textContent = c.delay != null ? (s.count ? s.count.toLocaleString() + " in flight" : "") :
+              "flush in " + Math.max(0, c.every - s.t).toFixed(1) + " s" + (c.max ? " · " + s.count.toLocaleString() + " / " + c.max.toLocaleString() : "");
+            var pile = card.querySelector(".pile"), n = Math.min(s.count, 40), html = "";
+            if (s.mine) html += '<i class="me" title="your record"></i>';
+            for (var i = 0; i < n; i++) html += "<i></i>";
+            if (s.count > 40) html += '<span class="more">+' + (s.count - 40).toLocaleString() + "</span>";
+            pile.innerHTML = html;
+            card.classList.toggle("has-mine", s.mine);
+            card.classList.toggle("flash", s.flash > 0);
+          });
+        });
+        var scale = 0;
+        ROWS.forEach(function (r) { scale = Math.max(scale, worstFor(r), S.rows[r.id].done || 0); });
+        scale = Math.max(1, scale) * 1.05;
+        var stp = niceStep(scale), html = "";
+        ROWS.forEach(function (r) {
+          var R = S.rows[r.id], left = 0, segs = "", pal = SEG[r.tone] || SEG.brand;
+          doneCards[r.id].querySelector(".big").textContent = R.done != null ? fmt(R.done) : "—";
+          r.stages.forEach(function (id, i) {
+            var d = R.seg[id] != null ? R.seg[id] : R.cur === id ? S.t - S.st[id].since : 0;
+            if (d <= 0) return;
+            var tone = ST[id].tone ? pal[i % 2] : "var(--seg-neutral)", ink = ST[id].tone && i % 2 ? " ink" : "";
+            segs += '<div class="sg' + ink + '" style="left:' + (left / scale * 100) + "%;width:" + (d / scale * 100) + "%;background:" + tone + '" data-tip="' + esc(ST[id].name) + ": " + fmt(d) + '">' + esc(ST[id].name) + "</div>";
+            left += d;
+          });
+          var w = worstFor(r);
+          segs += '<div class="worst" style="left:' + (w / scale * 100) + '%" data-tip="Worst case: ' + fmt(w) + ' (every timer just fired)"></div>';
+          html += '<div class="sbar-row" data-tone="' + (r.tone || "") + '"><span class="nm">' + esc(r.label) + '</span><div class="sbar">' + segs + '</div><span class="sbar-tot">' + (R.done != null ? fmt(R.done) : left ? fmt(left) + "…" : "") + "</span></div>";
+        });
+        var ax = "";
+        for (var t = 0; t <= scale; t += stp) ax += '<span style="left:' + (t / scale * 100) + '%">' + t + " s</span>";
+        html += '<div class="sbar-row"><span></span><div class="saxis">' + ax + "</div><span></span></div>";
+        html += '<div class="sim-legend"><span><i style="background:var(--seg-neutral)"></i>shared hops</span><span><i style="border:2px dashed var(--bad);background:none"></i>worst case</span><span>Hover a segment for its time.</span></div>';
+        outEl.innerHTML = html;
+      }
+      function reset() { S = fresh(!worstMode); draw(); }
+      function loop(ts) {
+        if (!playing) return;
+        if (last) acc += Math.min(0.25, (ts - last) / 1000) * speed;
+        last = ts;
+        while (acc >= DT) { tick(S); acc -= DT; }
+        draw();
+        if (allDone(S)) { setPlay(false); return; }
+        requestAnimationFrame(loop);
+      }
+      function setPlay(on) {
+        playing = on; last = 0; acc = 0;
+        q('[data-s="play"]').innerHTML = on ? "&#10074;&#10074; Pause" : "&#9654; Play";
+        if (on) { if (allDone(S)) reset(); requestAnimationFrame(loop); }
+      }
+      q('[data-s="play"]').addEventListener("click", function () { setPlay(!playing); });
+      q('[data-s="step"]').addEventListener("click", function () { for (var i = 0; i < 10; i++) tick(S); draw(); });
+      q('[data-s="reset"]').addEventListener("click", function () { setPlay(false); reset(); });
+      q('[data-s="speed"]').addEventListener("change", function () { speed = Number(this.value); });
+
+      function runMany(n) {
+        var res = {};
+        ROWS.forEach(function (r) { res[r.id] = []; });
+        for (var i = 0; i < n; i++) { var R = runOnce(); ROWS.forEach(function (r) { if (R.rows[r.id].done != null) res[r.id].push(R.rows[r.id].done); }); }
+        var html = "";
+        ROWS.forEach(function (r) {
+          var a = res[r.id].sort(function (x, y) { return x - y; });
+          if (!a.length) return;
+          var pct = function (p) { return a[Math.min(a.length - 1, Math.floor(p * a.length))]; };
+          html += '<div class="metric" data-tone="' + (r.tone || "") + '"><span class="k">' + esc(r.label) + ' · median</span><span class="v">' + fmt(pct(0.5)) + '</span><span class="n">p95 ' + fmt(pct(0.95)) + " · max " + fmt(a[a.length - 1]) + "</span></div>";
+        });
+        q(".metrics").innerHTML = html;
+        q('[data-s="many-note"]').textContent = n + " runs at " + rate.toLocaleString() + " records/s.";
+        return res;
+      }
+      q('[data-s="many"]').addEventListener("click", function () { runMany(100); });
+      // ?simt=N fast-forwards every simulation N seconds, so screenshots can show a run in progress.
+      var simt = Number(params.get("simt"));
+      if (simt > 0) { S = fresh(false); while (S.t < simt && !allDone(S)) tick(S); }
+      draw();
+      return { runMany: runMany };
+    }
+
+    // ?only=<section id> renders a single section, for screenshots of anything below the fold.
+    if (params.get("only")) {
+      document.querySelectorAll("header.sk-head, nav.toc, main > section").forEach(function (s) { s.hidden = s.id !== params.get("only"); });
+    }
+
+    /* ---------- Self-test (?selftest): walk every state so errors surface headlessly ---------- */
+    function selftest() {
+      try {
+        ["all"].concat(Object.keys(D.accounts)).forEach(function (a) { setAcct(a); for (var i = -1; i < STEPS.length; i++) go(i); });
+        setAcct("all"); go(-1);
+        SIMS.forEach(function (s) { s.runMany(20); });
+        (window.DOC_SELFTEST || []).forEach(function (fn) { fn(); });
+      } catch (e) { report("Self-test: " + e.message); }
+      var over = document.documentElement.scrollWidth - window.innerWidth;
+      if (over > 1) warn("Page scrolls horizontally by " + over + "px at width " + window.innerWidth);
+    }
+    var loaded = new Promise(function (r) { if (document.readyState === "complete") r(); else window.addEventListener("load", r); });
+    Promise.all([loaded, document.fonts ? document.fonts.ready : null]).then(function () {
+      if (params.has("selftest")) selftest();
+      if (!errors.length) document.documentElement.setAttribute("data-doc-status", "ok");
+      warnBox.textContent = warnings.join("\n");
+    });
+  })();
+</script>
+
+</html>
