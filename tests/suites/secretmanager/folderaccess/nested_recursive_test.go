@@ -105,6 +105,48 @@ func TestFolderAccess_NestedRecursive(t *testing.T) {
 			require.Equal(t, map[string]string{"DB_URL": "postgres"}, prodDB.values)
 		})
 
+		t.Run(fmt.Sprintf("should refuse a %s deleting a folder they hold a lower role in or below, under full access applied from above", k.name), func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			proj := newProject(t, h.NewTenant(t))
+			secretmanager.CreateFolder(t, proj, "dev", "/apps/held")
+			secretmanager.CreateFolder(t, proj, "dev", "/apps/outer/held-below")
+			secretmanager.CreateFolder(t, proj, "dev", "/apps/free/child")
+			member := k.member(t, proj, "no-access")
+			grantRecursive(t, proj, member, "/apps", secretmanager.FolderFullAccess)
+			grantRecursive(t, proj, member, "/apps/held", secretmanager.FolderList)
+			secretmanager.GrantFolderAccess(t, proj, member, at("/apps/outer/held-below"), secretmanager.FolderRead)
+			deleteFolder := func(name string) reply {
+				res, err := member.API.DeleteSecretFolderWithResponse(t.Context(), name, api.DeleteSecretFolderJSONRequestBody{
+					ProjectId: proj.ID, Environment: "dev", Path: new("/apps"), ForceDelete: new(true),
+				})
+				require.NoError(t, err)
+				return decodeReply(t, res.StatusCode(), res.Body)
+			}
+
+			// Action
+			held := deleteFolder("held")
+			outer := deleteFolder("outer")
+			free := deleteFolder("free")
+
+			// Assert
+			refusal := "Deleting the folder '%s' requires permission to delete folders in it and in every folder below it " +
+				"in environment with slug 'dev'. Your access on '%s' does not allow deleting folders. Ask someone who can " +
+				"delete folders there to delete it."
+			require.Equalf(t, http.StatusForbidden, held.status, "deleting /apps/held: %s", held.body)
+			require.Equal(t, fmt.Sprintf(refusal, "/apps/held", "/apps/held"), held.message)
+			require.Equalf(t, http.StatusForbidden, outer.status, "deleting /apps/outer: %s", outer.body)
+			require.Equal(t, fmt.Sprintf(refusal, "/apps/outer", "/apps/outer/held-below"), outer.message)
+			require.Equalf(t, http.StatusOK, free.status, "deleting /apps/free: %s", free.body)
+			require.ElementsMatch(t, []string{"held", "outer"}, folderNamesAt(t, proj, "/apps"))
+			paths := []string{}
+			for _, g := range grantsOf(t, proj, member) {
+				paths = append(paths, g.SecretPath)
+			}
+			require.ElementsMatch(t, []string{"/apps", "/apps/held", "/apps/outer/held-below"}, paths)
+		})
+
 		t.Run(fmt.Sprintf("should list the nearest access that applies to subfolders as a %s's inherited access on a nested folder", k.name), func(t *testing.T) {
 			t.Parallel()
 
