@@ -135,8 +135,6 @@ export const CertManagerNav = ({
       label: "Approval Requests",
       icon: Inbox,
       pathSuffix: "requests",
-      activeMatch: (pathname, search) =>
-        /\/approvals\/[^/]+$/.test(pathname) && search.from === "root-requests",
       badgeCount: pendingRequestsCount || undefined
     }
   ];
