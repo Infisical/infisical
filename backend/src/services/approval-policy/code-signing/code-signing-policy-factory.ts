@@ -34,6 +34,9 @@ export const codeSigningApprovalResourceFactory = ({
   TCodeSigningPolicy,
   TCodeSigningRequestData
 > => ({
+  // A signer whose policy has no steps signs without approval (signer-service `requiresApproval`).
+  noStepsMeansNoApproval: true,
+
   matchPolicy: async (projectId, inputs) => {
     const policies = await approvalPolicyDAL.findByProjectId(ApprovalPolicyType.CertCodeSigning, projectId);
     const policy = policies.find((p) => p.id === inputs.approvalPolicyId) as TCodeSigningPolicy | undefined;

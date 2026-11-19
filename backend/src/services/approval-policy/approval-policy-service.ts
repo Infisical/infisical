@@ -57,6 +57,7 @@ import {
   ApproverType,
   EnforcementLevel
 } from "./approval-policy-enums";
+import { assertPolicyStepsCanApprove } from "./approval-policy-fns";
 import {
   ApprovalAccessStatus,
   BreakGlassBypassMetadata,
@@ -706,6 +707,16 @@ export const approvalPolicyServiceFactory = ({
       }
     }
 
+    $assertSupportsAutoApproval(policyType, autoApproval);
+    assertPolicyStepsCanApprove({
+      steps,
+      hasAutoApprovalRules: Boolean(autoApproval?.rules.length),
+      supportsAutoApproval: Boolean(resources[policyType]?.supportsAutoApproval),
+      noStepsMeansNoApproval: Boolean(resources[policyType]?.noStepsMeansNoApproval)
+    });
+
+    await resources[policyType]?.validateConditions?.({ projectId, scopeId: dbScopeId, conditions });
+
     await $verifyPolicyActors({
       policyType,
       projectId,
@@ -716,7 +727,6 @@ export const approvalPolicyServiceFactory = ({
       bypassers: bypassers ?? []
     });
 
-    $assertSupportsAutoApproval(policyType, autoApproval);
     const autoApprovalConfig = autoApproval
       ? await autoApprovalService.validateConfig({ projectId, config: autoApproval, actor })
       : undefined;
@@ -908,6 +918,16 @@ export const approvalPolicyServiceFactory = ({
       });
     }
 
+    $assertSupportsAutoApproval(policy.type as ApprovalPolicyType, autoApproval);
+
+    if (conditions !== undefined) {
+      await resources[policy.type as ApprovalPolicyType]?.validateConditions?.({
+        projectId: policy.projectId,
+        scopeId: policyScopeId,
+        conditions
+      });
+    }
+
     await $verifyPolicyActors({
       policyType: policy.type as ApprovalPolicyType,
       projectId: policy.projectId,
@@ -918,13 +938,32 @@ export const approvalPolicyServiceFactory = ({
       bypassers: bypassers ?? []
     });
 
-    $assertSupportsAutoApproval(policy.type as ApprovalPolicyType, autoApproval);
     const autoApprovalConfig = autoApproval
       ? await autoApprovalService.validateConfig({ projectId: policy.projectId, config: autoApproval, actor })
       : undefined;
 
     const updatedPolicy = await approvalPolicyDAL.transaction(async (tx) => {
       await approvalPolicyDAL.findByIdForUpdate(policyId, tx);
+
+      // Either one can leave the policy unable to approve anything: new steps, or new rules on a policy with no
+      // steps. Read the other one under the lock, or two edits that each clear one can both pass and clear both.
+      if (steps !== undefined || autoApproval !== undefined) {
+        const [effectiveSteps, hasAutoApprovalRules] = await Promise.all([
+          steps ?? approvalPolicyDAL.findStepsByPolicyId(policyId, tx),
+          autoApproval
+            ? autoApproval.rules.length > 0
+            : autoApprovalService
+                .findByPolicyIds([policyId], tx)
+                .then((stored) => Boolean(stored.get(policyId)?.rules.length))
+        ]);
+        assertPolicyStepsCanApprove({
+          steps: effectiveSteps,
+          hasAutoApprovalRules,
+          supportsAutoApproval: Boolean(resources[policy.type as ApprovalPolicyType]?.supportsAutoApproval),
+          noStepsMeansNoApproval: Boolean(resources[policy.type as ApprovalPolicyType]?.noStepsMeansNoApproval)
+        });
+      }
+
       const updateDoc: Partial<TApprovalPolicies> = {};
 
       if (name !== undefined) {
@@ -1956,26 +1995,43 @@ export const approvalPolicyServiceFactory = ({
       if (hasReadPermission) return requests;
 
       const userGroupIds = await ctx.getUserGroupIds();
-
-      const checkLiveApprover = resources[policyType]?.isLiveApprover;
-      if (
-        checkLiveApprover &&
-        dbScopeId &&
-        !(await checkLiveApprover({ projectId, scopeId: dbScopeId, actor, userGroupIds }))
-      ) {
-        return requests.filter((request) => $isRequester(request, actor));
-      }
-
-      return requests.filter((request) => {
-        if ($isRequester(request, actor)) return true;
-        return request.steps.some((step) =>
-          step.approvers.some(
-            (approver) =>
-              (approver.type === ApproverType.User && approver.id === actor.id) ||
-              (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
+      const reviewableRequests = requests.filter(
+        (request) =>
+          !$isRequester(request, actor) &&
+          request.steps.some((step) =>
+            step.approvers.some(
+              (approver) =>
+                (approver.type === ApproverType.User && approver.id === actor.id) ||
+                (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
+            )
           )
-        );
-      });
+      );
+
+      // Check each named request's own scope, since a project-wide list (the Requests page and its pending badge)
+      // spans scopes the actor may have left. Only scopes of requests naming the actor are checked, because the
+      // request history can span every Application in the project and each check reads its memberships.
+      const checkLiveApprover = resources[policyType]?.isLiveApprover;
+      const requestScopeIds = [
+        ...new Set(reviewableRequests.flatMap((request) => (request.scopeId ? [request.scopeId] : [])))
+      ];
+      const liveScopeIds = new Set(
+        checkLiveApprover
+          ? (
+              await Promise.all(
+                requestScopeIds.map(async (scopeId) =>
+                  (await checkLiveApprover({ projectId, scopeId, actor, userGroupIds })) ? [scopeId] : []
+                )
+              )
+            ).flat()
+          : requestScopeIds
+      );
+      const liveReviewableIds = new Set(
+        reviewableRequests
+          .filter((request) => !request.scopeId || liveScopeIds.has(request.scopeId))
+          .map((request) => request.id)
+      );
+
+      return requests.filter((request) => $isRequester(request, actor) || liveReviewableIds.has(request.id));
     })();
 
     if (visibleRequests.length > 0) {

@@ -4415,7 +4415,11 @@ export const registerRoutes = async (
     certificateRequestDAL,
     certificateRequestService,
     certificateRenewalService: certificateV3Service,
-    telemetryService
+    telemetryService,
+    membershipDAL,
+    userGroupMembershipDAL,
+    pkiApplicationProfileDAL,
+    certificateProfileDAL
   }) as TApprovalResourceRegistry[ApprovalPolicyType];
 
   const certificateV3Queue = certificateV3QueueServiceFactory({

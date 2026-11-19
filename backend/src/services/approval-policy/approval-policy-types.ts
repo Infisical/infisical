@@ -205,6 +205,14 @@ export type TApprovalResource<
   canAccess: (projectId: string, actorId: string, inputs: I) => Promise<TApprovalRequestGrants | null>;
   validateConstraints: (policy: P, requestData: R) => { valid: boolean; errors?: string[] };
 
+  // Refuses conditions that can never match anything in the scope, such as a resource name that doesn't exist
+  // there, so a policy that would never apply isn't saved as though it does.
+  validateConditions?: (args: {
+    projectId: string;
+    scopeId: string | null;
+    conditions: TApprovalPolicy["conditions"]["conditions"];
+  }) => Promise<void>;
+
   // Whatever the approval entitles the requester to goes in the Tx variant, which commits with the
   // approval; anything reaching outside the database goes in postApprovalRoutine, after the commit. Each
   // runs at most once, for the approval that completes the request.
@@ -217,6 +225,8 @@ export type TApprovalResource<
 
   // Policies of this type can hold auto-approval rules
   supportsAutoApproval?: boolean;
+  // A policy of this type with no steps is valid and means no approval is needed, so it isn't refused for having none
+  noStepsMeansNoApproval?: boolean;
   // Whether the policy's auto-approval rules may decide this request
   allowsAutoApproval?: (args: {
     projectId: string;

@@ -26,6 +26,10 @@ import {
   ApprovalRequestStatus,
   ApproverType
 } from "@app/services/approval-policy/approval-policy-enums";
+import {
+  filterApproversByActiveMemberships,
+  holdsMembershipDirectlyOrViaGroup
+} from "@app/services/approval-policy/approval-policy-fns";
 import { PolicyBypasser, TApprovalActor, TApprovalResource } from "@app/services/approval-policy/approval-policy-types";
 import {
   TApprovalRequestDALFactory,
@@ -84,7 +88,7 @@ type TPamAccessApprovalResourceDep = {
     TApprovalPolicyDALFactory,
     "findStepsByPolicyId" | "findByProjectId" | "findBypassersByPolicyId" | "findById"
   >;
-  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembershipsByUserIdInOrg">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembershipsByUserIdInOrg" | "find">;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "find">;
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "find" | "create" | "updateById">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "findTemplatePoliciesForShare" | "find">;
@@ -193,15 +197,12 @@ export const pamAccessApprovalResourceFactory = ({
     return memberships.filter((m) => m.isActive && activeMembershipIds.has(m.id));
   };
 
-  const $holdsActiveFolderMembership = async (
-    projectId: string,
-    folderId: string,
-    userId: string,
-    userGroupIds: Set<string>
-  ) => {
-    const memberships = await findActiveFolderMemberships(projectId, folderId);
-    return memberships.some((m) => m.actorUserId === userId || (m.actorGroupId && userGroupIds.has(m.actorGroupId)));
-  };
+  const $holdsActiveFolderMembership = async (projectId: string, folderId: string, userId: string) =>
+    holdsMembershipDirectlyOrViaGroup(
+      userGroupMembershipDAL,
+      await findActiveFolderMemberships(projectId, folderId),
+      userId
+    );
 
   const $namesActor = (entries: { type: string; id: string }[], userId: string, userGroupIds: Set<string>) =>
     entries.some(
@@ -553,7 +554,7 @@ export const pamAccessApprovalResourceFactory = ({
       throw new ForbiddenRequestError({ message: "You are no longer an eligible approver for this folder" });
     }
 
-    if (!(await $holdsActiveFolderMembership(request.projectId, folderId, actor.id, userGroupIds))) {
+    if (!(await $holdsActiveFolderMembership(request.projectId, folderId, actor.id))) {
       throw new ForbiddenRequestError({ message: "You are no longer an eligible approver for this folder" });
     }
   };
@@ -592,7 +593,7 @@ export const pamAccessApprovalResourceFactory = ({
       return new ForbiddenRequestError({ message: "You are not a break-glass user for this folder" });
     }
 
-    if (!(await $holdsActiveFolderMembership(projectId, folderId, actor.id, userGroupIds))) {
+    if (!(await $holdsActiveFolderMembership(projectId, folderId, actor.id))) {
       return new ForbiddenRequestError({ message: "You are not a member of this folder" });
     }
 
@@ -943,7 +944,7 @@ export const pamAccessApprovalResourceFactory = ({
     const steps = await approvalPolicyDAL.findStepsByPolicyId(policy.id);
     if (!steps.some((step) => $namesActor(step.approvers, actor.id, userGroupIds))) return false;
 
-    return $holdsActiveFolderMembership(projectId, scopeId, actor.id, userGroupIds);
+    return $holdsActiveFolderMembership(projectId, scopeId, actor.id);
   };
 
   const decorateRequests: TPamAccessApprovalResource["decorateRequests"] = async (requests) => {
@@ -1121,12 +1122,7 @@ export const pamAccessApprovalResourceFactory = ({
     if (!folderId || approvers.length === 0) return approvers;
 
     const memberships = await findActiveFolderMemberships(request.projectId, folderId);
-    const activeKeys = new Set([
-      ...memberships.filter((m) => m.actorUserId).map((m) => `${ApproverType.User}:${m.actorUserId}`),
-      ...memberships.filter((m) => m.actorGroupId).map((m) => `${ApproverType.Group}:${m.actorGroupId}`)
-    ]);
-
-    return approvers.filter((approver) => activeKeys.has(`${approver.type}:${approver.id}`));
+    return filterApproversByActiveMemberships(userGroupMembershipDAL, approvers, memberships);
   };
 
   const revokeGrantRow = async (grant: TApprovalRequestGrants, actorId: string, reason: string, tx?: Knex) => {

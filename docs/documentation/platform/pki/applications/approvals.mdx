@@ -138,11 +138,17 @@ When a request is rejected, the workflow ends and no certificate is issued.
     - The request is still pending (not expired or rejected)
     - Previous steps have been completed
   </Accordion>
+  <Accordion title="Can someone removed from the Application still approve its requests?">
+    No. If someone is no longer a member of the Application, either directly or through a group, they can't approve or reject the Application's requests. This includes requests raised while they were an approver.
+  </Accordion>
   <Accordion title="Can I use approvals with ACME or EST?">
     Yes, approval policies work with any enrollment method. However, automated clients like Certbot typically can't wait for human approval. Consider using the machine identity bypass for automated workloads.
   </Accordion>
   <Accordion title="What happens when a request expires?">
     The request moves to **Expired** status and no certificate is issued. The requester must submit a new request.
+  </Accordion>
+  <Accordion title="Why was my certificate request refused because of its approval policy?">
+    Infisical refuses a certificate request if the approval policy that covers it has a step nobody can complete: a step with no approvers, or a step of named users that requires more approvals than it has users. A step can lose its last approver when that approver is removed from the Application. Ask an Application admin to update the policy's approval steps.
   </Accordion>
   <Accordion title="Can requesters approve their own requests?">
     By default, yes — if they're listed as an eligible approver. For separation of duties, configure approver groups that exclude potential requesters.
