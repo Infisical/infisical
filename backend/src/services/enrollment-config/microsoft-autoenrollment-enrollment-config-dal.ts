@@ -4,7 +4,7 @@ import { z } from "zod";
 import { TDbClient } from "@app/db";
 import { TableName, TPkiMicrosoftAutoenrollmentConfigs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { ormify } from "@app/lib/knex";
 
 const MicrosoftAutoenrollmentAllowedGroupsSchema = z.array(z.object({ sid: z.string(), name: z.string().nullable() }));
 
@@ -28,30 +28,62 @@ export const microsoftAutoenrollmentEnrollmentConfigDALFactory = (db: TDbClient)
     return withAllowedGroups(row);
   };
 
+  const $findApplicationConfigs = (applicationId: string, tx?: Knex) =>
+    (tx || db.replicaNode())(TableName.PkiApplicationProfile)
+      .innerJoin(
+        TableName.PkiMicrosoftAutoenrollmentConfig,
+        `${TableName.PkiApplicationProfile}.microsoftAutoenrollmentConfigId`,
+        `${TableName.PkiMicrosoftAutoenrollmentConfig}.id`
+      )
+      .innerJoin(
+        TableName.PkiCertificateProfile,
+        `${TableName.PkiApplicationProfile}.profileId`,
+        `${TableName.PkiCertificateProfile}.id`
+      )
+      .where(`${TableName.PkiApplicationProfile}.applicationId`, applicationId);
+
   const findByApplicationId = async (applicationId: string, tx?: Knex) => {
     try {
-      const rows = await (tx || db.replicaNode())(TableName.PkiMicrosoftAutoenrollmentConfig)
-        .innerJoin(
-          TableName.PkiApplicationProfile,
-          `${TableName.PkiMicrosoftAutoenrollmentConfig}.applicationProfileId`,
-          `${TableName.PkiApplicationProfile}.id`
-        )
-        .innerJoin(
-          TableName.PkiCertificateProfile,
-          `${TableName.PkiApplicationProfile}.profileId`,
-          `${TableName.PkiCertificateProfile}.id`
-        )
-        .where(`${TableName.PkiApplicationProfile}.applicationId`, applicationId)
+      const rows = await $findApplicationConfigs(applicationId, tx)
         .select(
-          selectAllTableCols(TableName.PkiMicrosoftAutoenrollmentConfig),
+          db.ref("id").withSchema(TableName.PkiMicrosoftAutoenrollmentConfig),
+          db.ref("servicePrincipalName").withSchema(TableName.PkiMicrosoftAutoenrollmentConfig),
+          db.ref("keyVersion").withSchema(TableName.PkiMicrosoftAutoenrollmentConfig),
+          db.ref("appConnectionId").withSchema(TableName.PkiMicrosoftAutoenrollmentConfig),
           db.ref("profileId").withSchema(TableName.PkiApplicationProfile),
           db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName")
         )
         .orderBy(`${TableName.PkiApplicationProfile}.createdAt`, "asc");
 
-      return rows.map(withAllowedGroups);
+      return rows as (Pick<
+        TPkiMicrosoftAutoenrollmentConfigs,
+        "id" | "servicePrincipalName" | "keyVersion" | "appConnectionId"
+      > & { profileId: string; profileName: string })[];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find Microsoft Autoenrollment configs by application" });
+    }
+  };
+
+  const findKeytabByApplicationAndProfile = async (applicationId: string, profileId: string, tx?: Knex) => {
+    try {
+      const row = await $findApplicationConfigs(applicationId, tx)
+        .where(`${TableName.PkiApplicationProfile}.profileId`, profileId)
+        .first(
+          db.ref("encryptedKeytab").withSchema(TableName.PkiMicrosoftAutoenrollmentConfig),
+          db.ref("servicePrincipalName").withSchema(TableName.PkiMicrosoftAutoenrollmentConfig),
+          db.ref("keyVersion").withSchema(TableName.PkiMicrosoftAutoenrollmentConfig),
+          db.ref("profileId").withSchema(TableName.PkiApplicationProfile),
+          db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName")
+        );
+
+      return row as
+        | (Pick<TPkiMicrosoftAutoenrollmentConfigs, "encryptedKeytab" | "servicePrincipalName" | "keyVersion"> & {
+            profileId: string;
+            profileName: string;
+          })
+        | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find Microsoft Autoenrollment keytab by application and profile" });
     }
   };
 
@@ -82,6 +114,7 @@ export const microsoftAutoenrollmentEnrollmentConfigDALFactory = (db: TDbClient)
     primaryNode,
     findById,
     findByApplicationId,
+    findKeytabByApplicationAndProfile,
     recordKeytabMismatch
   };
 };

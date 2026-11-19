@@ -96,6 +96,21 @@ const toLegacyExtendedKeyUsageForQuery = (usage: string): string => {
   }
 };
 
+const ENROLLMENT_TYPE_SELECT = `COALESCE(
+  (
+    SELECT certificate_requests."enrollmentType"
+    FROM certificate_requests
+    WHERE certificate_requests."certificateId" = certificates.id
+    ORDER BY certificate_requests."createdAt" ASC
+    LIMIT 1
+  ),
+  pki_certificate_profiles."enrollmentType",
+  CASE
+    WHEN certificates."caId" IS NULL AND certificates.source IN ('imported', 'discovered') THEN NULL
+    ELSE 'api'
+  END
+) as "enrollmentType"`;
+
 export type TOriginatingCertificateRequest = {
   exists: boolean;
   enrollmentType: string | null;
@@ -986,24 +1001,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         .select(db.raw(CAN_RENEW_FROM_CSR_SELECT))
         .select(db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
-        .select(
-          db.raw(
-            `COALESCE(
-              (
-                SELECT certificate_requests."enrollmentType"
-                FROM certificate_requests
-                WHERE certificate_requests."certificateId" = certificates.id
-                ORDER BY certificate_requests."createdAt" ASC
-                LIMIT 1
-              ),
-              pki_certificate_profiles."enrollmentType",
-              CASE
-                WHEN certificates."caId" IS NULL AND certificates.source IN ('imported', 'discovered') THEN NULL
-                ELSE 'api'
-              END
-            ) as "enrollmentType"`
-          )
-        )
+        .select(db.raw(ENROLLMENT_TYPE_SELECT))
         .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"));
 
       const {
@@ -1099,6 +1097,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     caType?: "internal" | "external" | null;
     hasPrivateKey: boolean;
     canRenewFromCsr: boolean;
+    enrollmentType?: string | null;
   };
 
   type TCertificateLookupFilter = { id: string; serialNumber?: never } | { id?: never; serialNumber: string };
@@ -1164,7 +1163,8 @@ export const certificateDALFactory = (db: TDbClient) => {
         .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"))
         .select(db.ref("id").withSchema(TableName.InternalCertificateAuthority).as("internalCaId"))
         .select(db.ref("certId").withSchema(TableName.CertificateSecret).as("privateKeyRef"))
-        .select(db.raw(CAN_RENEW_FROM_CSR_SELECT));
+        .select(db.raw(CAN_RENEW_FROM_CSR_SELECT))
+        .select(db.raw(ENROLLMENT_TYPE_SELECT));
 
       if (filter.id) {
         query = query.where(`${TableName.Certificate}.id`, filter.id);

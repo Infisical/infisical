@@ -2496,6 +2496,8 @@ export const CERTIFICATES = {
     serialNumber: "The serial number of the certificate to get.",
     includeDeleted: "Return the certificate even if it was deleted. Without it, a deleted certificate returns 404.",
     hasPrivateKey: "Whether Infisical holds the private key for this certificate.",
+    enrollmentType:
+      "How the certificate was enrolled (for example 'api', 'acme', 'est', 'scep' or 'microsoft-autoenrollment'). Only 'api' certificates can be renewed from Infisical; the others are renewed by the client that requested them. Null for imported or discovered certificates without a CA.",
     canRenewFromCsr:
       "Whether Infisical can renew this certificate on its existing key pair from a CSR it holds, without its private key: a CSR the request that produced it carried or one supplied at import, a certificate enrolled through the API, and a profile whose certificate authority issues from a CSR. When true, renewing with renewalKeySource 'reuse' renews from that CSR, and auto-renewal can be turned on.",
     externalMetadata:
@@ -2794,11 +2796,13 @@ export const MICROSOFT_AUTOENROLLMENT = {
     allowedGroupSids:
       "The security identifiers (SIDs) of the Active Directory groups whose computers may enroll. Null or an empty list allows any computer in the domain. Leave it out when updating to keep the current groups.",
     renewBeforeDays:
-      "How many days before expiry Windows renews the certificate. Values of the certificate's validity or more are capped at the validity minus one day. Defaults to 42 when turning Microsoft Autoenrollment on; leave it out when updating to keep the current value.",
+      "How many days before expiry Windows renews the certificate. Windows renews only when this is more than 8 hours and less than 20% of the certificate's validity, so the value Windows is given is moved into that window (see effectiveRenewBeforeHours). Defaults to 42 when turning Microsoft Autoenrollment on; leave it out when updating to keep the current value.",
     keytab:
       "The keytab file created with ktpass, base64 encoded. When turning Microsoft Autoenrollment on, send this or reuseKeytab. Send a new one to replace the stored keytab.",
     reuseKeytab:
-      "Copy the keytab another profile in this application already has, named by that profile's ID in profileId. Cannot be sent together with keytab."
+      "Copy the keytab another profile in this application already has, named by that profile's ID in profileId. Cannot be sent together with keytab.",
+    allowAnyChannelBinding:
+      "Accept any TLS channel binding a computer sends instead of requiring the one for this instance's own TLS certificate. This also accepts a Kerberos ticket relayed through another HTTPS site, so turn it on only when computers reach Infisical through a proxy that inspects HTTPS, or when this instance cannot read its own certificate, such as in FIPS mode. Defaults to false when turning Microsoft Autoenrollment on; leave it out when updating to keep the current value."
   },
   STATE: {
     otherProfiles:
@@ -2815,11 +2819,16 @@ export const MICROSOFT_AUTOENROLLMENT = {
       "The OID of the certificate template, written into the template information extension of each certificate.",
     allowedGroups:
       "The Active Directory groups whose computers may enroll, each with its security identifier (SID) and name. Empty allows any computer in the domain.",
-    renewBeforeDays:
-      "How many days before expiry Windows renews the certificate. Values of the certificate's validity or more are capped at the validity minus one day.",
+    renewBeforeDays: "How many days before expiry Windows renews the certificate, as entered.",
+    effectiveRenewBeforeHours:
+      "How many hours before expiry Windows actually renews: renewBeforeDays moved to more than 8 hours and less than 20% of the certificate's validity. For a validity of 40 hours or less no value fits, and Windows requests a new certificate instead of renewing.",
     servicePrincipalName: "The Kerberos service principal name the stored keytab is for.",
     keyVersion: "The key version number of the stored keytab.",
     connectionId: "The ID of the Active Directory LDAP connection used to look up computers.",
+    allowAnyChannelBinding:
+      "Whether requests are accepted with any TLS channel binding instead of only the one for this instance's own TLS certificate.",
+    channelBinding:
+      "Whether this instance can check requests' TLS channel bindings, whatever allowAnyChannelBinding is set to. status is enforced when it has read its own TLS certificate, unverifiable when it cannot check bindings, such as in FIPS mode or when it could not read its own certificate in the last day (requests are then refused unless allowAnyChannelBinding is on), and not-checked when it has not tried to read its certificate yet, which happens at the first enrollment request. reason explains unverifiable and not-checked, and is null when status is enforced.",
     keytabMismatch:
       "Set when computers asked for a ticket for a different service principal name than the stored keytab's, so the keytab must be replaced. Null when no mismatch was seen since the keytab was last replaced."
   },

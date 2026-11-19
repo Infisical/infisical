@@ -97,12 +97,14 @@ import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import {
   applyIssuerNameOverride,
   applyProfileDefaults,
-  assertIssuerAddedExtensionsAllowedByPolicy,
   buildIssuanceSubject,
-  formatIssuerAltNames,
-  mergeIssuerAddedExtensions
+  formatIssuerAltNames
 } from "./certificate-v3-fns";
 import { TAltNameEntry, TCertificateIssuanceResponse, TIssuerNameOverride } from "./certificate-v3-types";
+
+export type TCertificateRequestPreSignHook = (
+  certificateRequest: NonNullable<Awaited<ReturnType<TCertificateRequestDALFactory["findById"]>>>
+) => Promise<{ renewedFromCertificateId: null } | undefined>;
 
 export type TIssueCertificateFromApprovedRequestDeps = {
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
@@ -127,6 +129,7 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "emit">;
+  enrollmentPreSignHooks?: Partial<Record<EnrollmentType, TCertificateRequestPreSignHook>>;
 };
 
 export type TCertificateApprovalService = {
@@ -243,7 +246,8 @@ export const certificateApprovalServiceFactory = (
     apiEnrollmentConfigDAL,
     pkiSyncQueue,
     pkiAlertV2Queue,
-    certificateAlertEventEmitter
+    certificateAlertEventEmitter,
+    enrollmentPreSignHooks
   } = deps;
 
   const $emitIssuanceAlert = (input: Omit<TCertificateAlertEventInput, "eventType">, tx: Knex) =>
@@ -599,7 +603,7 @@ export const certificateApprovalServiceFactory = (
     );
     const mappedReconstructedRequest = mapEnumsForValidation(reconstructedRequest);
     mappedReconstructedRequest.keyAlgorithm = reconstructedKeyAlg;
-    mappedReconstructedRequest.signatureAlgorithm = reconstructedSigAlg;
+    mappedReconstructedRequest.signatureAlgorithm = certRequest.signatureAlgorithm ?? reconstructedSigAlg;
     if (certRequest.notAfter) {
       mappedReconstructedRequest.notBefore = certRequest.notBefore || undefined;
       mappedReconstructedRequest.notAfter = certRequest.notAfter;
@@ -628,21 +632,20 @@ export const certificateApprovalServiceFactory = (
       isApprovedRequest: true
     });
 
-    const issuerAddedExtensions = readStoredCustomExtensions(certRequest.customExtensions).filter(
-      (extension) => extension.issuerAdded
-    );
     const revalidationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
       mappedReconstructedRequest,
-      { issuerAddedOids: issuerAddedExtensions.map((extension) => extension.oid) }
+      {
+        issuerAddedExtensions: readStoredCustomExtensions(certRequest.customExtensions).filter(
+          (extension) => extension.issuerAdded
+        )
+      }
     );
     if (!revalidationResult.isValid) {
       throw new BadRequestError({
         message: `Certificate request validation failed: ${revalidationResult.errors.join(", ")}`
       });
     }
-
-    assertIssuerAddedExtensionsAllowedByPolicy(issuerAddedExtensions, certPolicy.customExtensions);
     const subjectOverride = buildIssuanceSubject(csr || "", reconstructedRequest, issuerNameOverride);
 
     // This path is already intent-first: the certificate request exists (it was created when the
@@ -674,7 +677,7 @@ export const certificateApprovalServiceFactory = (
       notAfter: normalizeDateForApi(certRequest.notAfter || undefined),
       signatureAlgorithm: certRequest.signatureAlgorithm || undefined,
       keyAlgorithm: certRequest.keyAlgorithm || undefined,
-      customExtensions: mergeIssuerAddedExtensions(revalidationResult.resolvedCustomExtensions, issuerAddedExtensions),
+      customExtensions: revalidationResult.resolvedCustomExtensions,
       isFromProfile: true,
       basicConstraints: effectiveBasicConstraints,
       pathLength: effectivePathLength,
@@ -1193,7 +1196,7 @@ export const certificateApprovalServiceFactory = (
   };
 
   const issueCertificate = async (certificateRequestId: string): Promise<TCertificateIssuanceResponse> => {
-    const certRequest = await certificateRequestDAL.findById(certificateRequestId);
+    let certRequest = await certificateRequestDAL.findById(certificateRequestId);
     if (!certRequest) {
       throw new NotFoundError({ message: "Certificate request not found" });
     }
@@ -1216,11 +1219,18 @@ export const certificateApprovalServiceFactory = (
     });
 
     try {
+      const enrollmentType = (certRequest.enrollmentType as EnrollmentType) || EnrollmentType.API;
       const targetProfile = await $validateProfileAndPermissions({
         profileId,
-        requiredEnrollmentType: (certRequest.enrollmentType as EnrollmentType) || EnrollmentType.API,
+        requiredEnrollmentType: enrollmentType,
         isInternal: true
       });
+
+      const preSignChanges = await enrollmentPreSignHooks?.[enrollmentType]?.(certRequest);
+      if (preSignChanges) {
+        await certificateRequestDAL.updateById(certificateRequestId, preSignChanges);
+        certRequest = { ...certRequest, ...preSignChanges };
+      }
 
       const externalCaResult = await $processExternalCARequest(
         certRequest,

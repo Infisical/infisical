@@ -47,6 +47,7 @@ import { TCertificateProfileDALFactory } from "@app/services/certificate-profile
 import {
   ENROLLMENT_TYPE_NAME_MAP,
   EnrollmentType,
+  ISSUER_NAMED_ENROLLMENT_TYPES,
   IssuerType,
   RENEWAL_LINKED_ENROLLMENT_TYPES
 } from "@app/services/certificate-profile/certificate-profile-types";
@@ -133,9 +134,7 @@ import {
   applyIssuerNameOverride,
   formatIssuerAltNames,
   applyProfileDefaults,
-  assertIssuerAddedExtensionsAllowedByPolicy,
   buildIssuanceSubject,
-  mergeIssuerAddedExtensions,
   resolveEffectiveTtl
 } from "./certificate-v3-fns";
 import {
@@ -1378,6 +1377,12 @@ export const certificateV3ServiceFactory = ({
     originalCertificateId,
     onCertificateRequestPersisted
   }: TSignCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
+    if (issuerNameOverride && !ISSUER_NAMED_ENROLLMENT_TYPES.has(enrollmentType)) {
+      throw new BadRequestError({
+        message: `${ENROLLMENT_TYPE_NAME_MAP[enrollmentType]} enrollment cannot replace the names in the certificate request.`
+      });
+    }
+
     const profile = await validateProfileAndPermissions({
       profileId,
       actor,
@@ -1494,7 +1499,15 @@ export const certificateV3ServiceFactory = ({
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
       mappedCertificateRequest,
-      { profileCustomExtensions: profile.defaults?.customExtensions, issuerAddedOids: additionalExtensionOids }
+      {
+        profileCustomExtensions: profile.defaults?.customExtensions,
+        issuerAddedExtensions: additionalExtensions?.map((extension) => ({
+          oid: extension.oid,
+          critical: extension.critical,
+          value: extension.value.toString("base64"),
+          issuerAdded: true
+        }))
+      }
     );
 
     if (!validationResult.isValid) {
@@ -1503,18 +1516,7 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
-    const issuerAddedExtensions = additionalExtensions?.map((extension) => ({
-      oid: extension.oid,
-      critical: extension.critical,
-      value: extension.value.toString("base64"),
-      issuerAdded: true
-    }));
-    if (issuerAddedExtensions) {
-      assertIssuerAddedExtensionsAllowedByPolicy(issuerAddedExtensions, policy.customExtensions);
-    }
-    const resolvedCustomExtensions = issuerAddedExtensions
-      ? mergeIssuerAddedExtensions(validationResult.resolvedCustomExtensions, issuerAddedExtensions)
-      : validationResult.resolvedCustomExtensions;
+    const { resolvedCustomExtensions } = validationResult;
 
     validateAlgorithmCompatibility(ca, policy);
 
@@ -1601,7 +1603,7 @@ export const certificateV3ServiceFactory = ({
                 });
               }
 
-              await onCertificateRequestPersisted?.(certRequest.id, tx);
+              await onCertificateRequestPersisted?.(certRequest, tx);
 
               return certRequest;
             },
@@ -1794,7 +1796,7 @@ export const certificateV3ServiceFactory = ({
             },
             tx
           );
-          await onCertificateRequestPersisted?.(pendingRequest.id, tx);
+          await onCertificateRequestPersisted?.(pendingRequest, tx);
 
           await $emitIssuanceAlert(
             {

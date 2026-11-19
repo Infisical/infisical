@@ -100,6 +100,12 @@ export type TMicrosoftAutoenrollmentGroup = {
   name: string | null;
 };
 
+export enum MicrosoftAutoenrollmentChannelBindingStatus {
+  Enforced = "enforced",
+  Unverifiable = "unverifiable",
+  NotChecked = "not-checked"
+}
+
 export type TMicrosoftAutoenrollmentEnrollment = {
   id: string;
   policyUrl: string;
@@ -108,9 +114,15 @@ export type TMicrosoftAutoenrollmentEnrollment = {
   templateOid: string;
   allowedGroups: TMicrosoftAutoenrollmentGroup[];
   renewBeforeDays: number;
+  effectiveRenewBeforeHours: number;
   servicePrincipalName: string;
   keyVersion: number;
   connectionId: string;
+  allowAnyChannelBinding: boolean;
+  channelBinding: {
+    status: MicrosoftAutoenrollmentChannelBindingStatus;
+    reason: string | null;
+  };
   keytabMismatch: {
     servicePrincipalName: string;
     firstSeenAt: string;
@@ -286,6 +298,7 @@ export type TSetMicrosoftAutoenrollmentEnrollmentDTO = {
   reuseKeytab?: {
     profileId: string;
   };
+  allowAnyChannelBinding?: boolean;
 };
 
 export type TListMicrosoftAutoenrollmentGroupsDTO = {

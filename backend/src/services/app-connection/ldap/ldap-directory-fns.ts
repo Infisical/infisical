@@ -4,13 +4,15 @@ import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gatewa
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, GatewayTimeoutError } from "@app/lib/errors";
 import {
   buildDomainBaseDN,
   buildSidEqualityFilter,
   escapeLdapFilterValue,
   getLdapAttribute,
   getLdapAttributeBuffer,
+  getLdapAttributeBuffers,
+  isLdapSearchTimeout,
   netbiosFromDomainFqdn,
   searchLdap,
   TLdapSearchOptions
@@ -52,6 +54,7 @@ export const DIRECTORY_MACHINE_LIST_DEFAULT_LIMIT = 50;
 export const DIRECTORY_MACHINE_LIST_MAX_LIMIT = 200;
 const DIRECTORY_GROUP_LIST_LIMIT = 50;
 const USER_ACCOUNT_CONTROL_ACCOUNT_DISABLED = 0x2;
+const SECURITY_GROUP_FILTER = "(objectCategory=group)(groupType:1.2.840.113556.1.4.803:=2147483648)";
 
 const searchDirectory = (
   client: ldap.Client,
@@ -64,11 +67,16 @@ const searchDirectory = (
     timeLimitSeconds: LDAP_SEARCH_TIME_LIMIT_SECONDS,
     acceptSizeLimitExceeded: true,
     mapError: ({ err, status }) =>
-      new BadRequestError({
-        message: err
-          ? `Unable to read from the directory: ${err.message}`
-          : `Unable to read from the directory: the LDAP server returned status ${status}`
-      })
+      isLdapSearchTimeout({ err, status })
+        ? new GatewayTimeoutError({
+            message: `The directory did not answer within ${LDAP_SEARCH_TIME_LIMIT_SECONDS} seconds.`,
+            error: err
+          })
+        : new BadRequestError({
+            message: err
+              ? `Unable to read from the directory: ${err.message}`
+              : `Unable to read from the directory: the LDAP server returned status ${status}`
+          })
   });
 
 type TBindIdentity = {
@@ -366,8 +374,8 @@ export const searchDirectoryGroups = async (
   const escapedSearch = search ? escapeLdapFilterValue(search) : undefined;
   const entries = await searchDomain(config, gatewayServices, {
     filter: escapedSearch
-      ? `(&(objectCategory=group)(|(cn=*${escapedSearch}*)(sAMAccountName=*${escapedSearch}*)))`
-      : "(objectCategory=group)",
+      ? `(&${SECURITY_GROUP_FILTER}(|(cn=*${escapedSearch}*)(sAMAccountName=*${escapedSearch}*)))`
+      : `(&${SECURITY_GROUP_FILTER})`,
     attributes: ["cn", "objectSid"],
     sizeLimit: DIRECTORY_GROUP_LIST_LIMIT + 1
   });
@@ -390,4 +398,45 @@ export const resolveDirectorySidNames = async (
   const namesBySid = new Map(entries.flatMap(toDirectoryGroup).map((group) => [group.sid, group.name]));
 
   return Object.fromEntries(sids.map((sid) => [sid, namesBySid.get(sid) ?? null]));
+};
+
+export const readDirectoryComputerGroupSids = async (
+  { config, sid }: { config: TLdapConnectionConfig; sid: string },
+  gatewayServices: TLdapDirectoryGatewayServices
+): Promise<string[] | null> => {
+  const { domainFqdn } = parseLdapBindIdentity(config.credentials.dn);
+
+  return executeWithPotentialGateway(
+    config,
+    gatewayServices.gatewayV2Service,
+    async (client) => {
+      const baseDN =
+        (await readDefaultNamingContext(client).catch((err: unknown) => {
+          logger.warn({ err }, `Unable to read the directory's naming context [domain=${domainFqdn}]`);
+          return null;
+        })) ?? buildDomainBaseDN(domainFqdn);
+
+      const [computer] = await searchDirectory(client, baseDN, {
+        filter: new ldap.AndFilter({
+          filters: [
+            new ldap.EqualityFilter({ attribute: "objectCategory", value: "computer" }),
+            buildSidEqualityFilter(sid)
+          ]
+        }),
+        attributes: ["distinguishedName"],
+        sizeLimit: 1
+      });
+      const distinguishedName = computer ? getLdapAttribute(computer, "distinguishedName") : "";
+      if (!distinguishedName) return null;
+
+      const [groups] = await searchDirectory(client, distinguishedName, {
+        filter: "(objectClass=*)",
+        attributes: ["tokenGroups"],
+        scope: "base",
+        sizeLimit: 1
+      });
+      return groups ? getLdapAttributeBuffers(groups, "tokenGroups").map(sidBufferToString) : [];
+    },
+    gatewayServices.gatewayPoolService
+  );
 };

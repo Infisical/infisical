@@ -22,6 +22,7 @@ import { parseEnrollmentRequestToken } from "./microsoft-autoenrollment-cmc-fns"
 const SHA256_OID = "2.16.840.1.101.3.4.2.1";
 const DATA_OID = "1.2.840.113549.1.7.1";
 const CMC_PKI_DATA_OID = "1.3.6.1.5.5.7.12.2";
+const NO_SIGNATURE_OID = "1.3.6.1.5.5.7.6.2";
 const RSA_SHA256 = { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" };
 
 type TSigner = { privateKey: crypto.KeyObject; certificate: Certificate | null };
@@ -61,13 +62,15 @@ const buildSignedData = ({
   contentType = DATA_OID,
   signer,
   attachedCertificates,
-  messageDigest = crypto.createHash("sha256").update(content).digest()
+  messageDigest = crypto.createHash("sha256").update(content).digest(),
+  noSignatureSigner
 }: {
   content: Buffer;
   contentType?: string;
   signer: TSigner;
   attachedCertificates: Certificate[];
   messageDigest?: Buffer;
+  noSignatureSigner?: { signatureValue?: Buffer };
 }) => {
   const signedAttrs = new SignedAndUnsignedAttributes({
     type: 0,
@@ -80,6 +83,28 @@ const buildSignedData = ({
   signedAttrsDer[0] = 0x31;
 
   const issuerCertificate = signer.certificate ?? attachedCertificates[0];
+  const signerIdentifier = () =>
+    new IssuerAndSerialNumber({
+      issuer: issuerCertificate.issuer,
+      serialNumber: issuerCertificate.serialNumber
+    });
+  const unsignedSignerInfos = noSignatureSigner
+    ? [
+        new SignerInfo({
+          version: 1,
+          sid: signerIdentifier(),
+          digestAlgorithm: new AlgorithmIdentifier({ algorithmId: SHA256_OID }),
+          signedAttrs,
+          signatureAlgorithm: new AlgorithmIdentifier({
+            algorithmId: NO_SIGNATURE_OID,
+            algorithmParams: new asn1js.Null()
+          }),
+          signature: new asn1js.OctetString({
+            valueHex: noSignatureSigner.signatureValue ?? crypto.createHash("sha256").update(signedAttrsDer).digest()
+          })
+        })
+      ]
+    : [];
   const signedData = new SignedData({
     version: 3,
     digestAlgorithms: [new AlgorithmIdentifier({ algorithmId: SHA256_OID })],
@@ -89,12 +114,10 @@ const buildSignedData = ({
     }),
     certificates: attachedCertificates,
     signerInfos: [
+      ...unsignedSignerInfos,
       new SignerInfo({
         version: 1,
-        sid: new IssuerAndSerialNumber({
-          issuer: issuerCertificate.issuer,
-          serialNumber: issuerCertificate.serialNumber
-        }),
+        sid: signerIdentifier(),
         digestAlgorithm: new AlgorithmIdentifier({ algorithmId: SHA256_OID }),
         signedAttrs,
         signatureAlgorithm: new AlgorithmIdentifier({ algorithmId: "1.2.840.113549.1.1.11" }),
@@ -189,6 +212,33 @@ describe("parseEnrollmentRequestToken", () => {
     const parsed = await parseEnrollmentRequestToken(token);
 
     expect(parsed.currentCertificate?.subject).toBe("CN=laptop01.corp.example.com");
+  });
+
+  test("accepts a renewal whose first signer uses the No-Signature mechanism", async () => {
+    const token = buildSignedData({
+      content: wrapInPkiData(csrDer),
+      contentType: CMC_PKI_DATA_OID,
+      signer: currentCertificateSigner,
+      attachedCertificates: [currentCertificateSigner.certificate as Certificate],
+      noSignatureSigner: {}
+    });
+
+    const parsed = await parseEnrollmentRequestToken(token);
+
+    expect(Buffer.from(parsed.csr.rawData).equals(csrDer)).toBe(true);
+    expect(parsed.currentCertificate?.subject).toBe("CN=laptop01.corp.example.com");
+  });
+
+  test("rejects a No-Signature signer whose value is not the hash of the signed data", async () => {
+    const token = buildSignedData({
+      content: wrapInPkiData(csrDer),
+      contentType: CMC_PKI_DATA_OID,
+      signer: currentCertificateSigner,
+      attachedCertificates: [currentCertificateSigner.certificate as Certificate],
+      noSignatureSigner: { signatureValue: crypto.createHash("sha256").update("other content").digest() }
+    });
+
+    await expect(parseEnrollmentRequestToken(token)).rejects.toThrow("does not carry the hash");
   });
 
   test("rejects a signature that matches neither the new key nor an attached certificate", async () => {

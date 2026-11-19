@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { MicrosoftAutoenrollmentChannelBindingStatus } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-types";
 import { MICROSOFT_AUTOENROLLMENT } from "@app/lib/api-docs";
 
 export const ApplicationIdParamsSchema = z.object({ applicationId: z.string().uuid() });
@@ -29,9 +30,17 @@ export const MicrosoftAutoenrollmentStateSchema = z.object({
     .array(z.object({ sid: z.string(), name: z.string().nullable() }))
     .describe(MICROSOFT_AUTOENROLLMENT.STATE.allowedGroups),
   renewBeforeDays: z.number().int().describe(MICROSOFT_AUTOENROLLMENT.STATE.renewBeforeDays),
+  effectiveRenewBeforeHours: z.number().int().describe(MICROSOFT_AUTOENROLLMENT.STATE.effectiveRenewBeforeHours),
   servicePrincipalName: z.string().describe(MICROSOFT_AUTOENROLLMENT.STATE.servicePrincipalName),
   keyVersion: z.number().int().describe(MICROSOFT_AUTOENROLLMENT.STATE.keyVersion),
   connectionId: z.string().uuid().describe(MICROSOFT_AUTOENROLLMENT.STATE.connectionId),
+  allowAnyChannelBinding: z.boolean().describe(MICROSOFT_AUTOENROLLMENT.STATE.allowAnyChannelBinding),
+  channelBinding: z
+    .object({
+      status: z.nativeEnum(MicrosoftAutoenrollmentChannelBindingStatus),
+      reason: z.string().nullable()
+    })
+    .describe(MICROSOFT_AUTOENROLLMENT.STATE.channelBinding),
   keytabMismatch: z
     .object({
       servicePrincipalName: z.string(),

@@ -2,6 +2,7 @@ import * as x509 from "@peculiar/x509";
 import * as asn1js from "asn1js";
 import { Certificate, ContentInfo, SignedData } from "pkijs";
 
+import { CmsSignedAttributesEncoding, verifyCmsSignedAttributes } from "@app/ee/services/pki-scep/pki-scep-cms-fns";
 import { DIGEST_OID_TO_HASH } from "@app/ee/services/pki-scep/pki-scep-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
@@ -9,8 +10,7 @@ import { asNonSharedBuffer } from "@app/lib/fn";
 
 const SIGNED_DATA_OID = "1.2.840.113549.1.7.2";
 const CMC_PKI_DATA_OID = "1.3.6.1.5.5.7.12.2";
-const MESSAGE_DIGEST_ATTRIBUTE_OID = "1.2.840.113549.1.9.4";
-const SIGNED_ATTRIBUTES_SET_TAG = 0x31;
+const NO_SIGNATURE_ALGORITHM_OID = "1.3.6.1.5.5.7.6.2";
 
 type TParsedEnrollmentRequest = {
   csr: x509.Pkcs10CertificateRequest;
@@ -111,7 +111,7 @@ export const parseEnrollmentRequestToken = async (token: Buffer): Promise<TParse
     .map((certificate) => new x509.X509Certificate(certificate.toSchema().toBER(false)));
 
   let currentCertificate: x509.X509Certificate | null = null;
-  for (const signerInfo of signedData.signerInfos) {
+  for (const [signerIndex, signerInfo] of signedData.signerInfos.entries()) {
     const hash = DIGEST_OID_TO_HASH[signerInfo.digestAlgorithm.algorithmId];
     if (!hash) {
       throw new BadRequestError({
@@ -119,34 +119,40 @@ export const parseEnrollmentRequestToken = async (token: Buffer): Promise<TParse
       });
     }
 
-    let signedBytes = content;
+    let signedBytes: Buffer = content;
     if (signerInfo.signedAttrs) {
-      const messageDigest: unknown = signerInfo.signedAttrs.attributes.find(
-        (attribute) => attribute.type === MESSAGE_DIGEST_ATTRIBUTE_OID
-      )?.values[0];
-      const expectedDigest = crypto.nativeCrypto.createHash(hash).update(content).digest();
-      if (
-        !(messageDigest instanceof asn1js.OctetString) ||
-        !expectedDigest.equals(Buffer.from(messageDigest.getValue()))
-      ) {
+      const signedAttributesCheck = verifyCmsSignedAttributes({
+        signedAttributes: signerInfo.signedAttrs,
+        hash,
+        content,
+        encoding: CmsSignedAttributesEncoding.Received
+      });
+      if ("failure" in signedAttributesCheck) {
         throw new BadRequestError({ message: "The enrollment request's message digest does not match its content." });
       }
-      signedBytes = Buffer.from(new Uint8Array(signerInfo.signedAttrs.encodedValue));
-      signedBytes[0] = SIGNED_ATTRIBUTES_SET_TAG;
+      signedBytes = signedAttributesCheck.signedBytes;
     }
 
     const signature = Buffer.from(signerInfo.signature.getValue());
-    const signingCertificate = attachedCertificates.find((certificate) =>
-      verifySignature(hash, signedBytes, signature, certificate.publicKey.rawData)
-    );
+    if (signerIndex === 0 && signerInfo.signatureAlgorithm.algorithmId === NO_SIGNATURE_ALGORITHM_OID) {
+      if (!crypto.nativeCrypto.createHash(hash).update(signedBytes).digest().equals(signature)) {
+        throw new BadRequestError({
+          message: "The enrollment request's unsigned signer does not carry the hash of the data it covers."
+        });
+      }
+    } else {
+      const signingCertificate = attachedCertificates.find((certificate) =>
+        verifySignature(hash, signedBytes, signature, certificate.publicKey.rawData)
+      );
 
-    if (signingCertificate) {
-      currentCertificate = signingCertificate;
-    } else if (!verifySignature(hash, signedBytes, signature, csr.publicKey.rawData)) {
-      throw new BadRequestError({
-        message:
-          "The enrollment request carries a signature that matches neither the new key nor an attached certificate."
-      });
+      if (signingCertificate) {
+        currentCertificate = signingCertificate;
+      } else if (!verifySignature(hash, signedBytes, signature, csr.publicKey.rawData)) {
+        throw new BadRequestError({
+          message:
+            "The enrollment request carries a signature that matches neither the new key nor an attached certificate."
+        });
+      }
     }
   }
 

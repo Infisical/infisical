@@ -67,6 +67,7 @@ import {
   DELETED_CERTIFICATE_NO_ACTIONS,
   getApplicationCertificateAccess,
   getCertificateDeletionWarning,
+  getEnrollmentRenewalBlockedReason,
   isExpiringWithinOneDay,
   isManagedCertificate,
   RENEWAL_UNAVAILABLE_NO_PROFILE
@@ -438,14 +439,21 @@ const Page = () => {
                   const profileMissing = !certificate.profileId;
                   if (profileMissing && !isManagedCertificate(certificate)) return null;
 
+                  const enrollmentRenewalBlockedReason = getEnrollmentRenewalBlockedReason(
+                    certificate.enrollmentType
+                  );
                   const renewBlockedReason = profileMissing
                     ? RENEWAL_UNAVAILABLE_NO_PROFILE
-                    : applicationAccess?.renewBlockedReason;
+                    : (enrollmentRenewalBlockedReason ?? applicationAccess?.renewBlockedReason);
 
                   return (
                     <BlockedActionTooltip reason={renewBlockedReason}>
                       <DropdownMenuItem
-                        isDisabled={!canRenewCertificate || profileMissing}
+                        isDisabled={
+                          !canRenewCertificate ||
+                          profileMissing ||
+                          Boolean(enrollmentRenewalBlockedReason)
+                        }
                         isDisabledFocusable={Boolean(renewBlockedReason)}
                         onClick={() =>
                           handlePopUpOpen("renewCertificate", {

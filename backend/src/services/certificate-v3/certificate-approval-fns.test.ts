@@ -1,7 +1,8 @@
 import * as x509 from "@peculiar/x509";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { encodeCustomExtensionValue } from "../certificate-common/certificate-extension-fns";
+import { encodeCustomExtensionValue, resolveCustomExtensions } from "../certificate-common/certificate-extension-fns";
+import { TCertificateRequest, TPolicyValidationOptions } from "../certificate-policy/certificate-policy-types";
 import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import {
@@ -129,51 +130,60 @@ describe("certificateApprovalService issuing an approved request", () => {
     expect(signInput().altNames).toBe(AD_NAME);
   });
 
-  test("signs each extension the issuer added once, even when the profile declares the same one", async () => {
+  test("signs the extensions policy validation returns, which carry the issuer's", async () => {
+    const resolvedCustomExtensions = [
+      { oid: TEMPLATE_INFO_OID, critical: false, value: "issuer-copy", issuerAdded: true },
+      { oid: SID_OID, critical: false, value: "sid", issuerAdded: true }
+    ];
+    deps.certificatePolicyService.validateCertificateRequest.mockResolvedValue({
+      isValid: true,
+      errors: [],
+      resolvedCustomExtensions
+    });
+
     await issue(
       storedRequest({
         enrollmentType: EnrollmentType.MICROSOFT_AUTOENROLLMENT,
         csr: await buildCsrPem(),
         commonName: AD_NAME,
         altNames: [{ type: "dns_name", value: AD_NAME }],
-        customExtensions: [
-          { oid: TEMPLATE_INFO_OID, critical: false, value: "issuer-copy", issuerAdded: true },
-          { oid: SID_OID, critical: false, value: "sid", issuerAdded: true }
-        ]
+        customExtensions: resolvedCustomExtensions
       })
     );
 
-    const extensions = signInput().customExtensions;
-    expect(extensions.filter((extension) => extension.oid === TEMPLATE_INFO_OID)).toEqual([
-      expect.objectContaining({ value: "issuer-copy" })
-    ]);
-    expect(extensions.filter((extension) => extension.oid === SID_OID)).toHaveLength(1);
+    expect(signInput().customExtensions).toEqual(resolvedCustomExtensions);
   });
 
-  test("tells policy validation which extensions the issuer adds, so a required SID rule can pass", async () => {
+  test("hands policy validation the extensions the issuer added, so it checks and returns them", async () => {
+    const sidExtension = { oid: SID_OID, critical: false, value: "sid", issuerAdded: true };
     await issue(
       storedRequest({
         enrollmentType: EnrollmentType.MICROSOFT_AUTOENROLLMENT,
         csr: await buildCsrPem(),
         commonName: AD_NAME,
         altNames: [{ type: "dns_name", value: AD_NAME }],
-        customExtensions: [{ oid: SID_OID, critical: false, value: "sid", issuerAdded: true }]
+        customExtensions: [sidExtension]
       })
     );
 
     expect(deps.certificatePolicyService.validateCertificateRequest).toHaveBeenCalledWith(
       "policy-id",
       expect.anything(),
-      { issuerAddedOids: [SID_OID] }
+      { issuerAddedExtensions: [sidExtension] }
     );
   });
 
   test("refuses an approved request whose computer SID the policy now denies", async () => {
-    deps.certificatePolicyService.getPolicyById.mockResolvedValue({
-      id: "policy-id",
-      basicConstraints: null,
-      customExtensions: [{ oid: SID_OID, denied: ["S-1-5-21-*"] }]
-    });
+    deps.certificatePolicyService.validateCertificateRequest.mockImplementation(
+      async (_policyId: string, request: TCertificateRequest, options?: TPolicyValidationOptions) => {
+        const { errors, extensions } = resolveCustomExtensions({
+          rules: [{ oid: SID_OID, denied: ["S-1-5-21-*"] }],
+          requestExtensions: request.customExtensions,
+          issuerAddedExtensions: options?.issuerAddedExtensions
+        });
+        return { isValid: !errors.length, errors, resolvedCustomExtensions: extensions };
+      }
+    );
     deps.certificateRequestDAL.findById.mockResolvedValue(
       storedRequest({
         enrollmentType: EnrollmentType.MICROSOFT_AUTOENROLLMENT,
@@ -253,6 +263,133 @@ describe("certificateApprovalService issuing an approved request", () => {
         issuanceTx
       );
       expect(deps.certificateDAL.updateById).not.toHaveBeenCalledWith("cert-old", expect.anything(), expect.anything());
+    });
+  });
+
+  describe("signature algorithm checked against the policy", () => {
+    const validatedSignatureAlgorithm = () =>
+      (deps.certificatePolicyService.validateCertificateRequest.mock.calls[0][1] as TCertificateRequest)
+        .signatureAlgorithm;
+
+    test("checks the signature algorithm resolved for the CA when the request was submitted, as direct signing does", async () => {
+      await issue(
+        storedRequest({
+          enrollmentType: EnrollmentType.API,
+          csr: await buildCsrPem("service.example.com"),
+          signatureAlgorithm: "ECDSA-SHA384"
+        })
+      );
+
+      expect(validatedSignatureAlgorithm()).toBe("ECDSA-SHA384");
+    });
+
+    test("falls back to the request's own signature algorithm when none was stored", async () => {
+      await issue(storedRequest({ enrollmentType: EnrollmentType.API, csr: await buildCsrPem("service.example.com") }));
+
+      expect(validatedSignatureAlgorithm()).toBe("RSA-SHA256");
+    });
+  });
+
+  describe("pre-sign check for the enrollment method", () => {
+    const preSignCheck = vi.fn();
+
+    const issueWithCheck = (request: Record<string, unknown>) => {
+      deps.certificateRequestDAL.findById.mockResolvedValue(request);
+      return certificateApprovalServiceFactory({
+        ...deps,
+        enrollmentPreSignHooks: { [EnrollmentType.MICROSOFT_AUTOENROLLMENT]: preSignCheck }
+      } as unknown as TIssueCertificateFromApprovedRequestDeps).issueCertificate("request-id");
+    };
+
+    beforeEach(() => {
+      preSignCheck.mockReset();
+    });
+
+    test("runs the check with the stored request before signing it", async () => {
+      const request = storedRequest({
+        enrollmentType: EnrollmentType.MICROSOFT_AUTOENROLLMENT,
+        csr: await buildCsrPem(),
+        commonName: AD_NAME,
+        altNames: [{ type: "dns_name", value: AD_NAME }]
+      });
+
+      await expect(issueWithCheck(request)).rejects.toThrow(SIGNING_STOPPED);
+
+      expect(preSignCheck).toHaveBeenCalledWith(request);
+      expect(preSignCheck.mock.invocationCallOrder[0]).toBeLessThan(
+        deps.internalCaService.signCertFromCa.mock.invocationCallOrder[0]
+      );
+    });
+
+    test("fails the request with the check's reason instead of signing it", async () => {
+      preSignCheck.mockRejectedValue(
+        new Error("Computer LAPTOP01$ was disabled in Active Directory after the request was submitted.")
+      );
+
+      await expect(
+        issueWithCheck(
+          storedRequest({
+            enrollmentType: EnrollmentType.MICROSOFT_AUTOENROLLMENT,
+            csr: await buildCsrPem(),
+            commonName: AD_NAME,
+            altNames: [{ type: "dns_name", value: AD_NAME }]
+          })
+        )
+      ).rejects.toThrow("was disabled in Active Directory");
+
+      expect(deps.internalCaService.signCertFromCa).not.toHaveBeenCalled();
+      expect(deps.certificateRequestDAL.updateById).toHaveBeenCalledWith("request-id", {
+        status: CertificateRequestStatus.FAILED,
+        errorMessage: "Computer LAPTOP01$ was disabled in Active Directory after the request was submitted."
+      });
+    });
+
+    test("issues a renewal whose original expired as a new enrollment, unlinked, when the check drops the link", async () => {
+      preSignCheck.mockResolvedValue({ renewedFromCertificateId: null });
+      deps.certificateDAL = {
+        updateById: vi.fn(),
+        findById: vi.fn().mockResolvedValue({ id: "cert-old", orderId: null })
+      };
+      deps.resourceMetadataDAL = { find: vi.fn().mockResolvedValue([]), insertMany: vi.fn() };
+      deps.certificateAlertEventEmitter = { emit: vi.fn() };
+      deps.internalCaService.signCertFromCa.mockImplementation(
+        async ({ onPersisted }: { onPersisted: (cert: unknown, tx: unknown) => Promise<void> }) => {
+          await onPersisted({ id: "cert-new", notAfter: new Date(Date.now() + 86400000) }, "issuance-tx");
+          throw SIGNING_STOPPED;
+        }
+      );
+
+      await expect(
+        issueWithCheck(
+          storedRequest({
+            enrollmentType: EnrollmentType.MICROSOFT_AUTOENROLLMENT,
+            csr: await buildCsrPem(),
+            commonName: AD_NAME,
+            altNames: [{ type: "dns_name", value: AD_NAME }],
+            renewedFromCertificateId: "cert-old"
+          })
+        )
+      ).rejects.toThrow(SIGNING_STOPPED);
+
+      expect(deps.certificateRequestDAL.updateById).toHaveBeenCalledWith("request-id", {
+        renewedFromCertificateId: null
+      });
+      expect(deps.certificateDAL.updateById).toHaveBeenCalledWith(
+        "cert-new",
+        expect.not.objectContaining({ renewedFromCertificateId: expect.any(String) as string }),
+        "issuance-tx"
+      );
+      expect(deps.certificateDAL.updateById).not.toHaveBeenCalledWith("cert-old", expect.anything(), expect.anything());
+    });
+
+    test("does not run another method's check", async () => {
+      await expect(
+        issueWithCheck(
+          storedRequest({ enrollmentType: EnrollmentType.API, csr: await buildCsrPem("service.example.com") })
+        )
+      ).rejects.toThrow(SIGNING_STOPPED);
+
+      expect(preSignCheck).not.toHaveBeenCalled();
     });
   });
 

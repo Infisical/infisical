@@ -4,6 +4,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { sidStringToBuffer } from "@app/lib/windows-sid/windows-sid-fns";
 
 import { kerberosChecksum, kerberosEncrypt } from "./kerberos-crypto";
+import { applicationTag, buildGssFrame, contextTag, toDer } from "./kerberos-der";
 import { KerberosEncryptionType, KerberosKeyUsage, TKeytabEntry } from "./kerberos-types";
 
 export const TEST_SERVICE_NAME = "HTTP/app.example.com";
@@ -99,23 +100,40 @@ const createNdrWriter = () => {
   return { write, uint32, align, toBuffer: () => Buffer.concat(chunks) };
 };
 
+const ENABLED_GROUP_ATTRIBUTES = 7;
+const DISABLED_GROUP_ATTRIBUTES = 3;
+
 type TTestLogonInfo = {
   effectiveName: string;
   domainSid: string;
   userRid: number;
   primaryGroupRid: number;
   groupRids: number[];
+  disabledGroupRids: number[];
   extraSids: string[];
+  disabledExtraSids: string[];
+  resourceGroups: { domainSid: string; rids: number[]; disabledRids: number[] } | null;
 };
+
+const withAttributes = <T>(enabled: T[], disabled: T[]) => [
+  ...enabled.map((value) => ({ value, attributes: ENABLED_GROUP_ATTRIBUTES })),
+  ...disabled.map((value) => ({ value, attributes: DISABLED_GROUP_ATTRIBUTES }))
+];
 
 const buildLogonInfo = ({
   effectiveName,
   domainSid,
   userRid,
   primaryGroupRid,
-  groupRids,
-  extraSids
+  groupRids: enabledGroupRids,
+  disabledGroupRids,
+  extraSids: enabledExtraSids,
+  disabledExtraSids,
+  resourceGroups
 }: TTestLogonInfo) => {
+  const groupRids = withAttributes(enabledGroupRids, disabledGroupRids);
+  const extraSids = withAttributes(enabledExtraSids, disabledExtraSids);
+  const resourceGroupRids = resourceGroups ? withAttributes(resourceGroups.rids, resourceGroups.disabledRids) : [];
   const writer = createNdrWriter();
   const nameBytes = Buffer.from(effectiveName, "utf16le");
   writer.write(Buffer.alloc(16));
@@ -134,7 +152,9 @@ const buildLogonInfo = ({
   writer.write(Buffer.alloc(8 + 32));
   writer.uint32(extraSids.length);
   writer.uint32(extraSids.length ? 0x20010 : 0);
-  writer.write(Buffer.alloc(12));
+  writer.uint32(resourceGroups ? 0x20018 : 0);
+  writer.uint32(resourceGroupRids.length);
+  writer.uint32(resourceGroupRids.length ? 0x2001c : 0);
 
   writer.align();
   writer.uint32(effectiveName.length);
@@ -145,9 +165,9 @@ const buildLogonInfo = ({
   if (groupRids.length) {
     writer.align();
     writer.uint32(groupRids.length);
-    groupRids.forEach((rid) => {
-      writer.uint32(rid);
-      writer.uint32(7);
+    groupRids.forEach(({ value, attributes }) => {
+      writer.uint32(value);
+      writer.uint32(attributes);
     });
   }
   const writeSid = (sid: string) => {
@@ -161,16 +181,33 @@ const buildLogonInfo = ({
   if (extraSids.length) {
     writer.align();
     writer.uint32(extraSids.length);
-    extraSids.forEach((_, index) => {
-      writer.uint32(0x20014 + index * 4);
-      writer.uint32(7);
+    extraSids.forEach(({ attributes }, index) => {
+      writer.uint32(0x20100 + index * 4);
+      writer.uint32(attributes);
     });
-    extraSids.forEach(writeSid);
+    extraSids.forEach(({ value }) => writeSid(value));
+  }
+  if (resourceGroups) {
+    writeSid(resourceGroups.domainSid);
+    if (resourceGroupRids.length) {
+      writer.align();
+      writer.uint32(resourceGroupRids.length);
+      resourceGroupRids.forEach(({ value, attributes }) => {
+        writer.uint32(value);
+        writer.uint32(attributes);
+      });
+    }
   }
   return writer.toBuffer();
 };
 
-export const buildTestPac = ({ serviceKey }: { serviceKey: Buffer }) => {
+export const buildTestPac = ({
+  serviceKey,
+  logonInfo = {}
+}: {
+  serviceKey: Buffer;
+  logonInfo?: Partial<TTestLogonInfo>;
+}) => {
   const signatureType = serviceKey.length === 32 ? 16 : 15;
   const signatureBuffer = () => {
     const bytes = Buffer.alloc(16);
@@ -186,7 +223,11 @@ export const buildTestPac = ({ serviceKey }: { serviceKey: Buffer }) => {
         userRid: 1105,
         primaryGroupRid: 515,
         groupRids: [515],
-        extraSids: ["S-1-18-1"]
+        disabledGroupRids: [],
+        extraSids: ["S-1-18-1"],
+        disabledExtraSids: [],
+        resourceGroups: null,
+        ...logonInfo
       })
     },
     { type: 6, data: signatureBuffer() },
@@ -214,20 +255,6 @@ export const buildTestPac = ({ serviceKey }: { serviceKey: Buffer }) => {
   return pac;
 };
 
-const contextTag = (tagNumber: number, value: asn1js.BaseBlock) =>
-  new asn1js.Constructed({
-    idBlock: { tagClass: 3, tagNumber },
-    value: [value]
-  });
-
-const applicationTag = (tagNumber: number, value: asn1js.BaseBlock) =>
-  new asn1js.Constructed({
-    idBlock: { tagClass: 2, tagNumber },
-    value: [value]
-  });
-
-const toDer = (block: asn1js.BaseBlock) => Buffer.from(block.toBER());
-
 const integer = (value: number) => new asn1js.Integer({ value });
 
 const principalName = (name: string) =>
@@ -251,20 +278,6 @@ const encryptedData = (encryptionType: number, keyVersion: number | null, cipher
       contextTag(2, new asn1js.OctetString({ valueHex: cipher }))
     ]
   });
-
-const derLength = (length: number) => {
-  if (length < 0x80) return Buffer.from([length]);
-  const bytes: number[] = [];
-  for (let remaining = length; remaining > 0; remaining = Math.floor(remaining / 256)) {
-    bytes.unshift(remaining % 256);
-  }
-  return Buffer.from([0x80 + bytes.length, ...bytes]);
-};
-
-const gssFrame = (mechanismOid: string, body: Buffer) => {
-  const content = Buffer.concat([toDer(new asn1js.ObjectIdentifier({ value: mechanismOid })), body]);
-  return Buffer.concat([Buffer.from([0x60]), derLength(content.length), content]);
-};
 
 export type TTestNegotiateOptions = {
   serviceKey: Buffer;
@@ -445,9 +458,9 @@ export const buildTestNegotiateHeader = ({
     })
   );
 
-  const kerberosToken = gssFrame(KERBEROS_OID, Buffer.concat([AP_REQUEST_TOKEN_ID, toDer(apRequest)]));
+  const kerberosToken = buildGssFrame(KERBEROS_OID, Buffer.concat([AP_REQUEST_TOKEN_ID, toDer(apRequest)]));
   const token = isSpnego
-    ? gssFrame(
+    ? buildGssFrame(
         SPNEGO_OID,
         toDer(
           contextTag(

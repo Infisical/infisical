@@ -12,6 +12,7 @@ import {
   buildTemplateInfoExtension,
   buildTemplateOid,
   readSidSecurityExtension,
+  resolveRenewalPeriodSeconds,
   resolveTemplatePrivateKey
 } from "./microsoft-autoenrollment-template-fns";
 
@@ -163,5 +164,19 @@ describe("readSidSecurityExtension", () => {
     ]
   ])("returns undefined when the certificate %s", async (_name, extensions) => {
     expect(readSidSecurityExtension(await certificateWith(extensions))).toBeUndefined();
+  });
+});
+
+describe("resolveRenewalPeriodSeconds", () => {
+  const DAY = 86400;
+
+  test.each([
+    ["keeps a period within the range Windows supports", 42, 365 * DAY, 42 * DAY],
+    ["keeps the period under 20% of the lifetime", 42, 30 * DAY, 6 * DAY - 1],
+    ["keeps the period under 20% when the lifetime does not divide evenly", 42, 10 * DAY + 3, 2 * DAY],
+    ["raises a period shorter than eight hours", 0, 365 * DAY, 8 * 60 * 60 + 1],
+    ["prefers staying under 20% when the lifetime is too short for both bounds", 1, DAY, DAY * 0.2 - 1]
+  ])("%s", (_name, renewBeforeDays, validitySeconds, expected) => {
+    expect(resolveRenewalPeriodSeconds(renewBeforeDays, validitySeconds)).toBe(expected);
   });
 });

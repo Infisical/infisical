@@ -2,12 +2,12 @@ import { FastifyReply } from "fastify";
 import { z } from "zod";
 
 import { TMicrosoftAutoenrollmentResponse } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-types";
-import { writeLimit } from "@app/server/config/rateLimiter";
+import { microsoftAutoenrollmentLimit } from "@app/server/config/rateLimiter";
+
+import { MicrosoftAutoenrollmentParamsSchema } from "./microsoft-autoenrollment-schemas";
 
 const MAX_SOAP_MESSAGE_SIZE = 64 * 1024;
 const SOAP_CONTENT_TYPE = "application/soap+xml";
-
-const ParamsSchema = z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() });
 
 const sendSoapResponse = (res: FastifyReply, response: TMicrosoftAutoenrollmentResponse) => {
   void res
@@ -26,11 +26,11 @@ export const registerMicrosoftAutoenrollmentRouter = async (server: FastifyZodPr
   server.route({
     method: "POST",
     url: "/cep/applications/:applicationId/profiles/:profileId",
-    config: { rateLimit: writeLimit },
+    config: { rateLimit: microsoftAutoenrollmentLimit },
     schema: {
       operationId: "getMicrosoftAutoenrollmentPolicies",
       consumes: [SOAP_CONTENT_TYPE],
-      params: ParamsSchema,
+      params: MicrosoftAutoenrollmentParamsSchema,
       body: z.string().max(MAX_SOAP_MESSAGE_SIZE)
     },
     handler: async (req, res) => {
@@ -48,11 +48,11 @@ export const registerMicrosoftAutoenrollmentRouter = async (server: FastifyZodPr
   server.route({
     method: "POST",
     url: "/ces/applications/:applicationId/profiles/:profileId",
-    config: { rateLimit: writeLimit },
+    config: { rateLimit: microsoftAutoenrollmentLimit },
     schema: {
       operationId: "requestMicrosoftAutoenrollmentCertificate",
       consumes: [SOAP_CONTENT_TYPE],
-      params: ParamsSchema,
+      params: MicrosoftAutoenrollmentParamsSchema,
       body: z.string().max(MAX_SOAP_MESSAGE_SIZE)
     },
     handler: async (req, res) => {

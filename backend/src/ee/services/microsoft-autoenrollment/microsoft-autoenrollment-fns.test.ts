@@ -134,7 +134,9 @@ describe("resolveCanonicalHostname", () => {
       "edge.example.net": "origin.example.net"
     };
     vi.spyOn(dns, "resolveCname").mockImplementation(async (hostname: string) =>
-      cnames[hostname] ? [cnames[hostname]] : Promise.reject(Object.assign(new Error("no data"), { code: "ENODATA" }))
+      cnames[hostname.toLowerCase()]
+        ? [cnames[hostname.toLowerCase()]]
+        : Promise.reject(Object.assign(new Error("no data"), { code: "ENODATA" }))
     );
 
     await expect(resolveCanonicalHostname("App.Example.com")).resolves.toBe("origin.example.net");

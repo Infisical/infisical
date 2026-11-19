@@ -715,7 +715,7 @@ export const certificatePolicyServiceFactory = ({
       rules: template.customExtensions,
       requestExtensions: request.customExtensions,
       skipRequired: options?.skipRequired,
-      issuerAddedOids: options?.issuerAddedOids
+      issuerAddedExtensions: options?.issuerAddedExtensions
     });
     errors.push(...customExtensionErrors);
 

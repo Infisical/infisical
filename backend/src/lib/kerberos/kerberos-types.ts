@@ -45,8 +45,19 @@ export type TKerberosIdentity = {
   domainSid: string;
 };
 
+export type TNegotiateToken = {
+  isSpnego: boolean;
+  mechanismOid: string;
+  isMutualRequired: boolean;
+  serviceName: string;
+  ticketEncryptionType: number;
+  ticketKeyVersion: number | null;
+  ticketCipher: Buffer;
+  authenticatorCipher: Buffer;
+};
+
 export type TVerifyNegotiateTokenDTO = {
-  authorizationHeader?: string;
+  negotiateToken: TNegotiateToken;
   keytabEntries: TKeytabEntry[];
   checkReplay: (replayKey: string) => Promise<boolean>;
   expectedChannelBindings: Buffer[] | null;

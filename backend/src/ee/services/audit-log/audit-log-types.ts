@@ -1261,6 +1261,17 @@ export type Actor =
   | KmipServerActor
   | AgentVaultProxyActor;
 
+export type RequestActor =
+  | UserActor
+  | ServiceActor
+  | IdentityActor
+  | ScimClientActor
+  | UnknownUserActor
+  | GatewayActor
+  | RelayActor
+  | KmipServerActor
+  | AgentVaultProxyActor;
+
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
   metadata: {
@@ -4226,6 +4237,7 @@ interface SetPkiApplicationMicrosoftAutoenrollmentEnrollment {
     connectionName: string;
     allowedGroups: { sid: string; name: string | null }[];
     renewBeforeDays: number;
+    allowAnyChannelBinding: boolean;
     keytabSource: MicrosoftAutoenrollmentKeytabSource;
     reusedFromProfileId?: string;
     reusedFromProfileName?: string;

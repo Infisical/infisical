@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { MicrosoftAutoenrollmentParamsSchema } from "@app/ee/routes/microsoft-autoenrollment/microsoft-autoenrollment-schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, MICROSOFT_AUTOENROLLMENT } from "@app/lib/api-docs";
 import { isValidSid } from "@app/lib/windows-sid/windows-sid-fns";
@@ -15,8 +16,6 @@ const MAX_KEYTAB_BYTES = 64 * 1024;
 const MAX_ALLOWED_GROUPS = 50;
 const MAX_SID_LENGTH = 184;
 
-const ParamsSchema = z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() });
-
 export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "PUT",
@@ -28,7 +27,7 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
       description:
         "Turn on or update Microsoft Autoenrollment for a profile on an application. Computers pick up the change on their next policy refresh and keep the certificates they hold until they renew them.",
       tags: [ApiDocsTags.PkiApplications],
-      params: ParamsSchema,
+      params: MicrosoftAutoenrollmentParamsSchema,
       body: z.object({
         connectionId: z.string().uuid().optional().describe(MICROSOFT_AUTOENROLLMENT.SET.connectionId),
         allowedGroupSids: z
@@ -64,7 +63,8 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
             profileId: z.string().uuid()
           })
           .optional()
-          .describe(MICROSOFT_AUTOENROLLMENT.SET.reuseKeytab)
+          .describe(MICROSOFT_AUTOENROLLMENT.SET.reuseKeytab),
+        allowAnyChannelBinding: z.boolean().optional().describe(MICROSOFT_AUTOENROLLMENT.SET.allowAnyChannelBinding)
       }),
       response: {
         200: z.object({
@@ -113,6 +113,7 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
             connectionName: result.connectionName,
             allowedGroups: result.microsoftAutoenrollment.allowedGroups,
             renewBeforeDays: result.microsoftAutoenrollment.renewBeforeDays,
+            allowAnyChannelBinding: result.microsoftAutoenrollment.allowAnyChannelBinding,
             keytabSource: result.keytabSource,
             ...(result.reusedFromProfileId && {
               reusedFromProfileId: result.reusedFromProfileId,
@@ -145,7 +146,7 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
       operationId: "clearPkiApplicationMicrosoftAutoenrollmentEnrollment",
       description: "Turn off Microsoft Autoenrollment for a profile on an application and delete its stored keytab.",
       tags: [ApiDocsTags.PkiApplications],
-      params: ParamsSchema,
+      params: MicrosoftAutoenrollmentParamsSchema,
       response: { 200: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
@@ -197,7 +198,7 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
       description:
         "Make every computer that holds a certificate from this profile request a new one on its next autoenrollment run.",
       tags: [ApiDocsTags.PkiApplications],
-      params: ParamsSchema,
+      params: MicrosoftAutoenrollmentParamsSchema,
       response: {
         200: z.object({
           applicationId: z.string().uuid(),
@@ -245,7 +246,7 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
       description:
         "Search the Active Directory groups that can be allowed to enroll, through an LDAP connection. Requires permission to edit the application's enrollment and to connect the LDAP connection.",
       tags: [ApiDocsTags.PkiApplications],
-      params: ParamsSchema,
+      params: MicrosoftAutoenrollmentParamsSchema,
       querystring: z.object({
         connectionId: z.string().uuid().describe(MICROSOFT_AUTOENROLLMENT.LIST_GROUPS.connectionId),
         search: z.string().trim().max(64).optional().describe(MICROSOFT_AUTOENROLLMENT.LIST_GROUPS.search)
@@ -284,7 +285,7 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
       description:
         "Get the Kerberos service principal the keytab must be created for. Its host is the instance URL's host after following CNAME records, because Windows asks for a ticket for the final name.",
       tags: [ApiDocsTags.PkiApplications],
-      params: ParamsSchema,
+      params: MicrosoftAutoenrollmentParamsSchema,
       response: {
         200: z.object({ servicePrincipalName: z.string() })
       }

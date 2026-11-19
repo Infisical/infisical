@@ -14,21 +14,15 @@ Each computer signs in with its Kerberos ticket on every request. Its certificat
 
 ## Prerequisites
 
+- The Enterprise plan
 - A profile attached to your Application that issues from an internal certificate authority (external certificate authorities aren't supported), with a CA key type that matches the profile's default key algorithm (RSA 2048 when it has none)
-- An [LDAP connection](/integrations/app-connections/ldap) that uses the Active Directory provider, for the domain your computers belong to
+- An [LDAP connection](/integrations/app-connections/ldap) that uses the Active Directory provider, for the domain your computers belong to (use an LDAPS URL on port 636 if your domain controllers require LDAP signing)
+- The `Connect` action on `App Connections` for that LDAP connection
 - A domain account to map the Kerberos service principal to, and permission to run `ktpass` on a domain controller
-- Windows computers that can reach your Infisical instance over HTTPS, with a TLS certificate they trust
+- Windows computers that reach your Infisical instance over HTTPS without HTTPS inspection, with a TLS certificate they trust, and an instance that resolves its host name the same way the computers do
+- If you self-host Infisical, `SITE_URL` set to the HTTPS address computers use (the enrollment URLs and the Kerberos service principal are built from it)
 
-Each request must carry an HTTPS channel binding for a TLS certificate that your instance serves at its host name. Windows adds the channel binding by default when it connects over HTTPS, unless the computer sets `SuppressExtendedProtection` to `1` under `HKLM\SYSTEM\CurrentControlSet\Control\Lsa`. Your instance reads the certificates valid for its host name at the addresses its own DNS resolver and public DNS return, so an internal address with a valid certificate for the host name works.
-
-- A request is refused if the computer sees a certificate your instance can't see at its host name, typically from a proxy that inspects HTTPS or from an internal address your instance doesn't resolve
-- To avoid this, exclude your instance's host name from HTTPS inspection and make sure your instance resolves its host name the same way computers do
-- If your instance runs in FIPS mode, a request only needs to carry a channel binding, for any certificate
-- If your instance can't read its certificates, requests are checked against the last certificates it read for up to a day, and after that only need to carry a channel binding until it can read them again
-
-<Note>
-  On a self-hosted instance, set `SITE_URL` to the HTTPS address computers use, because the enrollment URLs and the Kerberos service principal are built from it.
-</Note>
+If a reverse proxy in front of your instance routes requests by path, route `/cep/` and `/ces/` to Infisical as well as `/api/`.
 
 ## Step 1: Create a keytab
 
@@ -73,15 +67,8 @@ Fill in the rest of the panel, then select **Enable**:
 
 - **LDAP connection**: the Active Directory connection used to look up each computer's DNS name
 - **AD groups (optional)**: the groups whose computers can enroll (leave it empty to let every computer in the domain enroll)
-- **Renew before (days)**: the number of days before expiry that Windows renews a certificate (defaults to 42, and is capped at the certificate's validity minus one day)
-
-Certificates are valid for the profile's default TTL. If the profile has no default TTL, they're valid for one year, the same as the AD CS computer templates, or for the policy's maximum validity if that's shorter.
-
-Certificates get the key usages and extended key usages set on the profile, whatever the computer asks for. Set them on the profile (such as **Digital Signature** and **Key Encipherment**, with **Client Authentication** and **Server Authentication**). If the profile has none, the certificate gets the usages Windows asks for, which is only **Key Encipherment** and no extended key usages.
-
-Each certificate also carries the computer's security identifier (SID) in the Active Directory security extension (OID `1.3.6.1.4.1.311.25.2`), which domain controllers use for [strong certificate mapping](https://support.microsoft.com/en-us/topic/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers-ad2c23b0-15d8-4340-a468-4d4f3b188f16). If the certificate policy has a rule for that OID, the computer's SID must meet it.
-
-Computers generate the key type set as the profile's default key algorithm: RSA (2048, 3072 or 4096 bits) or ECDSA (P-256, P-384 or P-521). If the profile has no default key algorithm, they generate an RSA 2048-bit key. While the method is on, a change to the profile's certificate authority or default key algorithm that leaves the CA's key type mismatched, or moves the profile off an internal CA, is refused.
+- **Accept any TLS channel binding**: accept a request bound to any TLS certificate, including a Kerberos ticket relayed through another HTTPS site (off by default, and only for computers that reach your instance through a proxy that inspects HTTPS, or an instance that can't read its own certificate, such as in FIPS mode)
+- **Renew before (days)**: the number of days before expiry that Windows renews a certificate (defaults to 42). Windows renews a certificate only when this is more than 8 hours and less than 20% of its validity, so a value outside that range is moved into it, and the panel shows the value Windows uses when it differs. A certificate valid for 40 hours or less can't be renewed, and computers request a new one instead.
 
 Once the method is on, the **Endpoint** section shows the **Enrollment policy URL** for the profile. Each profile has its own URL, so add one URL to Group Policy for each profile you want computers to enroll in.
 
@@ -116,9 +103,7 @@ Add the profile's URL to a Group Policy Object (GPO) that applies to the compute
 
         ![Adding the enrollment policy URL](/images/platform/pki/enrollment-methods/microsoft-autoenrollment/gpo-add-policy-server.png)
 
-        Once the result says the URI was validated, select **Add**, then select **OK** in the policy dialog.
-
-        ![The validated enrollment policy URL](/images/platform/pki/enrollment-methods/microsoft-autoenrollment/gpo-add-validated.png)
+        **Validate Server** checks the URL with your own user account, and only computer accounts can enroll, so the validation fails. You can ignore that error. Select **Add**, then select **OK** in the policy dialog.
       </Step>
       <Step>
         Double-click **Certificate Services Client - Auto-Enrollment**. Set **Configuration Model** to **Enabled**, select both checkboxes below it, then select **OK**.
@@ -145,7 +130,7 @@ Add the profile's URL to a Group Policy Object (GPO) that applies to the compute
     Set-GPRegistryValue -Name $gpoName -Key $key -ValueName URL -Type String -Value $url | Out-Null
     Set-GPRegistryValue -Name $gpoName -Key $key -ValueName PolicyID -Type String -Value $policyId | Out-Null
     Set-GPRegistryValue -Name $gpoName -Key $key -ValueName FriendlyName -Type String -Value $name | Out-Null
-    Set-GPRegistryValue -Name $gpoName -Key $key -ValueName Flags -Type DWord -Value 50 | Out-Null
+    Set-GPRegistryValue -Name $gpoName -Key $key -ValueName Flags -Type DWord -Value 18 | Out-Null
     Set-GPRegistryValue -Name $gpoName -Key $key -ValueName AuthFlags -Type DWord -Value 2 | Out-Null
     Set-GPRegistryValue -Name $gpoName -Key $key -ValueName Cost -Type DWord -Value 1 | Out-Null
     Set-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Cryptography\AutoEnrollment" -ValueName AEPolicy -Type DWord -Value 7 | Out-Null
@@ -181,7 +166,20 @@ gpupdate /force
 certutil -pulse
 ```
 
+To check that the computer enrolled, open `certlm.msc` on it and go to **Personal** > **Certificates**, where the new certificate is listed. The certificate also appears in your Application's **Certificate Inventory** tab.
+
 Windows keeps the enrollment policy for up to 8 hours, so a change to the enrollment method can take that long to reach a computer.
+
+## Certificate contents
+
+Each certificate is built from the profile, whatever the computer puts in its request:
+
+- **Validity**: the profile's default TTL, or one year if the profile has none (the same as the AD CS computer templates), capped at the policy's maximum validity
+- **Key usages**: the key usages and extended key usages set on the profile, such as **Digital Signature** and **Key Encipherment** with **Client Authentication** and **Server Authentication** (if the profile has none, the certificate only gets **Key Encipherment** and no extended key usages)
+- **Security identifier**: the computer's SID in the Active Directory security extension (OID `1.3.6.1.4.1.311.25.2`), which domain controllers use for [strong certificate mapping](https://support.microsoft.com/en-us/topic/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers-ad2c23b0-15d8-4340-a468-4d4f3b188f16) (if the certificate policy has a rule for that OID, the SID must meet it)
+- **Key type**: the profile's default key algorithm, RSA (2048, 3072 or 4096 bits) or ECDSA (P-256, P-384 or P-521), or RSA 2048 if the profile has none
+
+While the method is on, a change to the profile is refused if it moves the profile off an internal CA, or leaves the CA's key type mismatched with the default key algorithm.
 
 ## Re-enroll computers
 
@@ -191,7 +189,22 @@ Changing the enrollment method doesn't replace the certificates computers alread
 
 If an [approval policy](/documentation/platform/pki/applications/approvals) covers the profile, the computer's request waits for approval. Windows checks the request again on each autoenrollment run, installs the certificate after the request is approved, and drops the request if it's rejected. Windows only checks requests made through an enrollment policy URL that's in Group Policy.
 
-To install an approved certificate without waiting, run `certutil -pulse` on the computer from an elevated prompt. To download it by hand instead, run `certreq -retrieve -kerberos -config "<enrollment-service-url>" <request-id>` on the computer. The enrollment service URL is the **Enrollment policy URL** with `/cep/` replaced by `/ces/`, and the request ID is the `requestNumber` in the request's **Microsoft Autoenrollment Certificate Issuance** or **Microsoft Autoenrollment Certificate Renewal** audit log event.
+To install an approved certificate without waiting, run `certutil -pulse` on the computer from an elevated prompt.
+
+## Turn off Microsoft Autoenrollment
+
+To stop a profile from issuing certificates to computers, turn the method off and remove the profile's URL from Group Policy:
+
+<Steps>
+  <Step>
+    In your Application, go to the **Settings** tab and select **Configure** on the profile. On the **Microsoft Autoenrollment** tab, select **Disable**, then select **Disable Enrollment**.
+  </Step>
+  <Step>
+    In the GPO editor, double-click **Certificate Services Client - Certificate Enrollment Policy**, select the profile's **Enrollment policy URL**, and select **Remove**. Until you remove the URL, computers keep asking the profile for certificates.
+  </Step>
+</Steps>
+
+Computers keep the certificates they already hold. Approved requests that computers haven't picked up yet can no longer be collected. Turning the method off also deletes the keytab, allowed groups and renewal setting, so turning it back on needs a keytab again.
 
 ## Troubleshooting
 
@@ -205,8 +218,22 @@ To install an approved certificate without waiting, run `certutil -pulse` on the
   <Accordion title="Requests are refused with a channel binding mismatch">
     The audit log shows the reason `channel-binding-mismatch` when a request is bound to a TLS certificate that your instance can't see at its host name. This usually means computers reach your instance through a proxy that inspects HTTPS, or resolve its host name to an internal address that your instance's own DNS lookups don't return. Exclude your instance's host name from HTTPS inspection, and make sure your instance resolves its host name the same way computers do. If neither applies, someone may be relaying the computers' Kerberos tickets through another HTTPS site.
   </Accordion>
+  <Accordion title="Requests are refused because the channel binding can't be checked">
+    The audit log shows the reason `channel-binding-unverifiable` when your instance can't check which TLS certificate a request is bound to. The panel shows the same reason. The message says which of these applies:
+
+    - Your instance runs in FIPS mode
+    - `SITE_URL` isn't an HTTPS address
+    - Your instance can't read the certificate it serves at its host name, and read none in the last day (until then, requests are checked against the certificates it read last)
+
+    Fix the cause if you can, such as letting your instance reach its own host name over HTTPS. If your deployment can't support the check, turn on **Accept any TLS channel binding** in the profile's Microsoft Autoenrollment panel.
+  </Accordion>
   <Accordion title="A computer doesn't get a certificate">
-    Windows records an error in the computer's Application event log, under the source `CertificateServicesClient-CertEnroll`, but it never shows the reason the request was refused. Find the reason in the [audit logs](/documentation/platform/audit-logs), then match the Windows error. A refused sign-in, a request sent without HTTPS channel binding or bound to another TLS certificate, a computer outside the allowed groups, an Active Directory problem or a refused renewal is logged as **Microsoft Autoenrollment Request Refused** (`microsoft-autoenrollment-request-refused`). A request that the certificate policy or CA rejects, such as one with a TTL or key the policy doesn't allow, or a computer SID that the policy's rule for the SID extension doesn't allow, is logged as **Certificate Issuance Failed** (`certificate-issuance-failed`).
+    Windows records an error in the computer's Application event log under the source `CertificateServicesClient-CertEnroll`, but the error never says why the request was refused. Find the reason in the [audit logs](/documentation/platform/audit-logs), where each refusal is one of these events:
+
+    - **Microsoft Autoenrollment Request Refused** (`microsoft-autoenrollment-request-refused`): a refused sign-in, a computer outside the allowed groups, an Active Directory problem, a refused renewal, or a TLS channel binding that's missing, bound to another TLS certificate, or can't be checked (Windows leaves out the channel binding if the computer sets `SuppressExtendedProtection` to `1` under `HKLM\SYSTEM\CurrentControlSet\Control\Lsa`)
+    - **Certificate Issuance Failed** (`certificate-issuance-failed`): a request that the certificate policy or CA rejects, such as one with a TTL or key the policy doesn't allow, or a computer SID that the policy's rule for the SID extension doesn't allow
+
+    If no refusal is logged for the computer, it never sent a Kerberos ticket. Check that it can get a ticket for the service principal by running `klist get HTTP/<host>` on the computer. Then match the Windows error:
 
     | Windows error | Cause |
     | --- | --- |
@@ -219,3 +246,20 @@ To install an approved certificate without waiting, run `certutil -pulse` on the
     Event 82 always says the request failed in authentication, whatever the cause, so check the audit logs.
   </Accordion>
 </AccordionGroup>
+
+## What's next?
+
+<CardGroup cols={2}>
+  <Card title="Approvals" icon="check-check" href="/documentation/platform/pki/applications/approvals">
+    Require approval before computers get certificates.
+  </Card>
+  <Card title="Managing Certificates" icon="list" href="/documentation/platform/pki/applications/certificates">
+    View and manage certificates in your Application.
+  </Card>
+  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Get notified when certificates are about to expire.
+  </Card>
+  <Card title="Audit Logs" icon="scroll-text" href="/documentation/platform/audit-logs">
+    Review enrollment requests and the reasons they were refused.
+  </Card>
+</CardGroup>

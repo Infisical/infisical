@@ -7,6 +7,7 @@ import { convertRawCertsToPkcs7 } from "@app/ee/services/certificate-est/certifi
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { BadRequestError } from "@app/lib/errors";
 import { asNonSharedBuffer } from "@app/lib/fn";
+import { decodeXmlNamedEntities, escapeXml } from "@app/lib/xml";
 import { CUSTOM_EXTENSION_PRESET_OIDS } from "@app/services/certificate-common/certificate-constants";
 import { TIssuerAddedExtension } from "@app/services/certificate-v3/certificate-v3-types";
 
@@ -22,10 +23,12 @@ const NS_WS_TRUST = "http://docs.oasis-open.org/ws-sx/ws-trust/200512";
 
 const GET_POLICIES_ACTION = `${NS_ENROLLMENT_POLICY}/IPolicy/GetPolicies`;
 const GET_POLICIES_RESPONSE_ACTION = `${GET_POLICIES_ACTION}Response`;
+const WSTEP_REQUEST_ACTION = `${NS_ENROLLMENT}/RST/wstep`;
 const WSTEP_RESPONSE_ACTION = `${NS_ENROLLMENT}/RSTRC/wstep`;
 const FAULT_ACTION = `${NS_ADDRESSING}/soap/fault`;
 const ENROLLMENT_DETAIL_FAULT_ACTION = `${NS_ENROLLMENT}/RequestSecurityTokenCertificateEnrollmentWSDetailFault`;
-const QUERY_TOKEN_STATUS_REQUEST_TYPE = "QueryTokenStatus";
+const ISSUE_REQUEST_TYPE = `${NS_WS_TRUST}/Issue`;
+const QUERY_TOKEN_STATUS_REQUEST_TYPE = `${NS_ENROLLMENT}/QueryTokenStatus`;
 
 const POLICY_NEXT_UPDATE_HOURS = 8;
 const POLICY_SUBJECT_NAME_FLAGS = 0x18000000;
@@ -39,9 +42,9 @@ const CA_CLIENT_AUTHENTICATION_KERBEROS = 2;
 const SHA256_OID = "2.16.840.1.101.3.4.2.1";
 
 const RSA_KEY_POLICY = {
-  policySchema: 2,
+  policySchema: 3,
   keySpec: 1,
-  cryptoProvider: "Microsoft RSA SChannel Cryptographic Provider"
+  cryptoProvider: "Microsoft Software Key Storage Provider"
 };
 const ELLIPTIC_CURVE_KEY_POLICY = {
   policySchema: 3,
@@ -56,18 +59,6 @@ const EXTENSION_NAMES: Record<string, string> = {
 };
 
 const BASE64_NOISE = new RE2("&#x?[0-9a-fA-F]+;|\\s", "g");
-const XML_SPECIAL_CHARACTERS = new RE2("[&<>\"']", "g");
-const XML_ESCAPES: Record<string, string> = {
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&apos;"
-};
-const XML_ENTITIES = new RE2("&(amp|lt|gt|quot|apos);", "g");
-const XML_ENTITY_CHARACTERS: Record<string, string> = Object.fromEntries(
-  Object.entries(XML_ESCAPES).map(([character, entity]) => [entity, character])
-);
 
 const soapParser = new XMLParser({
   removeNSPrefix: true,
@@ -78,10 +69,16 @@ const soapParser = new XMLParser({
 
 type TXmlNode = Record<string, unknown>;
 
+export enum SoapOperation {
+  GetPolicies = "get-policies",
+  Issue = "issue",
+  QueryTokenStatus = "query-token-status",
+  Unsupported = "unsupported"
+}
+
 export type TParsedSoapEnvelope = {
   messageId: string | null;
-  isGetPolicies: boolean;
-  isQueryTokenStatus: boolean;
+  operation: SoapOperation;
   binarySecurityToken: Buffer | null;
   requestId: string | null;
 };
@@ -99,9 +96,6 @@ type TPolicyTemplate = {
   cesUrl: string;
 };
 
-const escapeXml = (value: string | number) =>
-  String(value).replace(XML_SPECIAL_CHARACTERS, (character) => XML_ESCAPES[character]);
-
 const nillable = (name: string, content: string) =>
   content ? `<${name}>${content}</${name}>` : `<${name} xsi:nil="true"/>`;
 
@@ -110,8 +104,28 @@ const childOf = (node: unknown, name: string): unknown =>
 
 const textOf = (node: unknown): string | null => (typeof node === "string" && node.trim() ? node.trim() : null);
 
-const decodedTextOf = (node: unknown) =>
-  textOf(node)?.replace(XML_ENTITIES, (entity) => XML_ENTITY_CHARACTERS[entity]) ?? null;
+const decodedTextOf = (node: unknown) => {
+  const text = textOf(node);
+  return text === null ? null : decodeXmlNamedEntities(text);
+};
+
+const resolveSoapOperation = ({
+  action,
+  requestType,
+  hasToken,
+  hasRequestId
+}: {
+  action: string | null;
+  requestType: string | null;
+  hasToken: boolean;
+  hasRequestId: boolean;
+}) => {
+  if (action === GET_POLICIES_ACTION) return SoapOperation.GetPolicies;
+  if (action !== WSTEP_REQUEST_ACTION) return SoapOperation.Unsupported;
+  if (requestType === QUERY_TOKEN_STATUS_REQUEST_TYPE) return SoapOperation.QueryTokenStatus;
+  if (requestType !== ISSUE_REQUEST_TYPE) return SoapOperation.Unsupported;
+  return !hasToken && hasRequestId ? SoapOperation.QueryTokenStatus : SoapOperation.Issue;
+};
 
 export const parseSoapEnvelope = (xml: string): TParsedSoapEnvelope => {
   let parsed: unknown;
@@ -124,14 +138,17 @@ export const parseSoapEnvelope = (xml: string): TParsedSoapEnvelope => {
   const envelope = childOf(parsed, "Envelope");
   const header = childOf(envelope, "Header");
   const requestSecurityToken = childOf(childOf(envelope, "Body"), "RequestSecurityToken");
-  const requestType = textOf(childOf(requestSecurityToken, "RequestType"));
   const encodedToken = textOf(childOf(requestSecurityToken, "BinarySecurityToken"));
   const requestId = decodedTextOf(childOf(requestSecurityToken, "RequestID"));
 
   return {
     messageId: decodedTextOf(childOf(header, "MessageID")),
-    isGetPolicies: decodedTextOf(childOf(header, "Action")) === GET_POLICIES_ACTION,
-    isQueryTokenStatus: Boolean(requestType?.endsWith(QUERY_TOKEN_STATUS_REQUEST_TYPE) || (!encodedToken && requestId)),
+    operation: resolveSoapOperation({
+      action: decodedTextOf(childOf(header, "Action")),
+      requestType: decodedTextOf(childOf(requestSecurityToken, "RequestType")),
+      hasToken: Boolean(encodedToken),
+      hasRequestId: Boolean(requestId)
+    }),
     binarySecurityToken: encodedToken ? Buffer.from(encodedToken.replace(BASE64_NOISE, ""), "base64") : null,
     requestId
   };
@@ -155,22 +172,21 @@ export const buildGetPoliciesResponse = ({
 }) => {
   const ellipticCurve = template?.privateKey.ellipticCurve ?? null;
   const keyPolicy = ellipticCurve ? ELLIPTIC_CURVE_KEY_POLICY : RSA_KEY_POLICY;
-  const oids = template
-    ? [
-        ...template.extensions.map((extension) => ({
-          value: extension.oid,
-          group: OID_GROUP_EXTENSION,
-          name: EXTENSION_NAMES[extension.oid] ?? extension.oid
-        })),
-        ...(ellipticCurve ? [{ value: ellipticCurve.oid, group: OID_GROUP_PUBLIC_KEY, name: ellipticCurve.name }] : []),
-        { value: SHA256_OID, group: OID_GROUP_HASH_ALGORITHM, name: "sha256" },
-        { value: template.templateOid, group: OID_GROUP_TEMPLATE, name: template.templateName }
-      ]
-    : [];
-  const algorithmOIDReference = ellipticCurve ? String(oids.length - 3) : "";
+  const oids: { value: string; group: number; name: string }[] = [];
+  const addOid = (value: string, group: number, name: string) => oids.push({ value, group, name }) - 1;
+
+  const extensionOidReferences =
+    template?.extensions.map((extension) =>
+      addOid(extension.oid, OID_GROUP_EXTENSION, EXTENSION_NAMES[extension.oid] ?? extension.oid)
+    ) ?? [];
+  const algorithmOIDReference = ellipticCurve
+    ? String(addOid(ellipticCurve.oid, OID_GROUP_PUBLIC_KEY, ellipticCurve.name))
+    : "";
+  const hashAlgorithmOIDReference = template ? addOid(SHA256_OID, OID_GROUP_HASH_ALGORITHM, "sha256") : null;
+  const policyOIDReference = template ? addOid(template.templateOid, OID_GROUP_TEMPLATE, template.templateName) : null;
 
   const policies = template
-    ? `<policy><policyOIDReference>${oids.length - 1}</policyOIDReference><cAs><cAReference>0</cAReference></cAs><attributes><commonName>${escapeXml(
+    ? `<policy><policyOIDReference>${policyOIDReference}</policyOIDReference><cAs><cAReference>0</cAReference></cAs><attributes><commonName>${escapeXml(
         template.templateName
       )}</commonName><policySchema>${keyPolicy.policySchema}</policySchema><certificateValidity><validityPeriodSeconds>${
         template.validitySeconds
@@ -187,12 +203,10 @@ export const buildGetPoliciesResponse = ({
         template.majorRevision
       }</majorRevision><minorRevision>${
         template.minorRevision
-      }</minorRevision></revision><supersededPolicies xsi:nil="true"/><privateKeyFlags>0</privateKeyFlags><subjectNameFlags>${POLICY_SUBJECT_NAME_FLAGS}</subjectNameFlags><enrollmentFlags>${POLICY_ENROLLMENT_FLAGS}</enrollmentFlags><generalFlags>${POLICY_GENERAL_FLAGS}</generalFlags><hashAlgorithmOIDReference>${
-        oids.length - 2
-      }</hashAlgorithmOIDReference><rARequirements xsi:nil="true"/><keyArchivalAttributes xsi:nil="true"/><extensions>${template.extensions
+      }</minorRevision></revision><supersededPolicies xsi:nil="true"/><privateKeyFlags>0</privateKeyFlags><subjectNameFlags>${POLICY_SUBJECT_NAME_FLAGS}</subjectNameFlags><enrollmentFlags>${POLICY_ENROLLMENT_FLAGS}</enrollmentFlags><generalFlags>${POLICY_GENERAL_FLAGS}</generalFlags><hashAlgorithmOIDReference>${hashAlgorithmOIDReference}</hashAlgorithmOIDReference><rARequirements xsi:nil="true"/><keyArchivalAttributes xsi:nil="true"/><extensions>${template.extensions
         .map(
           (extension, index) =>
-            `<extension><oIDReference>${index}</oIDReference><critical>${extension.critical}</critical><value>${extension.value.toString(
+            `<extension><oIDReference>${extensionOidReferences[index]}</oIDReference><critical>${extension.critical}</critical><value>${extension.value.toString(
               "base64"
             )}</value></extension>`
         )

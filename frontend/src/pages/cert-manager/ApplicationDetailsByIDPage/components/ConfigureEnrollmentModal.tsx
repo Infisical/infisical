@@ -95,8 +95,8 @@ import {
   useSubscription
 } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
-import { bytesToBase64 } from "@app/helpers/agentVaultSkills";
 import { downloadFile } from "@app/helpers/download";
+import { bytesToBase64 } from "@app/helpers/string";
 import { useDebounce, useDiscardChangesGuard, useToggle } from "@app/hooks";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -124,6 +124,7 @@ import {
   useSetPkiApplicationScepEnrollment
 } from "@app/hooks/api/pkiApplications/mutations";
 import {
+  MicrosoftAutoenrollmentChannelBindingStatus,
   ScepChallengeType,
   TMicrosoftAutoenrollmentEnrollment,
   TMicrosoftAutoenrollmentGroup,
@@ -198,60 +199,70 @@ const CopyableField = ({
   );
 };
 
-const ReenrollComputersButton = ({
-  profileName,
+const ConfirmActionButton = ({
+  label,
+  title,
+  description,
+  confirmLabel,
+  confirmVariant,
+  triggerSize,
   onConfirmed,
   isPending
 }: {
-  profileName: string;
+  label: string;
+  title: string;
+  description: React.ReactNode;
+  confirmLabel: string;
+  confirmVariant: "project" | "danger";
+  triggerSize?: React.ComponentProps<typeof Button>["size"];
   onConfirmed: () => Promise<void>;
   isPending: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const isActionPending = isPending || isConfirming;
   return (
     <>
-      <div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setIsOpen(true)}
-          isDisabled={isPending}
-        >
-          Re-enroll All Computers
-        </Button>
-      </div>
-      <AlertDialog open={isOpen} onOpenChange={setIsOpen} isPending={isPending}>
+      <Button
+        type="button"
+        variant="outline"
+        size={triggerSize}
+        onClick={() => setIsOpen(true)}
+        isDisabled={isActionPending}
+      >
+        {label}
+      </Button>
+      <AlertDialog open={isOpen} onOpenChange={setIsOpen} isPending={isActionPending}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogMedia>
               <AlertTriangleIcon className="text-warning" />
             </AlertDialogMedia>
-            <AlertDialogTitle>Re-enroll All Computers for {profileName}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Every computer that holds a certificate from this profile requests a new one the next
-              time it fetches the enrollment policy, which can take up to 8 hours. If an approval
-              policy covers the profile, each request waits for approval.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{title}</AlertDialogTitle>
+            <AlertDialogDescription>{description}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel isDisabled={isActionPending}>Cancel</AlertDialogCancel>
             <Button
               type="button"
-              variant="project"
-              isPending={isPending}
-              isDisabled={isPending}
+              variant={confirmVariant}
+              isPending={isActionPending}
+              isDisabled={isActionPending}
               onClick={async () => {
+                if (isActionPending) return;
+                setIsConfirming(true);
                 try {
                   await onConfirmed();
                   setIsOpen(false);
                 } catch {
                   // oxlint-disable-next-line no-useless-return
                   return;
+                } finally {
+                  setIsConfirming(false);
                 }
               }}
             >
-              Re-enroll
+              {confirmLabel}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -270,70 +281,17 @@ const DisableEnrollmentButton = ({
   consequence?: string;
   onConfirmed: () => Promise<void>;
   isPending: boolean;
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isConfirming, setIsConfirming] = useState(false);
-  const isActionPending = isPending || isConfirming;
-  return (
-    <>
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => setIsOpen(true)}
-        isDisabled={isActionPending}
-      >
-        Disable
-      </Button>
-      <AlertDialog
-        open={isOpen}
-        onOpenChange={(open) => {
-          if (!isActionPending) setIsOpen(open);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogMedia>
-              <AlertTriangleIcon className="text-warning" />
-            </AlertDialogMedia>
-            <AlertDialogTitle>
-              Disable {method === "Microsoft Autoenrollment" ? method : `${method} enrollment`} for
-              this profile?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Clients using {method} against this profile via this application will stop being able
-              to request certificates. Existing certificates remain valid.
-              {consequence ? ` ${consequence}` : null}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isActionPending}>Cancel</AlertDialogCancel>
-            <Button
-              type="button"
-              variant="danger"
-              isPending={isActionPending}
-              isDisabled={isActionPending}
-              onClick={async () => {
-                if (isActionPending) return;
-                setIsConfirming(true);
-                try {
-                  await onConfirmed();
-                  setIsOpen(false);
-                } catch {
-                  // oxlint-disable-next-line no-useless-return
-                  return;
-                } finally {
-                  setIsConfirming(false);
-                }
-              }}
-            >
-              Disable Enrollment
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
-  );
-};
+}) => (
+  <ConfirmActionButton
+    label="Disable"
+    title={`Disable ${method === "Microsoft Autoenrollment" ? method : `${method} enrollment`} for this profile?`}
+    description={`Clients using ${method} against this profile via this application will stop being able to request certificates. Existing certificates remain valid.${consequence ? ` ${consequence}` : ""}`}
+    confirmLabel="Disable Enrollment"
+    confirmVariant="danger"
+    onConfirmed={onConfirmed}
+    isPending={isPending}
+  />
+);
 
 type ApiForm = { autoRenew: boolean; renewBeforeDays: number | null };
 
@@ -1522,7 +1480,8 @@ const createMicrosoftAutoenrollmentFormSchema = (
       allowedGroups: z.array(z.custom<TMicrosoftAutoenrollmentGroup>()),
       renewBeforeDays: z.number().nullable(),
       keytabFile: z.instanceof(File).nullable(),
-      reuseFrom: z.custom<TMicrosoftAutoenrollmentOtherProfile>().nullable()
+      reuseFrom: z.custom<TMicrosoftAutoenrollmentOtherProfile>().nullable(),
+      allowAnyChannelBinding: z.boolean()
     })
     .superRefine((values, ctx) => {
       if (values.keytabFile && values.keytabFile.size > MAX_KEYTAB_BYTES) {
@@ -1573,6 +1532,9 @@ type MicrosoftAutoenrollmentForm = z.infer<
   ReturnType<typeof createMicrosoftAutoenrollmentFormSchema>
 >;
 
+const formatRenewBeforeHours = (hours: number) =>
+  hours >= 48 ? `${Math.floor(hours / 24)} days` : `${hours} hours`;
+
 const getMicrosoftAutoenrollmentFormValues = (
   initial: TMicrosoftAutoenrollmentEnrollment | null
 ): MicrosoftAutoenrollmentForm => ({
@@ -1580,7 +1542,8 @@ const getMicrosoftAutoenrollmentFormValues = (
   allowedGroups: initial?.allowedGroups ?? [],
   renewBeforeDays: initial?.renewBeforeDays ?? DEFAULT_RENEW_BEFORE_DAYS,
   keytabFile: null,
-  reuseFrom: null
+  reuseFrom: null,
+  allowAnyChannelBinding: initial?.allowAnyChannelBinding ?? false
 });
 
 const KeytabFileRow = ({ details, action }: { details: string; action?: React.ReactNode }) => (
@@ -1602,6 +1565,7 @@ const MicrosoftAutoenrollmentPanel = ({
   enabled,
   initial,
   otherProfiles,
+  onUpgradeRequired,
   onCancelPending,
   onDirtyChange,
   onPendingChange
@@ -1611,6 +1575,7 @@ const MicrosoftAutoenrollmentPanel = ({
   enabled: boolean;
   initial: TMicrosoftAutoenrollmentEnrollment | null;
   otherProfiles: TMicrosoftAutoenrollmentOtherProfile[];
+  onUpgradeRequired?: () => void;
   onCancelPending: () => void;
   onDirtyChange: (method: EnrollmentMethod, isDirty: boolean) => void;
   onPendingChange: (method: EnrollmentMethod, isPending: boolean) => void;
@@ -1656,6 +1621,8 @@ const MicrosoftAutoenrollmentPanel = ({
   const connectionId = watch("connectionId");
   const keytabFile = watch("keytabFile");
   const reuseFrom = watch("reuseFrom");
+  const allowAnyChannelBinding = watch("allowAnyChannelBinding");
+  const channelBindingStatus = initial?.channelBinding.status;
 
   const { data: ldapConnections, isPending: isLdapConnectionsLoading } =
     useListAvailableAppConnections(AppConnection.LDAP, currentProject.id);
@@ -1712,10 +1679,15 @@ const MicrosoftAutoenrollmentPanel = ({
 
   const onSave = handleSubmit(async (values) => {
     if (setMutation.isPending || clearMutation.isPending) return;
+    if (onUpgradeRequired) {
+      onUpgradeRequired();
+      return;
+    }
     await setMutation.mutateAsync({
       applicationId,
       profileId,
-      connectionId: values.connectionId ?? undefined,
+      connectionId:
+        !initial || dirtyFields.connectionId ? (values.connectionId ?? undefined) : undefined,
       allowedGroupSids:
         !initial || dirtyFields.allowedGroups
           ? values.allowedGroups.map((group) => group.sid)
@@ -1724,7 +1696,8 @@ const MicrosoftAutoenrollmentPanel = ({
       keytab: values.keytabFile
         ? bytesToBase64(new Uint8Array(await values.keytabFile.arrayBuffer()))
         : undefined,
-      reuseKeytab: values.reuseFrom ? { profileId: values.reuseFrom.profileId } : undefined
+      reuseKeytab: values.reuseFrom ? { profileId: values.reuseFrom.profileId } : undefined,
+      allowAnyChannelBinding: values.allowAnyChannelBinding
     });
     reset({ ...values, keytabFile: null, reuseFrom: null });
     setIsReplacingKeytab(false);
@@ -1756,6 +1729,14 @@ const MicrosoftAutoenrollmentPanel = ({
       </Alert>
     );
   }
+
+  const savedKeytabServicePrincipalName = initial?.servicePrincipalName.split("@")[0];
+  const isSavedKeytabForOtherHost =
+    Boolean(initial && instanceServicePrincipalName) &&
+    !initial?.keytabMismatch &&
+    !isReplacingKeytab &&
+    !reuseFrom &&
+    savedKeytabServicePrincipalName?.toLowerCase() !== instanceServicePrincipalName;
 
   let keytabRow: React.ReactNode = null;
   if (reuseFrom) {
@@ -1799,6 +1780,20 @@ const MicrosoftAutoenrollmentPanel = ({
             </AlertDescription>
           </Alert>
         ) : null}
+        {!allowAnyChannelBinding &&
+        channelBindingStatus === MicrosoftAutoenrollmentChannelBindingStatus.Unverifiable ? (
+          <Alert variant="warning">
+            <TriangleAlertIcon />
+            <AlertTitle>TLS channel bindings can&apos;t be checked</AlertTitle>
+            <AlertDescription>
+              <p>
+                {initial?.channelBinding.reason} Computers&apos; requests are refused until this is
+                fixed. If this deployment can&apos;t support the check, turn on{" "}
+                <span className="font-medium">Accept any TLS channel binding</span> below.
+              </p>
+            </AlertDescription>
+          </Alert>
+        ) : null}
         {enabled && initial ? (
           <SectionCard title="Endpoint">
             <CopyableField
@@ -1838,6 +1833,23 @@ const MicrosoftAutoenrollmentPanel = ({
           }
         >
           {keytabRow}
+          {isSavedKeytabForOtherHost ? (
+            <Alert variant="warning">
+              <TriangleAlertIcon />
+              <AlertTitle>This keytab is for another host name</AlertTitle>
+              <AlertDescription>
+                <p>
+                  Computers ask for a ticket for{" "}
+                  <span className="font-mono">{servicePrincipal?.servicePrincipalName}</span>, but
+                  this keytab is for{" "}
+                  <span className="font-mono">{savedKeytabServicePrincipalName}</span>. If no proxy
+                  or CNAME maps one name to the other, computers can&apos;t sign in. Select{" "}
+                  <span className="font-medium">Replace</span> and upload a keytab for this
+                  instance&apos;s host name.
+                </p>
+              </AlertDescription>
+            </Alert>
+          ) : null}
           {isKeytabUploadShown ? (
             <>
               <p className="text-sm text-accent">
@@ -1969,15 +1981,55 @@ const MicrosoftAutoenrollmentPanel = ({
             )}
           />
         </SectionCard>
+        <SectionCard title="TLS Channel Binding">
+          <Controller
+            control={control}
+            name="allowAnyChannelBinding"
+            render={({ field }) => (
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <Label htmlFor="microsoft-autoenrollment-allow-any-channel-binding">
+                    Accept any TLS channel binding
+                  </Label>
+                  <FieldDescription>
+                    Turn on only when computers reach Infisical through a proxy that inspects HTTPS,
+                    or when this instance can&apos;t read its own certificate, such as in FIPS mode.
+                    It also accepts a Kerberos ticket relayed through another HTTPS site.
+                  </FieldDescription>
+                  {allowAnyChannelBinding &&
+                  channelBindingStatus === MicrosoftAutoenrollmentChannelBindingStatus.Enforced ? (
+                    <FieldDescription>
+                      This instance can now check TLS channel bindings, so you can turn this off.
+                    </FieldDescription>
+                  ) : null}
+                  {!allowAnyChannelBinding &&
+                  channelBindingStatus ===
+                    MicrosoftAutoenrollmentChannelBindingStatus.NotChecked ? (
+                    <FieldDescription>{initial?.channelBinding.reason}</FieldDescription>
+                  ) : null}
+                </FieldContent>
+                <Toggle
+                  variant="project"
+                  id="microsoft-autoenrollment-allow-any-channel-binding"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </Field>
+            )}
+          />
+        </SectionCard>
         <SectionCard title="Renewal">
           <Controller
             control={control}
             name="renewBeforeDays"
             render={({ field, fieldState: { error } }) => (
               <Field>
-                <FieldLabel>Renew before (days)</FieldLabel>
+                <FieldLabel htmlFor="microsoft-autoenrollment-renew-before-days">
+                  Renew before (days)
+                </FieldLabel>
                 <FieldContent>
                   <Input
+                    id="microsoft-autoenrollment-renew-before-days"
                     ref={field.ref}
                     name={field.name}
                     onBlur={field.onBlur}
@@ -1992,9 +2044,13 @@ const MicrosoftAutoenrollmentPanel = ({
                 {error ? <FieldError>{error.message}</FieldError> : null}
                 <FieldDescription>
                   Windows renews the certificate this many days before it expires. 42 days matches
-                  the AD CS default. If this is as long as the certificate&apos;s validity or
-                  longer, it&apos;s capped at the validity minus one day, so Windows renews the day
-                  after the certificate is issued.
+                  the AD CS default. Windows only renews a certificate when this is more than 8
+                  hours and less than 20% of the certificate&apos;s validity, so a value outside
+                  that range is moved into it. Certificates valid for 40 hours or less can&apos;t be
+                  renewed, and computers request a new one instead.
+                  {initial && initial.effectiveRenewBeforeHours !== initial.renewBeforeDays * 24
+                    ? ` For this profile's validity, Windows renews ${formatRenewBeforeHours(initial.effectiveRenewBeforeHours)} before expiry.`
+                    : null}
                 </FieldDescription>
               </Field>
             )}
@@ -2007,17 +2063,28 @@ const MicrosoftAutoenrollmentPanel = ({
                 every computer request a new certificate the next time it fetches the enrollment
                 policy, re-enroll them.
               </FieldDescription>
-              <ReenrollComputersButton
-                profileName={initial?.templateName ?? ""}
-                isPending={isPending}
-                onConfirmed={async () => {
-                  await reenrollMutation.mutateAsync({ applicationId, profileId });
-                  createNotification({
-                    type: "success",
-                    text: "Computers will request new certificates the next time they fetch the enrollment policy, within 8 hours."
-                  });
-                }}
-              />
+              <div>
+                <ConfirmActionButton
+                  label="Re-enroll All Computers"
+                  title={`Re-enroll All Computers for ${initial?.templateName ?? ""}?`}
+                  description="Every computer that holds a certificate from this profile requests a new one the next time it fetches the enrollment policy, which can take up to 8 hours. If an approval policy covers the profile, each request waits for approval."
+                  confirmLabel="Re-enroll"
+                  confirmVariant="project"
+                  triggerSize="sm"
+                  isPending={isPending}
+                  onConfirmed={async () => {
+                    if (onUpgradeRequired) {
+                      onUpgradeRequired();
+                      return;
+                    }
+                    await reenrollMutation.mutateAsync({ applicationId, profileId });
+                    createNotification({
+                      type: "success",
+                      text: "Computers will request new certificates the next time they fetch the enrollment policy, within 8 hours."
+                    });
+                  }}
+                />
+              </div>
             </Field>
           )}
         </SectionCard>
@@ -2026,7 +2093,7 @@ const MicrosoftAutoenrollmentPanel = ({
         {enabled && (
           <DisableEnrollmentButton
             method="Microsoft Autoenrollment"
-            consequence="The stored keytab, allowed groups and renewal setting are deleted, so turning it back on needs a keytab again, uploaded or reused from another profile."
+            consequence="Computers keep asking this profile for certificates until you remove its enrollment policy URL from Group Policy, and approved requests that computers haven't picked up yet can no longer be collected. The stored keytab, allowed groups and renewal setting are deleted, so turning it back on needs a keytab again, uploaded or reused from another profile."
             onConfirmed={onDisable}
             isPending={isPending}
           />
@@ -2167,6 +2234,12 @@ export const ConfigureEnrollmentModal = ({
     setActiveTab(method);
   };
 
+  const openEnrollmentUpgradeGate = (method: EnrollmentMethod) =>
+    openUpgradeGate({
+      intent: CertificateEnrollmentUpgradeIntent,
+      paywallKey: `cert-manager.application-enrollment.${method}`
+    });
+
   const handleAddMethod = (method: EnrollmentMethod) => {
     if (isPending) return;
     if (!lockedMethods[method]) {
@@ -2174,10 +2247,7 @@ export const ConfigureEnrollmentModal = ({
       return;
     }
 
-    openUpgradeGate({
-      intent: CertificateEnrollmentUpgradeIntent,
-      paywallKey: `cert-manager.application-enrollment.${method}`
-    });
+    openEnrollmentUpgradeGate(method);
   };
 
   const handleDirtyChange = useCallback(
@@ -2431,6 +2501,11 @@ export const ConfigureEnrollmentModal = ({
                       enabled={Boolean(data?.microsoftAutoenrollmentConfigured)}
                       initial={data?.microsoftAutoenrollment ?? null}
                       otherProfiles={data?.microsoftAutoenrollmentOtherProfiles ?? []}
+                      onUpgradeRequired={
+                        lockedMethods["microsoft-autoenrollment"]
+                          ? () => openEnrollmentUpgradeGate("microsoft-autoenrollment")
+                          : undefined
+                      }
                       onCancelPending={
                         data?.microsoftAutoenrollmentConfigured
                           ? handleDismiss

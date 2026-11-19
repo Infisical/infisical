@@ -10,6 +10,7 @@ import { TImmutableDBKeys } from "./models";
 export const PkiMicrosoftAutoenrollmentRequestsSchema = z.object({
   requestNumber: z.number(),
   certificateRequestId: z.string().uuid(),
+  certificateRequestCreatedAt: z.date(),
   createdAt: z.date()
 });
 

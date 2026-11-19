@@ -7,14 +7,17 @@ import {
   buildGetPoliciesResponse,
   buildPendingResponse,
   buildSoapFault,
-  parseSoapEnvelope
+  parseSoapEnvelope,
+  SoapOperation
 } from "./microsoft-autoenrollment-soap-fns";
 import { TTemplatePrivateKey } from "./microsoft-autoenrollment-template-fns";
 
 const MESSAGE_ID = "urn:uuid:0d5a1441-5891-453b-becf-a2e5f6ea3749";
 
-const buildRequestEnvelope = (body: string) =>
-  `<s:Envelope xmlns:a="http://www.w3.org/2005/08/addressing" xmlns:s="http://www.w3.org/2003/05/soap-envelope"><s:Header><a:Action s:mustUnderstand="1">http://schemas.microsoft.com/windows/pki/2009/01/enrollment/RST/wstep</a:Action><a:MessageID>${MESSAGE_ID}</a:MessageID></s:Header><s:Body>${body}</s:Body></s:Envelope>`;
+const WSTEP_ACTION = "http://schemas.microsoft.com/windows/pki/2009/01/enrollment/RST/wstep";
+
+const buildRequestEnvelope = (body: string, action = WSTEP_ACTION) =>
+  `<s:Envelope xmlns:a="http://www.w3.org/2005/08/addressing" xmlns:s="http://www.w3.org/2003/05/soap-envelope"><s:Header><a:Action s:mustUnderstand="1">${action}</a:Action><a:MessageID>${MESSAGE_ID}</a:MessageID></s:Header><s:Body>${body}</s:Body></s:Envelope>`;
 
 const readXml = (xml: string) =>
   new XMLParser({ removeNSPrefix: true, ignoreAttributes: true, parseTagValue: false }).parse(xml) as {
@@ -35,7 +38,7 @@ describe("parseSoapEnvelope", () => {
     );
 
     expect(envelope.messageId).toBe(MESSAGE_ID);
-    expect(envelope.isQueryTokenStatus).toBe(false);
+    expect(envelope.operation).toBe(SoapOperation.Issue);
     expect(envelope.binarySecurityToken?.equals(token)).toBe(true);
     expect(envelope.requestId).toBeNull();
   });
@@ -47,18 +50,40 @@ describe("parseSoapEnvelope", () => {
       )
     );
 
-    expect(envelope.isQueryTokenStatus).toBe(true);
+    expect(envelope.operation).toBe(SoapOperation.QueryTokenStatus);
     expect(envelope.requestId).toBe("7a6c2f0e-3c1d-4b8e-9f1a-2b3c4d5e6f70");
   });
 
-  test("treats a request id without a token as a status query", () => {
+  test("treats an Issue request with a request id and no token as a status query", () => {
     const envelope = parseSoapEnvelope(
       buildRequestEnvelope(
         `<RequestSecurityToken><RequestType>http://docs.oasis-open.org/ws-sx/ws-trust/200512/Issue</RequestType><RequestID>7a6c2f0e-3c1d-4b8e-9f1a-2b3c4d5e6f70</RequestID></RequestSecurityToken>`
       )
     );
 
-    expect(envelope.isQueryTokenStatus).toBe(true);
+    expect(envelope.operation).toBe(SoapOperation.QueryTokenStatus);
+  });
+
+  test.each([
+    ["another request type", WSTEP_ACTION, "http://docs.oasis-open.org/ws-sx/ws-trust/200512/Renew"],
+    ["a request type that only ends in QueryTokenStatus", WSTEP_ACTION, "urn:example:QueryTokenStatus"],
+    ["no request type", WSTEP_ACTION, null],
+    [
+      "another action",
+      "http://schemas.microsoft.com/windows/pki/2009/01/enrollment/RST/other",
+      "http://docs.oasis-open.org/ws-sx/ws-trust/200512/Issue"
+    ]
+  ])("marks a request with %s as unsupported", (_name, action, requestType) => {
+    const envelope = parseSoapEnvelope(
+      buildRequestEnvelope(
+        `<RequestSecurityToken>${requestType ? `<RequestType>${requestType}</RequestType>` : ""}<BinarySecurityToken>${Buffer.from(
+          "token"
+        ).toString("base64")}</BinarySecurityToken><RequestID>923</RequestID></RequestSecurityToken>`,
+        action
+      )
+    );
+
+    expect(envelope.operation).toBe(SoapOperation.Unsupported);
   });
 
   test("decodes XML entities in the message id so the answer does not escape them twice", () => {
@@ -79,12 +104,11 @@ describe("parseSoapEnvelope", () => {
       );
 
     expect(
-      policyRequest("http://schemas.microsoft.com/windows/pki/2009/01/enrollmentpolicy/IPolicy/GetPolicies")
-        .isGetPolicies
-    ).toBe(true);
+      policyRequest("http://schemas.microsoft.com/windows/pki/2009/01/enrollmentpolicy/IPolicy/GetPolicies").operation
+    ).toBe(SoapOperation.GetPolicies);
     expect(
-      policyRequest("http://schemas.microsoft.com/windows/pki/2009/01/enrollmentpolicy/IPolicy/Bogus").isGetPolicies
-    ).toBe(false);
+      policyRequest("http://schemas.microsoft.com/windows/pki/2009/01/enrollmentpolicy/IPolicy/Bogus").operation
+    ).toBe(SoapOperation.Unsupported);
   });
 
   test("rejects a body that is not XML", () => {
@@ -156,7 +180,7 @@ describe("SOAP response builders", () => {
     );
   });
 
-  test("an RSA profile asks for a legacy RSA key of the profile's size", () => {
+  test("an RSA profile asks for a schema 3 software KSP key of the profile's size, so the SHA-256 reference is allowed", () => {
     const xml = buildGetPoliciesResponse({
       relatesTo: MESSAGE_ID,
       policyId: "{ABC}",
@@ -164,10 +188,11 @@ describe("SOAP response builders", () => {
       template: buildTemplate({ minimalKeyLength: 4096, ellipticCurve: null })
     });
 
-    expect(xml).toContain("<policySchema>2</policySchema>");
+    expect(xml).toContain("<policySchema>3</policySchema>");
     expect(xml).toContain(
-      '<privateKeyAttributes><minimalKeyLength>4096</minimalKeyLength><keySpec>1</keySpec><keyUsageProperty xsi:nil="true"/><permissions xsi:nil="true"/><algorithmOIDReference xsi:nil="true"/><cryptoProviders><provider>Microsoft RSA SChannel Cryptographic Provider</provider></cryptoProviders></privateKeyAttributes>'
+      '<privateKeyAttributes><minimalKeyLength>4096</minimalKeyLength><keySpec>1</keySpec><keyUsageProperty xsi:nil="true"/><permissions xsi:nil="true"/><algorithmOIDReference xsi:nil="true"/><cryptoProviders><provider>Microsoft Software Key Storage Provider</provider></cryptoProviders></privateKeyAttributes>'
     );
+    expect(xml).toContain("<hashAlgorithmOIDReference>1</hashAlgorithmOIDReference>");
     expect(xml).not.toContain("<group>3</group>");
   });
 
@@ -194,6 +219,29 @@ describe("SOAP response builders", () => {
     expect(xml).toContain(
       "<oID><value>1.3.6.1.4.1.99999.1.1</value><group>9</group><oIDReferenceID>3</oIDReferenceID>"
     );
+  });
+
+  test("references each extension by the OID entry added for it", () => {
+    const xml = buildGetPoliciesResponse({
+      relatesTo: MESSAGE_ID,
+      policyId: "{ABC}",
+      policyFriendlyName: "web-servers",
+      template: {
+        ...buildTemplate({ minimalKeyLength: 256, ellipticCurve: { oid: "1.2.840.10045.3.1.7", name: "ECDSA_P256" } }),
+        extensions: [
+          { oid: "2.5.29.37", critical: false, value: Buffer.from([0x30, 0x00]) },
+          { oid: "2.5.29.15", critical: true, value: Buffer.from([0x03, 0x01, 0x00]) }
+        ]
+      }
+    });
+
+    expect(xml).toContain("<extension><oIDReference>0</oIDReference><critical>false</critical>");
+    expect(xml).toContain("<extension><oIDReference>1</oIDReference><critical>true</critical>");
+    expect(xml).toContain("<oID><value>2.5.29.15</value><group>6</group><oIDReferenceID>1</oIDReferenceID>");
+    expect(xml).toContain("<algorithmOIDReference>2</algorithmOIDReference>");
+    expect(xml).toContain("<oID><value>1.2.840.10045.3.1.7</value><group>3</group><oIDReferenceID>2</oIDReferenceID>");
+    expect(xml).toContain("<hashAlgorithmOIDReference>3</hashAlgorithmOIDReference>");
+    expect(xml).toContain("<policyOIDReference>4</policyOIDReference>");
   });
 
   test("a pending answer carries the certificate request id to poll with", () => {

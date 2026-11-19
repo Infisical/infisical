@@ -1,6 +1,5 @@
 import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
-import { z } from "zod";
 
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -8,15 +7,18 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { isSignerCertIssuedByCa } from "@app/ee/services/pki-scep/pki-scep-fns";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { classifyError } from "@app/lib/errors/classify";
 import { asNonSharedBuffer } from "@app/lib/fn";
 import {
+  assertTicketIsForServicePrincipal,
   KerberosError,
   KerberosFailureReason,
   parseKeytab,
+  parseNegotiateToken,
   readAuthorizationHeader,
   TKerberosIdentity,
+  TNegotiateToken,
   verifyNegotiateToken
 } from "@app/lib/kerberos";
 import { logger } from "@app/lib/logger";
@@ -34,13 +36,11 @@ import {
   CertificateIssuanceOperation,
   CertSubjectAlternativeNameType
 } from "@app/services/certificate-common/certificate-constants";
-import { calculateRenewalThreshold } from "@app/services/certificate-common/certificate-issuance-utils";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -53,12 +53,14 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
+import { TChannelBindingCache, TExpectedChannelBindings } from "./microsoft-autoenrollment-channel-binding-cache";
 import {
+  describeUnverifiableChannelBinding,
   getInstanceTlsEndpoint,
-  learnServerChannelBindings,
-  TInstanceTlsEndpoint
+  TServerChannelBindingEntry
 } from "./microsoft-autoenrollment-channel-binding-fns";
 import { parseEnrollmentRequestToken } from "./microsoft-autoenrollment-cmc-fns";
+import { resolveMicrosoftAutoenrollmentTtl } from "./microsoft-autoenrollment-enrollment-fns";
 import {
   buildCesUrl,
   isComputerInAllowedGroups,
@@ -74,6 +76,7 @@ import {
   buildPendingResponse,
   buildSoapFault,
   parseSoapEnvelope,
+  SoapOperation,
   TParsedSoapEnvelope
 } from "./microsoft-autoenrollment-soap-fns";
 import {
@@ -83,6 +86,7 @@ import {
   readSidSecurityExtension,
   buildTemplateInfoExtension,
   buildTemplateOid,
+  resolveRenewalPeriodSeconds,
   resolveTemplatePrivateKey
 } from "./microsoft-autoenrollment-template-fns";
 import {
@@ -116,20 +120,22 @@ type TMicrosoftAutoenrollmentServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "getItem" | "setItemWithExpiry">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
+  channelBindingCache: TChannelBindingCache;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog" | "createCollapsedAuditLog">;
 };
 
 export type TMicrosoftAutoenrollmentServiceFactory = ReturnType<typeof microsoftAutoenrollmentServiceFactory>;
 
-const MICROSOFT_AUTOENROLLMENT_DEFAULT_TTL = "365d";
-const SECONDS_PER_DAY = 86400;
+const REMOVED_RESOURCE_FAILURE_MESSAGE =
+  "The certificate profile, its policy or its certificate authority was changed or removed in Infisical. Check the profile's Microsoft Autoenrollment settings.";
 const MAX_TICKET_SERVICE_NAME_LENGTH = 255;
 const MAX_REFUSAL_MESSAGE_LENGTH = 512;
 const FAULT_STATUS_CODE = 500;
 const NOT_ENABLED_STATUS_CODE = 404;
 const UNAUTHORIZED_STATUS_CODE = 401;
 const NEGOTIATE = "Negotiate";
+const UNEXPECTED_FAILURE_MESSAGE = "Infisical could not complete this request. Try again later.";
 const DIRECTORY_UNREACHABLE_MESSAGE =
   "Infisical could not reach Active Directory to look up this computer. Try again later.";
 const DIRECTORY_LOOKUP_FAILED_MESSAGE =
@@ -154,21 +160,13 @@ const describeDirectoryLookupFailure = (err: unknown) => {
 
 const MAX_FAILURE_REASON_LENGTH = 256;
 
-const CHANNEL_BINDING_RETENTION_MS = KeyStoreTtls.MicrosoftAutoenrollmentServerChannelBindingsInSeconds * 1000;
-const CHANNEL_BINDING_REFRESH_AFTER_MS = 60 * 60 * 1000;
+const CHANNEL_BINDING_OPT_OUT_HINT =
+  "If this deployment cannot support the check, an admin can turn on Accept any TLS channel binding in the profile's Microsoft Autoenrollment settings.";
 
-const ServerChannelBindingsCacheSchema = z.array(
-  z.object({ binding: z.string().length(32), seenAt: z.string().datetime() })
-);
-
-type TServerChannelBindingEntry = z.infer<typeof ServerChannelBindingsCacheSchema>[number];
-
-type TExpectedChannelBindings = { endpoint: TInstanceTlsEndpoint; entries: TServerChannelBindingEntry[] };
+type TChannelBindingCheck = { expected: TExpectedChannelBindings | null; unverifiableReason?: string };
 
 const toChannelBindingBuffers = (entries: TServerChannelBindingEntry[]) =>
   entries.map(({ binding }) => Buffer.from(binding, "hex"));
-
-const describeEndpoint = ({ host, port }: TInstanceTlsEndpoint) => `${host}:${port}`;
 
 export const microsoftAutoenrollmentServiceFactory = ({
   pkiApplicationProfileDAL,
@@ -190,6 +188,7 @@ export const microsoftAutoenrollmentServiceFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   keyStore,
+  channelBindingCache,
   auditLogService
 }: TMicrosoftAutoenrollmentServiceFactoryDep) => {
   const $soapResponse = (
@@ -281,126 +280,25 @@ export const microsoftAutoenrollmentServiceFactory = ({
       .then(normalizeHttpServicePrincipalName)
       .catch(() => null);
 
-  const $readServerChannelBindings = async (endpoint: TInstanceTlsEndpoint) => {
-    const cached = await keyStore
-      .getItem(KeyStorePrefixes.MicrosoftAutoenrollmentServerChannelBindings(describeEndpoint(endpoint)))
-      .catch((err: unknown) => {
-        logger.warn({ err }, "Unable to read the cached TLS channel bindings for Microsoft Autoenrollment");
-        return null;
-      });
-    if (!cached) return [];
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(cached);
-    } catch {
-      return [];
-    }
-    const entries = ServerChannelBindingsCacheSchema.safeParse(parsed);
-    if (!entries.success) return [];
-    const retainedAfter = Date.now() - CHANNEL_BINDING_RETENTION_MS;
-    return entries.data.filter(({ seenAt }) => new Date(seenAt).getTime() >= retainedAfter);
-  };
-
-  const learningServerChannelBindings = new Map<string, Promise<TServerChannelBindingEntry[]>>();
-
-  const $learnServerChannelBindings = (
-    endpoint: TInstanceTlsEndpoint,
-    cachedEntries: TServerChannelBindingEntry[] = []
-  ) => {
-    const endpointKey = describeEndpoint(endpoint);
-    const inFlight = learningServerChannelBindings.get(endpointKey);
-    if (inFlight) return inFlight;
-
-    const learning = (async () => {
-      let learnError: unknown;
-      const learnedBindings = await learnServerChannelBindings(endpoint).catch((err: unknown): string[] => {
-        learnError = err;
-        return [];
-      });
-      if (!learnedBindings.length) {
-        logger.warn(
-          { err: learnError, host: endpoint.host, port: endpoint.port },
-          "Unable to read the TLS certificates the instance host serves, so Microsoft Autoenrollment cannot learn its channel bindings"
-        );
-        await keyStore
-          .setItemWithExpiry(
-            KeyStorePrefixes.MicrosoftAutoenrollmentServerChannelBindingsLearnFailed(endpointKey),
-            KeyStoreTtls.MicrosoftAutoenrollmentServerChannelBindingsLearnFailedInSeconds,
-            1
-          )
-          .catch(() => undefined);
-        return cachedEntries;
-      }
-      const seenAt = new Date().toISOString();
-      const entries = [
-        ...learnedBindings.map((binding) => ({ binding, seenAt })),
-        ...cachedEntries.filter(({ binding }) => !learnedBindings.includes(binding))
-      ];
-      await keyStore
-        .setItemWithExpiry(
-          KeyStorePrefixes.MicrosoftAutoenrollmentServerChannelBindings(endpointKey),
-          KeyStoreTtls.MicrosoftAutoenrollmentServerChannelBindingsInSeconds,
-          JSON.stringify(entries)
-        )
-        .catch((err: unknown) => {
-          logger.warn({ err }, "Unable to cache the TLS channel bindings for Microsoft Autoenrollment");
-        });
-      return entries;
-    })().finally(() => learningServerChannelBindings.delete(endpointKey));
-
-    learningServerChannelBindings.set(endpointKey, learning);
-    return learning;
-  };
-
-  const $refreshServerChannelBindings = async (
-    endpoint: TInstanceTlsEndpoint,
-    cachedEntries: TServerChannelBindingEntry[]
-  ) => {
-    const isRefreshAllowed =
-      (await keyStore
-        .setItemWithExpiryNX(
-          KeyStorePrefixes.MicrosoftAutoenrollmentServerChannelBindingsRefreshLock(describeEndpoint(endpoint)),
-          KeyStoreTtls.MicrosoftAutoenrollmentServerChannelBindingsRefreshLockInSeconds,
-          1
-        )
-        .catch(() => null)) === "OK";
-    if (isRefreshAllowed) return $learnServerChannelBindings(endpoint, cachedEntries);
-    const localLearning = learningServerChannelBindings.get(describeEndpoint(endpoint));
-    if (localLearning) return localLearning;
-    const sharedEntries = await $readServerChannelBindings(endpoint);
-    return sharedEntries.length ? sharedEntries : null;
-  };
-
-  const $loadExpectedChannelBindings = async (): Promise<TExpectedChannelBindings | null> => {
-    if (crypto.isFipsModeEnabled()) return null;
-    const endpoint = getInstanceTlsEndpoint();
-    if (!endpoint) return null;
-
-    const entries = await $readServerChannelBindings(endpoint);
-    if (entries.length) {
-      const lastSeenAt = Math.max(...entries.map(({ seenAt }) => new Date(seenAt).getTime()));
-      if (Date.now() - lastSeenAt > CHANNEL_BINDING_REFRESH_AFTER_MS) {
-        void $refreshServerChannelBindings(endpoint, entries).catch(() => undefined);
-      }
-      return { endpoint, entries };
-    }
-
-    const hasLearningFailed = await keyStore
-      .getItem(KeyStorePrefixes.MicrosoftAutoenrollmentServerChannelBindingsLearnFailed(describeEndpoint(endpoint)))
-      .catch(() => null);
-    if (hasLearningFailed) return null;
-
-    const learnedEntries = await $learnServerChannelBindings(endpoint);
-    return learnedEntries.length ? { endpoint, entries: learnedEntries } : null;
+  const $loadChannelBindingCheck = async (allowAnyChannelBinding: boolean): Promise<TChannelBindingCheck> => {
+    if (allowAnyChannelBinding) return { expected: null };
+    const expected = await channelBindingCache.loadExpected();
+    if (expected) return { expected };
+    return {
+      expected: null,
+      unverifiableReason: describeUnverifiableChannelBinding(
+        crypto.isFipsModeEnabled() ? null : getInstanceTlsEndpoint()
+      )
+    };
   };
 
   const $verifyNegotiateToken = (
     context: TContext,
-    authorizationHeader: string | undefined,
+    negotiateToken: TNegotiateToken,
     expectedChannelBindings: Buffer[] | null
   ) =>
     verifyNegotiateToken({
-      authorizationHeader,
+      negotiateToken,
       keytabEntries: context.keytabEntries,
       expectedChannelBindings,
       checkReplay: async (replayKey) =>
@@ -413,13 +311,13 @@ export const microsoftAutoenrollmentServiceFactory = ({
 
   const $verifyWithChannelBindingRefresh = async (
     context: TContext,
-    authorizationHeader: string | undefined,
+    negotiateToken: TNegotiateToken,
     channelBindings: TExpectedChannelBindings | null
   ) => {
     try {
       return await $verifyNegotiateToken(
         context,
-        authorizationHeader,
+        negotiateToken,
         channelBindings && toChannelBindingBuffers(channelBindings.entries)
       );
     } catch (error) {
@@ -430,26 +328,46 @@ export const microsoftAutoenrollmentServiceFactory = ({
       ) {
         throw error;
       }
-      const refreshedEntries = await $refreshServerChannelBindings(channelBindings.endpoint, channelBindings.entries);
+      const refreshedEntries = await channelBindingCache.refresh(channelBindings.endpoint, channelBindings.entries);
       const hasNewBinding = refreshedEntries?.some(
         ({ binding }) => !channelBindings.entries.some((entry) => entry.binding === binding)
       );
       if (!refreshedEntries || !hasNewBinding) throw error;
-      return $verifyNegotiateToken(context, authorizationHeader, toChannelBindingBuffers(refreshedEntries));
+      return $verifyNegotiateToken(context, negotiateToken, toChannelBindingBuffers(refreshedEntries));
     }
   };
+
+  const $challenge = () => $soapResponse("", { "WWW-Authenticate": NEGOTIATE }, UNAUTHORIZED_STATUS_CODE);
 
   const $authenticate = async (
     profileContext: TProfileContext,
     authorizationHeader: string | undefined,
     clientIp: string
   ) => {
+    if (!authorizationHeader) return { refusal: $challenge() };
+
     let channelBindings: TExpectedChannelBindings | null = null;
     try {
-      readAuthorizationHeader(authorizationHeader);
+      const negotiateToken = parseNegotiateToken(readAuthorizationHeader(authorizationHeader));
+      assertTicketIsForServicePrincipal(negotiateToken, {
+        principal: stripKerberosRealm(profileContext.config.servicePrincipalName),
+        newestKeyVersion: profileContext.config.keyVersion
+      });
       const context = await $decryptKeytab(profileContext);
-      channelBindings = await $loadExpectedChannelBindings();
-      const identity = await $verifyWithChannelBindingRefresh(context, authorizationHeader, channelBindings);
+      const channelBindingCheck = await $loadChannelBindingCheck(profileContext.config.allowAnyChannelBinding);
+      channelBindings = channelBindingCheck.expected;
+      const identity = await $verifyWithChannelBindingRefresh(context, negotiateToken, channelBindings);
+      if (channelBindingCheck.unverifiableReason) {
+        await $recordRefusal(profileContext, clientIp, {
+          reason: MicrosoftAutoenrollmentFailureReason.ChannelBindingUnverifiable,
+          computerName: identity.clientName,
+          message: `${channelBindingCheck.unverifiableReason} ${CHANNEL_BINDING_OPT_OUT_HINT}`.slice(
+            0,
+            MAX_REFUSAL_MESSAGE_LENGTH
+          )
+        });
+        return { refusal: $challenge() };
+      }
       return { context, identity };
     } catch (error) {
       if (!(error instanceof KerberosError)) throw error;
@@ -480,22 +398,8 @@ export const microsoftAutoenrollmentServiceFactory = ({
         message: message.slice(0, MAX_REFUSAL_MESSAGE_LENGTH)
       });
 
-      return { refusal: $soapResponse("", { "WWW-Authenticate": NEGOTIATE }, UNAUTHORIZED_STATUS_CODE) };
+      return { refusal: $challenge() };
     }
-  };
-
-  const $resolveTtl = async (profile: TContext["profile"]) => {
-    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
-    const policyMaxValidity = policy?.validity?.max;
-    return resolveEffectiveTtl({
-      requestTtl: undefined,
-      profileDefaultTtlDays: profile.defaults?.ttlDays,
-      policyMaxValidity,
-      flowDefaultTtl:
-        policyMaxValidity && ms(policyMaxValidity) < ms(MICROSOFT_AUTOENROLLMENT_DEFAULT_TTL)
-          ? policyMaxValidity
-          : MICROSOFT_AUTOENROLLMENT_DEFAULT_TTL
-    });
   };
 
   const $buildTemplateInfoExtension = (context: TContext, templateOid = buildTemplateOid(context.junction.id)) =>
@@ -518,21 +422,17 @@ export const microsoftAutoenrollmentServiceFactory = ({
         projectDAL,
         kmsService
       }),
-      $resolveTtl(profile)
+      resolveMicrosoftAutoenrollmentTtl(profile, certificatePolicyDAL)
     ]);
 
     const templateOid = buildTemplateOid(context.junction.id);
     const validitySeconds = ms(ttl) / 1000;
-    const renewBeforeDays = calculateRenewalThreshold(
-      config.renewBeforeDays,
-      Math.ceil(validitySeconds / SECONDS_PER_DAY)
-    ) as number;
 
     return {
       templateOid,
       templateName: profile.slug,
       validitySeconds,
-      renewalPeriodSeconds: renewBeforeDays * SECONDS_PER_DAY,
+      renewalPeriodSeconds: resolveRenewalPeriodSeconds(config.renewBeforeDays, validitySeconds),
       privateKey: resolveTemplatePrivateKey(profile.defaults?.keyAlgorithm),
       majorRevision: config.templateMajorRevision,
       minorRevision: config.templateMinorRevision,
@@ -610,7 +510,8 @@ export const microsoftAutoenrollmentServiceFactory = ({
       certificateAuthorityCertDAL,
       certificateAuthorityDAL,
       projectDAL,
-      kmsService
+      kmsService,
+      shouldThrowLookupErrors: true
     });
     const storedCertificate = isCurrentCertificateValid
       ? await certificateDAL.findOne(
@@ -646,7 +547,9 @@ export const microsoftAutoenrollmentServiceFactory = ({
     if (requestNumber > MAX_REQUEST_NUMBER) return undefined;
     const certificateRequestId =
       await microsoftAutoenrollmentRequestDAL.findCertificateRequestIdByRequestNumber(requestNumber);
-    return certificateRequestId ? certificateRequestDAL.findById(certificateRequestId) : undefined;
+    return certificateRequestId
+      ? certificateRequestDAL.findById(certificateRequestId, certificateDAL.primaryNode())
+      : undefined;
   };
 
   const $queryTokenStatus = async (context: TContext, identity: TKerberosIdentity, envelope: TParsedSoapEnvelope) => {
@@ -668,7 +571,10 @@ export const microsoftAutoenrollmentServiceFactory = ({
       return notFound();
     }
 
-    const metadata = await resourceMetadataDAL.find({ certificateRequestId: certificateRequest.id });
+    const metadata = await resourceMetadataDAL.find(
+      { certificateRequestId: certificateRequest.id },
+      { tx: certificateDAL.primaryNode() }
+    );
     const requestingComputerSid = metadata.find(
       (entry) => entry.key === MicrosoftAutoenrollmentMetadataKey.ComputerSid
     );
@@ -689,9 +595,10 @@ export const microsoftAutoenrollmentServiceFactory = ({
         ? await certificateDAL.findOne({ id: certificateRequest.certificateId }, certificateDAL.primaryNode())
         : undefined;
     const isIssuedCertificateRevoked = issuedCertificate?.status === CertStatus.REVOKED;
+    const isIssuedCertificateExpired = Boolean(issuedCertificate && issuedCertificate.notAfter <= new Date());
     const certificateBody =
-      issuedCertificate && !isIssuedCertificateRevoked && !issuedCertificate.deletedAt
-        ? await certificateBodyDAL.findOne({ certId: issuedCertificate.id })
+      issuedCertificate && !isIssuedCertificateRevoked && !issuedCertificate.deletedAt && !isIssuedCertificateExpired
+        ? await certificateBodyDAL.findOne({ certId: issuedCertificate.id }, certificateDAL.primaryNode())
         : undefined;
     if (!certificateBody) {
       let message = `Certificate request '${requestId}' was not issued in Infisical.`;
@@ -699,6 +606,8 @@ export const microsoftAutoenrollmentServiceFactory = ({
         message = `The certificate for request '${requestId}' was deleted in Infisical after it was approved.`;
       } else if (isIssuedCertificateRevoked) {
         message = `The certificate for request '${requestId}' was revoked in Infisical after it was approved.`;
+      } else if (isIssuedCertificateExpired) {
+        message = `The certificate for request '${requestId}' expired before this computer picked it up. The computer enrolls for a new certificate.`;
       } else if (certificateRequest.status === CertificateRequestStatus.REJECTED) {
         message = `Certificate request '${requestId}' was rejected in Infisical.`;
       } else if (certificateRequest.status === CertificateRequestStatus.FAILED) {
@@ -827,7 +736,7 @@ export const microsoftAutoenrollmentServiceFactory = ({
       profileId: profile.id,
       applicationId,
       csr: x509.PemConverter.encode(asNonSharedBuffer(Buffer.from(csr.rawData)), "CERTIFICATE REQUEST"),
-      validity: { ttl: await $resolveTtl(profile) },
+      validity: { ttl: await resolveMicrosoftAutoenrollmentTtl(profile, certificatePolicyDAL) },
       enrollmentType: EnrollmentType.MICROSOFT_AUTOENROLLMENT,
       issuerNameOverride: {
         commonName: dnsHostName,
@@ -846,9 +755,9 @@ export const microsoftAutoenrollmentServiceFactory = ({
         ipAddress: clientIp,
         actor: { type: ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT, metadata: { profileId: profile.id } }
       },
-      onCertificateRequestPersisted: async (certificateRequestId, tx) => {
+      onCertificateRequestPersisted: async (certificateRequest, tx) => {
         persisted.requestNumber = String(
-          await microsoftAutoenrollmentRequestDAL.createRequestNumber(certificateRequestId, tx)
+          await microsoftAutoenrollmentRequestDAL.createRequestNumber(certificateRequest, tx)
         );
       }
     });
@@ -893,39 +802,54 @@ export const microsoftAutoenrollmentServiceFactory = ({
       envelope: TParsedSoapEnvelope
     ) => Promise<string | TMicrosoftAutoenrollmentResponse>
   ): Promise<TMicrosoftAutoenrollmentResponse> => {
-    const profileContext = await $loadContext(applicationId, profileId);
-    if (!profileContext) {
-      return $soapResponse(
-        buildSoapFault({ relatesTo: null, message: MICROSOFT_AUTOENROLLMENT_NOT_ENABLED_MESSAGE }),
-        {},
-        NOT_ENABLED_STATUS_CODE
-      );
-    }
-
-    const authentication = await $authenticate(profileContext, authorizationHeader, clientIp);
-    if (authentication.refusal) return authentication.refusal;
-    const { context } = authentication;
-
-    const mutualAuthHeaders: Record<string, string> = authentication.identity.responseToken
-      ? { "WWW-Authenticate": `${NEGOTIATE} ${authentication.identity.responseToken}` }
-      : {};
-
+    let mutualAuthHeaders: Record<string, string> = {};
     let envelope: TParsedSoapEnvelope | null = null;
     try {
+      const profileContext = await $loadContext(applicationId, profileId);
+      if (!profileContext) {
+        return $soapResponse(
+          buildSoapFault({ relatesTo: null, message: MICROSOFT_AUTOENROLLMENT_NOT_ENABLED_MESSAGE }),
+          {},
+          NOT_ENABLED_STATUS_CODE
+        );
+      }
+
+      const authentication = await $authenticate(profileContext, authorizationHeader, clientIp);
+      if (authentication.refusal) return authentication.refusal;
+      const { context, identity } = authentication;
+
+      if (identity.responseToken) {
+        mutualAuthHeaders = { "WWW-Authenticate": `${NEGOTIATE} ${identity.responseToken}` };
+      }
+
       envelope = parseSoapEnvelope(body);
-      const response = await respond(context, authentication.identity, envelope);
+      const response = await respond(context, identity, envelope);
       return typeof response === "string"
         ? $soapResponse(response, mutualAuthHeaders)
         : { ...response, headers: { ...response.headers, ...mutualAuthHeaders } };
     } catch (error) {
-      if (!(error instanceof BadRequestError)) throw error;
-      return $fault(envelope?.messageId ?? null, error.message, mutualAuthHeaders);
+      const relatesTo = envelope?.messageId ?? null;
+      if (error instanceof BadRequestError || error instanceof ForbiddenRequestError) {
+        return $fault(relatesTo, error.message, mutualAuthHeaders);
+      }
+      if (error instanceof NotFoundError) {
+        logger.warn(
+          error,
+          `Microsoft Autoenrollment request refers to a removed resource [applicationId=${applicationId}] [profileId=${profileId}]`
+        );
+        return $fault(relatesTo, REMOVED_RESOURCE_FAILURE_MESSAGE, mutualAuthHeaders);
+      }
+      logger.error(
+        error,
+        `Unable to answer a Microsoft Autoenrollment request [applicationId=${applicationId}] [profileId=${profileId}]`
+      );
+      return $fault(relatesTo, UNEXPECTED_FAILURE_MESSAGE, mutualAuthHeaders);
     }
   };
 
   const getPolicies = (dto: TMicrosoftAutoenrollmentRequestDTO) =>
     $handle(dto, async (context, identity, envelope) => {
-      if (!envelope.isGetPolicies) {
+      if (envelope.operation !== SoapOperation.GetPolicies) {
         return $fault(envelope.messageId, "This enrollment policy URL only answers GetPolicies requests.");
       }
 
@@ -946,11 +870,18 @@ export const microsoftAutoenrollmentServiceFactory = ({
     });
 
   const requestSecurityToken = (dto: TMicrosoftAutoenrollmentRequestDTO) =>
-    $handle(dto, (context, identity, envelope) =>
-      envelope.isQueryTokenStatus
-        ? $queryTokenStatus(context, identity, envelope)
-        : $issueCertificate(context, identity, envelope, dto.clientIp)
-    );
+    $handle(dto, async (context, identity, envelope) => {
+      if (envelope.operation === SoapOperation.Issue) {
+        return $issueCertificate(context, identity, envelope, dto.clientIp);
+      }
+      if (envelope.operation === SoapOperation.QueryTokenStatus) {
+        return $queryTokenStatus(context, identity, envelope);
+      }
+      return $fault(
+        envelope.messageId,
+        "This enrollment URL only answers certificate requests and certificate status queries."
+      );
+    });
 
   return {
     getPolicies,

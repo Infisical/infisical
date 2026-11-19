@@ -103,6 +103,7 @@ import {
   canRevokeAfterDeletion,
   DELETED_CERTIFICATE_NO_ACTIONS,
   getApplicationCertificateAccess,
+  getEnrollmentRenewalBlockedReason,
   getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails,
@@ -1305,14 +1306,22 @@ export const CertificatesTable = ({
                                 if (profileMissing && !isManagedCertificate(certificate))
                                   return null;
 
-                                const renewBlockedReason = profileMissing
-                                  ? RENEWAL_UNAVAILABLE_NO_PROFILE
-                                  : rowApplicationAccess?.renewBlockedReason;
+                                const enrollmentRenewalBlockedReason =
+                                  getEnrollmentRenewalBlockedReason(certificate.enrollmentType);
+                                let renewBlockedReason = rowApplicationAccess?.renewBlockedReason;
+                                if (profileMissing)
+                                  renewBlockedReason = RENEWAL_UNAVAILABLE_NO_PROFILE;
+                                else if (enrollmentRenewalBlockedReason)
+                                  renewBlockedReason = enrollmentRenewalBlockedReason;
 
                                 return (
                                   <BlockedActionTooltip reason={renewBlockedReason}>
                                     <DropdownMenuItem
-                                      isDisabled={!canRenewCertificate || profileMissing}
+                                      isDisabled={
+                                        !canRenewCertificate ||
+                                        profileMissing ||
+                                        Boolean(enrollmentRenewalBlockedReason)
+                                      }
                                       isDisabledFocusable={Boolean(renewBlockedReason)}
                                       onClick={(e) => {
                                         e.stopPropagation();

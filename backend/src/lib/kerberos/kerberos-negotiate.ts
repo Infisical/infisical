@@ -4,16 +4,29 @@ import * as asn1js from "asn1js";
 import { crypto } from "@app/lib/crypto/cryptography";
 
 import { kerberosDecrypt, kerberosEncrypt } from "./kerberos-crypto";
+import {
+  applicationTag,
+  Asn1TagClass,
+  buildGssFrame,
+  contextTag,
+  DER_LONG_LENGTH_FLAG,
+  GSS_TOKEN_TAG,
+  toDer
+} from "./kerberos-der";
 import { KerberosError } from "./kerberos-error";
 import { parsePacLogonInfo, verifyPacServerSignature } from "./kerberos-pac";
-import { KerberosFailureReason, KerberosKeyUsage, TKerberosIdentity, TVerifyNegotiateTokenDTO } from "./kerberos-types";
+import {
+  KerberosFailureReason,
+  KerberosKeyUsage,
+  TKerberosIdentity,
+  TNegotiateToken,
+  TVerifyNegotiateTokenDTO
+} from "./kerberos-types";
 
 const NEGOTIATE_SCHEME = "negotiate";
 const NTLM_SIGNATURE = "NTLMSSP";
-const GSS_TOKEN_TAG = 0x60;
 const GSS_TOKEN_ID_BYTES = 2;
 const GSS_AP_REPLY_TOKEN_ID = Buffer.from([0x02, 0x00]);
-const DER_LONG_LENGTH_FLAG = 0x80;
 const DER_LENGTH_BYTE_COUNT_MASK = 0x7f;
 const AP_OPTIONS_MUTUAL_REQUIRED = 0x20;
 const KERBEROS_PROTOCOL_VERSION = 5;
@@ -31,11 +44,6 @@ enum MechanismOid {
   Kerberos = "1.2.840.113554.1.2.2",
   MicrosoftKerberos = "1.2.840.48018.1.2.2",
   Ntlm = "1.3.6.1.4.1.311.2.2.10"
-}
-
-enum Asn1TagClass {
-  Application = 2,
-  Context = 3
 }
 
 enum KerberosApplicationTag {
@@ -60,7 +68,7 @@ type TErrorContext = {
 
 type TAsn1Fields = Map<number, asn1js.BaseBlock>;
 
-type TNegotiateToken = {
+type TGssKerberosToken = {
   isSpnego: boolean;
   mechanismOid: string;
   apRequest: Buffer;
@@ -250,7 +258,7 @@ const readGssFrame = (token: Buffer) => {
   };
 };
 
-const unwrapNegotiateToken = (token: Buffer): TNegotiateToken => {
+const unwrapNegotiateToken = (token: Buffer): TGssKerberosToken => {
   if (isNtlmMessage(token)) throw ntlmError();
   const frame = readGssFrame(token);
   if (frame.mechanismOid === MechanismOid.Kerberos || frame.mechanismOid === MechanismOid.MicrosoftKerberos) {
@@ -468,29 +476,6 @@ const readPacLogonInfo = (ticket: TTicket, serviceKey: Buffer, context: TErrorCo
   return logonInfo;
 };
 
-const encodeDerLength = (length: number) => {
-  if (length < DER_LONG_LENGTH_FLAG) return Buffer.from([length]);
-  const lengthBytes: number[] = [];
-  for (let remaining = length; remaining > 0; remaining = Math.floor(remaining / 256)) {
-    lengthBytes.unshift(remaining % 256);
-  }
-  return Buffer.from([DER_LONG_LENGTH_FLAG | lengthBytes.length, ...lengthBytes]);
-};
-
-const toDer = (block: asn1js.BaseBlock) => Buffer.from(block.toBER());
-
-const contextTag = (tagNumber: number, value: asn1js.BaseBlock) =>
-  new asn1js.Constructed({
-    idBlock: { tagClass: Asn1TagClass.Context, tagNumber },
-    value: [value]
-  });
-
-const applicationTag = (tagNumber: number, value: asn1js.BaseBlock) =>
-  new asn1js.Constructed({
-    idBlock: { tagClass: Asn1TagClass.Application, tagNumber },
-    value: [value]
-  });
-
 const buildMutualAuthToken = (token: TNegotiateToken, ticket: TTicket, authenticator: TAuthenticator) => {
   const encApReplyPart = applicationTag(
     KerberosApplicationTag.EncApReplyPart,
@@ -528,12 +513,7 @@ const buildMutualAuthToken = (token: TNegotiateToken, ticket: TTicket, authentic
     })
   );
 
-  const gssContent = Buffer.concat([
-    toDer(new asn1js.ObjectIdentifier({ value: MechanismOid.Kerberos })),
-    GSS_AP_REPLY_TOKEN_ID,
-    toDer(apReply)
-  ]);
-  const gssToken = Buffer.concat([Buffer.from([GSS_TOKEN_TAG]), encodeDerLength(gssContent.length), gssContent]);
+  const gssToken = buildGssFrame(MechanismOid.Kerberos, Buffer.concat([GSS_AP_REPLY_TOKEN_ID, toDer(apReply)]));
   if (!token.isSpnego) return gssToken.toString("base64");
 
   const negTokenResp = contextTag(
@@ -549,37 +529,54 @@ const buildMutualAuthToken = (token: TNegotiateToken, ticket: TTicket, authentic
   return toDer(negTokenResp).toString("base64");
 };
 
-export const verifyNegotiateToken = async ({
-  authorizationHeader,
-  keytabEntries,
-  checkReplay,
-  expectedChannelBindings
-}: TVerifyNegotiateTokenDTO): Promise<TKerberosIdentity & { responseToken: string | null }> => {
-  const rawToken = readAuthorizationHeader(authorizationHeader);
+export const parseNegotiateToken = (rawToken: Buffer): TNegotiateToken => {
   const token = asMalformed(
     () => unwrapNegotiateToken(rawToken),
     "The Negotiate token is not a valid Kerberos token",
     {}
   );
   const apRequest = asMalformed(() => parseApRequest(token.apRequest), "The Kerberos AP-REQ is not valid", {});
+  return { isSpnego: token.isSpnego, mechanismOid: token.mechanismOid, ...apRequest };
+};
 
+const noMatchingKeyError = (negotiateToken: TNegotiateToken) =>
+  new KerberosError({
+    reason: KerberosFailureReason.NoMatchingKey,
+    message: `The keytab has no key for ${negotiateToken.serviceName} with key version ${negotiateToken.ticketKeyVersion ?? "none"} and encryption type ${negotiateToken.ticketEncryptionType}`,
+    serviceName: negotiateToken.serviceName,
+    keyVersion: negotiateToken.ticketKeyVersion
+  });
+
+export const assertTicketIsForServicePrincipal = (
+  negotiateToken: TNegotiateToken,
+  { principal, newestKeyVersion }: { principal: string; newestKeyVersion: number }
+) => {
+  if (
+    negotiateToken.serviceName.toLowerCase() !== principal.toLowerCase() ||
+    negotiateToken.ticketKeyVersion === null ||
+    negotiateToken.ticketKeyVersion > newestKeyVersion
+  ) {
+    throw noMatchingKeyError(negotiateToken);
+  }
+};
+
+export const verifyNegotiateToken = async ({
+  negotiateToken,
+  keytabEntries,
+  checkReplay,
+  expectedChannelBindings
+}: TVerifyNegotiateTokenDTO): Promise<TKerberosIdentity & { responseToken: string | null }> => {
   const keyContext: TErrorContext = {
-    serviceName: apRequest.serviceName,
-    keyVersion: apRequest.ticketKeyVersion
+    serviceName: negotiateToken.serviceName,
+    keyVersion: negotiateToken.ticketKeyVersion
   };
   const keytabEntry = keytabEntries.find(
     (entry) =>
-      entry.encryptionType === apRequest.ticketEncryptionType &&
-      entry.keyVersion === apRequest.ticketKeyVersion &&
-      entry.principal.toLowerCase() === apRequest.serviceName.toLowerCase()
+      entry.encryptionType === negotiateToken.ticketEncryptionType &&
+      entry.keyVersion === negotiateToken.ticketKeyVersion &&
+      entry.principal.toLowerCase() === negotiateToken.serviceName.toLowerCase()
   );
-  if (!keytabEntry) {
-    throw new KerberosError({
-      reason: KerberosFailureReason.NoMatchingKey,
-      message: `The keytab has no key for ${apRequest.serviceName} with key version ${apRequest.ticketKeyVersion ?? "none"} and encryption type ${apRequest.ticketEncryptionType}`,
-      ...keyContext
-    });
-  }
+  if (!keytabEntry) throw noMatchingKeyError(negotiateToken);
 
   const ticket = asMalformed(
     () =>
@@ -587,7 +584,7 @@ export const verifyNegotiateToken = async ({
         decryptPart({
           key: keytabEntry.key,
           usage: KerberosKeyUsage.TicketEncPart,
-          cipher: apRequest.ticketCipher,
+          cipher: negotiateToken.ticketCipher,
           message:
             "The Kerberos ticket could not be decrypted with the keytab key. Create the keytab again with ktpass and upload it.",
           context: keyContext
@@ -606,7 +603,7 @@ export const verifyNegotiateToken = async ({
         decryptPart({
           key: ticket.sessionKey,
           usage: KerberosKeyUsage.ApRequestAuthenticator,
-          cipher: apRequest.authenticatorCipher,
+          cipher: negotiateToken.authenticatorCipher,
           message: "The Kerberos authenticator could not be decrypted with the ticket's session key.",
           context
         })
@@ -629,11 +626,11 @@ export const verifyNegotiateToken = async ({
   return {
     clientName: ticket.clientName,
     realm: ticket.clientRealm,
-    serviceName: apRequest.serviceName,
+    serviceName: negotiateToken.serviceName,
     keyVersion: keytabEntry.keyVersion,
     accountSid: logonInfo.accountSid,
     groupSids: logonInfo.groupSids,
     domainSid: logonInfo.domainSid,
-    responseToken: apRequest.isMutualRequired ? buildMutualAuthToken(token, ticket, authenticator) : null
+    responseToken: negotiateToken.isMutualRequired ? buildMutualAuthToken(negotiateToken, ticket, authenticator) : null
   };
 };

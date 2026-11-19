@@ -2,12 +2,16 @@ import net from "node:net";
 
 import * as x509 from "@peculiar/x509";
 import dns from "node:dns/promises";
+import { z } from "zod";
 
 import { resolveDomain, scanEndpoint } from "@app/ee/services/pki-discovery/pki-discovery-fns";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { asNonSharedBuffer } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+
+import { MicrosoftAutoenrollmentChannelBindingStatus } from "./microsoft-autoenrollment-types";
 
 const TLS_SERVER_END_POINT_PREFIX = "tls-server-end-point:";
 const GSS_CHANNEL_BINDINGS_HEADER_LENGTH = 20;
@@ -30,7 +34,17 @@ const TLS_SCAN_TIMEOUT_MS = 3000;
 const SYSTEM_LOOKUP_TIMEOUT_MS = 5000;
 const MAX_SCANNED_ADDRESSES = 16;
 
+const CHANNEL_BINDING_RETENTION_MS = KeyStoreTtls.MicrosoftAutoenrollmentServerChannelBindingsInSeconds * 1000;
+
 export type TInstanceTlsEndpoint = { host: string; port: number };
+
+export const ServerChannelBindingsCacheSchema = z.array(
+  z.object({ binding: z.string().length(32), seenAt: z.string().datetime() })
+);
+
+export type TServerChannelBindingEntry = z.infer<typeof ServerChannelBindingsCacheSchema>[number];
+
+export const describeEndpoint = ({ host, port }: TInstanceTlsEndpoint) => `${host}:${port}`;
 
 const readSignatureHashName = (certificateDer: Buffer) => {
   const { hash } = new x509.X509Certificate(asNonSharedBuffer(certificateDer)).signatureAlgorithm as {
@@ -124,4 +138,82 @@ export const learnServerChannelBindings = async ({ host, port }: TInstanceTlsEnd
     }
   }
   return [...channelBindings];
+};
+
+const parseServerChannelBindings = (cached: string | null) => {
+  if (!cached) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(cached);
+  } catch {
+    return [];
+  }
+  const entries = ServerChannelBindingsCacheSchema.safeParse(parsed);
+  if (!entries.success) return [];
+  const retainedAfter = Date.now() - CHANNEL_BINDING_RETENTION_MS;
+  return entries.data.filter(({ seenAt }) => new Date(seenAt).getTime() >= retainedAfter);
+};
+
+export const readServerChannelBindings = async (
+  keyStore: Pick<TKeyStoreFactory, "getItem">,
+  endpoint: TInstanceTlsEndpoint
+) =>
+  parseServerChannelBindings(
+    await keyStore
+      .getItem(KeyStorePrefixes.MicrosoftAutoenrollmentServerChannelBindings(describeEndpoint(endpoint)))
+      .catch((err: unknown) => {
+        logger.warn({ err }, "Unable to read the cached TLS channel bindings for Microsoft Autoenrollment");
+        return null;
+      })
+  );
+
+export const hasServerChannelBindingLearningFailed = async (
+  keyStore: Pick<TKeyStoreFactory, "getItem">,
+  endpoint: TInstanceTlsEndpoint
+) =>
+  Boolean(
+    await keyStore
+      .getItem(KeyStorePrefixes.MicrosoftAutoenrollmentServerChannelBindingsLearnFailed(describeEndpoint(endpoint)))
+      .catch(() => null)
+  );
+
+export const describeUnverifiableChannelBinding = (endpoint: TInstanceTlsEndpoint | null) => {
+  if (crypto.isFipsModeEnabled()) {
+    return "This instance runs in FIPS mode, which does not allow the MD5 hash Windows uses for TLS channel bindings, so it cannot check them.";
+  }
+  if (!endpoint) {
+    return "SITE_URL is not an https URL, so this instance cannot tell which TLS certificate computers see and cannot check their TLS channel bindings.";
+  }
+  return `This instance cannot read the TLS certificate it serves at ${describeEndpoint(endpoint)}, so it cannot check the TLS channel bindings computers send.`;
+};
+
+const CHANNEL_BINDING_NOT_CHECKED_REASON = "This instance checks its TLS certificate at the first enrollment request.";
+
+export const readChannelBindingStatus = async (keyStore: Pick<TKeyStoreFactory, "getItem">) => {
+  const endpoint = crypto.isFipsModeEnabled() ? null : getInstanceTlsEndpoint();
+  if (!endpoint) {
+    return {
+      status: MicrosoftAutoenrollmentChannelBindingStatus.Unverifiable,
+      reason: describeUnverifiableChannelBinding(endpoint)
+    };
+  }
+  const endpointKey = describeEndpoint(endpoint);
+  try {
+    const [cached, lastFailure] = await Promise.all([
+      keyStore.getItem(KeyStorePrefixes.MicrosoftAutoenrollmentServerChannelBindings(endpointKey)),
+      keyStore.getItem(KeyStorePrefixes.MicrosoftAutoenrollmentServerChannelBindingsLastFailure(endpointKey))
+    ]);
+    if (parseServerChannelBindings(cached).length) {
+      return { status: MicrosoftAutoenrollmentChannelBindingStatus.Enforced, reason: null };
+    }
+    if (lastFailure) {
+      return { status: MicrosoftAutoenrollmentChannelBindingStatus.Unverifiable, reason: lastFailure };
+    }
+  } catch (err) {
+    logger.warn({ err }, "Unable to read the TLS channel binding status for Microsoft Autoenrollment");
+  }
+  return {
+    status: MicrosoftAutoenrollmentChannelBindingStatus.NotChecked,
+    reason: CHANNEL_BINDING_NOT_CHECKED_REASON
+  };
 };

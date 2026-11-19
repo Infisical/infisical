@@ -155,6 +155,8 @@ export const KeyStorePrefixes = {
     `microsoft-autoenrollment-server-channel-bindings-refresh-lock:${instanceEndpoint}` as const,
   MicrosoftAutoenrollmentServerChannelBindingsLearnFailed: (instanceEndpoint: string) =>
     `microsoft-autoenrollment-server-channel-bindings-learn-failed:${instanceEndpoint}` as const,
+  MicrosoftAutoenrollmentServerChannelBindingsLastFailure: (instanceEndpoint: string) =>
+    `microsoft-autoenrollment-server-channel-bindings-last-failure:${instanceEndpoint}` as const,
   ScepIntuneAccess: (connectionId: string, connectionUpdatedAt: Date) =>
     `scep-intune-access:${connectionId}:${connectionUpdatedAt.getTime()}` as const,
   MfaSession: (mfaSessionId: string) => `mfa-session:${mfaSessionId}` as const,
@@ -344,6 +346,7 @@ export const KeyStoreTtls = {
   MicrosoftAutoenrollmentServerChannelBindingsInSeconds: 86400,
   MicrosoftAutoenrollmentServerChannelBindingsRefreshLockInSeconds: 300,
   MicrosoftAutoenrollmentServerChannelBindingsLearnFailedInSeconds: 300,
+  MicrosoftAutoenrollmentServerChannelBindingsLastFailureInSeconds: 86400,
   SecretReplicationSuccessInSeconds: 10,
   NativeIntegrationDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
   LegacyPkiDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle

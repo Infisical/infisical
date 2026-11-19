@@ -5,7 +5,14 @@ export enum MicrosoftAutoenrollmentFailureReason {
   NoDnsHostName = "no-dns-host-name",
   DirectoryUnreachable = "directory-unreachable",
   DirectoryLookupFailed = "directory-lookup-failed",
-  RenewalRefused = "renewal-refused"
+  RenewalRefused = "renewal-refused",
+  ChannelBindingUnverifiable = "channel-binding-unverifiable"
+}
+
+export enum MicrosoftAutoenrollmentChannelBindingStatus {
+  Enforced = "enforced",
+  Unverifiable = "unverifiable",
+  NotChecked = "not-checked"
 }
 
 export enum MicrosoftAutoenrollmentKeytabSource {

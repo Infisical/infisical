@@ -1,6 +1,7 @@
 import { TPkiMicrosoftAutoenrollmentConfigs } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { ms } from "@app/lib/ms";
 import { TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -12,6 +13,8 @@ import {
   searchDirectoryGroups,
   TLdapDirectoryGatewayServices
 } from "@app/services/app-connection/ldap/ldap-directory-fns";
+import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
+import { resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
 import {
   TMicrosoftAutoenrollmentAllowedGroup,
   TMicrosoftAutoenrollmentEnrollmentConfigDALFactory
@@ -20,8 +23,9 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
+import { readChannelBindingStatus } from "./microsoft-autoenrollment-channel-binding-fns";
 import { buildPolicyUrl, mergeAllowedGroups, readUploadedKeytab } from "./microsoft-autoenrollment-fns";
-import { buildPolicyId, buildTemplateOid } from "./microsoft-autoenrollment-template-fns";
+import { buildPolicyId, buildTemplateOid, resolveRenewalPeriodSeconds } from "./microsoft-autoenrollment-template-fns";
 import { MicrosoftAutoenrollmentKeytabSource } from "./microsoft-autoenrollment-types";
 
 type TDirectoryConnection = { id: string; name: string };
@@ -34,18 +38,42 @@ type TMicrosoftAutoenrollmentConfigWithGroups = Omit<TPkiMicrosoftAutoenrollment
 
 export const MICROSOFT_AUTOENROLLMENT_DEFAULT_RENEW_BEFORE_DAYS = 42;
 
+const MICROSOFT_AUTOENROLLMENT_DEFAULT_TTL = "365d";
+const SECONDS_PER_HOUR = 3600;
+
+export const resolveMicrosoftAutoenrollmentTtl = async (
+  profile: { certificatePolicyId: string; defaults?: { ttlDays?: number } | null },
+  certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">
+) => {
+  const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
+  const policyMaxValidity = policy?.validity?.max;
+  return resolveEffectiveTtl({
+    requestTtl: undefined,
+    profileDefaultTtlDays: profile.defaults?.ttlDays,
+    policyMaxValidity,
+    flowDefaultTtl:
+      policyMaxValidity && ms(policyMaxValidity) < ms(MICROSOFT_AUTOENROLLMENT_DEFAULT_TTL)
+        ? policyMaxValidity
+        : MICROSOFT_AUTOENROLLMENT_DEFAULT_TTL
+  });
+};
+
 export const buildMicrosoftAutoenrollmentState = ({
   applicationId,
   profileId,
   applicationProfileId,
   profileName,
-  config
+  config,
+  ttl,
+  channelBinding
 }: {
   applicationId: string;
   profileId: string;
   applicationProfileId: string;
   profileName: string;
   config: TMicrosoftAutoenrollmentConfigWithGroups;
+  ttl: string;
+  channelBinding: Awaited<ReturnType<typeof readChannelBindingStatus>>;
 }) => ({
   id: config.id,
   policyUrl: buildPolicyUrl(applicationId, profileId),
@@ -54,9 +82,14 @@ export const buildMicrosoftAutoenrollmentState = ({
   templateOid: buildTemplateOid(applicationProfileId),
   allowedGroups: config.allowedGroups,
   renewBeforeDays: config.renewBeforeDays,
+  effectiveRenewBeforeHours: Math.floor(
+    resolveRenewalPeriodSeconds(config.renewBeforeDays, ms(ttl) / 1000) / SECONDS_PER_HOUR
+  ),
   servicePrincipalName: config.servicePrincipalName,
   keyVersion: config.keyVersion,
   connectionId: config.appConnectionId,
+  allowAnyChannelBinding: config.allowAnyChannelBinding,
+  channelBinding,
   keytabMismatch:
     config.mismatchedServicePrincipalName && config.mismatchFirstSeenAt
       ? {
@@ -158,6 +191,19 @@ export const resolveMicrosoftAutoenrollmentAllowedGroups = async (
           return null;
         }
   );
+  if (isConnectionChanged) {
+    const unresolvedGroups = allowedGroupSids
+      .filter((sid) => !resolvedNames?.[sid])
+      .map((sid) => {
+        const storedName = storedGroups.find((group) => group.sid === sid)?.name;
+        return storedName ? `'${storedName}' (${sid})` : sid;
+      });
+    if (unresolvedGroups.length) {
+      throw new BadRequestError({
+        message: `The LDAP connection '${connection.name}' does not find the allowed groups ${unresolvedGroups.join(", ")} in its directory. Remove those groups, or choose groups from the directory of '${connection.name}'.`
+      });
+    }
+  }
   return mergeAllowedGroups(allowedGroupSids, resolvedNames, storedGroups);
 };
 
@@ -193,9 +239,9 @@ export const resolveMicrosoftAutoenrollmentKeytab = async (
   }: {
     microsoftAutoenrollmentEnrollmentConfigDAL: Pick<
       TMicrosoftAutoenrollmentEnrollmentConfigDALFactory,
-      "findByApplicationId"
+      "findKeytabByApplicationAndProfile"
     >;
-    kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
+    kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey">;
     projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   }
 ) => {
@@ -221,23 +267,18 @@ export const resolveMicrosoftAutoenrollmentKeytab = async (
           "A profile cannot reuse its own keytab. Choose another profile in this application, or upload the keytab file instead."
       });
     }
-    const configs = await microsoftAutoenrollmentEnrollmentConfigDAL.findByApplicationId(applicationId);
-    const source = configs.find((config) => config.profileId === reuseKeytab.profileId);
+    const source = await microsoftAutoenrollmentEnrollmentConfigDAL.findKeytabByApplicationAndProfile(
+      applicationId,
+      reuseKeytab.profileId
+    );
     if (!source) {
       throw new BadRequestError({
         message: `Profile '${reuseKeytab.profileId}' has no Microsoft Autoenrollment keytab in application '${applicationName}'. Choose a profile in this application that has Microsoft Autoenrollment turned on, or upload the keytab file instead.`
       });
     }
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
-    const { cipherTextBlob } = await encryptKeytab(
-      kmsService,
-      certificateManagerKmsId,
-      await kmsDecryptor({ cipherTextBlob: source.encryptedKeytab })
-    );
     return {
       source: MicrosoftAutoenrollmentKeytabSource.Reused,
-      encryptedKeytab: cipherTextBlob,
+      encryptedKeytab: source.encryptedKeytab,
       servicePrincipalName: source.servicePrincipalName,
       keyVersion: source.keyVersion,
       reusedFromProfileId: source.profileId,

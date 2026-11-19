@@ -3,7 +3,9 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
-export async function up(knex: Knex): Promise<void> {
+const ALTER_LOCK_TIMEOUT = 10 * 1000;
+
+const createMicrosoftAutoenrollmentTables = async (knex: Knex) => {
   if (!(await knex.schema.hasTable(TableName.PkiMicrosoftAutoenrollmentConfig))) {
     await knex.schema.createTable(TableName.PkiMicrosoftAutoenrollmentConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -22,6 +24,7 @@ export async function up(knex: Knex): Promise<void> {
       t.text("mismatchedServicePrincipalName").nullable();
       t.timestamp("mismatchFirstSeenAt", { useTz: true }).nullable();
       t.integer("mismatchRequestCount").notNullable().defaultTo(0);
+      t.boolean("allowAnyChannelBinding").notNullable().defaultTo(false);
       t.timestamps(true, true, true);
     });
 
@@ -32,17 +35,12 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.PkiMicrosoftAutoenrollmentRequest, (t) => {
       t.increments("requestNumber").primary();
       t.uuid("certificateRequestId").notNullable().unique();
+      t.datetime("certificateRequestCreatedAt").notNullable();
+      t.foreign(["certificateRequestId", "certificateRequestCreatedAt"])
+        .references(["id", "createdAt"])
+        .inTable(TableName.CertificateRequests)
+        .onDelete("CASCADE");
       t.timestamp("createdAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
-    });
-  }
-
-  if (!(await knex.schema.hasColumn(TableName.CertificateRequests, "renewedFromCertificateId"))) {
-    await knex.schema.alterTable(TableName.CertificateRequests, (t) => {
-      t.uuid("renewedFromCertificateId").nullable();
-      t.foreign("renewedFromCertificateId").references("id").inTable(TableName.Certificate).onDelete("SET NULL");
-      t.index(["renewedFromCertificateId"], "certificate_requests_renewedfromcertificateid_idx", {
-        predicate: knex.whereNotNull("renewedFromCertificateId")
-      });
     });
   }
 
@@ -56,29 +54,52 @@ export async function up(knex: Knex): Promise<void> {
       t.index("microsoftAutoenrollmentConfigId");
     });
   }
+};
+
+export async function up(knex: Knex): Promise<void> {
+  if (!(await knex.schema.hasColumn(TableName.CertificateRequests, "renewedFromCertificateId"))) {
+    await knex.transaction(async (tx) => {
+      await tx.raw(`SET LOCAL lock_timeout = ${ALTER_LOCK_TIMEOUT}`);
+      await tx.schema.alterTable(TableName.CertificateRequests, (t) => {
+        t.uuid("renewedFromCertificateId").nullable();
+      });
+    });
+  }
+
+  await knex.transaction(async (tx) => {
+    await tx.raw(`SET LOCAL lock_timeout = ${ALTER_LOCK_TIMEOUT}`);
+    await createMicrosoftAutoenrollmentTables(tx);
+  });
 }
 
 export async function down(knex: Knex): Promise<void> {
-  if (await knex.schema.hasColumn(TableName.PkiApplicationProfile, "microsoftAutoenrollmentConfigId")) {
-    await knex.schema.alterTable(TableName.PkiApplicationProfile, (t) => {
-      t.dropForeign(["microsoftAutoenrollmentConfigId"]);
-      t.dropIndex("microsoftAutoenrollmentConfigId");
-      t.dropColumn("microsoftAutoenrollmentConfigId");
-    });
-  }
-
   if (await knex.schema.hasColumn(TableName.CertificateRequests, "renewedFromCertificateId")) {
-    await knex.schema.alterTable(TableName.CertificateRequests, (t) => {
-      t.dropIndex(["renewedFromCertificateId"], "certificate_requests_renewedfromcertificateid_idx");
-      t.dropForeign(["renewedFromCertificateId"]);
-      t.dropColumn("renewedFromCertificateId");
+    await knex.transaction(async (tx) => {
+      await tx.raw(`SET LOCAL lock_timeout = ${ALTER_LOCK_TIMEOUT}`);
+      await tx.schema.alterTable(TableName.CertificateRequests, (t) => {
+        t.dropColumn("renewedFromCertificateId");
+      });
     });
   }
 
-  await knex.schema.dropTableIfExists(TableName.PkiMicrosoftAutoenrollmentRequest);
+  await knex.transaction(async (tx) => {
+    await tx.raw(`SET LOCAL lock_timeout = ${ALTER_LOCK_TIMEOUT}`);
+    if (await tx.schema.hasColumn(TableName.PkiApplicationProfile, "microsoftAutoenrollmentConfigId")) {
+      await tx.schema.alterTable(TableName.PkiApplicationProfile, (t) => {
+        t.dropForeign(["microsoftAutoenrollmentConfigId"]);
+        t.dropIndex("microsoftAutoenrollmentConfigId");
+        t.dropColumn("microsoftAutoenrollmentConfigId");
+      });
+    }
 
-  if (await knex.schema.hasTable(TableName.PkiMicrosoftAutoenrollmentConfig)) {
-    await knex.schema.dropTable(TableName.PkiMicrosoftAutoenrollmentConfig);
-    await dropOnUpdateTrigger(knex, TableName.PkiMicrosoftAutoenrollmentConfig);
-  }
+    await tx.schema.dropTableIfExists(TableName.PkiMicrosoftAutoenrollmentRequest);
+
+    if (await tx.schema.hasTable(TableName.PkiMicrosoftAutoenrollmentConfig)) {
+      await tx.schema.dropTable(TableName.PkiMicrosoftAutoenrollmentConfig);
+      await dropOnUpdateTrigger(tx, TableName.PkiMicrosoftAutoenrollmentConfig);
+    }
+  });
 }
+
+const config = { transaction: false };
+export { config };

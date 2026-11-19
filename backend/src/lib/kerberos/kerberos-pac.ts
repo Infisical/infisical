@@ -21,6 +21,8 @@ const LOGON_INFO_LOGON_COUNTS_BYTES = 4;
 const LOGON_INFO_USER_FLAGS_AND_SESSION_KEY_BYTES = 4 + 16;
 const LOGON_INFO_RESERVED1_BYTES = 8;
 const LOGON_INFO_ACCOUNT_CONTROL_TO_RESERVED3_BYTES = 4 + 4 + 8 + 8 + 4 + 4;
+const GROUP_ATTRIBUTES_OFFSET = 4;
+const SE_GROUP_ENABLED = 0x4;
 
 enum PacBufferType {
   LogonInfo = 1,
@@ -39,6 +41,10 @@ type TPacLogonInfo = {
   accountSid: string;
   groupSids: string[];
 };
+
+const isGroupEnabled = (attributes: number) =>
+  // eslint-disable-next-line no-bitwise
+  (attributes & SE_GROUP_ENABLED) !== 0;
 
 const readPacBuffers = (pac: Buffer) =>
   Array.from({ length: pac.readUInt32LE(0) }, (_, index) => {
@@ -141,7 +147,9 @@ const parseLogonInfo = (data: Buffer): TPacLogonInfo => {
     align();
     offset += 4;
     for (let index = 0; index < groupCount; index += 1) {
-      groupRids.push(data.readUInt32LE(offset));
+      if (isGroupEnabled(data.readUInt32LE(offset + GROUP_ATTRIBUTES_OFFSET))) {
+        groupRids.push(data.readUInt32LE(offset));
+      }
       offset += NDR_GROUP_MEMBERSHIP_BYTES;
     }
   }
@@ -154,13 +162,19 @@ const parseLogonInfo = (data: Buffer): TPacLogonInfo => {
   if (extraSidsPointer) {
     align();
     offset += 4;
-    const extraSidPointers: number[] = [];
+    const extraSidEntries: { pointer: number; attributes: number }[] = [];
     for (let index = 0; index < extraSidCount; index += 1) {
-      extraSidPointers.push(data.readUInt32LE(offset));
+      extraSidEntries.push({
+        pointer: data.readUInt32LE(offset),
+        attributes: data.readUInt32LE(offset + GROUP_ATTRIBUTES_OFFSET)
+      });
       offset += NDR_GROUP_MEMBERSHIP_BYTES;
     }
-    for (const pointer of extraSidPointers) {
-      if (pointer) extraSids.push(readSid());
+    for (const { pointer, attributes } of extraSidEntries) {
+      if (pointer) {
+        const sid = readSid();
+        if (isGroupEnabled(attributes)) extraSids.push(sid);
+      }
     }
   }
 
@@ -171,7 +185,9 @@ const parseLogonInfo = (data: Buffer): TPacLogonInfo => {
       align();
       offset += 4;
       for (let index = 0; index < resourceGroupCount; index += 1) {
-        resourceGroupSids.push(`${resourceGroupDomainSid}-${data.readUInt32LE(offset)}`);
+        if (isGroupEnabled(data.readUInt32LE(offset + GROUP_ATTRIBUTES_OFFSET))) {
+          resourceGroupSids.push(`${resourceGroupDomainSid}-${data.readUInt32LE(offset)}`);
+        }
         offset += NDR_GROUP_MEMBERSHIP_BYTES;
       }
     }

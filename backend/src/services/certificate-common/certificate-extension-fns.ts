@@ -484,21 +484,39 @@ export const findCustomExtensionRuleValueError = (
   return null;
 };
 
+const POLICY_EXEMPT_ISSUER_ADDED_OIDS: string[] = [CUSTOM_EXTENSION_PRESET_OIDS.MS_CERTIFICATE_TEMPLATE_INFORMATION];
+
+const findIssuerAddedExtensionErrors = (
+  issuerAddedExtensions: TResolvedCustomExtension[],
+  rulesByOid: Map<string, TCustomExtensionRule> | null
+) =>
+  issuerAddedExtensions.flatMap((extension) => {
+    const rule = rulesByOid?.get(extension.oid);
+    if (!rule || POLICY_EXEMPT_ISSUER_ADDED_OIDS.includes(extension.oid)) return [];
+    const displayValue = describeCustomExtensionValue(extension.oid, extension.value);
+    if (displayValue === null) {
+      return [`Custom extension '${extension.oid}' added by the issuer cannot be checked against this policy.`];
+    }
+    const error = findCustomExtensionRuleValueError(extension.oid, displayValue, rule);
+    return error ? [error] : [];
+  });
+
 export const resolveCustomExtensions = ({
   declarations,
   rules,
   requestExtensions,
   skipRequired = false,
-  issuerAddedOids = []
+  issuerAddedExtensions = []
 }: {
   declarations?: TProfileCustomExtension[] | null;
   rules?: TCustomExtensionRule[] | null;
   requestExtensions?: TRequestCustomExtension[];
   skipRequired?: boolean;
-  issuerAddedOids?: string[];
+  issuerAddedExtensions?: TResolvedCustomExtension[];
 }): { extensions: TResolvedCustomExtension[]; errors: string[] } => {
   const rulesByOid = buildRuleLookup(rules);
-  const errors: string[] = [];
+  const issuerAddedOids = issuerAddedExtensions.map((extension) => extension.oid);
+  const errors: string[] = findIssuerAddedExtensionErrors(issuerAddedExtensions, rulesByOid);
   const extensions: TResolvedCustomExtension[] = [];
   const resolvedOids = new Set<string>();
 
@@ -579,5 +597,11 @@ export const resolveCustomExtensions = ({
 
   extensions.sort((a, b) => a.oid.localeCompare(b.oid));
 
-  return { extensions, errors };
+  return {
+    extensions: [
+      ...extensions.filter((extension) => !issuerAddedOids.includes(extension.oid)),
+      ...issuerAddedExtensions
+    ],
+    errors
+  };
 };

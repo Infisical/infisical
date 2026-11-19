@@ -137,16 +137,89 @@ describe("describeCustomExtensionValue", () => {
   });
 });
 
-describe("resolveCustomExtensions", () => {
-  it("leaves a required rule for an issuer-added extension to the issuer's own check", () => {
-    const rules = [{ oid: "1.3.6.1.4.1.311.25.2", required: ["S-1-5-21-*"] }];
+describe("resolveCustomExtensions with extensions the issuer adds", () => {
+  const COMPUTER_SID = "S-1-5-21-1111111111-2222222222-3333333333-1105";
+  const issuerAdded = (oid: string, value: string) => ({
+    oid,
+    critical: false,
+    value: encodeCustomExtensionValue(oid, value),
+    issuerAdded: true
+  });
+  const sidExtension = issuerAdded(SID_OID, COMPUTER_SID);
+
+  it("satisfies a required rule with the issuer's value and returns it in the extensions to sign", () => {
+    const rules = [{ oid: SID_OID, required: ["S-1-5-21-1111111111-2222222222-3333333333-*"] }];
 
     expect(resolveCustomExtensions({ rules }).errors).toEqual([
-      expect.stringContaining("This policy requires custom extension '1.3.6.1.4.1.311.25.2'")
+      expect.stringContaining(`This policy requires custom extension '${SID_OID}'`)
     ]);
-    expect(resolveCustomExtensions({ rules, issuerAddedOids: ["1.3.6.1.4.1.311.25.2"] }).errors).toEqual([]);
+    const { errors, extensions } = resolveCustomExtensions({ rules, issuerAddedExtensions: [sidExtension] });
+    expect(errors).toEqual([]);
+    expect(extensions).toEqual([sidExtension]);
   });
 
+  it("refuses a computer SID the policy denies", () => {
+    const { errors } = resolveCustomExtensions({
+      rules: [{ oid: SID_OID, denied: [COMPUTER_SID] }],
+      issuerAddedExtensions: [sidExtension]
+    });
+
+    expect(errors).toEqual([expect.stringMatching(/is denied by this policy/)]);
+  });
+
+  it("refuses a computer SID outside the domain the policy requires", () => {
+    const { errors } = resolveCustomExtensions({
+      rules: [{ oid: SID_OID, required: ["S-1-5-21-9999999999-*"] }],
+      issuerAddedExtensions: [sidExtension]
+    });
+
+    expect(errors).toEqual([expect.stringMatching(/does not match any value required by this policy/)]);
+  });
+
+  it("checks the issuer's values even when required values are not enforced", () => {
+    const { errors } = resolveCustomExtensions({
+      rules: [{ oid: SID_OID, denied: [COMPUTER_SID] }],
+      issuerAddedExtensions: [sidExtension],
+      skipRequired: true
+    });
+
+    expect(errors).toEqual([expect.stringMatching(/is denied by this policy/)]);
+  });
+
+  it("adds the extensions when the policy has no rule for them", () => {
+    expect(
+      resolveCustomExtensions({ rules: [{ oid: "1.2.3.4", allowed: ["*"] }], issuerAddedExtensions: [sidExtension] })
+    ).toEqual({ errors: [], extensions: [sidExtension] });
+    expect(resolveCustomExtensions({ rules: undefined, issuerAddedExtensions: [sidExtension] })).toEqual({
+      errors: [],
+      extensions: [sidExtension]
+    });
+  });
+
+  it("does not hold the template information Windows needs to policy values", () => {
+    const templateInfo = issuerAdded(TEMPLATE_INFO_OID, "1.3.6.1.4.1.99999.1.2.3:100.0");
+
+    expect(
+      resolveCustomExtensions({
+        rules: [{ oid: TEMPLATE_INFO_OID, required: ["Machine"] }],
+        issuerAddedExtensions: [templateInfo]
+      })
+    ).toEqual({ errors: [], extensions: [templateInfo] });
+  });
+
+  it("signs the issuer's copy once when the profile declares the same extension", () => {
+    const { errors, extensions } = resolveCustomExtensions({
+      declarations: [{ oid: SID_OID, value: "S-1-5-21-1111111111-2222222222-3333333333-500" }],
+      rules: undefined,
+      issuerAddedExtensions: [sidExtension]
+    });
+
+    expect(errors).toEqual([]);
+    expect(extensions).toEqual([sidExtension]);
+  });
+});
+
+describe("resolveCustomExtensions", () => {
   const declareSid = { oid: SID_OID, value: SID };
 
   it("emits a declared value when the policy is unconstrained", () => {

@@ -1,7 +1,7 @@
-import dns from "node:dns/promises";
 import RE2 from "re2";
 
 import { getConfig } from "@app/lib/config/env";
+import { followCnameChain } from "@app/lib/dns";
 import { BadRequestError } from "@app/lib/errors";
 import { parseKeytab } from "@app/lib/kerberos";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -19,7 +19,6 @@ import {
   TEMPLATE_DEFAULT_KEY_ALGORITHM
 } from "./microsoft-autoenrollment-template-fns";
 
-const MAX_CNAME_HOPS = 10;
 const CNAME_END_OF_CHAIN_CODES = ["ENODATA", "ENOTFOUND"];
 const HTTP_SERVICE_PRINCIPAL_PREFIX = "HTTP/";
 const HTTP_SERVICE_PRINCIPAL_PATTERN = new RE2("^http/[a-z0-9.-]{1,253}$");
@@ -43,26 +42,15 @@ export const isComputerInAllowedGroups = (
   computerSids: string[]
 ) => !allowedGroups.length || allowedGroups.some(({ sid }) => computerSids.includes(sid));
 
-const resolveCnameTarget = async (hostname: string) => {
-  const [target] = await dns.resolveCname(hostname).catch((error: NodeJS.ErrnoException): string[] => {
-    if (error.code && CNAME_END_OF_CHAIN_CODES.includes(error.code)) return [];
-    throw new BadRequestError({
-      message: `Could not resolve the hostname '${hostname}' in DNS (${error.code ?? "unknown error"}). Check the DNS records for the instance URL (SITE_URL) and try again.`
-    });
-  });
-  return target;
-};
-
-export const resolveCanonicalHostname = async (hostname: string) => {
-  let current = hostname.toLowerCase();
-  for (let hop = 0; hop < MAX_CNAME_HOPS; hop += 1) {
-    // eslint-disable-next-line no-await-in-loop
-    const target = await resolveCnameTarget(current);
-    if (!target) return current;
-    current = target.toLowerCase();
-  }
-  return current;
-};
+export const resolveCanonicalHostname = async (hostname: string) =>
+  (
+    await followCnameChain(hostname.toLowerCase(), (error, lookedUpHostname) => {
+      if (error.code && CNAME_END_OF_CHAIN_CODES.includes(error.code)) return;
+      throw new BadRequestError({
+        message: `Could not resolve the hostname '${lookedUpHostname}' in DNS (${error.code ?? "unknown error"}). Check the DNS records for the instance URL (SITE_URL) and try again.`
+      });
+    })
+  ).toLowerCase();
 
 export const resolveInstanceServicePrincipalName = async () => {
   const siteUrl = getConfig().SITE_URL;

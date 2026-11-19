@@ -130,7 +130,7 @@ export interface TCertificateRequest {
 
 export interface TPolicyValidationOptions {
   skipRequired?: boolean;
-  issuerAddedOids?: string[];
+  issuerAddedExtensions?: TResolvedCustomExtension[];
   profileCustomExtensions?: TProfileCustomExtension[] | null;
 }
 

@@ -4,7 +4,12 @@ import { crypto } from "@app/lib/crypto/cryptography";
 
 import { kerberosDecrypt } from "./kerberos-crypto";
 import { KerberosError } from "./kerberos-error";
-import { verifyNegotiateToken } from "./kerberos-negotiate";
+import {
+  assertTicketIsForServicePrincipal,
+  parseNegotiateToken,
+  readAuthorizationHeader,
+  verifyNegotiateToken
+} from "./kerberos-negotiate";
 import { KerberosEncryptionType, KerberosFailureReason, KerberosKeyUsage } from "./kerberos-types";
 import {
   buildTestGssChecksumValue,
@@ -77,13 +82,13 @@ const readMutualAuthReply = (responseToken: string | null, sessionKey: Buffer, i
 describe("verifyNegotiateToken", () => {
   const keytabEntry = buildTestKeytabEntry();
 
-  const verify = (
+  const verify = async (
     authorizationHeader?: string,
     checkReplay = vi.fn().mockResolvedValue(true),
     expectedChannelBindings: Buffer[] | null = null
   ) =>
     verifyNegotiateToken({
-      authorizationHeader,
+      negotiateToken: parseNegotiateToken(readAuthorizationHeader(authorizationHeader)),
       keytabEntries: [keytabEntry],
       checkReplay,
       expectedChannelBindings
@@ -158,7 +163,7 @@ describe("verifyNegotiateToken", () => {
     });
 
     const result = await verifyNegotiateToken({
-      authorizationHeader,
+      negotiateToken: parseNegotiateToken(readAuthorizationHeader(authorizationHeader)),
       keytabEntries: [keytabEntry, aes128Entry],
       checkReplay: vi.fn().mockResolvedValue(true),
       expectedChannelBindings: null
@@ -340,5 +345,47 @@ describe("verifyNegotiateToken", () => {
     await expectFailure(verifyToken({ clientName: "jsmith" }), KerberosFailureReason.NotComputerAccount, {
       clientName: "jsmith"
     });
+  });
+});
+
+describe("assertTicketIsForServicePrincipal", () => {
+  const keytabEntry = buildTestKeytabEntry();
+
+  const parse = (options: Partial<TTestNegotiateOptions> = {}) =>
+    parseNegotiateToken(
+      readAuthorizationHeader(buildTestNegotiateHeader({ serviceKey: keytabEntry.key, ...options }).authorizationHeader)
+    );
+
+  test("accepts a ticket for the service principal and key version, ignoring case", () => {
+    expect(() =>
+      assertTicketIsForServicePrincipal(parse({ serviceName: TEST_SERVICE_NAME.toUpperCase() }), {
+        principal: TEST_SERVICE_NAME,
+        newestKeyVersion: 3
+      })
+    ).not.toThrow();
+  });
+
+  test("accepts a ticket for an older key version a merged keytab can still hold", () => {
+    expect(() =>
+      assertTicketIsForServicePrincipal(parse({ keyVersion: 2 }), {
+        principal: TEST_SERVICE_NAME,
+        newestKeyVersion: 3
+      })
+    ).not.toThrow();
+  });
+
+  test.each([
+    ["another service principal", { serviceName: "HTTP/other.example.com" }, "HTTP/other.example.com", 3],
+    ["a newer key version", { keyVersion: 4 }, TEST_SERVICE_NAME, 4],
+    ["no key version", { keyVersion: null }, TEST_SERVICE_NAME, null]
+  ])("refuses a ticket for %s and names the ticket's key", (_name, options, serviceName, keyVersion) => {
+    let error: unknown;
+    try {
+      assertTicketIsForServicePrincipal(parse(options), { principal: TEST_SERVICE_NAME, newestKeyVersion: 3 });
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toBeInstanceOf(KerberosError);
+    expect(error).toMatchObject({ reason: KerberosFailureReason.NoMatchingKey, serviceName, keyVersion });
   });
 });

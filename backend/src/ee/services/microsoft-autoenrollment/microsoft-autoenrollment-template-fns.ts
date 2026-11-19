@@ -22,6 +22,10 @@ const MICROSOFT_AUTOENROLLMENT_PEN = "99999";
 
 const DEFAULT_MINIMAL_KEY_LENGTH = 2048;
 
+const SECONDS_PER_DAY = 86400;
+const MIN_RENEWAL_PERIOD_SECONDS = 8 * 60 * 60 + 1;
+const MAX_RENEWAL_PERIOD_SHARE_OF_VALIDITY = 0.2;
+
 const RSA_KEY_LENGTH_BY_ALGORITHM: Partial<Record<CertKeyAlgorithm, number>> = {
   [CertKeyAlgorithm.RSA_2048]: 2048,
   [CertKeyAlgorithm.RSA_3072]: 3072,
@@ -81,6 +85,11 @@ export const resolveTemplatePrivateKey = (keyAlgorithm?: CertKeyAlgorithm): TTem
     minimalKeyLength: (keyAlgorithm && RSA_KEY_LENGTH_BY_ALGORITHM[keyAlgorithm]) || DEFAULT_MINIMAL_KEY_LENGTH,
     ellipticCurve: null
   };
+};
+
+export const resolveRenewalPeriodSeconds = (renewBeforeDays: number, validitySeconds: number) => {
+  const maxRenewalPeriodSeconds = Math.ceil(validitySeconds * MAX_RENEWAL_PERIOD_SHARE_OF_VALIDITY) - 1;
+  return Math.min(Math.max(renewBeforeDays * SECONDS_PER_DAY, MIN_RENEWAL_PERIOD_SECONDS), maxRenewalPeriodSeconds);
 };
 
 export const buildTemplateInfoExtension = (

@@ -127,6 +127,8 @@ import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-conf
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
 import { licenseV2BreakdownDALFactory } from "@app/ee/services/license-v2/license-v2-breakdown-dal";
 import { licenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
+import { channelBindingCacheFactory } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-channel-binding-cache";
+import { checkMicrosoftAutoenrollmentRequestBeforeSigning } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-eligibility-fns";
 import { microsoftAutoenrollmentRequestDALFactory } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-request-dal";
 import { microsoftAutoenrollmentServiceFactory } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-service";
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
@@ -349,6 +351,7 @@ import { certificatePolicyDALFactory } from "@app/services/certificate-policy/ce
 import { certificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { certificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { certificateProfileServiceFactory } from "@app/services/certificate-profile/certificate-profile-service";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { certificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { certificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { certificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
@@ -4108,7 +4111,20 @@ export const registerRoutes = async (
     apiEnrollmentConfigDAL,
     pkiSyncQueue,
     pkiAlertV2Queue,
-    certificateAlertEventEmitter
+    certificateAlertEventEmitter,
+    enrollmentPreSignHooks: {
+      [EnrollmentType.MICROSOFT_AUTOENROLLMENT]: (certificateRequest) =>
+        checkMicrosoftAutoenrollmentRequestBeforeSigning(certificateRequest, {
+          pkiApplicationProfileDAL,
+          microsoftAutoenrollmentEnrollmentConfigDAL,
+          resourceMetadataDAL,
+          certificateDAL,
+          appConnectionDAL,
+          kmsService,
+          gatewayV2Service,
+          gatewayPoolService
+        })
+    }
   });
 
   const pamAccessApprovalResource = pamAccessApprovalResourceFactory({
@@ -4188,13 +4204,16 @@ export const registerRoutes = async (
     licenseService,
     approvalPolicyService,
     certificateProfileDAL,
+    certificatePolicyDAL,
+    certificatePolicyService,
     certificateAuthorityDAL,
     certificateAuthoritySecretDAL,
     certificateAuthorityCertDAL,
     caKeySourceService,
     kmsService,
     projectDAL,
-    permissionService
+    permissionService,
+    keyStore
   });
 
   const pamAccessRequestService = pamAccessRequestServiceFactory({
@@ -4500,6 +4519,7 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     keyStore,
+    channelBindingCache: channelBindingCacheFactory({ keyStore }),
     auditLogService
   });
 
