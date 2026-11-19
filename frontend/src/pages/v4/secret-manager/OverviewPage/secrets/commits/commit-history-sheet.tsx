@@ -71,11 +71,11 @@ import styles from "./commits.module.css";
 
 const MAX_RESTORE_MESSAGE_LENGTH = 256;
 const PLATFORM_HINT = "Made automatically by Infisical, not by a user.";
-const SYSTEM_TITLES: Record<string, string> = {
-  "Secret Created": "Secret created",
-  "Secret Updated": "Secret updated",
-  "Secret Deleted": "Secret deleted"
-};
+const SYSTEM_TITLES = new Map([
+  ["Secret Created", "Secret created"],
+  ["Secret Updated", "Secret updated"],
+  ["Secret Deleted", "Secret deleted"]
+]);
 
 type View =
   | { name: "history" }
@@ -105,7 +105,7 @@ const authorName = (commit: ViewCommit) =>
 const shortId = (id: string) => id.substring(0, 8);
 const commitTitle = (message?: string | null) =>
   message ? (
-    (SYSTEM_TITLES[message] ?? message)
+    (SYSTEM_TITLES.get(message) ?? message)
   ) : (
     <span className={styles.noMessage}>No message</span>
   );
