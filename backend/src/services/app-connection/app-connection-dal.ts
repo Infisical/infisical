@@ -1,15 +1,10 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TAppConnections, TAppConnectionsInsert } from "@app/db/schemas";
+import { TableName, TAppConnections } from "@app/db/schemas";
 import { buildFindFilter, ormify, prependTableNameToFindFilter, selectAllTableCols } from "@app/lib/knex";
 import { transformUsageToProjects } from "@app/services/app-connection/app-connection-fns";
 
-import {
-  fromStoredAppConnectionApp,
-  getStoredAppConnectionAppValues,
-  toStoredAppConnectionApp
-} from "./app-connection-stored-app";
 import { TAppConnection } from "./app-connection-types";
 import { AppConnectionCredentialRotationStatus } from "./credential-rotation";
 import { AppConnectionCredentialRotationRotateAtUtcSchema } from "./credential-rotation/app-connection-credential-rotation-schemas";
@@ -18,37 +13,8 @@ export type TAppConnectionDALFactory = ReturnType<typeof appConnectionDALFactory
 
 type AppConnectionFindFilter = Parameters<typeof buildFindFilter<TAppConnections>>[0];
 
-// Every query on app_connections goes through these, so the rest of the code only sees AppConnection values. Temporary:
-// they go away with app-connection-stored-app.ts, which says when it can be removed
-const withStoredAppFilter = <T extends AppConnectionFindFilter>(filter: T): T => {
-  const { app, $in, ...rest } = filter;
-  const apps = [...(app ? [app] : []), ...($in?.app ?? [])];
-  if (!apps.length) return filter;
-
-  return { ...rest, $in: { ...$in, app: apps.flatMap(getStoredAppConnectionAppValues) } } as T;
-};
-
-const withStoredApp = <T extends { app?: string }>(data: T): T =>
-  data.app ? { ...data, app: toStoredAppConnectionApp(data.app) } : data;
-
-const withApp = <T extends { app?: string } | undefined>(row: T): T =>
-  row?.app ? { ...row, app: fromStoredAppConnectionApp(row.app) } : row;
-
 export const appConnectionDALFactory = (db: TDbClient) => {
   const appConnectionOrm = ormify(db, TableName.AppConnection);
-
-  const find = (async (filter, opts) => {
-    const rows = await appConnectionOrm.find(withStoredAppFilter(filter), opts);
-    return rows.map(withApp);
-  }) as typeof appConnectionOrm.find;
-
-  const findOne: typeof appConnectionOrm.findOne = async (filter, tx) => {
-    if (!filter.app) return withApp(await appConnectionOrm.findOne(filter, tx));
-
-    // findOne passes its filter straight to where(), which cannot match the legacy stored value as well
-    const rows = await appConnectionOrm.find(withStoredAppFilter(filter), { limit: 1, tx });
-    return rows.length ? withApp(rows[0]) : (undefined as unknown as TAppConnections);
-  };
 
   const findWithProjectDetails = async (filter: AppConnectionFindFilter, tx?: Knex) => {
     const query = (tx || db.replicaNode())(TableName.AppConnection)
@@ -79,9 +45,7 @@ export const appConnectionDALFactory = (db: TDbClient) => {
 
     if (filter) {
       /* eslint-disable @typescript-eslint/no-misused-promises */
-      void query.where(
-        buildFindFilter(prependTableNameToFindFilter(TableName.AppConnection, withStoredAppFilter(filter)))
-      );
+      void query.where(buildFindFilter(prependTableNameToFindFilter(TableName.AppConnection, filter)));
     }
 
     const connections = await query;
@@ -110,7 +74,6 @@ export const appConnectionDALFactory = (db: TDbClient) => {
 
       return {
         ...connection,
-        app: fromStoredAppConnectionApp(connection.app),
         rotation,
         projectId,
         project: projectId
@@ -205,7 +168,7 @@ export const appConnectionDALFactory = (db: TDbClient) => {
         db.ref("name").withSchema(TableName.Project).as("projectName")
       );
 
-    return docs.map(withApp);
+    return docs;
   };
 
   const countByGatewayId = async (gatewayId: string, tx?: Knex) => {
@@ -229,7 +192,7 @@ export const appConnectionDALFactory = (db: TDbClient) => {
         db.ref("name").withSchema(TableName.Project).as("projectName")
       );
 
-    return docs.map(withApp);
+    return docs;
   };
 
   const countByGatewayPoolId = async (gatewayPoolId: string, tx?: Knex) => {
@@ -243,26 +206,6 @@ export const appConnectionDALFactory = (db: TDbClient) => {
 
   return {
     ...appConnectionOrm,
-    findById: async (id: string, tx?: Knex) => withApp(await appConnectionOrm.findById(id, tx)),
-    find,
-    findOne,
-    create: async (data: TAppConnectionsInsert, tx?: Knex) =>
-      withApp(await appConnectionOrm.create(withStoredApp(data), tx)),
-    insertMany: async (data: readonly TAppConnectionsInsert[], tx?: Knex) =>
-      (await appConnectionOrm.insertMany(data.map(withStoredApp), tx)).map(withApp),
-    batchInsert: async (data: readonly TAppConnectionsInsert[], tx?: Knex) =>
-      (await appConnectionOrm.batchInsert(data.map(withStoredApp), tx)).map(withApp),
-    upsert: (async (data, ...args) =>
-      (await appConnectionOrm.upsert(data.map(withStoredApp), ...args)).map(withApp)) as typeof appConnectionOrm.upsert,
-    updateById: (async (id, data, tx) =>
-      withApp(await appConnectionOrm.updateById(id, withStoredApp(data), tx))) as typeof appConnectionOrm.updateById,
-    update: (async (filter, data, tx) =>
-      (await appConnectionOrm.update(withStoredAppFilter(filter), withStoredApp(data), tx)).map(
-        withApp
-      )) as typeof appConnectionOrm.update,
-    deleteById: async (id: string, tx?: Knex) => withApp(await appConnectionOrm.deleteById(id, tx)),
-    delete: async (filter: AppConnectionFindFilter, tx?: Knex) =>
-      (await appConnectionOrm.delete(withStoredAppFilter(filter), tx)).map(withApp),
     findAppConnectionUsageById,
     findWithProjectDetails,
     findByGatewayId,

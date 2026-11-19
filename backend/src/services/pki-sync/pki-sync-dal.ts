@@ -8,7 +8,6 @@ import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
-import { fromStoredAppConnectionApp } from "@app/services/app-connection/app-connection-stored-app";
 
 import { HEALTH_CHECK_COMMAND_OPTION_KEY, PkiSync, PkiSyncStatus } from "./pki-sync-enums";
 
@@ -130,7 +129,7 @@ const expandPkiSync = (pkiSync: Awaited<ReturnType<typeof basePkiSyncQuery>>[num
     connection: {
       id: el.connectionId,
       name: appConnectionName,
-      app: fromStoredAppConnectionApp(appConnectionApp),
+      app: appConnectionApp,
       encryptedCredentials: appConnectionEncryptedCredentials,
       orgId: appConnectionOrgId,
       projectId: appConnectionProjectId,
@@ -176,7 +175,7 @@ const expandPkiSyncWithSubscriber = (pkiSync: Awaited<ReturnType<typeof basePkiS
     connection: {
       id: el.connectionId,
       name: appConnectionName,
-      app: fromStoredAppConnectionApp(appConnectionApp),
+      app: appConnectionApp,
       encryptedCredentials: appConnectionEncryptedCredentials,
       orgId: appConnectionOrgId,
       projectId: appConnectionProjectId,

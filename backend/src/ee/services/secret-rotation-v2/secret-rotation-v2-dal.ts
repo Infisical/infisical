@@ -13,7 +13,6 @@ import {
   sqlNestRelationships,
   TFindOpt
 } from "@app/lib/knex";
-import { fromStoredAppConnectionApp } from "@app/services/app-connection/app-connection-stored-app";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 export type TSecretRotationV2DALFactory = ReturnType<typeof secretRotationV2DALFactory>;
@@ -126,7 +125,7 @@ const expandSecretRotation = <T extends Awaited<ReturnType<typeof baseSecretRota
     connectionId,
     environment: { id: envId, name: envName, slug: envSlug },
     connection: {
-      app: fromStoredAppConnectionApp(connectionApp),
+      app: connectionApp,
       id: connectionId,
       name: connectionName,
       orgId: connectionOrgId,
