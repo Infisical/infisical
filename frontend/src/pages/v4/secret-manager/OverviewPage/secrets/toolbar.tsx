@@ -452,6 +452,7 @@ const noAnnotations: QuickAddAnnotations = { comment: "", tags: [], metadata: []
 function QuickAddValue({
   ref,
   scope,
+  multiple,
   value,
   onChange,
   onSave,
@@ -459,6 +460,7 @@ function QuickAddValue({
 }: {
   ref: Ref<HTMLTextAreaElement & HTMLInputElement>;
   scope: Scope;
+  multiple: boolean;
   value: string;
   onChange: (value: string) => void;
   onSave: () => void;
@@ -490,7 +492,7 @@ function QuickAddValue({
           rows={1}
           className={styles.inlineInput}
           aria-label="New secret value"
-          placeholder="Value"
+          placeholder={multiple ? "Add a secret value (applies to all)" : "Add a secret value"}
           autoComplete="off"
           spellCheck={false}
         />
@@ -623,7 +625,7 @@ export function QuickAddRow({
             ref={keyRef}
             className={styles.inlineInput}
             aria-label="New secret name"
-            placeholder="Secret name"
+            placeholder="Add a secret name or paste a .env"
             autoComplete="off"
             spellCheck={false}
             value={key}
@@ -738,6 +740,7 @@ export function QuickAddRow({
           <QuickAddValue
             ref={valueRef}
             scope={scope}
+            multiple={multiple}
             value={value}
             onChange={setValue}
             onSave={save}
