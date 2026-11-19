@@ -18,7 +18,8 @@ import {
   FieldError,
   FieldLabel
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
+import { canUseAgentVaultService } from "@app/helpers/agentVaultPermissions";
 import { useDebounce } from "@app/hooks";
 import {
   useAddAgentVaultAccessBundleService,
@@ -48,6 +49,7 @@ export const AddBundleServiceDialog = ({
   onCreateNew
 }: Props) => {
   const { projectId } = useProject();
+  const { permission } = useProjectPermission();
   const addService = useAddAgentVaultAccessBundleService(projectId);
   const [services, setServices] = useState<TAgentVaultProjectService[]>([]);
   const [search, setSearch] = useState("");
@@ -59,10 +61,13 @@ export const AddBundleServiceDialog = ({
     { enabled: isOpen }
   );
 
+  // Adding a service takes being able to use it, so one the caller can only read isn't offered.
   const options = useMemo(() => {
     const inBundle = new Set(bundleServiceIds);
-    return (data?.services ?? []).filter((option) => !inBundle.has(option.id));
-  }, [data, bundleServiceIds]);
+    return (data?.services ?? []).filter(
+      (option) => !inBundle.has(option.id) && canUseAgentVaultService(permission, option)
+    );
+  }, [data, bundleServiceIds, permission]);
 
   const isListTruncated = (data?.totalCount ?? 0) > (data?.services.length ?? 0);
   const isOverLimit = services.length > MAX_SERVICES_PER_ADD;

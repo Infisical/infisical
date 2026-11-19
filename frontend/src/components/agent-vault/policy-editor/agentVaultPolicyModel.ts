@@ -210,6 +210,10 @@ const normalizeResource = (
   resource: TResourcePermissions
 ): TResourcePermissions => {
   const itemKeys = itemKeysOf(rowKey);
+  // Read that every one of them has only because use does. A bundle, service or skill that denies use then had neither,
+  // so it denies read too: writing read for every one of them would otherwise let it be read.
+  const isReadOnlyFromUse =
+    resource.allow.includes(ResourceAction.Use) && !resource.allow.includes(ResourceAction.Read);
   const all = normalizeSets(rowKey, {
     allow: withImpliedRead(resource.allow),
     deny: resource.deny
@@ -221,6 +225,13 @@ const normalizeResource = (
     const existing = merged.get(id) ?? emptySets();
     merged.set(id, { allow: [...existing.allow, ...allow], deny: [...existing.deny, ...deny] });
   });
+  if (isReadOnlyFromUse) {
+    merged.forEach((sets, id) => {
+      if (sets.deny.includes(ResourceAction.Use) && !sets.allow.includes(ResourceAction.Read)) {
+        merged.set(id, { ...sets, deny: unique([...sets.deny, ResourceAction.Read]) });
+      }
+    });
+  }
 
   // An item keeps only what it adds to every one of them. Holding copies of what it inherits would keep those
   // actions on it after every one of them is lowered.

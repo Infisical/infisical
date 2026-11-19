@@ -16,7 +16,8 @@ import {
   FieldError,
   FieldLabel
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
+import { canUseAgentVaultSkill } from "@app/helpers/agentVaultPermissions";
 import { AGENT_VAULT_MAX_SKILLS_PER_BUNDLE } from "@app/helpers/agentVaultSkills";
 import { useDebounce } from "@app/hooks";
 import {
@@ -46,6 +47,7 @@ export const AddBundleSkillDialog = ({
   onCreateNew
 }: Props) => {
   const { projectId } = useProject();
+  const { permission } = useProjectPermission();
   const addSkill = useAddAgentVaultAccessBundleSkill(projectId);
   const [skills, setSkills] = useState<TAgentVaultSkill[]>([]);
   const [search, setSearch] = useState("");
@@ -57,10 +59,13 @@ export const AddBundleSkillDialog = ({
     { enabled: isOpen }
   );
 
+  // Adding a skill takes being able to use it, so one the caller can only read isn't offered.
   const options = useMemo(() => {
     const inBundle = new Set(bundleSkillIds);
-    return (data?.skills ?? []).filter((option) => !inBundle.has(option.id));
-  }, [data, bundleSkillIds]);
+    return (data?.skills ?? []).filter(
+      (option) => !inBundle.has(option.id) && canUseAgentVaultSkill(permission, option)
+    );
+  }, [data, bundleSkillIds, permission]);
 
   const isListTruncated = (data?.totalCount ?? 0) > (data?.skills.length ?? 0);
   const roomLeft = Math.max(0, AGENT_VAULT_MAX_SKILLS_PER_BUNDLE - bundleSkillIds.length);

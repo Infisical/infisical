@@ -562,6 +562,38 @@ describe("rulesToPolicy", () => {
     expect(policy.variables.allow).toEqual(["read-value"]);
   });
 
+  it("keeps a skill hidden when use is denied on it and read only came with use", () => {
+    const { policy, unsupported } = rulesToPolicy([
+      { subject: SKILLS, action: ["use"] },
+      {
+        subject: SKILLS,
+        action: ["use"],
+        inverted: true,
+        conditions: { skillId: { $in: [SKILL] } }
+      }
+    ]);
+
+    expect(unsupported).toEqual([]);
+    expect(policy.skills.allow).toEqual(["read", "use"]);
+    expect(policy.skills.items).toEqual([{ id: SKILL, allow: [], deny: ["read", "use"] }]);
+    // Saving it, after any other edit, writes a role that still can't read that skill.
+    expect(rulesToPolicy(policyToRules(policy)).policy).toEqual(policy);
+  });
+
+  it("leaves a skill readable when use is denied on it but read was allowed on its own", () => {
+    const { policy } = rulesToPolicy([
+      { subject: SKILLS, action: ["read", "use"] },
+      {
+        subject: SKILLS,
+        action: ["use"],
+        inverted: true,
+        conditions: { skillId: { $in: [SKILL] } }
+      }
+    ]);
+
+    expect(policy.skills.items).toEqual([{ id: SKILL, allow: [], deny: ["use"] }]);
+  });
+
   it("joins rules split across actions, services and operators", () => {
     const { policy, unsupported } = rulesToPolicy([
       { subject: SERVICES, action: "read" },
