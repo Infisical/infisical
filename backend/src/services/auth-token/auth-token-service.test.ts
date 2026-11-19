@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 
+import knex from "knex";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, type Mocked, test, vi } from "vitest";
 
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -662,6 +663,21 @@ describe("tokenServiceFactory — refresh token rotation", () => {
     expect(row()).toBeUndefined();
   });
 
+  test("a losing request whose session read fails still leaves the grace entry at the grace period", async () => {
+    const { service, tokenDAL, tokenAt, secondsLeft } = build();
+    const token = tokenAt(1);
+    const first = await service.validateRefreshToken(token);
+    const second = await service.validateRefreshToken(token);
+    await service.rotateRefreshToken(first.decodedToken, first.tokenVersion);
+    tokenDAL.findOneTokenSession.mockRejectedValueOnce(new Error("database unavailable"));
+
+    await expectRejected(service.rotateRefreshToken(second.decodedToken, second.tokenVersion), Error);
+
+    expect(secondsLeft(KeyStorePrefixes.RefreshTokenGrace(SESSION_ID, 1))).toBe(
+      KeyStoreTtls.RefreshTokenGraceInSeconds
+    );
+  });
+
   test("losing the rotation race to a sign-out is refused, and its grace entry cannot revive the session", async () => {
     const { service, tokenAt, signOut, row } = build();
 
@@ -741,6 +757,25 @@ describe("tokenServiceFactory — refresh token rotation", () => {
       KeyStoreTtls.RefreshTokenGracePendingInSeconds
     );
     expect(await refresh(original)).toBeUndefined();
+  });
+
+  test("no pool connection within knex's acquire timeout is the same readable 504", async () => {
+    const { service, tokenDAL, tokenAt, row } = build();
+    tokenDAL.incrementRefreshVersion.mockRejectedValueOnce(
+      new DatabaseError({
+        error: new knex.KnexTimeoutError("Knex: Timeout acquiring a connection."),
+        name: "IncrementRefreshVersion"
+      })
+    );
+
+    const validated = await service.validateRefreshToken(tokenAt(1));
+    const err = await expectRejected(
+      service.rotateRefreshToken(validated.decodedToken, validated.tokenVersion),
+      GatewayTimeoutError
+    );
+
+    expect(err.message).toBe("Refreshing your session took too long. Try again.");
+    expect(row()?.refreshVersion).toBe(1);
   });
 
   test.each([

@@ -143,9 +143,11 @@ The response contains:
 The response omits `refresh_token` in two cases:
 
 - The application doesn't hold the `refresh_token` grant, which happens only if you registered the application through the API with `grantTypes` limited to `authorization_code`
-- Another refresh request used the same refresh token in the last 10 seconds, such as two requests your client sent at the same time
+- Another refresh request used the same refresh token at about the same time, such as two requests your client sent at once
 
 Without the grant, the client exchanges a new authorization code when the access token expires. If a refresh returns no `refresh_token`, keep the refresh token the client already holds.
+
+If a refresh request gets no response, for example because the connection dropped, send the user through authorization again instead of retrying. Infisical may have rotated the refresh token before the response was lost, and the token the client holds then stops working shortly afterwards.
 
 ### Validation endpoint
 

@@ -1,4 +1,4 @@
-import { Knex } from "knex";
+import knex, { Knex } from "knex";
 
 import { OrgMembershipStatus, TAuthTokens, TAuthTokenSessions, TUsers } from "@app/db/schemas";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -7,6 +7,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import {
   BadRequestError,
+  DatabaseError,
   ForbiddenRequestError,
   GatewayTimeoutError,
   NotFoundError,
@@ -369,13 +370,18 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     } catch (error) {
       if (
         hasPostgresErrorCode(error, DatabaseErrorCode.LockNotAvailable) ||
-        hasPostgresErrorCode(error, DatabaseErrorCode.QueryCanceled)
+        hasPostgresErrorCode(error, DatabaseErrorCode.QueryCanceled) ||
+        (error instanceof DatabaseError && error.error instanceof knex.KnexTimeoutError)
       ) {
         throw new GatewayTimeoutError({ message: "Refreshing your session took too long. Try again.", error });
       }
       throw error;
     }
     if (!updatedSession) {
+      // This request's pending write may have landed after the winner settled the entry, so it is settled again
+      // before anything here can throw. Harmless if the session was signed out: the accessVersion check still
+      // refuses the entry.
+      await settleGraceEntry();
       // Either a concurrent request with the same token rotated it first (a grace hit), or the session was
       // revoked or signed out meanwhile, which also bumps accessVersion.
       const current = await tokenDAL.findOneTokenSession(
@@ -384,8 +390,6 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
         { readFromPrimary: true }
       );
       if (!current || current.accessVersion !== tokenVersion.accessVersion) throw sessionNoLongerValid();
-      // This request's pending write may have landed after the winner settled the entry.
-      await settleGraceEntry();
       return { isGraceHit: true };
     }
 
