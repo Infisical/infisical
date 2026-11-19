@@ -199,40 +199,34 @@ const TemplateOverview = ({
 
   return (
     <Stack gap={24}>
-      <Stack gap={8}>
-        <div>
-          <Button variant="ghost" size="sm" icon="chev-left" asChild>
-            <a href={links.back}>{links.backLabel}</a>
-          </Button>
-        </div>
-        <PageHeader
-          title={template.name}
-          badges={<Badge tone="soft">{getProjectTitle(template.type)}</Badge>}
-          description={template.description || undefined}
-          actions={
-            !isDefault && (
-              <Inline gap={8}>
-                <Button
-                  variant="outline"
-                  disabledReason={canEdit ? undefined : RESTRICTED}
-                  onClick={() => setEditing(true)}
-                >
-                  <PencilIcon />
-                  Edit details
-                </Button>
-                <Button
-                  variant="outline"
-                  icon="trash"
-                  disabledReason={canDelete ? undefined : RESTRICTED}
-                  onClick={() => setDeleting(true)}
-                >
-                  Delete template
-                </Button>
-              </Inline>
-            )
-          }
-        />
-      </Stack>
+      <PageHeader
+        breadcrumb={[{ label: links.backLabel, link: go.link(links.back) }]}
+        title={template.name}
+        badges={<Badge tone="soft">{getProjectTitle(template.type)}</Badge>}
+        description={template.description || undefined}
+        actions={
+          !isDefault && (
+            <Inline gap={8}>
+              <Button
+                variant="outline"
+                disabledReason={canEdit ? undefined : RESTRICTED}
+                onClick={() => setEditing(true)}
+              >
+                <PencilIcon />
+                Edit details
+              </Button>
+              <Button
+                variant="outline"
+                icon="trash"
+                disabledReason={canDelete ? undefined : RESTRICTED}
+                onClick={() => setDeleting(true)}
+              >
+                Delete template
+              </Button>
+            </Inline>
+          )
+        }
+      />
       {template.type === ProjectType.SecretManager && (
         <TemplateEnvironmentsCard template={template} canEdit={canEdit} readOnly={isDefault} />
       )}

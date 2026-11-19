@@ -1,6 +1,5 @@
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Badge } from "@infisical/cipher/ui/badge";
-import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import { EmptyState } from "@infisical/cipher/ui/empty";
@@ -96,18 +95,12 @@ export const RequestDetail = ({
     enabled: Boolean(request?.isReplicated)
   });
 
-  const back = (
-    <div>
-      <Button variant="link" size="sm" icon="chev-left" asChild>
-        <a href={listHref}>All change requests</a>
-      </Button>
-    </div>
-  );
+  const breadcrumb = [{ label: "Change requests", href: listHref }];
   if (isPending && !error) return <PageLoader label="Loading change request" />;
   if (!request)
     return (
-      <Stack gap={16}>
-        {back}
+      <Stack gap={24}>
+        <PageHeader size="md" breadcrumb={breadcrumb} title="Change request" />
         <EmptyState
           icon="alert"
           title="Change request could not be loaded"
@@ -302,9 +295,9 @@ export const RequestDetail = ({
 
   return (
     <Stack gap={24}>
-      {back}
       <PageHeader
         size="md"
+        breadcrumb={breadcrumb}
         title={<RequestTitle request={request} environment={environment} />}
         description={`Opened by ${committer} ${formatDistanceToNowStrict(new Date(request.createdAt), { addSuffix: true })}`}
         badges={

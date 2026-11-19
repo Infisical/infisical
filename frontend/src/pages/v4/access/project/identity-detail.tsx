@@ -448,15 +448,9 @@ export const ProjectIdentityDetail = () => {
   const [removing, setRemoving] = useState(false);
   const listHref = accessLinks.project(scope, ProjectAccessControlTabs.Identities);
 
-  const backLink = (
-    <div>
-      <Button variant="link" icon="chev-left" asChild>
-        <RouteLink
-          href={listHref}
-        >{`${accessLabel(scope.projectType, "machine identities")}`}</RouteLink>
-      </Button>
-    </div>
-  );
+  const breadcrumb = [
+    { label: accessLabel(scope.projectType, "machine identities"), link: go.link(listHref) }
+  ];
 
   if (permissionPending || isPending) return <PageLoader label="Loading machine identity" />;
 
@@ -466,7 +460,7 @@ export const ProjectIdentityDetail = () => {
   if (!membership)
     return (
       <Stack gap={24}>
-        {backLink}
+        <PageHeader breadcrumb={breadcrumb} title="Machine identity" />
         <EmptyState icon="search" title="Machine identity not found" />
       </Stack>
     );
@@ -483,54 +477,52 @@ export const ProjectIdentityDetail = () => {
 
   return (
     <Stack gap={24}>
-      <Stack gap={12}>
-        {backLink}
-        <PageHeader
-          title={identity.name}
-          actions={
-            <Inline gap={8}>
-              <IdentityHeaderInsights identity={identity} canEdit={canEdit} />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" iconRight="more">
-                    Options
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onSelect={async () => {
-                      if (await copyText(identity.id))
-                        toast({
-                          tone: "neutral",
-                          title: "Machine identity ID copied to clipboard"
-                        });
-                    }}
-                  >
-                    <Icon name="copy" />
-                    Copy machine identity ID
-                  </DropdownMenuItem>
-                  <DropdownMenuItem disabled={!canAssume} onSelect={() => setAssuming(true)}>
-                    <Icon name="user" />
-                    Assume privileges
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    disabled={!canDelete || deleteBlocked}
-                    description={deleteBlocked ? DELETE_PROTECTED : undefined}
-                    onSelect={() => setRemoving(true)}
-                  >
-                    {isProjectIdentity ? <Icon name="trash" /> : <Icon icon={UserRoundXIcon} />}
-                    {isProjectIdentity
-                      ? "Delete machine identity"
-                      : `Remove from ${accessNoun(scope.projectType)}`}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </Inline>
-          }
-        />
-      </Stack>
+      <PageHeader
+        breadcrumb={breadcrumb}
+        title={identity.name}
+        actions={
+          <Inline gap={8}>
+            <IdentityHeaderInsights identity={identity} canEdit={canEdit} />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" iconRight="more">
+                  Options
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={async () => {
+                    if (await copyText(identity.id))
+                      toast({
+                        tone: "neutral",
+                        title: "Machine identity ID copied to clipboard"
+                      });
+                  }}
+                >
+                  <Icon name="copy" />
+                  Copy machine identity ID
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={!canAssume} onSelect={() => setAssuming(true)}>
+                  <Icon name="user" />
+                  Assume privileges
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={!canDelete || deleteBlocked}
+                  description={deleteBlocked ? DELETE_PROTECTED : undefined}
+                  onSelect={() => setRemoving(true)}
+                >
+                  {isProjectIdentity ? <Icon name="trash" /> : <Icon icon={UserRoundXIcon} />}
+                  {isProjectIdentity
+                    ? "Delete machine identity"
+                    : `Remove from ${accessNoun(scope.projectType)}`}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </Inline>
+        }
+      />
       <DetailLayout
         asideLabel="Details"
         aside={
