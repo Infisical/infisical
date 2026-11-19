@@ -36,19 +36,22 @@ for (const key of [...b].sort()) {
   if (x.equals(y)) { result.unchanged += 1; continue; }
   const px = PNG.sync.read(x);
   const py = PNG.sync.read(y);
-  let pixels;
-  let diff;
-  if (px.width !== py.width || px.height !== py.height) {
-    pixels = -1;
-  } else {
-    diff = new PNG({ width: px.width, height: px.height });
-    pixels = pixelmatch(px.data, py.data, diff.data, px.width, px.height, { threshold, includeAA: threshold === 0 });
-  }
-  if (pixels === 0) { result.unchanged += 1; continue; }
-  result.changed.push({ file: key, pixels: pixels === -1 ? "size " + px.width + "x" + px.height + " -> " + py.width + "x" + py.height : pixels });
+  const resized = px.width !== py.width || px.height !== py.height;
+  const width = Math.max(px.width, py.width);
+  const height = Math.max(px.height, py.height);
+  const pad = (png) => {
+    if (png.width === width && png.height === height) return png.data;
+    const out = new PNG({ width, height });
+    PNG.bitblt(png, out, 0, 0, png.width, png.height, 0, 0);
+    return out.data;
+  };
+  const diff = new PNG({ width, height });
+  const pixels = pixelmatch(pad(px), pad(py), diff.data, width, height, { threshold, includeAA: threshold === 0 });
+  if (pixels === 0 && !resized) { result.unchanged += 1; continue; }
+  result.changed.push({ file: key, pixels: resized ? pixels + " (size " + px.width + "x" + px.height + " -> " + py.width + "x" + py.height + ")" : pixels });
   save(key, "before", path.join(before, key));
   save(key, "after", path.join(after, key));
-  if (diff) save(key, "diff", PNG.sync.write(diff));
+  save(key, "diff", PNG.sync.write(diff));
 }
 for (const key of [...a].sort()) if (!b.has(key)) result.removed.push(key);
 const scope = scopeFile && existsSync(scopeFile) ? JSON.parse(readFileSync(scopeFile, "utf8")) : null;

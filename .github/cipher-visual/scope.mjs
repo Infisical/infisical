@@ -196,7 +196,11 @@ if (args.pages) {
   if (showcase && changed.includes("site/src/catalog.json")) {
     const entries = (ref) => new Map(JSON.parse(git("show", ref + ":site/src/catalog.json")).map((e) => [e.id, JSON.stringify(e)]));
     const before = entries(base);
-    for (const [id, entry] of entries(candidate)) if (before.get(id) !== entry) catalogChanged.add(id);
+    const after = entries(candidate);
+    for (const [id, entry] of after) if (before.get(id) !== entry) catalogChanged.add(id);
+    // Pages come from the candidate catalog, so a removed page can only be reported by a full run.
+    const removedPages = [...before.keys()].filter((id) => !after.has(id));
+    if (removedPages.length) fullReasons.push("showcase pages removed: " + removedPages.join(", "));
   }
   const touched = new Set(modules);
   if (icons.length) touched.add("icon names: " + icons.join(", "));
