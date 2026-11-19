@@ -216,15 +216,17 @@ const normalizeResource = (
     merged.set(id, { allow: [...existing.allow, ...allow], deny: [...existing.deny, ...deny] });
   });
 
-  // Read that every one of them has only because use does, beside one that denies use, which then can't be read either.
-  // Writing read for every one of them would let that one be read, and denying read on it would override another role
-  // that lets the member read it, so the rules keep only use, as they came.
+  // Read that every one of them has only because use does, where use is denied for all of them or for one, which then
+  // can't be read either. Writing read for every one of them would let those be read, and denying read would override
+  // another role that lets the member read them, so the rules keep only use, as they came.
   const keepsReadImplied =
     resource.allow.includes(ResourceAction.Use) &&
     !resource.allow.includes(ResourceAction.Read) &&
-    [...merged.values()].some(
-      (sets) => sets.deny.includes(ResourceAction.Use) && !sets.allow.includes(ResourceAction.Read)
-    );
+    (resource.deny.includes(ResourceAction.Use) ||
+      [...merged.values()].some(
+        (sets) =>
+          sets.deny.includes(ResourceAction.Use) && !sets.allow.includes(ResourceAction.Read)
+      ));
   const all = normalizeSets(rowKey, {
     allow: keepsReadImplied ? resource.allow : withImpliedRead(resource.allow),
     deny: resource.deny

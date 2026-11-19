@@ -586,6 +586,22 @@ describe("rulesToPolicy", () => {
     expect(rulesToPolicy(saved).policy).toEqual(policy);
   });
 
+  it("keeps every skill hidden when use is denied for all of them and read only came with use", () => {
+    const rules: TProjectPermission[] = [
+      { subject: SKILLS, action: ["use"] },
+      { subject: SKILLS, action: ["use"], inverted: true }
+    ];
+    const { policy } = rulesToPolicy(rules);
+
+    expect(policy.skills.allow).toEqual(["use"]);
+    expect(policy.skills.deny).toEqual(["use"]);
+    const saved = policyToRules(policy);
+    expect(
+      saved.filter((rule) => !rule.inverted).flatMap((rule) => [rule.action].flat())
+    ).not.toContain("read");
+    expect(rulesToPolicy(saved).policy).toEqual(policy);
+  });
+
   it("leaves a skill readable when use is denied on it but read was allowed on its own", () => {
     const { policy } = rulesToPolicy([
       { subject: SKILLS, action: ["read", "use"] },
