@@ -252,6 +252,7 @@ export const superAdminServiceFactory = ({
     });
 
     await usageMeteringService.syncSeats(organization.id);
+    usageMeteringService.emit(organization.id, Meter.PamIdentities);
     await instanceConfigService.refreshSharedCopy();
 
     const token = await authService.generateUserTokens({
@@ -383,6 +384,7 @@ export const superAdminServiceFactory = ({
     });
 
     await usageMeteringService.syncSeats(organization.id);
+    usageMeteringService.emit(organization.id, Meter.PamIdentities);
     await instanceConfigService.refreshSharedCopy();
 
     return {
@@ -663,6 +665,7 @@ export const superAdminServiceFactory = ({
     });
 
     await usageMeteringService.syncSeats(organization.id);
+    usageMeteringService.emit(organization.id, Meter.PamIdentities);
 
     await Promise.allSettled(
       usersToEmail.map(async (user) => {
