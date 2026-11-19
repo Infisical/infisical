@@ -98,9 +98,11 @@ describe("secrets org rate limit", () => {
 
     const refused = await get(server, "/secrets", { "x-org-id": "org-a", "x-ip": "ip-last" });
     expect(refused.statusCode).toBe(429);
-    expect(refused.json<{ message: string }>().message).toMatch(
-      new RegExp(`^Your organization has made more than ${ORG_LIMIT} secret requests in the last minute`)
-    );
+    expect(
+      refused
+        .json<{ message: string }>()
+        .message.startsWith(`Your organization has made more than ${ORG_LIMIT} secret requests in the last minute`)
+    ).toBe(true);
     expect(Number(refused.headers["retry-after"])).toBeGreaterThan(0);
   });
 
@@ -199,9 +201,13 @@ describe("secrets actor rate limit", () => {
 
     const refused = await get(server, "/secret-imports", asActor(99, "actor-1"));
     expect(refused.statusCode).toBe(429);
-    expect(refused.json<{ message: string }>().message).toMatch(
-      new RegExp(`^This machine identity has made more than ${ACTOR_LIMIT} secret requests in the last minute`)
-    );
+    expect(
+      refused
+        .json<{ message: string }>()
+        .message.startsWith(
+          `This machine identity has made more than ${ACTOR_LIMIT} secret requests in the last minute`
+        )
+    ).toBe(true);
     expect(Number(refused.headers["retry-after"])).toBeGreaterThan(0);
 
     expect((await get(server, "/secrets", asActor(0, "actor-2"))).statusCode).toBe(200);
