@@ -51,7 +51,11 @@ import { TRoleDALFactory } from "@app/services/role/role-dal";
 
 import { findOnBehalfOfListScope, TOnBehalfOfDeps } from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
 import { TAgentVaultMemberDALFactory } from "../agent-vault-member/agent-vault-member-dal";
-import { AGENT_VAULT_ROLE_ASSIGNMENT, isAgentVaultSelf } from "../agent-vault-member/agent-vault-member-role-fns";
+import {
+  AGENT_VAULT_MAX_MEMBER_ROLES,
+  AGENT_VAULT_ROLE_ASSIGNMENT,
+  isAgentVaultSelf
+} from "../agent-vault-member/agent-vault-member-role-fns";
 import {
   checkOauthClaimUnderLock,
   checkOauthServerUnderLock,
@@ -1146,7 +1150,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     else if (ctx.actor === ActorType.IDENTITY) creatorColumn = "actorIdentityId";
 
     // A creator whose roles don't already let them use the new bundle gets its role, the way creating one used to grant
-    // it to them, so whoever builds a bundle can try it.
+    // it to them, so whoever builds a bundle can try it. One who already holds the most roles a member can goes without.
     const create = () =>
       agentVaultAccessBundleDAL.transaction(async (tx) => {
         const bundle = await agentVaultAccessBundleDAL.create({ projectId, name, description }, tx);
@@ -3160,11 +3164,20 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
       await assertAdminTargetsAllowed({ projectId: rest.projectId, actors, callerIsAdmin }, tx);
       const role = await ensureBundleRole({ roleDAL, agentVaultAccessBundleDAL }, locked, tx);
-      return giveBundleRole(
+      const given = await giveBundleRole(
         { membershipDAL, membershipRoleDAL },
         { projectId: rest.projectId, roleId: role.id, actors },
         tx
       );
+      // All or nothing: throwing rolls back the grants already written for the others.
+      const [atLimit] = given.full;
+      if (atLimit) {
+        const name = nameByKey.get(agentVaultActorKey(toActorRefFromGrant(atLimit)));
+        throw new BadRequestError({
+          message: `Granting this access bundle would give ${name ? `'${name.email ?? name.name}'` : "a member"} more than ${AGENT_VAULT_MAX_MEMBER_ROLES} roles, the most a member can hold. Remove one of their other roles first.`
+        });
+      }
+      return given;
     });
 
     return {

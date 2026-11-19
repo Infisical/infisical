@@ -12268,6 +12268,37 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
+    test("a grant refuses a member who already holds the most roles a member can, and writes nothing", async () => {
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle(`role-cap-${unique()}`);
+      const identityName = `av-role-cap-${unique()}`;
+      const identity = await createOrgIdentity(identityName);
+      try {
+        const slugs: string[] = [];
+        for (let i = 0; i < 10; i += 1) {
+          // eslint-disable-next-line no-await-in-loop
+          slugs.push((await createAgentVaultRole(projectId, `role-cap-${i}-${unique()}`, SESSION_RULES)).slug);
+        }
+        const added = await inject("POST", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [identity.id],
+          roles: slugs
+        });
+        expect(added.statusCode, added.payload).toBe(200);
+
+        const granted = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
+          machineIdentityIds: [identity.id]
+        });
+        expect(granted.statusCode).toBe(400);
+        expect(granted.json().message).toBe(
+          `Granting this access bundle would give '${identityName}' more than 10 roles, the most a member can hold. Remove one of their other roles first.`
+        );
+        expect(await grantRows(bundle.id, { actorIdentityId: identity.id })).toHaveLength(0);
+        expect(await projectRolesOf(projectId, identity.id)).toHaveLength(10);
+      } finally {
+        await deleteOrgIdentity(identity.id);
+      }
+    });
+
     test("changing a member's roles takes edit on each identity named, and only an admin changes an admin's", async () => {
       const projectId = await getProjectId();
       const bundle = await createAccessBundle(`id-scope-${unique()}`);

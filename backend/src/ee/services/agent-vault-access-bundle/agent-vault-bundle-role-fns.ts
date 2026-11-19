@@ -10,6 +10,7 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
 
+import { AGENT_VAULT_MAX_MEMBER_ROLES } from "../agent-vault-member/agent-vault-member-role-fns";
 import { TAgentVaultAccessBundleDALFactory } from "./agent-vault-access-bundle-dal";
 
 /**
@@ -99,7 +100,8 @@ const projectMembershipsOf = async (
 const keyOf = ({ actorColumn, actorId }: TBundleRoleActor) => `${actorColumn}:${actorId}`;
 
 // Gives the role to each actor that doesn't hold it yet, in place of No Access, which means no access and can't sit beside
-// another role. Callers check the actors are in the project first.
+// another role. An actor who already holds the most roles a member can is left out and returned in `full`, so the caller
+// decides whether that stops the change. Callers check the actors are in the project first.
 export const giveBundleRole = async (
   deps: Pick<TBundleRoleDeps, "membershipDAL" | "membershipRoleDAL">,
   { projectId, roleId, actors }: { projectId: string; roleId: string; actors: TBundleRoleActor[] },
@@ -107,19 +109,25 @@ export const giveBundleRole = async (
 ) => {
   const membershipByActor = await projectMembershipsOf(deps, { projectId, actors }, tx);
   const membershipIds = [...new Set(membershipByActor.values())];
-  const holding = new Set(
-    membershipIds.length
-      ? (await deps.membershipRoleDAL.find({ customRoleId: roleId, $in: { membershipId: membershipIds } }, { tx })).map(
-          (row) => row.membershipId
-        )
-      : []
-  );
+  const rows = membershipIds.length
+    ? await deps.membershipRoleDAL.find({ $in: { membershipId: membershipIds } }, { tx })
+    : [];
+  const holding = new Set(rows.filter((row) => row.customRoleId === roleId).map((row) => row.membershipId));
+  // No Access doesn't count: the bundle's role takes its place.
+  const roleCountOf = (membershipId: string) =>
+    new Set(
+      rows
+        .filter((row) => row.membershipId === membershipId && row.role !== ProjectMembershipRole.NoAccess)
+        .map((row) => row.customRoleId ?? row.role)
+    ).size;
 
   const added: TBundleRoleActor[] = [];
   const skipped: TBundleRoleActor[] = [];
+  const full: TBundleRoleActor[] = [];
   actors.forEach((actor) => {
     const membershipId = membershipByActor.get(keyOf(actor));
     if (!membershipId || holding.has(membershipId)) skipped.push(actor);
+    else if (roleCountOf(membershipId) >= AGENT_VAULT_MAX_MEMBER_ROLES) full.push(actor);
     else {
       added.push(actor);
       holding.add(membershipId);
@@ -140,7 +148,7 @@ export const giveBundleRole = async (
       tx
     );
   }
-  return { added, skipped };
+  return { added, skipped, full };
 };
 
 // Whether any of the actors holds Admin on their project membership.

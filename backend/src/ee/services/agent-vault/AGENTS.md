@@ -177,12 +177,13 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   `agent-vault-bundle-role-fns.ts`): `ensureBundleRole` makes `<bundle> users` (read and use on that bundle) the first
   time one is needed, and taking the last role from a membership leaves it No Access, since a membership needs a role.
   They need bundle `edit` plus `edit` on users and groups and on each identity named, and member `read` to list, and
-  only an admin can give one to or take one from an admin (`assertAdminTargetsAllowed`). Each locks the bundle
-  row first, so two calls can't make two roles and the dedupe read inside it is authoritative. They are hidden from the
-  API reference and go after 2027-01-04 with the role helpers.
+  only an admin can give one to or take one from an admin (`assertAdminTargetsAllowed`). A grant that would take a
+  member past `AGENT_VAULT_MAX_MEMBER_ROLES` is refused whole (`giveBundleRole` returns them in `full`). Each locks
+  the bundle row first, so two calls can't make two roles and the dedupe read inside it is authoritative. They are
+  hidden from the API reference and go after 2027-01-04 with the role helpers.
 - **The bundle's creator gets its role when their own roles can't use it** (`createAccessBundle`), so whoever built a
-  bundle can try it. Only a creator with a direct project membership gets one: the role on a group's membership would
-  reach the whole group.
+  bundle can try it, unless they already hold `AGENT_VAULT_MAX_MEMBER_ROLES` roles. Only a creator with a direct
+  project membership gets one: the role on a group's membership would reach the whole group.
 - **Deleting a bundle keeps every role that names it**, the bundle's own included: a role is the admin's to change, and
   a rule that picks out an id no bundle has covers nothing, so a bundle made later with the same name isn't covered either.
 - `GET /access-bundles/:id/roles` (`listBundleRoles`) answers who can use a bundle: admin and every custom role whose
