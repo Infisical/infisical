@@ -62,5 +62,48 @@ func TestKempFake_Certificates(t *testing.T) {
 		require.Contains(t, body, "Identifier already in use")
 		require.Equal(t, bundle, lm.State(t).Certificates["web"])
 	})
+}
 
+func TestKempFake_VirtualServices(t *testing.T) {
+	t.Run("should show the certificates a Virtual Service serves after they are set", func(t *testing.T) {
+		// Setup
+		fakes, lm := newLoadMaster(t, "u-c")
+		lm.Seed(t, map[string]any{"certificates": map[string]string{"web": bundle, "api": bundle}}, kemp.VirtualServiceAt("1"))
+		call(t, fakes, "u-c", "GET", "/access/modvs?vs=1&certfile=web%20api", "")
+
+		// Action
+		code, body := call(t, fakes, "u-c", "GET", "/access/showvs?vs=1", "")
+
+		// Assert
+		require.Equal(t, http.StatusOK, code)
+		require.Contains(t, body, "<CertFile>web api</CertFile>")
+	})
+
+	t.Run("should refuse deleting a certificate a Virtual Service serves", func(t *testing.T) {
+		// Setup
+		fakes, lm := newLoadMaster(t, "u-d")
+		lm.Seed(t, map[string]any{"certificates": map[string]string{"web": bundle}}, kemp.VirtualServiceAt("1", "web"))
+
+		// Action
+		code, body := call(t, fakes, "u-d", "GET", "/access/delcert?cert=web", "")
+
+		// Assert
+		require.Equal(t, http.StatusUnprocessableEntity, code)
+		require.Contains(t, body, "is in use by Virtual Service 1")
+		require.Contains(t, lm.State(t).Certificates, "web")
+	})
+
+	t.Run("should refuse serving a certificate the store does not hold", func(t *testing.T) {
+		// Setup
+		fakes, lm := newLoadMaster(t, "u-e")
+		lm.Seed(t, kemp.VirtualServiceAt("1"))
+
+		// Action
+		code, body := call(t, fakes, "u-e", "GET", "/access/modvs?vs=1&certfile=missing", "")
+
+		// Assert
+		require.Equal(t, http.StatusUnprocessableEntity, code)
+		require.Contains(t, body, "Invalid certificate: missing")
+		require.Empty(t, lm.State(t).VirtualServices["1"].CertFiles)
+	})
 }

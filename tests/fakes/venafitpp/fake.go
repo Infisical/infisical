@@ -81,8 +81,12 @@ type Certificate struct {
 	PolicyDN   string `json:"policyDN"`
 	ObjectName string `json:"objectName"`
 	Origin     string `json:"origin"`
-	Retrievals int    `json:"retrievals"`
-	PEM        string `json:"pem"`
+	// Retrievals counts retrieve calls since the latest request.
+	Retrievals int `json:"retrievals"`
+	// Requests counts requests on the object; a request for an existing object
+	// re-enrolls it, as a renewal does.
+	Requests int    `json:"requests"`
+	PEM      string `json:"pem"`
 }
 
 func (s *Server) Snapshot() ([]byte, error) {
@@ -176,7 +180,11 @@ func (s *Server) request(w http.ResponseWriter, r *http.Request) {
 	}
 	dn := strings.TrimRight(in.PolicyDN, `\`) + `\` + in.ObjectName
 	s.mu.Lock()
-	s.Certificates[dn] = &Certificate{DN: dn, PolicyDN: in.PolicyDN, ObjectName: in.ObjectName, Origin: in.Origin, PEM: leaf.PEM}
+	requests := 1
+	if prev := s.Certificates[dn]; prev != nil {
+		requests = prev.Requests + 1
+	}
+	s.Certificates[dn] = &Certificate{DN: dn, PolicyDN: in.PolicyDN, ObjectName: in.ObjectName, Origin: in.Origin, PEM: leaf.PEM, Requests: requests}
 	s.mu.Unlock()
 	s.events.Publish(CertificateRequested{DN: dn})
 	writeJSON(w, http.StatusOK, map[string]string{"CertificateDN": dn, "Guid": "{" + id.Hex(16) + "}"})

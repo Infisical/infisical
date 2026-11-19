@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/pkg/sftp"
@@ -108,6 +109,42 @@ func TestFake_OversizedWriteStoresNothing(t *testing.T) {
 	require.NotContains(t, f.host.Files, "/srv/new")
 }
 
+func TestFake_DroppedUploadStoresNothing(t *testing.T) {
+	host := Service.New(fakenet.Emitter{}).(*Server)
+	require.NoError(t, host.Seed([]byte(`{"directories":["/srv"]}`)))
+	host.put("/srv/existing", []byte("original"), 0o644)
+
+	for _, p := range []string{"/srv/existing", "/srv/new"} {
+		serverEnd, clientEnd := net.Pipe()
+		deadline := time.Now().Add(5 * time.Second)
+		require.NoError(t, serverEnd.SetDeadline(deadline))
+		require.NoError(t, clientEnd.SetDeadline(deadline))
+		srv := sftp.NewRequestServer(serverEnd, handlers(host))
+		t.Cleanup(func() { _ = srv.Close() })
+		served := make(chan struct{})
+		go func() {
+			_ = srv.Serve()
+			close(served)
+		}()
+		c, err := sftp.NewClientPipe(clientEnd, clientEnd)
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = c.Close() })
+		f, err := c.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_TRUNC)
+		require.NoError(t, err)
+		_, err = f.Write([]byte("partial"))
+		require.NoError(t, err)
+
+		require.NoError(t, clientEnd.Close())
+		select {
+		case <-served:
+		case <-time.After(5 * time.Second):
+			t.Fatalf("the server kept serving %s after the client dropped the connection", p)
+		}
+	}
+	require.Equal(t, "original", host.Files["/srv/existing"].Content)
+	require.NotContains(t, host.Files, "/srv/new")
+}
+
 func TestFake_WriteKeepsOpenMode(t *testing.T) {
 	host := Service.New(fakenet.Emitter{}).(*Server)
 	require.NoError(t, host.Seed([]byte(`{"directories":["/srv"]}`)))
@@ -147,4 +184,15 @@ func TestFake_Chown(t *testing.T) {
 	require.Equal(t, 1, exit.ExitStatus())
 	require.ErrorAs(t, run(`systemctl reload nginx`), &exit)
 	require.Equal(t, 127, exit.ExitStatus())
+}
+
+func TestFake_MissingDirectoryReportsNoSuchFile(t *testing.T) {
+	// Setup
+	f := &fs{host: Service.New(fakenet.Emitter{}).(*Server)}
+
+	// Action
+	_, err := f.Filewrite(&sftp.Request{Filepath: "/etc/ssl/missing/a.pem.tmp"})
+
+	// Assert
+	require.EqualError(t, err, "no such file")
 }

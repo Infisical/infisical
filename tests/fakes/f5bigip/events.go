@@ -15,6 +15,12 @@ type FileObjectDetail struct {
 type FileObjectInstalled FileObjectDetail
 type FileObjectDeleted FileObjectDetail
 
+// ClientSSLProfileUpdated is a Client SSL profile's cert-key-chain replaced.
+type ClientSSLProfileUpdated struct {
+	Path         string              `json:"path"`
+	CertKeyChain []CertKeyChainEntry `json:"certKeyChain"`
+}
+
 // ConfigSaved is the running configuration saved, with the objects it held.
 type ConfigSaved struct {
 	Objects []string `json:"objects"`
@@ -24,3 +30,6 @@ func (FileUploaded) EventName() string        { return "f5bigip.file-uploaded" }
 func (FileObjectInstalled) EventName() string { return "f5bigip.file-object-installed" }
 func (FileObjectDeleted) EventName() string   { return "f5bigip.file-object-deleted" }
 func (ConfigSaved) EventName() string         { return "f5bigip.config-saved" }
+func (ClientSSLProfileUpdated) EventName() string {
+	return "f5bigip.client-ssl-profile-updated"
+}

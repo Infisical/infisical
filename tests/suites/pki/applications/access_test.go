@@ -135,12 +135,12 @@ func TestApplicationAccess_Auditor(t *testing.T) {
 		auditor := member(t, tn, g, "auditor")
 
 		// Action
-		res := revokeAs(t, auditor, cert.ID)
+		res := pki.RevokeRequest(t, auditor, cert.ID, api.RevokeCertificateJSONBodyRevocationReasonKEYCOMPROMISE)
 
 		// Assert
 		require.Equal(t, http.StatusForbidden, res.StatusCode())
 		require.Equal(t, "You are not allowed to delete on certificates", apierr.Message(res.Body))
-		require.Equal(t, "active", status(t, tn, cert.ID))
+		require.Equal(t, "active", pki.ReadCertificate(t, tn.Admin, cert.ID).JSON200.Certificate.Status)
 	})
 }
 
@@ -264,10 +264,10 @@ func TestApplicationAccess_KnownIssues(t *testing.T) {
 		cert := g.Issue(t, pki.ServerCertificate(id.Short()+".app.test"))
 
 		// Action
-		res := revokeAs(t, g.Operator, cert.ID)
+		res := pki.RevokeRequest(t, g.Operator, cert.ID, api.RevokeCertificateJSONBodyRevocationReasonKEYCOMPROMISE)
 
 		// Assert
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "revoking: %s", apierr.Body(res.Body))
-		require.Equal(t, "revoked", status(t, tn, cert.ID))
+		require.Equal(t, "revoked", pki.ReadCertificate(t, tn.Admin, cert.ID).JSON200.Certificate.Status)
 	})
 }

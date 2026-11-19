@@ -4896,6 +4896,7 @@ export const registerRoutes = async (
     oauthClient: oauthClientService,
     oidcIssuer: oidcIssuerService,
     superAdmin: superAdminService,
+    cronJob,
     encryptionKeyRotation: encryptionKeyRotationService,
     offlineUsageReport: offlineUsageReportService,
     orgProductStats: orgProductStatsService,

@@ -34,7 +34,7 @@ func TestCertificate_RenewalConfig(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.NotNilf(t, res.JSON200, "updating the renewal config returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-		require.Equal(t, new(float32(7)), mustReadCert(t, g.Operator, issued.ID).JSON200.Certificate.RenewBeforeDays)
+		require.Equal(t, new(float32(7)), pki.ReadCertificate(t, g.Operator, issued.ID).JSON200.Certificate.RenewBeforeDays)
 		preview, err := g.Operator.API.GetCertificateRenewalPreviewWithResponse(t.Context(), issued.ID)
 		require.NoError(t, err)
 		require.NotNilf(t, preview.JSON200, "previewing the renewal returned %d: %s", preview.StatusCode(), apierr.Body(preview.Body))
@@ -60,7 +60,7 @@ func TestCertificate_RenewalConfig(t *testing.T) {
 		require.Equalf(t, http.StatusUnprocessableEntity, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
 		require.Contains(t, string(res.Body), `"path":["renewBeforeDays"]`)
 		require.Contains(t, string(res.Body), "Number must be less than or equal to 30")
-		require.Nil(t, mustReadCert(t, g.Operator, issued.ID).JSON200.Certificate.RenewBeforeDays)
+		require.Nil(t, pki.ReadCertificate(t, g.Operator, issued.ID).JSON200.Certificate.RenewBeforeDays)
 	})
 
 	t.Run("should give certificates issued through API enrollment the enrollment's renew-before window", func(t *testing.T) {
@@ -78,6 +78,6 @@ func TestCertificate_RenewalConfig(t *testing.T) {
 		issued := g.Issue(t, pki.ServerCertificate(id.Short()+".enrollment.test"))
 
 		// Assert
-		require.Equal(t, new(float32(10)), mustReadCert(t, g.Operator, issued.ID).JSON200.Certificate.RenewBeforeDays)
+		require.Equal(t, new(float32(10)), pki.ReadCertificate(t, g.Operator, issued.ID).JSON200.Certificate.RenewBeforeDays)
 	})
 }

@@ -44,7 +44,7 @@ func TestVenafiTppCA_Issue(t *testing.T) {
 		tn := h.NewTenant(t)
 		proj := pki.CertManager(t, tn)
 		ca, tpp := venafiTppCA(t, tn, proj)
-		o := newOrderIssuer(t, tn, proj, ca)
+		o := newOrderIssuer(t, proj, ca)
 		name := id.Short() + ".venafi.test"
 		mark := tpp.Mark(t)
 
@@ -52,7 +52,7 @@ func TestVenafiTppCA_Issue(t *testing.T) {
 		res := o.order(t, pki.ServerCertificate(name))
 
 		// Assert
-		got := o.settled(t, res.JSON200.CertificateRequestId)
+		got := o.Settled(t, res.JSON200.CertificateRequestId)
 		require.Equal(t, api.GetCertificateRequest200JSONResponseBodyStatusIssued, got.JSON200.Status, "error: %v", got.JSON200.ErrorMessage)
 		leaf := pki.ParseLeaf(t, *got.JSON200.Certificate)
 		require.NoError(t, leaf.CheckSignatureFrom(pki.ParseLeaf(t, tpp.State(t).Root)))

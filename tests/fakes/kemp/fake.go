@@ -1,5 +1,6 @@
-// Package kemp fakes the access API of a Kemp LoadMaster: the certificate store and
-// the separate intermediate store the served chain is built from.
+// Package kemp fakes the access API of a Kemp LoadMaster: the certificate store, the
+// separate intermediate store the served chain is built from, and the certificates
+// each Virtual Service serves.
 package kemp
 
 import (
@@ -41,13 +42,15 @@ func Password(user string) string {
 }
 
 func (service) New(events fakenet.Emitter) fakenet.Fake {
-	lm := &LoadMaster{Certificates: map[string]string{}, Intermediates: map[string]string{}, events: events}
+	lm := &LoadMaster{Certificates: map[string]string{}, Intermediates: map[string]string{}, VirtualServices: map[string]*VirtualService{}, events: events}
 	lm.mux = http.NewServeMux()
 	lm.mux.HandleFunc("GET /access/listcert", lm.listCerts)
 	lm.mux.HandleFunc("POST /access/addcert", lm.addCert)
 	lm.mux.HandleFunc("GET /access/delcert", lm.delCert)
 	lm.mux.HandleFunc("GET /access/listintermediate", lm.listIntermediates)
 	lm.mux.HandleFunc("POST /access/addintermediate", lm.addIntermediate)
+	lm.mux.HandleFunc("GET /access/showvs", lm.showVS)
+	lm.mux.HandleFunc("GET /access/modvs", lm.modVS)
 	return lm
 }
 
@@ -58,6 +61,8 @@ type LoadMaster struct {
 	Certificates map[string]string `json:"certificates"`
 	// Intermediates maps an identifier to one CA certificate.
 	Intermediates map[string]string `json:"intermediates"`
+	// VirtualServices maps a Virtual Service's index to it.
+	VirtualServices map[string]*VirtualService `json:"virtualServices"`
 
 	mu     sync.Mutex
 	mux    *http.ServeMux
@@ -77,14 +82,16 @@ func (lm *LoadMaster) Snapshot() ([]byte, error) {
 	lm.mu.Lock()
 	defer lm.mu.Unlock()
 	return json.Marshal(struct {
-		Certificates  map[string]string `json:"certificates"`
-		Intermediates map[string]string `json:"intermediates"`
-	}{lm.Certificates, lm.Intermediates})
+		Certificates    map[string]string          `json:"certificates"`
+		Intermediates   map[string]string          `json:"intermediates"`
+		VirtualServices map[string]*VirtualService `json:"virtualServices"`
+	}{lm.Certificates, lm.Intermediates, lm.VirtualServices})
 }
 
 func (lm *LoadMaster) Seed(raw []byte) error {
 	var in struct {
-		Certificates map[string]string `json:"certificates"`
+		Certificates    map[string]string          `json:"certificates"`
+		VirtualServices map[string]*VirtualService `json:"virtualServices"`
 	}
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return err
@@ -94,7 +101,24 @@ func (lm *LoadMaster) Seed(raw []byte) error {
 	for id, pem := range in.Certificates {
 		lm.Certificates[id] = pem
 	}
+	for index, vs := range in.VirtualServices {
+		lm.VirtualServices[index] = vs
+	}
 	return nil
+}
+
+// VirtualService is a Virtual Service with SSL acceleration on.
+type VirtualService struct {
+	// CertFiles is the identifiers of the certificates it serves.
+	CertFiles []string `json:"certFiles"`
+}
+
+// VirtualServiceAt seeds a Virtual Service at an index, serving certFiles.
+func VirtualServiceAt(index string, certFiles ...string) any {
+	if certFiles == nil {
+		certFiles = []string{}
+	}
+	return map[string]any{"virtualServices": map[string]*VirtualService{index: {CertFiles: certFiles}}}
 }
 
 type certEntry struct {
@@ -157,6 +181,11 @@ func (lm *LoadMaster) delCert(w http.ResponseWriter, r *http.Request) {
 		writeFail(w, "Certificate "+id+" does not exist")
 		return
 	}
+	if index, used := lm.servedBy(id); used {
+		lm.mu.Unlock()
+		writeFail(w, "Certificate "+id+" is in use by Virtual Service "+index)
+		return
+	}
 	delete(lm.Certificates, id)
 	lm.mu.Unlock()
 	lm.events.Publish(CertificateDeleted{Name: id})
@@ -180,6 +209,69 @@ func (lm *LoadMaster) addIntermediate(w http.ResponseWriter, r *http.Request) {
 	lm.mu.Unlock()
 	lm.events.Publish(IntermediateAdded{Name: id})
 	writeOK(w, "Command completed ok")
+}
+
+// servedBy names a Virtual Service that serves the certificate id.
+func (lm *LoadMaster) servedBy(id string) (string, bool) {
+	for _, index := range slices.Sorted(maps.Keys(lm.VirtualServices)) {
+		if slices.Contains(lm.VirtualServices[index].CertFiles, id) {
+			return index, true
+		}
+	}
+	return "", false
+}
+
+func (lm *LoadMaster) showVS(w http.ResponseWriter, r *http.Request) {
+	index := r.URL.Query().Get("vs")
+	lm.mu.Lock()
+	defer lm.mu.Unlock()
+	vs, ok := lm.VirtualServices[index]
+	if !ok {
+		writeFail(w, "Unknown VS")
+		return
+	}
+	writeData(w, vsFields(index, vs))
+}
+
+// modVS sets the certificates a Virtual Service serves, the whole space-separated list
+// at once, refusing one the certificate store does not hold.
+func (lm *LoadMaster) modVS(w http.ResponseWriter, r *http.Request) {
+	index := r.URL.Query().Get("vs")
+	certFiles := strings.Fields(r.URL.Query().Get("certfile"))
+	lm.mu.Lock()
+	vs, ok := lm.VirtualServices[index]
+	if !ok {
+		lm.mu.Unlock()
+		writeFail(w, "Unknown VS")
+		return
+	}
+	for _, id := range certFiles {
+		if _, exists := lm.Certificates[id]; !exists {
+			lm.mu.Unlock()
+			writeFail(w, "Invalid certificate: "+id)
+			return
+		}
+	}
+	vs.CertFiles = certFiles
+	data := vsFields(index, vs)
+	lm.mu.Unlock()
+	lm.events.Publish(VirtualServiceModified{Index: index, CertFiles: slices.Clone(certFiles)})
+	writeData(w, data)
+}
+
+type vsField struct {
+	XMLName xml.Name
+	Value   string `xml:",chardata"`
+}
+
+func vsFields(index string, vs *VirtualService) []vsField {
+	field := func(name, value string) vsField { return vsField{XMLName: xml.Name{Local: name}, Value: value} }
+	return []vsField{
+		field("Status", "Up"),
+		field("Index", index),
+		field("SSLAcceleration", "Y"),
+		field("CertFile", strings.Join(vs.CertFiles, " ")),
+	}
 }
 
 func writeData(w http.ResponseWriter, data any) {

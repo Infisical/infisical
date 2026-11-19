@@ -186,3 +186,69 @@ func TestGCPFake_Certificates(t *testing.T) {
 		require.Nil(t, second["nextPageToken"])
 	})
 }
+
+const certificateMapEntries = "/v1/projects/p1/locations/global/certificateMaps/lb/certificateMapEntries"
+
+// entryBody is a certificate map entry for a hostname pointing at the named certificates.
+func entryBody(t *testing.T, certs ...string) string {
+	t.Helper()
+	raw, err := json.Marshal(map[string]any{"hostname": "a.test", "certificates": certs})
+	require.NoError(t, err)
+	return string(raw)
+}
+
+func TestGCPFake_CertificateMapEntries(t *testing.T) {
+	web := "projects/p1/locations/global/certificates/web"
+
+	t.Run("should point an entry at the certificates a patch names", func(t *testing.T) {
+		// Setup
+		fakes, cp := newGCP(t)
+		cp.CertificateManager.Seed(t, SeedGCPCertificateMap("p1", "lb"))
+		token := impersonate(t, fakes)
+		for _, id := range []string{"web", "next"} {
+			gcpCall(t, fakes, GCPCertificateManager.Host(), "POST", certificates+"?certificateId="+id, token, strings.NewReader(selfManagedBody(t)), "application/json")
+		}
+		gcpCall(t, fakes, GCPCertificateManager.Host(), "POST", certificateMapEntries+"?certificateMapEntryId=e1", token, strings.NewReader(entryBody(t, web)), "application/json")
+		next := "projects/p1/locations/global/certificates/next"
+
+		// Action
+		code, _ := gcpCall(t, fakes, GCPCertificateManager.Host(), "PATCH", certificateMapEntries+"/e1?updateMask=certificates,labels", token, strings.NewReader(entryBody(t, next)), "application/json")
+
+		// Assert
+		require.Equal(t, http.StatusOK, code)
+		require.Equal(t, []string{next}, cp.CertificateManager.State(t).CertificateMapEntries["projects/p1/locations/global/certificateMaps/lb/certificateMapEntries/e1"].Certificates)
+	})
+
+	t.Run("should refuse to delete a certificate an entry points at until the entry is deleted", func(t *testing.T) {
+		// Setup
+		fakes, cp := newGCP(t)
+		cp.CertificateManager.Seed(t, SeedGCPCertificateMap("p1", "lb"))
+		token := impersonate(t, fakes)
+		gcpCall(t, fakes, GCPCertificateManager.Host(), "POST", certificates+"?certificateId=web", token, strings.NewReader(selfManagedBody(t)), "application/json")
+		gcpCall(t, fakes, GCPCertificateManager.Host(), "POST", certificateMapEntries+"?certificateMapEntryId=e1", token, strings.NewReader(entryBody(t, web)), "application/json")
+
+		// Action
+		refused, out := gcpCall(t, fakes, GCPCertificateManager.Host(), "DELETE", certificates+"/web", token, nil, "")
+		gcpCall(t, fakes, GCPCertificateManager.Host(), "DELETE", certificateMapEntries+"/e1", token, nil, "")
+		deleted, _ := gcpCall(t, fakes, GCPCertificateManager.Host(), "DELETE", certificates+"/web", token, nil, "")
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, refused)
+		require.Equal(t, "FAILED_PRECONDITION", out["error"].(map[string]any)["status"])
+		require.Equal(t, http.StatusOK, deleted)
+		require.Empty(t, cp.CertificateManager.State(t).Certificates)
+	})
+
+	t.Run("should refuse an entry in a certificate map that does not exist", func(t *testing.T) {
+		// Setup
+		fakes, cp := newGCP(t)
+		token := impersonate(t, fakes)
+
+		// Action
+		code, _ := gcpCall(t, fakes, GCPCertificateManager.Host(), "POST", certificateMapEntries+"?certificateMapEntryId=e1", token, strings.NewReader(entryBody(t)), "application/json")
+
+		// Assert
+		require.Equal(t, http.StatusNotFound, code)
+		require.Empty(t, cp.CertificateManager.State(t).CertificateMapEntries)
+	})
+}

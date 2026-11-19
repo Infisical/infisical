@@ -82,7 +82,7 @@ func TestCertificate_Import(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.NotNilf(t, res.JSON200, "importing returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-		got := mustReadCert(t, g.Operator, res.JSON200.CertificateId).JSON200.Certificate
+		got := pki.ReadCertificate(t, g.Operator, res.JSON200.CertificateId).JSON200.Certificate
 		require.Equal(t, new("imported"), got.Source)
 		require.Equal(t, name, got.CommonName)
 		require.True(t, got.HasPrivateKey)

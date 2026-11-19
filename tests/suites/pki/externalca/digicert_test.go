@@ -16,29 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const digicertOrganization = 4242
-
-// digicertCA is a DigiCert CA ordering ssl_plus certificates under the account's
-// organization.
-func digicertCA(t *testing.T, tn *harness.Tenant, proj *pki.Project) (pki.CA, *digicert.ControlPlane) {
-	t.Helper()
-	conn := fixture.NewAppConnection(t, tn, fixture.DigiCertAPIKeyAppConnection)
-	dc := digicert.Open(t, conn.FakenetAdmin(t), conn.Nonce())
-	dc.Seed(t, digicert.WithOrganization(digicertOrganization))
-	body := api.CreateDigicertCertificateAuthorityV1JSONRequestBody{
-		ProjectId: &proj.ID,
-		Name:      "digicert-" + id.Short(),
-		Status:    api.CreateDigicertCertificateAuthorityV1JSONBodyStatusActive,
-	}
-	body.Configuration.AppConnectionId = conn.ID
-	body.Configuration.OrganizationId = digicertOrganization
-	body.Configuration.ProductNameId = "ssl_plus"
-	res, err := tn.Admin.API.CreateDigicertCertificateAuthorityV1WithResponse(t.Context(), body)
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "creating a DigiCert CA returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	return pki.CA{ID: res.JSON200.Id}, dc
-}
-
 func TestDigiCertCA_Issue(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
@@ -49,16 +26,16 @@ func TestDigiCertCA_Issue(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		proj := pki.CertManager(t, tn)
-		ca, dc := digicertCA(t, tn, proj)
+		ca, dc := pki.NewDigiCertCA(t, proj)
 		domain := id.Short() + ".digicert.test"
 		dc.Seed(t, digicert.WithValidatedDomain(domain))
-		o := newOrderIssuer(t, tn, proj, ca)
+		o := newOrderIssuer(t, proj, ca)
 
 		// Action
 		res := o.order(t, pki.ServerCertificate("www."+domain))
 
 		// Assert
-		got := o.settled(t, res.JSON200.CertificateRequestId)
+		got := o.Settled(t, res.JSON200.CertificateRequestId)
 		require.Equal(t, api.GetCertificateRequest200JSONResponseBodyStatusIssued, got.JSON200.Status, "error: %v", got.JSON200.ErrorMessage)
 		leaf := pki.ParseLeaf(t, *got.JSON200.Certificate)
 		require.Equal(t, "www."+domain, leaf.Subject.CommonName)
@@ -71,11 +48,11 @@ func TestDigiCertCA_Issue(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		proj := pki.CertManager(t, tn)
-		ca, dc := digicertCA(t, tn, proj)
+		ca, dc := pki.NewDigiCertCA(t, proj)
 		name := "www." + id.Short() + ".digicert.test"
-		o := newOrderIssuer(t, tn, proj, ca)
+		o := newOrderIssuer(t, proj, ca)
 		res := o.order(t, pki.ServerCertificate(name))
-		pending := o.settled(t, res.JSON200.CertificateRequestId, api.GetCertificateRequest200JSONResponseBodyStatusPendingValidation)
+		pending := o.Settled(t, res.JSON200.CertificateRequestId, api.GetCertificateRequest200JSONResponseBodyStatusPendingValidation)
 		require.Equal(t, api.GetCertificateRequest200JSONResponseBodyStatusPendingValidation, pending.JSON200.Status, "error: %v", pending.JSON200.ErrorMessage)
 		var placed *digicert.Order
 		for _, ord := range dc.State(t).Orders {
@@ -90,7 +67,7 @@ func TestDigiCertCA_Issue(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.NotNilf(t, trig.JSON200, "triggering validation returned %d: %s", trig.StatusCode(), apierr.Body(trig.Body))
-		got := o.settled(t, res.JSON200.CertificateRequestId)
+		got := o.Settled(t, res.JSON200.CertificateRequestId)
 		require.Equal(t, api.GetCertificateRequest200JSONResponseBodyStatusIssued, got.JSON200.Status, "error: %v", got.JSON200.ErrorMessage)
 		require.Equal(t, name, pki.ParseLeaf(t, *got.JSON200.Certificate).Subject.CommonName)
 	})
@@ -104,18 +81,18 @@ func TestDigiCertCA_Issue(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		proj := pki.CertManager(t, tn)
-		ca, _ := digicertCA(t, tn, proj)
-		o := newOrderIssuer(t, tn, proj, ca)
+		ca, _ := pki.NewDigiCertCA(t, proj)
+		o := newOrderIssuer(t, proj, ca)
 		res := o.order(t, pki.ServerCertificate("www."+id.Short()+".digicert.test"))
-		require.Equal(t, api.GetCertificateRequest200JSONResponseBodyStatusPendingValidation, o.settled(t, res.JSON200.CertificateRequestId, api.GetCertificateRequest200JSONResponseBodyStatusPendingValidation).JSON200.Status)
+		require.Equal(t, api.GetCertificateRequest200JSONResponseBodyStatusPendingValidation, o.Settled(t, res.JSON200.CertificateRequestId, api.GetCertificateRequest200JSONResponseBodyStatusPendingValidation).JSON200.Status)
 
 		// Action
-		trig, err := o.operator.API.TriggerCertificateRequestValidationWithResponse(t.Context(), orderRequestID(t, res))
+		trig, err := o.Operator.API.TriggerCertificateRequestValidationWithResponse(t.Context(), orderRequestID(t, res))
 
 		// Assert
 		require.NoError(t, err)
 		require.Equal(t, http.StatusForbidden, trig.StatusCode())
 		require.Equal(t, "You are not allowed to edit on certificates", apierr.Message(trig.Body))
-		require.Equal(t, api.GetCertificateRequest200JSONResponseBodyStatusPendingValidation, o.settled(t, res.JSON200.CertificateRequestId, api.GetCertificateRequest200JSONResponseBodyStatusPendingValidation).JSON200.Status)
+		require.Equal(t, api.GetCertificateRequest200JSONResponseBodyStatusPendingValidation, o.Settled(t, res.JSON200.CertificateRequestId, api.GetCertificateRequest200JSONResponseBodyStatusPendingValidation).JSON200.Status)
 	})
 }

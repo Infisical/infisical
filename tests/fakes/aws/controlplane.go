@@ -31,20 +31,23 @@ type ControlPlane struct {
 // writes to AWS.
 func Open(tt *testing.T, adminURL, accessKeyID string) *ControlPlane {
 	tt.Helper()
-	for _, svc := range []service{SSM, SecretsManager, IAM, CloudFormation, ACM, ACMPCA, ELB, Route53} {
-		fakenet.Track(tt, adminURL, svc.Host(), accessKeyID)
-	}
 	return &ControlPlane{
 		STS:            fakenet.Open[STSAccount](tt, adminURL, STS.Host(), accessKeyID),
-		SSM:            fakenet.Open[ParameterStore](tt, adminURL, SSM.Host(), accessKeyID),
-		SecretsManager: fakenet.Open[SecretsStore](tt, adminURL, SecretsManager.Host(), accessKeyID),
-		IAM:            fakenet.Open[IAMAccount](tt, adminURL, IAM.Host(), accessKeyID),
-		CloudFormation: fakenet.Open[CloudFormationAccount](tt, adminURL, CloudFormation.Host(), accessKeyID),
-		ACM:            fakenet.Open[CertificateManager](tt, adminURL, ACM.Host(), accessKeyID),
-		ACMPCA:         fakenet.Open[PrivateCAs](tt, adminURL, ACMPCA.Host(), accessKeyID),
-		ELB:            fakenet.Open[LoadBalancing](tt, adminURL, ELB.Host(), accessKeyID),
-		Route53:        fakenet.Open[HostedZones](tt, adminURL, Route53.Host(), accessKeyID),
+		SSM:            tracked[ParameterStore](tt, adminURL, SSM, accessKeyID),
+		SecretsManager: tracked[SecretsStore](tt, adminURL, SecretsManager, accessKeyID),
+		IAM:            tracked[IAMAccount](tt, adminURL, IAM, accessKeyID),
+		CloudFormation: tracked[CloudFormationAccount](tt, adminURL, CloudFormation, accessKeyID),
+		ACM:            tracked[CertificateManager](tt, adminURL, ACM, accessKeyID),
+		ACMPCA:         tracked[PrivateCAs](tt, adminURL, ACMPCA, accessKeyID),
+		ELB:            tracked[LoadBalancing](tt, adminURL, ELB, accessKeyID),
+		Route53:        tracked[HostedZones](tt, adminURL, Route53, accessKeyID),
 	}
+}
+
+func tracked[S any](tt *testing.T, adminURL string, svc service, accessKeyID string) *fakenet.Scope[S] {
+	tt.Helper()
+	fakenet.Track(tt, adminURL, svc.Host(), accessKeyID)
+	return fakenet.Open[S](tt, adminURL, svc.Host(), accessKeyID)
 }
 
 // Fragment is a piece of state that belongs to one service.
@@ -57,12 +60,15 @@ type Fragment struct {
 func (cp *ControlPlane) Seed(tt *testing.T, fragments ...Fragment) {
 	tt.Helper()
 	for _, f := range fragments {
-		cp.seeder(f.svc).Seed(tt, f.body)
+		cp.seeder(tt, f.svc).Seed(tt, f.body)
 	}
 }
 
-func (cp *ControlPlane) seeder(svc service) interface{ Seed(*testing.T, ...any) } {
+func (cp *ControlPlane) seeder(tt *testing.T, svc service) interface{ Seed(*testing.T, ...any) } {
+	tt.Helper()
 	switch svc.name {
+	case STS.name:
+		return cp.STS
 	case SSM.name:
 		return cp.SSM
 	case SecretsManager.name:
@@ -80,7 +86,8 @@ func (cp *ControlPlane) seeder(svc service) interface{ Seed(*testing.T, ...any) 
 	case Route53.name:
 		return cp.Route53
 	}
-	return cp.STS
+	tt.Fatalf("aws: no scope for service %q", svc.name)
+	return nil
 }
 
 // Parameters is every parameter the account holds, by stored name.

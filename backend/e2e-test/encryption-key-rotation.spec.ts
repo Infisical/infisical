@@ -78,7 +78,8 @@ describe("encryption key rotation: boot-time promotion", () => {
   const cronJobStub: TCronJobFactory = {
     register: () => undefined,
     start: () => {},
-    stop: async () => {}
+    stop: async () => {},
+    runNow: async () => {}
   };
 
   let rootConfigsBefore: TKmsRootConfig[];

@@ -1,6 +1,7 @@
 package pki
 
 import (
+	"crypto/x509"
 	"encoding/pem"
 	"testing"
 
@@ -21,4 +22,12 @@ func CurrentCRL(tt *testing.T, client *api.ClientWithResponses, ca CA) []byte {
 		return block.Bytes
 	}
 	return []byte(raw)
+}
+
+// ParseCRL parses a DER CRL, such as CurrentCRL returns.
+func ParseCRL(tt *testing.T, der []byte) *x509.RevocationList {
+	tt.Helper()
+	crl, err := x509.ParseRevocationList(der)
+	require.NoError(tt, err, "parsing the CRL")
+	return crl
 }

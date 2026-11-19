@@ -33,8 +33,10 @@ func call(t *testing.T, fakes *httptest.Server, key, method, path, body string) 
 	defer func() { _ = res.Body.Close() }()
 	raw, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	var out map[string]any
-	require.NoError(t, json.Unmarshal(raw, &out), string(raw))
+	out := map[string]any{}
+	if len(raw) > 0 {
+		require.NoError(t, json.Unmarshal(raw, &out), string(raw))
+	}
 	return res.StatusCode, out
 }
 

@@ -360,6 +360,40 @@ func TestAWSFake_LoadBalancing(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, status)
 		require.Equal(t, "ListenerNotFound", errorCode(t, raw))
 	})
+
+	t.Run("should remove a certificate from a listener's list and keep the default", func(t *testing.T) {
+		// Setup
+		a := r.account(t)
+		cp := a.cp(t)
+		cp.Seed(t, aws.SeedListener("listener-1", "lb-1", 443, "arn:default"))
+		status, raw := a.elb(t, url.Values{"Action": {"AddListenerCertificates"}, "ListenerArn": {"listener-1"}, "Certificates.member.1.CertificateArn": {"arn:extra"}})
+		require.Equal(t, http.StatusOK, status, raw)
+
+		// Action
+		status, raw = a.elb(t, url.Values{"Action": {"RemoveListenerCertificates"}, "ListenerArn": {"listener-1"}, "Certificates.member.1.CertificateArn": {"arn:extra"}})
+
+		// Assert
+		require.Equal(t, http.StatusOK, status, raw)
+		listener := cp.ELB.State(t).Listeners["listener-1"]
+		require.Empty(t, listener.Certificates)
+		require.Equal(t, "arn:default", listener.DefaultCertificate)
+		cp.ELB.ExpectEvent[aws.ListenerCertificateRemoved](t, func(e aws.ListenerCertificateRemoved) bool { return e.CertificateArn == "arn:extra" })
+	})
+
+	t.Run("should refuse to remove a listener's default certificate", func(t *testing.T) {
+		// Setup
+		a := r.account(t)
+		cp := a.cp(t)
+		cp.Seed(t, aws.SeedListener("listener-1", "lb-1", 443, "arn:default"))
+
+		// Action
+		status, raw := a.elb(t, url.Values{"Action": {"RemoveListenerCertificates"}, "ListenerArn": {"listener-1"}, "Certificates.member.1.CertificateArn": {"arn:default"}})
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, status)
+		require.Equal(t, "OperationNotPermitted", errorCode(t, raw))
+		require.Equal(t, "arn:default", cp.ELB.State(t).Listeners["listener-1"].DefaultCertificate)
+	})
 }
 
 func TestAWSFake_Route53(t *testing.T) {

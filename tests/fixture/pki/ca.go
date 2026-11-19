@@ -1,12 +1,14 @@
 package pki
 
 import (
+	"crypto/x509"
 	"net/http"
 	"testing"
 	"time"
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture"
+	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/id"
 	"github.com/google/uuid"
@@ -58,10 +60,9 @@ func NewAcmeCA(tt *testing.T, p *Project, dns *fixture.AppConnection, provider a
 }
 
 // NewPendingIntermediateCA creates an intermediate CA on an RSA-2048 key that waits
-// for its certificate, and returns it with its CSR.
-func NewPendingIntermediateCA(tt *testing.T, p *Project) (CA, string) {
+// for its certificate.
+func NewPendingIntermediateCA(tt *testing.T, p *Project) CA {
 	tt.Helper()
-	client := p.tn.Admin.API
 	body := api.CreateInternalCertificateAuthorityV1JSONRequestBody{
 		ProjectId: &p.ID,
 		Name:      "ca-" + id.Short(),
@@ -71,15 +72,19 @@ func NewPendingIntermediateCA(tt *testing.T, p *Project) (CA, string) {
 	body.Configuration.KeyAlgorithm = api.CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmRSA2048
 	body.Configuration.Organization = new("Infisical Harness")
 	body.Configuration.CommonName = new("Harness Intermediate " + id.Short())
-	res, err := client.CreateInternalCertificateAuthorityV1WithResponse(tt.Context(), body)
+	res, err := p.tn.Admin.API.CreateInternalCertificateAuthorityV1WithResponse(tt.Context(), body)
 	require.NoError(tt, err, "creating an intermediate CA")
 	require.NotNilf(tt, res.JSON200, "creating an intermediate CA returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	ca := CA{ID: res.JSON200.Id}
+	return CA{ID: res.JSON200.Id}
+}
 
-	csr, err := client.GetCaCsrWithResponse(tt.Context(), ca.ID.String(), nil)
+// PendingCSR reads the CSR of a CA that waits for its certificate.
+func PendingCSR(tt *testing.T, p *Project, ca CA) string {
+	tt.Helper()
+	csr, err := p.tn.Admin.API.GetCaCsrWithResponse(tt.Context(), ca.ID.String(), nil)
 	require.NoError(tt, err, "reading the intermediate's CSR")
 	require.NotNilf(tt, csr.JSON200, "reading the intermediate's CSR returned %d: %s", csr.StatusCode(), apierr.Body(csr.Body))
-	return ca, csr.JSON200.Csr
+	return csr.JSON200.Csr
 }
 
 // NewIntermediateCA creates an intermediate CA on an RSA-2048 key and installs a
@@ -87,10 +92,10 @@ func NewPendingIntermediateCA(tt *testing.T, p *Project) (CA, string) {
 func NewIntermediateCA(tt *testing.T, p *Project, parent CA) CA {
 	tt.Helper()
 	client := p.tn.Admin.API
-	ca, csr := NewPendingIntermediateCA(tt, p)
+	ca := NewPendingIntermediateCA(tt, p)
 
 	signed, err := client.SignIntermediateCaWithResponse(tt.Context(), parent.ID.String(), api.SignIntermediateCaJSONRequestBody{
-		Csr:      csr,
+		Csr:      PendingCSR(tt, p, ca),
 		NotAfter: time.Now().AddDate(1, 0, 0).UTC().Format(time.RFC3339),
 	})
 	require.NoError(tt, err, "signing the intermediate")
@@ -103,4 +108,13 @@ func NewIntermediateCA(tt *testing.T, p *Project, parent CA) CA {
 	require.NoError(tt, err, "installing the intermediate's certificate")
 	require.Equalf(tt, http.StatusOK, imp.StatusCode(), "installing the intermediate's certificate: %s", apierr.Body(imp.Body))
 	return ca
+}
+
+// CACertificate is the CA's active certificate, as `as` reads it.
+func CACertificate(tt *testing.T, as *harness.Principal, ca uuid.UUID) *x509.Certificate {
+	tt.Helper()
+	res, err := as.API.GetCaCertificateWithResponse(tt.Context(), ca)
+	require.NoError(tt, err, "reading the CA certificate")
+	require.NotNilf(tt, res.JSON200, "reading the CA certificate returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	return ParseLeaf(tt, res.JSON200.Certificate)
 }

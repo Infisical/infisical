@@ -22,7 +22,7 @@ func TestInternalCA_Renew(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		g := pki.NewGraph(t, tn)
-		before := caCert(t, tn.Admin.API, g.CA.ID)
+		before := pki.CACertificate(t, tn.Admin, g.CA.ID)
 		leaf := pki.ParseLeaf(t, g.Issue(t, pki.ServerCertificate(id.Short()+".renew.test")).Certificate)
 
 		// Action
@@ -36,7 +36,7 @@ func TestInternalCA_Renew(t *testing.T) {
 		require.NotNilf(t, res.JSON200, "renewing returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 		renewed := pki.ParseLeaf(t, res.JSON200.Certificate)
 		require.NotEqual(t, before.SerialNumber, renewed.SerialNumber)
-		require.Equal(t, renewed.SerialNumber, caCert(t, tn.Admin.API, g.CA.ID).SerialNumber)
+		require.Equal(t, renewed.SerialNumber, pki.CACertificate(t, tn.Admin, g.CA.ID).SerialNumber)
 		all, err := tn.Admin.API.GetCaCertificatesWithResponse(t.Context(), g.CA.ID)
 		require.NoError(t, err)
 		require.NotNil(t, all.JSON200)

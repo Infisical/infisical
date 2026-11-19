@@ -49,7 +49,7 @@ func TestInternalCA_Ocsp(t *testing.T) {
 		leaf := pki.ParseLeaf(t, g.Issue(t, pki.ServerCertificate(id.Short()+".ocsp.test")).Certificate)
 
 		// Action
-		got := askOcsp(t, tn, g.CA, leaf, caCert(t, tn.Admin.API, g.CA.ID))
+		got := askOcsp(t, tn, g.CA, leaf, pki.CACertificate(t, tn.Admin, g.CA.ID))
 
 		// Assert
 		require.Equal(t, ocsp.Good, got.Status)
@@ -63,9 +63,9 @@ func TestInternalCA_Ocsp(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := pki.NewGraph(t, tn)
 		cert := g.Issue(t, pki.ServerCertificate(id.Short()+".ocsp.test"))
-		leaf, issuer := pki.ParseLeaf(t, cert.Certificate), caCert(t, tn.Admin.API, g.CA.ID)
+		leaf, issuer := pki.ParseLeaf(t, cert.Certificate), pki.CACertificate(t, tn.Admin, g.CA.ID)
 		require.Equal(t, ocsp.Good, askOcsp(t, tn, g.CA, leaf, issuer).Status)
-		revokedAt := pki.Revoke(t, tn.Admin, cert, api.KEYCOMPROMISE)
+		revokedAt := pki.Revoke(t, tn.Admin, cert, api.RevokeCertificateJSONBodyRevocationReasonKEYCOMPROMISE)
 
 		// Action
 		got := askOcsp(t, tn, g.CA, leaf, issuer)
@@ -85,7 +85,7 @@ func TestInternalCA_Ocsp(t *testing.T) {
 		require.NoError(t, err)
 
 		// Action
-		got := askOcsp(t, tn, g.CA, &x509.Certificate{SerialNumber: serial}, caCert(t, tn.Admin.API, g.CA.ID))
+		got := askOcsp(t, tn, g.CA, &x509.Certificate{SerialNumber: serial}, pki.CACertificate(t, tn.Admin, g.CA.ID))
 
 		// Assert
 		require.Equal(t, ocsp.Unknown, got.Status)

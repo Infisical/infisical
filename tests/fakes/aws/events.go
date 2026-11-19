@@ -1,5 +1,7 @@
 package aws
 
+import "time"
+
 // ParameterDetail names a Parameter Store parameter by its full name, such as /app/DB_URL.
 type ParameterDetail struct {
 	Name string `json:"name"`
@@ -75,7 +77,13 @@ type CertificateImported struct {
 type CertificateRequested struct{ ACMCertificateDetail }
 type CertificateIssued struct{ ACMCertificateDetail }
 type CertificateExported struct{ ACMCertificateDetail }
-type CertificateDeleted struct{ ACMCertificateDetail }
+
+// CertificateDeleted carries when it happened, for tests that check it came after an
+// event from another service.
+type CertificateDeleted struct {
+	ACMCertificateDetail
+	At time.Time `json:"at"`
+}
 type CertificateTagged struct{ ACMCertificateDetail }
 
 func (CertificateImported) EventName() string  { return "aws.certificate-imported" }
@@ -103,7 +111,14 @@ type ListenerCertificateAdded struct {
 	CertificateArn string `json:"certificateArn"`
 }
 
-func (ListenerCertificateAdded) EventName() string { return "aws.listener-certificate-added" }
+type ListenerCertificateRemoved struct {
+	ListenerDetail
+	CertificateArn string    `json:"certificateArn"`
+	At             time.Time `json:"at"`
+}
+
+func (ListenerCertificateAdded) EventName() string   { return "aws.listener-certificate-added" }
+func (ListenerCertificateRemoved) EventName() string { return "aws.listener-certificate-removed" }
 
 // RecordDetail names a Route 53 record set.
 type RecordDetail struct {

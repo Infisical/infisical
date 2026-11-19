@@ -7,18 +7,8 @@ import (
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture/pki"
 	"github.com/Infisical/infisical/tests/internal/apierr"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
-
-// caCert is the CA's active certificate, as the API returns it.
-func caCert(t *testing.T, client *api.ClientWithResponses, ca uuid.UUID) *x509.Certificate {
-	t.Helper()
-	res, err := client.GetCaCertificateWithResponse(t.Context(), ca)
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "reading the CA certificate returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	return pki.ParseLeaf(t, res.JSON200.Certificate)
-}
 
 func caStatus(t *testing.T, client *api.ClientWithResponses, ca pki.CA) string {
 	t.Helper()

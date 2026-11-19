@@ -44,6 +44,7 @@ import (
 	"github.com/Infisical/infisical/tests/fakes/panos"
 	"github.com/Infisical/infisical/tests/fakes/servicenow"
 	"github.com/Infisical/infisical/tests/fakes/smtp"
+	"github.com/Infisical/infisical/tests/fakes/venaficloud"
 	"github.com/Infisical/infisical/tests/fakes/venafitpp"
 	"github.com/Infisical/infisical/tests/fakes/vercel"
 	"github.com/Infisical/infisical/tests/fakes/webhook"
@@ -76,7 +77,7 @@ func main() {
 		ldap.Service, linuxserver.Service,
 		acmeca.Service, cloudflare.Service, dnsmadeeasy.Service, website.Service,
 		f5bigip.Service, kemp.Service, netscaler.Service, nutanix.Service, panos.Service,
-		digicert.Service, godaddy.Service, venafitpp.Service, azureadcs.Service,
+		digicert.Service, godaddy.Service, venafitpp.Service, venaficloud.Service, azureadcs.Service,
 		chef.Service,
 		imperva.Provisioning, imperva.REST,
 	}

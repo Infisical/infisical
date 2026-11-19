@@ -49,11 +49,19 @@ func NewGraph(tt *testing.T, tn *harness.Tenant, opts ...GraphOption) *Graph {
 		policy = *cfg.policy
 	}
 	g := &Graph{ApplicationGraph: NewApplicationGraph(tt, tn, policy)}
-	EnableAPI(tt, g.App, g.Profile, api.SetPkiApplicationApiEnrollmentJSONRequestBody{})
-	g.Operator = tn.NewUser(tt, harness.WithName("operator"))
-	g.Project.Grant(tt, g.Operator)
-	AddMember(tt, g.App, g.Operator, "operator")
+	g.Operator = newOperator(tt, g.Project, g.App, g.Profile)
 	return g
+}
+
+// newOperator turns on API enrollment for profile in app and adds a new Product Member
+// as the application's operator.
+func newOperator(tt *testing.T, p *Project, app Application, profile Profile) *harness.Principal {
+	tt.Helper()
+	EnableAPI(tt, app, profile, api.SetPkiApplicationApiEnrollmentJSONRequestBody{})
+	operator := p.tn.NewUser(tt, harness.WithName("operator"))
+	p.Grant(tt, operator)
+	AddMember(tt, app, operator, "operator")
+	return operator
 }
 
 // NewApplicationGraph builds an ApplicationGraph issuing under a policy built from

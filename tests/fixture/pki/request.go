@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"slices"
 	"testing"
-	"time"
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/harness"
@@ -20,14 +19,11 @@ import (
 // admin sees them, so a refusal can show that nothing was issued.
 func Requests(tt *testing.T, p *Project, profile Profile) int {
 	tt.Helper()
-	res, err := p.tn.Admin.API.ListCertificateRequestsWithResponse(tt.Context(), &api.ListCertificateRequestsParams{ProfileIds: new(profile.ID.String())})
-	require.NoError(tt, err, "listing certificate requests")
-	require.Equalf(tt, http.StatusOK, res.StatusCode(), "listing certificate requests: %s", apierr.Body(res.Body))
-	return len(res.JSON200.CertificateRequests)
+	res, err := p.tn.Admin.API.SearchCertificateRequestsWithResponse(tt.Context(), api.SearchCertificateRequestsJSONRequestBody{ProfileIds: &[]uuid.UUID{profile.ID}})
+	require.NoError(tt, err, "searching certificate requests")
+	require.NotNilf(tt, res.JSON200, "searching certificate requests returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	return int(res.JSON200.TotalCount)
 }
-
-// pollReadTimeout bounds one read, so one stuck response cannot use up the whole wait.
-const pollReadTimeout = 10 * time.Second
 
 var finalRequestStatuses = []api.GetCertificateRequest200JSONResponseBodyStatus{
 	api.GetCertificateRequest200JSONResponseBodyStatusIssued,
@@ -42,33 +38,23 @@ func WaitRequest(tt *testing.T, as *harness.Principal, requestID string, want []
 	tt.Helper()
 	reqID, err := uuid.Parse(requestID)
 	require.NoError(tt, err)
-	type outcome struct {
-		res *api.GetCertificateRequestResponse
-		err error
-	}
-	got, err := wait.For(tt.Context(), func(ctx context.Context) (outcome, bool, error) {
-		ctx, cancel := context.WithTimeout(ctx, pollReadTimeout)
-		defer cancel()
-		res, err := as.API.GetCertificateRequestWithResponse(ctx, reqID)
-		if err != nil {
-			return outcome{}, false, fmt.Errorf("reading the certificate request: %w", err)
+	res := Poll(tt, "reading the certificate request", func(ctx context.Context) (*api.GetCertificateRequestResponse, int, []byte, error) {
+		res, status, body, err := ReadResponse(ctx, func(ctx context.Context) (*http.Response, error) {
+			return as.API.GetCertificateRequest(ctx, reqID)
+		}, api.ParseGetCertificateRequestResponse)
+		if err == nil && status == http.StatusOK && res.JSON200 == nil {
+			err = fmt.Errorf("content type %q", res.HTTPResponse.Header.Get("Content-Type"))
 		}
-		if res.JSON200 == nil {
-			err := fmt.Errorf("reading the certificate request returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-			temporary := res.StatusCode() == http.StatusTooManyRequests || res.StatusCode() >= 500
-			return outcome{err: err}, !temporary, err
-		}
-		status := res.JSON200.Status
-		return outcome{res: res}, slices.Contains(want, status) || slices.Contains(finalRequestStatuses, status), nil
+		return res, status, body, err
+	}, func(res *api.GetCertificateRequestResponse) bool {
+		return slices.Contains(want, res.JSON200.Status) || slices.Contains(finalRequestStatuses, res.JSON200.Status)
 	}, opts...)
-	require.NoErrorf(tt, err, "waiting for the certificate request to reach %v", want)
-	require.NoError(tt, got.err)
-	if status := got.res.JSON200.Status; !slices.Contains(want, status) {
+	if status := res.JSON200.Status; !slices.Contains(want, status) {
 		msg := "<none>"
-		if got.res.JSON200.ErrorMessage != nil {
-			msg = *got.res.JSON200.ErrorMessage
+		if res.JSON200.ErrorMessage != nil {
+			msg = *res.JSON200.ErrorMessage
 		}
 		require.FailNowf(tt, "the certificate request ended in the wrong status", "want %v, got %s: %s", want, status, msg)
 	}
-	return got.res
+	return res
 }

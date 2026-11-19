@@ -1,6 +1,6 @@
 // Package f5bigip fakes the iControl REST API of an F5 BIG-IP: token logins, chunked
-// file uploads, the ssl-cert and ssl-key file objects installed from those uploads, and
-// saving the running configuration.
+// file uploads, the ssl-cert and ssl-key file objects installed from those uploads, the
+// Client SSL profiles that reference them, and saving the running configuration.
 package f5bigip
 
 import (
@@ -10,8 +10,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -68,7 +70,7 @@ func Password(user string) string {
 }
 
 func (service) New(events fakenet.Emitter) fakenet.Fake {
-	b := &BigIP{Downloads: map[string]string{}, SSLCerts: map[string]string{}, SSLKeys: map[string]string{}, tokens: map[string]bool{}, events: events}
+	b := &BigIP{Downloads: map[string]string{}, SSLCerts: map[string]string{}, SSLKeys: map[string]string{}, ClientSSLProfiles: map[string]*Profile{}, tokens: map[string]bool{}, events: events}
 	b.mux = http.NewServeMux()
 	b.mux.HandleFunc("POST /mgmt/shared/authn/login", b.login)
 	b.mux.HandleFunc("PATCH /mgmt/shared/authz/tokens/{token}", b.authed(b.extendToken))
@@ -77,6 +79,10 @@ func (service) New(events fakenet.Emitter) fakenet.Fake {
 	b.mux.HandleFunc("POST /mgmt/shared/file-transfer/uploads/{name}", b.authed(b.upload))
 	b.mux.HandleFunc("POST /mgmt/tm/util/unix-rm", b.authed(b.unixRm))
 	b.mux.HandleFunc("POST /mgmt/tm/sys/config", b.authed(b.saveConfig))
+	b.mux.HandleFunc("GET /mgmt/tm/ltm/profile/client-ssl", b.authed(b.listClientSSLProfiles))
+	b.mux.HandleFunc("GET /mgmt/tm/ltm/profile/client-ssl/{id}", b.authed(b.getClientSSLProfile))
+	b.mux.HandleFunc("PATCH /mgmt/tm/ltm/profile/client-ssl/{id}", b.authed(b.updateClientSSLProfile))
+	b.mux.HandleFunc("GET /mgmt/tm/ltm/profile/server-ssl", b.authed(b.listServerSSLProfiles))
 	for kind, store := range map[string]func() map[string]string{
 		"ssl-cert": func() map[string]string { return b.SSLCerts },
 		"ssl-key":  func() map[string]string { return b.SSLKeys },
@@ -97,6 +103,8 @@ type BigIP struct {
 	// installed from its source file.
 	SSLCerts map[string]string `json:"sslCerts"`
 	SSLKeys  map[string]string `json:"sslKeys"`
+	// ClientSSLProfiles maps a Client SSL profile's full path to the profile.
+	ClientSSLProfiles map[string]*Profile `json:"clientSslProfiles"`
 	// Saved is the ssl-cert and ssl-key objects the saved configuration holds, as of
 	// the last save, each as "<kind> <full path>".
 	Saved []string `json:"saved"`
@@ -107,23 +115,44 @@ type BigIP struct {
 	events fakenet.Emitter
 }
 
+// Profile is a Client SSL profile, holding the certificates it serves.
+type Profile struct {
+	CertKeyChain []CertKeyChainEntry `json:"certKeyChain"`
+}
+
+// CertKeyChainEntry is one certificate a profile serves, each reference the full path
+// of an ssl-cert or ssl-key object.
+type CertKeyChainEntry struct {
+	Name  string `json:"name"`
+	Cert  string `json:"cert,omitempty"`
+	Key   string `json:"key,omitempty"`
+	Chain string `json:"chain,omitempty"`
+}
+
+// ClientSSLProfile seeds a Client SSL profile at a full path such as /Common/web-ssl.
+func ClientSSLProfile(path string, entries ...CertKeyChainEntry) any {
+	return map[string]any{"clientSslProfiles": map[string]*Profile{path: {CertKeyChain: entries}}}
+}
+
 func (b *BigIP) ServeHTTP(w http.ResponseWriter, r *http.Request) { b.mux.ServeHTTP(w, r) }
 
 func (b *BigIP) Snapshot() ([]byte, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return json.Marshal(struct {
-		Downloads map[string]string `json:"downloads"`
-		SSLCerts  map[string]string `json:"sslCerts"`
-		SSLKeys   map[string]string `json:"sslKeys"`
-		Saved     []string          `json:"saved"`
-	}{b.Downloads, b.SSLCerts, b.SSLKeys, b.Saved})
+		Downloads         map[string]string   `json:"downloads"`
+		SSLCerts          map[string]string   `json:"sslCerts"`
+		SSLKeys           map[string]string   `json:"sslKeys"`
+		ClientSSLProfiles map[string]*Profile `json:"clientSslProfiles"`
+		Saved             []string            `json:"saved"`
+	}{b.Downloads, b.SSLCerts, b.SSLKeys, b.ClientSSLProfiles, b.Saved})
 }
 
 func (b *BigIP) Seed(raw []byte) error {
 	var in struct {
-		SSLCerts map[string]string `json:"sslCerts"`
-		SSLKeys  map[string]string `json:"sslKeys"`
+		SSLCerts          map[string]string   `json:"sslCerts"`
+		SSLKeys           map[string]string   `json:"sslKeys"`
+		ClientSSLProfiles map[string]*Profile `json:"clientSslProfiles"`
 	}
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return err
@@ -135,6 +164,9 @@ func (b *BigIP) Seed(raw []byte) error {
 	}
 	for k, v := range in.SSLKeys {
 		b.SSLKeys[k] = v
+	}
+	for k, v := range in.ClientSSLProfiles {
+		b.ClientSSLProfiles[k] = v
 	}
 	return nil
 }
@@ -377,10 +409,92 @@ func (b *BigIP) deleteFile(kind string, store func() map[string]string) http.Han
 			f5Error(w, http.StatusNotFound, "01020036:3: The requested "+kind+" ("+p+") was not found.")
 			return
 		}
+		if profile, used := b.referencedBy(p); used {
+			b.mu.Unlock()
+			f5Error(w, http.StatusBadRequest, "01070313:3: The requested "+kind+" ("+p+") is in use by Client SSL profile ("+profile+") and cannot be deleted.")
+			return
+		}
 		delete(store(), p)
 		b.mu.Unlock()
 		b.events.Publish(FileObjectDeleted{Kind: kind, Path: p})
 		writeJSON(w, http.StatusOK, map[string]any{})
+	}
+}
+
+// referencedBy names a Client SSL profile whose cert-key-chain uses the object at p.
+func (b *BigIP) referencedBy(p string) (string, bool) {
+	for _, path := range slices.Sorted(maps.Keys(b.ClientSSLProfiles)) {
+		for _, e := range b.ClientSSLProfiles[path].CertKeyChain {
+			if e.Cert == p || e.Key == p || e.Chain == p {
+				return path, true
+			}
+		}
+	}
+	return "", false
+}
+
+func (b *BigIP) listClientSSLProfiles(w http.ResponseWriter, _ *http.Request) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	items := []map[string]any{}
+	for _, p := range slices.Sorted(maps.Keys(b.ClientSSLProfiles)) {
+		items = append(items, profileState(p, b.ClientSSLProfiles[p]))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"kind": "tm:ltm:profile:client-ssl:client-sslcollectionstate", "items": items})
+}
+
+func (b *BigIP) getClientSSLProfile(w http.ResponseWriter, r *http.Request) {
+	p, _ := objectPath(r.PathValue("id"))
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	profile, ok := b.ClientSSLProfiles[p]
+	if !ok {
+		f5Error(w, http.StatusNotFound, "01020036:3: The requested Client SSL Profile ("+p+") was not found.")
+		return
+	}
+	writeJSON(w, http.StatusOK, profileState(p, profile))
+}
+
+func (b *BigIP) updateClientSSLProfile(w http.ResponseWriter, r *http.Request) {
+	p, _ := objectPath(r.PathValue("id"))
+	var in struct {
+		CertKeyChain *[]CertKeyChainEntry `json:"certKeyChain"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		f5Error(w, http.StatusBadRequest, "Found invalid JSON body in the request.")
+		return
+	}
+	b.mu.Lock()
+	profile, ok := b.ClientSSLProfiles[p]
+	if !ok {
+		b.mu.Unlock()
+		f5Error(w, http.StatusNotFound, "01020036:3: The requested Client SSL Profile ("+p+") was not found.")
+		return
+	}
+	if in.CertKeyChain != nil {
+		profile.CertKeyChain = *in.CertKeyChain
+	}
+	chain := slices.Clone(profile.CertKeyChain)
+	out := profileState(p, profile)
+	b.mu.Unlock()
+	b.events.Publish(ClientSSLProfileUpdated{Path: p, CertKeyChain: chain})
+	writeJSON(w, http.StatusOK, out)
+}
+
+// listServerSSLProfiles answers an empty collection: this fake holds no Server SSL
+// profiles, but removal enumerates them before deleting a certificate.
+func (b *BigIP) listServerSSLProfiles(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"kind": "tm:ltm:profile:server-ssl:server-sslcollectionstate", "items": []any{}})
+}
+
+func profileState(p string, profile *Profile) map[string]any {
+	partition, name, _ := strings.Cut(strings.TrimPrefix(p, "/"), "/")
+	return map[string]any{
+		"kind":         "tm:ltm:profile:client-ssl:client-sslstate",
+		"name":         name,
+		"partition":    partition,
+		"fullPath":     p,
+		"certKeyChain": profile.CertKeyChain,
 	}
 }
 

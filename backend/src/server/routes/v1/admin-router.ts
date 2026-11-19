@@ -8,10 +8,11 @@ import {
   OrgMembershipsSchema,
   OrgMembershipStatus
 } from "@app/db/schemas";
-import { ENCRYPTION_KEY_ROTATION } from "@app/lib/api-docs";
+import { CRON_JOB_TRIGGER, ENCRYPTION_KEY_ROTATION } from "@app/lib/api-docs";
 import { getConfig, overridableKeys } from "@app/lib/config/env";
+import { CronJobName } from "@app/lib/cron/cron-job";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { AllowedEmailDomainsSchema } from "@app/lib/validator";
 import {
   PASSWORD_POLICY,
@@ -1389,6 +1390,43 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const emailDomain = await server.services.superAdmin.deleteEmailDomain(req.params);
       return { emailDomain };
+    }
+  });
+
+  // Lets blackbox tests run a scheduled job on demand instead of waiting for its schedule.
+  server.route({
+    method: "POST",
+    url: "/cron-jobs/:jobName/trigger",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "triggerAdminCronJob",
+      description: CRON_JOB_TRIGGER.description,
+      params: z.object({
+        jobName: z.nativeEnum(CronJobName).describe(CRON_JOB_TRIGGER.jobName)
+      }),
+      response: {
+        200: z.object({
+          jobName: z.string().describe(CRON_JOB_TRIGGER.response.jobName)
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      if (!getConfig().ALLOW_CRON_JOB_TRIGGER) {
+        throw new ForbiddenRequestError({
+          message:
+            "Triggering scheduled jobs is turned off on this instance. Set ALLOW_CRON_JOB_TRIGGER=true to allow it."
+        });
+      }
+      await server.services.cronJob.runNow(req.params.jobName);
+      return { jobName: req.params.jobName };
     }
   });
 };

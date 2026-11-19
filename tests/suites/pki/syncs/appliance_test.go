@@ -15,9 +15,9 @@ func applianceObjectName(cert pki.Certificate) string {
 	return "Infisical-" + strings.ReplaceAll(cert.ID.String(), "-", "")
 }
 
-// applianceIntermediate is the certificate's issuing CA, the one chain certificate a
+// syncedIntermediate is the certificate's issuing CA, the one chain certificate a
 // sync delivers: the root is left out of synced chains.
-func applianceIntermediate(t *testing.T, cert pki.Certificate) string {
+func syncedIntermediate(t *testing.T, cert pki.Certificate) string {
 	t.Helper()
 	block, _ := pem.Decode([]byte(cert.Chain))
 	require.NotNil(t, block, "the certificate has no chain")

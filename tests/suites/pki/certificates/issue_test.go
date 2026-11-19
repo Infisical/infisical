@@ -72,7 +72,7 @@ func TestCertificate_Issue(t *testing.T) {
 		got := g.Issue(t, pki.ServerCertificate(id.Short()+".identity.test"), pki.As(identity))
 
 		// Assert
-		read := mustReadCert(t, identity, got.ID)
+		read := pki.ReadCertificate(t, identity, got.ID)
 		require.Equal(t, &g.App.ID, read.JSON200.Certificate.ApplicationId)
 	})
 

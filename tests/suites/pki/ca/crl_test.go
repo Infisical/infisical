@@ -17,13 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func parseCrl(t *testing.T, der []byte) *x509.RevocationList {
-	t.Helper()
-	crl, err := x509.ParseRevocationList(der)
-	require.NoError(t, err)
-	return crl
-}
-
 func TestInternalCA_Crl(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
@@ -39,11 +32,11 @@ func TestInternalCA_Crl(t *testing.T) {
 		kept := g.Issue(t, pki.ServerCertificate(id.Short()+".crl.test"))
 
 		// Action
-		revokedAt := pki.Revoke(t, tn.Admin, revoked, api.KEYCOMPROMISE)
+		revokedAt := pki.Revoke(t, tn.Admin, revoked, api.RevokeCertificateJSONBodyRevocationReasonKEYCOMPROMISE)
 
 		// Assert
-		crl := parseCrl(t, pki.CurrentCRL(t, tn.Admin.API, g.CA))
-		require.NoError(t, crl.CheckSignatureFrom(caCert(t, tn.Admin.API, g.CA.ID)))
+		crl := pki.ParseCRL(t, pki.CurrentCRL(t, tn.Admin.API, g.CA))
+		require.NoError(t, crl.CheckSignatureFrom(pki.CACertificate(t, tn.Admin, g.CA.ID)))
 		serials := map[string]x509.RevocationListEntry{}
 		for _, e := range crl.RevokedCertificateEntries {
 			serials[e.SerialNumber.String()] = e
@@ -62,7 +55,7 @@ func TestInternalCA_Crl(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := pki.NewGraph(t, tn)
 		cert := g.Issue(t, pki.ServerCertificate(id.Short()+".crl.test"))
-		pki.Revoke(t, tn.Admin, cert, api.KEYCOMPROMISE)
+		pki.Revoke(t, tn.Admin, cert, api.RevokeCertificateJSONBodyRevocationReasonKEYCOMPROMISE)
 		leaf := pki.ParseLeaf(t, cert.Certificate)
 		require.NotEmpty(t, leaf.CRLDistributionPoints)
 		u, err := url.Parse(leaf.CRLDistributionPoints[0])

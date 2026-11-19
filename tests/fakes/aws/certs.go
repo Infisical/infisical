@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	fakeissuer "github.com/Infisical/infisical/tests/fakes/internal/issuer"
 	"github.com/youmark/pkcs8"
 )
 
@@ -66,10 +67,6 @@ func serialNumber() *big.Int {
 	return n.Add(n, big.NewInt(1))
 }
 
-func encodeCert(der []byte) string {
-	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))
-}
-
 func encodeKey(k crypto.Signer) (string, error) {
 	der, err := x509.MarshalPKCS8PrivateKey(k)
 	if err != nil {
@@ -106,7 +103,7 @@ func newIssuer(commonName string, parent *issuer, keyAlg string) (*issuer, error
 	if err != nil {
 		return nil, err
 	}
-	return &issuer{Certificate: encodeCert(der), PrivateKey: keyPEM}, nil
+	return &issuer{Certificate: fakeissuer.PEM(der), PrivateKey: keyPEM}, nil
 }
 
 func (i *issuer) parse() (*x509.Certificate, crypto.Signer, error) {
@@ -121,8 +118,9 @@ func (i *issuer) parse() (*x509.Certificate, crypto.Signer, error) {
 	return cert, key, nil
 }
 
-// sign issues a leaf for pub, valid for days from now.
-func (i *issuer) sign(pub crypto.PublicKey, subject pkix.Name, dnsNames []string, days int) (*x509.Certificate, string, error) {
+// sign issues a leaf for pub, valid for days from now, for serverAuth and clientAuth
+// unless eku names other extended key usages.
+func (i *issuer) sign(pub crypto.PublicKey, subject pkix.Name, dnsNames []string, days int, eku ...x509.ExtKeyUsage) (*x509.Certificate, string, error) {
 	ca, caKey, err := i.parse()
 	if err != nil {
 		return nil, "", err
@@ -136,6 +134,9 @@ func (i *issuer) sign(pub crypto.PublicKey, subject pkix.Name, dnsNames []string
 		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 	}
+	if len(eku) > 0 {
+		tmpl.ExtKeyUsage = eku
+	}
 	der, err := x509.CreateCertificate(rand.Reader, tmpl, ca, pub, caKey)
 	if err != nil {
 		return nil, "", err
@@ -144,7 +145,7 @@ func (i *issuer) sign(pub crypto.PublicKey, subject pkix.Name, dnsNames []string
 	if err != nil {
 		return nil, "", err
 	}
-	return cert, encodeCert(der), nil
+	return cert, fakeissuer.PEM(der), nil
 }
 
 func parseCertificate(p string) (*x509.Certificate, error) {

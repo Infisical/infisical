@@ -35,7 +35,8 @@ func TestCertificateProfile_Permission(t *testing.T) {
 		require.Equal(t, "You are not allowed to create on certificate-policies", apierr.Message(res.Body))
 		again, err := tn.Admin.API.CreateCertificatePolicyWithResponse(t.Context(), body)
 		require.NoError(t, err)
-		require.Equalf(t, http.StatusOK, again.StatusCode(), "the name should still be free: %s", apierr.Body(again.Body))
+		require.NotNilf(t, again.JSON200, "the admin creating the policy returned %d: %s", again.StatusCode(), apierr.Body(again.Body))
+		require.Equal(t, body.Name, again.JSON200.CertificatePolicy.Name, "a taken name gets a suffix, so the refused request must not have written the policy")
 	})
 
 	t.Run("should refuse an application operator creating a profile", func(t *testing.T) {

@@ -35,26 +35,18 @@ func TestAwsPcaCA_Issue(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		proj := pki.CertManager(t, tn)
-		conn := fixture.NewAppConnection(t, tn, fixture.AWSAccessKeyAppConnection)
-		acct := aws.Open(t, conn.FakenetAdmin(t), conn.Nonce())
-		arn := aws.PrivateCAARN(conn.Nonce())
-		acct.Seed(t, aws.SeedPrivateCA(arn, "ACTIVE"))
-		res, err := tn.Admin.API.CreateAwsPcaCertificateAuthorityV1WithResponse(t.Context(), awsPcaCABody(proj, conn, "pca-"+id.Short(), arn))
-		require.NoError(t, err)
-		require.NotNilf(t, res.JSON200, "creating the CA returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-		issuer := newOrderIssuer(t, tn, proj, pki.CA{ID: res.JSON200.Id})
+		r := newPcaRig(t, tn)
 		name := id.Short() + ".pca.test"
 
 		// Action
-		got := issuer.settled(t, issuer.order(t, pki.ServerCertificate(name)).JSON200.CertificateRequestId)
+		got := r.o.Settled(t, r.o.order(t, pki.ServerCertificate(name)).JSON200.CertificateRequestId)
 
 		// Assert
 		require.Equalf(t, api.GetCertificateRequest200JSONResponseBodyStatusIssued, got.JSON200.Status, "error: %v", got.JSON200.ErrorMessage)
 		leaf := pki.ParseLeaf(t, *got.JSON200.Certificate)
 		require.Equal(t, name, leaf.Subject.CommonName)
 		require.Equal(t, []string{name}, leaf.DNSNames)
-		require.NoError(t, leaf.CheckSignatureFrom(pki.ParseLeaf(t, acct.ACMPCA.State(t).Authorities[arn].Certificate)))
+		require.NoError(t, leaf.CheckSignatureFrom(pki.ParseLeaf(t, r.Acct.ACMPCA.State(t).Authorities[r.ARN].Certificate)))
 	})
 
 	t.Run("should refuse to create the CA when the Private CA is not active", func(t *testing.T) {

@@ -82,6 +82,9 @@ type Firewall struct {
 	// Profiles maps an SSL/TLS service profile to the certificate it presents.
 	Profiles  map[string]string `json:"profiles"`
 	Committed *Commit           `json:"committed,omitempty"`
+	// ImportRefusal, when set, is the reason the device refuses every import. PAN-OS
+	// serves every call on /api/, so fakenet's path rules cannot single imports out.
+	ImportRefusal string `json:"importRefusal,omitempty"`
 
 	mu     sync.Mutex
 	keys   map[string]bool
@@ -106,20 +109,31 @@ type Commit struct {
 // certificate.
 func WithProfile(name string) any { return Firewall{Profiles: map[string]string{name: ""}} }
 
+// WithCertificate is a seed fragment for a shared certificate, without a key, that
+// Infisical did not import.
+func WithCertificate(name, publicKey string) any {
+	return Firewall{Certificates: map[string]*Certificate{name: {PublicKey: publicKey}}}
+}
+
+// RefuseImports is a seed fragment making the device refuse every import with reason.
+func RefuseImports(reason string) any { return Firewall{ImportRefusal: reason} }
+
 func (f *Firewall) Snapshot() ([]byte, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return json.Marshal(struct {
-		Certificates map[string]*Certificate `json:"certificates"`
-		Profiles     map[string]string       `json:"profiles"`
-		Committed    *Commit                 `json:"committed,omitempty"`
-	}{f.Certificates, f.Profiles, f.Committed})
+		Certificates  map[string]*Certificate `json:"certificates"`
+		Profiles      map[string]string       `json:"profiles"`
+		Committed     *Commit                 `json:"committed,omitempty"`
+		ImportRefusal string                  `json:"importRefusal,omitempty"`
+	}{f.Certificates, f.Profiles, f.Committed, f.ImportRefusal})
 }
 
 func (f *Firewall) Seed(raw []byte) error {
 	var in struct {
-		Certificates map[string]*Certificate `json:"certificates"`
-		Profiles     map[string]string       `json:"profiles"`
+		Certificates  map[string]*Certificate `json:"certificates"`
+		Profiles      map[string]string       `json:"profiles"`
+		ImportRefusal string                  `json:"importRefusal"`
 	}
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return err
@@ -131,6 +145,9 @@ func (f *Firewall) Seed(raw []byte) error {
 	}
 	for k, v := range in.Profiles {
 		f.Profiles[k] = v
+	}
+	if in.ImportRefusal != "" {
+		f.ImportRefusal = in.ImportRefusal
 	}
 	return nil
 }
@@ -275,6 +292,14 @@ func (f *Firewall) config(w http.ResponseWriter, params url.Values) {
 			writeError(w, http.StatusBadRequest, "12", "Invalid xpath")
 			return
 		}
+		if users := f.profilesUsing(m[1]); len(users) > 0 {
+			refs := make([]string, 0, len(users))
+			for _, p := range users {
+				refs = append(refs, "shared -> ssl-tls-service-profile -> "+p+" -> certificate")
+			}
+			writeError(w, http.StatusBadRequest, "10", m[1]+" cannot be deleted because of references from: "+strings.Join(refs, ", "))
+			return
+		}
 		delete(f.Certificates, m[1])
 		f.events.Publish(CertificateDeleted{Name: m[1]})
 		writeSuccess(w, "<msg>command succeeded</msg>")
@@ -315,6 +340,16 @@ func (f *Firewall) get(xpath string) string {
 	return ""
 }
 
+func (f *Firewall) profilesUsing(certificate string) []string {
+	var out []string
+	for _, name := range slices.Sorted(maps.Keys(f.Profiles)) {
+		if f.Profiles[name] == certificate {
+			out = append(out, name)
+		}
+	}
+	return out
+}
+
 func certificateEntry(name string, c *Certificate) string {
 	out := `<entry name="` + escape(name) + `"><public-key>` + escape(c.PublicKey) + `</public-key>`
 	if c.PrivateKey != "" {
@@ -334,6 +369,13 @@ func profileEntry(name, cert string) string {
 func (f *Firewall) importFile(w http.ResponseWriter, params url.Values, file string) {
 	name := params.Get("certificate-name")
 	category := params.Get("category")
+	f.mu.Lock()
+	refusal := f.ImportRefusal
+	f.mu.Unlock()
+	if refusal != "" {
+		writeError(w, http.StatusBadRequest, "13", refusal)
+		return
+	}
 	certPEM, rest, found := strings.Cut(file, "-----END CERTIFICATE-----")
 	if name == "" || params.Get("format") != "pem" || !found || !strings.Contains(certPEM, "-----BEGIN CERTIFICATE-----") {
 		writeError(w, http.StatusBadRequest, "18", "Import of "+name+" failed. Invalid certificate file")
@@ -397,8 +439,6 @@ func writeError(w http.ResponseWriter, status int, code, message string) {
 	_, _ = io.WriteString(w, `<response status="error" code="`+code+`"><msg><line>`+escape(message)+`</line></msg></response>`)
 }
 
-func escape(s string) string {
-	var b strings.Builder
-	_ = xml.EscapeText(&b, []byte(s))
-	return b.String()
-}
+// escape leaves newlines raw, as PAN-OS does in a certificate's PEM: xml.EscapeText would
+// write them as &#xA;, which Infisical's XML parser does not decode.
+var escape = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;", "'", "&apos;").Replace

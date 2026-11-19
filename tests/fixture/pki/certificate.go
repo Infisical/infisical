@@ -137,8 +137,24 @@ func ParseLeaf(tt *testing.T, bundle string) *x509.Certificate {
 // operator, and returns when it was revoked.
 func Revoke(tt *testing.T, as *harness.Principal, cert Certificate, reason api.RevokeCertificateJSONBodyRevocationReason) time.Time {
 	tt.Helper()
-	res, err := as.API.RevokeCertificateWithResponse(tt.Context(), cert.ID.String(), api.RevokeCertificateJSONRequestBody{RevocationReason: reason})
-	require.NoError(tt, err, "revoking a certificate")
+	res := RevokeRequest(tt, as, cert.ID, reason)
 	require.NotNilf(tt, res.JSON200, "revoking a certificate returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 	return res.JSON200.RevokedAt
+}
+
+// RevokeRequest asks to revoke a certificate as `as` and returns the response, whatever it is.
+func RevokeRequest(tt *testing.T, as *harness.Principal, certID uuid.UUID, reason api.RevokeCertificateJSONBodyRevocationReason) *api.RevokeCertificateResponse {
+	tt.Helper()
+	res, err := as.API.RevokeCertificateWithResponse(tt.Context(), certID.String(), api.RevokeCertificateJSONRequestBody{RevocationReason: reason})
+	require.NoError(tt, err, "revoking a certificate")
+	return res
+}
+
+// ReadCertificate reads a certificate as `as` and requires the read to succeed.
+func ReadCertificate(tt *testing.T, as *harness.Principal, id uuid.UUID) *api.GetCertificateResponse {
+	tt.Helper()
+	res, err := as.API.GetCertificateWithResponse(tt.Context(), id, nil)
+	require.NoError(tt, err, "reading the certificate")
+	require.NotNilf(tt, res.JSON200, "reading the certificate returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	return res
 }

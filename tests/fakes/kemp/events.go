@@ -15,6 +15,15 @@ type IntermediateAdded struct {
 	Name string `json:"name"`
 }
 
+// VirtualServiceModified is the list of certificates a Virtual Service serves replaced.
+type VirtualServiceModified struct {
+	Index     string   `json:"index"`
+	CertFiles []string `json:"certFiles"`
+}
+
 func (CertificateAdded) EventName() string   { return "kemp.certificate-added" }
 func (CertificateDeleted) EventName() string { return "kemp.certificate-deleted" }
 func (IntermediateAdded) EventName() string  { return "kemp.intermediate-added" }
+func (VirtualServiceModified) EventName() string {
+	return "kemp.virtual-service-modified"
+}

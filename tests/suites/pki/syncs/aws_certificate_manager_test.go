@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"net/http"
 	"strings"
@@ -200,15 +201,9 @@ func TestAwsCertificateManagerPkiSync_Sync(t *testing.T) {
 
 		// Assert
 		cloudSyncAwait(t, s.get, s.id, nil, "failed")
-		res, err := tn.Admin.API.ListPkiSyncCertificatesWithResponse(t.Context(), uuid.MustParse(s.id), nil)
-		require.NoError(t, err)
-		require.NotNilf(t, res.JSON200, "listing the sync's certificates returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-		require.Len(t, res.JSON200.Certificates, 1)
-		got := res.JSON200.Certificates[0]
-		require.Equal(t, api.ListPkiSyncCertificates200JSONResponseBodyCertificatesSyncStatusFailed, got.SyncStatus)
 		require.Equal(t, "Failed to sync certificate: Failed to import certificate Infisical-"+strings.ReplaceAll(cert.ID.String(), "-", "")+
 			" to AWS Certificate Manager: User: arn:aws:iam::"+aws.AccountID(s.conn.Nonce())+":user/infisical is not authorized to perform: "+
-			"acm:ImportCertificate because no identity-based policy allows the acm:ImportCertificate action", *got.LastSyncMessage)
+			"acm:ImportCertificate because no identity-based policy allows the acm:ImportCertificate action", failureMessage(t, tn, s.id))
 		require.Empty(t, s.acct.Certificates(t))
 	})
 }
@@ -265,4 +260,113 @@ func acmPublicKey(t *testing.T, keyPEM string) crypto.PublicKey {
 	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	require.NoError(t, err)
 	return key.(crypto.Signer).Public()
+}
+
+func TestAwsCertificateManagerPkiSync_Update(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should store new settings without calling ACM", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		g, cert := issued(t, tn)
+		s := newACMSync(t, tn, g, nil, cert)
+		cloudSyncSucceeded(t, s.get, s.id, nil)
+		mark := s.acct.ACM.Mark(t)
+		calls := len(s.acct.ACM.Calls(t))
+		name := "acm-renamed-" + id.Short()
+		var body api.UpdateAwsCertificateManagerPkiSyncJSONRequestBody
+		fromJSON(t, &body, map[string]any{
+			"name":              name,
+			"description":       "rotated by the platform team",
+			"isAutoSyncEnabled": false,
+			"syncOptions":       map[string]any{"certificateNameSchema": "Renamed-{{certificateId}}", "preserveArn": false},
+		})
+
+		// Action
+		res, err := tn.Admin.API.UpdateAwsCertificateManagerPkiSyncWithResponse(t.Context(), s.id, body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "updating the sync: %s", apierr.Body(res.Body))
+		got := acmSyncSettings(t, tn, s.id)
+		require.Equal(t, name, got.Name)
+		require.Equal(t, "rotated by the platform team", got.Description)
+		require.False(t, got.IsAutoSyncEnabled)
+		require.Equal(t, "Renamed-{{certificateId}}", got.SyncOptions.CertificateNameSchema)
+		require.False(t, got.SyncOptions.PreserveArn)
+		s.acct.ACM.ExpectNoEvent[aws.CertificateImported](t, nil, fakenet.Since(mark))
+		require.Len(t, s.acct.ACM.Calls(t), calls, "updating the settings should not reach ACM")
+	})
+
+	t.Run("should remove the certificates a changed filter no longer matches and push the ones it now matches", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		p := pki.CertManager(t, tn)
+		ca := pki.NewIntermediateCA(t, p, pki.NewInternalCA(t, p))
+		policy := pki.NewPolicy(t, p, pki.AllowAll(t))
+		before, after := pki.NewProfile(t, p, ca, policy), pki.NewProfile(t, p, ca, policy)
+		app := pki.NewApplication(t, p, before, after)
+		pki.EnableAPI(t, app, before, api.SetPkiApplicationApiEnrollmentJSONRequestBody{})
+		pki.EnableAPI(t, app, after, api.SetPkiApplicationApiEnrollmentJSONRequestBody{})
+		dropped := pki.Issue(t, app, before, pki.ServerCertificate(id.Short()+".sync.test"))
+		kept := pki.Issue(t, app, after, pki.ServerCertificate(id.Short()+".sync.test"))
+		conn := fixture.NewAppConnection(t, tn, fixture.AWSAccessKeyAppConnection)
+		acct := aws.Open(t, conn.FakenetAdmin(t), conn.Nonce())
+		var create api.CreateAwsCertificateManagerPkiSyncJSONRequestBody
+		fromJSON(t, &create, map[string]any{
+			"name":              "acm-" + id.Short(),
+			"connectionId":      conn.ID.String(),
+			"applicationId":     app.ID,
+			"filters":           map[string]any{"profileIds": []uuid.UUID{before.ID}},
+			"destinationConfig": map[string]any{"region": "us-east-1"},
+			"syncOptions":       map[string]any{"certificateNameSchema": "Infisical-{{certificateId}}"},
+		})
+		created, err := tn.Admin.API.CreateAwsCertificateManagerPkiSyncWithResponse(t.Context(), create)
+		require.NoError(t, err)
+		require.NotNilf(t, created.JSON200, "creating the sync returned %d: %s", created.StatusCode(), apierr.Body(created.Body))
+		syncID := created.JSON200.Id.String()
+		cloudSyncSucceeded(t, tn.Admin.API.GetAwsCertificateManagerPkiSync, syncID, nil)
+		droppedARN := acmCertificateFor(t, acct, dropped).ARN
+		mark := acct.ACM.Mark(t)
+		var body api.UpdateAwsCertificateManagerPkiSyncJSONRequestBody
+		fromJSON(t, &body, map[string]any{"filters": map[string]any{"profileIds": []uuid.UUID{after.ID}}})
+
+		// Action
+		res, err := tn.Admin.API.UpdateAwsCertificateManagerPkiSyncWithResponse(t.Context(), syncID, body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "updating the filters: %s", apierr.Body(res.Body))
+		acct.ACM.ExpectEvent[aws.CertificateDeleted](t, func(e aws.CertificateDeleted) bool { return e.ARN == droppedARN }, fakenet.Since(mark))
+		acct.ACM.ExpectEvent[aws.CertificateImported](t, func(e aws.CertificateImported) bool { return !e.Reimported }, fakenet.Since(mark))
+		held := acct.Certificates(t)
+		require.Len(t, held, 1)
+		require.NotNil(t, acmCertificateFor(t, acct, kept), "ACM should hold the certificate the new filter matches")
+	})
+}
+
+// acmSyncSettingsView is what the get route reports of a sync's own settings.
+type acmSyncSettingsView struct {
+	Name              string `json:"name"`
+	Description       string `json:"description"`
+	IsAutoSyncEnabled bool   `json:"isAutoSyncEnabled"`
+	SyncOptions       struct {
+		CertificateNameSchema string `json:"certificateNameSchema"`
+		PreserveArn           bool   `json:"preserveArn"`
+	} `json:"syncOptions"`
+}
+
+func acmSyncSettings(t *testing.T, tn *harness.Tenant, syncID string) acmSyncSettingsView {
+	t.Helper()
+	res, err := tn.Admin.API.GetAwsCertificateManagerPkiSyncWithResponse(t.Context(), syncID)
+	require.NoError(t, err)
+	require.Equalf(t, http.StatusOK, res.StatusCode(), "reading the sync: %s", apierr.Body(res.Body))
+	var out acmSyncSettingsView
+	require.NoError(t, json.Unmarshal(res.Body, &out))
+	return out
 }

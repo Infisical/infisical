@@ -49,6 +49,11 @@ type ACMCertificate struct {
 	NotAfter                time.Time          `json:"notAfter"`
 	ImportedAt              *time.Time         `json:"importedAt,omitempty"`
 	Imports                 int                `json:"imports,omitempty"`
+	// Renewals counts RenewCertificate calls that put a new body on the ARN.
+	Renewals         int        `json:"renewals,omitempty"`
+	RenewedAt        *time.Time `json:"renewedAt,omitempty"`
+	RevokedAt        *time.Time `json:"revokedAt,omitempty"`
+	RevocationReason string     `json:"revocationReason,omitempty"`
 }
 
 // ValidationRecord is the DNS record ACM asks for to prove control of a domain.
@@ -95,6 +100,8 @@ func newCertificateManager(svc service, events fakenet.Emitter) fakenet.Fake {
 		"DeleteCertificate":      m.deleteCertificate,
 		"AddTagsToCertificate":   m.addTags,
 		"ListTagsForCertificate": m.listTags,
+		"RenewCertificate":       m.renewCertificate,
+		"RevokeCertificate":      m.revokeCertificate,
 	}}
 	return m
 }
@@ -374,6 +381,13 @@ func (m *CertificateManager) describeCertificate(c call) (any, *apiError) {
 	if cert.ImportedAt != nil {
 		out["ImportedAt"] = epoch(*cert.ImportedAt)
 	}
+	if cert.RenewedAt != nil {
+		out["RenewalSummary"] = map[string]any{"RenewalStatus": "SUCCESS", "UpdatedAt": epoch(*cert.RenewedAt)}
+	}
+	if cert.RevokedAt != nil {
+		out["RevokedAt"] = epoch(*cert.RevokedAt)
+		out["RevocationReason"] = cert.RevocationReason
+	}
 	if cert.Type == "AMAZON_ISSUED" {
 		out["Options"] = map[string]string{"Export": map[bool]string{true: "ENABLED", false: "DISABLED"}[cert.Exportable]}
 		dvos := make([]map[string]any, 0, len(cert.Validation))
@@ -507,7 +521,7 @@ func (m *CertificateManager) deleteCertificate(c call) (any, *apiError) {
 		return nil, aErr
 	}
 	delete(m.Certificates, cert.ARN)
-	m.events.Publish(CertificateDeleted{ACMCertificateDetail{ARN: cert.ARN, DomainName: cert.DomainName}})
+	m.events.Publish(CertificateDeleted{ACMCertificateDetail{ARN: cert.ARN, DomainName: cert.DomainName}, time.Now()})
 	return nil, nil
 }
 

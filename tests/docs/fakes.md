@@ -144,14 +144,17 @@ record together through the account's `Route53` scope, with the value in quotes 
 stores it:
 
 ```go
+zone := "z" + id.Short() + ".acme.test"
 cp.Route53.Seed(t, map[string]any{"zones": map[string]any{"Z1": map[string]any{
-	"name":    "acme.test",
-	"records": []map[string]any{{"name": "_acme-challenge.acme.test", "type": "TXT", "values": []string{`"token"`}}},
+	"name":    zone,
+	"records": []map[string]any{{"name": "_acme-challenge." + zone, "type": "TXT", "values": []string{`"token"`}}},
 }}})
 ```
 
-Reseeding the zone without the record withdraws it, and so does the end of the test. A
-removal leaves the name alone if another account has written it since.
+Reseeding the zone without the record withdraws it, and so does the end of the test. DNS
+names are shared by every account, so generate the zone per test as above. A removal
+leaves the name alone only if another account has since written different values to it;
+two tests that publish the same name and values remove each other's answer.
 
 ## TLS certificates
 
@@ -166,28 +169,36 @@ name := "www-" + id.Short() + ".acme.test"
 fakenet.ServeCertificate(t, fixture.FakenetAdmin(t, tn), name, certPEM, keyPEM)
 ```
 
-`fakenet.StallPort` accepts TCP connections on every name and never answers, for a test
-that needs a client to wait out its own timeout, such as a discovery scan kept running. It
-closes a connection after 30 seconds, so the client's timeout must be shorter, and it holds
-at most 64 at once: a connection past that is closed as soon as it is accepted.
+fakenet also listens on port `fakenet.StallPort` for every name. It accepts TCP
+connections and never answers, for a test that needs a client to wait out its own timeout,
+such as a discovery scan kept running. Point the product at `<name>:<fakenet.StallPort>`.
+fakenet closes a connection after 30 seconds, so the client's timeout must be shorter, and
+it holds at most 64 at once: a connection past that is closed as soon as it is accepted.
 
 ## Certificate Manager
 
 | Fake | Host | Scope | Used by |
 |---|---|---|---|
 | `website` | every name under `web.test`, over plain HTTP on port 80 | the label left of `web.test` | ACME HTTP-01: the web server behind a name the test makes up (`website.Name(scope, "www")`) |
-| `acmeca` | `acme.ca.test/<scope>` | path | the upstream CA an ACME CA in Infisical orders from; verifies JWS, nonces and CSR names, and validates DNS-01 against the TXT records the DNS provider fakes publish |
+| `acmeca` | `acme.ca.test/<scope>` | path | the upstream CA an ACME CA in Infisical orders from; verifies JWS, nonces and CSR names, validates DNS-01 against the TXT records the DNS provider fakes publish, and records revocations by the ordering account (`Issued[].RevokedAt`) |
 | `cloudflare` | `api.cloudflare.com` | bearer API token | Cloudflare App Connections, DNS-01 records, and custom certificate syncs (paged list, upload, in-place update, delete) |
 | `dnsmadeeasy` | `api.dnsmadeeasy.com` | `x-dnsme-apiKey`, with the HMAC checked | DNS Made Easy App Connections and DNS-01 records |
-| `digicert` | `www.digicert.com` | `X-DC-DEVKEY` API key | DigiCert CAs: orders issue at once for names under a domain the account validated, otherwise wait for the DCV TXT record and a validation trigger |
-| `godaddy` | `api.godaddy.com` | API key of the `sso-key` header | GoDaddy CAs: certificates issue once domain control is proven and validation is triggered |
-| `venafitpp` | `tpp.venafi.test/<scope>` | path; the user is checked against `venafitpp.Password` | Venafi TPP CAs: OAuth tokens, requests under a policy folder, a retrieve that answers 202 once before the certificate, token revocation |
-| `aws` | `acm`, `acm-pca` and `elasticloadbalancing` in `us-east-1`; `route53.amazonaws.com` | access key id | AWS Private CA (`SeedPrivateCA`), ACM Public CA (a requested certificate reports its validation CNAME and is issued on the first status check, so ACM's 60 second retry never runs, but exports only once Route 53 serves that CNAME), ACM, ELB and Secrets Manager certificate syncs (`SeedListener`), Route 53 DNS-01 and validation records (`SeedHostedZone`; TXT records served through `Emitter.SetTXT`) |
-| `azureadcs` | `certsrv.adcs.test/<scope>` | path; NTLMv2 checked against `azureadcs.Password` | Azure AD CS CAs: web enrollment through `certfnsh.asp` and `certnew.cer`, denying templates the CA does not publish |
+| `digicert` | `www.digicert.com` | `X-DC-DEVKEY` API key | DigiCert CAs: orders issue at once for names under a domain the account validated, otherwise wait for the DCV TXT record and a validation trigger; checks the product, `dns_names` and `dcv_method`, and puts the order's names on the certificate. Renewals (`RenewalIneligible`), reissues (held while a name's validation lapsed, `WithoutValidatedDomain`), reissue cancellation, certificate and order revocation, organization validations, the status-changes feed, orders issued in CertCentral for a test to import (`WithIssuedOrder`), and upstream revocations a poller finds (`RevokeOrder`) |
+| `godaddy` | `api.godaddy.com` | API key of the `sso-key` header | GoDaddy CAs: certificates issue once domain control is proven and validation is triggered; renewal under the same id only from 60 days before to 30 days after expiry (`WithValidityDays` issues short-lived certificates to be inside it), and revocation |
+| `venafitpp` | `tpp.venafi.test/<scope>` | path; the user is checked against `venafitpp.Password` | Venafi TPP CAs: OAuth tokens, requests under a policy folder (a request for an existing object re-enrolls it, counted in `Requests`), a retrieve that answers 202 once before the certificate, token revocation |
+| `venaficloud` | `api.venafi.cloud` | `tppl-api-key` API key | Venafi TLS Protect Cloud: an intermediate CA signed through the CA's signing configuration; applications and issuing templates (`WithApplication`), requests issued as submitted, certificate contents |
+| `aws` | `acm`, `acm-pca` and `elasticloadbalancing` in `us-east-1`; `route53.amazonaws.com` | access key id | AWS Private CA (`SeedPrivateCA`; revocation by serial; passthrough templates copy the CSR's extended key usages), ACM Public CA (renewal in place, revocation; a requested certificate reports its validation CNAME and is issued on the first status check, so ACM's 60 second retry never runs, but exports only once Route 53 serves that CNAME), ACM and Secrets Manager certificate syncs, ELB certificate syncs (`SeedListener`; certificates added to and removed from a listener's list, never its default), Route 53 DNS-01 and validation records (`SeedHostedZone`; TXT records served through `Emitter.SetTXT`) |
+| `azureadcs` | `certsrv.adcs.test/<scope>` | path; NTLMv2 checked against `azureadcs.Password` | Azure AD CS CAs: web enrollment through `certfnsh.asp` and `certnew.cer` (`ReqID=CACert` serves the CA), denying templates the CA does not publish, listing templates on `certrqxt.asp`, and signing intermediates under CA templates (`WithCATemplates`) |
 | `azure` | `*.vault.azure.net` | client id the tenant's token names (`fixture.AzureClientID`) | Azure Key Vault certificate syncs: PEM imports with their key, versions, soft-deleted names |
 | `chef` | `api.chef.io` | `X-Ops-UserId`, with the request signature checked | Chef certificate syncs: data bag items |
 | `imperva` | `my.imperva.com`, `api.imperva.com` | `x-API-Id`, with the key checked | Imperva certificate syncs: a site's custom certificate per key type |
-| `oauth` | `www.googleapis.com` (the instance's JWT grant), `iamcredentials.googleapis.com`, `certificatemanager.googleapis.com` | impersonated service account email (`fixture.GCPServiceAccountEmail`) | GCP Certificate Manager syncs: impersonation, certificates, long-running operations done once polled |
+| `oauth` | `www.googleapis.com` (the instance's JWT grant), `iamcredentials.googleapis.com`, `certificatemanager.googleapis.com` | impersonated service account email (`fixture.GCPServiceAccountEmail`) | GCP Certificate Manager syncs: impersonation, certificates (deletion refused while a certificate map entry points at one), certificate maps (`SeedGCPCertificateMap`) and their entries, long-running operations done once polled |
+
+The GCP sync needs the instance's own service account, so the shared stack sets
+`INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL`. That also configures GCP dynamic
+secrets and PAM GCP on every shared suite. A test of their response when it is missing
+needs an isolated harness with
+`harness.WithInfisicalEnv("INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL", "")`.
 
 A host registered as `*.<domain>` answers for every name under it; an exact host wins.
 
@@ -197,12 +208,12 @@ Appliances the customer hosts have no real hostname, so each fake answers on one
 
 | Fake | Host | Scope | Used by |
 |---|---|---|---|
-| `f5bigip` | `bigip.f5.test` | username, then the `X-F5-Auth-Token` it issued | F5 BIG-IP certificate syncs: file uploads, `ssl-cert` and `ssl-key` installs, config saves |
-| `kemp` | `loadmaster.kemp.test` | basic auth username | Kemp LoadMaster certificate syncs: certificates and the intermediate store |
-| `netscaler` | `adc.netscaler.test` | username, then the `NITRO_AUTH_TOKEN` cookie it issued | NetScaler certificate syncs: file uploads, certkeys, config saves |
+| `f5bigip` | `bigip.f5.test` | username, then the `X-F5-Auth-Token` it issued | F5 BIG-IP certificate syncs: file uploads, `ssl-cert` and `ssl-key` installs, Client SSL profiles that use them, config saves |
+| `kemp` | `loadmaster.kemp.test` | basic auth username | Kemp LoadMaster certificate syncs: certificates, the intermediate store, and the certificates each Virtual Service serves |
+| `netscaler` | `adc.netscaler.test` | username, then the `NITRO_AUTH_TOKEN` cookie it issued | NetScaler certificate syncs: file uploads, certkeys, their SSL vserver bindings, config saves |
 | `nutanix` | `prism.nutanix.test` | basic auth username or `X-ntnx-api-key` | Nutanix Prism Central certificate syncs: the cluster certificate, replaced only with the current ETag |
-| `panos` | `firewall.panos.test` | username, then the `X-PAN-KEY` it issued | Palo Alto Networks certificate syncs: keygen, imports, SSL/TLS service profiles, commits |
-| `linuxserver` | SSH on port 22, any name (`ssh.linux.test` in connections) | SSH username | Linux Server certificate syncs: password logins, an SFTP filesystem (`WithDirectories`), and the `chown` command; anything else exits 127 |
+| `panos` | `firewall.panos.test` | username, then the `X-PAN-KEY` it issued | Palo Alto Networks certificate syncs: keygen, imports, SSL/TLS service profiles, commits, deletes refused while a profile presents the certificate (`WithCertificate`), and an import refusal (`RefuseImports`), since every call shares `/api/` and `Fail` cannot single imports out |
+| `linuxserver` | SSH on port 22, any name (`ssh.linux.test` in connections) | SSH username | Linux Server certificate syncs: password logins, an SFTP filesystem (`WithDirectories`) that reports a missing directory with the `no such file` status text OpenSSH sends, and the `chown` command; anything else exits 127 |
 
 Like LDAP, `linuxserver` is not HTTP: fakenet serves it on its own listener and finds the
 host by the username of each login. Seed and read it through the admin API.

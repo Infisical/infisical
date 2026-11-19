@@ -10,6 +10,7 @@ import (
 	"encoding/pem"
 	"maps"
 	"net/http"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -230,6 +231,14 @@ type CertificateManager struct {
 	// way a create finishes a moment after it is accepted.
 	Operations map[string]*GCPOperation `json:"operations"`
 
+	// CertificateMaps are certificate maps by full resource name
+	// (projects/<p>/locations/global/certificateMaps/<id>), seeded by the test.
+	CertificateMaps map[string]*GCPCertificateMap `json:"certificateMaps"`
+
+	// CertificateMapEntries are entries by full resource name
+	// (<certificate map>/certificateMapEntries/<id>).
+	CertificateMapEntries map[string]*GCPCertificateMapEntry `json:"certificateMapEntries"`
+
 	mu     sync.Mutex
 	mux    *http.ServeMux
 	events fakenet.Emitter
@@ -247,6 +256,32 @@ type GCPCertificate struct {
 	ExpireTime     string            `json:"expireTime,omitempty"`
 	CreateTime     string            `json:"createTime,omitempty"`
 	UpdateTime     string            `json:"updateTime,omitempty"`
+}
+
+// GCPCertificateMap is a certificate map a load balancer's target proxy serves from.
+type GCPCertificateMap struct {
+	Name       string `json:"name"`
+	CreateTime string `json:"createTime,omitempty"`
+}
+
+// GCPCertificateMapEntry points a hostname, or the map's primary matcher, at up to
+// four certificates by full resource name.
+type GCPCertificateMapEntry struct {
+	Name         string            `json:"name"`
+	Description  string            `json:"description,omitempty"`
+	Labels       map[string]string `json:"labels,omitempty"`
+	Certificates []string          `json:"certificates,omitempty"`
+	Hostname     string            `json:"hostname,omitempty"`
+	Matcher      string            `json:"matcher,omitempty"`
+	State        string            `json:"state,omitempty"`
+	CreateTime   string            `json:"createTime,omitempty"`
+	UpdateTime   string            `json:"updateTime,omitempty"`
+}
+
+// SeedGCPCertificateMap is a seed fragment creating an empty global certificate map.
+func SeedGCPCertificateMap(project, mapID string) any {
+	name := "projects/" + project + "/locations/global/certificateMaps/" + mapID
+	return map[string]any{"certificateMaps": map[string]any{name: map[string]any{"name": name}}}
 }
 
 // GCPOperation is a long-running operation a write started.
@@ -269,10 +304,29 @@ func (GCPCertificateCreated) EventName() string { return "gcp.certificate-create
 func (GCPCertificateUpdated) EventName() string { return "gcp.certificate-updated" }
 func (GCPCertificateDeleted) EventName() string { return "gcp.certificate-deleted" }
 
+// GCPCertificateMapEntryDetail names a certificate map entry and the certificates it
+// points at after the change.
+type GCPCertificateMapEntryDetail struct {
+	Name         string   `json:"name"`
+	Certificates []string `json:"certificates,omitempty"`
+}
+
+type GCPCertificateMapEntryCreated struct{ GCPCertificateMapEntryDetail }
+type GCPCertificateMapEntryUpdated struct{ GCPCertificateMapEntryDetail }
+type GCPCertificateMapEntryDeleted struct{ GCPCertificateMapEntryDetail }
+
+func (GCPCertificateMapEntryCreated) EventName() string { return "gcp.certificate-map-entry-created" }
+func (GCPCertificateMapEntryUpdated) EventName() string { return "gcp.certificate-map-entry-updated" }
+func (GCPCertificateMapEntryDeleted) EventName() string { return "gcp.certificate-map-entry-deleted" }
+
 const gcpPageSize = 100
 
 func newGCPCertificateManager(events fakenet.Emitter) fakenet.Fake {
-	c := &CertificateManager{Certificates: map[string]*GCPCertificate{}, Operations: map[string]*GCPOperation{}, events: events}
+	c := &CertificateManager{
+		Certificates: map[string]*GCPCertificate{}, Operations: map[string]*GCPOperation{},
+		CertificateMaps: map[string]*GCPCertificateMap{}, CertificateMapEntries: map[string]*GCPCertificateMapEntry{},
+		events: events,
+	}
 	c.mux = http.NewServeMux()
 	c.mux.HandleFunc("GET /v1/projects/{project}/locations/{location}/certificates", c.list)
 	c.mux.HandleFunc("POST /v1/projects/{project}/locations/{location}/certificates", c.create)
@@ -280,6 +334,11 @@ func newGCPCertificateManager(events fakenet.Emitter) fakenet.Fake {
 	c.mux.HandleFunc("PATCH /v1/projects/{project}/locations/{location}/certificates/{id}", c.patch)
 	c.mux.HandleFunc("DELETE /v1/projects/{project}/locations/{location}/certificates/{id}", c.delete)
 	c.mux.HandleFunc("GET /v1/projects/{project}/locations/{location}/operations/{op}", c.operation)
+	c.mux.HandleFunc("GET /v1/projects/{project}/locations/{location}/certificateMaps/{map}", c.getMap)
+	c.mux.HandleFunc("POST /v1/projects/{project}/locations/{location}/certificateMaps/{map}/certificateMapEntries", c.createEntry)
+	c.mux.HandleFunc("GET /v1/projects/{project}/locations/{location}/certificateMaps/{map}/certificateMapEntries/{entry}", c.getEntry)
+	c.mux.HandleFunc("PATCH /v1/projects/{project}/locations/{location}/certificateMaps/{map}/certificateMapEntries/{entry}", c.patchEntry)
+	c.mux.HandleFunc("DELETE /v1/projects/{project}/locations/{location}/certificateMaps/{map}/certificateMapEntries/{entry}", c.deleteEntry)
 	return c
 }
 
@@ -443,6 +502,11 @@ func (c *CertificateManager) delete(w http.ResponseWriter, r *http.Request) {
 		gcpError(w, http.StatusNotFound, "NOT_FOUND", "Resource '"+name+"' was not found")
 		return
 	}
+	if entry := c.entryUsing(name); entry != "" {
+		c.mu.Unlock()
+		gcpError(w, http.StatusBadRequest, "FAILED_PRECONDITION", "Certificate '"+name+"' is in use by certificate map entry '"+entry+"'")
+		return
+	}
 	delete(c.Certificates, name)
 	op := c.startOperation(locationOf(r), nil)
 	c.mu.Unlock()
@@ -465,6 +529,170 @@ func (c *CertificateManager) operation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// entryUsing is the name of an entry that points at the certificate, or "". The
+// caller holds c.mu.
+func (c *CertificateManager) entryUsing(certificate string) string {
+	for name, entry := range c.CertificateMapEntries {
+		if slices.Contains(entry.Certificates, certificate) {
+			return name
+		}
+	}
+	return ""
+}
+
+func mapOf(r *http.Request) string {
+	return locationOf(r) + "/certificateMaps/" + r.PathValue("map")
+}
+
+func (c *CertificateManager) getMap(w http.ResponseWriter, r *http.Request) {
+	name := mapOf(r)
+	c.mu.Lock()
+	m, ok := c.CertificateMaps[name]
+	var out GCPCertificateMap
+	if ok {
+		out = *m
+	}
+	c.mu.Unlock()
+	if !ok {
+		gcpError(w, http.StatusNotFound, "NOT_FOUND", "Resource '"+name+"' was not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+type certificateMapEntryBody struct {
+	Description  string            `json:"description"`
+	Labels       map[string]string `json:"labels"`
+	Certificates []string          `json:"certificates"`
+	Hostname     string            `json:"hostname"`
+	Matcher      string            `json:"matcher"`
+}
+
+// missingCertificate is the first certificate an entry names that does not exist, or
+// "". The caller holds c.mu.
+func (c *CertificateManager) missingCertificate(names []string) string {
+	for _, name := range names {
+		if _, ok := c.Certificates[name]; !ok {
+			return name
+		}
+	}
+	return ""
+}
+
+func (c *CertificateManager) createEntry(w http.ResponseWriter, r *http.Request) {
+	entryID := r.URL.Query().Get("certificateMapEntryId")
+	if entryID == "" {
+		gcpError(w, http.StatusBadRequest, "INVALID_ARGUMENT", "certificate_map_entry_id is required")
+		return
+	}
+	var in certificateMapEntryBody
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		gcpError(w, http.StatusBadRequest, "INVALID_ARGUMENT", "Invalid JSON payload received.")
+		return
+	}
+	if (in.Hostname == "") == (in.Matcher == "") {
+		gcpError(w, http.StatusBadRequest, "INVALID_ARGUMENT", "exactly one of hostname or matcher must be set")
+		return
+	}
+	mapName := mapOf(r)
+	name := mapName + "/certificateMapEntries/" + entryID
+	now := time.Now().UTC().Format(time.RFC3339)
+	c.mu.Lock()
+	if _, ok := c.CertificateMaps[mapName]; !ok {
+		c.mu.Unlock()
+		gcpError(w, http.StatusNotFound, "NOT_FOUND", "Resource '"+mapName+"' was not found")
+		return
+	}
+	if _, exists := c.CertificateMapEntries[name]; exists {
+		c.mu.Unlock()
+		gcpError(w, http.StatusConflict, "ALREADY_EXISTS", "Resource '"+name+"' already exists")
+		return
+	}
+	if missing := c.missingCertificate(in.Certificates); missing != "" {
+		c.mu.Unlock()
+		gcpError(w, http.StatusBadRequest, "INVALID_ARGUMENT", "Certificate '"+missing+"' does not exist")
+		return
+	}
+	entry := &GCPCertificateMapEntry{
+		Name: name, Description: in.Description, Labels: in.Labels, Certificates: in.Certificates,
+		Hostname: in.Hostname, Matcher: in.Matcher, State: "ACTIVE", CreateTime: now, UpdateTime: now,
+	}
+	c.CertificateMapEntries[name] = entry
+	op := c.startOperation(locationOf(r), *entry)
+	c.mu.Unlock()
+	c.events.Publish(GCPCertificateMapEntryCreated{GCPCertificateMapEntryDetail{Name: name, Certificates: in.Certificates}})
+	writeJSON(w, http.StatusOK, op)
+}
+
+func (c *CertificateManager) getEntry(w http.ResponseWriter, r *http.Request) {
+	name := mapOf(r) + "/certificateMapEntries/" + r.PathValue("entry")
+	c.mu.Lock()
+	entry, ok := c.CertificateMapEntries[name]
+	var out GCPCertificateMapEntry
+	if ok {
+		out = *entry
+	}
+	c.mu.Unlock()
+	if !ok {
+		gcpError(w, http.StatusNotFound, "NOT_FOUND", "Resource '"+name+"' was not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+func (c *CertificateManager) patchEntry(w http.ResponseWriter, r *http.Request) {
+	name := mapOf(r) + "/certificateMapEntries/" + r.PathValue("entry")
+	var in certificateMapEntryBody
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		gcpError(w, http.StatusBadRequest, "INVALID_ARGUMENT", "Invalid JSON payload received.")
+		return
+	}
+	mask := strings.Split(r.URL.Query().Get("updateMask"), ",")
+	c.mu.Lock()
+	entry, ok := c.CertificateMapEntries[name]
+	if !ok {
+		c.mu.Unlock()
+		gcpError(w, http.StatusNotFound, "NOT_FOUND", "Resource '"+name+"' was not found")
+		return
+	}
+	for _, field := range mask {
+		switch strings.TrimSpace(field) {
+		case "certificates":
+			if missing := c.missingCertificate(in.Certificates); missing != "" {
+				c.mu.Unlock()
+				gcpError(w, http.StatusBadRequest, "INVALID_ARGUMENT", "Certificate '"+missing+"' does not exist")
+				return
+			}
+			entry.Certificates = in.Certificates
+		case "labels":
+			entry.Labels = in.Labels
+		case "description":
+			entry.Description = in.Description
+		}
+	}
+	entry.UpdateTime = time.Now().UTC().Format(time.RFC3339)
+	op := c.startOperation(locationOf(r), *entry)
+	certs := slices.Clone(entry.Certificates)
+	c.mu.Unlock()
+	c.events.Publish(GCPCertificateMapEntryUpdated{GCPCertificateMapEntryDetail{Name: name, Certificates: certs}})
+	writeJSON(w, http.StatusOK, op)
+}
+
+func (c *CertificateManager) deleteEntry(w http.ResponseWriter, r *http.Request) {
+	name := mapOf(r) + "/certificateMapEntries/" + r.PathValue("entry")
+	c.mu.Lock()
+	if _, ok := c.CertificateMapEntries[name]; !ok {
+		c.mu.Unlock()
+		gcpError(w, http.StatusNotFound, "NOT_FOUND", "Resource '"+name+"' was not found")
+		return
+	}
+	delete(c.CertificateMapEntries, name)
+	op := c.startOperation(locationOf(r), nil)
+	c.mu.Unlock()
+	c.events.Publish(GCPCertificateMapEntryDeleted{GCPCertificateMapEntryDetail{Name: name}})
+	writeJSON(w, http.StatusOK, op)
 }
 
 // startOperation records a long-running operation that is not done yet; it completes
@@ -505,14 +733,17 @@ func (c *CertificateManager) Snapshot() ([]byte, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return json.Marshal(struct {
-		Certificates map[string]*GCPCertificate `json:"certificates"`
-		Operations   map[string]*GCPOperation   `json:"operations"`
-	}{c.Certificates, c.Operations})
+		Certificates          map[string]*GCPCertificate         `json:"certificates"`
+		Operations            map[string]*GCPOperation           `json:"operations"`
+		CertificateMaps       map[string]*GCPCertificateMap      `json:"certificateMaps"`
+		CertificateMapEntries map[string]*GCPCertificateMapEntry `json:"certificateMapEntries"`
+	}{c.Certificates, c.Operations, c.CertificateMaps, c.CertificateMapEntries})
 }
 
 func (c *CertificateManager) Seed(raw []byte) error {
 	var in struct {
-		Certificates map[string]*GCPCertificate `json:"certificates"`
+		Certificates    map[string]*GCPCertificate    `json:"certificates"`
+		CertificateMaps map[string]*GCPCertificateMap `json:"certificateMaps"`
 	}
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return err
@@ -522,6 +753,10 @@ func (c *CertificateManager) Seed(raw []byte) error {
 	for name, cert := range in.Certificates {
 		cert.Name = name
 		c.Certificates[name] = cert
+	}
+	for name, m := range in.CertificateMaps {
+		m.Name = name
+		c.CertificateMaps[name] = m
 	}
 	return nil
 }

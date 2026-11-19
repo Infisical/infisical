@@ -112,3 +112,62 @@ func TestPanosFake_Certificates(t *testing.T) {
 		require.Equal(t, http.StatusForbidden, code)
 	})
 }
+
+func TestPanosFake_Removal(t *testing.T) {
+	t.Run("should refuse deleting a certificate a profile presents until the profile is switched", func(t *testing.T) {
+		// Setup
+		fakes, fw := newFirewall(t, "u-d")
+		fw.Seed(t, panos.WithCertificate("old", certPEM), panos.WithCertificate("fallback", certPEM),
+			panos.Firewall{Profiles: map[string]string{"portal": "old"}})
+		key := keygen(t, fakes, "u-d")
+		del := url.Values{"type": {"config"}, "action": {"delete"}, "xpath": {"/config/shared/certificate/entry[@name='old']"}}
+		code, body := form(t, fakes, key, del)
+		require.Equal(t, http.StatusBadRequest, code)
+		require.Contains(t, body, `code="10"><msg><line>old cannot be deleted because of references from: shared -&gt; ssl-tls-service-profile -&gt; portal -&gt; certificate`)
+		code, _ = form(t, fakes, key, url.Values{"type": {"config"}, "action": {"edit"},
+			"xpath": {"/config/shared/ssl-tls-service-profile/entry[@name='portal']/certificate"}, "element": {"<certificate>fallback</certificate>"}})
+		require.Equal(t, http.StatusOK, code)
+
+		// Action
+		code, _ = form(t, fakes, key, del)
+
+		// Assert
+		require.Equal(t, http.StatusOK, code)
+		state := fw.State(t)
+		require.NotContains(t, state.Certificates, "old")
+		require.Equal(t, "fallback", state.Profiles["portal"])
+	})
+}
+
+func TestPanosFake_ImportRefusal(t *testing.T) {
+	t.Run("should refuse every import with the seeded reason and store nothing", func(t *testing.T) {
+		// Setup
+		fakes, fw := newFirewall(t, "u-e")
+		fw.Seed(t, panos.RefuseImports("Import of web failed. Certificate storage is full"))
+		key := keygen(t, fakes, "u-e")
+
+		// Action
+		code, body := importFile(t, fakes, key, url.Values{"type": {"import"}, "category": {"certificate"}, "certificate-name": {"web"}, "format": {"pem"}}, certPEM)
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, code)
+		require.Equal(t, `<response status="error" code="13"><msg><line>Import of web failed. Certificate storage is full</line></msg></response>`, body)
+		require.Empty(t, fw.State(t).Certificates)
+	})
+}
+
+func TestPanosFake_ConfigGet(t *testing.T) {
+	t.Run("should return a certificate's PEM with raw newlines", func(t *testing.T) {
+		// Setup
+		fakes, fw := newFirewall(t, "u-f")
+		fw.Seed(t, panos.WithCertificate("web", certPEM))
+		key := keygen(t, fakes, "u-f")
+
+		// Action
+		code, body := form(t, fakes, key, url.Values{"type": {"config"}, "action": {"get"}, "xpath": {"/config/shared/certificate/entry[@name='web']"}})
+
+		// Assert
+		require.Equal(t, http.StatusOK, code)
+		require.Contains(t, body, "<public-key>"+certPEM+"</public-key>")
+	})
+}

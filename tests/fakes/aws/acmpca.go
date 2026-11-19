@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"net/http"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/id"
@@ -40,6 +42,10 @@ type PCAIssuance struct {
 	SigningAlgorithm string `json:"signingAlgorithm"`
 	TemplateArn      string `json:"templateArn"`
 	ValidityDays     int    `json:"validityDays"`
+	// Serial is the leaf's serial in lowercase hex without leading zeros.
+	Serial           string     `json:"serial"`
+	RevokedAt        *time.Time `json:"revokedAt,omitempty"`
+	RevocationReason string     `json:"revocationReason,omitempty"`
 }
 
 func newPrivateCAs(svc service, events fakenet.Emitter) fakenet.Fake {
@@ -49,6 +55,7 @@ func newPrivateCAs(svc service, events fakenet.Emitter) fakenet.Fake {
 		"IssueCertificate":                   p.issue,
 		"GetCertificate":                     p.getCertificate,
 		"GetCertificateAuthorityCertificate": p.getCACertificate,
+		"RevokeCertificate":                  p.revoke,
 	}}
 	return p
 }
@@ -170,7 +177,8 @@ func (s pcaSubject) name() pkix.Name {
 }
 
 // issue signs the CSR, taking the subject and DNS names from ApiPassthrough over the
-// CSR's own, as the APICSRPassthrough templates do.
+// CSR's own. An APICSRPassthrough template also copies the extended key usages the CSR
+// requests, as the real templates copy the CSR's extensions.
 func (p *PrivateCAs) issue(c call) (any, *apiError) {
 	var in struct {
 		CertificateAuthorityArn string
@@ -226,8 +234,12 @@ func (p *PrivateCAs) issue(c call) (any, *apiError) {
 			}
 		}
 	}
+	var eku []x509.ExtKeyUsage
+	if strings.HasSuffix(in.TemplateArn, "APICSRPassthrough/V1") {
+		eku = csrExtKeyUsage(csr)
+	}
 	signer := &issuer{Certificate: ca.Certificate, PrivateKey: ca.PrivateKey}
-	_, leafPEM, err := signer.sign(csr.PublicKey, subject, dnsNames, in.Validity.Value)
+	leaf, leafPEM, err := signer.sign(csr.PublicKey, subject, dnsNames, in.Validity.Value, eku...)
 	if err != nil {
 		return nil, errf(http.StatusInternalServerError, "InternalFailure", "%v", err)
 	}
@@ -235,7 +247,7 @@ func (p *PrivateCAs) issue(c call) (any, *apiError) {
 	if ca.Issued == nil {
 		ca.Issued = map[string]*PCAIssuance{}
 	}
-	ca.Issued[certARN] = &PCAIssuance{Certificate: leafPEM, SigningAlgorithm: in.SigningAlgorithm, TemplateArn: in.TemplateArn, ValidityDays: in.Validity.Value}
+	ca.Issued[certARN] = &PCAIssuance{Certificate: leafPEM, SigningAlgorithm: in.SigningAlgorithm, TemplateArn: in.TemplateArn, ValidityDays: in.Validity.Value, Serial: leaf.SerialNumber.Text(16)}
 	p.events.Publish(PrivateCertificateIssued{CertificateAuthorityArn: ca.ARN, CertificateArn: certARN})
 	return map[string]any{"CertificateArn": certARN}, nil
 }

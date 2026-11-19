@@ -22,8 +22,11 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+// errNoSuchFile sends "no such file" with the status, as OpenSSH's sftp-server sends "No such
+// file", rather than Go's "file does not exist": ssh2 surfaces the server's text, and Infisical
+// matches it, ignoring case, to report a missing destination directory.
 var (
-	errNoSuchFile = os.ErrNotExist
+	errNoSuchFile = sftp.ErrSSHFxNoSuchFile
 	errFailure    = errors.New("failure")
 )
 
@@ -171,7 +174,7 @@ type fs struct{ host *Server }
 func (f *fs) Fileread(r *sftp.Request) (io.ReaderAt, error) {
 	file, isDir, ok := f.host.stat(r.Filepath)
 	if !ok || isDir {
-		return nil, os.ErrNotExist
+		return nil, errNoSuchFile
 	}
 	return strings.NewReader(file.Content), nil
 }
@@ -187,7 +190,7 @@ func (f *fs) Filewrite(r *sftp.Request) (io.WriterAt, error) {
 		return nil, errFailure
 	}
 	if _, isDir, _ := f.host.stat(path.Dir(r.Filepath)); !isDir {
-		return nil, os.ErrNotExist
+		return nil, errNoSuchFile
 	}
 	return &upload{host: f.host, path: r.Filepath, mode: mode}, nil
 }
@@ -196,7 +199,7 @@ func (f *fs) Filecmd(r *sftp.Request) error {
 	switch r.Method {
 	case "Remove":
 		if !f.host.remove(r.Filepath) {
-			return os.ErrNotExist
+			return errNoSuchFile
 		}
 		return nil
 	case "Rename":
@@ -212,7 +215,7 @@ func (f *fs) Filelist(r *sftp.Request) (sftp.ListerAt, error) {
 	case "List":
 		names, ok := f.host.list(r.Filepath)
 		if !ok {
-			return nil, os.ErrNotExist
+			return nil, errNoSuchFile
 		}
 		out := make(listing, 0, len(names))
 		for _, n := range names {
@@ -223,7 +226,7 @@ func (f *fs) Filelist(r *sftp.Request) (sftp.ListerAt, error) {
 	case "Stat", "Lstat":
 		file, isDir, ok := f.host.stat(r.Filepath)
 		if !ok {
-			return nil, os.ErrNotExist
+			return nil, errNoSuchFile
 		}
 		return listing{info{name: path.Base(r.Filepath), file: file, dir: isDir}}, nil
 	}
@@ -264,6 +267,14 @@ func (u *upload) WriteAt(p []byte, off int64) (int, error) {
 	return len(p), nil
 }
 
+// TransferError is called when the connection drops mid-transfer, before the server
+// closes the open file, so Close discards the partial upload instead of storing it.
+func (u *upload) TransferError(error) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	u.failed = true
+}
+
 func (u *upload) Close() error {
 	u.mu.Lock()
 	defer u.mu.Unlock()
@@ -271,7 +282,7 @@ func (u *upload) Close() error {
 		return sftp.ErrSSHFxFailure
 	}
 	if !u.host.put(u.path, bytes.Clone(u.buf), u.mode) {
-		return os.ErrNotExist
+		return errNoSuchFile
 	}
 	return nil
 }

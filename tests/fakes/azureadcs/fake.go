@@ -4,18 +4,23 @@
 //
 // A request is answered with the page AD CS shows for an issued certificate, which
 // links to certnew.cer rather than carrying the certificate, so a client has to read
-// it back.
+// it back. certnew.cer?ReqID=CACert serves the CA's own certificate, and certrqxt.asp
+// lists the published templates. A template seeded as a CA template (a SubCA
+// template) issues a CA certificate under the request's full subject, which is how an
+// intermediate is signed.
 package azureadcs
 
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"net/url"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Infisical/infisical/tests/fakes/internal/issuer"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
@@ -58,6 +63,8 @@ func (service) New(events fakenet.Emitter) fakenet.Fake {
 type Server struct {
 	// Templates are the certificate templates the CA publishes.
 	Templates []string `json:"templates"`
+	// CATemplates are the published templates that issue CA certificates.
+	CATemplates []string `json:"caTemplates"`
 	// Requests by request id.
 	Requests map[int]*Request `json:"requests"`
 	// Root is the CA that signs every certificate, in PEM.
@@ -78,6 +85,8 @@ type Request struct {
 	CommonName  string `json:"commonName"`
 	Disposition string `json:"disposition"`
 	PEM         string `json:"pem,omitempty"`
+	// CA is set when the template issued a CA certificate.
+	CA bool `json:"ca,omitempty"`
 }
 
 func (s *Server) Snapshot() ([]byte, error) {
@@ -89,16 +98,22 @@ func (s *Server) Snapshot() ([]byte, error) {
 
 func (s *Server) Seed(raw []byte) error {
 	var in struct {
-		Templates []string `json:"templates"`
+		Templates   []string `json:"templates"`
+		CATemplates []string `json:"caTemplates"`
 	}
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for _, t := range in.Templates {
+	for _, t := range append(in.Templates, in.CATemplates...) {
 		if !slices.Contains(s.Templates, t) {
 			s.Templates = append(s.Templates, t)
+		}
+	}
+	for _, t := range in.CATemplates {
+		if !slices.Contains(s.CATemplates, t) {
+			s.CATemplates = append(s.CATemplates, t)
 		}
 	}
 	return nil
@@ -150,6 +165,14 @@ func (s *Server) page(w http.ResponseWriter, r *http.Request) {
 	switch r.PathValue("page") {
 	case "", "default.asp", "certrqus.asp":
 		writeHTML(w, pageTitle+"<p>Microsoft Active Directory Certificate Services -- HARNESS-CA</p><p>Request a certificate</p></body></html>")
+	case "certrqxt.asp":
+		s.mu.Lock()
+		var options strings.Builder
+		for _, t := range s.Templates {
+			fmt.Fprintf(&options, `<option value="E;%s;1;1;41;16;-1509949440;0;">%s</option>`, html.EscapeString(t), html.EscapeString(t))
+		}
+		s.mu.Unlock()
+		writeHTML(w, pageTitle+`<form><select id="lbCertTemplateID" name="lbCertTemplate">`+options.String()+`</select></form></body></html>`)
 	default:
 		http.NotFound(w, r)
 	}
@@ -183,13 +206,20 @@ func (s *Server) submit(w http.ResponseWriter, r *http.Request) {
 		writeHTML(w, pageTitle+fmt.Sprintf(`<p>Your certificate request was denied. Your Request Id is %d. The disposition message is "Denied by Policy Module  0x80094800, The requested certificate template is not supported by this CA."</p></body></html>`, id))
 		return
 	}
-	leaf, err := s.ca.Sign(csr, 365)
+	var pemCert string
+	if slices.Contains(s.CATemplates, template) {
+		pemCert, err = s.ca.SignCA(csr, time.Now().AddDate(5, 0, 0))
+	} else {
+		var leaf issuer.Leaf
+		leaf, err = s.ca.Sign(csr, 365)
+		pemCert = leaf.PEM
+	}
 	if err != nil {
 		s.mu.Unlock()
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	req.Disposition, req.PEM = "issued", leaf.PEM
+	req.Disposition, req.PEM, req.CA = "issued", pemCert, slices.Contains(s.CATemplates, template)
 	s.mu.Unlock()
 
 	s.events.Publish(CertificateIssued{RequestID: id, Template: template, Username: req.Username})
@@ -198,6 +228,11 @@ func (s *Server) submit(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) download(w http.ResponseWriter, r *http.Request) {
 	q, _ := url.ParseQuery(r.URL.RawQuery)
+	if q.Get("ReqID") == "CACert" {
+		w.Header().Set("Content-Type", "application/pkix-cert")
+		_, _ = fmt.Fprint(w, s.ca.RootPEM())
+		return
+	}
 	id, _ := strconv.Atoi(q.Get("ReqID"))
 	s.mu.Lock()
 	req := s.Requests[id]

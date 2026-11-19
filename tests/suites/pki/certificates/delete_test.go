@@ -1,7 +1,6 @@
 package certificates_test
 
 import (
-	"crypto/x509"
 	"math/big"
 	"net/http"
 	"testing"
@@ -30,18 +29,17 @@ func TestCertificate_Delete(t *testing.T) {
 		g := pki.NewGraph(t, tn)
 		issued := g.Issue(t, pki.ServerCertificate(id.Short()+".delete.test"))
 		rebuild := g.Issue(t, pki.ServerCertificate(id.Short()+".delete.test"))
-		pki.Revoke(t, tn.Admin, issued, api.KEYCOMPROMISE)
+		pki.Revoke(t, tn.Admin, issued, api.RevokeCertificateJSONBodyRevocationReasonKEYCOMPROMISE)
 
 		// Action
 		res, err := tn.Admin.API.DeleteCertificateWithResponse(t.Context(), issued.ID)
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "deleting answered: %s", apierr.Body(res.Body))
-		pki.Revoke(t, tn.Admin, rebuild, api.KEYCOMPROMISE)
+		pki.Revoke(t, tn.Admin, rebuild, api.RevokeCertificateJSONBodyRevocationReasonKEYCOMPROMISE)
 
 		// Assert
 		require.Equal(t, http.StatusNotFound, readCert(t, tn.Admin, issued.ID).StatusCode())
-		crl, err := x509.ParseRevocationList(pki.CurrentCRL(t, tn.Admin.API, g.CA))
-		require.NoError(t, err)
+		crl := pki.ParseCRL(t, pki.CurrentCRL(t, tn.Admin.API, g.CA))
 		listed := func(cert pki.Certificate) bool {
 			serial, ok := new(big.Int).SetString(cert.SerialNumber, 16)
 			require.True(t, ok, "serial %q is not hex", cert.SerialNumber)

@@ -1,6 +1,6 @@
 // Package netscaler fakes the NITRO configuration API of a NetScaler ADC: login
-// sessions, files under /nsconfig/ssl, certkeys built from those files, and saving the
-// running configuration.
+// sessions, files under /nsconfig/ssl, certkeys built from those files, their bindings
+// to SSL vservers, and saving the running configuration.
 package netscaler
 
 import (
@@ -69,7 +69,7 @@ func Password(user string) string {
 }
 
 func (service) New(events fakenet.Emitter) fakenet.Fake {
-	a := &ADC{Files: map[string]string{}, CertKeys: map[string]*CertKey{}, sessions: map[string]bool{}, events: events}
+	a := &ADC{Files: map[string]string{}, CertKeys: map[string]*CertKey{}, VServers: map[string][]string{}, sessions: map[string]bool{}, events: events}
 	a.mux = http.NewServeMux()
 	a.mux.HandleFunc("POST "+configPrefix+"/login", a.login)
 	a.mux.HandleFunc("POST "+configPrefix+"/logout", a.authed(a.logout))
@@ -78,6 +78,8 @@ func (service) New(events fakenet.Emitter) fakenet.Fake {
 	a.mux.HandleFunc("POST "+configPrefix+"/sslcertkey", a.authed(a.writeCertKey))
 	a.mux.HandleFunc("DELETE "+configPrefix+"/sslcertkey/{name}", a.authed(a.deleteCertKey))
 	a.mux.HandleFunc("POST "+configPrefix+"/nsconfig", a.authed(a.save))
+	a.mux.HandleFunc("PUT "+configPrefix+"/sslvserver_sslcertkey_binding", a.authed(a.bindCertKey))
+	a.mux.HandleFunc("DELETE "+configPrefix+"/sslvserver_sslcertkey_binding/{vserver}", a.authed(a.unbindCertKey))
 	return a
 }
 
@@ -86,6 +88,8 @@ type ADC struct {
 	// Files maps a full path such as /nsconfig/ssl/x.cer to its contents.
 	Files    map[string]string   `json:"files"`
 	CertKeys map[string]*CertKey `json:"certKeys"`
+	// VServers maps an SSL vserver's name to the certkeys bound to it.
+	VServers map[string][]string `json:"vservers"`
 	// Saved is the certkeys the saved configuration holds, as of the last save.
 	Saved []string `json:"saved"`
 
@@ -109,11 +113,30 @@ func (a *ADC) Snapshot() ([]byte, error) {
 	return json.Marshal(struct {
 		Files    map[string]string   `json:"files"`
 		CertKeys map[string]*CertKey `json:"certKeys"`
+		VServers map[string][]string `json:"vservers"`
 		Saved    []string            `json:"saved"`
-	}{a.Files, a.CertKeys, a.Saved})
+	}{a.Files, a.CertKeys, a.VServers, a.Saved})
 }
 
-func (a *ADC) Seed([]byte) error { return nil }
+func (a *ADC) Seed(raw []byte) error {
+	var in struct {
+		VServers map[string][]string `json:"vservers"`
+	}
+	if err := json.Unmarshal(raw, &in); err != nil {
+		return err
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for name, bound := range in.VServers {
+		a.VServers[name] = bound
+	}
+	return nil
+}
+
+// VServer seeds an SSL vserver with no certkey bound.
+func VServer(name string) any {
+	return map[string]any{"vservers": map[string][]string{name: {}}}
+}
 
 func (a *ADC) authed(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -253,6 +276,11 @@ func (a *ADC) deleteCertKey(w http.ResponseWriter, r *http.Request) {
 		nitroError(w, http.StatusNotFound, 1540, "Certificate does not exist")
 		return
 	}
+	if a.boundTo(name) != "" {
+		a.mu.Unlock()
+		nitroError(w, 599, 1586, "Certificate is bound to a vserver")
+		return
+	}
 	delete(a.CertKeys, name)
 	if strings.Contains(r.URL.Query().Get("args"), "deletefromdevice:true") {
 		delete(a.Files, ck.Cert)
@@ -275,6 +303,68 @@ func (a *ADC) save(w http.ResponseWriter, r *http.Request) {
 	saved := append([]string{}, a.Saved...)
 	a.mu.Unlock()
 	a.events.Publish(ConfigSaved{CertKeys: saved})
+	done(w, http.StatusOK)
+}
+
+func (a *ADC) boundTo(certKey string) string {
+	for _, vserver := range slices.Sorted(maps.Keys(a.VServers)) {
+		if slices.Contains(a.VServers[vserver], certKey) {
+			return vserver
+		}
+	}
+	return ""
+}
+
+func (a *ADC) bindCertKey(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Binding struct {
+			VServerName string `json:"vservername"`
+			CertKeyName string `json:"certkeyname"`
+		} `json:"sslvserver_sslcertkey_binding"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil || in.Binding.VServerName == "" || in.Binding.CertKeyName == "" {
+		nitroError(w, http.StatusBadRequest, 1095, "Required argument missing [vservername, certkeyname]")
+		return
+	}
+	b := in.Binding
+	a.mu.Lock()
+	bound, exists := a.VServers[b.VServerName]
+	_, hasCertKey := a.CertKeys[b.CertKeyName]
+	switch {
+	case !exists:
+		a.mu.Unlock()
+		nitroError(w, http.StatusNotFound, 258, "No such resource [vservername, "+b.VServerName+"]")
+		return
+	case !hasCertKey:
+		a.mu.Unlock()
+		nitroError(w, http.StatusNotFound, 1540, "Certificate does not exist")
+		return
+	case slices.Contains(bound, b.CertKeyName):
+		a.mu.Unlock()
+		nitroError(w, http.StatusConflict, 273, "Resource already exists")
+		return
+	}
+	a.VServers[b.VServerName] = append(bound, b.CertKeyName)
+	a.mu.Unlock()
+	a.events.Publish(CertKeyBound{VServer: b.VServerName, CertKey: b.CertKeyName})
+	done(w, http.StatusOK)
+}
+
+// unbindCertKey removes one binding, the certkey named in args=certkeyname:<name>.
+func (a *ADC) unbindCertKey(w http.ResponseWriter, r *http.Request) {
+	vserver := r.PathValue("vserver")
+	_, certKey, _ := strings.Cut(r.URL.Query().Get("args"), "certkeyname:")
+	a.mu.Lock()
+	bound := a.VServers[vserver]
+	i := slices.Index(bound, certKey)
+	if certKey == "" || i < 0 {
+		a.mu.Unlock()
+		nitroError(w, http.StatusNotFound, 258, "No such resource [certkeyname, "+certKey+"]")
+		return
+	}
+	a.VServers[vserver] = slices.Delete(bound, i, i+1)
+	a.mu.Unlock()
+	a.events.Publish(CertKeyUnbound{VServer: vserver, CertKey: certKey})
 	done(w, http.StatusOK)
 }
 

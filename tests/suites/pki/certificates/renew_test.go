@@ -36,7 +36,7 @@ func TestCertificate_Renew(t *testing.T) {
 		renewed := pki.ParseLeaf(t, res.JSON200.Certificate)
 		require.Equal(t, name, renewed.Subject.CommonName)
 		require.Equal(t, []string{name}, renewed.DNSNames)
-		require.Equal(t, original.SerialNumber, mustReadCert(t, g.Operator, original.ID).JSON200.Certificate.SerialNumber)
+		require.Equal(t, original.SerialNumber, pki.ReadCertificate(t, g.Operator, original.ID).JSON200.Certificate.SerialNumber)
 	})
 
 	t.Run("should issue the renewal on the key of the CSR it is given", func(t *testing.T) {
@@ -65,7 +65,7 @@ func TestCertificate_Renew(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := pki.NewGraph(t, tn)
 		original := g.Issue(t, pki.ServerCertificate(id.Short()+".renew.test"))
-		pki.Revoke(t, tn.Admin, original, api.KEYCOMPROMISE)
+		pki.Revoke(t, tn.Admin, original, api.RevokeCertificateJSONBodyRevocationReasonKEYCOMPROMISE)
 
 		// Action
 		res := pki.Renew(t, g.Operator, original.ID, map[string]any{})
@@ -73,7 +73,7 @@ func TestCertificate_Renew(t *testing.T) {
 		// Assert
 		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
 		require.Equal(t, "Certificate is not eligible for renewal: Certificate status is revoked, must be active, Certificate is revoked and cannot be renewed", apierr.Message(res.Body))
-		require.Nil(t, mustReadCert(t, g.Operator, original.ID).JSON200.Certificate.RenewedByCertificateId)
+		require.Nil(t, pki.ReadCertificate(t, g.Operator, original.ID).JSON200.Certificate.RenewedByCertificateId)
 	})
 
 	t.Run("should refuse a renewal the policy no longer allows after it was narrowed, and leave the original unrenewed", func(t *testing.T) {
@@ -101,6 +101,6 @@ func TestCertificate_Renew(t *testing.T) {
 		// Assert
 		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
 		require.Equal(t, "Certificate renewal failed. Errors: dns_name SAN value '"+name+"' does not match allowed patterns: *.allowed.test", apierr.Message(res.Body))
-		require.Nil(t, mustReadCert(t, g.Operator, original.ID).JSON200.Certificate.RenewedByCertificateId)
+		require.Nil(t, pki.ReadCertificate(t, g.Operator, original.ID).JSON200.Certificate.RenewedByCertificateId)
 	})
 }

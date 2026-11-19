@@ -31,12 +31,12 @@ func TestCertificate_Revoke(t *testing.T) {
 		issued := g.Issue(t, pki.ServerCertificate(id.Short()+".revoke.test"))
 
 		// Action
-		res, err := tn.Admin.API.RevokeCertificateWithResponse(t.Context(), issued.ID.String(), api.RevokeCertificateJSONRequestBody{RevocationReason: api.KEYCOMPROMISE})
+		res, err := tn.Admin.API.RevokeCertificateWithResponse(t.Context(), issued.ID.String(), api.RevokeCertificateJSONRequestBody{RevocationReason: api.RevokeCertificateJSONBodyRevocationReasonKEYCOMPROMISE})
 
 		// Assert
 		require.NoError(t, err)
 		require.NotNilf(t, res.JSON200, "revoking returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-		got := mustReadCert(t, g.Operator, issued.ID).JSON200.Certificate
+		got := pki.ReadCertificate(t, g.Operator, issued.ID).JSON200.Certificate
 		require.Equal(t, "revoked", got.Status)
 		require.NotNil(t, got.RevokedAt)
 		require.WithinDuration(t, res.JSON200.RevokedAt, *got.RevokedAt, time.Second)
@@ -52,16 +52,16 @@ func TestCertificate_Revoke(t *testing.T) {
 		g := pki.NewGraph(t, tn)
 		name := id.Short() + ".revoke.test"
 		issued := g.Issue(t, pki.ServerCertificate(name))
-		first := pki.Revoke(t, tn.Admin, issued, api.KEYCOMPROMISE)
+		first := pki.Revoke(t, tn.Admin, issued, api.RevokeCertificateJSONBodyRevocationReasonKEYCOMPROMISE)
 
 		// Action
-		res, err := tn.Admin.API.RevokeCertificateWithResponse(t.Context(), issued.ID.String(), api.RevokeCertificateJSONRequestBody{RevocationReason: api.SUPERSEDED})
+		res, err := tn.Admin.API.RevokeCertificateWithResponse(t.Context(), issued.ID.String(), api.RevokeCertificateJSONRequestBody{RevocationReason: api.RevokeCertificateJSONBodyRevocationReasonSUPERSEDED})
 
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
 		require.Equal(t, "Certificate '"+name+"' is already revoked.", apierr.Message(res.Body))
-		got := mustReadCert(t, g.Operator, issued.ID).JSON200.Certificate
+		got := pki.ReadCertificate(t, g.Operator, issued.ID).JSON200.Certificate
 		require.WithinDuration(t, first, *got.RevokedAt, time.Second)
 		require.Equal(t, new(float32(1)), got.RevocationReason)
 	})
@@ -76,12 +76,12 @@ func TestCertificate_Revoke(t *testing.T) {
 		issued := g.Issue(t, pki.ServerCertificate(id.Short()+".cross.test"))
 
 		// Action
-		res, err := other.Admin.API.RevokeCertificateWithResponse(t.Context(), issued.ID.String(), api.RevokeCertificateJSONRequestBody{RevocationReason: api.KEYCOMPROMISE})
+		res, err := other.Admin.API.RevokeCertificateWithResponse(t.Context(), issued.ID.String(), api.RevokeCertificateJSONRequestBody{RevocationReason: api.RevokeCertificateJSONBodyRevocationReasonKEYCOMPROMISE})
 
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusForbidden, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
 		require.Equal(t, "This project does not belong to your selected organization.", apierr.Message(res.Body))
-		require.Equal(t, "active", mustReadCert(t, g.Operator, issued.ID).JSON200.Certificate.Status)
+		require.Equal(t, "active", pki.ReadCertificate(t, g.Operator, issued.ID).JSON200.Certificate.Status)
 	})
 }

@@ -23,49 +23,26 @@ import (
 // tests queue behind each other well past the default 30 seconds.
 const orderWait = 2 * time.Minute
 
-// orderIssuer is an application issuing through a profile on an external CA, with an
-// operator to request certificates.
-type orderIssuer struct {
-	app      pki.Application
-	profile  pki.Profile
-	operator *harness.Principal
-}
+type orderIssuer struct{ pki.Orderer }
 
-func newOrderIssuer(t *testing.T, tn *harness.Tenant, proj *pki.Project, ca pki.CA) orderIssuer {
+func newOrderIssuer(t *testing.T, proj *pki.Project, ca pki.CA) orderIssuer {
 	t.Helper()
-	return orderIssuerOn(t, tn, proj, pki.NewProfile(t, proj, ca, pki.NewPolicy(t, proj, pki.AllowAll(t))))
+	return orderIssuerOn(t, proj, pki.NewProfile(t, proj, ca, pki.NewPolicy(t, proj, pki.AllowAll(t))))
 }
 
 // orderIssuerOn is an orderIssuer on a profile the test built itself.
-func orderIssuerOn(t *testing.T, tn *harness.Tenant, proj *pki.Project, profile pki.Profile) orderIssuer {
+func orderIssuerOn(t *testing.T, proj *pki.Project, profile pki.Profile) orderIssuer {
 	t.Helper()
-	app := pki.NewApplication(t, proj, profile)
-	pki.EnableAPI(t, app, profile, api.SetPkiApplicationApiEnrollmentJSONRequestBody{})
-	operator := tn.NewUser(t, harness.WithName("operator"))
-	proj.Grant(t, operator)
-	pki.AddMember(t, app, operator, "operator")
-	return orderIssuer{app: app, profile: profile, operator: operator}
+	return orderIssuer{pki.NewOrderer(t, proj, profile, wait.Timeout(orderWait))}
 }
 
 // order requests a certificate and returns the response, which for an external CA
 // carries a request rather than a certificate.
 func (o orderIssuer) order(t *testing.T, body api.CreateCertificateJSONRequestBody) *api.CreateCertificateResponse {
 	t.Helper()
-	res := pki.Request(t, o.operator, o.app, o.profile, body)
+	res := pki.Request(t, o.Operator, o.App, o.Profile, body)
 	require.NotNilf(t, res.JSON200, "ordering a certificate returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 	return res
-}
-
-// settled polls a certificate request until it is issued, failed or rejected, or
-// reaches one of the statuses in also.
-func (o orderIssuer) settled(t *testing.T, requestID string, also ...api.GetCertificateRequest200JSONResponseBodyStatus) *api.GetCertificateRequestResponse {
-	t.Helper()
-	want := append([]api.GetCertificateRequest200JSONResponseBodyStatus{
-		api.GetCertificateRequest200JSONResponseBodyStatusIssued,
-		api.GetCertificateRequest200JSONResponseBodyStatusFailed,
-		api.GetCertificateRequest200JSONResponseBodyStatusRejected,
-	}, also...)
-	return pki.WaitRequest(t, o.operator, requestID, want, wait.Timeout(orderWait))
 }
 
 func TestCertificateOrder_Create(t *testing.T) {
@@ -80,7 +57,7 @@ func TestCertificateOrder_Create(t *testing.T) {
 		tn := h.NewTenant(t)
 		proj := pki.CertManager(t, tn)
 		ca, up, _ := pki.NewCloudflareAcmeCA(t, proj)
-		o := newOrderIssuer(t, tn, proj, ca)
+		o := newOrderIssuer(t, proj, ca)
 		name := id.Short() + ".order.test"
 
 		// Action
@@ -88,7 +65,7 @@ func TestCertificateOrder_Create(t *testing.T) {
 
 		// Assert
 		require.Nil(t, res.JSON200.Certificate)
-		got := o.settled(t, res.JSON200.CertificateRequestId)
+		got := o.Settled(t, res.JSON200.CertificateRequestId)
 		require.Equal(t, api.GetCertificateRequest200JSONResponseBodyStatusIssued, got.JSON200.Status, "error: %v", got.JSON200.ErrorMessage)
 		require.NotNil(t, got.JSON200.CertificateId)
 		require.NotNil(t, got.JSON200.Certificate)
@@ -108,13 +85,13 @@ func TestCertificateOrder_Create(t *testing.T) {
 		ca, up, _ := pki.NewCloudflareAcmeCA(t, proj)
 		up.Fail(t, http.MethodPost, "/*", http.StatusInternalServerError,
 			fakenet.Body(`{"type":"urn:ietf:params:acme:error:serverInternal","detail":"the CA is down for maintenance","status":500}`))
-		o := newOrderIssuer(t, tn, proj, ca)
+		o := newOrderIssuer(t, proj, ca)
 
 		// Action
 		res := o.order(t, pki.ServerCertificate(id.Short()+".order.test"))
 
 		// Assert
-		got := o.settled(t, res.JSON200.CertificateRequestId)
+		got := o.Settled(t, res.JSON200.CertificateRequestId)
 		require.Equal(t, api.GetCertificateRequest200JSONResponseBodyStatusFailed, got.JSON200.Status)
 		require.NotNil(t, got.JSON200.ErrorMessage)
 		require.Equal(t, "Certificate issuance failed: the CA is down for maintenance", *got.JSON200.ErrorMessage)

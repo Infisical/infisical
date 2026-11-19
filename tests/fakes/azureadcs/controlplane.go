@@ -22,3 +22,9 @@ func Open(tt *testing.T, adminURL, scope string) *ControlPlane {
 func WithTemplates(names ...string) map[string]any {
 	return map[string]any{"templates": names}
 }
+
+// WithCATemplates is a seed publishing templates that issue CA certificates, such as
+// SubCA.
+func WithCATemplates(names ...string) map[string]any {
+	return map[string]any{"caTemplates": names}
+}

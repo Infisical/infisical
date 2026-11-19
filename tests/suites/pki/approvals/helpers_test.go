@@ -19,6 +19,7 @@ type gated struct {
 	*pki.Graph
 	tn       *harness.Tenant
 	approver *harness.Principal
+	policyID uuid.UUID
 }
 
 // newGated puts an approval policy on a graph's profile, approved by a new Product
@@ -61,7 +62,7 @@ func newGated(t *testing.T, tn *harness.Tenant, requesterApproves bool) gated {
 	res, err := tn.Admin.API.CreateCertRequestApprovalPolicyWithResponse(t.Context(), body)
 	require.NoError(t, err)
 	require.NotNilf(t, res.JSON200, "creating the approval policy returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	return gated{Graph: g, tn: tn, approver: approver}
+	return gated{Graph: g, tn: tn, approver: approver, policyID: res.JSON200.Policy.Id}
 }
 
 // request asks for a certificate as the operator and returns the certificate request.

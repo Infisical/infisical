@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/asn1"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/pem"
@@ -84,6 +85,44 @@ func (c *CA) Sign(csr *x509.CertificateRequest, days int) (Leaf, error) {
 		return Leaf{}, err
 	}
 	return Leaf{Serial: hex.EncodeToString(serial.Bytes()), PEM: PEM(der)}, nil
+}
+
+var oidBasicConstraints = asn1.ObjectIdentifier{2, 5, 29, 19}
+
+// SignCA issues a CA certificate for the CSR's key under its full subject, with the path
+// length the CSR asks for, and returns it in PEM.
+func (c *CA) SignCA(csr *x509.CertificateRequest, notAfter time.Time) (string, error) {
+	serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	if err != nil {
+		return "", err
+	}
+	tmpl := &x509.Certificate{
+		SerialNumber:          serial,
+		Subject:               csr.Subject,
+		NotBefore:             time.Now().Add(-time.Minute),
+		NotAfter:              notAfter,
+		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign | x509.KeyUsageDigitalSignature,
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+		MaxPathLen:            -1,
+	}
+	for _, ext := range csr.Extensions {
+		if !ext.Id.Equal(oidBasicConstraints) {
+			continue
+		}
+		var bc struct {
+			IsCA       bool `asn1:"optional"`
+			MaxPathLen int  `asn1:"optional,default:-1"`
+		}
+		if _, err := asn1.Unmarshal(ext.Value, &bc); err == nil && bc.MaxPathLen >= 0 {
+			tmpl.MaxPathLen, tmpl.MaxPathLenZero = bc.MaxPathLen, bc.MaxPathLen == 0
+		}
+	}
+	der, err := c.Create(tmpl, csr.PublicKey)
+	if err != nil {
+		return "", err
+	}
+	return PEM(der), nil
 }
 
 // RootPEM is the root certificate in PEM.

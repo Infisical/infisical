@@ -183,10 +183,7 @@ func TestAlert_Create(t *testing.T) {
 		condition := map[string]any{"alertBefore": "14d", "applicationIds": []any{app.ID.String()}}
 
 		// Action
-		alertID := newAlert(t, tn.Admin, alertBody{
-			Name: "certificate expiry", ResourceType: certManager, EventType: certificateExpiry,
-			Condition: condition, Channels: []channel{webhookChannel(sink.URL)},
-		})
+		alertID := fixture.NewCertificateExpiryAlert(t, tn.Admin, app.ID, "14d", sink.URL)
 
 		// Assert
 		got, err := tn.Admin.API.GetAlertByIdWithResponse(t.Context(), alertID)

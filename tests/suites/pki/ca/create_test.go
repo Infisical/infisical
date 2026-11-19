@@ -47,7 +47,7 @@ func TestInternalCA_Create(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.NotNilf(t, res.JSON200, "creating the root returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-		cert := caCert(t, tn.Admin.API, res.JSON200.Id)
+		cert := pki.CACertificate(t, tn.Admin, res.JSON200.Id)
 		require.NoError(t, cert.CheckSignatureFrom(cert))
 		require.True(t, cert.IsCA)
 		require.IsType(t, &ecdsa.PublicKey{}, cert.PublicKey)

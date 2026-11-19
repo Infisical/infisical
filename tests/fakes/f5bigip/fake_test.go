@@ -94,3 +94,59 @@ func TestF5BigIpFake_SSLFiles(t *testing.T) {
 		require.Equal(t, []string{"ssl-key /Common/web"}, bigip.State(t).Saved)
 	})
 }
+
+func TestF5BigIpFake_ClientSSLProfiles(t *testing.T) {
+	t.Run("should refuse deleting an ssl-cert a Client SSL profile still uses", func(t *testing.T) {
+		// Setup
+		fakes, bigip := newBigIP(t, "u-d")
+		bigip.Seed(t, map[string]any{"sslCerts": map[string]string{"/Common/web": "PEM"}},
+			f5bigip.ClientSSLProfile("/Common/web-ssl", f5bigip.CertKeyChainEntry{Name: "web", Cert: "/Common/web", Key: "/Common/web"}))
+		tok := login(t, fakes, "u-d")
+
+		// Action
+		code, out := call(t, fakes, tok, "DELETE", "/mgmt/tm/sys/file/ssl-cert/~Common~web", "", "")
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, code)
+		require.Contains(t, out["message"], "in use by Client SSL profile (/Common/web-ssl)")
+		require.Equal(t, "PEM", bigip.State(t).SSLCerts["/Common/web"])
+	})
+
+	t.Run("should replace a profile's cert-key-chain and then allow deleting the released ssl-cert", func(t *testing.T) {
+		// Setup
+		fakes, bigip := newBigIP(t, "u-e")
+		other := f5bigip.CertKeyChainEntry{Name: "default", Cert: "/Common/default.crt", Key: "/Common/default.key"}
+		bigip.Seed(t, map[string]any{"sslCerts": map[string]string{"/Common/web": "PEM"}},
+			f5bigip.ClientSSLProfile("/Common/web-ssl", other, f5bigip.CertKeyChainEntry{Name: "web", Cert: "/Common/web", Key: "/Common/web"}))
+		tok := login(t, fakes, "u-e")
+		code, _ := call(t, fakes, tok, "PATCH", "/mgmt/tm/ltm/profile/client-ssl/~Common~web-ssl", "", `{"certKeyChain":[{"name":"default","cert":"/Common/default.crt","key":"/Common/default.key"}]}`)
+		require.Equal(t, http.StatusOK, code)
+
+		// Action
+		code, _ = call(t, fakes, tok, "DELETE", "/mgmt/tm/sys/file/ssl-cert/~Common~web", "", "")
+
+		// Assert
+		require.Equal(t, http.StatusOK, code)
+		state := bigip.State(t)
+		require.Equal(t, []f5bigip.CertKeyChainEntry{other}, state.ClientSSLProfiles["/Common/web-ssl"].CertKeyChain)
+		require.NotContains(t, state.SSLCerts, "/Common/web")
+	})
+
+	t.Run("should list Client SSL profiles with their cert-key-chain", func(t *testing.T) {
+		// Setup
+		fakes, bigip := newBigIP(t, "u-f")
+		bigip.Seed(t, f5bigip.ClientSSLProfile("/Common/web-ssl", f5bigip.CertKeyChainEntry{Name: "web", Cert: "/Common/web"}))
+		tok := login(t, fakes, "u-f")
+
+		// Action
+		code, out := call(t, fakes, tok, "GET", "/mgmt/tm/ltm/profile/client-ssl?$select=name,partition,certKeyChain", "", "")
+
+		// Assert
+		require.Equal(t, http.StatusOK, code)
+		items := out["items"].([]any)
+		require.Len(t, items, 1)
+		item := items[0].(map[string]any)
+		require.Equal(t, "Common", item["partition"])
+		require.Equal(t, "/Common/web", item["certKeyChain"].([]any)[0].(map[string]any)["cert"])
+	})
+}

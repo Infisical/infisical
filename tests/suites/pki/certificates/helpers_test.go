@@ -12,7 +12,6 @@ import (
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture/pki"
 	"github.com/Infisical/infisical/tests/harness"
-	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -71,13 +70,6 @@ func readCert(t *testing.T, as *harness.Principal, id uuid.UUID) *api.GetCertifi
 	t.Helper()
 	res, err := as.API.GetCertificateWithResponse(t.Context(), id, nil)
 	require.NoError(t, err)
-	return res
-}
-
-func mustReadCert(t *testing.T, as *harness.Principal, id uuid.UUID) *api.GetCertificateResponse {
-	t.Helper()
-	res := readCert(t, as, id)
-	require.NotNilf(t, res.JSON200, "reading the certificate returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 	return res
 }
 

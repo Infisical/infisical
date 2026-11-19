@@ -1,14 +1,12 @@
 package discovery_test
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"fmt"
 	"math/big"
 	"net/http"
 	"testing"
@@ -19,7 +17,6 @@ import (
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/id"
-	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -50,32 +47,11 @@ func triggerScan(t *testing.T, tn *harness.Tenant, discoveryID uuid.UUID) {
 	require.Equalf(t, http.StatusOK, res.StatusCode(), "triggering a scan: %s", apierr.Body(res.Body))
 }
 
-// scanned triggers a scan and waits for it to finish. Transport errors, 429s and 5xx
-// responses are retried; any other refusal ends the wait at once.
+// scanned triggers a scan and waits for it to finish.
 func scanned(t *testing.T, tn *harness.Tenant, discoveryID uuid.UUID) *api.GetPkiDiscoveryLatestScanResponse {
 	t.Helper()
 	triggerScan(t, tn, discoveryID)
-	type outcome struct {
-		res *api.GetPkiDiscoveryLatestScanResponse
-		err error
-	}
-	got, err := wait.For(t.Context(), func(ctx context.Context) (outcome, bool, error) {
-		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-		defer cancel()
-		res, err := tn.Admin.API.GetPkiDiscoveryLatestScanWithResponse(ctx, discoveryID)
-		if err != nil {
-			return outcome{}, false, fmt.Errorf("reading the latest scan: %w", err)
-		}
-		if res.JSON200 == nil {
-			err := fmt.Errorf("reading the latest scan returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-			temporary := res.StatusCode() == http.StatusTooManyRequests || res.StatusCode() >= 500
-			return outcome{err: err}, !temporary, err
-		}
-		return outcome{res: res}, res.JSON200.Status == "completed" || res.JSON200.Status == "failed", nil
-	})
-	require.NoError(t, err, "waiting for the scan to finish")
-	require.NoError(t, got.err)
-	return got.res
+	return pki.ScanFinished(t, tn.Admin, discoveryID)
 }
 
 type installation struct {

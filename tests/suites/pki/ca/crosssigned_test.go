@@ -74,7 +74,7 @@ func TestInternalCA_CrossSignedCertificate(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		root := pki.NewInternalCA(t, pki.CertManager(t, tn))
-		self := caCert(t, tn.Admin.API, root.ID)
+		self := pki.CACertificate(t, tn.Admin, root.ID)
 		legacy := newLegacyRoot(t)
 		copyPEM := legacy.crossSign(t, self, self.PublicKey)
 		imp, err := tn.Admin.API.ImportCaCrossSignedCertificateWithResponse(t.Context(), root.ID, api.ImportCaCrossSignedCertificateJSONRequestBody{
@@ -104,7 +104,7 @@ func TestInternalCA_CrossSignedCertificate(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		root := pki.NewInternalCA(t, pki.CertManager(t, tn))
-		self := caCert(t, tn.Admin.API, root.ID)
+		self := pki.CACertificate(t, tn.Admin, root.ID)
 		legacy := newLegacyRoot(t)
 		other, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		require.NoError(t, err)

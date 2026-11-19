@@ -23,7 +23,8 @@ func TestInternalCA_SignIntermediate(t *testing.T) {
 		tn := h.NewTenant(t)
 		p := pki.CertManager(t, tn)
 		root := pki.NewInternalCA(t, p)
-		inter, csr := pki.NewPendingIntermediateCA(t, p)
+		inter := pki.NewPendingIntermediateCA(t, p)
+		csr := pki.PendingCSR(t, p, inter)
 		signed, err := tn.Admin.API.SignIntermediateCaWithResponse(t.Context(), root.ID.String(), api.SignIntermediateCaJSONRequestBody{
 			Csr:           csr,
 			NotAfter:      time.Now().AddDate(1, 0, 0).UTC().Format(time.RFC3339),
@@ -41,8 +42,8 @@ func TestInternalCA_SignIntermediate(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "importing answered: %s", apierr.Body(res.Body))
-		cert := caCert(t, tn.Admin.API, inter.ID)
-		_, err = cert.Verify(x509VerifyCA(caCert(t, tn.Admin.API, root.ID)))
+		cert := pki.CACertificate(t, tn.Admin, inter.ID)
+		_, err = cert.Verify(x509VerifyCA(pki.CACertificate(t, tn.Admin, root.ID)))
 		require.NoError(t, err)
 		require.True(t, cert.MaxPathLenZero)
 		require.Equal(t, 0, cert.MaxPathLen)
@@ -56,7 +57,8 @@ func TestInternalCA_SignIntermediate(t *testing.T) {
 		tn := h.NewTenant(t)
 		p := pki.CertManager(t, tn)
 		root := pki.NewInternalCA(t, p)
-		inter, csr := pki.NewPendingIntermediateCA(t, p)
+		inter := pki.NewPendingIntermediateCA(t, p)
+		csr := pki.PendingCSR(t, p, inter)
 
 		// Action
 		res, err := tn.Admin.API.SignIntermediateCaWithResponse(t.Context(), root.ID.String(), api.SignIntermediateCaJSONRequestBody{

@@ -40,7 +40,7 @@ func TestCertificate_Read(t *testing.T) {
 		require.Equal(t, issued.Chain, *res.JSON200.CertificateChain)
 		require.NotNil(t, res.JSON200.PrivateKey)
 		require.Equal(t, issued.PrivateKey, *res.JSON200.PrivateKey)
-		require.Equal(t, issued.SerialNumber, mustReadCert(t, g.Operator, issued.ID).JSON200.Certificate.SerialNumber)
+		require.Equal(t, issued.SerialNumber, pki.ReadCertificate(t, g.Operator, issued.ID).JSON200.Certificate.SerialNumber)
 	})
 
 	t.Run("should export a PKCS#12 bundle that opens with the password to the certificate, chain and key", func(t *testing.T) {

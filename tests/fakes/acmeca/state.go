@@ -44,6 +44,10 @@ type Issued struct {
 	Serial   string    `json:"serial"`
 	PEM      string    `json:"pem"`
 	IssuedAt time.Time `json:"issuedAt"`
+	// RevokedAt is set once the account that ordered it revokes it, with Reason the
+	// RFC 5280 reason code it gave.
+	RevokedAt *time.Time `json:"revokedAt,omitempty"`
+	Reason    int        `json:"reason,omitempty"`
 }
 
 type account struct {

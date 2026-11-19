@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 )
@@ -38,6 +39,7 @@ func newLoadBalancing(svc service, events fakenet.Emitter) fakenet.Fake {
 	lb.h = handler{svc: svc, mu: &lb.mu, policy: func() *Policy { return &lb.Policy }, actions: map[string]func(call) (any, *apiError){
 		"DescribeListenerCertificates": lb.describeListenerCertificates,
 		"AddListenerCertificates":      lb.addListenerCertificates,
+		"RemoveListenerCertificates":   lb.removeListenerCertificates,
 	}}
 	return lb
 }
@@ -136,4 +138,25 @@ func (lb *LoadBalancing) addListenerCertificates(c call) (any, *apiError) {
 		out.Members = append(out.Members, elbCertificate{CertificateArn: arn})
 	}
 	return out, nil
+}
+
+func (lb *LoadBalancing) removeListenerCertificates(c call) (any, *apiError) {
+	l, aErr := lb.listener(c)
+	if aErr != nil {
+		return nil, aErr
+	}
+	arns := memberCertificates(c)
+	if len(arns) == 0 {
+		return nil, errf(http.StatusBadRequest, "ValidationError", "A certificate must be specified")
+	}
+	if slices.Contains(arns, l.DefaultCertificate) {
+		return nil, errf(http.StatusBadRequest, "OperationNotPermitted", "The default certificate cannot be removed from a listener")
+	}
+	for _, arn := range arns {
+		if i := slices.Index(l.Certificates, arn); i >= 0 {
+			l.Certificates = slices.Delete(l.Certificates, i, i+1)
+			lb.events.Publish(ListenerCertificateRemoved{ListenerDetail{ListenerArn: l.ARN}, arn, time.Now()})
+		}
+	}
+	return struct{}{}, nil
 }
