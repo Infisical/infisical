@@ -50,9 +50,13 @@ On the sign-in screen, the member can select **More Options** to switch to anoth
 
 ### Members who haven't set up an allowed method
 
-If a member hasn't set up any method your organization allows, Infisical asks them to set one up when they sign in. If the member already has a different MFA method, they verify with that method first.
+If a member hasn't set up any method your organization allows, Infisical asks them to set one up when they sign in. Email doesn't need setup, so this only happens when your organization doesn't allow email.
 
-Email doesn't need setup, so this only happens when your organization doesn't allow email.
+Before a member adds a passkey or an authenticator app, at sign-in or in their personal settings, they verify with the strongest method they already have: a passkey, then an authenticator app, then email. Infisical asks for that method even if your organization doesn't allow it. Every member can receive email codes, so a member adding their first passkey or authenticator app enters an email code first.
+
+<Note>
+  If you self-host Infisical without [SMTP configured](/self-hosting/configuration/envars#email-service), members can't receive email codes, so a member adding their first method doesn't verify first.
+</Note>
 
 ## MFA for SSO logins
 

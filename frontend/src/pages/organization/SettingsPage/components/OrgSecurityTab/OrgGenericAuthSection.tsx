@@ -46,15 +46,14 @@ export const OrgGenericAuthSection = () => {
 
   // Email codes need SMTP, and the backend refuses to enforce a list that allows email without it.
   const isEmailAvailable = serverDetails?.emailConfigured ?? true;
-  const methodOptions = isEmailAvailable
-    ? MFA_METHOD_OPTIONS
-    : MFA_METHOD_OPTIONS.filter((option) => option.value !== MfaMethod.EMAIL);
 
   // An org that never picked a method has no list and enforces email, the same fallback the backend uses.
   const allowedMethods = currentOrg?.allowedMfaMethods?.length
     ? currentOrg.allowedMfaMethods
     : [MfaMethod.EMAIL];
-  const selectedOptions = methodOptions.filter((option) => allowedMethods.includes(option.value));
+  const selectedOptions = MFA_METHOD_OPTIONS.filter((option) =>
+    allowedMethods.includes(option.value)
+  );
 
   const handleEnforceMfaToggle = async (value: boolean) => {
     if (!currentOrg?.id) return;
@@ -62,9 +61,9 @@ export const OrgGenericAuthSection = () => {
       handlePopUpOpen("upgradePlan");
       return;
     }
-    if (value && !selectedOptions.length) {
+    if (value && !isEmailAvailable && allowedMethods.includes(MfaMethod.EMAIL)) {
       createNotification({
-        text: "Select at least one allowed MFA method before enforcing MFA.",
+        text: "Remove Email from the allowed methods before enforcing MFA. SMTP isn't configured for this instance.",
         type: "error"
       });
       return;
@@ -138,7 +137,10 @@ export const OrgGenericAuthSection = () => {
                   isDisabled={!isAllowed}
                   value={selectedOptions}
                   onValueChange={handleUpdateAllowedMfa}
-                  options={methodOptions}
+                  options={MFA_METHOD_OPTIONS}
+                  isOptionDisabled={(option) =>
+                    option.value === MfaMethod.EMAIL && !isEmailAvailable
+                  }
                   getOptionValue={(option) => option.value}
                   getOptionLabel={(option) => option.label}
                   placeholder="Select methods..."

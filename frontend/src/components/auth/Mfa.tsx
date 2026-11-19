@@ -59,9 +59,7 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   // The backend emails a code only when email is the starting method, so switching to it later sends one.
   const hasSentEmailCodeRef = useRef(method === MfaMethod.EMAIL);
-  const resendDelay = useClientResendDelay(
-    activeMethod === MfaMethod.EMAIL ? CLIENT_RESEND_DELAY_SECONDS : 0
-  );
+  const resendEmailDelay = useClientResendDelay(CLIENT_RESEND_DELAY_SECONDS);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingResend, setIsLoadingResend] = useState(false);
@@ -241,7 +239,7 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
     try {
       setIsLoadingResend(true);
       await sendMfaToken.mutateAsync({ email });
-      resendDelay.restartDelay();
+      resendEmailDelay.restartDelay();
       setIsLoadingResend(false);
     } catch (err) {
       console.error(err);
@@ -479,7 +477,7 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
         activeMethod === MfaMethod.EMAIL && (
           <VerificationCodeResend
             isResending={isLoadingResend}
-            remainingSeconds={resendDelay.remainingSeconds}
+            remainingSeconds={resendEmailDelay.remainingSeconds}
             onResend={handleResendMfaCode}
           />
         )
