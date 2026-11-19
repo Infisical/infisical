@@ -210,28 +210,26 @@ const normalizeResource = (
   resource: TResourcePermissions
 ): TResourcePermissions => {
   const itemKeys = itemKeysOf(rowKey);
-  // Read that every one of them has only because use does. A bundle, service or skill that denies use then had neither,
-  // so it denies read too: writing read for every one of them would otherwise let it be read.
-  const isReadOnlyFromUse =
-    resource.allow.includes(ResourceAction.Use) && !resource.allow.includes(ResourceAction.Read);
-  const all = normalizeSets(rowKey, {
-    allow: withImpliedRead(resource.allow),
-    deny: resource.deny
-  });
-  const inherited = all.allow.filter((key) => itemKeys.includes(key));
-
   const merged = new Map<string, TActionSets>();
   resource.items.forEach(({ id, allow, deny }) => {
     const existing = merged.get(id) ?? emptySets();
     merged.set(id, { allow: [...existing.allow, ...allow], deny: [...existing.deny, ...deny] });
   });
-  if (isReadOnlyFromUse) {
-    merged.forEach((sets, id) => {
-      if (sets.deny.includes(ResourceAction.Use) && !sets.allow.includes(ResourceAction.Read)) {
-        merged.set(id, { ...sets, deny: unique([...sets.deny, ResourceAction.Read]) });
-      }
-    });
-  }
+
+  // Read that every one of them has only because use does, beside one that denies use, which then can't be read either.
+  // Writing read for every one of them would let that one be read, and denying read on it would override another role
+  // that lets the member read it, so the rules keep only use, as they came.
+  const keepsReadImplied =
+    resource.allow.includes(ResourceAction.Use) &&
+    !resource.allow.includes(ResourceAction.Read) &&
+    [...merged.values()].some(
+      (sets) => sets.deny.includes(ResourceAction.Use) && !sets.allow.includes(ResourceAction.Read)
+    );
+  const all = normalizeSets(rowKey, {
+    allow: keepsReadImplied ? resource.allow : withImpliedRead(resource.allow),
+    deny: resource.deny
+  });
+  const inherited = all.allow.filter((key) => itemKeys.includes(key));
 
   // An item keeps only what it adds to every one of them. Holding copies of what it inherits would keep those
   // actions on it after every one of them is lowered.

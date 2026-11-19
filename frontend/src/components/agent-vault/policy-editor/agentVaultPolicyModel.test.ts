@@ -562,8 +562,8 @@ describe("rulesToPolicy", () => {
     expect(policy.variables.allow).toEqual(["read-value"]);
   });
 
-  it("keeps a skill hidden when use is denied on it and read only came with use", () => {
-    const { policy, unsupported } = rulesToPolicy([
+  it("keeps a skill hidden when use is denied on it and read only came with use, without denying read", () => {
+    const rules: TProjectPermission[] = [
       { subject: SKILLS, action: ["use"] },
       {
         subject: SKILLS,
@@ -571,13 +571,19 @@ describe("rulesToPolicy", () => {
         inverted: true,
         conditions: { skillId: { $in: [SKILL] } }
       }
-    ]);
+    ];
+    const { policy, unsupported } = rulesToPolicy(rules);
 
     expect(unsupported).toEqual([]);
-    expect(policy.skills.allow).toEqual(["read", "use"]);
-    expect(policy.skills.items).toEqual([{ id: SKILL, allow: [], deny: ["read", "use"] }]);
-    // Saving it, after any other edit, writes a role that still can't read that skill.
-    expect(rulesToPolicy(policyToRules(policy)).policy).toEqual(policy);
+    // Read stays implied: writing it for every skill would let this one be read, and a deny of read on it would
+    // override another role that lets the member read it.
+    expect(policy.skills.allow).toEqual(["use"]);
+    expect(policy.skills.items).toEqual([{ id: SKILL, allow: [], deny: ["use"] }]);
+    const saved = policyToRules(policy);
+    expect(
+      saved.filter((rule) => rule.inverted).flatMap((rule) => [rule.action].flat())
+    ).not.toContain("read");
+    expect(rulesToPolicy(saved).policy).toEqual(policy);
   });
 
   it("leaves a skill readable when use is denied on it but read was allowed on its own", () => {
