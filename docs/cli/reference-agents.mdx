@@ -663,9 +663,9 @@ FILES
   checklist.md
 ```
 
-The command doesn't download the files. To download them, run [infisical agent-vault skills pull](#agent-vault-skills-pull).
+To download the files, run [infisical agent-vault skills pull](#agent-vault-skills-pull).
 
-An admin of the project sees every skill. A member sees only the skills on the access bundles they've been granted. The list doesn't include Agent Vault's [built-in skill](/documentation/platform/agent-vault/service-discovery#the-built-in-skill).
+An admin of the project sees every skill. A member sees only the skills on the access bundles they've been granted.
 
 The command reads the project the same way as [infisical agent-vault skills push](#agent-vault-skills-push): from `--project-id`, then `INFISICAL_AGENT_VAULT_PROJECT_ID`, then `INFISICAL_PROJECT_ID`.
 
@@ -677,7 +677,7 @@ The command reads the project the same way as [infisical agent-vault skills push
 
 - `--client-id <string>`: The client ID of the machine identity to get the skills as. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`.
 - `--client-secret <string>`: The client secret of the machine identity to get the skills as. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`.
-- `--output <string>` (`-o`): Print the skills, or the one skill with the path and mode of each of its files, as `json` or `yaml` instead of a table.
+- `--output <string>` (`-o`): Print the skills, or the one skill and its files, as `json` or `yaml` instead of a table.
 - `--project-id <string>`: The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects) that holds the skills. If you leave it out, the CLI reads `INFISICAL_AGENT_VAULT_PROJECT_ID`, then `INFISICAL_PROJECT_ID`.
 
 ### Environment variables
@@ -715,11 +715,7 @@ Download a skill's files to a folder, so you can edit them and upload them again
 code-review: v4 -> ./skills/code-review
 ```
 
-The command stops without downloading anything if the folder is:
-
-- A folder that already exists, unless you pass `--force`
-- A symbolic link or a file
-- The folder you run the command from, or a folder that holds it
+If the folder already exists, the command stops without downloading anything, unless you pass `--force`.
 
 <Warning>
 `--force` deletes everything in the folder that isn't part of the skill, including hidden files and folders such as `.git`.
@@ -778,7 +774,7 @@ Delete a skill and every version of it from an Agent Vault project. Infisical re
 
 The command asks you to type the skill's name before it deletes anything. To skip the question, pass `--yes`. If there's no terminal to ask in, such as in a script or an agent, and you don't pass `--yes`, the command deletes nothing and prints the command to run again with `--yes`.
 
-The command needs `--project-id` on the command line. It doesn't read the project from `INFISICAL_AGENT_VAULT_PROJECT_ID` or `INFISICAL_PROJECT_ID`.
+The command needs `--project-id`, even if you've set the project in an environment variable.
 
 ### Arguments
 
@@ -789,7 +785,7 @@ The command needs `--project-id` on the command line. It doesn't read the projec
 - `--client-id <string>`: The client ID of the machine identity to delete as. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`.
 - `--client-secret <string>`: The client secret of the machine identity to delete as. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`.
 - `--output <string>` (`-o`): Print the deleted skill as `json` or `yaml`.
-- `--project-id <string>` (required): The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects) that holds the skill. The command doesn't read the project from `INFISICAL_AGENT_VAULT_PROJECT_ID` or `INFISICAL_PROJECT_ID`.
+- `--project-id <string>` (required): The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects) that holds the skill.
 - `--yes` (`-y`): Delete without asking for confirmation. Required when there's no terminal to ask in, such as in a script or an agent.
 
 ### Environment variables
