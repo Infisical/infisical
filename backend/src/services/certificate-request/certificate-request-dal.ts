@@ -150,16 +150,19 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  const $attachCertificate = async (
+  const attachCertificate = async (
     id: string,
     certificateId: string,
-    fromStatuses: CertificateRequestStatus[],
     tx?: Knex
   ): Promise<TCertificateRequests | null> => {
     try {
       const [updated] = await (tx || db)(TableName.CertificateRequests)
         .where({ id })
-        .whereIn("status", fromStatuses)
+        .whereIn("status", [
+          CertificateRequestStatus.PENDING,
+          CertificateRequestStatus.PENDING_VALIDATION,
+          CertificateRequestStatus.ISSUED
+        ])
         .update({ certificateId, status: CertificateRequestStatus.ISSUED, pendingMessage: null })
         .returning("*");
       return updated ?? null;
@@ -168,22 +171,31 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  const attachCertificate = (id: string, certificateId: string, tx?: Knex) =>
-    $attachCertificate(
-      id,
-      certificateId,
-      [CertificateRequestStatus.PENDING, CertificateRequestStatus.PENDING_VALIDATION, CertificateRequestStatus.ISSUED],
-      tx
-    );
-
-  // Concurrent attaches serialize on the row, so exactly one of them moves the request out of pending.
-  const attachCertificateFromPending = (id: string, certificateId: string, tx?: Knex) =>
-    $attachCertificate(
-      id,
-      certificateId,
-      [CertificateRequestStatus.PENDING, CertificateRequestStatus.PENDING_VALIDATION],
-      tx
-    );
+  // Concurrent attaches serialize on the row, so exactly one of them gives the request its certificate. A request the
+  // deprecated v3 routes create is already issued but has no certificate until its first attach, so it counts too; a
+  // request that already has a certificate keeps it.
+  const attachCertificateIfUnlinked = async (
+    id: string,
+    certificateId: string,
+    tx?: Knex
+  ): Promise<TCertificateRequests | null> => {
+    try {
+      const [updated] = await (tx || db)(TableName.CertificateRequests)
+        .where({ id })
+        .where((unlinked) => {
+          void unlinked
+            .whereIn("status", [CertificateRequestStatus.PENDING, CertificateRequestStatus.PENDING_VALIDATION])
+            .orWhere((issuedWithoutCertificate) => {
+              void issuedWithoutCertificate.where("status", CertificateRequestStatus.ISSUED).whereNull("certificateId");
+            });
+        })
+        .update({ certificateId, status: CertificateRequestStatus.ISSUED, pendingMessage: null })
+        .returning("*");
+      return updated ?? null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Attach certificate to request" });
+    }
+  };
 
   const findByProjectId = async (
     projectId: string,
@@ -538,7 +550,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     setPendingMessage,
     transitionToPendingValidation,
     attachCertificate,
-    attachCertificateFromPending,
+    attachCertificateIfUnlinked,
     findByProjectId,
     countByProjectId,
     findByProjectIdWithCertificate,

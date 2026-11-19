@@ -44,14 +44,14 @@ describe("CertificateRequestService", () => {
     | "findByIdWithCertificate"
     | "transitionFromPending"
     | "attachCertificate"
-    | "attachCertificateFromPending"
+    | "attachCertificateIfUnlinked"
   > = {
     create: vi.fn() as any,
     findById: vi.fn() as any,
     findByIdWithCertificate: vi.fn() as any,
     transitionFromPending: vi.fn() as any,
     attachCertificate: vi.fn() as any,
-    attachCertificateFromPending: vi.fn() as any
+    attachCertificateIfUnlinked: vi.fn() as any
   };
 
   const mockCertificateDAL: Pick<TCertificateDALFactory, "findById"> = {
@@ -1057,7 +1057,7 @@ describe("CertificateRequestService", () => {
 
       (mockCertificateRequestDAL.findById as any).mockResolvedValue(mockRequest);
       (mockCertificateDAL.findById as any).mockResolvedValue(mockCertificate);
-      (mockCertificateRequestDAL.attachCertificateFromPending as any).mockResolvedValue(mockUpdatedRequest);
+      (mockCertificateRequestDAL.attachCertificateIfUnlinked as any).mockResolvedValue(mockUpdatedRequest);
 
       const result = await service.attachCertificateToRequest({
         certificateRequestId: "550e8400-e29b-41d4-a716-446655440014",
@@ -1066,7 +1066,7 @@ describe("CertificateRequestService", () => {
 
       expect(mockCertificateRequestDAL.findById).toHaveBeenCalledWith("550e8400-e29b-41d4-a716-446655440014");
       expect(mockCertificateDAL.findById).toHaveBeenCalledWith("550e8400-e29b-41d4-a716-446655440015");
-      expect(mockCertificateRequestDAL.attachCertificateFromPending).toHaveBeenCalledWith(
+      expect(mockCertificateRequestDAL.attachCertificateIfUnlinked).toHaveBeenCalledWith(
         "550e8400-e29b-41d4-a716-446655440014",
         "550e8400-e29b-41d4-a716-446655440015"
       );
@@ -1131,7 +1131,7 @@ describe("CertificateRequestService", () => {
           serialNumber: "0a1b",
           renewedFromCertificateId: "cert-old"
         });
-        (mockCertificateRequestDAL.attachCertificateFromPending as any).mockResolvedValue({
+        (mockCertificateRequestDAL.attachCertificateIfUnlinked as any).mockResolvedValue({
           ...pendingRequest,
           status: CertificateRequestStatus.ISSUED,
           certificateId: "cert-new"
@@ -1198,7 +1198,7 @@ describe("CertificateRequestService", () => {
       });
 
       it("records nothing again when a retry attaches the same certificate", async () => {
-        (mockCertificateRequestDAL.attachCertificateFromPending as any).mockResolvedValue(null);
+        (mockCertificateRequestDAL.attachCertificateIfUnlinked as any).mockResolvedValue(null);
         (mockCertificateRequestDAL.findById as any).mockResolvedValue({
           ...pendingRequest,
           status: CertificateRequestStatus.ISSUED,
@@ -1215,7 +1215,7 @@ describe("CertificateRequestService", () => {
       });
 
       it("keeps an issued request on its certificate when a concurrent run attaches another", async () => {
-        (mockCertificateRequestDAL.attachCertificateFromPending as any).mockResolvedValue(null);
+        (mockCertificateRequestDAL.attachCertificateIfUnlinked as any).mockResolvedValue(null);
         (mockCertificateRequestDAL.findById as any).mockResolvedValue({
           ...pendingRequest,
           status: CertificateRequestStatus.ISSUED,

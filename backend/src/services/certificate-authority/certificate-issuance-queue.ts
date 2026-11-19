@@ -439,6 +439,8 @@ export const certificateIssuanceQueueFactory = ({
     // must not be reported as issued.
     let certificateExistsAfterThisJob = true;
     let issuedCertificateId: string | undefined;
+    // Infisical's own checks run before any CA call, so a failure there mustn't be reported as the CA's.
+    let failureStage = CaOperationFailureStage.Infisical;
 
     try {
       logger.info(`Processing certificate issuance job for [certificateId=${certificateId}] [caId=${caId}]`);
@@ -467,6 +469,7 @@ export const certificateIssuanceQueueFactory = ({
         assertCaSupportsCustomExtensions((ca.externalCa?.type ?? CaType.INTERNAL) as CaType, customExtensions.length);
       }
 
+      failureStage = CaOperationFailureStage.Ca;
       await setPending("Starting certificate issuance");
 
       if (ca.externalCa?.type === CaType.ACME) {
@@ -1356,6 +1359,7 @@ export const certificateIssuanceQueueFactory = ({
             operation: issuanceOperation,
             originalCertificateId,
             error,
+            failureStage,
             errorMessage: isAcmeTerminal ? errorMessage : `Certificate issuance failed: ${errorMessage}`
           });
           logger.info(`Updated certificate request ${certificateRequestId} status to failed due to issuance error`);

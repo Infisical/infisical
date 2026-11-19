@@ -263,16 +263,16 @@ export const recordApprovedRenewalIssued = async (
   }
 };
 
-// Only the attach that moves the request out of pending records the renewal, so a retried or concurrent attach
-// can't record it twice. A request that's already issued keeps its certificate: a concurrent run that fetched its
-// own copy from the CA mustn't repoint the request away from the certificate its renew event names.
+// Only the attach that gives the request its certificate records the renewal, so a retried or concurrent attach
+// can't record it twice. A request that already has a certificate keeps it: a concurrent run that fetched its own
+// copy from the CA mustn't repoint the request away from the certificate its renew event names.
 export const attachIssuedCertificate = async (
   deps: TRecordApprovedRenewalIssuedDeps & {
-    certificateRequestDAL: Pick<TCertificateRequestDALFactory, "attachCertificateFromPending" | "findById">;
+    certificateRequestDAL: Pick<TCertificateRequestDALFactory, "attachCertificateIfUnlinked" | "findById">;
   },
   { certificateRequestId, certificateId }: { certificateRequestId: string; certificateId: string }
 ) => {
-  const attached = await deps.certificateRequestDAL.attachCertificateFromPending(certificateRequestId, certificateId);
+  const attached = await deps.certificateRequestDAL.attachCertificateIfUnlinked(certificateRequestId, certificateId);
   if (!attached) {
     const current = await deps.certificateRequestDAL.findById(certificateRequestId);
     return current?.certificateId === certificateId ? current : null;

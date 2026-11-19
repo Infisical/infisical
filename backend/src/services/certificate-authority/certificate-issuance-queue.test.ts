@@ -1,5 +1,6 @@
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 
+import { CaOperationFailureStage } from "../certificate-common/certificate-constants";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { CaType } from "./certificate-authority-enums";
 import { certificateIssuanceQueueFactory, TIssueCertificateFromProfileJobData } from "./certificate-issuance-queue";
@@ -58,13 +59,15 @@ const buildQueue = () => {
     setPendingMessage: vi.fn(),
     transitionToPendingValidation: vi.fn().mockResolvedValue(true)
   };
+  const certificateRequestService = { updateCertificateRequestStatus: vi.fn().mockResolvedValue(undefined) };
 
   certificateIssuanceQueueFactory({
     ...stubDeps(),
     queueService,
     certificateAuthorityDAL,
     certificateDAL,
-    certificateRequestDAL
+    certificateRequestDAL,
+    certificateRequestService
   } as unknown as Parameters<typeof certificateIssuanceQueueFactory>[0]);
 
   const run = (data: Partial<TIssueCertificateFromProfileJobData>) =>
@@ -84,7 +87,7 @@ const buildQueue = () => {
         ...data
       }
     });
-  return Object.assign(run, { certificateRequestDAL });
+  return Object.assign(run, { certificateDAL, certificateRequestDAL, certificateRequestService });
 };
 
 const digicertResult = {
@@ -176,6 +179,39 @@ describe("certificate issuance queue, DigiCert renewals", () => {
 
     await expect(runJob({ externalConfiguration: { reissue: true }, csr: "csr" })).rejects.toThrow(
       "invalid_order_status"
+    );
+  });
+});
+
+describe("certificate issuance queue, where a failed renewal stopped", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    digicertFns.orderCertificate.mockResolvedValue(digicertResult);
+  });
+
+  test("reports a renewal of a deleted certificate as Infisical's check, not the CA's", async () => {
+    const runJob = buildQueue();
+    runJob.certificateDAL.findById.mockResolvedValue({ id: ORIGINAL_CERTIFICATE_ID, deletedAt: new Date() });
+
+    await expect(runJob({})).rejects.toThrow();
+
+    expect(digicertFns.orderCertificate, "the CA is never called").not.toHaveBeenCalled();
+    expect(runJob.certificateRequestService.updateCertificateRequestStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: CertificateRequestStatus.FAILED,
+        failureStage: CaOperationFailureStage.Infisical
+      })
+    );
+  });
+
+  test("reports a CA error once the CA has been called as the CA's", async () => {
+    const runJob = buildQueue();
+    digicertFns.orderCertificate.mockRejectedValue(new BadRequestError({ message: "DigiCert rejected the order" }));
+
+    await expect(runJob({})).rejects.toThrow("DigiCert rejected the order");
+
+    expect(runJob.certificateRequestService.updateCertificateRequestStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ status: CertificateRequestStatus.FAILED, failureStage: CaOperationFailureStage.Ca })
     );
   });
 });

@@ -174,7 +174,7 @@ type TCertificateAuthorityServiceFactoryDep = {
     | "updateById"
     | "transitionFromPending"
     | "attachCertificate"
-    | "attachCertificateFromPending"
+    | "attachCertificateIfUnlinked"
     | "setPendingMessage"
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;

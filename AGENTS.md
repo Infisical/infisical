@@ -175,8 +175,10 @@ job that fails a certificate request must go through one of them, or nobody who 
 must pass `failureStage: CaOperationFailureStage.AttachingIssuedCertificate` when linking a certificate the CA already
 issued to its request fails, since the notice otherwise says the CA failed and a retry issues a duplicate. A failure
 inside a CA module after the CA issued (storing the certificate) still reports at the CA stage, because the main
-issuance queue catch can't tell it apart. The ACME order sync (`checkAndSyncAcmeOrderStatus`) is an exception: it fails
-an abandoned ACME issuance directly inside its transaction, and records no failure event and sends no notice.
+issuance queue catch can't tell it apart; that catch reports `CaOperationFailureStage.Infisical` until the worker's own
+checks pass and `Ca` from then on, so keep any new check that runs before the CA call above that switch. The ACME
+order sync (`checkAndSyncAcmeOrderStatus`) is an exception: it fails an abandoned ACME issuance directly inside its
+transaction, and records no failure event and sends no notice.
 
 Auto-approval rules (`approval-policy/auto-approval/`) live on the policy and are evaluated once in
 `createRequest`, outside any transaction, failing closed. Another service becomes checkable by adding a
