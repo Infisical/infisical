@@ -1135,6 +1135,30 @@ describe("Agent Vault V1 Router", async () => {
           ttl: "1h"
         });
         expect(mint.statusCode, mint.payload).toBe(200);
+
+        // Giving the creator the role is a role change, so it waits for the project's member-change lock like any other.
+        const trx = await testDb.transaction();
+        let pending: ReturnType<typeof maker.asIdentity> | undefined;
+        try {
+          const { rows } = await trx.raw("select pg_backend_pid() as pid");
+          await trx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("project", agentVaultProjectId)]);
+          pending = maker.asIdentity("POST", "/api/v1/agent-vault/access-bundles", {
+            name: `made-under-lock-${Date.now()}`
+          });
+          await waitUntilBlockedBy(rows[0].pid);
+          await trx.commit();
+          const second = await pending;
+          expect(second.statusCode, second.payload).toBe(200);
+          expect(
+            await grantRows((second.json() as { accessBundle: { id: string } }).accessBundle.id, {
+              actorIdentityId: maker.id
+            })
+          ).toHaveLength(1);
+        } catch (err) {
+          if (!trx.isCompleted()) await trx.rollback();
+          await pending?.catch(() => undefined);
+          throw err;
+        }
       } finally {
         await deleteUaIdentity(maker.id);
       }
@@ -12296,6 +12320,81 @@ describe("Agent Vault V1 Router", async () => {
         expect(await projectRolesOf(projectId, identity.id)).toHaveLength(10);
       } finally {
         await deleteOrgIdentity(identity.id);
+      }
+    });
+
+    test("a bundle's member lists show only the kinds of member the caller can read", async () => {
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle(`member-kinds-${unique()}`);
+      const identity = await createOrgIdentity(`av-member-kinds-${unique()}`);
+      const role = await createAgentVaultRole(projectId, `user-reader-${unique()}`, [
+        ...SESSION_RULES,
+        { subject: "agent-vault-access-bundles", action: ["read"], conditions: { accessBundleId: bundle.id } },
+        { subject: "member", action: ["read"] }
+      ]);
+      const reader = await createMemberIdentity(`user-reader-${unique()}`);
+      const bundleMembersUrl = `/api/v1/agent-vault/access-bundles/${bundle.id}/members`;
+      try {
+        const added = await inject("POST", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [identity.id],
+          roles: [ProjectMembershipRole.NoAccess]
+        });
+        expect(added.statusCode, added.payload).toBe(200);
+        expect((await inject("POST", bundleMembersUrl, { machineIdentityIds: [identity.id] })).statusCode).toBe(200);
+        expect((await inject("GET", bundleMembersUrl)).payload).toContain(identity.id);
+        await setMemberRoles({ machineIdentityIds: [reader.id] }, [role.slug]);
+
+        // It can read users but not machine identities: the identity is left out, and asking for identities is a 403.
+        const listed = await reader.as("GET", bundleMembersUrl);
+        expect(listed.statusCode, listed.payload).toBe(200);
+        expect(listed.payload).not.toContain(identity.id);
+        expect((await reader.as("GET", `${bundleMembersUrl}?actorType=machineIdentity`)).statusCode).toBe(403);
+        expect((await reader.as("GET", `${bundleMembersUrl}/available?actorType=machineIdentity`)).statusCode).toBe(
+          403
+        );
+      } finally {
+        await reader.cleanup();
+        await deleteOrgIdentity(identity.id);
+      }
+    });
+
+    test("a service write answers without variable keys for a role that can't read variables", async () => {
+      const projectId = await getProjectId();
+      const key = `HIDDEN_${unique()}`;
+      const variable = await inject("POST", "/api/v1/agent-vault/variables", { scope: "global", key, value: "v" });
+      expect(variable.statusCode, variable.payload).toBe(200);
+      const name = `hidden-vars-${unique()}`;
+      const created = await inject("POST", "/api/v1/agent-vault/services", {
+        accessBundleIds: [],
+        type: "http",
+        name,
+        hostPattern: `${name}.example.com`,
+        credential: { type: "bearer", value: `{{${key}}}` }
+      });
+      expect(created.statusCode, created.payload).toBe(200);
+      const serviceId = (created.json() as { service: { id: string } }).service.id;
+      expect(created.payload).toContain(key);
+
+      const role = await createAgentVaultRole(projectId, `service-editor-${unique()}`, [
+        ...SESSION_RULES,
+        { subject: "agent-vault-services", action: ["read", "edit", "delete"] }
+      ]);
+      const editor = await createMemberIdentity(`service-editor-${unique()}`);
+      try {
+        await setMemberRoles({ machineIdentityIds: [editor.id] }, [role.slug]);
+        const updated = await editor.as("PATCH", `/api/v1/agent-vault/services/${serviceId}`, {
+          type: "http",
+          description: "updated"
+        });
+        expect(updated.statusCode, updated.payload).toBe(200);
+        expect(updated.json().service).not.toHaveProperty("variableReferences");
+        expect(updated.payload).not.toContain(key);
+
+        const deleted = await editor.as("DELETE", `/api/v1/agent-vault/services/${serviceId}`);
+        expect(deleted.statusCode, deleted.payload).toBe(200);
+        expect(deleted.payload).not.toContain(key);
+      } finally {
+        await editor.cleanup();
       }
     });
 

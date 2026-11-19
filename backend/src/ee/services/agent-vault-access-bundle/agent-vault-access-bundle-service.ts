@@ -638,9 +638,23 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       permission.can(ProjectPermissionAgentVaultServiceActions.Edit, serviceSubject(serviceId))
   });
 
-  // A service as the caller may see it. Without Read on variables, variableReferences is left out: an empty list would
-  // claim the service uses none. The OAuth sign-in state is the account of whoever set up the service, and the hook is
-  // part of that setup, so only those who can edit services get them.
+  // A service's variable references and its OAuth variable's key are variable reads, so a caller without Read on
+  // variables gets neither. variableReferences is left out rather than emptied: an empty list would claim the service
+  // uses none.
+  const hideVariables = <T extends ReturnType<typeof projectService>>(projected: T, canReadVariables: boolean) =>
+    canReadVariables
+      ? projected
+      : {
+          ...projected,
+          credential:
+            projected.credential.type === AgentVaultCredentialType.OAuth
+              ? { ...projected.credential, variable: undefined }
+              : projected.credential,
+          variableReferences: undefined
+        };
+
+  // A service as the caller may see it. The OAuth sign-in state is the account of whoever set up the service, and the
+  // hook is part of that setup, so only those who can edit services get them.
   const viewService = (
     service: TAgentVaultCatalogService,
     transformations: Awaited<ReturnType<typeof loadTransformations>>,
@@ -654,25 +668,23 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       status?: Awaited<ReturnType<TAgentVaultPersonalValueServiceFactory["findStatusesForOwner"]>>[number];
     }
   ) => {
-    const projected = projectService(
-      service,
-      transformations.customHeaders.filter((header) => header.serviceId === service.id),
-      transformations.substitutions.filter((substitution) => substitution.serviceId === service.id),
-      transformations.variableReferences.filter((reference) => reference.serviceId === service.id),
-      transformations.oauthVariables
+    const projected = hideVariables(
+      projectService(
+        service,
+        transformations.customHeaders.filter((header) => header.serviceId === service.id),
+        transformations.substitutions.filter((substitution) => substitution.serviceId === service.id),
+        transformations.variableReferences.filter((reference) => reference.serviceId === service.id),
+        transformations.oauthVariables
+      ),
+      canReadVariables
     );
     let { credential } = projected;
-    // An OAuth variable's key is a variable read, like the keys in variableReferences.
-    if (credential.type === AgentVaultCredentialType.OAuth && !canReadVariables) {
-      credential = { ...credential, variable: undefined };
-    }
     if (credential.type === AgentVaultCredentialType.OAuth && !canSeeSetup) {
       credential = { ...credential, expiresAt: undefined, authorizedAt: undefined, lastError: undefined };
     }
     return {
       ...projected,
       credential,
-      ...(canReadVariables ? {} : { variableReferences: undefined }),
       ...(canSeeSetup ? {} : { hook: undefined }),
       // The caller's own values, null when the admin sets the whole credential.
       personalValues: status ? { isConfigured: status.isConfigured, fields: status.fields } : null
@@ -1159,6 +1171,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           creatorColumn &&
           permission.cannot(ProjectPermissionAgentVaultAccessBundleActions.Use, bundleSubject(bundle.id))
         ) {
+          // The lock every role change takes, so two bundles made at once can't each count the creator's roles before the
+          // other adds one and take them past the limit together.
+          await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("project", projectId)]);
           const direct = await membershipDAL.findOne(
             { scope: AccessScope.Project, scopeProjectId: projectId, [creatorColumn]: ctx.actorId },
             tx
@@ -1550,17 +1565,20 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       throw err;
     }
 
+    const createdService = {
+      ...projectService(
+        result.created as TAgentVaultCatalogService,
+        result.insertedCustomHeaders,
+        result.insertedSubstitutions,
+        result.variableReferences,
+        await loadOauthVariables(rest.projectId, [result.created])
+      ),
+      accessBundles: bundles
+    };
+    // `service` is for the audit log, which records the variables it uses; `visibleService` is what the caller gets.
     return {
-      service: {
-        ...projectService(
-          result.created as TAgentVaultCatalogService,
-          result.insertedCustomHeaders,
-          result.insertedSubstitutions,
-          result.variableReferences,
-          await loadOauthVariables(rest.projectId, [result.created])
-        ),
-        accessBundles: bundles
-      }
+      service: createdService,
+      visibleService: hideVariables(createdService, serviceVisibilityOf(permission).canReadVariables)
     };
   };
 
@@ -2286,17 +2304,19 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       throw err;
     }
 
+    const updatedService = {
+      ...projectService(
+        result.updatedService as TAgentVaultCatalogService,
+        result.updatedCustomHeaders,
+        result.updatedSubstitutions,
+        result.variableReferences,
+        await loadOauthVariables(rest.projectId, [result.updatedService])
+      ),
+      accessBundles: await bundlesOf()
+    };
     return {
-      service: {
-        ...projectService(
-          result.updatedService as TAgentVaultCatalogService,
-          result.updatedCustomHeaders,
-          result.updatedSubstitutions,
-          result.variableReferences,
-          await loadOauthVariables(rest.projectId, [result.updatedService])
-        ),
-        accessBundles: await bundlesOf()
-      },
+      service: updatedService,
+      visibleService: hideVariables(updatedService, serviceVisibilityOf(permission).canReadVariables),
       update: {
         hostPattern: requestedHostPattern,
         serverUrl,
@@ -2597,17 +2617,19 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       agentVaultServiceDAL.findBundlesForServices([service.id], null)
     ]);
     const deleted = await agentVaultServiceDAL.deleteById(service.id);
+    const deletedService = {
+      ...projectService(
+        deleted as TAgentVaultCatalogService,
+        customHeaders,
+        substitutions,
+        variableReferences,
+        oauthVariables
+      ),
+      accessBundles: bundlesByService.get(service.id) ?? []
+    };
     return {
-      service: {
-        ...projectService(
-          deleted as TAgentVaultCatalogService,
-          customHeaders,
-          substitutions,
-          variableReferences,
-          oauthVariables
-        ),
-        accessBundles: bundlesByService.get(service.id) ?? []
-      }
+      service: deletedService,
+      visibleService: hideVariables(deletedService, serviceVisibilityOf(permission).canReadVariables)
     };
   };
 
@@ -3060,19 +3082,36 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     });
   };
 
-  const requireGrantRead = (permission: TAgentVaultPermission["permission"]) => {
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
+  // Each kind of member is read on its own subject, as on the members API, so a role that can read users but not
+  // identities lists no identities. Every kind asked for that the caller can't read is left out, and none is a 403.
+  const readableGranteeTypes = (
+    permission: TAgentVaultPermission["permission"],
+    actorType: AgentVaultMemberType | undefined
+  ) => {
+    const readOn = (type: AgentVaultMemberType) => {
+      if (type === AgentVaultMemberType.User) {
+        return [ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member] as const;
+      }
+      if (type === AgentVaultMemberType.Group) {
+        return [ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups] as const;
+      }
+      return [ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity] as const;
+    };
+    const asked = actorType ? [actorType] : ALL_GRANTEE_ACTOR_TYPES;
+    const readable = asked.filter((type) => permission.can(...readOn(type)));
+    if (!readable.length) ForbiddenError.from(permission).throwUnlessCan(...readOn(asked[0]));
+    return readable;
   };
 
   const listMembers = async ({ accessBundleId, actorType, search, limit, offset, ...rest }: TListMembersDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
-    requireGrantRead(permission);
+    const actorTypes = readableGranteeTypes(permission, actorType);
     if (!bundle.grantRoleId) return { members: [], totalCount: 0 };
     return agentVaultAccessBundleDAL.findMembers({
       projectId: rest.projectId,
       orgId: rest.ctx.actorOrgId,
       roleId: bundle.grantRoleId,
-      actorType,
+      actorTypes,
       search,
       limit,
       offset
@@ -3090,11 +3129,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     ...rest
   }: TListMembersDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
-    requireGrantRead(permission);
     return agentVaultMemberDAL.findProductMembers({
       projectId: rest.projectId,
       orgId: rest.ctx.actorOrgId,
-      actorTypes: actorType ? [actorType] : ALL_GRANTEE_ACTOR_TYPES,
+      actorTypes: readableGranteeTypes(permission, actorType),
       search,
       limit,
       offset,

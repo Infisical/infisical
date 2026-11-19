@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import {
   AccessScope,
+  ActionProjectType,
   getAdminRequiredProductLabel,
   OrgMembershipRole,
   ProjectMembershipRole,
@@ -16,10 +17,12 @@ import {
   findAgentVaultMemberRole
 } from "@app/ee/services/agent-vault-member/agent-vault-member-role-fns";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { OrgServiceActor } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
 
@@ -295,6 +298,59 @@ export const assertAgentVaultRoleLimits = ({
 }) => {
   if (project?.type !== ProjectType.AgentVault) return;
   assertAgentVaultRoleSetLimits(roles.map((el) => el.role));
+};
+
+/**
+ * The admin rule above runs in a scope's guard, on the target's roles as read before the write takes its lock. In an
+ * Agent Vault project a non-admin's write checks again under the lock: call this before the write's transaction, and
+ * pass what it returns to assertAgentVaultAdminTargetUnchanged first thing inside it. Null for any other project, and
+ * for an admin, who passes the rule whatever the target holds.
+ */
+export const agentVaultProjectToRecheck = async (
+  {
+    projectDAL,
+    permissionService
+  }: {
+    projectDAL: Pick<TProjectDALFactory, "findById">;
+    permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  },
+  { scopeData, actor }: { scopeData: { scope: AccessScope; projectId?: string }; actor: OrgServiceActor }
+) => {
+  if (scopeData.scope !== AccessScope.Project || !scopeData.projectId) return null;
+  const { projectId } = scopeData;
+  const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+    projectDAL.findById(projectId)
+  );
+  if (project?.type !== ProjectType.AgentVault) return null;
+  const { hasRole } = await permissionService.getProjectPermission({
+    actor: actor.type,
+    actorId: actor.id,
+    projectId,
+    actorAuthMethod: actor.authMethod,
+    actorOrgId: actor.orgId,
+    actionProjectType: ActionProjectType.Any
+  });
+  return hasRole(ProjectMembershipRole.Admin) ? null : projectId;
+};
+
+// Takes the project's role-change lock, then refuses if any of these memberships holds Admin now. Call it before the
+// write locks a membership row (see lockProjectRoleChanges), with the project agentVaultProjectToRecheck returned.
+export const assertAgentVaultAdminTargetUnchanged = async (
+  { projectId, membershipIds }: { projectId: string | null; membershipIds: string[] },
+  tx: Knex
+) => {
+  if (!projectId || !membershipIds.length) return;
+  await lockProjectRoleChanges(projectId, tx);
+  const adminRow = (await tx(TableName.MembershipRole)
+    .whereIn("membershipId", membershipIds)
+    .where("role", ProjectMembershipRole.Admin)
+    .first("id")) as { id: string } | undefined;
+  assertAgentVaultAdminOnlyChange({
+    project: { type: ProjectType.AgentVault },
+    hasRole: () => false,
+    givesAdmin: false,
+    touchesAdmin: Boolean(adminRow)
+  });
 };
 
 export const rolesGiveAdmin = (roles: { role: string }[]) =>

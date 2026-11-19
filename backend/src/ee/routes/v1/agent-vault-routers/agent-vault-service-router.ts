@@ -187,7 +187,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { projectId: requestedProjectId, ...body } = req.body;
       const projectId = await resolveRequestedProjectId(req, requestedProjectId, "body");
-      const { service } = await server.services.agentVaultAccessBundle.createService({
+      const { service, visibleService } = await server.services.agentVaultAccessBundle.createService({
         ...body,
         projectId,
         ctx: actorContext(req)
@@ -245,7 +245,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
         }
       });
 
-      return { service };
+      return { service: visibleService };
     }
   });
 
@@ -271,7 +271,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
         actorContext(req),
         req.params.serviceId
       );
-      const { service, update, credentialReplaced, personalValuesCleared } =
+      const { service, visibleService, update, credentialReplaced, personalValuesCleared } =
         await server.services.agentVaultAccessBundle.updateService({
           projectId,
           ctx: actorContext(req),
@@ -364,7 +364,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
         }
       });
 
-      return { service };
+      return { service: visibleService };
     }
   });
 
@@ -422,7 +422,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
         actorContext(req),
         req.params.serviceId
       );
-      const { service } = await server.services.agentVaultAccessBundle.deleteService({
+      const { service, visibleService } = await server.services.agentVaultAccessBundle.deleteService({
         projectId,
         ctx: actorContext(req),
         serviceId: req.params.serviceId
@@ -447,7 +447,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
         properties: { serviceId: service.id }
       });
 
-      return { service };
+      return { service: visibleService };
     }
   });
 

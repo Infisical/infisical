@@ -136,7 +136,9 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   membership routes apply the same limits (`assertAgentVaultRoleLimits`), so neither can save a set the other refuses.
   A role change keeps the row of every role it names again, temporary access included. A non-admin's change or removal
   re-reads the targets' roles under the project's `LastAdminGuard` lock and answers 409 if they changed since its admin
-  and boundary checks, which an admin passes whatever the targets hold.
+  and boundary checks, which an admin passes whatever the targets hold. The generic user, group and identity routes
+  repeat the admin rule under the same lock for an Agent Vault project (`agentVaultProjectToRecheck` before the
+  transaction, `assertAgentVaultAdminTargetUnchanged` first inside it).
   The deprecated `role` field still takes admin or member, where member is the Member role the migration made, and keeps
   the member's bundle roles (`keepBundleRoles`), since it never touched grants. Responses carry `roles` and the
   deprecated `role` (`withDeprecatedRole`), which reads admin or member whenever the member holds one of them so old
@@ -167,7 +169,8 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   holds (`usableServiceIdsOf`, `usableSkillIdsOf`); a session can list exactly those. Visible adds `read`
   (`serviceVisibilityOf`, `skillVisibilityOf`, `visibleIdsWithin`), because a session can't name what its creator can't
   find. A read of something that names services or skills (a session, a delegation, Used By) leaves out the ones the
-  reader can't see, the way it leaves out deleted ones.
+  reader can't see, the way it leaves out deleted ones. Every response that returns a service, writes included, goes
+  through `hideVariables` (or `viewService`), since a role can edit services without being able to read variables.
 - **A role change reaches a cached permission within 10 seconds.** Reach is read through the platform's permission
   cache (`withCacheFingerprint`, 10 second marker), grants through the deprecated endpoints included. Don't read roles
   around the cache to make one path immediate, or two paths would disagree. The e2e request helper expires the
@@ -176,14 +179,16 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   /access-bundles/:id/members` (and `/members/available`) give, take and list the bundle's role (`grantRoleId`,
   `agent-vault-bundle-role-fns.ts`): `ensureBundleRole` makes `<bundle> users` (read and use on that bundle) the first
   time one is needed, and taking the last role from a membership leaves it No Access, since a membership needs a role.
-  They need bundle `edit` plus `edit` on users and groups and on each identity named, and member `read` to list, and
-  only an admin can give one to or take one from an admin (`assertAdminTargetsAllowed`). A grant that would take a
-  member past `AGENT_VAULT_MAX_MEMBER_ROLES` is refused whole (`giveBundleRole` returns them in `full`). Each locks
-  the bundle row first, so two calls can't make two roles and the dedupe read inside it is authoritative. They are
-  hidden from the API reference and go after 2027-01-04 with the role helpers.
+  They need bundle `edit` plus `edit` on users and groups and on each identity named, and a list shows only the kinds
+  of member the caller can read (`readableGranteeTypes`), as the members API does. Only an admin can give one to or
+  take one from an admin (`assertAdminTargetsAllowed`). A grant that would take a member past
+  `AGENT_VAULT_MAX_MEMBER_ROLES` is refused whole (`giveBundleRole` returns them in `full`). Each locks the bundle row
+  first, so two calls can't make two roles and the dedupe read inside it is authoritative. They are hidden from the
+  API reference and go after 2027-01-04 with the role helpers.
 - **The bundle's creator gets its role when their own roles can't use it** (`createAccessBundle`), so whoever built a
-  bundle can try it, unless they already hold `AGENT_VAULT_MAX_MEMBER_ROLES` roles. Only a creator with a direct
-  project membership gets one: the role on a group's membership would reach the whole group.
+  bundle can try it, unless they already hold `AGENT_VAULT_MAX_MEMBER_ROLES` roles. It counts their roles under the
+  project's `LastAdminGuard` lock, like every role change. Only a creator with a direct project membership gets one:
+  the role on a group's membership would reach the whole group.
 - **Deleting a bundle keeps every role that names it**, the bundle's own included: a role is the admin's to change, and
   a rule that picks out an id no bundle has covers nothing, so a bundle made later with the same name isn't covered either.
 - `GET /access-bundles/:id/roles` (`listBundleRoles`) answers who can use a bundle: admin and every custom role whose

@@ -1,5 +1,6 @@
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { agentVaultMemberRoleIdOf } from "@app/ee/services/agent-vault-member/agent-vault-member-role-fns";
+import { PgSqlLock } from "@app/keystore/keystore";
 
 import {
   convertAgentVaultMemberRows,
@@ -16,6 +17,20 @@ type TMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
 const GIVE_ADMIN = "Only an Agent Vault admin can give the admin role.";
 const TOUCH_ADMIN = "Only an Agent Vault admin can change or remove another admin.";
+
+// Resolves once a backend waits on a lock the given one holds: by then a request has done everything before the lock.
+const waitUntilBlockedBy = async (pid: number, attemptsLeft = 200): Promise<void> => {
+  const { rows } = await testDb.raw(
+    "select count(*)::int as waiting from pg_stat_activity where ? = any(pg_blocking_pids(pid))",
+    [pid]
+  );
+  if (rows[0].waiting > 0) return;
+  if (attemptsLeft === 0) throw new Error(`No request queued behind the lock held by backend ${pid}`);
+  await new Promise((resolve) => {
+    setTimeout(resolve, 25);
+  });
+  await waitUntilBlockedBy(pid, attemptsLeft - 1);
+};
 
 // The platform's own membership routes reach an Agent Vault project's members too, so the rules the Agent Vault members
 // routes keep (only an admin makes or unmakes an admin, an older client's `member` keeps access bundle roles) hold
@@ -248,6 +263,53 @@ describe("Agent Vault through the generic membership routes", () => {
         // eslint-disable-next-line no-await-in-loop
         expect(await roleSlugsOf(membership.id)).toEqual([ProjectMembershipRole.NoAccess]);
       }
+    });
+
+    test("a change or removal waiting on the lock is refused when the member was made an admin meanwhile", async () => {
+      const target = await createOrgIdentity("av-generic-stale");
+      const added = await asAdmin("POST", identityPath(target), { roles: [{ role: "membership-manager" }] });
+      expect(added.statusCode, added.payload).toBe(200);
+      const membership = await projectMembershipOf({ actorIdentityId: target });
+
+      const changes = [
+        () => asManager("PATCH", identityPath(target), { roles: [{ role: ProjectMembershipRole.NoAccess }] }),
+        () => asManager("DELETE", identityPath(target))
+      ];
+      for (const change of changes) {
+        // An admin promotes the member while the manager's change waits for the project's member-change lock.
+        // eslint-disable-next-line no-await-in-loop
+        const trx = await testDb.transaction();
+        let pending: ReturnType<typeof change> | undefined;
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const { rows } = await trx.raw("select pg_backend_pid() as pid");
+          // eslint-disable-next-line no-await-in-loop
+          await trx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("project", projectId)]);
+          // eslint-disable-next-line no-await-in-loop
+          const [promotion] = (await trx(TableName.MembershipRole)
+            .insert({ membershipId: membership.id, role: ProjectMembershipRole.Admin })
+            .returning("id")) as { id: string }[];
+          pending = change();
+          // eslint-disable-next-line no-await-in-loop
+          await waitUntilBlockedBy(rows[0].pid);
+          // eslint-disable-next-line no-await-in-loop
+          await trx.commit();
+
+          // eslint-disable-next-line no-await-in-loop
+          const res = await pending;
+          expect(res.statusCode).toBe(403);
+          expect(res.json().message).toBe(TOUCH_ADMIN);
+          // eslint-disable-next-line no-await-in-loop
+          await testDb(TableName.MembershipRole).where({ id: promotion.id }).delete();
+        } catch (err) {
+          // eslint-disable-next-line no-await-in-loop
+          if (!trx.isCompleted()) await trx.rollback();
+          // eslint-disable-next-line no-await-in-loop
+          await pending?.catch(() => undefined);
+          throw err;
+        }
+      }
+      expect(await roleSlugsOf(membership.id)).toEqual(["membership-manager"]);
     });
 
     test("member is refused on a project without a Member role", async () => {

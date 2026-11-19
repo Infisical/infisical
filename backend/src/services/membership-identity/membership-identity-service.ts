@@ -23,6 +23,8 @@ import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import {
+  agentVaultProjectToRecheck,
+  assertAgentVaultAdminTargetUnchanged,
   customRolesNeedRbacPlan,
   withAgentVaultMemberAlias,
   assertProductWillRetainAdmin,
@@ -339,7 +341,15 @@ export const membershipIdentityServiceFactory = ({
     let shouldRevokeOrgTokens = false;
     let shouldRestoreOrgTokens = false;
 
+    const agentVaultProjectId = await agentVaultProjectToRecheck(
+      { projectDAL, permissionService },
+      { scopeData, actor: dto.permission }
+    );
     const membershipDoc = await membershipIdentityDAL.transaction(async (tx) => {
+      await assertAgentVaultAdminTargetUnchanged(
+        { projectId: agentVaultProjectId, membershipIds: [existingMembership.id] },
+        tx
+      );
       if (keepBundleRolesInProjectId) await lockProjectRoleChanges(keepBundleRolesInProjectId, tx);
       // The project advisory lock before the row lock, the order every other caller takes: a product-route
       // change holding the advisory lock needs KEY SHARE on this row, so the reverse order deadlocks.
@@ -504,12 +514,20 @@ export const membershipIdentityServiceFactory = ({
 
     let revoked: TRevokedProjectAccess[] = [];
 
+    const agentVaultProjectId = await agentVaultProjectToRecheck(
+      { projectDAL, permissionService },
+      { scopeData, actor: dto.permission }
+    );
     const performDelete = async (tx: Knex) => {
       if (scopeData.scope === AccessScope.Organization) {
         revoked = await $removeIdentityFromOrg({ identityId: dto.selector.identityId, orgId: scopeData.orgId }, tx);
         return existingMembership;
       }
 
+      await assertAgentVaultAdminTargetUnchanged(
+        { projectId: agentVaultProjectId, membershipIds: [existingMembership.id] },
+        tx
+      );
       await assertProductWillRetainAdmin({
         project: await projectDAL.findById(scopeData.projectId, tx),
         excludeMembershipIds: [existingMembership.id],

@@ -34,6 +34,8 @@ import { AuthMethod } from "../auth/auth-type";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { lockMembershipsById } from "../membership/membership-dal";
 import {
+  agentVaultProjectToRecheck,
+  assertAgentVaultAdminTargetUnchanged,
   customRolesNeedRbacPlan,
   withAgentVaultMemberAlias,
   assertProductWillRetainAdmin,
@@ -565,7 +567,15 @@ export const membershipUserServiceFactory = ({
 
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
+    const agentVaultProjectId = await agentVaultProjectToRecheck(
+      { projectDAL, permissionService },
+      { scopeData, actor: dto.permission }
+    );
     const membershipDoc = await membershipUserDAL.transaction(async (tx) => {
+      await assertAgentVaultAdminTargetUnchanged(
+        { projectId: agentVaultProjectId, membershipIds: [existingMembership.id] },
+        tx
+      );
       if (keepBundleRolesInProjectId) await lockProjectRoleChanges(keepBundleRolesInProjectId, tx);
       if (!newRolesHavePermanentAdmin && scopeData.scope === AccessScope.Organization) {
         await assertWillRetainOrgAdmin({
@@ -656,6 +666,10 @@ export const membershipUserServiceFactory = ({
         message: "You can't delete your own membership"
       });
 
+    const agentVaultProjectId = await agentVaultProjectToRecheck(
+      { projectDAL, permissionService },
+      { scopeData: dto.scopeData, actor: dto.permission }
+    );
     const performDelete = async (tx: Knex) => {
       if (dto.scopeData.scope === AccessScope.Organization) {
         // Org-scope last-admin guard runs inside deleteOrgMembershipsFn's transaction so the
@@ -677,6 +691,10 @@ export const membershipUserServiceFactory = ({
       }
 
       if (dto.scopeData.scope === AccessScope.Project) {
+        await assertAgentVaultAdminTargetUnchanged(
+          { projectId: agentVaultProjectId, membershipIds: [existingMembership.id] },
+          tx
+        );
         await assertProductWillRetainAdmin({
           project: await projectDAL.findById(dto.scopeData.projectId, tx),
           excludeMembershipIds: [existingMembership.id],

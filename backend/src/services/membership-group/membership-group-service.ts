@@ -33,6 +33,8 @@ import { TApprovalRequestDALFactory } from "../approval-policy/approval-request-
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { lockMembershipsById, TMembershipDALFactory } from "../membership/membership-dal";
 import {
+  agentVaultProjectToRecheck,
+  assertAgentVaultAdminTargetUnchanged,
   customRolesNeedRbacPlan,
   withAgentVaultMemberAlias,
   assertProductWillRetainAdmin,
@@ -331,7 +333,15 @@ export const membershipGroupServiceFactory = ({
 
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
+    const agentVaultProjectId = await agentVaultProjectToRecheck(
+      { projectDAL, permissionService },
+      { scopeData, actor: dto.permission }
+    );
     const membershipDoc = await membershipGroupDAL.transaction(async (tx) => {
+      await assertAgentVaultAdminTargetUnchanged(
+        { projectId: agentVaultProjectId, membershipIds: [existingMembership.id] },
+        tx
+      );
       if (keepBundleRolesInProjectId) await lockProjectRoleChanges(keepBundleRolesInProjectId, tx);
       const newIsActive = data.isActive ?? existingMembership.isActive;
       const newRolesHavePermanentAdmin =
@@ -563,8 +573,16 @@ export const membershipGroupServiceFactory = ({
 
     let identityIdsLosingOrgAccess: string[] = [];
     let sendPamCancellations = () => {};
+    const agentVaultProjectId = await agentVaultProjectToRecheck(
+      { projectDAL, permissionService },
+      { scopeData, actor: dto.permission }
+    );
     const performDelete = async (tx: Knex) => {
       if (scopeData.scope === AccessScope.Project && existingMembership.scopeProjectId) {
+        await assertAgentVaultAdminTargetUnchanged(
+          { projectId: agentVaultProjectId, membershipIds: [existingMembership.id] },
+          tx
+        );
         await assertProductWillRetainAdmin({
           project: await projectDAL.findById(existingMembership.scopeProjectId, tx),
           excludeMembershipIds: [existingMembership.id],
