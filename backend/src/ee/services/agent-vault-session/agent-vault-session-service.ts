@@ -6,6 +6,7 @@ import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { PgSqlLock } from "@app/keystore/keystore";
@@ -29,6 +30,7 @@ import { TAgentVaultResolveDALFactory } from "../agent-vault-proxy/agent-vault-r
 import { generateSessionLogKey, wrapSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { TAgentVaultSkillBundleDALFactory } from "../agent-vault-skill/agent-vault-skill-bundle-dal";
 import { TAgentVaultSkillDALFactory } from "../agent-vault-skill/agent-vault-skill-dal";
+import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
 import { findHostPatternConflicts } from "../agent-vault/agent-vault-conflict-fns";
 import { isForeignKeyViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { AgentVaultMemberType, AgentVaultServiceType, AgentVaultSessionScope } from "../agent-vault/agent-vault-enums";
@@ -61,7 +63,10 @@ import {
   assertNoAccessBundleConflicts,
   assertNoServiceConflicts,
   assertNoOverrideConflicts,
+  bindInlineOauthVariables,
+  inlineOauthVariableIdsOf,
   prepareInlineServices,
+  TInlineOauthVariableKeys,
   toInlineServiceSummary
 } from "./agent-vault-session-inline-service-fns";
 import {
@@ -108,6 +113,7 @@ type TAgentVaultSessionServiceFactoryDep = {
     TAgentVaultServiceDALFactory,
     "find" | "findByAccessBundleId" | "findCatalogByNames" | "findIdsInBundles"
   >;
+  agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findKeys" | "findOauthForResolve">;
   agentVaultSkillDAL: Pick<TAgentVaultSkillDALFactory, "findByNamesInProject">;
   agentVaultSkillBundleDAL: Pick<TAgentVaultSkillBundleDALFactory, "findSkillIdsInBundles" | "findSkillsForBundle">;
   agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "findForIdentity" | "coversUser">;
@@ -138,6 +144,7 @@ export const agentVaultSessionServiceFactory = ({
   agentVaultSessionInlineSkillDAL,
   agentVaultAccessBundleDAL,
   agentVaultServiceDAL,
+  agentVaultVariableDAL,
   agentVaultSkillDAL,
   agentVaultSkillBundleDAL,
   agentVaultDelegationDAL,
@@ -211,6 +218,16 @@ export const agentVaultSessionServiceFactory = ({
     );
   };
 
+  // A deleted variable is left out, and its service then names none.
+  const findInlineOauthVariableKeys = async (
+    rows: { projectId: string; credentialType: string; credentialConfig?: unknown }[]
+  ): Promise<TInlineOauthVariableKeys> => {
+    const variableIds = inlineOauthVariableIdsOf(rows);
+    if (!variableIds.length) return new Map();
+    const variables = await agentVaultVariableDAL.findOauthForResolve({ variableIds, projectId: rows[0].projectId });
+    return new Map(variables.map((variable) => [variable.id, { id: variable.id, key: variable.key }]));
+  };
+
   // Each session's services or skills, listed by name or sent inline, as one list in the order they were sent. A listed
   // one is read from the live catalog, so one the reader can't see is left out, the same as a deleted one: its later
   // name, description and hosts are the catalog's to show, not the session's. Visibility is read only when a session
@@ -247,13 +264,27 @@ export const agentVaultSessionServiceFactory = ({
       (bySession.get(sessionId) ?? []).sort((a, b) => a.position - b.position).map(({ entry }) => entry);
   };
 
-  const findSessionServices = (sessionIds: string[], reader: TSessionReader) =>
-    findSessionEntries({
+  // An inline service's OAuth variable key is a variable read, as on a bundle's services.
+  const findSessionServices = (sessionIds: string[], reader: TSessionReader) => {
+    const canReadVariables = reader.permission.can(
+      ProjectPermissionAgentVaultVariableActions.Read,
+      ProjectPermissionSub.AgentVaultVariables
+    );
+    // Filled once the inline rows are loaded, which findSessionEntries awaits before it maps any of them.
+    let oauthVariables: TInlineOauthVariableKeys = new Map();
+    return findSessionEntries({
       sessionIds,
-      loadInline: (ids) => agentVaultSessionInlineServiceDAL.findSummariesBySessionIds(ids),
+      loadInline: async (ids) => {
+        const rows = await agentVaultSessionInlineServiceDAL.findSummariesBySessionIds(ids);
+        if (canReadVariables) oauthVariables = await findInlineOauthVariableKeys(rows);
+        return rows;
+      },
       loadListed: (ids) => agentVaultSessionServiceDAL.findSummariesBySessionIds(ids),
       loadIsVisible: () => serviceVisibilityOf({ agentVaultServiceDAL, agentVaultReachDAL }, reader),
-      fromInline: (row): TAgentVaultSessionServiceSummary => ({ ...toInlineServiceSummary(row), isInline: true }),
+      fromInline: (row): TAgentVaultSessionServiceSummary => ({
+        ...toInlineServiceSummary(row, oauthVariables),
+        isInline: true
+      }),
       fromListed: ({ id, name, type, description, hostPattern }): TAgentVaultSessionServiceSummary => ({
         id,
         name,
@@ -263,6 +294,7 @@ export const agentVaultSessionServiceFactory = ({
         isInline: false
       })
     });
+  };
 
   const findSessionSkills = (sessionIds: string[], reader: TSessionReader) =>
     findSessionEntries({
@@ -370,10 +402,23 @@ export const agentVaultSessionServiceFactory = ({
       });
     }
 
-    const preparedInlineServices = prepareInlineServices(
+    let preparedInlineServices = prepareInlineServices(
       inlineEntries.map(({ input }) => input),
       inlineEntries.map(({ position }) => position)
     );
+    // An OAuth variable's tokens go to the hosts this session's service names, as a typed {{KEY}} would send a value, so
+    // naming one takes ReadValue too, checked before the lookup so a missing key can't be told from one the caller may
+    // not read.
+    if (preparedInlineServices.some((service) => service.oauthVariableKey)) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAgentVaultVariableActions.ReadValue,
+        ProjectPermissionSub.AgentVaultVariables
+      );
+      preparedInlineServices = bindInlineOauthVariables(
+        preparedInlineServices,
+        await agentVaultVariableDAL.findKeys({ projectId, owner: null })
+      );
+    }
     if (preparedInlineServices.some((service) => service.hookUrl)) {
       await assertAgentVaultHooksOnPlan(licenseService, ctx.actorOrgId);
     }
@@ -649,7 +694,7 @@ export const agentVaultSessionServiceFactory = ({
     }
     const seal = (value: unknown) => encrypt!(Buffer.from(JSON.stringify(value)));
     const inlineServiceRows: TAgentVaultInlineServiceInsert[] = preparedInlineServices.map(
-      ({ secrets, customHeaders, substitutions, ...service }) => ({
+      ({ secrets, customHeaders, substitutions, oauthVariableKey, ...service }) => ({
         ...service,
         projectId,
         credentialType: service.credentialConfig.type,
@@ -797,6 +842,7 @@ export const agentVaultSessionServiceFactory = ({
         return { session: created, insertedInlineServices: inserted, insertedInlineSkills: insertedSkills };
       }
     );
+    const oauthVariables = await findInlineOauthVariableKeys(insertedInlineServices);
 
     return {
       session: {
@@ -820,7 +866,7 @@ export const agentVaultSessionServiceFactory = ({
           })),
           ...insertedInlineServices.map((row) => ({
             position: row.position,
-            service: { ...toInlineServiceSummary(row), isInline: true as const }
+            service: { ...toInlineServiceSummary(row, oauthVariables), isInline: true as const }
           }))
         ]
           .sort((a, b) => a.position - b.position)

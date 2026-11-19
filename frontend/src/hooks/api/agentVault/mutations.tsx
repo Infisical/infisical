@@ -40,6 +40,7 @@ import {
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
   TCreateAgentVaultSkillDTO,
+  TAgentVaultOauthVariableSignInStart,
   TCreateAgentVaultVariableDTO,
   TDeleteAgentVaultPersonalValuesDTO,
   TListAgentVaultMcpToolsDTO,
@@ -52,6 +53,7 @@ import {
   TUpdateAgentVaultSessionDTO,
   TUpdateAgentVaultSessionLogSettingsDTO,
   TUpdateAgentVaultSkillDTO,
+  TStartAgentVaultOauthVariableSignInDTO,
   TUpdateAgentVaultVariableDTO
 } from "./types";
 
@@ -605,6 +607,27 @@ export const useDeleteAgentVaultVariable = (projectId: string) => {
     },
     onSuccess: () => invalidateVariables(queryClient, currentOrg.id, projectId)
   });
+};
+
+// The sign-in itself is written into the variable when the callback page completes it, so the variables and the
+// services that use them are refreshed once the poll sees it finish, with useRefreshAgentVaultVariables.
+export const useStartAgentVaultOauthVariableSignIn = () =>
+  useMutation({
+    // The variable dialog shows every failure in place, discovery and registration ones naming the server.
+    meta: { skipErrorToast: true },
+    mutationFn: async ({ variableId, ...params }: TStartAgentVaultOauthVariableSignInDTO) => {
+      const { data } = await apiRequest.post<TAgentVaultOauthVariableSignInStart>(
+        `/api/v1/agent-vault/variables/${variableId}/authorizations`,
+        params
+      );
+      return data;
+    }
+  });
+
+export const useRefreshAgentVaultVariables = (projectId: string) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return () => invalidateVariables(queryClient, currentOrg.id, projectId);
 };
 
 // A mutation rather than a query, so a revealed value never enters the query cache.

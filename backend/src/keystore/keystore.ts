@@ -203,6 +203,9 @@ export const KeyStorePrefixes = {
   // By service and owner, not row id: a reconnect replaces the member's row.
   AgentVaultOauthPersonalRefreshLock: (serviceId: string, ownerId: string) =>
     `agent-vault-oauth-refresh-lock:${serviceId}:${ownerId}` as const,
+  // By variable, not service: every service using an OAuth variable refreshes the same tokens.
+  AgentVaultOauthVariableRefreshLock: (variableId: string) =>
+    `agent-vault-oauth-refresh-lock:variable:${variableId}` as const,
   // Bytes an org has been allowed to upload to object storage on one UTC day (YYYY-MM-DD).
   ObjectStorageDailyBytes: (orgId: string, day: string) => `object-storage:daily-bytes:${orgId}:${day}` as const,
   // Org invitation emails an org has been allowed to send on one UTC day (YYYY-MM-DD).
@@ -379,6 +382,8 @@ export type TKeyStoreFactory = {
     prefix?: string
   ) => Promise<"OK" | null>;
   deleteItem: (key: string) => Promise<number>;
+  // Deletes the key only while it still holds value, so a lock holder never removes a lock taken after its own expired.
+  deleteItemIfValue: (key: string, value: string) => Promise<boolean>;
   deleteItemsByKeyIn: (keys: string[]) => Promise<number>;
   deleteItems: (arg: TDeleteItems) => Promise<number>;
   incrementBy: (key: string, value: number) => Promise<number>;
@@ -517,6 +522,16 @@ export const keyStoreFactory = (
   ) => primaryRedis.set(prefix ? `${prefix}:${key}` : key, value, "EX", expiryInSeconds, "NX");
 
   const deleteItem = async (key: string) => primaryRedis.del(key);
+
+  const DELETE_IF_VALUE_SCRIPT = `
+    if redis.call("GET", KEYS[1]) == ARGV[1] then
+      return redis.call("DEL", KEYS[1])
+    end
+    return 0
+  `;
+
+  const deleteItemIfValue = async (key: string, value: string) =>
+    Number(await primaryRedis.eval(DELETE_IF_VALUE_SCRIPT, 1, key, value)) === 1;
 
   const deleteItemsByKeyIn = async (keys: string[]) => {
     if (keys.length === 0) return 0;
@@ -968,6 +983,7 @@ export const keyStoreFactory = (
     incrementByIfUnderLimitWithFixedExpiry,
     decrementByOrDelete,
     decrementIfExists,
+    deleteItemIfValue,
     claimLeastLoaded,
     incrementByWithExpiry,
     probeDistinctMember,

@@ -2039,7 +2039,10 @@ export const registerRoutes = async (
     agentVaultServiceDAL,
     agentVaultPersonalValueDAL,
     permissionService,
-    agentVaultReachDAL
+    agentVaultReachDAL,
+    agentVaultVariableDAL,
+    projectDAL,
+    agentVaultSessionInlineServiceDAL
   });
 
   const agentVaultVariableService = agentVaultVariableServiceFactory({
@@ -2048,7 +2051,8 @@ export const registerRoutes = async (
     agentVaultServiceDAL,
     agentVaultReachDAL,
     permissionService,
-    kmsDataKeyService
+    kmsDataKeyService,
+    agentVaultOauthService
   });
 
   const agentVaultPersonalValueService = agentVaultPersonalValueServiceFactory({
@@ -2111,6 +2115,7 @@ export const registerRoutes = async (
     agentVaultSessionInlineSkillDAL,
     agentVaultAccessBundleDAL,
     agentVaultServiceDAL,
+    agentVaultVariableDAL,
     agentVaultSkillDAL,
     agentVaultSkillBundleDAL,
     agentVaultDelegationDAL,

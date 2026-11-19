@@ -493,6 +493,7 @@ export enum EventType {
   AGENT_VAULT_VARIABLE_UPDATE = "agent-vault-variable-update",
   AGENT_VAULT_VARIABLE_DELETE = "agent-vault-variable-delete",
   AGENT_VAULT_VARIABLE_VALUE_VIEW = "agent-vault-variable-value-view",
+  AGENT_VAULT_OAUTH_VARIABLE_CONNECT = "agent-vault-oauth-variable-connect",
   AGENT_VAULT_PERSONAL_VALUES_SET = "agent-vault-personal-values-set",
   AGENT_VAULT_PERSONAL_VALUES_DELETE = "agent-vault-personal-values-delete",
   AGENT_VAULT_SKILL_CREATE = "agent-vault-skill-create",

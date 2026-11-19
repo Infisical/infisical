@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { TAgentVaultCredentialSummary } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-types";
 import {
   AgentVaultCredentialType,
   AgentVaultVariableReferenceField
@@ -48,6 +49,16 @@ const SERVICE_RULE_AUDIT_FIELDS: ("allowedMethods" | "allowedPathPrefixes" | "al
 const variableKeysOf = (service: { variableReferences?: { key: string }[] }) => [
   ...new Set((service.variableReferences ?? []).map((reference) => reference.key))
 ];
+
+// What an audit event says about an OAuth credential: the variable whose sign-in it sends, or the issuer and scopes of
+// the service's own. An OAuth variable's issuer and scopes are recorded on the variable's events instead.
+const oauthAuditFieldsOf = (credential: TAgentVaultCredentialSummary) => {
+  if (credential.type !== AgentVaultCredentialType.OAuth) return {};
+  if (credential.source === "variable") {
+    return credential.variable ? { oauthVariable: { id: credential.variable.id, key: credential.variable.key } } : {};
+  }
+  return { oauthIssuer: credential.issuer, oauthScopes: credential.grantedScopes };
+};
 
 // A project's services, which access bundles hold through links, like skills. Personal values hang off the service,
 // since a member sets them once however many bundles give them the service.
@@ -202,10 +213,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
               service.credential.type === AgentVaultCredentialType.Bearer ? service.credential.headerName : undefined,
             headerPrefix:
               service.credential.type === AgentVaultCredentialType.Bearer ? service.credential.headerPrefix : undefined,
-            oauthIssuer:
-              service.credential.type === AgentVaultCredentialType.OAuth ? service.credential.issuer : undefined,
-            oauthScopes:
-              service.credential.type === AgentVaultCredentialType.OAuth ? service.credential.grantedScopes : undefined,
+            ...oauthAuditFieldsOf(service.credential),
             memberProvidedFields:
               service.credential.type === AgentVaultCredentialType.Passthrough ||
               service.credential.type === AgentVaultCredentialType.SshKey
@@ -270,8 +278,9 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
           serviceId: req.params.serviceId,
           ...req.body
         });
-      const isOauthAuthorized =
-        req.body.credential?.type === AgentVaultCredentialType.OAuth && Boolean(req.body.credential.authorizationId);
+      const isOauthConnected =
+        req.body.credential?.type === AgentVaultCredentialType.OAuth &&
+        Boolean(req.body.credential.authorizationId || req.body.credential.variable);
       const serviceTypeFields = serviceTypeReportFieldsOf(service);
       const transformationNames = serviceTransformationNamesOf(service);
 
@@ -310,14 +319,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
               req.body.credential?.type === AgentVaultCredentialType.Bearer
                 ? req.body.credential.headerPrefix
                 : undefined,
-            oauthIssuer:
-              isOauthAuthorized && service.credential.type === AgentVaultCredentialType.OAuth
-                ? service.credential.issuer
-                : undefined,
-            oauthScopes:
-              isOauthAuthorized && service.credential.type === AgentVaultCredentialType.OAuth
-                ? service.credential.grantedScopes
-                : undefined,
+            ...(isOauthConnected ? oauthAuditFieldsOf(service.credential) : {}),
             ...pick(update, SERVICE_RULE_AUDIT_FIELDS),
             // The setting after the update, present whenever the update touched the credential.
             memberProvidedFields:
