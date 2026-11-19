@@ -1229,79 +1229,67 @@ export enum NeonLeaseType {
 // Neon project, branch and endpoint IDs, e.g. "shiny-wind-028834" or "br-aged-salad-637688"
 const NEON_RESOURCE_ID_REGEX = /^[a-z0-9-]{1,60}$/;
 
-export const DynamicSecretNeonSchema = z
-  .object({
-    apiKey: z.string().trim().min(1).max(1024).describe("Neon API key used to manage roles and branches."),
-    baseUrl: z
-      .string()
-      .trim()
-      .max(2048)
-      .url("Must be a valid URL")
-      .optional()
-      .describe(
-        "Base URL of the Neon API, for a self-hosted Neon. Defaults to Neon's hosted API, https://console.neon.tech/api/v2."
-      ),
-    projectId: z
-      .string()
-      .trim()
-      .regex(NEON_RESOURCE_ID_REGEX, "Must be a valid Neon project ID")
-      .describe("ID of the Neon project, e.g. shiny-wind-028834."),
+const NeonBranchIdSchema = z.string().trim().regex(NEON_RESOURCE_ID_REGEX, "Must be a valid Neon branch ID");
+
+const NeonSharedInputsSchema = z.object({
+  apiKey: z.string().trim().min(1).max(1024).describe("Neon API key used to manage roles and branches."),
+  baseUrl: z
+    .string()
+    .trim()
+    .max(2048)
+    .url("Must be a valid URL")
+    .nullable()
+    .optional()
+    .describe(
+      "Base URL of the Neon API, for a self-hosted Neon. Defaults to Neon's hosted API, https://console.neon.tech/api/v2."
+    ),
+  projectId: z
+    .string()
+    .trim()
+    .regex(NEON_RESOURCE_ID_REGEX, "Must be a valid Neon project ID")
+    .describe("ID of the Neon project, e.g. shiny-wind-028834."),
+  databaseName: z
+    .string()
+    .trim()
+    .min(1)
+    .max(63)
+    .default("neondb")
+    .describe("Database used in the returned connection string."),
+  pooled: z.boolean().default(false).describe("Return the pooled (PgBouncer) connection string.")
+});
+
+export const DynamicSecretNeonSchema = z.discriminatedUnion("leaseType", [
+  NeonSharedInputsSchema.extend({
+    leaseType: z.literal(NeonLeaseType.Role).describe("Each lease creates a Postgres role on an existing branch."),
+    branchId: NeonBranchIdSchema.describe("The branch each lease's role is created on.")
+  }),
+  NeonSharedInputsSchema.extend({
     leaseType: z
-      .nativeEnum(NeonLeaseType)
-      .default(NeonLeaseType.Role)
-      .describe("Whether each lease creates a Postgres role on a branch or a new branch."),
-    branchId: z
-      .string()
-      .trim()
-      .regex(NEON_RESOURCE_ID_REGEX, "Must be a valid Neon branch ID")
+      .literal(NeonLeaseType.Branch)
+      .describe("Each lease creates a copy-on-write branch with its own compute endpoint."),
+    parentBranchId: NeonBranchIdSchema.nullable()
       .optional()
-      .describe(
-        "Role leases: the branch the role is created on. Branch leases: the parent branch (defaults to the project's default branch)."
-      ),
-    databaseName: z
-      .string()
-      .trim()
-      .min(1)
-      .max(63)
-      .default("neondb")
-      .describe("Database used in the returned connection string."),
+      .describe("The branch each lease branches from. Defaults to the project's default branch."),
     roleName: z
       .string()
       .trim()
       .min(1)
       .max(63)
-      .optional()
-      .describe("Branch leases: the existing role whose credentials are returned for the new branch."),
-    pooled: z.boolean().default(false).describe("Return the pooled (PgBouncer) connection string."),
+      .describe("The existing role whose credentials are returned for the new branch."),
     resetRolePassword: z
       .boolean()
       .default(true)
       .describe(
-        "Branch leases: reset the role's password on the new branch so the lease does not share the parent branch's password."
+        "Reset the role's password on the new branch so the lease does not share the parent branch's password."
       ),
     setBranchExpiration: z
       .boolean()
       .default(false)
       .describe(
-        "Branch leases: also set the branch's Neon expiration time to the lease expiry, so Neon deletes it even if revocation never runs."
+        "Also set the branch's Neon expiration time to the lease expiry, so Neon deletes it even if revocation never runs."
       )
   })
-  .superRefine((data, ctx) => {
-    if (data.leaseType === NeonLeaseType.Role && !data.branchId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["branchId"],
-        message: "A branch ID is required when each lease creates a role"
-      });
-    }
-    if (data.leaseType === NeonLeaseType.Branch && !data.roleName) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["roleName"],
-        message: "A role name is required when each lease creates a branch"
-      });
-    }
-  });
+]);
 
 export const DynamicSecretSshSchema = z.object({
   principals: z.array(z.string().trim().min(1)).min(1),
@@ -1373,6 +1361,8 @@ export type TDynamicProviderValidateMetadata = {
   defaultTTL?: string;
   maxTTL?: string | null;
   hasActiveLeases?: boolean;
+  // secret fields the update left out, which hold the stored value in the inputs being validated
+  omittedSecretFields?: string[];
 };
 
 export type TDynamicProviderFns = {

@@ -683,18 +683,28 @@ export type TDynamicSecretProvider =
     }
   | {
       type: DynamicSecretProviders.Neon;
-      inputs: {
-        apiKey: string;
-        baseUrl?: string;
-        projectId: string;
-        leaseType: NeonLeaseType;
-        branchId?: string;
-        databaseName: string;
-        roleName?: string;
-        pooled?: boolean;
-        resetRolePassword?: boolean;
-        setBranchExpiration?: boolean;
-      };
+      inputs:
+        | {
+            leaseType: NeonLeaseType.Role;
+            apiKey?: string;
+            baseUrl?: string | null;
+            projectId: string;
+            branchId: string;
+            databaseName: string;
+            pooled: boolean;
+          }
+        | {
+            leaseType: NeonLeaseType.Branch;
+            apiKey?: string;
+            baseUrl?: string | null;
+            projectId: string;
+            parentBranchId?: string | null;
+            databaseName: string;
+            roleName: string;
+            pooled: boolean;
+            resetRolePassword: boolean;
+            setBranchExpiration: boolean;
+          };
     };
 
 export type TCreateDynamicSecretDTO = {

@@ -31,7 +31,7 @@ const getNeonConnectionFields = (mode: TDynamicSecretProviderRendererProps["mode
       autoComplete: "new-password",
       description:
         mode === "edit"
-          ? "Leave blank to keep the current API key."
+          ? "Leave blank to keep the current API key. Enter it again if you change the API Base URL."
           : "A Neon API key with access to the project. An organization or project API key works.",
       isOptional: mode === "edit"
     },
@@ -57,7 +57,7 @@ const getNeonConnectionFields = (mode: TDynamicSecretProviderRendererProps["mode
       label: "Each Lease Creates",
       layout: "half",
       options: [
-        { label: "A Postgres role", value: NeonLeaseType.Role },
+        { label: "A PostgreSQL role", value: NeonLeaseType.Role },
         { label: "A database branch", value: NeonLeaseType.Branch }
       ]
     }
@@ -90,7 +90,7 @@ const neonRoleFields = [
 
 const neonBranchFields = [
   {
-    name: "inputs.branchId",
+    name: "inputs.parentBranchId",
     type: "text",
     label: "Parent Branch ID",
     placeholder: "br-aged-salad-637688",

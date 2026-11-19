@@ -287,7 +287,7 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
         { key: "DB_NAME", label: "Database" },
         { key: "DB_USERNAME", label: "Database User" },
         { key: "DB_PASSWORD", label: "Database Password" },
-        { key: "BRANCH_ID", label: "Branch ID", isOptional: true },
+        { key: "BRANCH_ID", label: "Branch ID" },
         { key: "BRANCH_NAME", label: "Branch Name", isOptional: true }
       ])
     )
