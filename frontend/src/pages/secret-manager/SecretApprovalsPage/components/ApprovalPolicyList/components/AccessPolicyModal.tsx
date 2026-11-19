@@ -1208,9 +1208,8 @@ const Form = ({
                     <FieldContent>
                       <FieldTitle>Require Approval for Imported Secrets</FieldTitle>
                       <FieldDescription>
-                        New imports from this project into this path must respect this policy, so
-                        changes to imported values need approval. Existing imports that ignore it
-                        have to be recreated. Imports from other projects are not affected.
+                        Imports from this project into this path need approval to change their
+                        values.
                       </FieldDescription>
                     </FieldContent>
                     <Toggle
