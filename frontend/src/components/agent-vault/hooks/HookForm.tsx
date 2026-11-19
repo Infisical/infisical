@@ -76,7 +76,7 @@ const HookFormBody = ({
     resolver: zodResolver(schema),
     defaultValues: hookFormOf(
       hook,
-      new Map(services.map((service) => [service.name, service.type])),
+      new Map(services.map((service) => [service.id, service.type])),
       initialName
     )
   });

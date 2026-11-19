@@ -31,7 +31,12 @@ If your server denies the request or doesn't give a usable answer, the proxy [re
 
 A hook's rules pick which of a session's requests the proxy asks the hook about. If a hook has no rules, the proxy asks it about every request and connection in the session.
 
-Each rule names one service, by the name the service has in the session. To ask about only some of the service's traffic, narrow the rule:
+Each rule picks one service:
+
+- **A project service:** `serviceId`, the service's ID (if you send the service's name in `service` instead, Infisical saves the rule with the service's ID, so the rule keeps working after someone renames the service)
+- **An [inline service](/documentation/platform/agent-vault/inline-services):** `service`, the name the service has in the session, or the service's first host if the service has no name
+
+To ask about only some of the service's traffic, narrow the rule:
 
 - **HTTP APIs:** `methods`, a list of methods such as `POST`, and `paths`, a list of path prefixes that match the same way as a service's [paths](/documentation/platform/agent-vault/http-apis#paths)
 - **MCP servers:** `tools`, a list of tool names (the proxy then asks only about calls to those tools, and not about calls such as `initialize` or `tools/list`)
@@ -47,7 +52,7 @@ If a rule has both `methods` and `paths`, a request has to match both. The proxy
 ]
 ```
 
-A rule for a name that the session doesn't have never matches. An [inline service](/documentation/platform/agent-vault/inline-services) without a name goes by its first host.
+A rule never matches a service that the session doesn't have. If someone deletes a project service, the hook's rules for that service show **Deleted service** and stop matching. If every rule in a hook is for a deleted service, the proxy asks the hook about every request and connection in the session. To fix a rule for a deleted service, edit the hook and pick another service or remove the rule.
 
 ## Save a hook
 
@@ -645,7 +650,8 @@ Don't put anything in `reason` that the session's owner or the project's admins 
 
     - The session was created with the hook (the [Get session](/api-reference/endpoints/agent-vault-sessions/get) endpoint returns the hook in `hook`)
     - The hook still exists, since a session loses its hook when someone deletes the hook
-    - A rule names the service exactly as the session names it, and the rule's methods, paths, or tools match the request
+    - A rule picks the service, and the rule's methods, paths, or tools match the request
+    - If the service is an inline service, the rule uses the exact name the session gives the service
     - The proxy has checked in since you last changed the hook (within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval))
   </Accordion>
   <Accordion title="Every request is refused with hook_failed">

@@ -6,6 +6,7 @@ import { testFeatures } from "@app/domains/platform/license/ce/testing/test-feat
 import { ConflictError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
+import { AgentVaultHttpMethod } from "../agent-vault/agent-vault-enums";
 import { AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE } from "./agent-vault-hook-fns";
 import { agentVaultHookServiceFactory } from "./agent-vault-hook-service";
 
@@ -13,6 +14,8 @@ const PROJECT_ID = "project-1";
 const HOOK_ID = "00000000-0000-4000-8000-0000000000aa";
 const HOOK_URL = "https://hooks.example.com/agent-vault";
 const SECRET = "s".repeat(32);
+const GITHUB_ID = "11111111-1111-4111-8111-111111111111";
+const projectServices = [{ id: GITHUB_ID, name: "github" }];
 
 const ctx = {
   actor: ActorType.USER,
@@ -28,7 +31,7 @@ const storedHook = {
   name: "approvals",
   description: null,
   url: HOOK_URL,
-  rules: [{ service: "github", methods: ["PUT"] }],
+  rules: [{ serviceId: GITHUB_ID, methods: ["PUT"] }],
   secretsDeletedAt: null,
   createdAt: new Date(),
   updatedAt: new Date()
@@ -65,6 +68,15 @@ const buildService = ({
       rules: row.rules ? (JSON.parse(row.rules as string) as unknown) : storedHook.rules
     })),
     deleteById: vi.fn(),
+    findProjectServicesForHookRules: vi.fn(async ({ ids = [], names = [] }: { ids?: string[]; names?: string[] }) =>
+      projectServices.filter((service) => ids.includes(service.id) || names.includes(service.name))
+    ),
+    findHookRuleServiceNames: vi.fn(
+      async ({ ids }: { ids: string[] }) =>
+        new Map(
+          projectServices.filter((service) => ids.includes(service.id)).map((service) => [service.id, service.name])
+        )
+    ),
     transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({}))
   };
   const licenseService = {
@@ -118,6 +130,46 @@ describe("createHook", () => {
     expect(result.hook).toMatchObject({ name: "approvals", rules: [{ service: "linear", tools: ["delete_issue"] }] });
     expect(JSON.stringify(result)).not.toContain(SECRET);
     expect(result.hook).not.toHaveProperty("encryptedSecret");
+  });
+
+  test("a rule naming a project service is stored by the service's ID and read back with its name", async () => {
+    const { service, agentVaultHookDAL } = buildService();
+
+    const result = await service.createHook({
+      projectId: PROJECT_ID,
+      ctx,
+      name: "approvals",
+      url: HOOK_URL,
+      secret: SECRET,
+      rules: [{ service: "github", methods: [AgentVaultHttpMethod.Put] }, { service: "inline-api" }]
+    });
+
+    expect(agentVaultHookDAL.create.mock.calls[0][0].rules).toBe(
+      JSON.stringify([{ serviceId: GITHUB_ID, methods: ["PUT"] }, { service: "inline-api" }])
+    );
+    expect(result.hook.rules).toEqual([
+      { serviceId: GITHUB_ID, service: "github", methods: ["PUT"] },
+      { serviceId: null, service: "inline-api" }
+    ]);
+  });
+
+  test("a rule on a service ID that isn't the project's is a 404", async () => {
+    const { service, agentVaultHookDAL } = buildService();
+    const otherId = "22222222-2222-4222-8222-222222222222";
+
+    await expect(
+      service.createHook({
+        projectId: PROJECT_ID,
+        ctx,
+        name: "approvals",
+        url: HOOK_URL,
+        secret: SECRET,
+        rules: [{ serviceId: otherId }]
+      })
+    ).rejects.toThrow(
+      new NotFoundError({ message: `Rule 1 names a service with ID '${otherId}' that isn't in this project.` })
+    );
+    expect(agentVaultHookDAL.create).not.toHaveBeenCalled();
   });
 
   test("is refused with hooks off the plan", async () => {
@@ -212,7 +264,7 @@ describe("deleteHook and reads", () => {
     expect(list.hooks[0]).toMatchObject({
       id: HOOK_ID,
       url: HOOK_URL,
-      rules: [{ service: "github", methods: ["PUT"] }]
+      rules: [{ serviceId: GITHUB_ID, service: "github", methods: ["PUT"] }]
     });
     expect((await service.getHook({ projectId: PROJECT_ID, ctx, hookId: HOOK_ID })).hook.id).toBe(HOOK_ID);
     expect(licenseService.getPlan).not.toHaveBeenCalled();

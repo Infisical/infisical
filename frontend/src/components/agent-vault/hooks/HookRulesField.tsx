@@ -31,15 +31,26 @@ import {
   toolNameError
 } from "../service-sheet/serviceSchema";
 import { ServiceIcon } from "../ServiceIconStack";
-import { blankHookRule, hookRuleServiceError, MAX_HOOK_RULES, THookForm } from "./hookSchema";
+import {
+  blankHookRule,
+  DELETED_SERVICE_LABEL,
+  hookRuleServiceError,
+  MAX_HOOK_RULES,
+  THookForm
+} from "./hookSchema";
 
 type TServiceOption = {
+  // Null for a typed name, such as an inline service's.
+  id: string | null;
   name: string;
   type: AgentVaultServiceType | null;
   hostPattern: string | null;
 };
 
+const optionValue = (option: TServiceOption) => option.id ?? `name:${option.name}`;
+
 const toOption = (service: TAgentVaultProjectService): TServiceOption => ({
+  id: service.id,
   name: service.name,
   type: service.type,
   hostPattern: hostPatternOf(service)
@@ -64,11 +75,19 @@ const RuleRow = ({
 }) => {
   const baseId = useId();
   const { control, setValue, clearErrors, trigger } = useFormContext<THookForm>();
+  const serviceId = useWatch({ control, name: `rules.${index}.serviceId` });
   const service = useWatch({ control, name: `rules.${index}.service` });
   const serviceType = useWatch({ control, name: `rules.${index}.serviceType` });
-  const known = services.find((option) => option.name === service);
-  const selected: TServiceOption | null =
-    known ?? (service ? { name: service, type: serviceType, hostPattern: null } : null);
+  const known = serviceId
+    ? services.find((option) => option.id === serviceId)
+    : services.find((option) => option.name === service);
+  let selected: TServiceOption | null = known ?? null;
+  // A project service that is gone keeps its rule, so it can be moved to another service or removed.
+  if (!selected && serviceId) {
+    selected = { id: serviceId, name: DELETED_SERVICE_LABEL, type: serviceType, hostPattern: null };
+  } else if (!selected && service) {
+    selected = { id: null, name: service, type: serviceType, hostPattern: null };
+  }
 
   return (
     <div className="flex flex-col gap-3 rounded-md border border-border p-3">
@@ -85,7 +104,7 @@ const RuleRow = ({
                   options={services}
                   value={selected}
                   includeMissingSelectedOptions
-                  getOptionValue={(option) => option.name}
+                  getOptionValue={optionValue}
                   getOptionLabel={(option) => option.name}
                   renderOption={(option) => (
                     <span className="flex min-w-0 items-center gap-2">
@@ -101,15 +120,20 @@ const RuleRow = ({
                   isError={Boolean(fieldState.error)}
                   creation={{
                     isValid: (inputValue) => !hookRuleServiceError(inputValue),
-                    isDuplicate: (inputValue, option) => option.name === inputValue.trim(),
+                    isDuplicate: (inputValue, option) =>
+                      option.name === inputValue.trim().toLowerCase(),
                     formatLabel: (inputValue) => `Use "${inputValue.trim()}"`,
                     onCreate: (inputValue) => {
-                      setValue(`rules.${index}.service`, inputValue.trim(), { shouldDirty: true });
+                      setValue(`rules.${index}.serviceId`, null, { shouldDirty: true });
+                      setValue(`rules.${index}.service`, inputValue.trim().toLowerCase(), {
+                        shouldDirty: true
+                      });
                       setValue(`rules.${index}.serviceType`, null, { shouldDirty: true });
                       clearErrors(`rules.${index}`);
                     }
                   }}
                   onValueChange={(option) => {
+                    setValue(`rules.${index}.serviceId`, option?.id ?? null, { shouldDirty: true });
                     setValue(`rules.${index}.service`, option?.name ?? "", { shouldDirty: true });
                     setValue(`rules.${index}.serviceType`, option?.type ?? null, {
                       shouldDirty: true
@@ -123,7 +147,7 @@ const RuleRow = ({
           )}
         />
         {/* A project service's type is known; a typed name, such as an inline service's, needs one to be narrowed. */}
-        {service && !known && (
+        {service && !serviceId && !known && (
           <Controller
             control={control}
             name={`rules.${index}.serviceType`}

@@ -1,6 +1,6 @@
 import { TGenericPermission } from "@app/lib/types";
 
-import { TAgentVaultHookRule } from "./agent-vault-hook-fns";
+import { TAgentVaultHookRuleInput, TAgentVaultHookRuleView, TResolvedHookRule } from "./agent-vault-hook-fns";
 
 export type TAgentVaultHookScoped = { projectId: string; ctx: TGenericPermission };
 
@@ -9,7 +9,7 @@ export type TCreateHookDTO = TAgentVaultHookScoped & {
   description?: string | null;
   url: string;
   secret: string;
-  rules?: TAgentVaultHookRule[];
+  rules?: TAgentVaultHookRuleInput[];
 };
 
 export type TListHooksDTO = TAgentVaultHookScoped & { search?: string; limit: number; offset: number };
@@ -22,7 +22,7 @@ export type TUpdateHookDTO = THookByIdDTO & {
   description?: string | null;
   url?: string;
   secret?: string;
-  rules?: TAgentVaultHookRule[];
+  rules?: TAgentVaultHookRuleInput[];
 };
 
 /** A saved hook as every read returns it: never its secret. */
@@ -31,7 +31,7 @@ export type TAgentVaultHook = {
   name: string;
   description: string | null;
   url: string;
-  rules: TAgentVaultHookRule[];
+  rules: TAgentVaultHookRuleView[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -43,7 +43,7 @@ export type TAgentVaultSessionHookSummary = {
   name: string | null;
   isInline: boolean;
   url?: string;
-  rules?: TAgentVaultHookRule[];
+  rules?: TAgentVaultHookRuleView[];
 };
 
 /** A session's hook as resolve sends it to the proxy. */
@@ -52,5 +52,5 @@ export type TResolvedSessionHook = {
   name: string | null;
   url: string;
   secret: string;
-  rules: TAgentVaultHookRule[];
+  rules: TResolvedHookRule[];
 };

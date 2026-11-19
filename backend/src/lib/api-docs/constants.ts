@@ -5247,8 +5247,13 @@ export const AGENT_VAULT = {
       "Which of a session's requests the proxy asks the hook about. Leave it empty to ask about every request. A request is asked about when any rule matches it.",
     updateRules:
       "Which of a session's requests the proxy asks the hook about. Replaces every rule. Send an empty list to ask about every request.",
+    ruleServiceId:
+      "The ID of the project service the rule applies to. The rule follows the service when it is renamed. Send this or `service`, not both.",
     ruleService:
-      "The name of the service the rule applies to: a project service, or a service sent with the session (by its name, or its first host when it was sent without one). A name that isn't in the session matches nothing.",
+      "The name of the service the rule applies to, for a service sent with the session (by its name, or its first host when it was sent without one). A name that matches one of the project's services is saved as that service's ID. A name that isn't in the session matches nothing. Send this or `serviceId`, not both.",
+    ruleServiceIdRead: "The ID of the project service the rule applies to, or null for a rule that names a service.",
+    ruleServiceRead:
+      "The name of the service the rule applies to: the project service's current name, or the name the rule was saved with. Null when the project service was deleted. Such a rule is skipped, and a hook left with no other rules asks about every request.",
     ruleMethods:
       "HTTP services only: match only these methods. With `paths`, a request must match both. A service of another type ignores it and the rule matches every request to it.",
     rulePaths:

@@ -1,6 +1,6 @@
 import { TGenericPermission } from "@app/lib/types";
 
-import { TAgentVaultHookRule } from "../agent-vault-hook/agent-vault-hook-fns";
+import { TAgentVaultHookRuleInput } from "../agent-vault-hook/agent-vault-hook-fns";
 import { AgentVaultOauthClientAuthMethod } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TAgentVaultSkillFile } from "../agent-vault-skill/agent-vault-skill-types";
 import {
@@ -76,7 +76,7 @@ export type TAgentVaultInlineServiceInput = {
 export type TAgentVaultInlineHookInput = {
   url: string;
   secret: string;
-  rules?: TAgentVaultHookRule[];
+  rules?: TAgentVaultHookRuleInput[];
 };
 
 export type TAgentVaultInlineBearerCredentialSummary = {

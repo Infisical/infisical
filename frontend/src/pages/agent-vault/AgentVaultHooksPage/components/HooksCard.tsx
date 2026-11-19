@@ -73,8 +73,10 @@ const RulesSummary = ({ hook }: { hook: TAgentVaultHook }) => {
       </TooltipTrigger>
       <TooltipContent className="max-w-sm">
         <ul className="flex flex-col gap-0.5">
-          {lines.map((line) => (
-            <li key={line} className="break-all">
+          {lines.map((line, index) => (
+            // Two rules can read the same, such as two whose services were deleted.
+            // eslint-disable-next-line react/no-array-index-key
+            <li key={`${index}-${line}`} className="break-all">
               {line}
             </li>
           ))}

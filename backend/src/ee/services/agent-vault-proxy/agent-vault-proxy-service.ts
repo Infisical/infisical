@@ -29,7 +29,11 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
 import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
-import { isAgentVaultHooksOnPlanForResolve, toHookRules } from "../agent-vault-hook/agent-vault-hook-fns";
+import {
+  collectHookRuleServiceIds,
+  toResolvedHookRules,
+  toStoredHookRules
+} from "../agent-vault-hook/agent-vault-hook-fns";
 import { TResolvedSessionHook } from "../agent-vault-hook/agent-vault-hook-types";
 import {
   AGENT_VAULT_SERVICE_MOVED_MESSAGE,
@@ -133,7 +137,12 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultProxyDAL: TAgentVaultProxyDALFactory;
   agentVaultResolveDAL: Pick<
     TAgentVaultResolveDALFactory,
-    "findResolvableServices" | "findSessionSkills" | "findReachableBundles" | "findSessionHook" | "findSessionMetadata"
+    | "findResolvableServices"
+    | "findSessionSkills"
+    | "findReachableBundles"
+    | "findSessionHook"
+    | "findHookRuleServiceNames"
+    | "findSessionMetadata"
   >;
   agentVaultServiceCustomHeaderDAL: Pick<TAgentVaultServiceCustomHeaderDALFactory, "findByServiceIds">;
   agentVaultServiceSubstitutionDAL: Pick<TAgentVaultServiceSubstitutionDALFactory, "findByServiceIds">;
@@ -1240,22 +1249,34 @@ export const agentVaultProxyServiceFactory = ({
       }
     }
 
-    // Off-plan, the session resolves as if it had no hook, and gets it back when the plan has hooks again.
+    // A rule stores a project service by ID and the proxy matches by name, so each goes out under the service's
+    // current name, read from the same node as the hook.
     const $findSessionHook = async (hookId: string) => {
-      if (!(await isAgentVaultHooksOnPlanForResolve(licenseService, proxy.orgId))) return undefined;
       const scope = { hookId, sessionId: session.id, projectId: session.projectId };
-      const row = await agentVaultResolveDAL.findSessionHook({ ...scope, onPrimary });
-      if (row || onPrimary) return row;
-      // The session and its hook can come from different replicas, so a hook missing here may just not have arrived.
-      return agentVaultResolveDAL.findSessionHook({ ...scope, onPrimary: true });
+      let row = await agentVaultResolveDAL.findSessionHook({ ...scope, onPrimary });
+      let readFromPrimary = onPrimary;
+      if (!row && !onPrimary) {
+        // The session and its hook can come from different replicas, so a hook missing here may just not have arrived.
+        row = await agentVaultResolveDAL.findSessionHook({ ...scope, onPrimary: true });
+        readFromPrimary = true;
+      }
+      if (!row) return undefined;
+      const rules = toStoredHookRules(row.rules);
+      const serviceNamesById = await agentVaultResolveDAL.findHookRuleServiceNames({
+        projectId: session.projectId,
+        ids: collectHookRuleServiceIds(rules),
+        onPrimary: readFromPrimary
+      });
+      return { ...row, rules: toResolvedHookRules(rules, serviceNamesById) };
     };
 
     const serviceIds = rows.map((row) => row.id);
+    // Metadata goes to the proxy only for the hook's payload, so a session without a hook doesn't read it.
     const [customHeaderRows, substitutionRows, hookRow, sessionMetadata] = await Promise.all([
       agentVaultServiceCustomHeaderDAL.findByServiceIds(serviceIds),
       agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds),
       session.hookId ? $findSessionHook(session.hookId) : undefined,
-      agentVaultResolveDAL.findSessionMetadata({ sessionId: session.id, onPrimary })
+      session.hookId ? agentVaultResolveDAL.findSessionMetadata({ sessionId: session.id, onPrimary }) : {}
     ]);
 
     const sessionLogConfig = await getEffectiveSessionLogConfig({ agentVaultSessionLogConfigDAL }, session.projectId, {
@@ -1422,15 +1443,15 @@ export const agentVaultProxyServiceFactory = ({
     };
     const sessionLogs = $sessionLogs();
 
-    // Sent as stored: rules naming a service the session doesn't have simply match nothing. The secret is never
-    // expanded, and a hook without one (its session ended) fails the resolve rather than going out as no hook.
+    // Rules naming a service the session doesn't have simply match nothing. The secret is never expanded, and a hook
+    // without one (its session ended) fails the resolve rather than going out as no hook.
     const hook: TResolvedSessionHook | null = hookRow
       ? {
           id: hookRow.id,
           name: hookRow.name ?? null,
           url: hookRow.url,
           secret: $decryptValue(hookRow.encryptedSecret),
-          rules: toHookRules(hookRow.rules)
+          rules: hookRow.rules
         }
       : null;
 

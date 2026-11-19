@@ -10,6 +10,7 @@ import { AgentVaultHttpMethod, AgentVaultServiceType } from "@app/hooks/api/agen
 import {
   TAgentVaultHook,
   TAgentVaultHookRule,
+  TAgentVaultHookRuleInput,
   TCreateAgentVaultHookDTO,
   TUpdateAgentVaultHookDTO
 } from "@app/hooks/api/agentVault/types";
@@ -85,6 +86,8 @@ export const hookSecretError = (value: string): string | null => {
   return null;
 };
 
+export const DELETED_SERVICE_LABEL = "Deleted service";
+
 export const hookRuleServiceError = (value: string): string | null => {
   const trimmed = value.trim();
   if (!trimmed) return "Pick or type the service this rule applies to.";
@@ -96,10 +99,13 @@ export const hookRuleServiceError = (value: string): string | null => {
 };
 
 /**
- * A rule as the form edits it. The service type decides which narrowing applies: methods and paths for HTTP, tools for
- * MCP, nothing for the rest. It is null for a name that isn't one of the project's services, such as an inline one.
+ * A rule as the form edits it. `serviceId` is set for a project service, which `service` then shows by name; a typed
+ * name, such as an inline service's, has no ID. A rule whose service was deleted keeps its ID with an empty name. The
+ * service type decides which narrowing applies: methods and paths for HTTP, tools for MCP, nothing for the rest. It is
+ * null for a name that isn't one of the project's services.
  */
 export type THookRuleDraft = {
+  serviceId: string | null;
   service: string;
   serviceType: AgentVaultServiceType | null;
   methods: AgentVaultHttpMethod[];
@@ -109,7 +115,11 @@ export type THookRuleDraft = {
   toolDraft: string;
 };
 
+export const isDeletedServiceRule = (draft: Pick<THookRuleDraft, "serviceId" | "service">) =>
+  Boolean(draft.serviceId) && !draft.service;
+
 export const blankHookRule = (): THookRuleDraft => ({
+  serviceId: null,
   service: "",
   serviceType: null,
   methods: [...HTTP_METHODS],
@@ -130,7 +140,8 @@ export const hookRuleDraftOf = (
   else if (rule.methods || rule.paths) type = AgentVaultServiceType.Http;
   return {
     ...blankHookRule(),
-    service: rule.service,
+    serviceId: rule.serviceId,
+    service: rule.service ?? "",
     serviceType: type,
     methods: rule.methods
       ? HTTP_METHODS.filter((m) => rule.methods?.includes(m))
@@ -141,19 +152,21 @@ export const hookRuleDraftOf = (
 };
 
 /** Lists are left out rather than sent empty: the API reads an empty list as a mistake. */
-export const buildHookRule = (draft: THookRuleDraft): TAgentVaultHookRule => {
-  const service = draft.service.trim();
+export const buildHookRule = (draft: THookRuleDraft): TAgentVaultHookRuleInput => {
+  const target = draft.serviceId
+    ? { serviceId: draft.serviceId }
+    : { service: draft.service.trim().toLowerCase() };
   if (draft.serviceType === AgentVaultServiceType.Http) {
     return {
-      service,
+      ...target,
       ...(isAllMethods(draft.methods) || !draft.methods.length ? {} : { methods: draft.methods }),
       ...(draft.paths.length ? { paths: draft.paths } : {})
     };
   }
   if (draft.serviceType === AgentVaultServiceType.Mcp) {
-    return { service, ...(draft.tools.length ? { tools: draft.tools } : {}) };
+    return { ...target, ...(draft.tools.length ? { tools: draft.tools } : {}) };
   }
-  return { service };
+  return target;
 };
 
 const addListIssues = (
@@ -210,7 +223,10 @@ export const hookFormSchema = () =>
       }
 
       data.rules.forEach((rule, index) => {
-        const serviceIssue = hookRuleServiceError(rule.service);
+        // A deleted service's ID can't be saved again, so the rule has to move to another service or go.
+        const serviceIssue = isDeletedServiceRule(rule)
+          ? "This service was deleted. Pick another service or remove the rule."
+          : !rule.serviceId && hookRuleServiceError(rule.service);
         if (serviceIssue) issue(["rules", index, "service"], serviceIssue);
         if (rule.serviceType === AgentVaultServiceType.Http) {
           if (!rule.methods.length) {
@@ -240,6 +256,7 @@ export const hookFormSchema = () =>
 
 export type THookForm = z.infer<ReturnType<typeof hookFormSchema>>;
 
+/** `serviceTypes` holds the project's services' types by ID. */
 export const hookFormOf = (
   hook?: TAgentVaultHook | null,
   serviceTypes: Map<string, AgentVaultServiceType> = new Map(),
@@ -249,7 +266,9 @@ export const hookFormOf = (
   description: hook?.description ?? "",
   url: hook?.url ?? "",
   secret: hook ? UNCHANGED_SECRET : "",
-  rules: (hook?.rules ?? []).map((rule) => hookRuleDraftOf(rule, serviceTypes.get(rule.service)))
+  rules: (hook?.rules ?? []).map((rule) =>
+    hookRuleDraftOf(rule, rule.serviceId ? serviceTypes.get(rule.serviceId) : undefined)
+  )
 });
 
 export const buildCreateHookRequest = (data: THookForm): TCreateAgentVaultHookDTO => ({
@@ -263,14 +282,15 @@ export const buildCreateHookRequest = (data: THookForm): TCreateAgentVaultHookDT
 // The form rebuilds lists in its own order, so lists compare as sets or an untouched rule would read as an edit.
 const asSet = (values?: string[]) => (values ? [...values].sort() : null);
 
-const canonicalRule = (rule: TAgentVaultHookRule) => ({
-  service: rule.service,
+const canonicalRule = (rule: TAgentVaultHookRule | TAgentVaultHookRuleInput) => ({
+  serviceId: rule.serviceId ?? null,
+  service: rule.serviceId ? null : rule.service,
   methods: asSet(rule.methods),
   paths: asSet(rule.paths),
   tools: asSet(rule.tools)
 });
 
-const sameRules = (left: TAgentVaultHookRule[], right: TAgentVaultHookRule[]) =>
+const sameRules = (left: TAgentVaultHookRuleInput[], right: TAgentVaultHookRule[]) =>
   JSON.stringify(left.map(canonicalRule)) === JSON.stringify(right.map(canonicalRule));
 
 /**
@@ -303,5 +323,6 @@ export const describeHookRule = (rule: TAgentVaultHookRule): string => {
   if (rule.methods) parts.push(rule.methods.join(", "));
   if (rule.paths) parts.push(listSummary(rule.paths, "paths"));
   if (rule.tools) parts.push(listSummary(rule.tools, "tools"));
-  return parts.length ? `${rule.service}: ${parts.join(" on ")}` : rule.service;
+  const service = rule.service ?? DELETED_SERVICE_LABEL;
+  return parts.length ? `${service}: ${parts.join(" on ")}` : service;
 };

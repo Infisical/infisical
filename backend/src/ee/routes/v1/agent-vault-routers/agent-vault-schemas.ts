@@ -2227,7 +2227,8 @@ export const AgentVaultProjectIdSchema = z
   .describe(AGENT_VAULT.projectId);
 
 const hookRuleResponseSchema = z.object({
-  service: z.string().describe(AGENT_VAULT.HOOK.ruleService),
+  serviceId: z.string().uuid().nullable().describe(AGENT_VAULT.HOOK.ruleServiceIdRead),
+  service: z.string().nullable().describe(AGENT_VAULT.HOOK.ruleServiceRead),
   methods: z.nativeEnum(AgentVaultHttpMethod).array().optional().describe(AGENT_VAULT.HOOK.ruleMethods),
   paths: z.string().array().optional().describe(AGENT_VAULT.HOOK.rulePaths),
   tools: z.string().array().optional().describe(AGENT_VAULT.HOOK.ruleTools)

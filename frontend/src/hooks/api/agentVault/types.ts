@@ -1171,16 +1171,26 @@ export type TAgentVaultAccess = {
   warn: boolean;
 };
 
-/**
- * Picks the requests of one service, by name, that go to the hook. Methods and paths narrow an HTTP service, tools an
- * MCP service. A list is left out rather than sent empty, and tools never combine with methods or paths.
- */
-export type TAgentVaultHookRule = {
-  service: string;
+type TAgentVaultHookRuleNarrowing = {
   methods?: AgentVaultHttpMethod[];
   paths?: string[];
   tools?: string[];
 };
+
+/**
+ * Picks the requests of one service that go to the hook. Methods and paths narrow an HTTP service, tools an MCP
+ * service. A project service is referenced by ID and shown by its current name; any other service by name.
+ */
+export type TAgentVaultHookRule = TAgentVaultHookRuleNarrowing & {
+  /** Null for a rule that names a service, such as one sent inline with a session. */
+  serviceId: string | null;
+  /** The project service's current name, or the name the rule was saved with. Null once the service was deleted. */
+  service: string | null;
+};
+
+/** A rule as sent: a project service by `serviceId`, any other service by `service`, never both. */
+export type TAgentVaultHookRuleInput = TAgentVaultHookRuleNarrowing &
+  ({ serviceId: string; service?: never } | { service: string; serviceId?: never });
 
 /** A saved hook. Its secret is write-only and never returned. */
 export type TAgentVaultHook = {
@@ -1220,7 +1230,7 @@ export type TCreateAgentVaultHookDTO = {
   description?: string;
   url: string;
   secret: string;
-  rules?: TAgentVaultHookRule[];
+  rules?: TAgentVaultHookRuleInput[];
 };
 
 /** Fields left out keep their values; `secret` left out keeps the saved one and `description: null` removes it. */
@@ -1230,5 +1240,5 @@ export type TUpdateAgentVaultHookDTO = {
   description?: string | null;
   url?: string;
   secret?: string;
-  rules?: TAgentVaultHookRule[];
+  rules?: TAgentVaultHookRuleInput[];
 };

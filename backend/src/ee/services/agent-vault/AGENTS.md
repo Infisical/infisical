@@ -632,11 +632,16 @@ resolve.
   routes and `resolveFromHook` never return one. Its secret goes when the session ends, with the inline services'
   (`deleteInlineHookSecretBySessionId`, `deleteInlineHookSecretsOfEndedSessions`, called from the inline service DAL so
   revoke and the hourly cleanup cover both in one transaction).
-- **Rules match by service name** (`AgentVaultHookRuleSchema`), so one grammar covers project and inline services; an
-  unnamed inline service goes by its first host. HTTP rules narrow by `methods` and `paths` (prefixes, same semantics
-  as `allowedPathPrefixes`), MCP rules by `tools`, and database and SSH services take the whole service. No rules sends
-  every request to the hook. Names aren't validated on save (inline names differ per session), and a name the session
-  lacks matches nothing. **A narrowing that doesn't fit the matched service's type is ignored and the rule matches the
+- **Rules reference a project service by ID and any other service by name** (`AgentVaultHookRuleSchema`), like
+  variables store `{{<uuid>}}`, so a rename never breaks a rule. A rule takes `serviceId` or `service` (lowercased),
+  never both; on save (`toStoredHookRulesForSave`, also for an inline hook at mint) a name that is one of the project's
+  services is stored as its ID, and a `serviceId` not in the project is a 404. Other names stay names, for inline
+  services (an unnamed one goes by its first host), and a name the session lacks matches nothing. Reads return
+  `serviceId` (null for a name rule) and `service`, the current name, or null once the service is deleted
+  (`toHookRuleViews`). Resolve sends names only (`toResolvedHookRules`), dropping a rule whose service is gone, so the
+  CLI contract stays `rules[].service`; a hook left with no rules that way asks about every request, which fails closed. HTTP rules narrow by `methods` and `paths` (prefixes, same semantics as
+  `allowedPathPrefixes`), MCP rules by `tools`, and database and SSH services take the whole service. No rules sends
+  every request to the hook. **A narrowing that doesn't fit the matched service's type is ignored and the rule matches the
   whole service**: the type isn't known at save, and failing closed sends more traffic to the hook, never less.
 - **A hook has one behavior, gate, and no `mode` field** in the API, the table or the resolve payload.
 - **Permissions are flat CRUD on `agent-vault-hooks`**: admin all, member `read`. Read returns name, URL and rules,
@@ -656,17 +661,16 @@ resolve.
 - **Deleting a saved hook is never blocked.** Sessions using it lose it through `hookId ON DELETE SET NULL` and resolve
   as if no hook was given; nothing tracks usage. The FK update moves those sessions' `updatedAt`, which for a session
   that already lost its owner reopens its 24 hour late-log window; accepted.
-- **The plan flag gates writes and resolve** (`agentVaultHooks`). Writes go through `assertAgentVaultHooksOnPlan`:
-  saved hook create, an edit of URL, secret or rules, and an inline hook at mint. Rename, delete, reads and a mint
-  with a saved `hookId` never check it. Off-plan, resolve sends `hook: null` without reading the hook
-  (`isAgentVaultHooksOnPlanForResolve`), and the hook comes back when the plan has hooks again. Only a plan known to
-  lack hooks drops it: a fallback plan defers to the last known plan, and with none, or when `getPlan` throws, the
-  hook stays, so a License Server outage never turns hooks off.
-- **Resolve sends one top-level `hook: { id, name, url, secret, rules } | null`** as stored (`findSessionHook`,
-  kept to the session's project and, for an inline hook, the session). It also sends each service's `accessBundleId`
-  (null when not from a bundle) and a top-level `session` (`label`, `metadata`, `actor` with the `actorType` fallback,
-  `onBehalfOf`), which the proxy puts in the hook payload with `hook: { id, name }`. A hook row without a secret fails
-  the resolve rather than going out as no hook. Every field must be in the `/resolve` 200 schema or it is stripped. Old proxies ignore the top-level field and
+- **The plan flag gates writes only** (`agentVaultHooks`), through `assertAgentVaultHooksOnPlan`: saved hook create,
+  an edit of URL, secret or rules, and an inline hook at mint. Rename, delete, reads and a mint with a saved `hookId`
+  never check it. Resolve never checks it, so a downgrade keeps existing hooks running: a hook only adds checks, and
+  dropping it would widen access.
+- **Resolve sends one top-level `hook: { id, name, url, secret, rules } | null`** (`findSessionHook`, kept to the
+  session's project and, for an inline hook, the session; rules by name as above). It also sends each service's
+  `accessBundleId` (null when not from a bundle) and a top-level `session` (`label`, `metadata`, `actor` with the
+  `actorType` fallback, `onBehalfOf`); metadata is read only for a session with a hook and is `{}` otherwise. The proxy
+  puts `session` in the hook payload with `hook: { id, name }`. A hook row without a secret fails the resolve rather
+  than going out as no hook. Every field must be in the `/resolve` 200 schema or it is stripped. Old proxies ignore the top-level field and
   broker without asking, by decision; no version check.
 - **`agent_vault_services.hookUrl`, `encryptedHookSecret` and their CHECKs are dead** (hooks moved off services with no
   migration of existing ones). They stay this release because pods on the previous release still read them during a

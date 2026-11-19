@@ -21,12 +21,14 @@ import {
 const HOOK_URL = "https://hooks.example.com/agent-vault";
 const SECRET = "s".repeat(32);
 
+const GITHUB_ID = "22222222-2222-4222-8222-222222222222";
+
 const storedHook: TAgentVaultHook = {
   id: "11111111-1111-4111-8111-111111111111",
   name: "approvals",
   description: null,
   url: HOOK_URL,
-  rules: [{ service: "github", methods: [AgentVaultHttpMethod.Put] }],
+  rules: [{ serviceId: GITHUB_ID, service: "github", methods: [AgentVaultHttpMethod.Put] }],
   createdAt: "2026-11-19T00:00:00.000Z",
   updatedAt: "2026-11-19T00:00:00.000Z"
 };
@@ -139,6 +141,16 @@ describe("hookFormSchema", () => {
     ]);
   });
 
+  it("asks to move or remove a rule whose service was deleted", () => {
+    const rule = { ...blankHookRule(), serviceId: GITHUB_ID, service: "" };
+    expect(issuesOf(form({ rules: [rule] }))).toEqual([
+      {
+        path: "rules.0.service",
+        message: "This service was deleted. Pick another service or remove the rule."
+      }
+    ]);
+  });
+
   it("asks for a method when every one is cleared", () => {
     const rule = { ...blankHookRule(), service: "github", serviceType: AgentVaultServiceType.Http };
     expect(issuesOf(form({ rules: [{ ...rule, methods: [] }] }))).toEqual([
@@ -200,25 +212,47 @@ describe("buildHookRule", () => {
     });
     expect(buildHookRule(rule)).toEqual({ service: "orders-db" });
   });
+
+  it("sends a project service by its ID and a typed name as the name", () => {
+    expect(buildHookRule({ ...blankHookRule(), serviceId: GITHUB_ID, service: "github" })).toEqual({
+      serviceId: GITHUB_ID
+    });
+    expect(buildHookRule({ ...blankHookRule(), service: "Inline-API" })).toEqual({
+      service: "inline-api"
+    });
+  });
 });
 
 describe("hookRuleDraftOf", () => {
   it("takes the type from the saved narrowing over the named service's", () => {
     expect(
-      hookRuleDraftOf({ service: "x", tools: ["a"] }, AgentVaultServiceType.Http).serviceType
+      hookRuleDraftOf({ serviceId: null, service: "x", tools: ["a"] }, AgentVaultServiceType.Http)
+        .serviceType
     ).toBe(AgentVaultServiceType.Mcp);
-    expect(hookRuleDraftOf({ service: "x", paths: ["/a"] }).serviceType).toBe(
+    expect(hookRuleDraftOf({ serviceId: null, service: "x", paths: ["/a"] }).serviceType).toBe(
       AgentVaultServiceType.Http
     );
-    expect(hookRuleDraftOf({ service: "x" }, AgentVaultServiceType.Mcp).serviceType).toBe(
-      AgentVaultServiceType.Mcp
-    );
-    expect(hookRuleDraftOf({ service: "x" }).serviceType).toBeNull();
+    expect(
+      hookRuleDraftOf({ serviceId: null, service: "x" }, AgentVaultServiceType.Mcp).serviceType
+    ).toBe(AgentVaultServiceType.Mcp);
+    expect(hookRuleDraftOf({ serviceId: null, service: "x" }).serviceType).toBeNull();
   });
 
   it("round-trips a saved rule", () => {
-    const rule = { service: "github", methods: [AgentVaultHttpMethod.Put], paths: ["/repos"] };
-    expect(buildHookRule(hookRuleDraftOf(rule))).toEqual(rule);
+    const narrowing = { methods: [AgentVaultHttpMethod.Put], paths: ["/repos"] };
+    expect(
+      buildHookRule(hookRuleDraftOf({ serviceId: GITHUB_ID, service: "github", ...narrowing }))
+    ).toEqual({ serviceId: GITHUB_ID, ...narrowing });
+    expect(buildHookRule(hookRuleDraftOf({ serviceId: null, service: "x", ...narrowing }))).toEqual(
+      { service: "x", ...narrowing }
+    );
+  });
+
+  it("loads a rule whose service was deleted with no name", () => {
+    expect(hookRuleDraftOf({ serviceId: GITHUB_ID, service: null })).toMatchObject({
+      serviceId: GITHUB_ID,
+      service: ""
+    });
   });
 });
 
@@ -241,7 +275,13 @@ describe("hook requests", () => {
   it("doesn't count a rule the form reorders as changed", () => {
     const reordered: TAgentVaultHook = {
       ...storedHook,
-      rules: [{ service: "github", methods: [AgentVaultHttpMethod.Post, AgentVaultHttpMethod.Get] }]
+      rules: [
+        {
+          serviceId: GITHUB_ID,
+          service: "github",
+          methods: [AgentVaultHttpMethod.Post, AgentVaultHttpMethod.Get]
+        }
+      ]
     };
     expect(buildUpdateHookRequest(reordered, { ...hookFormOf(reordered), name: "gate" })).toEqual({
       name: "gate"
@@ -268,14 +308,23 @@ describe("hook requests", () => {
 
 describe("describeHookRule", () => {
   it("summarizes a rule on one line", () => {
-    expect(describeHookRule({ service: "github" })).toBe("github");
+    expect(describeHookRule({ serviceId: null, service: "github" })).toBe("github");
     expect(
       describeHookRule({
+        serviceId: GITHUB_ID,
         service: "github",
         methods: [AgentVaultHttpMethod.Put],
         paths: ["/repos"]
       })
     ).toBe("github: PUT on /repos");
-    expect(describeHookRule({ service: "linear", tools: ["a", "b"] })).toBe("linear: 2 tools");
+    expect(describeHookRule({ serviceId: null, service: "linear", tools: ["a", "b"] })).toBe(
+      "linear: 2 tools"
+    );
+  });
+
+  it("names a deleted service as such", () => {
+    expect(describeHookRule({ serviceId: GITHUB_ID, service: null, tools: ["a"] })).toBe(
+      "Deleted service: a"
+    );
   });
 });

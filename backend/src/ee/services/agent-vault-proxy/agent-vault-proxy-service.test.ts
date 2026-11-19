@@ -88,6 +88,7 @@ const setup = (
     session = {},
     hookRow,
     hookOnlyOnPrimary = false,
+    hookRuleServiceNames = {},
     licenseService = new FakeLicenseService(),
     metadata = {},
     freeLimitReached = false,
@@ -113,6 +114,8 @@ const setup = (
     hookRow?: Record<string, unknown>;
     // The hook was written a moment ago and hasn't reached the replica the resolve read from.
     hookOnlyOnPrimary?: boolean;
+    // The current names of the project services the hook's rules reference by ID.
+    hookRuleServiceNames?: Record<string, string>;
     licenseService?: FakeLicenseService;
     metadata?: Record<string, string>;
     proxy?: {
@@ -141,6 +144,10 @@ const setup = (
   const findSessionHook = vi.fn(async ({ onPrimary }: { onPrimary?: boolean }) =>
     hookOnlyOnPrimary && !onPrimary ? undefined : hookRow
   );
+  const findHookRuleServiceNames = vi.fn(
+    async ({ ids }: { ids: string[] }) =>
+      new Map(Object.entries(hookRuleServiceNames).filter(([id]) => ids.includes(id)))
+  );
   const findSessionMetadata = vi.fn(async () => metadata);
   const sessionRow = {
     id: "session-1",
@@ -168,6 +175,7 @@ const setup = (
       findSessionSkills: async () => [],
       findReachableBundles,
       findSessionHook,
+      findHookRuleServiceNames,
       findSessionMetadata
     } as never,
     agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
@@ -225,6 +233,7 @@ const setup = (
     findResolvableServices,
     findReachableBundles,
     findSessionHook,
+    findHookRuleServiceNames,
     findSessionMetadata,
     createCipherPairWithDataKey,
     findCaFingerprintsByProjectId,
@@ -608,6 +617,7 @@ describe("resolve for a session on a user's behalf", () => {
         findSessionSkills: async () => [],
         findReachableBundles: async () => [],
         findSessionHook: async () => undefined,
+        findHookRuleServiceNames: async () => new Map(),
         findSessionMetadata: async () => ({})
       },
       agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
@@ -970,45 +980,37 @@ describe("hooks on resolve", () => {
     expect(findSessionHook).toHaveBeenCalledTimes(1);
   });
 
-  test("off-plan, the session resolves with no hook and no hook read", async () => {
-    const { service, findSessionHook } = setup(noRefresh, [hookedRow], [], {
+  test("off-plan, the session's hook keeps going out", async () => {
+    const { service } = setup(noRefresh, [hookedRow], [], {
       session: { hookId: savedHook.id },
       hookRow: savedHook,
       licenseService: new FakeLicenseService().setPlan("org-1", { agentVaultHooks: false })
     });
-    expect((await resolve(service)).hook).toBeNull();
-    expect(findSessionHook).not.toHaveBeenCalled();
-  });
-
-  test("on-plan, the session's hook goes out", async () => {
-    const { service } = setup(noRefresh, [hookedRow], [], {
-      session: { hookId: savedHook.id },
-      hookRow: savedHook,
-      licenseService: new FakeLicenseService().setPlan("org-1", { agentVaultHooks: true })
-    });
     expect((await resolve(service)).hook).toMatchObject({ id: savedHook.id });
   });
 
-  test("while the plan can't be read, the hook keeps going out", async () => {
-    const outage = new FakeLicenseService().setPlan("org-1", { agentVaultHooks: false });
-    outage.fallbackOrgs.add("org-1");
-    const fallback = setup(noRefresh, [hookedRow], [], {
+  test("a rule on a project service goes out under the service's current name, and one on a deleted service is dropped", async () => {
+    const stripeId = "11111111-1111-4111-8111-111111111111";
+    const deletedId = "22222222-2222-4222-8222-222222222222";
+    const { service, findHookRuleServiceNames } = setup(noRefresh, [hookedRow], [], {
       session: { hookId: savedHook.id },
-      hookRow: savedHook,
-      licenseService: outage
+      hookRow: {
+        ...savedHook,
+        rules: [
+          { serviceId: stripeId, methods: ["POST"] },
+          { serviceId: deletedId, tools: ["x"] },
+          { service: "inline-api" }
+        ]
+      },
+      hookRuleServiceNames: { [stripeId]: "stripe-payments" }
     });
-    expect((await resolve(fallback.service)).hook).toMatchObject({ id: savedHook.id });
-
-    const throwing = new FakeLicenseService();
-    throwing.getPlan = async () => {
-      throw new Error("license server down");
-    };
-    const failed = setup(noRefresh, [hookedRow], [], {
-      session: { hookId: savedHook.id },
-      hookRow: savedHook,
-      licenseService: throwing
-    });
-    expect((await resolve(failed.service)).hook).toMatchObject({ id: savedHook.id });
+    expect((await resolve(service)).hook?.rules).toEqual([
+      { service: "stripe-payments", methods: ["POST"] },
+      { service: "inline-api" }
+    ]);
+    expect(findHookRuleServiceNames).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: PROJECT_ID, ids: [stripeId, deletedId] })
+    );
   });
 
   test("a hook that lost its secret fails the resolve rather than go out as no hook", async () => {
@@ -1019,9 +1021,19 @@ describe("hooks on resolve", () => {
     await expect(resolve(service)).rejects.toThrow("Failed to resolve the session's credentials");
   });
 
-  test("sends the session's metadata", async () => {
-    const { service } = setup(noRefresh, [hookedRow], [], { metadata: { userRef: "u-42" } });
+  test("sends the session's metadata when the session has a hook", async () => {
+    const { service } = setup(noRefresh, [hookedRow], [], {
+      session: { hookId: savedHook.id },
+      hookRow: savedHook,
+      metadata: { userRef: "u-42" }
+    });
     expect((await resolve(service)).session.metadata).toEqual({ userRef: "u-42" });
+  });
+
+  test("a session without a hook sends empty metadata without reading it", async () => {
+    const { service, findSessionMetadata } = setup(noRefresh, [hookedRow], [], { metadata: { userRef: "u-42" } });
+    expect((await resolve(service)).session.metadata).toEqual({});
+    expect(findSessionMetadata).not.toHaveBeenCalled();
   });
 
   test("the session names a machine identity actor when an older row has no actorType", async () => {

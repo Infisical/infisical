@@ -1,10 +1,10 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { Plan } from "@app/domains/platform/license/ce/module";
-import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 
 import { AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE } from "../agent-vault/agent-vault-credential-schemas";
+import { AgentVaultHttpMethod } from "../agent-vault/agent-vault-enums";
 import {
   AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE,
   AgentVaultHookRuleSchema,
@@ -12,13 +12,13 @@ import {
   AgentVaultHookSecretSchema,
   AgentVaultHookUrlSchema,
   assertAgentVaultHooksOnPlan,
-  isAgentVaultHooksOnPlanForResolve,
-  toHookRules
+  toHookRuleViews,
+  toResolvedHookRules,
+  toStoredHookRules,
+  toStoredHookRulesForSave
 } from "./agent-vault-hook-fns";
 
-vi.mock("@app/lib/logger", () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
-}));
+const SERVICE_ID = "11111111-1111-4111-8111-111111111111";
 
 const issuesOf = (result: { success: boolean; error?: { issues: { message: string }[] } }) =>
   result.success ? [] : result.error!.issues.map((issue) => issue.message);
@@ -129,14 +129,15 @@ describe("hook rules", () => {
     { why: "a whole service", rule: { service: "github" } },
     { why: "methods and paths", rule: { service: "github", methods: ["PUT"], paths: ["/repos"] } },
     { why: "tools", rule: { service: "linear", tools: ["delete_issue"] } },
-    { why: "an unnamed inline service by its host", rule: { service: "api.example.com" } }
+    { why: "an unnamed inline service by its host", rule: { service: "api.example.com" } },
+    { why: "a project service by ID", rule: { serviceId: SERVICE_ID, methods: ["GET"] } }
   ])("accepts $why", ({ rule }) => {
     expect(AgentVaultHookRuleSchema.safeParse(rule).success).toBe(true);
   });
 
-  test("dedupes methods and normalises path prefixes", () => {
+  test("dedupes methods, normalises path prefixes and lowercases the name", () => {
     expect(
-      AgentVaultHookRuleSchema.parse({ service: " github ", methods: ["PUT", "PUT"], paths: ["/repos/"] })
+      AgentVaultHookRuleSchema.parse({ service: " GitHub ", methods: ["PUT", "PUT"], paths: ["/repos/"] })
     ).toEqual({ service: "github", methods: ["PUT"], paths: ["/repos"] });
   });
 
@@ -157,6 +158,22 @@ describe("hook rules", () => {
       why: "an empty service",
       rule: { service: "  " },
       message: "Enter the name of the service this rule applies to."
+    },
+    {
+      why: "no service",
+      rule: { methods: ["GET"] },
+      message:
+        "Choose the service this rule applies to: send 'serviceId' for a project service, or 'service' with its name."
+    },
+    {
+      why: "both a service ID and a name",
+      rule: { serviceId: SERVICE_ID, service: "github" },
+      message: "Send 'serviceId' or 'service' in a rule, not both."
+    },
+    {
+      why: "a service ID that isn't an ID",
+      rule: { serviceId: "github" },
+      message: "Enter the ID of one of the project's services, or send its name as 'service'."
     },
     {
       why: "an empty method list",
@@ -196,12 +213,62 @@ describe("hook rules", () => {
     expect(issuesOf(AgentVaultHookRulesSchema.safeParse(rules))).toEqual(["A hook can have at most 50 rules."]);
   });
 
-  test("toHookRules keeps only the rule fields", () => {
-    expect(toHookRules([{ service: "a", tools: ["t"], extra: true }, { service: "b" }])).toEqual([
-      { service: "a", tools: ["t"] },
-      { service: "b" }
+  test("toStoredHookRules keeps only the rule fields", () => {
+    expect(
+      toStoredHookRules([
+        { service: "a", tools: ["t"], extra: true },
+        { serviceId: SERVICE_ID, service: "stale" }
+      ])
+    ).toEqual([{ service: "a", tools: ["t"] }, { serviceId: SERVICE_ID }]);
+    expect(toStoredHookRules(null)).toEqual([]);
+  });
+});
+
+describe("hook rule services", () => {
+  const OTHER_ID = "22222222-2222-4222-8222-222222222222";
+
+  test("on save, a name that is a project service is stored as its ID and other names stay names", () => {
+    const { rules } = toStoredHookRulesForSave(
+      [
+        { service: "github", methods: [AgentVaultHttpMethod.Put] },
+        { service: "inline-api" },
+        { serviceId: OTHER_ID, tools: ["x"] }
+      ],
+      [
+        { id: SERVICE_ID, name: "github" },
+        { id: OTHER_ID, name: "linear" }
+      ]
+    );
+    expect(rules).toEqual([
+      { serviceId: SERVICE_ID, methods: ["PUT"] },
+      { service: "inline-api" },
+      { serviceId: OTHER_ID, tools: ["x"] }
     ]);
-    expect(toHookRules(null)).toEqual([]);
+  });
+
+  test("on save, a service ID that isn't the project's is refused", () => {
+    expect(() => toStoredHookRulesForSave([{ service: "a" }, { serviceId: OTHER_ID }], [])).toThrow(
+      `Rule 2 names a service with ID '${OTHER_ID}' that isn't in this project.`
+    );
+  });
+
+  test("reads show a service's current name, and null once it was deleted", () => {
+    const names = new Map([[SERVICE_ID, "github-renamed"]]);
+    expect(
+      toHookRuleViews([{ serviceId: SERVICE_ID, paths: ["/repos"] }, { serviceId: OTHER_ID }, { service: "x" }], names)
+    ).toEqual([
+      { serviceId: SERVICE_ID, service: "github-renamed", paths: ["/repos"] },
+      { serviceId: OTHER_ID, service: null },
+      { serviceId: null, service: "x" }
+    ]);
+  });
+
+  test("resolve sends names and drops rules whose service was deleted", () => {
+    const names = new Map([[SERVICE_ID, "github"]]);
+    expect(toResolvedHookRules([{ serviceId: SERVICE_ID }, { serviceId: OTHER_ID }, { service: "x" }], names)).toEqual([
+      { service: "github" },
+      { service: "x" }
+    ]);
   });
 });
 
@@ -221,34 +288,5 @@ describe("assertAgentVaultHooksOnPlan", () => {
       getPlan: vi.fn().mockResolvedValue(Plan.restore({ ...testFeatures(), agentVaultHooks: true }))
     };
     await expect(assertAgentVaultHooksOnPlan(licenseService as never, "org-1")).resolves.toBeUndefined();
-  });
-});
-
-describe("isAgentVaultHooksOnPlanForResolve", () => {
-  test("follows the org's plan", async () => {
-    const on = new FakeLicenseService().setPlan("org-1", { agentVaultHooks: true });
-    const off = new FakeLicenseService().setPlan("org-1", { agentVaultHooks: false });
-    expect(await isAgentVaultHooksOnPlanForResolve(on, "org-1")).toBe(true);
-    expect(await isAgentVaultHooksOnPlanForResolve(off, "org-1")).toBe(false);
-  });
-
-  test("on a fallback plan, the last known plan decides, and with none the hook stays", async () => {
-    const licenseService = new FakeLicenseService().setPlan("org-1", { agentVaultHooks: false });
-    licenseService.fallbackOrgs.add("org-1");
-    expect(await isAgentVaultHooksOnPlanForResolve(licenseService, "org-1")).toBe(true);
-
-    licenseService.lastKnown.set("org-1", {
-      plan: { ...testFeatures(), agentVaultHooks: false },
-      fetchedAt: Date.now()
-    });
-    expect(await isAgentVaultHooksOnPlanForResolve(licenseService, "org-1")).toBe(false);
-  });
-
-  test("keeps the hook when the plan can't be read", async () => {
-    const licenseService = {
-      getPlan: vi.fn().mockRejectedValue(new Error("license server down")),
-      getLastKnownPlan: vi.fn()
-    };
-    expect(await isAgentVaultHooksOnPlanForResolve(licenseService as never, "org-1")).toBe(true);
   });
 });

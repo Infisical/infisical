@@ -26,7 +26,13 @@ import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent
 import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
 import { findCallerDelegation, resolveOnBehalfOfUser } from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
 import { TAgentVaultHookDALFactory, TAgentVaultHookRow } from "../agent-vault-hook/agent-vault-hook-dal";
-import { assertAgentVaultHooksOnPlan, toHookRules } from "../agent-vault-hook/agent-vault-hook-fns";
+import {
+  assertAgentVaultHooksOnPlan,
+  collectHookRuleServiceIds,
+  toHookRuleViews,
+  toStoredHookRules,
+  toStoredHookRulesForSave
+} from "../agent-vault-hook/agent-vault-hook-fns";
 import { TAgentVaultSessionHookSummary } from "../agent-vault-hook/agent-vault-hook-types";
 import { TAgentVaultResolveDALFactory } from "../agent-vault-proxy/agent-vault-resolve-dal";
 import { generateSessionLogKey, wrapSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
@@ -94,7 +100,10 @@ export const AGENT_VAULT_ON_BEHALF_OF_SESSION_DEFAULT_TTL = "1h";
 
 type TAgentVaultSessionServiceFactoryDep = {
   agentVaultSessionDAL: TAgentVaultSessionDALFactory;
-  agentVaultHookDAL: Pick<TAgentVaultHookDALFactory, "findSavedForMint" | "insertInlineForSession">;
+  agentVaultHookDAL: Pick<
+    TAgentVaultHookDALFactory,
+    "findSavedForMint" | "insertInlineForSession" | "findProjectServicesForHookRules" | "findHookRuleServiceNames"
+  >;
   agentVaultSessionAccessBundleDAL: TAgentVaultSessionAccessBundleDALFactory;
   agentVaultSessionInlineServiceDAL: Pick<
     TAgentVaultSessionInlineServiceDALFactory,
@@ -170,7 +179,7 @@ export const agentVaultSessionServiceFactory = ({
     if (permission.cannot(ProjectPermissionAgentVaultHookActions.Read, ProjectPermissionSub.AgentVaultHooks)) {
       return summary;
     }
-    return { ...summary, url: hook.url, rules: toHookRules(hook.rules) };
+    return { ...summary, url: hook.url, rules: hook.rules };
   };
 
   const toSessionView = (
@@ -351,7 +360,7 @@ export const agentVaultSessionServiceFactory = ({
   const describeHookForAudit = (hook: TAgentVaultHookRow | undefined) => {
     if (!hook) return {};
     if (hook.sessionId) {
-      return { inlineHook: { hookId: hook.id, url: hook.url, ruleCount: toHookRules(hook.rules).length } };
+      return { inlineHook: { hookId: hook.id, url: hook.url, ruleCount: toStoredHookRules(hook.rules).length } };
     }
     return { hookId: hook.id, hookName: hook.name ?? undefined };
   };
@@ -775,6 +784,16 @@ export const agentVaultSessionServiceFactory = ({
     }));
 
     const encryptedInlineHookSecret = inlineHook ? seal({ value: inlineHook.secret }) : null;
+    const inlineHookRules = inlineHook?.rules?.length
+      ? toStoredHookRulesForSave(
+          inlineHook.rules,
+          await agentVaultHookDAL.findProjectServicesForHookRules({
+            projectId,
+            ids: inlineHook.rules.flatMap((rule) => (rule.serviceId ? [rule.serviceId] : [])),
+            names: inlineHook.rules.flatMap((rule) => (rule.service ? [rule.service] : []))
+          })
+        ).rules
+      : [];
 
     const ttlMs = ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : ms(ttl);
     const expiresAt = ttlMs === null ? null : new Date(Date.now() + ttlMs);
@@ -903,7 +922,7 @@ export const agentVaultSessionServiceFactory = ({
               sessionId: created.id,
               url: inlineHook.url,
               encryptedSecret: encryptedInlineHookSecret!,
-              rules: inlineHook.rules ?? []
+              rules: inlineHookRules
             },
             tx
           );
@@ -918,6 +937,11 @@ export const agentVaultSessionServiceFactory = ({
         };
       });
     const oauthVariables = await findInlineOauthVariableKeys(insertedInlineServices);
+    const sessionHookRules = sessionHook ? toStoredHookRules(sessionHook.rules) : [];
+    const sessionHookServiceIds = collectHookRuleServiceIds(sessionHookRules);
+    const sessionHookServiceNames = sessionHookServiceIds.length
+      ? await agentVaultHookDAL.findHookRuleServiceNames({ projectId, ids: sessionHookServiceIds })
+      : new Map<string, string>();
 
     return {
       session: {
@@ -934,7 +958,7 @@ export const agentVaultSessionServiceFactory = ({
                 name: sessionHook.name ?? null,
                 isInline: Boolean(sessionHook.sessionId),
                 url: sessionHook.url,
-                rules: sessionHook.rules
+                rules: toHookRuleViews(sessionHookRules, sessionHookServiceNames)
               }
             : null,
           permission

@@ -12,7 +12,14 @@ import { ConflictError, NotFoundError } from "@app/lib/errors";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { getAgentVaultPermission } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultHookDALFactory, TAgentVaultHookRow } from "./agent-vault-hook-dal";
-import { assertAgentVaultHooksOnPlan, toHookRules } from "./agent-vault-hook-fns";
+import {
+  assertAgentVaultHooksOnPlan,
+  collectHookRuleServiceIds,
+  TAgentVaultHookRuleInput,
+  toHookRuleViews,
+  toStoredHookRules,
+  toStoredHookRulesForSave
+} from "./agent-vault-hook-fns";
 import {
   TAgentVaultHook,
   TAgentVaultHookScoped,
@@ -31,12 +38,15 @@ type TAgentVaultHookServiceFactoryDep = {
 
 export type TAgentVaultHookServiceFactory = ReturnType<typeof agentVaultHookServiceFactory>;
 
-export const toAgentVaultHook = (row: TAgentVaultHookRow): TAgentVaultHook => ({
+export const toAgentVaultHook = (
+  row: TAgentVaultHookRow,
+  serviceNamesById: ReadonlyMap<string, string>
+): TAgentVaultHook => ({
   id: row.id,
   name: row.name!,
   description: row.description ?? null,
   url: row.url,
-  rules: toHookRules(row.rules),
+  rules: toHookRuleViews(toStoredHookRules(row.rules), serviceNamesById),
   createdAt: row.createdAt,
   updatedAt: row.updatedAt
 });
@@ -61,6 +71,24 @@ export const agentVaultHookServiceFactory = ({
     return encryptor({ plainText: Buffer.from(JSON.stringify({ value: secret })) }).cipherTextBlob;
   };
 
+  // One read for every service the hooks' rules reference, so each rule shows its service's current name.
+  const $toHooks = async (projectId: string, rows: TAgentVaultHookRow[]) => {
+    const serviceNamesById = await agentVaultHookDAL.findHookRuleServiceNames({
+      projectId,
+      ids: [...new Set(rows.flatMap((row) => collectHookRuleServiceIds(toStoredHookRules(row.rules))))]
+    });
+    return rows.map((row) => toAgentVaultHook(row, serviceNamesById));
+  };
+
+  const $toStoredRules = async (projectId: string, rules: TAgentVaultHookRuleInput[]) => {
+    const projectServices = await agentVaultHookDAL.findProjectServicesForHookRules({
+      projectId,
+      ids: rules.flatMap((rule) => (rule.serviceId ? [rule.serviceId] : [])),
+      names: rules.flatMap((rule) => (rule.service ? [rule.service] : []))
+    });
+    return toStoredHookRulesForSave(rules, projectServices).rules;
+  };
+
   const hookNotFound = (hookId: string) => new NotFoundError({ message: `Hook with ID '${hookId}' not found` });
   const duplicateName = (name: string) => new ConflictError({ message: `A hook named '${name}' already exists.` });
 
@@ -72,14 +100,15 @@ export const agentVaultHookServiceFactory = ({
       limit,
       offset
     });
-    return { hooks: hooks.map(toAgentVaultHook), totalCount };
+    return { hooks: await $toHooks(scoped.projectId, hooks), totalCount };
   };
 
   const getHook = async ({ hookId, ...scoped }: THookByIdDTO) => {
     await $authorize(scoped, ProjectPermissionAgentVaultHookActions.Read);
     const hook = await agentVaultHookDAL.findSavedByIdInProject({ id: hookId, projectId: scoped.projectId });
     if (!hook) throw hookNotFound(hookId);
-    return { hook: toAgentVaultHook(hook) };
+    const [view] = await $toHooks(scoped.projectId, [hook]);
+    return { hook: view };
   };
 
   const createHook = async ({ name, description, url, secret, rules = [], ...scoped }: TCreateHookDTO) => {
@@ -89,6 +118,7 @@ export const agentVaultHookServiceFactory = ({
     const existing = await agentVaultHookDAL.findSavedByNameInProject({ name, projectId: scoped.projectId });
     if (existing) throw duplicateName(name);
 
+    const storedRules = await $toStoredRules(scoped.projectId, rules);
     const encryptedSecret = await $sealSecret(scoped.projectId, secret);
     let created;
     try {
@@ -98,14 +128,15 @@ export const agentVaultHookServiceFactory = ({
         description: description ?? null,
         url,
         encryptedSecret,
-        rules: JSON.stringify(rules)
+        rules: JSON.stringify(storedRules)
       });
     } catch (error) {
       // The unique index decides a race the name check above lost.
       if (isUniqueViolation(error)) throw duplicateName(name);
       throw error;
     }
-    return { hook: toAgentVaultHook(created) };
+    const [view] = await $toHooks(scoped.projectId, [created]);
+    return { hook: view };
   };
 
   // Changes reach every session using the hook on the proxy's next resolve, since a session references the hook.
@@ -128,6 +159,7 @@ export const agentVaultHookServiceFactory = ({
       if (existing) throw duplicateName(name);
     }
 
+    const storedRules = rules === undefined ? undefined : await $toStoredRules(scoped.projectId, rules);
     const encryptedSecret = secret === undefined ? undefined : await $sealSecret(scoped.projectId, secret);
 
     let updated;
@@ -142,7 +174,7 @@ export const agentVaultHookServiceFactory = ({
             ...(description === undefined ? {} : { description }),
             ...(url === undefined ? {} : { url }),
             ...(encryptedSecret === undefined ? {} : { encryptedSecret }),
-            ...(rules === undefined ? {} : { rules: JSON.stringify(rules) })
+            ...(storedRules === undefined ? {} : { rules: JSON.stringify(storedRules) })
           },
           tx
         );
@@ -152,7 +184,8 @@ export const agentVaultHookServiceFactory = ({
       throw error;
     }
 
-    return { hook: toAgentVaultHook(updated), secretReplaced: secret !== undefined };
+    const [view] = await $toHooks(scoped.projectId, [updated]);
+    return { hook: view, secretReplaced: secret !== undefined };
   };
 
   // Never blocked and never plan-gated: sessions using the hook lose it through the foreign key and run as if they had
@@ -165,7 +198,8 @@ export const agentVaultHookServiceFactory = ({
       await agentVaultHookDAL.deleteById(hookId, tx);
       return locked;
     });
-    return { hook: toAgentVaultHook(deleted) };
+    const [view] = await $toHooks(scoped.projectId, [deleted]);
+    return { hook: view };
   };
 
   return { listHooks, getHook, createHook, updateHook, deleteHook };

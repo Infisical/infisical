@@ -6,6 +6,8 @@ import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
 
+import { TStoredHookRule } from "./agent-vault-hook-fns";
+
 export type TAgentVaultHookDALFactory = ReturnType<typeof agentVaultHookDALFactory>;
 
 // A hook as every read returns it: never with its secret.
@@ -78,6 +80,38 @@ export const deleteInlineHookSecretsOfEndedSessions = async (tx: Knex, limit: nu
     .update({ encryptedSecret: null, secretsDeletedAt: new Date() });
   return rows.length;
 };
+
+/**
+ * The project's services (never a session's inline ones) with one of these IDs or names, for hook rules, which store a
+ * project service by ID and show its current name. On the caller's connection, so resolve can read a replica.
+ */
+export const findProjectServicesForHookRules = async (
+  conn: Knex,
+  { projectId, ids = [], names = [] }: { projectId: string; ids?: string[]; names?: string[] }
+): Promise<{ id: string; name: string }[]> => {
+  if (!ids.length && !names.length) return [];
+  try {
+    return (await conn(TableName.AgentVaultService)
+      .where({ projectId })
+      .whereNull("sessionId")
+      .whereNotNull("name")
+      .where((qb) => {
+        if (ids.length) void qb.orWhereIn("id", ids);
+        if (names.length) void qb.orWhereIn("name", names);
+      })
+      .select("id", "name")) as { id: string; name: string }[];
+  } catch (error) {
+    throw new DatabaseError({ error, name: "Find agent vault services for hook rules" });
+  }
+};
+
+export const findHookRuleServiceNames = async (
+  conn: Knex,
+  { projectId, ids }: { projectId: string; ids: string[] }
+): Promise<Map<string, string>> =>
+  new Map(
+    (await findProjectServicesForHookRules(conn, { projectId, ids })).map((service) => [service.id, service.name])
+  );
 
 /**
  * Saved hooks are the project's and reached through the hooks routes. A hook sent inline with a session (sessionId set)
@@ -204,7 +238,7 @@ export const agentVaultHookDALFactory = (db: TDbClient) => {
       url,
       encryptedSecret,
       rules
-    }: { projectId: string; sessionId: string; url: string; encryptedSecret: Buffer; rules: unknown[] },
+    }: { projectId: string; sessionId: string; url: string; encryptedSecret: Buffer; rules: TStoredHookRule[] },
     tx: Knex
   ): Promise<TAgentVaultHookRow> => {
     try {
@@ -224,6 +258,10 @@ export const agentVaultHookDALFactory = (db: TDbClient) => {
     lockSavedByIdInProject,
     findSavedByNameInProject,
     findSavedForMint,
-    insertInlineForSession
+    insertInlineForSession,
+    findProjectServicesForHookRules: (scope: { projectId: string; ids?: string[]; names?: string[] }, tx?: Knex) =>
+      findProjectServicesForHookRules(tx || db, scope),
+    findHookRuleServiceNames: (scope: { projectId: string; ids: string[] }, tx?: Knex) =>
+      findHookRuleServiceNames(tx || db, scope)
   };
 };
