@@ -83,6 +83,7 @@ type Props = {
   requests: TSecretApprovalRequest[];
   environmentNamesBySlug: Record<string, string>;
   onComplete: (results: TBulkChangeRequestResult[]) => void;
+  onOutcomeUnknown: () => void;
 };
 
 type ContentProps = Omit<Props, "isOpen" | "onOpenChange"> & {
@@ -96,6 +97,7 @@ const BulkReviewChangeRequestsSheetContent = ({
   requests: selectedRequests,
   environmentNamesBySlug,
   onComplete,
+  onOutcomeUnknown,
   onClose,
   isSubmitting,
   setIsSubmitting
@@ -207,35 +209,47 @@ const BulkReviewChangeRequestsSheetContent = ({
               decision,
               requestCount: count,
               entryPoint: "bulk-review-sheet",
-              mergeRequested: decision === "approved"
+              mergeRequested: decision === "approved" && shouldMerge
             }
           )
         );
 
-      const approveResults = approveIds.length
-        ? await bulkAct({
-            projectId,
-            action: BulkChangeRequestAction.Approve,
-            comment: reviewComment,
-            requestIds: approveIds
-          })
-        : [];
-      const rejectResults = rejectIds.length
-        ? await bulkAct({
-            projectId,
-            action: BulkChangeRequestAction.Reject,
-            comment: reviewComment,
-            requestIds: rejectIds
-          })
-        : [];
-      const mergeResults =
-        shouldMerge && approveIds.length
+      let approveResults: TBulkChangeRequestResult[];
+      let rejectResults: TBulkChangeRequestResult[];
+      let mergeResults: TBulkChangeRequestResult[];
+      try {
+        approveResults = approveIds.length
           ? await bulkAct({
               projectId,
-              action: BulkChangeRequestAction.Merge,
+              action: BulkChangeRequestAction.Approve,
+              comment: reviewComment,
               requestIds: approveIds
             })
           : [];
+        rejectResults = rejectIds.length
+          ? await bulkAct({
+              projectId,
+              action: BulkChangeRequestAction.Reject,
+              comment: reviewComment,
+              requestIds: rejectIds
+            })
+          : [];
+        mergeResults =
+          shouldMerge && approveIds.length
+            ? await bulkAct({
+                projectId,
+                action: BulkChangeRequestAction.Merge,
+                requestIds: approveIds
+              })
+            : [];
+      } catch {
+        onOutcomeUnknown();
+        createNotification({
+          type: "error",
+          text: "The connection closed before Infisical confirmed which change requests were updated. The list now shows their current state."
+        });
+        return;
+      }
 
       const nextOutcomes: Record<string, Outcome> = {};
       rejectResults.forEach(({ id, isSuccess, errorMessage }) => {

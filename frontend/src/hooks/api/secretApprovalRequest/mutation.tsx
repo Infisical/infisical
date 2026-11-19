@@ -160,6 +160,8 @@ export const useBulkActOnSecretApprovalRequests = () => {
           )
         );
       } catch (error) {
+        const status = isAxiosError(error) ? error.response?.status : undefined;
+        if (!status || status >= 500) throw error;
         const message = isAxiosError(error) ? error.response?.data?.message : undefined;
         return requestIds.map((id) => ({
           id,
@@ -179,19 +181,22 @@ export const useBulkActOnSecretApprovalRequests = () => {
           : { id, isSuccess: true }
       );
     },
-    onSuccess: (results, { projectId, action }) => {
+    onSettled: (results, error, { projectId, action, requestIds }) => {
       queryClient.invalidateQueries({
         queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
       });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
-      results.forEach(({ id }) =>
+      requestIds.forEach((id) =>
         queryClient.invalidateQueries({
           queryKey: secretApprovalRequestKeys.detail({ id }),
-          refetchType: "none"
+          refetchType: error ? "active" : "none"
         })
       );
 
-      if (action !== BulkChangeRequestAction.Merge || !results.some(({ isSuccess }) => isSuccess))
+      if (
+        action !== BulkChangeRequestAction.Merge ||
+        !(error || results?.some(({ isSuccess }) => isSuccess))
+      )
         return;
 
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all() });

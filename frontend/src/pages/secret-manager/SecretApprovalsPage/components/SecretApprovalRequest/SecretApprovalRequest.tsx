@@ -846,6 +846,10 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
         requests={selectedRequestList}
         environmentNamesBySlug={environmentNamesBySlug}
         onComplete={handleBulkComplete}
+        onOutcomeUnknown={() => {
+          clearSelection();
+          setIsBulkReviewOpen(false);
+        }}
       />
       <SecretApprovalRequestChanges
         approvalRequestId={requestId || ""}
