@@ -1,0 +1,194 @@
+{
+  "alias": {
+    "@app/": "../../frontend/src/"
+  },
+  "ignore": ["../../frontend/src/routeTree.gen.ts"],
+  "stubs": {
+    "/api/v1/admin/config": {
+      "config": {
+        "initialized": true,
+        "allowSignUp": true,
+        "disableAuditLogStorage": false,
+        "defaultAuthOrgSlug": null,
+        "defaultAuthOrgId": null,
+        "enabledLoginMethods": null,
+        "passwordPolicy": {
+          "requirements": []
+        },
+        "pkcs12PasswordPolicy": {
+          "requirements": []
+        },
+        "invalidatingCache": false
+      }
+    }
+  },
+  "pages": [
+    {
+      "id": "sm-overview",
+      "url": "/v4/organizations/demo/projects/secret-management/payments-api/overview",
+      "entries": ["../../frontend/src/pages/v4/secret-manager/OverviewPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"],
+      "mobile": true
+    },
+    {
+      "id": "sm-addnew-menu",
+      "url": "/v4/organizations/demo/projects/secret-management/payments-api/overview",
+      "entries": ["../../frontend/src/pages/v4/secret-manager/OverviewPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"],
+      "open": [
+        {
+          "click": {
+            "role": "button",
+            "name": "add new"
+          }
+        },
+        {
+          "waitFor": "[role=menu]"
+        }
+      ]
+    },
+    {
+      "id": "sm-insights",
+      "url": "/v4/organizations/demo/projects/secret-management/payments-api/insights",
+      "entries": ["../../frontend/src/pages/v4/secret-manager/InsightsPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"]
+    },
+    {
+      "id": "sm-unused-access-sheet",
+      "url": "/v4/organizations/demo/projects/secret-management/payments-api/insights",
+      "entries": ["../../frontend/src/pages/v4/secret-manager/InsightsPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"],
+      "open": [
+        {
+          "click": {
+            "text": "secrets unread"
+          }
+        },
+        {
+          "waitFor": "[role=dialog]"
+        }
+      ]
+    },
+    {
+      "id": "sm-integrations",
+      "url": "/v4/organizations/demo/projects/secret-management/payments-api/integrations",
+      "entries": ["../../frontend/src/pages/v4/secret-manager/IntegrationsPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"]
+    },
+    {
+      "id": "sm-approvals",
+      "url": "/v4/organizations/demo/projects/secret-management/payments-api/approval",
+      "entries": ["../../frontend/src/pages/v4/secret-manager/SecretApprovalsPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"]
+    },
+    {
+      "id": "sm-access-management",
+      "url": "/v4/organizations/demo/projects/secret-management/payments-api/access-management",
+      "entries": ["../../frontend/src/pages/v4/project/AccessControlPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"]
+    },
+    {
+      "id": "org-secret-insights",
+      "url": "/v4/organizations/demo/projects/secret-management/insights",
+      "entries": ["../../frontend/src/pages/v4/organization/SecretInsightsPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"]
+    },
+    {
+      "id": "projects",
+      "url": "/v4/organizations/demo/projects",
+      "entries": ["../../frontend/src/pages/v4/organization/ProjectsPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"]
+    },
+    {
+      "id": "integrations-add-picker",
+      "url": "/v4/organizations/demo/integrations",
+      "entries": ["../../frontend/src/pages/v4/organization/IntegrationsPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"],
+      "open": [
+        {
+          "click": {
+            "role": "button",
+            "name": "add connection"
+          }
+        },
+        {
+          "waitFor": "[role=dialog]"
+        }
+      ]
+    },
+    {
+      "id": "access-management",
+      "url": "/v4/organizations/demo/access-management",
+      "entries": ["../../frontend/src/pages/v4/organization/AccessManagementPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"],
+      "mobile": true
+    },
+    {
+      "id": "identity-detail",
+      "url": "/v4/organizations/demo/identities/8a3d6f20-1c9e-4b75-a4d8-6e2f0b9c3a57",
+      "entries": ["../../frontend/src/pages/v4/organization/IdentityDetailsByIDPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"]
+    },
+    {
+      "id": "member-detail",
+      "url": "/v4/organizations/demo/members/m-noor",
+      "entries": ["../../frontend/src/pages/v4/organization/UserDetailsByIDPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"]
+    },
+    {
+      "id": "org-settings",
+      "url": "/v4/organizations/demo/settings",
+      "entries": ["../../frontend/src/pages/v4/organization/SettingsPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"]
+    },
+    {
+      "id": "topbar-notifications",
+      "url": "/v4/organizations/demo/settings",
+      "entries": ["../../frontend/src/pages/v4/organization/SettingsPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"],
+      "open": [
+        {
+          "click": {
+            "role": "button",
+            "name": "^notifications$"
+          }
+        },
+        {
+          "waitFor": "[data-slot=popover-content]"
+        }
+      ]
+    },
+    {
+      "id": "topbar-account-menu",
+      "url": "/v4/organizations/demo/settings",
+      "entries": ["../../frontend/src/pages/v4/organization/SettingsPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"],
+      "open": [
+        {
+          "click": {
+            "role": "button",
+            "name": "^account,"
+          }
+        },
+        {
+          "waitFor": "[data-slot=dropdown-menu-content]"
+        }
+      ]
+    },
+    {
+      "id": "cm-inventory",
+      "url": "/v4/organizations/demo/cert-manager/inventory",
+      "entries": ["../../frontend/src/pages/v4/cert-manager/InventoryPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"],
+      "mobile": true
+    },
+    {
+      "id": "cm-pki-syncs",
+      "url": "/v4/organizations/demo/cert-manager/integrations",
+      "entries": ["../../frontend/src/pages/v4/cert-manager/PkiSyncsPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"]
+    },
+    {
+      "id": "cm-code-signing",
+      "url": "/v4/organizations/demo/cert-manager/code-signing",
+      "entries": ["../../frontend/src/pages/v4/cert-manager/CodeSigningPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"]
+    },
+    {
+      "id": "pam-account-sheet",
+      "url": "/v4/organizations/demo/pam/accounts?accountId=a0000000-0000-4000-8000-000000000001",
+      "entries": ["../../frontend/src/pages/v4/pam/PamAccountsPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"],
+      "open": [
+        {
+          "waitFor": "[role=dialog]"
+        }
+      ]
+    },
+    {
+      "id": "networking",
+      "url": "/v4/organizations/demo/networking",
+      "entries": ["../../frontend/src/pages/v4/organization/NetworkingPage/route.tsx", "../../frontend/src/pages/v4/route.tsx", "../../frontend/src/pages/v4/organization/route.tsx"]
+    }
+  ]
+}
