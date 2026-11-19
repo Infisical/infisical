@@ -446,6 +446,56 @@ describe("Certificate renewal approval", async () => {
       TEST_TIMEOUT_MS
     );
   });
+  describe("an automatic renewal still waiting after its policy goes back to the default", async () => {
+    let ctx: TApplicationContext;
+    let certificateId = "";
+    let policyId = "";
+
+    beforeAll(async () => {
+      ctx = await setUpApplication("renewal-policy-switched");
+      certificateId = await issue(ctx);
+      ({ id: policyId } = await createApplicationCertRequestPolicy({
+        authToken: ctx.authToken,
+        applicationId: ctx.app.applicationId,
+        profileSlug: ctx.app.profileSlug,
+        approverUserId: ctx.approverId,
+        constraints: { renewalApproval: CertRequestRenewalApproval.Always }
+      }));
+    });
+
+    afterAll(async () => {
+      await ctx?.cleanup();
+    });
+
+    test(
+      "keeps waiting for the request the job raised instead of renewing around it",
+      async () => {
+        await makeDueForAutoRenewal(ctx, certificateId);
+        await runCertificateAutoRenewal();
+        const [pending] = await pendingRenewalApprovals(ctx, certificateId);
+        expect(pending?.requesterName, "the job raised a request under Every renewal").toBe("Automatic Renewal");
+
+        const switched = await testServer.inject({
+          method: "PATCH",
+          url: `/api/v1/approval-policies/cert-request/${policyId}`,
+          headers: { authorization: `Bearer ${ctx.authToken}` },
+          body: { constraints: { renewalApproval: CertRequestRenewalApproval.OnChange } }
+        });
+        expect(switched.statusCode, switched.payload).toBe(200);
+
+        await runCertificateAutoRenewal();
+
+        await expectNotRenewed(ctx, certificateId, "while the job's own request still waits");
+        expect(await renewalApprovals(ctx, certificateId), "the job raised no second request").toHaveLength(1);
+        expect(await failedAutoRenewalsOf(ctx, certificateId), "the job recorded no failed renewal").toHaveLength(0);
+
+        await approveCertRequestApproval({ authToken: ctx.approverToken, requestId: pending.id });
+        await expectRenewedBy(ctx, certificateId);
+      },
+      TEST_TIMEOUT_MS
+    );
+  });
+
   describe("an approved renewal that fails after an approver left the Application", async () => {
     let ctx: TApplicationContext;
     let certificateId = "";

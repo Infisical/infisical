@@ -79,7 +79,7 @@ import { AwsAcmPublicCaCertificateAuthorityFns } from "./aws-acm-public-ca/aws-a
 import { AwsPcaCertificateAuthorityFns } from "./aws-pca/aws-pca-certificate-authority-fns";
 import { AzureAdCsCertificateAuthorityFns } from "./azure-ad-cs/azure-ad-cs-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
-import { CaType } from "./certificate-authority-enums";
+import { CaStatus, CaType } from "./certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "./certificate-authority-fns";
 import { assertCaSupportsCustomExtensions } from "./certificate-authority-maps";
 import { DigiCertCertificateAuthorityFns } from "./digicert/digicert-certificate-authority-fns";
@@ -464,6 +464,14 @@ export const certificateIssuanceQueueFactory = ({
       }
 
       const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+      if (ca.status !== CaStatus.ACTIVE) {
+        throw new BadRequestError({
+          message:
+            ca.status === CaStatus.DISABLED
+              ? `Certificate Authority '${ca.name}' is disabled, so it can't issue certificates. Enable it and request the certificate again.`
+              : `Certificate Authority '${ca.name}' isn't active, so it can't issue certificates.`
+        });
+      }
 
       if (customExtensions?.length) {
         assertCaSupportsCustomExtensions((ca.externalCa?.type ?? CaType.INTERNAL) as CaType, customExtensions.length);

@@ -484,10 +484,14 @@ describe("certRequestApprovalResourceFactory.filterActiveApprovers", () => {
     const live = await resource.filterActiveApprovers!(productRequest, [
       { type: ApproverType.User, id: "member" },
       { type: ApproverType.User, id: "no-access" },
-      { type: ApproverType.User, id: "removed" }
+      { type: ApproverType.User, id: "removed" },
+      { type: ApproverType.Group, id: "group-outside-product" }
     ]);
 
-    expect(live).toEqual([{ type: ApproverType.User, id: "member" }]);
+    expect(live, "group approvers on such a policy were never checked on save and can still approve").toEqual([
+      { type: ApproverType.User, id: "member" },
+      { type: ApproverType.Group, id: "group-outside-product" }
+    ]);
   });
 
   it("notifies nobody saved on the request once no one is left in the Application", async () => {

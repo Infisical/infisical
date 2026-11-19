@@ -116,7 +116,7 @@ export const certRequestApprovalResourceFactory = ({
       );
       memberships = memberships.filter((membership) => withAccess.has(membership.id));
     }
-    if (memberships.length === 0) return [];
+    if (memberships.length === 0) return applicationId ? [] : approvers.filter((a) => a.type === ApproverType.Group);
 
     const memberUserIds = new Set(memberships.flatMap((m) => (m.actorUserId ? [m.actorUserId] : [])));
     const memberGroupIds = new Set(memberships.flatMap((m) => (m.actorGroupId ? [m.actorGroupId] : [])));
@@ -132,9 +132,12 @@ export const certRequestApprovalResourceFactory = ({
       links.forEach((link) => memberViaGroup.add(link.userId));
     }
 
-    return approvers.filter((a) =>
-      a.type === ApproverType.Group ? memberGroupIds.has(a.id) : memberUserIds.has(a.id) || memberViaGroup.has(a.id)
-    );
+    // A policy without an Application never had its group approvers checked against Certificate Management when saved,
+    // and they can still approve, so they keep getting its notices.
+    return approvers.filter((a) => {
+      if (a.type === ApproverType.Group) return !applicationId || memberGroupIds.has(a.id);
+      return memberUserIds.has(a.id) || memberViaGroup.has(a.id);
+    });
   },
 
   // Cert approvals notify approvers when raised, and everyone when the approved action then fails.
