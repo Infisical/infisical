@@ -10,10 +10,10 @@ const PRODUCT_ICONS: Record<string, IconName> = {
   secrets_management: "key",
   legacy_secret_management: "key",
   cert_management: "cert",
-  pam: "terminal",
-  kms: "lock",
-  secret_scanning: "search",
-  agent_vault: "agent"
+  pam: "terminal-key",
+  kms: "keyhole",
+  secret_scanning: "scan-key",
+  agent_vault: "agent-lock"
 };
 
 export const productIconName = (product: Pick<BillingCatalogProduct, "id">): IconName =>

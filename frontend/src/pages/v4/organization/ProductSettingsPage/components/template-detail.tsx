@@ -16,7 +16,6 @@ import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useSearch } from "@tanstack/react-router";
-import { PencilIcon } from "lucide-react";
 
 import { PageTitle } from "@app/components/PageTitle";
 import {
@@ -214,10 +213,10 @@ const TemplateOverview = ({
               <Inline gap={8}>
                 <Button
                   variant="outline"
+                  icon="pencil"
                   disabledReason={canEdit ? undefined : RESTRICTED}
                   onClick={() => setEditing(true)}
                 >
-                  <PencilIcon />
                   Edit details
                 </Button>
                 <Button

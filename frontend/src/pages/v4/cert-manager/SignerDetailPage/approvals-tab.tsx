@@ -30,7 +30,6 @@ import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { format } from "date-fns";
-import { FilterIcon } from "lucide-react";
 
 import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies/types";
 import {
@@ -427,7 +426,7 @@ const RequestsCard = ({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" aria-label="Filter requests by status">
-                <Icon icon={FilterIcon} />
+                <Icon name="funnel" />
                 {filters.length > 0 && <Count tone="ink">{filters.length}</Count>}
               </Button>
             </DropdownMenuTrigger>

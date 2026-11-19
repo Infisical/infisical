@@ -23,7 +23,6 @@ import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Meta, StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { format } from "date-fns";
-import { PencilIcon } from "lucide-react";
 
 import { AuditLogStreamsUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import {
@@ -244,7 +243,7 @@ export const AuditLogStreamsTab = () => {
           inline: [
             {
               label: "Edit log stream",
-              icon: PencilIcon,
+              icon: "pencil",
               disabledReason: () => (canEdit ? undefined : RESTRICTED),
               onSelect: edit
             }

@@ -109,7 +109,7 @@ const Page = () => {
   let empty = (
     <EmptyState
       size="sm"
-      icon="apps"
+      icon="app-window"
       title="No applications yet"
       description="Create an application to issue certificates for a workload."
       actions={

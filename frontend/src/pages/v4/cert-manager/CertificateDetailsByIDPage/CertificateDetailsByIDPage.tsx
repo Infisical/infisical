@@ -621,7 +621,7 @@ const CertificateDetail = ({
               key={host.id}
               value={host.id}
               label={host.name ?? endpointOf(host)}
-              media={<Icon name="machine" />}
+              media={<Icon name="server" />}
               title={host.name ?? endpointOf(host)}
               description={[endpointOf(host), host.locationDetails.gatewayName]
                 .filter(Boolean)

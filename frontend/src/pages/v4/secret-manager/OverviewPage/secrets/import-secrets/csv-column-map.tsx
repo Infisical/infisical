@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Icon } from "@infisical/cipher/ui/icon";
-import { AsteriskIcon, CodeXmlIcon, MessageSquareIcon, TagsIcon, WrapTextIcon } from "lucide-react";
+import { AsteriskIcon, CodeXmlIcon, MessageSquareIcon, WrapTextIcon } from "lucide-react";
 
 import type { CsvDelimiter } from "@app/components/utilities/parseSecrets";
 import type { TParsedEnv } from "@app/pages/secret-manager/OverviewPage/components/SecretDropzone/types";
@@ -149,7 +149,7 @@ export const MATRIX_ROWS: {
   {
     mapKey: "tags",
     label: "Tags",
-    icon: <Icon icon={TagsIcon} size={12} />,
+    icon: <Icon name="tag" size={12} />,
     hint: (sep) => (
       <span className={styles.hintLines}>
         <span>

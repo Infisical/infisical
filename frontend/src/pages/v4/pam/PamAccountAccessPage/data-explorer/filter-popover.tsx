@@ -9,7 +9,6 @@ import {
   PopoverTrigger
 } from "@infisical/cipher/ui/popover";
 import { Select } from "@infisical/cipher/ui/select";
-import { FilterIcon } from "lucide-react";
 
 import type { ColumnInfo } from "./protocol";
 import type { FilterCondition, FilterOperator, SqlDialect } from "./sql";
@@ -95,7 +94,7 @@ export const FilterPopover = ({
       }}
     >
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" icon={FilterIcon}>
+        <Button variant="outline" size="sm" icon="funnel">
           {filters.length > 0
             ? `${filters.length} ${filters.length === 1 ? "filter" : "filters"}`
             : "Filter"}

@@ -20,7 +20,6 @@ import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useParams } from "@tanstack/react-router";
-import { PencilIcon } from "lucide-react";
 
 import {
   OrgKmipServerPermissionActions,
@@ -69,7 +68,7 @@ const EditButton = ({
       disabled={!allowed}
       onClick={onClick}
     >
-      <Icon icon={PencilIcon} size={12} />
+      <Icon name="pencil" size={12} />
     </Button>
   </Gate>
 );

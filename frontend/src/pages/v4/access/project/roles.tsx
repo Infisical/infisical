@@ -22,7 +22,7 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
-import { PencilIcon, ServerIcon, WrenchIcon } from "lucide-react";
+import { WrenchIcon } from "lucide-react";
 
 import {
   ProjectPermissionActions,
@@ -120,7 +120,7 @@ export const ProjectRolesTab = () => {
           </span>
         ) : (
           <span className={styles.source}>
-            <Icon icon={ServerIcon} size={12} />
+            <Icon name="server" size={12} />
             Platform
           </span>
         )
@@ -145,7 +145,7 @@ export const ProjectRolesTab = () => {
             description={canEdit ? undefined : RESTRICTED}
             onSelect={() => openRole(role)}
           >
-            {custom ? <Icon icon={PencilIcon} /> : <Icon name="eye" />}
+            {custom ? <Icon name="pencil" /> : <Icon name="eye" />}
             {custom ? "Edit role" : "View role"}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
@@ -215,7 +215,7 @@ export const ProjectRolesTab = () => {
               title={`No ${accessLabel(scope.projectType, "roles").toLowerCase()} match search`}
             />
           ) : (
-            <EmptyState size="sm" icon="lock" title="This project does not have any roles" />
+            <EmptyState size="sm" icon="id-badge" title="This project does not have any roles" />
           )
         }
         pagination={isPending ? undefined : list.pagination}

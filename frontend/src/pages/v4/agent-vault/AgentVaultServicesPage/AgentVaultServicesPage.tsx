@@ -93,7 +93,7 @@ const Services = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
     <EmptyState
       size="sm"
       media="bare"
-      icon="globe"
+      icon="proxy"
       title="No services yet"
       description="No access bundle granted to you holds a service yet. Ask an admin to grant you one."
     />
@@ -123,7 +123,7 @@ const Services = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
       <EmptyState
         size="sm"
         media="bare"
-        icon="globe"
+        icon="proxy"
         title="No services yet"
         description="Add a service for each API, MCP server, database or SSH server agents need."
         actions={

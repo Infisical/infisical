@@ -44,7 +44,6 @@ import {
 import { StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { format } from "date-fns";
-import { PencilIcon, SendIcon } from "lucide-react";
 import { z } from "zod";
 
 import {
@@ -475,7 +474,7 @@ export const WebhooksSettings = () => {
     inline: [
       {
         label: "Edit events",
-        icon: PencilIcon,
+        icon: "pencil",
         onSelect: setEditing,
         disabledReason: () => (canEdit ? undefined : RESTRICTED)
       }
@@ -488,7 +487,7 @@ export const WebhooksSettings = () => {
           description={canEdit ? undefined : RESTRICTED}
           onSelect={() => test(webhook)}
         >
-          <Icon icon={SendIcon} />
+          <Icon name="send" />
           Send test
         </DropdownMenuItem>
         <DropdownMenuItem
@@ -545,7 +544,7 @@ export const WebhooksSettings = () => {
         ) : (
           <EmptyState
             size="sm"
-            icon="link"
+            icon="webhook"
             title="No webhooks yet"
             description="Add one to notify an external service when secrets change."
           />

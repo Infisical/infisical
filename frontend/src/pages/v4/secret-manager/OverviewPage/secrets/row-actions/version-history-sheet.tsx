@@ -26,7 +26,7 @@ import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Spinner } from "@infisical/cipher/ui/spinner";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { format } from "date-fns";
-import { EyeOffIcon, HardDriveIcon, RotateCcwIcon, ServerCogIcon } from "lucide-react";
+import { EyeOffIcon, RotateCcwIcon, ServerCogIcon } from "lucide-react";
 
 import { useV4Adapter } from "../../../../data/adapters";
 import type { Secret, SecretVersion } from "../../secrets-model";
@@ -37,7 +37,7 @@ import styles from "./row-actions.module.css";
 
 const mask = "••••••••••••••••••••";
 const HIDDEN_VALUE = "<hidden-by-infisical>";
-const actorIcons = { user: undefined, identity: HardDriveIcon, platform: ServerCogIcon };
+const actorIcons = { user: undefined, identity: "machine" as const, platform: ServerCogIcon };
 const actorName = (version: SecretVersion) =>
   version.actorType === "platform" ? "System" : version.actor;
 

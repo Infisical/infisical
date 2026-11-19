@@ -69,7 +69,7 @@ const Insights = () => {
         { icon: "sync" as const, label: "rotations", value: counts.secretRotationCount },
         { icon: "zap" as const, label: "dynamic secrets", value: counts.dynamicSecretCount },
         ...(counts.honeyTokenCount !== null && canReadHoneyTokens
-          ? [{ icon: "shield" as const, label: "honey tokens", value: counts.honeyTokenCount }]
+          ? [{ icon: "honey" as const, label: "honey tokens", value: counts.honeyTokenCount }]
           : [])
       ]
     : [];

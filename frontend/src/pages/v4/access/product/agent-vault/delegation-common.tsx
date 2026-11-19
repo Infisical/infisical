@@ -2,7 +2,6 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@infisical/cipher
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Inline } from "@infisical/cipher/ui/layout";
 import { Link } from "@tanstack/react-router";
-import { PackageIcon } from "lucide-react";
 
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import type {
@@ -89,7 +88,7 @@ export const MissingAccessBundlesHint = ({
     <HoverCard openDelay={150} closeDelay={100}>
       <HoverCardTrigger asChild>
         <button type="button" className={styles.hint}>
-          <Icon icon={PackageIcon} size={12} />
+          <Icon name="package" size={12} />
           {`${bundles.length} ${bundles.length === 1 ? "bundle" : "bundles"} excluded`}
         </button>
       </HoverCardTrigger>

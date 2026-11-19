@@ -24,7 +24,6 @@ import { Select } from "@infisical/cipher/ui/select";
 import { Sheet } from "@infisical/cipher/ui/sheet";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { StatusText } from "@infisical/cipher/ui/text";
-import { PencilIcon } from "lucide-react";
 
 import {
   ProjectPermissionActions,
@@ -234,7 +233,7 @@ export const WorkflowIntegrationsSettings = () => {
     inline: [
       {
         label: (row) => `Edit ${PLATFORM_LABELS[row.platform]} integration`,
-        icon: PencilIcon,
+        icon: "pencil",
         onSelect: edit,
         disabledReason: () => (canEdit ? undefined : RESTRICTED)
       }

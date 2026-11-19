@@ -25,7 +25,7 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { useSearch } from "@tanstack/react-router";
-import { PencilIcon, UserXIcon } from "lucide-react";
+import { UserXIcon } from "lucide-react";
 
 import {
   ProjectPermissionMemberActions,
@@ -266,7 +266,7 @@ export const PamMembersTab = () => {
           description={canEdit ? undefined : RESTRICTED}
           onSelect={() => setEditing(member)}
         >
-          <Icon icon={PencilIcon} />
+          <Icon name="pencil" />
           Edit product role
         </DropdownMenuItem>
         <DropdownMenuSeparator />

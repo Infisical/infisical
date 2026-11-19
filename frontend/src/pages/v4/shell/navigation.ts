@@ -35,6 +35,7 @@ export const products = [
     keywords: ["sm", "secrets", "secret manager"],
     label: "Secrets Management",
     icon: "key",
+    folder: "folder-secrets",
     blurb: "Store, sync, and rotate secrets across environments.",
     hue: SECRETS_HUE
   },
@@ -44,6 +45,7 @@ export const products = [
     keywords: ["cert", "certs", "certificates", "pki", "tls"],
     label: "Certificate Manager",
     icon: "cert",
+    folder: "folder-cert",
     blurb: "Issue and renew certificates for TLS and code signing.",
     hue: 56
   },
@@ -52,7 +54,8 @@ export const products = [
     slug: "kms",
     keywords: ["key management", "keys", "encryption"],
     label: "KMS",
-    icon: "lock",
+    icon: "keyhole",
+    folder: "folder-kms",
     blurb: "Manage keys to encrypt, decrypt, and sign data.",
     hue: 172
   },
@@ -61,7 +64,8 @@ export const products = [
     slug: "secret-scanning",
     keywords: ["scanning", "leaks", "findings"],
     label: "Secret Scanning",
-    icon: "search",
+    icon: "scan-key",
+    folder: "folder-scanning",
     blurb: "Find leaked secrets in repositories and other sources.",
     hue: 305
   },
@@ -70,7 +74,8 @@ export const products = [
     slug: "pam",
     keywords: ["pam", "privileged access"],
     label: "Privileged Access Manager",
-    icon: "terminal",
+    icon: "terminal-key",
+    folder: "folder-pam",
     blurb: "Broker and record access to databases and servers.",
     hue: 18
   },
@@ -79,7 +84,8 @@ export const products = [
     slug: "agent-vault",
     keywords: ["ai", "agents"],
     label: "Agent Vault",
-    icon: "agent",
+    icon: "agent-lock",
+    folder: "folder-agent",
     blurb: "Give AI agents scoped access to secrets and services.",
     hue: 152
   }
@@ -88,6 +94,7 @@ export const products = [
   slug: string;
   label: string;
   icon: IconName;
+  folder: IconName;
   blurb: string;
   hue: number;
   keywords: readonly string[];
@@ -119,7 +126,7 @@ export const projectHome = (type: ProjectType, projectId: string) =>
 const access = (path: string): ShellNavItem => ({
   id: "access",
   label: "Access control",
-  icon: "user",
+  icon: "shield-user",
   path: `${path}/access-management`
 });
 const audit = (path: string): ShellNavItem => ({
@@ -148,7 +155,14 @@ export const orgSections = (isSubOrganization: boolean): readonly ShellNavSectio
       access(""),
       ...(isSubOrganization
         ? []
-        : [{ id: "billing", label: "Usage & billing", icon: "file" as const, path: "/billing" }]),
+        : [
+            {
+              id: "billing",
+              label: "Usage & billing",
+              icon: "credit-card" as const,
+              path: "/billing"
+            }
+          ]),
       audit(""),
       { ...settings(""), drillIn: true, search: { selectedTab: "tab-org-general" } }
     ]
@@ -170,18 +184,18 @@ export const settingsSections = (isSubOrganization: boolean): readonly ShellNavS
       ...(isSubOrganization
         ? []
         : [
-            { id: "sso", label: "SSO & provisioning", icon: "lock" as const, path: "/sso" },
+            { id: "sso", label: "SSO & provisioning", icon: "sign-in" as const, path: "/sso" },
             {
               id: "oauth",
               label: "OAuth applications",
-              icon: "apps" as const,
+              icon: "app-window" as const,
               path: "/oauth-applications"
             }
           ]),
-      { id: "networking", label: "Networking", icon: "globe", path: "/networking" },
+      { id: "networking", label: "Networking", icon: "network", path: "/networking" },
       ...(isSubOrganization
         ? []
-        : [settingsTab("security", "Security", "cert", "tab-org-security")]),
+        : [settingsTab("security", "Security", "shield-check", "tab-org-security")]),
       settingsTab("encryption", "Encryption", "key", "tab-org-encryption"),
       settingsTab("product", "Product settings", "settings", "product-settings"),
       ...(isSubOrganization
@@ -194,15 +208,15 @@ export const settingsSections = (isSubOrganization: boolean): readonly ShellNavS
 export const productSections = (product: ShellProduct): readonly ShellNavSection[] => {
   const base = `/projects/${product.slug}`;
   const items: ShellNavItem[] = [
-    { id: "projects", label: "Projects", icon: "folder", path: base, drillIn: true }
+    { id: "projects", label: "Projects", icon: product.folder, path: base, drillIn: true }
   ];
   if (product.type === ProjectType.SecretManager) {
     items.push(
-      { id: "product-insights", label: "Insights", icon: "globe", path: `${base}/insights` },
+      { id: "product-insights", label: "Insights", icon: "chart-column", path: `${base}/insights` },
       {
         id: "secret-sharing",
         label: "Secret sharing",
-        icon: "link",
+        icon: "send",
         path: `${base}/secret-sharing`
       },
       {
@@ -217,7 +231,7 @@ export const productSections = (product: ShellProduct): readonly ShellNavSection
       {
         id: "kmip-servers",
         label: "KMIP servers",
-        icon: "machine",
+        icon: "server",
         path: `${base}/kmip-servers`
       },
       {
@@ -247,12 +261,12 @@ export const projectSettingsSections = (
       {
         items: [
           tab("general", "General", "settings", "tab-project-general"),
-          tab("environments", "Environments", "globe", "tab-secret-environments"),
-          tab("tags", "Tags", "file", "tab-secret-tags"),
-          tab("policies", "Policies", "check-c", "tab-secret-policies"),
+          tab("environments", "Environments", "layers", "tab-secret-environments"),
+          tab("tags", "Tags", "tag", "tab-secret-tags"),
+          tab("policies", "Policies", "shield-check", "tab-secret-policies"),
           tab("encryption", "Encryption", "lock", "tab-project-encryption"),
           tab("workflow", "Workflow integrations", "apps", "tab-workflow-integrations"),
-          tab("webhooks", "Webhooks", "bell", "tab-project-webhooks")
+          tab("webhooks", "Webhooks", "webhook", "tab-project-webhooks")
         ]
       }
     ];
@@ -269,8 +283,8 @@ export const projectSettingsSections = (
     return [
       {
         items: [
-          tab("app-connections", "App connections", "link", "app-connections"),
-          tab("hsm-connectors", "HSM connectors", "machine", "hsm-connectors"),
+          tab("app-connections", "App connections", "cable", "app-connections"),
+          tab("hsm-connectors", "HSM connectors", "server", "hsm-connectors"),
           tab("cleanup", "Cleanup", "trash", "cleanup"),
           tab("alerts", "Alerts", "bell", "alerts")
         ]
@@ -285,7 +299,7 @@ export const projectSections = (base: string): readonly ShellNavSection[] => [
       { id: "secrets", label: "Secrets", icon: "key", path: `${base}/overview` },
       access(base),
       { id: "integrations", label: "Integrations", icon: "apps", path: `${base}/integrations` },
-      { id: "insights", label: "Insights", icon: "globe", path: `${base}/insights` },
+      { id: "insights", label: "Insights", icon: "chart-column", path: `${base}/insights` },
       { id: "approvals", label: "Approvals", icon: "inbox", path: `${base}/approval` }
     ]
   },
@@ -296,7 +310,7 @@ export const kmsSections = (base: string): readonly ShellNavSection[] => [
   {
     items: [
       { id: "keys", label: "Keys", icon: "key", path: `${base}/overview` },
-      { id: "kmip", label: "KMIP", icon: "machine", path: `${base}/kmip` }
+      { id: "kmip", label: "KMIP", icon: "server", path: `${base}/kmip` }
     ]
   },
   { label: "Administration", items: [access(base), audit(base), settings(base)] }
@@ -306,34 +320,39 @@ const pki = "/cert-manager";
 export const pkiSections: readonly ShellNavSection[] = [
   {
     items: [
-      { id: "dashboard", label: "Dashboard", icon: "home", path: `${pki}/overview` },
+      { id: "dashboard", label: "Dashboard", icon: "chart-column", path: `${pki}/overview` },
       { id: "inventory", label: "Inventory", icon: "cert", path: `${pki}/inventory` },
-      { id: "discovery", label: "Discovery", icon: "search", path: `${pki}/discovery` },
+      { id: "discovery", label: "Discovery", icon: "radar", path: `${pki}/discovery` },
       { id: "requests", label: "Requests", icon: "inbox", path: `${pki}/requests` }
     ]
   },
   {
     label: "Resources",
     items: [
-      { id: "applications", label: "Applications", icon: "apps", path: `${pki}/applications` },
+      {
+        id: "applications",
+        label: "Applications",
+        icon: "app-window",
+        path: `${pki}/applications`
+      },
       { id: "syncs", label: "Certificate syncs", icon: "sync", path: `${pki}/integrations` },
-      { id: "signers", label: "Signers", icon: "file", path: `${pki}/code-signing` },
+      { id: "signers", label: "Signers", icon: "pen-nib", path: `${pki}/code-signing` },
       {
         id: "authorities",
         label: "Certificate authorities",
-        icon: "building",
+        icon: "landmark",
         path: `${pki}/certificate-authorities`
       },
       {
         id: "policies",
         label: "Certificate policies",
-        icon: "check-c",
+        icon: "shield-check",
         path: `${pki}/certificate-policies`
       },
       {
         id: "profiles",
         label: "Certificate profiles",
-        icon: "folder",
+        icon: "file-badge",
         path: `${pki}/certificate-profiles`
       }
     ]
@@ -350,7 +369,7 @@ export const scanningSections: readonly ShellNavSection[] = [
       {
         id: "app-connections",
         label: "App connections",
-        icon: "link",
+        icon: "cable",
         path: `${scanning}/app-connections`
       }
     ]
@@ -360,12 +379,17 @@ export const scanningSections: readonly ShellNavSection[] = [
 
 const pam = "/pam";
 export const pamSections: readonly ShellNavSection[] = [
-  { items: [{ id: "accounts", label: "Accounts", icon: "folder-open", path: `${pam}/accounts` }] },
+  { items: [{ id: "accounts", label: "Accounts", icon: "user-key", path: `${pam}/accounts` }] },
   {
     label: "Manage",
     items: [
-      { id: "templates", label: "Account templates", icon: "file", path: `${pam}/templates` },
-      { id: "discovery", label: "Discovery", icon: "search", path: `${pam}/discovery` }
+      {
+        id: "templates",
+        label: "Account templates",
+        icon: "clipboard-list",
+        path: `${pam}/templates`
+      },
+      { id: "discovery", label: "Discovery", icon: "radar", path: `${pam}/discovery` }
     ]
   },
   {
@@ -387,21 +411,21 @@ export const pamSections: readonly ShellNavSection[] = [
 export const agentVaultSections = (base: string): readonly ShellNavSection[] => [
   {
     items: [
-      { id: "sessions", label: "Sessions", icon: "user", path: `${base}/sessions` },
+      { id: "sessions", label: "Sessions", icon: "id-card", path: `${base}/sessions` },
       {
         id: "access-bundles",
         label: "Access bundles",
-        icon: "folder",
+        icon: "package",
         path: `${base}/access-bundles`
       },
-      { id: "services", label: "Services", icon: "link", path: `${base}/services` },
-      { id: "variables", label: "Variables", icon: "key", path: `${base}/variables` },
-      { id: "skills", label: "Skills", icon: "file", path: `${base}/skills` }
+      { id: "services", label: "Services", icon: "proxy", path: `${base}/services` },
+      { id: "variables", label: "Variables", icon: "braces", path: `${base}/variables` },
+      { id: "skills", label: "Skills", icon: "book", path: `${base}/skills` }
     ]
   },
   {
     label: "Infrastructure",
-    items: [{ id: "proxies", label: "Proxies", icon: "machine", path: `${base}/proxies` }]
+    items: [{ id: "proxies", label: "Proxies", icon: "server", path: `${base}/proxies` }]
   },
   { label: "Administration", items: [access(base), audit(base), settings(base)] }
 ];

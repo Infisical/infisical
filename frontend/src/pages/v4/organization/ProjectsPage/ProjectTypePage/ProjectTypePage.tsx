@@ -52,7 +52,7 @@ import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group"
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { Navigate, useNavigate, useParams } from "@tanstack/react-router";
 import { format, formatDistanceToNowStrict } from "date-fns";
-import { LayersIcon, LayoutGridIcon, ListIcon, StarIcon } from "lucide-react";
+import { LayoutGridIcon, ListIcon, StarIcon } from "lucide-react";
 
 import { ProjectLimitUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import {
@@ -305,7 +305,7 @@ const ProjectCard = ({
         <Inline gap={16} justify="between">
           {project.type !== ProjectType.AgentVault && (
             <Inline gap={4} align="center">
-              <Icon icon={LayersIcon} size={14} />
+              <Icon name="layers" size={14} />
               <span>
                 <strong>{environmentCount}</strong>{" "}
                 {environmentCount === 1 ? "Environment" : "Environments"}
@@ -338,7 +338,7 @@ const NoProjects = ({
     <EmptyState
       size="sm"
       ghost={layout === "rows" ? "rows" : undefined}
-      icon={productOf(projectType).icon}
+      icon={productOf(projectType).folder}
       title={`No ${getProjectTitle(projectType)} projects yet`}
       actions={
         <Button variant="outline" icon="plus" disabled={!canCreate} onClick={onCreate}>

@@ -19,7 +19,6 @@ import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Meta } from "@infisical/cipher/ui/text";
 import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { PencilIcon } from "lucide-react";
 
 import { PageTitle } from "@app/components/PageTitle";
 import {
@@ -207,7 +206,7 @@ const AccessBundles = ({ orgId, projectId }: { orgId: string; projectId: string 
             ? [
                 {
                   label: "Edit access bundle",
-                  icon: PencilIcon,
+                  icon: "pencil",
                   onSelect: setEditing
                 }
               ]
@@ -238,7 +237,7 @@ const AccessBundles = ({ orgId, projectId }: { orgId: string; projectId: string 
     <EmptyState
       size="sm"
       media="bare"
-      icon="folder"
+      icon="package"
       title="No access bundles available"
       description="Ask an admin to grant you an access bundle."
     />
@@ -262,7 +261,7 @@ const AccessBundles = ({ orgId, projectId }: { orgId: string; projectId: string 
       <EmptyState
         size="sm"
         media="bare"
-        icon="folder"
+        icon="package"
         title="No access bundles yet"
         description="A bundle groups the services an agent can reach in one session."
         actions={

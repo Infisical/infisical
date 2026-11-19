@@ -33,7 +33,7 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import slugify from "@sindresorhus/slugify";
-import { IdCardIcon, PencilIcon, ServerIcon, WrenchIcon } from "lucide-react";
+import { WrenchIcon } from "lucide-react";
 
 import {
   OrgPermissionActions,
@@ -250,7 +250,7 @@ export const OrgRolesTab = () => {
         const custom = isCustomOrgRole(role.slug);
         return (
           <Badge tone="outline">
-            <Icon icon={custom ? WrenchIcon : ServerIcon} size={12} />
+            <Icon icon={custom ? WrenchIcon : "server"} size={12} />
             {custom ? "Custom" : "Platform"}
           </Badge>
         );
@@ -277,7 +277,7 @@ export const OrgRolesTab = () => {
             description={canEdit ? undefined : RESTRICTED}
             onSelect={() => openRole(role)}
           >
-            {custom ? <Icon icon={PencilIcon} /> : <Icon name="eye" />}
+            {custom ? <Icon name="pencil" /> : <Icon name="eye" />}
             {custom ? "Edit role" : "View role"}
           </DropdownMenuItem>
           {!roleIsDefault && (
@@ -286,7 +286,7 @@ export const OrgRolesTab = () => {
               description={canEditSettings ? undefined : RESTRICTED}
               onSelect={() => setDefault(role)}
             >
-              <Icon icon={IdCardIcon} />
+              <Icon name="id-card" />
               Set as default role
             </DropdownMenuItem>
           )}

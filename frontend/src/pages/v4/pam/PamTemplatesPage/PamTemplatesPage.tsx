@@ -471,7 +471,7 @@ export const PamTemplatesPage = () => {
               <EmptyState
                 size="sm"
                 media="bare"
-                icon="file"
+                icon="clipboard-list"
                 title="No templates yet"
                 actions={
                   <Button variant="outline" icon="plus" onClick={() => setCreating(true)}>

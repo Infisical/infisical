@@ -45,7 +45,7 @@ import {
 import { Switch } from "@infisical/cipher/ui/switch";
 import { SmallText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
-import { FilterIcon, LayersIcon, ShieldIcon } from "lucide-react";
+import { ShieldIcon } from "lucide-react";
 
 import { SecretFolderRole } from "@app/hooks/api/folderAccess/types";
 import { ms } from "@app/lib/fn/time";
@@ -757,7 +757,7 @@ function AccessFilterMenu({
       <Tooltip content="Filter access">
         <DropdownMenuTrigger asChild>
           <Button variant={isFiltering ? "default" : "outline"} size="icon-sm" iconOnly>
-            <Icon icon={FilterIcon} />
+            <Icon name="funnel" />
             <span className="sr-only">Filter access</span>
           </Button>
         </DropdownMenuTrigger>
@@ -1026,7 +1026,7 @@ export function FolderAccessSheet({
             <Select
               size="sm"
               width="sm"
-              icon={LayersIcon}
+              icon="layers"
               aria-label="Environment"
               value={environmentSlug}
               options={environments}

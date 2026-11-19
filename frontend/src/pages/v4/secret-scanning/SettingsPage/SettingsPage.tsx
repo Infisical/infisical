@@ -191,7 +191,7 @@ export const SettingsPage = () => {
       <PageTitle title="Settings" />
       {isPending && <Loader size="page" label="Loading settings" />}
       {!isPending && !projectId && (
-        <EmptyState icon="search" title="Secret Scanning is not set up" />
+        <EmptyState icon="scan-key" title="Secret Scanning is not set up" />
       )}
       {projectId && <Settings orgId={orgId} projectId={projectId} />}
     </TooltipProvider>

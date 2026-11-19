@@ -51,14 +51,12 @@ import { Textarea } from "@infisical/cipher/ui/textarea";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import {
   BellIcon,
-  BracesIcon,
   CodeXmlIcon,
   CopyPlusIcon,
   EditIcon,
   EyeOffIcon,
   ForwardIcon,
   GitBranchIcon,
-  HexagonIcon,
   ImportIcon,
   MessageSquareIcon,
   PencilLineIcon,
@@ -449,7 +447,7 @@ export function AnnotateMenu({
               chosen.current = "tags";
             }}
           >
-            <Icon icon={TagsIcon} />
+            <Icon name="tag" />
             {annotations.tags.length ? "Edit tags" : "Add tags"}
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -823,7 +821,7 @@ function SecretActionsRow({
               description={tagsDenied}
               onSelect={select("tags")}
             >
-              <Icon icon={TagsIcon} />
+              <Icon name="tag" />
               {secret.tags.length ? "View tags" : "Add tags"}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={select("reminder")}>
@@ -849,7 +847,7 @@ function SecretActionsRow({
             )
           )}
         >
-          <Icon icon={BracesIcon} />
+          <Icon name="braces" />
           View resolved value
         </DropdownMenuItem>
         <DropdownMenuItem
@@ -1536,7 +1534,7 @@ function SecretRowView({
           description={renameBlock}
           onSelect={() => setRenaming(true)}
         >
-          <Icon icon={EditIcon} />
+          <Icon name="pencil" />
           Edit secret name
         </DropdownMenuItem>
       </>
@@ -1652,7 +1650,7 @@ function SecretRowView({
                             <Icon name="sync" size={12} label="Rotated secret" />
                           )}
                           {secret?.honeyToken && (
-                            <Icon icon={HexagonIcon} size={12} label="Honey token secret" />
+                            <Icon name="honey" size={12} label="Honey token secret" />
                           )}
                         </span>
                       </TableCell>

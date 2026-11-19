@@ -29,7 +29,7 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { SettingsCard } from "@infisical/cipher/ui/settings-card";
 import slugify from "@sindresorhus/slugify";
-import { ServerIcon, WrenchIcon } from "lucide-react";
+import { WrenchIcon } from "lucide-react";
 
 import { isCustomProjectRole } from "@app/helpers/roles";
 import type { TProjectTemplate } from "@app/hooks/api/projectTemplates";
@@ -207,7 +207,7 @@ export const TemplateRolesCard = ({
       width: 120,
       render: (role) => (
         <span className={styles.source}>
-          <Icon icon={isCustomProjectRole(role.slug) ? WrenchIcon : ServerIcon} size={12} />
+          <Icon icon={isCustomProjectRole(role.slug) ? WrenchIcon : "server"} size={12} />
           {isCustomProjectRole(role.slug) ? "Custom" : "Platform"}
         </span>
       )
@@ -270,7 +270,7 @@ export const TemplateRolesCard = ({
             }
           />
         ) : (
-          <EmptyState size="sm" icon="lock" title="No roles in this template" />
+          <EmptyState size="sm" icon="id-badge" title="No roles in this template" />
         )}
       </SettingsCard>
       {adding && (

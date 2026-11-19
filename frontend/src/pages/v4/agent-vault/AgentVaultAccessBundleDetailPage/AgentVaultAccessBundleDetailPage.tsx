@@ -23,7 +23,6 @@ import { Loader } from "@infisical/cipher/ui/loader";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { PencilIcon } from "lucide-react";
 
 import {
   hostPatternOf,
@@ -209,7 +208,7 @@ const BundleSkills = ({
         <EmptyState
           size="sm"
           media="bare"
-          icon="file"
+          icon="book"
           title="No skills yet"
           description="Skills give agents running with this bundle instructions for their tasks."
         />
@@ -329,7 +328,7 @@ const AccessBundleDetail = ({
       <>
         <PageTitle title="Access Bundle" />
         <EmptyState
-          icon="folder"
+          icon="package"
           title="Access bundle not found"
           description="It was deleted or is no longer granted to you."
           actions={
@@ -376,7 +375,7 @@ const AccessBundleDetail = ({
                       )}
                       {canEditBundle && (
                         <DropdownMenuItem onSelect={() => setEditing(true)}>
-                          <Icon icon={PencilIcon} />
+                          <Icon name="pencil" />
                           Edit access bundle
                         </DropdownMenuItem>
                       )}
@@ -457,7 +456,7 @@ const AccessBundleDetail = ({
               <EmptyState
                 size="sm"
                 media="bare"
-                icon="globe"
+                icon="proxy"
                 title="No services yet"
                 description="Add services to give this bundle access to external hosts."
               />

@@ -34,7 +34,6 @@ import { Tabs } from "@infisical/cipher/ui/tabs";
 import { StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { formatDistanceToNow } from "date-fns";
-import { PencilIcon } from "lucide-react";
 
 import {
   OrgPermissionIdentityActions,
@@ -414,7 +413,7 @@ export const OrgIdentitiesTab = () => {
             description={canEdit ? undefined : RESTRICTED}
             onSelect={() => openDetail(row)}
           >
-            <Icon icon={PencilIcon} />
+            <Icon name="pencil" />
             {isOwned(row) ? "Edit machine identity" : "Edit membership"}
           </DropdownMenuItem>
           {isOwned(row) && (

@@ -61,7 +61,7 @@ export const SecretScanningAppConnectionsPage = () => {
       <PageTitle title="App connections" />
       {isPending && <Loader size="page" label="Loading app connections" />}
       {!isPending && !projectId && (
-        <EmptyState icon="search" title="Secret Scanning is not set up" />
+        <EmptyState icon="scan-key" title="Secret Scanning is not set up" />
       )}
       {projectId && (
         <ProjectAppConnections

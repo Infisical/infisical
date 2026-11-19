@@ -20,7 +20,6 @@ import {
   TableHeader,
   TableRow
 } from "@infisical/cipher/ui/table";
-import { TagsIcon } from "lucide-react";
 
 import { slugSchema } from "@app/lib/schemas/slugSchema";
 
@@ -149,7 +148,7 @@ function BulkTagDialogContent({
                         <TableCell key={environment.value} className={styles.envColumn}>
                           {envSlugs.has(environment.value) ? (
                             <span className={styles.tagged}>
-                              <Icon icon={TagsIcon} label="Will be tagged" />
+                              <Icon name="tag" label="Will be tagged" />
                             </span>
                           ) : (
                             <span className={styles.missing}>

@@ -25,7 +25,6 @@ import {
 } from "@infisical/cipher/ui/sheet";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { useQueryClient } from "@tanstack/react-query";
-import { PencilIcon } from "lucide-react";
 
 import {
   ProjectPermissionIdentityActions,
@@ -350,7 +349,7 @@ export const PamIdentitiesTab = () => {
           description={canEdit ? undefined : RESTRICTED}
           onSelect={() => setEditing(member)}
         >
-          <Icon icon={PencilIcon} />
+          <Icon name="pencil" />
           Edit product role
         </DropdownMenuItem>
         <DropdownMenuSeparator />
