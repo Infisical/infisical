@@ -38,10 +38,7 @@ import {
   useGetCertificateById,
   useUpdateRenewalConfig
 } from "@app/hooks/api";
-import {
-  ApprovalPolicyType,
-  useRevocationPolicyProfileNames
-} from "@app/hooks/api/approvalPolicies";
+import { useRevocationPolicyProfileNames } from "@app/hooks/api/approvalPolicies";
 import { usePendingCertificateRevocations } from "@app/hooks/api/approvalRequests";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability } from "@app/hooks/api/ca/enums";
@@ -56,7 +53,6 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
 
-import { getCertManagerLink } from "../cert-manager-link";
 import { BlockedActionTooltip } from "../CertificatesPage/components/BlockedActionTooltip";
 import { CertificateCertModal } from "../CertificatesPage/components/CertificateCertModal";
 import { CertificateDeletionSyncImpact } from "../CertificatesPage/components/CertificateDeletionSyncImpact";
@@ -74,6 +70,7 @@ import {
   DELETED_CERTIFICATE_NO_ACTIONS,
   getApplicationCertificateAccess,
   getCertificateDeletionWarning,
+  getPendingRevocationRequestLink,
   getPendingRevocationState,
   isExpiringWithinOneDay,
   isManagedCertificate,
@@ -292,9 +289,7 @@ const Page = () => {
     pendingRevocation.revokeBlockedReason ?? applicationAccess?.revokeBlockedReason;
   const pendingRevocationLink =
     pendingRevocation.isPending && pendingRevocationRequest
-      ? getCertManagerLink(currentProject, `approvals/${pendingRevocationRequest.id}`, {
-          policyType: ApprovalPolicyType.CertRevocation
-        })
+      ? getPendingRevocationRequestLink(currentProject, pendingRevocationRequest.id)
       : undefined;
   const pendingRevocationBadge = pendingRevocationLink ? (
     <Badge variant="warning" asChild>

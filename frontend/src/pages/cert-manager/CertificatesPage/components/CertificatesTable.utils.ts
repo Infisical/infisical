@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import ms from "ms";
 
+import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies/types";
 import { TApprovalRequest } from "@app/hooks/api/approvalRequests/types";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { CaType } from "@app/hooks/api/ca/enums";
@@ -10,6 +11,9 @@ import {
   PkiApplicationResourceActions,
   PkiApplicationResourceSub
 } from "@app/hooks/api/pkiApplications/types";
+import { Project } from "@app/hooks/api/projects/types";
+
+import { getCertManagerLink } from "../../cert-manager-link";
 
 export const getCertSourceLabel = (source: TCertificateSource): string => {
   switch (source) {
@@ -108,6 +112,17 @@ export const PENDING_REVOCATION_REASON =
 
 export const REPLACEABLE_REVOCATION_REASON =
   "Not enough of the approvers on this certificate's revocation request can still approve it. Once the revocation policy has approvers who can approve, revoking the certificate again replaces the request.";
+
+// Without `from: "root-requests"` the sidebar opens the legacy Approvals submenu, which doesn't list
+// revocation requests. The Approval Requests inbox links the same way.
+export const getPendingRevocationRequestLink = (
+  project: Pick<Project, "id" | "type" | "orgId">,
+  approvalRequestId: string
+) =>
+  getCertManagerLink(project, `approvals/${approvalRequestId}`, {
+    policyType: ApprovalPolicyType.CertRevocation,
+    from: "root-requests"
+  });
 
 // With no revocation policy covering the certificate, revoking skips approval, so a pending request
 // is no reason to block it. A revoked certificate's request can no longer revoke anything (a DigiCert
