@@ -17,6 +17,7 @@ import type {
   TAgentVaultBundleSkill,
   TAgentVaultMember,
   TAgentVaultMemberProvidedField,
+  TAgentVaultOauthCredentialSummary,
   TAgentVaultOauthAuthorization,
   TAgentVaultProductMember,
   TAgentVaultProjectService,
@@ -772,6 +773,26 @@ const updateBundle = (state: State, id: string, change: (bundle: TDemoBundle) =>
   )
 });
 
+const oauthVariableCredentialOf = (
+  state: State,
+  key: string
+): TAgentVaultOauthCredentialSummary => {
+  const variable =
+    state.variables.find(
+      (entry) => entry.key === key && entry.type === AgentVaultVariableType.OAuth
+    ) ?? notFound("OAuth variable");
+  return {
+    type: AgentVaultCredentialType.OAuth,
+    source: "variable",
+    memberProvidedFields: [],
+    variable: { id: variable.id, key: variable.key },
+    status: variable.oauth?.status,
+    issuer: variable.oauth?.connection?.issuer,
+    grantedScopes: variable.oauth?.connection?.grantedScopes ?? [],
+    requiredScopes: variable.oauth?.connection?.requiredScopes ?? []
+  };
+};
+
 const httpCredentialOf = (
   state: State,
   credential: Extract<
@@ -779,21 +800,8 @@ const httpCredentialOf = (
     { type: AgentVaultServiceType.Http }
   >["credential"]
 ): Extract<TAgentVaultService, { type: AgentVaultServiceType.Http }>["credential"] => {
-  if (credential.type === AgentVaultCredentialType.OAuth) {
-    const variable = state.variables.find(
-      (entry) => entry.key === credential.variable && entry.type === AgentVaultVariableType.OAuth
-    );
-    return {
-      type: credential.type,
-      source: "variable",
-      memberProvidedFields: [],
-      variable: variable && { id: variable.id, key: variable.key },
-      status: variable?.oauth?.status,
-      issuer: variable?.oauth?.connection?.issuer,
-      grantedScopes: variable?.oauth?.connection?.grantedScopes ?? [],
-      requiredScopes: variable?.oauth?.connection?.requiredScopes ?? []
-    };
-  }
+  if (credential.type === AgentVaultCredentialType.OAuth)
+    return oauthVariableCredentialOf(state, credential.variable ?? "");
   if (credential.type === AgentVaultCredentialType.Bearer)
     return {
       type: credential.type,
@@ -850,24 +858,27 @@ const createdService = (
       transport: dto.transport,
       hostPattern: `${url.hostname}:${url.port || 443}`,
       allowedTools: dto.allowedTools ?? null,
-      credential:
-        dto.credential.type === AgentVaultCredentialType.Bearer
-          ? {
-              type: AgentVaultCredentialType.Bearer,
-              headerName: dto.credential.headerName ?? "Authorization",
-              headerPrefix: dto.credential.headerPrefix ?? "Bearer",
-              memberProvidedFields: dto.credential.memberProvidedFields ?? []
-            }
-          : {
-              type: AgentVaultCredentialType.OAuth,
-              ...(dto.credential.memberProvidedFields?.length
-                ? { source: "member" as const }
-                : { source: "service" as const, status: AgentVaultOauthStatus.Connected }),
-              memberProvidedFields: dto.credential.memberProvidedFields ?? [],
-              issuer: url.origin,
-              grantedScopes: [],
-              requiredScopes: []
-            },
+      credential: (() => {
+        if (dto.credential.type === AgentVaultCredentialType.Bearer)
+          return {
+            type: AgentVaultCredentialType.Bearer,
+            headerName: dto.credential.headerName ?? "Authorization",
+            headerPrefix: dto.credential.headerPrefix ?? "Bearer",
+            memberProvidedFields: dto.credential.memberProvidedFields ?? []
+          };
+        if (dto.credential.variable)
+          return oauthVariableCredentialOf(state, dto.credential.variable);
+        return {
+          type: AgentVaultCredentialType.OAuth,
+          ...(dto.credential.memberProvidedFields?.length
+            ? { source: "member" as const }
+            : { source: "service" as const, status: AgentVaultOauthStatus.Connected }),
+          memberProvidedFields: dto.credential.memberProvidedFields ?? [],
+          issuer: url.origin,
+          grantedScopes: [],
+          requiredScopes: []
+        };
+      })(),
       customHeaders: (dto.customHeaders ?? []).map((header, index) => ({
         id: uuid("c3", state.counter * 10 + index),
         name: header.name,
@@ -924,11 +935,13 @@ const skillLabels = (
 };
 
 const updatedCredential = (
+  state: State,
   current: TAgentVaultService["credential"],
   credential: NonNullable<TUpdateAgentVaultServiceDTO["credential"]>
 ): TAgentVaultService["credential"] => {
   const dto = credential as {
     type: AgentVaultCredentialType;
+    variable?: string;
     headerName?: string;
     headerPrefix?: string;
     memberProvidedFields?: TAgentVaultMemberProvidedField[];
@@ -955,17 +968,20 @@ const updatedCredential = (
       memberProvidedFields
     } as TAgentVaultService["credential"];
   if (dto.type === AgentVaultCredentialType.OAuth) {
+    if (dto.variable) return oauthVariableCredentialOf(state, dto.variable);
     const isMemberProvided = memberProvidedFields.length > 0;
+    const ownSignIn: Record<string, unknown> = stored.source === "variable" ? {} : stored;
     return {
       issuer: "",
       grantedScopes: [],
       requiredScopes: [],
-      ...stored,
+      ...ownSignIn,
       type: dto.type,
       source: isMemberProvided ? "member" : "service",
       status: isMemberProvided
         ? undefined
-        : ((stored.status as AgentVaultOauthStatus | undefined) ?? AgentVaultOauthStatus.Connected),
+        : ((ownSignIn.status as AgentVaultOauthStatus | undefined) ??
+          AgentVaultOauthStatus.Connected),
       memberProvidedFields
     } as TAgentVaultService["credential"];
   }
@@ -973,6 +989,7 @@ const updatedCredential = (
 };
 
 const updatedService = (
+  state: State,
   service: TAgentVaultService,
   { serviceId: _id, type: _type, hook, credential, ...dto }: TUpdateAgentVaultServiceDTO
 ): TAgentVaultService => {
@@ -998,7 +1015,7 @@ const updatedService = (
     }));
   }
   if (hook !== undefined) next.hook = hook ? { url: hook.url } : null;
-  if (credential) next.credential = updatedCredential(service.credential, credential);
+  if (credential) next.credential = updatedCredential(state, service.credential, credential);
   next.updatedAt = new Date().toISOString();
   return next as TAgentVaultService;
 };
@@ -1252,7 +1269,7 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
   }),
   useUpdateService: mutation((dto: TUpdateAgentVaultServiceDTO, state) => {
     const service = state.services.find((seed) => seed.id === dto.serviceId) ?? notFound("Service");
-    const updated = updatedService(service, dto);
+    const updated = updatedService(state, service, dto);
     const next = {
       ...state,
       services: state.services.map((seed) => (seed.id === dto.serviceId ? updated : seed))

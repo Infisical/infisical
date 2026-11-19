@@ -1,21 +1,8 @@
-import { useEffect, useState } from "react";
-import {
-  Combobox,
-  type ComboboxCreation,
-  type ComboboxOption
-} from "@infisical/cipher/ui/combobox";
+import { useState } from "react";
+import { Combobox, type ComboboxOption } from "@infisical/cipher/ui/combobox";
 import { Field } from "@infisical/cipher/ui/field";
-import { Input } from "@infisical/cipher/ui/input";
-import { Stack } from "@infisical/cipher/ui/layout";
-import axios from "axios";
+import { Link } from "@infisical/cipher/ui/link";
 
-import {
-  BLANK_OAUTH_VARIABLE_FORM,
-  buildOAuthVariableSettings,
-  CREATE_OAUTH_VARIABLE_TITLE,
-  oauthVariableFormIssues,
-  type TOAuthVariableFormValues
-} from "@app/components/agent-vault/oauthVariableForm";
 import {
   OAUTH_STATUS_LABELS,
   storedOAuthVariableKey
@@ -24,180 +11,36 @@ import {
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import {
-  normalizeVariableKey,
-  VARIABLE_KEY_MAX_LENGTH,
-  VARIABLE_KEY_MESSAGE,
-  VARIABLE_KEY_RE
-} from "@app/helpers/agentVaultVariables";
+import { keepInClassic } from "@app/helpers/v4Bridge";
 import {
   AgentVaultOauthStatus,
   AgentVaultVariableScope,
   AgentVaultVariableType
 } from "@app/hooks/api/agentVault/enums";
 import type { TAgentVaultService } from "@app/hooks/api/agentVault/types";
-import { ApiErrorTypes, type TApiErrors } from "@app/hooks/api/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 
-import { useProjectPermission } from "../../access/permissions";
-import { failed, saved } from "../../access/toast";
+import { useOrgId, useProjectPermission } from "../../access/permissions";
 import { useV4Adapter } from "../../data/adapters";
 import type { TServiceFormApi } from "./service-form";
 
-type TCreateFields = Pick<TOAuthVariableFormValues, "serverUrl" | "scopes" | "clientId">;
-type TCreateErrors = Partial<Record<"key" | keyof TCreateFields, string>>;
-
-const keyError = (key: string, isTaken: boolean) => {
-  if (!key) return "Required";
-  if (key.length > VARIABLE_KEY_MAX_LENGTH)
-    return `A key can be at most ${VARIABLE_KEY_MAX_LENGTH} characters.`;
-  if (!VARIABLE_KEY_RE.test(key)) return VARIABLE_KEY_MESSAGE;
-  if (isTaken) return `A variable named '${key}' already exists.`;
-  return undefined;
-};
-
-const CreateOAuthVariableForm = ({
-  projectId,
-  formId,
-  query,
-  onCreated,
-  onDirtyChange,
-  onPendingChange
-}: {
-  projectId: string;
-  formId: string;
-  query: string;
-  onCreated: (key: string) => void;
-  onDirtyChange: (dirty: boolean) => void;
-  onPendingChange: (pending: boolean) => void;
-}) => {
-  const resources = useV4Adapter("agentVaultResources");
-  const create = resources.useCreateVariable(projectId);
-  const initialKey = normalizeVariableKey(query);
-  const [key, setKey] = useState(initialKey);
-  const [fields, setFields] = useState<TCreateFields>({ serverUrl: "", scopes: "", clientId: "" });
-  const [errors, setErrors] = useState<TCreateErrors>({});
-  const [debouncedKey] = useDebounce(key, 300);
-  const lookupKey = debouncedKey === key && VARIABLE_KEY_RE.test(key) ? key : null;
-  const { existing } = resources.useVariableKeyStatus(projectId, lookupKey ? [lookupKey] : [], {
-    isCached: false
-  });
-  const isTaken = Boolean(lookupKey && existing.has(lookupKey));
-
-  const isDirty =
-    key !== initialKey || Object.values(fields).some((value) => Boolean(value.trim()));
-  useEffect(() => {
-    onDirtyChange(isDirty);
-  }, [isDirty, onDirtyChange]);
-
-  const edit = (field: keyof TCreateFields, value: string) => {
-    setFields((current) => ({ ...current, [field]: value }));
-    setErrors((current) => ({ ...current, [field]: undefined }));
-  };
-
+// v4 can't sign an OAuth variable in yet. The tab opens with an opener so it inherits the session's classic paths,
+// and the half-filled service sheet stays open here.
+const ClassicVariablesLink = ({ projectId }: { projectId: string }) => {
+  const href = `/organizations/${useOrgId()}/projects/agent-vault/${projectId}/variables`;
   return (
-    <form
-      id={formId}
-      autoComplete="off"
-      onSubmit={async (event) => {
+    <Link
+      href={href}
+      data-open-classic
+      onClick={(event) => {
+        keepInClassic(href);
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
         event.preventDefault();
-        const values: TOAuthVariableFormValues = { ...BLANK_OAUTH_VARIABLE_FORM, ...fields };
-        const next: TCreateErrors = { key: keyError(key, isTaken) };
-        oauthVariableFormIssues(values).forEach((issue) => {
-          if (issue.field in fields) next[issue.field as keyof TCreateFields] = issue.message;
-        });
-        setErrors(next);
-        if (Object.values(next).some(Boolean)) return;
-        onPendingChange(true);
-        try {
-          const created = await create.mutateAsync({
-            scope: AgentVaultVariableScope.Global,
-            type: AgentVaultVariableType.OAuth,
-            key,
-            oauth: buildOAuthVariableSettings(values)
-          });
-          saved(`Variable ${created.key} created`);
-          onCreated(created.key);
-        } catch (error) {
-          const response = axios.isAxiosError(error)
-            ? (error.response?.data as TApiErrors | undefined)
-            : undefined;
-          if (
-            response?.error === ApiErrorTypes.BadRequestError &&
-            (response.details as { field?: string } | undefined)?.field === "key"
-          )
-            setErrors({ key: response.message });
-          else failed("Failed to create variable", error);
-        } finally {
-          onPendingChange(false);
-        }
+        window.open(href, "_blank");
       }}
     >
-      <Stack gap={16}>
-        <Field
-          label="Key"
-          description="Services choose it by this key as their OAuth credential."
-          error={errors.key ?? (isTaken ? keyError(key, true) : undefined)}
-        >
-          <Input
-            mono
-            value={key}
-            maxLength={VARIABLE_KEY_MAX_LENGTH}
-            placeholder="GOOGLE_DRIVE"
-            invalid={Boolean(errors.key) || isTaken}
-            onChange={(event) => {
-              setKey(normalizeVariableKey(event.target.value));
-              setErrors((current) => ({ ...current, key: undefined }));
-            }}
-          />
-        </Field>
-        <Field
-          label="Server URL"
-          description="The MCP server or API whose sign-in this variable holds."
-          error={errors.serverUrl}
-          wide
-        >
-          <Input
-            mono
-            value={fields.serverUrl}
-            placeholder="https://mcp.example.com/mcp"
-            invalid={Boolean(errors.serverUrl)}
-            spellCheck={false}
-            onChange={(event) => edit("serverUrl", event.target.value)}
-          />
-        </Field>
-        <Field
-          label="Scopes"
-          optional
-          description="Separate scopes with spaces. Leave empty to use the server's defaults."
-          error={errors.scopes}
-          wide
-        >
-          <Input
-            mono
-            value={fields.scopes}
-            invalid={Boolean(errors.scopes)}
-            spellCheck={false}
-            onChange={(event) => edit("scopes", event.target.value)}
-          />
-        </Field>
-        <Field
-          label="Client ID"
-          optional
-          description="Your own OAuth app's client ID. Leave empty to register a client automatically."
-          error={errors.clientId}
-          wide
-        >
-          <Input
-            mono
-            value={fields.clientId}
-            invalid={Boolean(errors.clientId)}
-            spellCheck={false}
-            onChange={(event) => edit("clientId", event.target.value)}
-          />
-        </Field>
-      </Stack>
-    </form>
+      classic variables page
+    </Link>
   );
 };
 
@@ -220,12 +63,6 @@ export const OAuthVariableField = ({
     ) &&
     permission.can(
       ProjectPermissionAgentVaultVariableActions.ReadValue,
-      ProjectPermissionSub.AgentVaultVariables
-    );
-  const canCreate =
-    canList &&
-    permission.can(
-      ProjectPermissionAgentVaultVariableActions.Create,
       ProjectPermissionSub.AgentVaultVariables
     );
 
@@ -254,31 +91,7 @@ export const OAuthVariableField = ({
   }));
   if (selectedKey && !options.some((option) => option.value === selectedKey))
     options.unshift({ value: selectedKey, label: selectedKey });
-
-  const creation: ComboboxCreation | undefined =
-    canCreate && !error
-      ? {
-          mode: "dialog",
-          label: CREATE_OAUTH_VARIABLE_TITLE,
-          title: CREATE_OAUTH_VARIABLE_TITLE,
-          description: "The new variable is selected once it is created.",
-          submitLabel: "Create variable",
-          discardTitle: "Discard OAuth variable?",
-          renderForm: ({ query, formId, complete, onDirtyChange, onPendingChange }) => (
-            <CreateOAuthVariableForm
-              projectId={projectId}
-              formId={formId}
-              query={query}
-              onDirtyChange={onDirtyChange}
-              onPendingChange={onPendingChange}
-              onCreated={(key) => {
-                set("oauthVariableKey", key);
-                complete({ value: key, label: key });
-              }}
-            />
-          )
-        }
-      : undefined;
+  const hasNoVariables = Boolean(data) && !variables.length && !debouncedSearch.trim();
 
   const description = (() => {
     if (!canList)
@@ -286,7 +99,19 @@ export const OAuthVariableField = ({
         ? "Changing it takes permission to read variables and their values."
         : "Choosing one takes permission to read variables and their values.";
     if (selectedStatus && selectedStatus !== AgentVaultOauthStatus.Connected)
-      return `Agents can't use this service until ${selectedKey} is authorized on the Variables page.`;
+      return (
+        <>
+          Agents can&apos;t use this service until {selectedKey} is authorized. Authorize it on the{" "}
+          <ClassicVariablesLink projectId={projectId} />.
+        </>
+      );
+    if (hasNoVariables)
+      return (
+        <>
+          This project has no OAuth variables yet. Create and authorize one on the{" "}
+          <ClassicVariablesLink projectId={projectId} />, then pick it here.
+        </>
+      );
     return "The service sends the variable's access token, and refreshes it when it expires.";
   })();
 
@@ -308,7 +133,6 @@ export const OAuthVariableField = ({
         loading={canList && (isPending || search !== debouncedSearch)}
         onSearch={setSearch}
         onChange={(key) => set("oauthVariableKey", key)}
-        creation={creation}
       />
     </Field>
   );
