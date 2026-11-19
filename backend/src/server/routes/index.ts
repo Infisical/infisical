@@ -4431,7 +4431,10 @@ export const registerRoutes = async (
     certificateRequestDAL,
     certificateRequestService,
     certificateRenewalService: certificateV3Service,
-    telemetryService
+    telemetryService,
+    membershipDAL,
+    membershipRoleDAL,
+    userGroupMembershipDAL
   }) as TApprovalResourceRegistry[ApprovalPolicyType];
 
   approvalResources[ApprovalPolicyType.CertRevocation] = certRevocationApprovalResourceFactory({

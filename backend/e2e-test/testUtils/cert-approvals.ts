@@ -28,6 +28,7 @@ export const createApplicationCertRequestPolicy = (dto: {
   applicationId: string;
   profileSlug: string;
   approverUserId: string;
+  otherApproverUserIds?: string[];
   constraints?: Record<string, unknown>;
 }) =>
   request(
@@ -41,7 +42,15 @@ export const createApplicationCertRequestPolicy = (dto: {
         name: `issuance-${dto.profileSlug}`,
         conditions: [{ profileNames: [dto.profileSlug] }],
         ...(dto.constraints && { constraints: dto.constraints }),
-        steps: [{ requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: dto.approverUserId }] }]
+        steps: [
+          {
+            requiredApprovals: 1,
+            approvers: [dto.approverUserId, ...(dto.otherApproverUserIds ?? [])].map((id) => ({
+              type: ApproverType.User,
+              id
+            }))
+          }
+        ]
       }
     },
     (res) => {

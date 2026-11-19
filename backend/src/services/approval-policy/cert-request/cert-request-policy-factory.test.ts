@@ -1,12 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { ProjectMembershipRole } from "@app/db/schemas/models";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { ApprovalNotificationEvent, ApprovalRequestStatus } from "../approval-policy-enums";
+import {
+  ApprovalNotificationEvent,
+  ApprovalPolicyScope,
+  ApprovalRequestStatus,
+  ApproverType
+} from "../approval-policy-enums";
 import { certRequestApprovalResourceFactory } from "./cert-request-policy-factory";
 
 vi.mock("@app/lib/logger", () => ({
@@ -391,5 +397,104 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
     await resource.postApprovalRoutine!(request);
 
     expect(deps.certificateRequestService.recordIssuanceFailure).not.toHaveBeenCalled();
+  });
+});
+
+describe("certRequestApprovalResourceFactory.filterActiveApprovers", () => {
+  const applicationRequest = {
+    id: "approval-1",
+    projectId: "project-1",
+    scopeType: ApprovalPolicyScope.PkiApplication,
+    scopeId: "app-1"
+  } as never;
+  const productRequest = { id: "approval-2", projectId: "project-1", scopeType: null, scopeId: null } as never;
+
+  const setup = ({
+    memberships,
+    roles = [],
+    groupLinks = []
+  }: {
+    memberships: { id: string; actorUserId?: string; actorGroupId?: string; isActive: boolean }[];
+    roles?: { membershipId: string; role: string }[];
+    groupLinks?: { userId: string; groupId: string }[];
+  }) => {
+    const deps = {
+      approvalPolicyDAL: {
+        findByProjectId: vi.fn(),
+        findById: vi.fn(),
+        primaryNode: vi.fn().mockReturnValue("primary")
+      },
+      membershipDAL: { find: vi.fn().mockResolvedValue(memberships) },
+      membershipRoleDAL: { find: vi.fn().mockResolvedValue(roles) },
+      userGroupMembershipDAL: {
+        find: vi.fn(async ({ $in }: { $in: { userId: string[]; groupId: string[] } }) =>
+          groupLinks.filter((l) => $in.userId.includes(l.userId) && $in.groupId.includes(l.groupId))
+        )
+      }
+    };
+    return { deps, resource: certRequestApprovalResourceFactory(deps as never) };
+  };
+
+  it("drops approvers who are no longer in the Application, and keeps any role, directly or through a group", async () => {
+    const { deps, resource } = setup({
+      memberships: [
+        { id: "m-admin", actorUserId: "admin", isActive: true },
+        { id: "m-auditor", actorUserId: "auditor", isActive: true },
+        { id: "m-deactivated", actorUserId: "deactivated", isActive: false },
+        { id: "m-group", actorGroupId: "group-in-app", isActive: true }
+      ],
+      groupLinks: [{ userId: "via-group", groupId: "group-in-app" }]
+    });
+
+    const live = await resource.filterActiveApprovers!(applicationRequest, [
+      { type: ApproverType.User, id: "admin" },
+      { type: ApproverType.User, id: "auditor" },
+      { type: ApproverType.User, id: "removed" },
+      { type: ApproverType.User, id: "deactivated" },
+      { type: ApproverType.User, id: "via-group" },
+      { type: ApproverType.Group, id: "group-in-app" },
+      { type: ApproverType.Group, id: "group-removed" }
+    ]);
+
+    expect(live).toEqual([
+      { type: ApproverType.User, id: "admin" },
+      { type: ApproverType.User, id: "auditor" },
+      { type: ApproverType.User, id: "via-group" },
+      { type: ApproverType.Group, id: "group-in-app" }
+    ]);
+    expect(deps.membershipDAL.find).toHaveBeenCalledWith(
+      expect.objectContaining({ scopeResourceId: "app-1", scopeProjectId: "project-1" }),
+      { tx: "primary" }
+    );
+    expect(deps.membershipRoleDAL.find, "any Application role counts").not.toHaveBeenCalled();
+  });
+
+  it("judges a policy without an Application by Certificate Management membership, where No Access doesn't count", async () => {
+    const { resource } = setup({
+      memberships: [
+        { id: "m-member", actorUserId: "member", isActive: true },
+        { id: "m-no-access", actorUserId: "no-access", isActive: true }
+      ],
+      roles: [
+        { membershipId: "m-member", role: ProjectMembershipRole.Member },
+        { membershipId: "m-no-access", role: ProjectMembershipRole.NoAccess }
+      ]
+    });
+
+    const live = await resource.filterActiveApprovers!(productRequest, [
+      { type: ApproverType.User, id: "member" },
+      { type: ApproverType.User, id: "no-access" },
+      { type: ApproverType.User, id: "removed" }
+    ]);
+
+    expect(live).toEqual([{ type: ApproverType.User, id: "member" }]);
+  });
+
+  it("notifies nobody saved on the request once no one is left in the Application", async () => {
+    const { resource } = setup({ memberships: [] });
+
+    expect(
+      await resource.filterActiveApprovers!(applicationRequest, [{ type: ApproverType.User, id: "removed" }])
+    ).toEqual([]);
   });
 });

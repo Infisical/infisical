@@ -1,4 +1,7 @@
+import { AccessScope, ResourceType } from "@app/db/schemas";
+import { ProjectMembershipRole, RESOURCE_SCOPE } from "@app/db/schemas/models";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -12,6 +15,8 @@ import { TCertificateRequestServiceFactory } from "@app/services/certificate-req
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { TCertificateApprovalService } from "@app/services/certificate-v3/certificate-approval-fns";
 import { TCertificateRenewalServiceFactory } from "@app/services/certificate-v3/certificate-renewal-service";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -23,7 +28,8 @@ import {
   ApprovalNotificationEvent,
   ApprovalPolicyScope,
   ApprovalPolicyType,
-  ApprovalRequestStatus
+  ApprovalRequestStatus,
+  ApproverType
 } from "../approval-policy-enums";
 import { TApprovalPolicyServiceFactory } from "../approval-policy-service";
 import { TApprovalResource } from "../approval-policy-types";
@@ -31,7 +37,7 @@ import { getApprovalRequestAuditLabel } from "../approval-request-fns";
 import { TCertRequestPolicy, TCertRequestPolicyInputs, TCertRequestRequestData } from "./cert-request-policy-types";
 
 type TCertRequestApprovalResourceDep = {
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "findById">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "findById" | "primaryNode">;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "notifyApprovedActionFailed">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   certificateApprovalService: TCertificateApprovalService;
@@ -42,6 +48,9 @@ type TCertRequestApprovalResourceDep = {
     "renewApprovedCertificate" | "recordRejectedRenewal"
   >;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  membershipDAL: Pick<TMembershipDALFactory, "find">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
 };
 
 export const certRequestApprovalResourceFactory = ({
@@ -52,7 +61,10 @@ export const certRequestApprovalResourceFactory = ({
   certificateRequestDAL,
   certificateRequestService,
   certificateRenewalService,
-  telemetryService
+  telemetryService,
+  membershipDAL,
+  membershipRoleDAL,
+  userGroupMembershipDAL
 }: TCertRequestApprovalResourceDep): TApprovalResource<
   TCertRequestPolicyInputs,
   TCertRequestPolicy,
@@ -76,6 +88,54 @@ export const certRequestApprovalResourceFactory = ({
   canAccess: async () => null,
 
   validateConstraints: () => ({ valid: true }),
+
+  // A request saves its approvers when it is raised, so someone removed from the Application since then (or, for a
+  // policy without one, from Certificate Management) would still get its notices, including a failure's reason.
+  // Issuance approvers may hold any Application role, so any active membership counts.
+  filterActiveApprovers: async (request, approvers) => {
+    if (approvers.length === 0) return [];
+    const tx = approvalPolicyDAL.primaryNode();
+    const applicationId = request.scopeType === ApprovalPolicyScope.PkiApplication ? request.scopeId : null;
+    let memberships = (
+      await membershipDAL.find(
+        applicationId
+          ? {
+              scope: RESOURCE_SCOPE,
+              scopeProjectId: request.projectId,
+              scopeResourceType: ResourceType.CertificateApplication,
+              scopeResourceId: applicationId
+            }
+          : { scope: AccessScope.Project, scopeProjectId: request.projectId },
+        { tx }
+      )
+    ).filter((membership) => membership.isActive);
+    if (!applicationId && memberships.length > 0) {
+      const roles = await membershipRoleDAL.find({ $in: { membershipId: memberships.map((m) => m.id) } }, { tx });
+      const withAccess = new Set(
+        roles.filter((r) => r.role !== ProjectMembershipRole.NoAccess).map((r) => r.membershipId)
+      );
+      memberships = memberships.filter((membership) => withAccess.has(membership.id));
+    }
+    if (memberships.length === 0) return [];
+
+    const memberUserIds = new Set(memberships.flatMap((m) => (m.actorUserId ? [m.actorUserId] : [])));
+    const memberGroupIds = new Set(memberships.flatMap((m) => (m.actorGroupId ? [m.actorGroupId] : [])));
+    const usersToCheckViaGroups = approvers
+      .filter((a) => a.type === ApproverType.User && !memberUserIds.has(a.id))
+      .map((a) => a.id);
+    const memberViaGroup = new Set<string>();
+    if (usersToCheckViaGroups.length > 0 && memberGroupIds.size > 0) {
+      const links = await userGroupMembershipDAL.find(
+        { $in: { userId: usersToCheckViaGroups, groupId: [...memberGroupIds] } },
+        { tx }
+      );
+      links.forEach((link) => memberViaGroup.add(link.userId));
+    }
+
+    return approvers.filter((a) =>
+      a.type === ApproverType.Group ? memberGroupIds.has(a.id) : memberUserIds.has(a.id) || memberViaGroup.has(a.id)
+    );
+  },
 
   // Cert approvals notify approvers when raised, and everyone when the approved action then fails.
   buildNotification: async ({ event, request, failureReason }) => {

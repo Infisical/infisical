@@ -4,8 +4,10 @@ import { OrgMembershipRole, ProjectMembershipRole, ResourceMembershipRole, Table
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApprovalRequestStatus, CertRequestRenewalApproval } from "@app/services/approval-policy/approval-policy-enums";
 import { ActorType } from "@app/services/auth/auth-type";
+import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertificateRequestStatus } from "@app/services/certificate-common/certificate-constants";
 import { CertStatus } from "@app/services/certificate/certificate-types";
+import { NotificationType } from "@app/services/notification/notification-types";
 
 import { flushAuditLogs, listAuditLogs, TAuditLog } from "../../testUtils/audit-logs";
 import {
@@ -15,8 +17,10 @@ import {
   rejectCertRequestApproval,
   renewalApprovalsFor
 } from "../../testUtils/cert-approvals";
+import { removeApplicationMember } from "../../testUtils/cert-manager";
 import { createIsolatedOrgAndProject } from "../../testUtils/fixtures";
 import { overrideLicenseFeatures } from "../../testUtils/license";
+import { listUserNotifications } from "../../testUtils/notifications";
 import {
   addApplicationUser,
   createPkiApplication,
@@ -27,6 +31,7 @@ import {
   setCertificateRenewBeforeDays,
   TPkiApplication
 } from "../../testUtils/pki";
+import { pollUntil } from "../../testUtils/poll";
 import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "../../testUtils/users";
 
 const DOMAIN = "renewal-approval.example.com";
@@ -437,6 +442,90 @@ describe("Certificate renewal approval", async () => {
         expect(again.status, "a manual renewal isn't refused by expired requests").toBe(
           CertificateRequestStatus.PENDING_APPROVAL
         );
+      },
+      TEST_TIMEOUT_MS
+    );
+  });
+  describe("an approved renewal that fails after an approver left the Application", async () => {
+    let ctx: TApplicationContext;
+    let certificateId = "";
+    let removedApproverId = "";
+    let removedApproverToken = "";
+
+    beforeAll(async () => {
+      ctx = await setUpApplication("renewal-failure-notice");
+      certificateId = await issue(ctx);
+
+      ({ userId: removedApproverId } = await createUser("renewal-removed-approver"));
+      await addUserMembership({ userId: removedApproverId, orgId: ctx.orgId, role: OrgMembershipRole.Member });
+      await addUserMembership({
+        userId: removedApproverId,
+        orgId: ctx.orgId,
+        projectId: ctx.app.projectId,
+        role: ProjectMembershipRole.Member
+      });
+      await addApplicationUser({
+        authToken: ctx.authToken,
+        app: ctx.app,
+        userId: removedApproverId,
+        role: ResourceMembershipRole.Admin
+      });
+      removedApproverToken = await createUserAccessToken({ userId: removedApproverId, orgId: ctx.orgId });
+
+      await createApplicationCertRequestPolicy({
+        authToken: ctx.authToken,
+        applicationId: ctx.app.applicationId,
+        profileSlug: ctx.app.profileSlug,
+        approverUserId: ctx.approverId,
+        otherApproverUserIds: [removedApproverId],
+        constraints: { renewalApproval: CertRequestRenewalApproval.Always }
+      });
+    });
+
+    afterAll(async () => {
+      await deleteUsers([removedApproverId]);
+      await ctx?.cleanup();
+    });
+
+    const failureNotices = async (token: string, requestId: string) =>
+      (await listUserNotifications(token)).filter(
+        (n) => n.type === NotificationType.APPROVED_ACTION_FAILED && n.link?.includes(`/approvals/${requestId}`)
+      );
+
+    test(
+      "tells the requester and current approvers why, and not an approver removed from the Application",
+      async () => {
+        await renewCertificate({ authToken: ctx.authToken, certificateId });
+        const [approvalRequest] = await pendingRenewalApprovals(ctx, certificateId);
+        expect(approvalRequest, "the renewal waits for approval").toBeDefined();
+
+        await removeApplicationMember({
+          applicationId: ctx.app.applicationId,
+          kind: "users",
+          memberId: removedApproverId,
+          authToken: ctx.authToken
+        });
+        await testDb(TableName.CertificateAuthority).where({ id: ctx.app.caId }).update({ status: CaStatus.DISABLED });
+
+        await approveCertRequestApproval({ authToken: ctx.approverToken, requestId: approvalRequest.id });
+
+        // The requester always gets the notice, so once theirs arrives the whole batch is written.
+        const [requesterNotice] = await pollUntil({
+          describe: `the requester's failure notice for request ${approvalRequest.id}`,
+          read: () => failureNotices(ctx.authToken, approvalRequest.id),
+          done: (notices) => notices.length > 0
+        });
+        expect(requesterNotice?.title, "the requester hears the renewal failed").toBe("Certificate Renewal Failed");
+        expect(requesterNotice?.body, "the notice gives the reason").toContain("Certificate Authority is disabled");
+        expect(
+          await failureNotices(ctx.approverToken, approvalRequest.id),
+          "the approver still in the Application hears"
+        ).toHaveLength(1);
+        expect(
+          await failureNotices(removedApproverToken, approvalRequest.id),
+          "the approver removed from the Application isn't told"
+        ).toHaveLength(0);
+        await expectNotRenewed(ctx, certificateId, "after the approved renewal failed");
       },
       TEST_TIMEOUT_MS
     );

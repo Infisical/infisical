@@ -163,8 +163,9 @@ there, record the failure in the audit log and call `approvalPolicyService.notif
 requester and the approvers why (`ApprovalNotificationEvent.ApprovedActionFailed`), leaving out any approver the
 resource's `filterActiveApprovers` drops; the resource's `buildNotification` supplies the wording. Certificate
 revocation (`certificateService.revokeApprovedCertificate`) is the reference. Certificate issuance and renewal
-(`cert-request-policy-factory.ts`) notify through it when the approved action fails, but they have no
-`filterActiveApprovers`, so every approver saved on the request hears, and the status writes around the action
+(`cert-request-policy-factory.ts`) notify through it when the approved action fails, and their
+`filterActiveApprovers` keeps approvers still in the request's Application in any role (or, for a policy without one,
+in Certificate Management), but approve and reject don't recheck that yet. The status writes around the action
 (`updateById` before it, `transitionFromPending` in its `catch`) and the renewal telemetry still run outside any guard,
 so they can still throw, and a throw from the `catch`'s write sends no notice. Don't copy that part. An external CA can
 fail an approved certificate request later, in a background job. Jobs report that through
