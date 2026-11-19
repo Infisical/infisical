@@ -1231,16 +1231,6 @@ const NeonBranchIdSchema = z.string().trim().regex(NEON_RESOURCE_ID_REGEX, "Must
 
 const NeonSharedInputsSchema = z.object({
   apiKey: z.string().trim().min(1).max(1024).describe("Neon API key used to manage roles and branches."),
-  baseUrl: z
-    .string()
-    .trim()
-    .max(2048)
-    .url("Must be a valid URL")
-    .nullable()
-    .optional()
-    .describe(
-      "Base URL of the Neon API, for a self-hosted Neon. Defaults to Neon's hosted API, https://console.neon.tech/api/v2."
-    ),
   projectId: z
     .string()
     .trim()

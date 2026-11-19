@@ -5,19 +5,22 @@ import { TDynamicSecrets } from "@app/db/schemas";
 import { delay } from "@app/lib/delay";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { safeRequest } from "@app/lib/validator";
 
 import { DynamicSecretNeonSchema, NeonLeaseType } from "./models";
 import { NeonProvider } from "./neon";
 
-vi.mock("@app/lib/validator", () => ({
-  safeRequest: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() }
+const { mockedGet, mockedPost, mockedPatch, mockedDelete } = vi.hoisted(() => ({
+  mockedGet: vi.fn(),
+  mockedPost: vi.fn(),
+  mockedPatch: vi.fn(),
+  mockedDelete: vi.fn()
+}));
+
+vi.mock("@app/lib/config/request", () => ({
+  request: { get: mockedGet, post: mockedPost, patch: mockedPatch, delete: mockedDelete }
 }));
 
 vi.mock("@app/lib/delay", () => ({ delay: vi.fn().mockResolvedValue(undefined) }));
-
-const appConfig = { isDevelopmentMode: false, DYNAMIC_SECRET_ALLOW_INTERNAL_IP: false };
-vi.mock("@app/lib/config/env", () => ({ getConfig: () => appConfig }));
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
@@ -37,7 +40,6 @@ type TCall = {
   params?: unknown;
   auth?: string;
   retry?: unknown;
-  allowPrivateIps?: boolean;
 };
 type THandler = (call: TCall) => unknown;
 
@@ -58,7 +60,7 @@ const neonError = (status: number, message: string) =>
 const dispatch = (method: string) => async (url: string, a?: unknown, b?: unknown) => {
   const hasBody = method === "POST" || method === "PATCH";
   const options = (hasBody ? b : a) as
-    | { params?: unknown; headers?: Record<string, string>; "axios-retry"?: unknown; allowPrivateIps?: boolean }
+    | { params?: unknown; headers?: Record<string, string>; "axios-retry"?: unknown }
     | undefined;
   const call: TCall = {
     method,
@@ -66,8 +68,7 @@ const dispatch = (method: string) => async (url: string, a?: unknown, b?: unknow
     body: hasBody ? a : undefined,
     params: options?.params,
     auth: options?.headers?.Authorization,
-    retry: options?.["axios-retry"],
-    allowPrivateIps: options?.allowPrivateIps
+    retry: options?.["axios-retry"]
   };
   calls.push(call);
   const handler = routes[`${method} ${url}`];
@@ -133,15 +134,13 @@ const createRoleRoute =
 beforeEach(() => {
   routes = {};
   calls = [];
-  appConfig.isDevelopmentMode = false;
-  appConfig.DYNAMIC_SECRET_ALLOW_INTERNAL_IP = false;
   vi.mocked(logger.error).mockReset();
   vi.mocked(logger.warn).mockReset();
   vi.mocked(delay).mockResolvedValue(undefined);
-  vi.mocked(safeRequest.get).mockImplementation(dispatch("GET") as never);
-  vi.mocked(safeRequest.post).mockImplementation(dispatch("POST") as never);
-  vi.mocked(safeRequest.patch).mockImplementation(dispatch("PATCH") as never);
-  vi.mocked(safeRequest.delete).mockImplementation(dispatch("DELETE") as never);
+  mockedGet.mockImplementation(dispatch("GET"));
+  mockedPost.mockImplementation(dispatch("POST"));
+  mockedPatch.mockImplementation(dispatch("PATCH"));
+  mockedDelete.mockImplementation(dispatch("DELETE"));
 });
 
 describe("DynamicSecretNeonSchema", () => {
@@ -150,64 +149,10 @@ describe("DynamicSecretNeonSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  test("accepts null to clear the API base URL and the parent branch", async () => {
-    await expect(DynamicSecretNeonSchema.parseAsync({ ...roleInputs, baseUrl: null })).resolves.toMatchObject({
-      baseUrl: null
-    });
+  test("accepts null to clear the parent branch", async () => {
     await expect(DynamicSecretNeonSchema.parseAsync({ ...branchInputs, parentBranchId: null })).resolves.toMatchObject({
       parentBranchId: null
     });
-  });
-});
-
-describe("NeonProvider API base URL", () => {
-  const SELF_HOSTED = "https://neon.example.com/api/v2";
-  const SELF_HOSTED_API = `${SELF_HOSTED}/projects/shiny-wind-028834`;
-
-  test("sends every request to a self-hosted base URL", async () => {
-    routes[`POST ${SELF_HOSTED_API}/branches/br-main-123456/roles`] = createRoleRoute([
-      { id: "op-1", status: "running" }
-    ]);
-    routes[`GET ${SELF_HOSTED_API}/operations/op-1`] = () => ({ operation: { id: "op-1", status: "finished" } });
-    routes[`GET ${SELF_HOSTED_API}/connection_uri`] = connectionUriRoute("pg.neon.example.com", ROLE_CRED_ENCODED);
-
-    // a trailing slash is dropped rather than doubled
-    await provider().create(createArgs({ ...roleInputs, baseUrl: `${SELF_HOSTED}/` }));
-
-    expect(calls.map((c) => c.url.replace(SELF_HOSTED_API, ""))).toEqual([
-      "/branches/br-main-123456/roles",
-      "/operations/op-1",
-      "/connection_uri"
-    ]);
-  });
-
-  test("requires https outside development mode", async () => {
-    const inputs = { ...roleInputs, baseUrl: "http://neon.example.com/api/v2" };
-    await expect(provider().validateProviderInputs(inputs, { projectId: "p" })).rejects.toThrow(
-      "Neon API base URL must use https"
-    );
-    await expect(provider().create(createArgs(inputs))).rejects.toThrow("Neon API base URL must use https");
-    expect(calls).toEqual([]);
-
-    appConfig.isDevelopmentMode = true;
-    await expect(provider().validateProviderInputs(inputs, { projectId: "p" })).resolves.toMatchObject({
-      baseUrl: "http://neon.example.com/api/v2"
-    });
-  });
-
-  test("reaches a private self-hosted Neon only when the dynamic secret setting allows it", async () => {
-    routes[`DELETE ${API}/branches/br-main-123456/roles/some-role`] = () => ({});
-
-    await provider().revoke(roleInputs, "some-role", { projectId: "p" });
-    appConfig.DYNAMIC_SECRET_ALLOW_INTERNAL_IP = true;
-    await provider().revoke(roleInputs, "some-role", { projectId: "p" });
-    expect(calls.map((c) => c.allowPrivateIps)).toEqual([false, true]);
-  });
-
-  test("rejects a base URL with a query string or fragment", async () => {
-    await expect(
-      provider().validateProviderInputs({ ...roleInputs, baseUrl: `${SELF_HOSTED}?x=1` }, { projectId: "p" })
-    ).rejects.toThrow("can't include a query string or fragment");
   });
 });
 
@@ -548,14 +493,6 @@ describe("NeonProvider.validateProviderInputs", () => {
       "The branch ID can't be changed"
     );
     await expect(validate(branchInputs, roleInputs)).rejects.toThrow("The lease type can't be changed");
-    await expect(validate({ ...roleInputs, baseUrl: "https://neon.example.com/api/v2" }, roleInputs)).rejects.toThrow(
-      "The API base URL can't be changed"
-    );
-    // spelling out the default URL, adding a trailing slash or clearing it is not a change
-    await expect(
-      validate({ ...roleInputs, baseUrl: "https://console.neon.tech/api/v2/" }, roleInputs)
-    ).resolves.toMatchObject({ projectId: roleInputs.projectId });
-    await expect(validate({ ...roleInputs, baseUrl: null }, roleInputs)).resolves.toMatchObject({ baseUrl: null });
 
     // new branch leases fork from the new parent, and existing ones are deleted by their own ID
     await expect(validate({ ...branchInputs, parentBranchId: "br-other-1" }, branchInputs)).resolves.toMatchObject({

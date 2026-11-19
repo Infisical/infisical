@@ -687,7 +687,6 @@ export type TDynamicSecretProvider =
         | {
             leaseType: NeonLeaseType.Role;
             apiKey?: string;
-            baseUrl?: string | null;
             projectId: string;
             branchId: string;
             databaseName: string;
@@ -696,7 +695,6 @@ export type TDynamicSecretProvider =
         | {
             leaseType: NeonLeaseType.Branch;
             apiKey?: string;
-            baseUrl?: string | null;
             projectId: string;
             parentBranchId?: string | null;
             databaseName: string;

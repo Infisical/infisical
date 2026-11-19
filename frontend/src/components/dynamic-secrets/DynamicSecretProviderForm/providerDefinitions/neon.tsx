@@ -36,14 +36,6 @@ const getNeonConnectionFields = (mode: TDynamicSecretProviderRendererProps["mode
       isOptional: mode === "edit"
     },
     {
-      name: "inputs.baseUrl",
-      type: "text",
-      label: "API Base URL",
-      placeholder: "https://console.neon.tech/api/v2",
-      description: "Only needed for a self-hosted Neon. Leave empty to use Neon's hosted API.",
-      isOptional: true
-    },
-    {
       name: "inputs.projectId",
       type: "text",
       label: "Project ID",

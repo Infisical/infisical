@@ -30,11 +30,6 @@ const NEON_RESOURCE_ID_REGEX = /^[a-z0-9-]{1,60}$/;
 // The form keeps the fields of both lease types, so switching back and forth keeps what was typed;
 // buildInputs sends only the fields of the selected one, and refineNeonInputs checks only those.
 const neonInputFields = {
-  baseUrl: z
-    .string()
-    .trim()
-    .refine((value) => !value || z.string().url().safeParse(value).success, "Must be a valid URL")
-    .optional(),
   projectId: z
     .string()
     .trim()
@@ -99,7 +94,6 @@ export const neonEditFormSchema = editDynamicSecretProviderFormSchema(neonEditIn
 const buildInputs = (inputs: TNeonFormValues["inputs"]): TNeonInputs => {
   const shared = {
     ...(inputs.apiKey ? { apiKey: inputs.apiKey } : {}),
-    baseUrl: inputs.baseUrl || null,
     projectId: inputs.projectId,
     databaseName: inputs.databaseName,
     pooled: inputs.pooled
@@ -119,7 +113,6 @@ const buildInputs = (inputs: TNeonFormValues["inputs"]): TNeonInputs => {
 
 const defaultInputs: TNeonFormValues["inputs"] = {
   apiKey: "",
-  baseUrl: "",
   projectId: "",
   leaseType: NeonLeaseType.Role,
   branchId: "",
@@ -156,7 +149,6 @@ export const getNeonEditDefaultValues = (
       ...defaultInputs,
       ...inputs,
       apiKey: "",
-      baseUrl: inputs.baseUrl ?? "",
       parentBranchId: (inputs.leaseType === NeonLeaseType.Branch && inputs.parentBranchId) || ""
     }
   };

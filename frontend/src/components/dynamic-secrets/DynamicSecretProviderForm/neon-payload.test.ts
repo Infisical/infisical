@@ -56,7 +56,6 @@ const editContext = (inputs: object): TEditDynamicSecretProviderFormContext => (
 
 const storedBranchInputs = {
   projectId: "shiny-wind-028834",
-  baseUrl: "https://neon.example.com/api/v2",
   leaseType: NeonLeaseType.Branch,
   parentBranchId: "br-staging-9",
   databaseName: "neondb",
@@ -79,11 +78,10 @@ describe("Neon dynamic secret form", () => {
   it.each([
     [NeonLeaseType.Role, "inputs.branchId"],
     [NeonLeaseType.Branch, "inputs.parentBranchId"]
-  ])("rejects a malformed API base URL, project ID and %s branch ID", (leaseType, branchField) => {
+  ])("rejects a malformed project ID and %s branch ID", (leaseType, branchField) => {
     const result = neonCreateFormSchema.safeParse(
       formValues({
         leaseType,
-        baseUrl: "neon.example.com",
         projectId: "Not A Project",
         branchId: "br/../x",
         parentBranchId: "br/../y",
@@ -93,7 +91,7 @@ describe("Neon dynamic secret form", () => {
     assert.equal(result.success, false);
     assert.deepEqual(
       result.error?.issues.map((issue) => issue.path.join(".")),
-      ["inputs.baseUrl", "inputs.projectId", branchField]
+      ["inputs.projectId", branchField]
     );
   });
 
@@ -119,7 +117,6 @@ describe("Neon dynamic secret form", () => {
     assert.equal(payload.provider.type, DynamicSecretProviders.Neon);
     assert.deepEqual(payload.provider.inputs, {
       apiKey: "napi_key",
-      baseUrl: null,
       projectId: "shiny-wind-028834",
       leaseType: NeonLeaseType.Role,
       branchId: "br-main-1",
@@ -138,7 +135,6 @@ describe("Neon dynamic secret form", () => {
     });
     assert.deepEqual(payload.provider.inputs, {
       apiKey: "napi_key",
-      baseUrl: null,
       projectId: "shiny-wind-028834",
       leaseType: NeonLeaseType.Branch,
       parentBranchId: null,
@@ -150,22 +146,20 @@ describe("Neon dynamic secret form", () => {
     });
   });
 
-  it("keeps the stored API key when left blank and sends cleared optional fields as null", () => {
+  it("keeps the stored API key when left blank and sends a cleared parent branch as null", () => {
     const context = editContext(storedBranchInputs);
     const values = getNeonEditDefaultValues(context);
     assert.equal(values.inputs.apiKey, "");
-    assert.equal(values.inputs.baseUrl, "https://neon.example.com/api/v2");
     assert.equal(values.inputs.parentBranchId, "br-staging-9");
 
     const { inputs } = getNeonEditPayload(
       neonEditFormSchema.parse({
         ...values,
-        inputs: { ...values.inputs, baseUrl: "", parentBranchId: "" }
+        inputs: { ...values.inputs, parentBranchId: "" }
       }),
       context
     ).data;
     assert.equal("apiKey" in (inputs as object), false);
-    assert.equal((inputs as { baseUrl?: string | null }).baseUrl, null);
     assert.equal((inputs as { parentBranchId?: string | null }).parentBranchId, null);
   });
 });
