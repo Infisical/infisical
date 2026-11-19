@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { TSuperAdmin } from "@app/db/schemas";
-import { RuleViolationError } from "@app/domains/lib/errors";
+import { RuleViolationError, StateConflictError } from "@app/domains/lib/errors";
 
 import { EnvOverrides } from "./env-overrides";
 import { GitHubAppCredentials } from "./github-app-credentials";
@@ -185,7 +185,12 @@ export class InstanceConfig {
   }
 
   // The first admin finished setting the instance up. Self-hosted instances close sign-up from then on.
+  assertNotSetUp(): void {
+    if (this.initialized) throw new StateConflictError({ message: "Instance has already been set up" });
+  }
+
   completeSetup({ closeSignUp }: { closeSignUp: boolean }): void {
+    this.assertNotSetUp();
     this.initialized = true;
     if (closeSignUp) this.allowSignUp = false;
   }

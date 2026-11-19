@@ -21,6 +21,8 @@ export type TInstanceConfigStore = {
 export type TInstanceConfigCache = {
   get(): Promise<InstanceConfig | null>;
   set(config: InstanceConfig): Promise<void>;
+  // Writes only when there is no copy, for a row read after a miss.
+  setIfAbsent(config: InstanceConfig): Promise<void>;
   clear(): Promise<void>;
 };
 

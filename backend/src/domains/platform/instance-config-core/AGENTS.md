@@ -14,6 +14,7 @@ env overrides) shared by every pod through Redis, and every env value an instanc
 | `data-access/instance-config-cache.ts` | The shared Redis copy (frozen, see below) |
 | `data-access/resolved-env-cache.ts` | This process's resolution of the overridable env, keyed by the stored overrides |
 | `services/instance-config/service.ts` | `InstanceConfigService`, orchestration only |
+| `services/instance-config/instance-config-transaction.ts` | Setup inside the caller's transaction (`within(tx)`) |
 
 ## Rules
 
@@ -34,7 +35,16 @@ env overrides) shared by every pod through Redis, and every env value an instanc
   `InstanceConfigCache.get()`.
 - **Writes lock the row.** Every change runs `findForUpdate()`, the intent methods and `save()` in one transaction, then
   rewrites the shared copy after commit, so every pod reads it within a minute. A caller acting on its own change
-  reads `{ readFrom: ReadFrom.Primary }` (the Teams bot re-init does).
+  reads `{ readFrom: ReadFrom.Primary }` (the Teams bot re-init does). A read after a cache miss writes the shared
+  copy only if none exists (`setIfAbsent`), so a lagging replica's row never replaces a newer one another pod wrote.
+- **Setup runs in the caller's transaction.** The first admin, organization and admin identity are created in one
+  transaction with `instanceConfigService.within(sealKnexTransaction(tx))`: `claimSetup()` first, which locks the row
+  and refuses an instance already set up, then `completeSetup()`. A second setup at once waits on the lock and is
+  refused before it creates anything. A joined transaction cannot run after-commit work, so the caller calls
+  `refreshSharedCopy()` after its commit.
+- **Stored overrides are filtered on read.** `EnvOverrides.restore` drops any key not in `EnvOverrides.KEYS`, so a
+  stored value can never replace the fallback-only inputs (the shared Azure app, the legacy Heroku app,
+  `URL_GITLAB_LOGIN`) the schema also reads.
 - **The module creates the row.** `InstanceConfigCoreModule.create` runs `INSERT ... ON CONFLICT (id) DO NOTHING`, so
   any number of pods booting at once leave one row, and drops the shared copy a previous deploy left. A replica that
   has not caught up with the row reads the primary.

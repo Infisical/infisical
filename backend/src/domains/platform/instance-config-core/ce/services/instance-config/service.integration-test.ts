@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { TableName, TSuperAdminInsert } from "@app/db/schemas";
 import { InMemoryKeyStore } from "@app/domains/lib/key-store/testing/in-memory-key-store";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { FakeKmsCore } from "@app/domains/platform/kms-core/ce/testing/fake-kms-core";
 
 import { InstanceConfigCoreModule } from "../../module";
@@ -177,5 +178,75 @@ describe("InstanceConfigCoreModule.create", () => {
     expect(rows).toHaveLength(1);
     const served = await Promise.all(modules.map((m) => m.instanceConfigService.getInstanceConfig()));
     expect(new Set(served.map((config) => config.instanceId))).toEqual(new Set([rows[0].instanceId]));
+  });
+});
+
+describe("InstanceConfigService.within", () => {
+  test("should make a second setup at once wait for the first, then refuse it before it creates anything", async () => {
+    // Setup
+    const { instanceConfigService } = await buildModule();
+    let releaseFirst = () => {};
+    const firstHolds = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    let markFirstClaimed = () => {};
+    const firstClaimed = new Promise<void>((resolve) => {
+      markFirstClaimed = resolve;
+    });
+    const setUp = (adminIdentityId: string, afterClaim: () => Promise<void>) =>
+      h.db.transaction(async (trx) => {
+        const instanceConfig = instanceConfigService.within(sealKnexTransaction(trx));
+        await instanceConfig.claimSetup();
+        await afterClaim();
+        await instanceConfig.completeSetup({ closeSignUp: true, adminIdentityId });
+      });
+
+    // Action
+    const first = setUp("identity-1", async () => {
+      markFirstClaimed();
+      await firstHolds;
+    });
+    await firstClaimed;
+    let secondSettled = false;
+    let secondCreatedAnything = false;
+    const second = setUp("identity-2", async () => {
+      secondCreatedAnything = true;
+    }).finally(() => {
+      secondSettled = true;
+    });
+    await new Promise((resolve) => {
+      setTimeout(resolve, 200);
+    });
+    const secondWaited = !secondSettled;
+    releaseFirst();
+    await first;
+
+    // Assert
+    expect(secondWaited).toBe(true);
+    await expect(second).rejects.toThrow("Instance has already been set up");
+    expect(secondCreatedAnything).toBe(false);
+    expect(await h.db(TableName.SuperAdmin).first()).toMatchObject({
+      initialized: true,
+      allowSignUp: false,
+      adminIdentityIds: ["identity-1"]
+    });
+  });
+
+  test("should leave the instance not set up when the caller's transaction rolls back", async () => {
+    // Setup
+    const { instanceConfigService } = await buildModule();
+
+    // Action
+    const result = h.db.transaction(async (trx) => {
+      const instanceConfig = instanceConfigService.within(sealKnexTransaction(trx));
+      await instanceConfig.claimSetup();
+      await instanceConfig.completeSetup({ closeSignUp: true, adminIdentityId: "identity-1" });
+      throw new Error("creating the first organization failed");
+    });
+
+    // Assert
+    await expect(result).rejects.toThrow("creating the first organization failed");
+    expect(await h.db(TableName.SuperAdmin).first()).toMatchObject({ initialized: false, adminIdentityIds: null });
+    expect((await instanceConfigService.getInstanceConfig()).initialized).toBe(false);
   });
 });

@@ -68,6 +68,20 @@ export class InstanceConfigCache implements TInstanceConfigCache {
     }
   }
 
+  // For a copy read from the database after a miss: it never replaces one another pod wrote meanwhile, which may come
+  // from a commit the replica this one was read from had not caught up with.
+  async setIfAbsent(config: InstanceConfig): Promise<void> {
+    try {
+      await this.keyStore.setItemWithExpiryNX(
+        INSTANCE_CONFIG_CACHE_KEY,
+        INSTANCE_CONFIG_CACHE_TTL_SECONDS,
+        JSON.stringify(config.toJSON())
+      );
+    } catch (err) {
+      logger?.warn({ key: INSTANCE_CONFIG_CACHE_KEY, err }, "Instance config cache write failed");
+    }
+  }
+
   async clear(): Promise<void> {
     await this.keyStore.deleteItem(INSTANCE_CONFIG_CACHE_KEY);
   }

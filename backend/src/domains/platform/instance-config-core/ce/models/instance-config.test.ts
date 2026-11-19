@@ -391,11 +391,11 @@ describe("InstanceConfig.replaceEnvOverrides", () => {
   test("should change the version when the overrides change", () => {
     // Setup
     const config = freshConfig();
-    config.replaceEnvOverrides(EnvOverrides.restore({ A: "1" }), encrypt);
+    config.replaceEnvOverrides(EnvOverrides.restore({ CLIENT_ID_GITHUB_LOGIN: "1" }), encrypt);
     const before = config.envOverridesVersion();
 
     // Action
-    config.replaceEnvOverrides(EnvOverrides.restore({ A: "2" }), encrypt);
+    config.replaceEnvOverrides(EnvOverrides.restore({ CLIENT_ID_GITHUB_LOGIN: "2" }), encrypt);
 
     // Assert
     expect(config.envOverridesVersion()).not.toBe(before);

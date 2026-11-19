@@ -13,9 +13,15 @@ const instanceConfig = () =>
   (globalThis as unknown as { testServices: { instanceConfigService: TInstanceConfigService } }).testServices
     .instanceConfigService;
 
-// The service cannot mark the instance uninitialized, so this writes the row and drops the shared copy.
+// The service can neither mark the instance uninitialized nor set up one already set up, so these write the row and
+// drop the shared copy.
 const markUninitialized = async () => {
   await testDb(TableName.SuperAdmin).update({ initialized: false });
+  await testRedis.del("infisical-admin-cfg");
+};
+
+const restoreSetUpWithOpenSignUp = async () => {
+  await testDb(TableName.SuperAdmin).update({ initialized: true, allowSignUp: true });
   await testRedis.del("infisical-admin-cfg");
 };
 
@@ -59,8 +65,7 @@ describe("Admin V1 Router", () => {
         await testDb(TableName.Users).where({ id: user }).delete();
       }
 
-      await instanceConfig().completeSetup({ closeSignUp: false });
-      await instanceConfig().updateConfig({ allowSignUp: true });
+      await restoreSetUpWithOpenSignUp();
     });
 
     test("creates the initial organization with the supplied name", async () => {
@@ -106,6 +111,54 @@ describe("Admin V1 Router", () => {
       createdOrganizationId = payload.organization.id;
 
       expect(payload.organization.name).toBe(organizationName);
+    });
+  });
+
+  describe("instance bootstrap", () => {
+    const email = `admin-bootstrap-${randomUUID()}@localhost.local`;
+    const organizationName = `Bootstrap Org ${randomUUID()}`;
+    let adminIdentityIdsBefore: string[] | null = null;
+
+    beforeEach(async () => {
+      adminIdentityIdsBefore =
+        (await testDb(TableName.SuperAdmin).first<{ adminIdentityIds: string[] | null }>("adminIdentityIds"))
+          ?.adminIdentityIds ?? null;
+      await markUninitialized();
+    });
+
+    afterEach(async () => {
+      await testDb(TableName.Organization).where({ name: organizationName }).delete();
+      await testDb(TableName.Users).where({ email }).delete();
+      await testDb(TableName.SuperAdmin).update({ adminIdentityIds: adminIdentityIdsBefore });
+      await restoreSetUpWithOpenSignUp();
+    });
+
+    test("creates the admin, organization and admin identity, then refuses a second bootstrap", async () => {
+      const response = await testServer.inject({
+        method: "POST",
+        url: "/api/v1/admin/bootstrap",
+        body: { email, password: "TestInfisical@123", organization: organizationName }
+      });
+
+      expect(response.statusCode).toBe(200);
+      const payload = response.json();
+      expect(payload.organization.name).toBe(organizationName);
+      expect(payload.identity.credentials.token).toEqual(expect.any(String));
+      expect(await instanceConfig().isInstanceAdminIdentity(payload.identity.id)).toBe(true);
+      expect((await instanceConfig().getInstanceConfig()).initialized).toBe(true);
+
+      const second = await testServer.inject({
+        method: "POST",
+        url: "/api/v1/admin/bootstrap",
+        body: { email: `second-${email}`, password: "TestInfisical@123", organization: `${organizationName} 2` }
+      });
+
+      expect(second.statusCode).toBe(400);
+      expect(
+        await testDb(TableName.Users)
+          .where({ email: `second-${email}` })
+          .first()
+      ).toBeUndefined();
     });
   });
 

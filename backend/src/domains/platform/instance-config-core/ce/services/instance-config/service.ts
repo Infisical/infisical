@@ -1,6 +1,6 @@
 import { findOnReplicaThenPrimary, ReadFrom, TReadOptions } from "@app/domains/lib/data-access";
 import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
-import { TTransactionRunner } from "@app/domains/lib/transactions";
+import { TTransaction, TTransactionRunner } from "@app/domains/lib/transactions";
 import type { TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { logger } from "@app/lib/logger";
 
@@ -16,6 +16,7 @@ import { InstanceConfig, TInstanceConfigSettings } from "../../models/instance-c
 import { MicrosoftTeamsAppCredentials } from "../../models/microsoft-teams-app-credentials";
 import { SlackAppCredentials } from "../../models/slack-app-credentials";
 import { TInstanceConfigCache, TInstanceConfigStore, TInstanceConfigStores, TResolvedEnvCache } from "../dependencies";
+import { InstanceConfigTransaction, TInstanceConfigTransaction } from "./instance-config-transaction";
 
 // The instance's settings and every env value an instance admin can override, resolved: the override when one is
 // stored, otherwise the process env.
@@ -68,7 +69,10 @@ export type TInstanceConfigService = {
   getEnvOverridesOrganized(): Promise<TOrganizedEnvOverrides>;
   // Refuses a patch that sets nothing.
   updateConfig(patch: TInstanceConfigPatch): Promise<TInstanceConfigSettings>;
-  completeSetup(input: { closeSignUp: boolean; adminIdentityId?: string }): Promise<void>;
+  // Setup, inside the caller's transaction (see TInstanceConfigTransaction). The caller refreshes the shared copy after
+  // its commit, since a joined transaction cannot run after-commit work.
+  within(tx: TTransaction): TInstanceConfigTransaction;
+  refreshSharedCopy(): Promise<void>;
   revokeAdminIdentity(identityId: string): Promise<void>;
 };
 
@@ -172,11 +176,13 @@ export class InstanceConfigService implements TInstanceConfigService {
     return updated.toSettings();
   }
 
-  async completeSetup({ closeSignUp, adminIdentityId }: { closeSignUp: boolean; adminIdentityId?: string }) {
-    await this.change((config) => {
-      config.completeSetup({ closeSignUp });
-      if (adminIdentityId) config.grantAdminIdentity(adminIdentityId);
-    });
+  within(tx: TTransaction): TInstanceConfigTransaction {
+    return new InstanceConfigTransaction(this.transactionRunner.within(tx));
+  }
+
+  async refreshSharedCopy(): Promise<void> {
+    const config = await this.readConfig({ readFrom: ReadFrom.Primary });
+    await this.instanceConfigCache.set(config);
   }
 
   async revokeAdminIdentity(identityId: string) {
@@ -208,7 +214,7 @@ export class InstanceConfigService implements TInstanceConfigService {
     if (cached) return cached;
     // A replica may not have caught up with the row the module created at boot.
     const config = await findOnReplicaThenPrimary(find, configNotFound);
-    await this.instanceConfigCache.set(config);
+    await this.instanceConfigCache.setIfAbsent(config);
     return config;
   }
 

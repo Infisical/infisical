@@ -303,6 +303,33 @@ describe("InstanceConfigCache.set", () => {
   });
 });
 
+describe("InstanceConfigCache.setIfAbsent", () => {
+  test("should write when nothing is cached", async () => {
+    // Setup
+    const cache = new InstanceConfigCache(new InMemoryKeyStore());
+
+    // Action
+    await cache.setIfAbsent(richConfig());
+
+    // Assert
+    expect((await cache.get())?.toJSON()).toEqual(richConfig().toJSON());
+  });
+
+  test("should keep a copy another pod wrote after its change, rather than the older row read on a miss", async () => {
+    // Setup
+    const cache = new InstanceConfigCache(new InMemoryKeyStore());
+    const fresh = richConfig();
+    fresh.changeSignUpPolicy({ allowSignUp: true });
+    await cache.set(fresh);
+
+    // Action
+    await cache.setIfAbsent(richConfig());
+
+    // Assert
+    expect((await cache.get())?.toJSON().allowSignUp).toBe(true);
+  });
+});
+
 describe("InstanceConfigCache.clear", () => {
   test("should drop the cached row", async () => {
     // Setup

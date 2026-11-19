@@ -11,6 +11,7 @@ import { TGitHubAppCredentialsRecord } from "../models/github-app-credentials";
 import { INSTANCE_CONFIG_ID, InstanceConfig, TInstanceConfigSettings } from "../models/instance-config";
 import { TMicrosoftTeamsAppCredentialsRecord } from "../models/microsoft-teams-app-credentials";
 import { TSlackAppCredentialsRecord } from "../models/slack-app-credentials";
+import { InstanceConfigTransaction } from "../services/instance-config/instance-config-transaction";
 import {
   InstanceConfigService,
   TInstanceConfigPatch,
@@ -114,7 +115,10 @@ export class FakeInstanceConfigService implements TInstanceConfigService {
 
   updateConfig = (patch: TInstanceConfigPatch) => this.service.updateConfig(patch);
 
-  completeSetup = (input: { closeSignUp: boolean; adminIdentityId?: string }) => this.service.completeSetup(input);
-
   revokeAdminIdentity = (identityId: string) => this.service.revokeAdminIdentity(identityId);
+
+  // The in-memory state has one transaction to join, so a consumer's test may hand in any transaction.
+  within = () => new InstanceConfigTransaction(this.memory.transactionRunner);
+
+  refreshSharedCopy = () => this.service.refreshSharedCopy();
 }

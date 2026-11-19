@@ -33,6 +33,36 @@ describe("EnvOverrides.create", () => {
   });
 });
 
+describe("EnvOverrides.fromBytes", () => {
+  test("should drop stored keys an admin cannot override, so they never replace the env's fallbacks", () => {
+    // Setup
+    const stored = Buffer.from(
+      JSON.stringify({
+        CLIENT_ID_GOOGLE_LOGIN: "1",
+        INF_APP_CONNECTION_AZURE_CLIENT_ID: "stored-azure",
+        CLIENT_SECRET_HEROKU: "stored-heroku",
+        URL_GITLAB_LOGIN: "https://stored.example.com",
+        SALT_ROUNDS: "2"
+      })
+    );
+
+    // Action
+    const overrides = EnvOverrides.fromBytes(stored);
+
+    // Assert
+    expect(overrides.toJSON()).toEqual({ CLIENT_ID_GOOGLE_LOGIN: "1" });
+    expect(
+      overrides.resolve({
+        INF_APP_CONNECTION_AZURE_CLIENT_ID: "env-azure",
+        URL_GITLAB_LOGIN: "https://env.example.com"
+      })
+    ).toMatchObject({
+      INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID: "env-azure",
+      CLIENT_GITLAB_LOGIN_URL: "https://env.example.com"
+    });
+  });
+});
+
 describe("EnvOverrides.toBytes", () => {
   test("should round trip through fromBytes", () => {
     // Setup

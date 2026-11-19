@@ -1,4 +1,5 @@
 import { AccessScope, IdentityAuthMethod, OrgMembershipRole, OrgMembershipStatus, TUsers } from "@app/db/schemas";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import {
   ReadFrom,
   TInstanceConfigPatch,
@@ -218,7 +219,14 @@ export const superAdminServiceFactory = ({
 
     const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
 
-    const userInfo = await userDAL.transaction(async (tx) => {
+    const initialOrganizationName = organizationName ?? appCfg.INITIAL_ORGANIZATION_NAME ?? "Admin Org";
+
+    // One transaction from the claim to completion: of two signups at once, the second waits on the claim and is
+    // refused before it creates anything.
+    const { userInfo, organization } = await userDAL.transaction(async (tx) => {
+      const instanceConfig = instanceConfigService.within(sealKnexTransaction(tx));
+      await instanceConfig.claimSetup();
+
       const newUser = await userDAL.create(
         {
           firstName,
@@ -234,18 +242,18 @@ export const superAdminServiceFactory = ({
         },
         tx
       );
+      const newOrganization = await orgService.createOrganization(
+        { userId: newUser.id, orgName: initialOrganizationName },
+        tx
+      );
 
-      return { user: { ...newUser, hashedPassword: null } };
+      await instanceConfig.completeSetup({ closeSignUp: !appCfg.isCloud });
+      return { userInfo: { user: { ...newUser, hashedPassword: null } }, organization: newOrganization };
     });
 
-    const initialOrganizationName = organizationName ?? appCfg.INITIAL_ORGANIZATION_NAME ?? "Admin Org";
+    await usageMeteringService.syncSeats(organization.id);
+    await instanceConfigService.refreshSharedCopy();
 
-    const organization = await orgService.createOrganization({
-      userId: userInfo.user.id,
-      orgName: initialOrganizationName
-    });
-
-    await instanceConfigService.completeSetup({ closeSignUp: !appCfg.isCloud });
     const token = await authService.generateUserTokens({
       userId: userInfo.user.id,
       authMethod: AuthMethod.EMAIL,
@@ -268,8 +276,14 @@ export const superAdminServiceFactory = ({
     const existingUser = await userDAL.findOne({ email: sanitizedEmail });
     if (existingUser) throw new BadRequestError({ name: "Instance initialization", message: "User already exists" });
 
-    const userInfo = await userDAL.transaction(async (tx) => {
-      const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
+    const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
+    const initialOrganizationName = organizationName ?? "Admin Org";
+
+    // One transaction from the claim to completion, as in adminSignUp.
+    const { userInfo, organization, identity, credentials } = await userDAL.transaction(async (tx) => {
+      const instanceConfig = instanceConfigService.within(sealKnexTransaction(tx));
+      await instanceConfig.claimSetup();
+
       const newUser = await userDAL.create(
         {
           firstName: "Admin",
@@ -295,22 +309,16 @@ export const superAdminServiceFactory = ({
         tx
       );
 
-      return { user: { ...newUser, hashedPassword: null }, enc: userEnc };
-    });
+      const newOrganization = await orgService.createOrganization(
+        { userId: newUser.id, orgName: initialOrganizationName },
+        tx
+      );
 
-    const initialOrganizationName = organizationName ?? "Admin Org";
-
-    const organization = await orgService.createOrganization({
-      userId: userInfo.user.id,
-      orgName: initialOrganizationName
-    });
-
-    const { identity, credentials } = await identityDAL.transaction(async (tx) => {
-      const newIdentity = await identityDAL.create({ name: "Instance Admin Identity", orgId: organization.id }, tx);
+      const newIdentity = await identityDAL.create({ name: "Instance Admin Identity", orgId: newOrganization.id }, tx);
       const membership = await membershipIdentityDAL.create(
         {
           actorIdentityId: newIdentity.id,
-          scopeOrgId: organization.id,
+          scopeOrgId: newOrganization.id,
           scope: AccessScope.Organization
         },
         tx
@@ -352,10 +360,10 @@ export const superAdminServiceFactory = ({
         identityId: newIdentity.id,
         identityName: newIdentity.name,
         authMethod: IdentityAuthMethod.TOKEN_AUTH,
-        orgId: organization.id,
-        rootOrgId: organization.id,
-        parentOrgId: organization.id,
-        subOrganizationId: organization.id,
+        orgId: newOrganization.id,
+        rootOrgId: newOrganization.id,
+        parentOrgId: newOrganization.id,
+        subOrganizationId: newOrganization.id,
         accessTokenTTL: Number(tokenAuth.accessTokenTTL),
         accessTokenMaxTTL: Number(tokenAuth.accessTokenMaxTTL),
         accessTokenNumUsesLimit: Number(tokenAuth.accessTokenNumUsesLimit),
@@ -364,10 +372,18 @@ export const superAdminServiceFactory = ({
         persistToPg: { tx, name: "Instance Admin Token" }
       });
 
-      return { identity: newIdentity, auth: tokenAuth, credentials: { token: accessToken } };
+      await instanceConfig.completeSetup({ closeSignUp: !appCfg.isCloud, adminIdentityId: newIdentity.id });
+
+      return {
+        userInfo: { user: { ...newUser, hashedPassword: null }, enc: userEnc },
+        organization: newOrganization,
+        identity: newIdentity,
+        credentials: { token: accessToken }
+      };
     });
 
-    await instanceConfigService.completeSetup({ closeSignUp: !appCfg.isCloud, adminIdentityId: identity.id });
+    await usageMeteringService.syncSeats(organization.id);
+    await instanceConfigService.refreshSharedCopy();
 
     return {
       user: userInfo,

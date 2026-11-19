@@ -34,6 +34,15 @@ class LaggingReplicaStore implements TInstanceConfigStore {
   save = (config: InstanceConfig) => this.primary.save(config);
 }
 
+// Setup as the super admin service runs it: inside a transaction, then the shared copy refreshed after the commit.
+const setUpInstance = async (
+  { module, memory }: Awaited<ReturnType<typeof buildInstanceConfigCore>>,
+  input: { closeSignUp: boolean; adminIdentityId?: string }
+) => {
+  await memory.transactionRunner.run(({ tx }) => module.instanceConfigService.within(tx).completeSetup(input));
+  await module.instanceConfigService.refreshSharedCopy();
+};
+
 describe("InstanceConfigService.getInstanceConfig", () => {
   test("should return the settings merged with the resolved env", async () => {
     // Setup
@@ -296,17 +305,16 @@ describe("InstanceConfigService.getMicrosoftTeamsCredentials", () => {
   });
 });
 
-describe("InstanceConfigService.completeSetup", () => {
+describe("InstanceConfigService.within", () => {
   test("should finish setup, close sign-up and grant the admin identity", async () => {
     // Setup
-    const { module } = await buildInstanceConfigCore();
-    const service = module.instanceConfigService;
+    const core = await buildInstanceConfigCore();
 
     // Action
-    await service.completeSetup({ closeSignUp: true, adminIdentityId: "identity-1" });
+    await setUpInstance(core, { closeSignUp: true, adminIdentityId: "identity-1" });
 
     // Assert
-    expect(await service.getInstanceConfig()).toMatchObject({
+    expect(await core.module.instanceConfigService.getInstanceConfig()).toMatchObject({
       initialized: true,
       allowSignUp: false,
       adminIdentityIds: ["identity-1"]
@@ -315,26 +323,65 @@ describe("InstanceConfigService.completeSetup", () => {
 
   test("should leave sign-up open and grant nobody when not told to", async () => {
     // Setup
-    const { module } = await buildInstanceConfigCore();
-    const service = module.instanceConfigService;
+    const core = await buildInstanceConfigCore();
 
     // Action
-    await service.completeSetup({ closeSignUp: false });
+    await setUpInstance(core, { closeSignUp: false });
 
     // Assert
-    const config = await service.getInstanceConfig();
+    const config = await core.module.instanceConfigService.getInstanceConfig();
     expect(config.initialized).toBe(true);
     expect(config.allowSignUp).toBe(true);
     expect(config.adminIdentityIds).toBeNull();
+  });
+
+  test("should refuse to claim or complete setup of an instance already set up", async () => {
+    // Setup
+    const core = await buildInstanceConfigCore();
+    await setUpInstance(core, { closeSignUp: false, adminIdentityId: "identity-1" });
+    const { module, memory } = core;
+
+    // Action
+    const claim = memory.transactionRunner.run(({ tx }) => module.instanceConfigService.within(tx).claimSetup());
+    const complete = memory.transactionRunner.run(({ tx }) =>
+      module.instanceConfigService.within(tx).completeSetup({ closeSignUp: false, adminIdentityId: "identity-2" })
+    );
+
+    // Assert
+    await expect(claim).rejects.toThrow("Instance has already been set up");
+    await expect(complete).rejects.toThrow("Instance has already been set up");
+    expect((await memory.instanceConfigStore.find())?.toJSON().adminIdentityIds).toEqual(["identity-1"]);
+  });
+
+  test("should leave the instance not set up when the caller's transaction fails", async () => {
+    // Setup
+    const { module, memory } = await buildInstanceConfigCore();
+
+    // Action
+    const result = memory.transactionRunner.run(async ({ tx }) => {
+      const instanceConfig = module.instanceConfigService.within(tx);
+      await instanceConfig.claimSetup();
+      await instanceConfig.completeSetup({ closeSignUp: true, adminIdentityId: "identity-1" });
+      throw new Error("creating the first organization failed");
+    });
+
+    // Assert
+    await expect(result).rejects.toThrow("creating the first organization failed");
+    expect(await module.instanceConfigService.getInstanceConfig()).toMatchObject({
+      initialized: false,
+      allowSignUp: true,
+      adminIdentityIds: null
+    });
   });
 });
 
 describe("InstanceConfigService.revokeAdminIdentity", () => {
   test("should remove the admin identity", async () => {
     // Setup
-    const { module } = await buildInstanceConfigCore();
+    const core = await buildInstanceConfigCore();
+    const { module } = core;
     const service = module.instanceConfigService;
-    await service.completeSetup({ closeSignUp: false, adminIdentityId: "identity-1" });
+    await setUpInstance(core, { closeSignUp: false, adminIdentityId: "identity-1" });
 
     // Action
     await service.revokeAdminIdentity("identity-1");
@@ -345,9 +392,10 @@ describe("InstanceConfigService.revokeAdminIdentity", () => {
 
   test("should refuse an identity that is not an admin and change nothing", async () => {
     // Setup
-    const { module } = await buildInstanceConfigCore();
+    const core = await buildInstanceConfigCore();
+    const { module } = core;
     const service = module.instanceConfigService;
-    await service.completeSetup({ closeSignUp: false, adminIdentityId: "identity-1" });
+    await setUpInstance(core, { closeSignUp: false, adminIdentityId: "identity-1" });
 
     // Action
     const result = service.revokeAdminIdentity("identity-2");
@@ -361,9 +409,10 @@ describe("InstanceConfigService.revokeAdminIdentity", () => {
 describe("InstanceConfigService.isInstanceAdminIdentity", () => {
   test("should be true only for a granted identity", async () => {
     // Setup
-    const { module } = await buildInstanceConfigCore();
+    const core = await buildInstanceConfigCore();
+    const { module } = core;
     const service = module.instanceConfigService;
-    await service.completeSetup({ closeSignUp: false, adminIdentityId: "identity-1" });
+    await setUpInstance(core, { closeSignUp: false, adminIdentityId: "identity-1" });
 
     // Action
     const results = [
@@ -413,6 +462,25 @@ const buildTwoPods = async (processEnv: Record<string, string> = {}) => {
   });
   return { podA, podB };
 };
+
+describe("InstanceConfigService.refreshSharedCopy", () => {
+  test("should show a setup committed in a caller's transaction on another pod", async () => {
+    // Setup
+    const { podA, podB } = await buildTwoPods();
+    await podB.module.instanceConfigService.getInstanceConfig();
+    await podA.memory.transactionRunner.run(({ tx }) =>
+      podA.module.instanceConfigService.within(tx).completeSetup({ closeSignUp: true })
+    );
+    const beforeRefresh = await podB.module.instanceConfigService.getInstanceConfig();
+
+    // Action
+    await podA.module.instanceConfigService.refreshSharedCopy();
+
+    // Assert
+    expect(beforeRefresh.initialized).toBe(false);
+    expect((await podB.module.instanceConfigService.getInstanceConfig()).initialized).toBe(true);
+  });
+});
 
 describe("InstanceConfigService.getInstanceConfig", () => {
   test("should show overrides another pod changed once the shared copy changes", async () => {
@@ -552,7 +620,7 @@ describe("InstanceConfigService.isInstanceAdminIdentity", () => {
   test("should be false on another pod once the identity is revoked", async () => {
     // Setup
     const { podA, podB } = await buildTwoPods();
-    await podA.module.instanceConfigService.completeSetup({ closeSignUp: false, adminIdentityId: "identity-1" });
+    await setUpInstance(podA, { closeSignUp: false, adminIdentityId: "identity-1" });
     const before = await podB.module.instanceConfigService.isInstanceAdminIdentity("identity-1");
 
     // Action
@@ -566,7 +634,7 @@ describe("InstanceConfigService.isInstanceAdminIdentity", () => {
   test("should refuse a second revoke on another pod even while its copy is stale", async () => {
     // Setup
     const { podA, podB } = await buildTwoPods();
-    await podA.module.instanceConfigService.completeSetup({ closeSignUp: false, adminIdentityId: "identity-1" });
+    await setUpInstance(podA, { closeSignUp: false, adminIdentityId: "identity-1" });
     await podB.module.instanceConfigService.isInstanceAdminIdentity("identity-1");
     const staleEntry = await podA.keyStore.getItem(CACHE_KEY);
     await podA.module.instanceConfigService.revokeAdminIdentity("identity-1");

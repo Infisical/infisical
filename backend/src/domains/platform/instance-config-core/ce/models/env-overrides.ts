@@ -425,16 +425,18 @@ export class EnvOverrides {
     return new EnvOverrides({});
   }
 
-  // Drops keys an admin cannot override, as applying them always has, and refuses values the schema rejects.
+  // Refuses values the schema rejects. Keys an admin cannot override are dropped.
   static create(raw: TEnvOverridesRecord): EnvOverrides {
-    const values = Object.fromEntries(Object.entries(raw).filter(([key]) => EnvOverrides.KEYS.includes(key)));
+    const values = EnvOverrides.onlyOverridable(raw);
     const parsed = OVERRIDABLE_ENV_SCHEMA.safeParse(values);
     if (!parsed.success) throw new RuleViolationError({ message: readableIssues(parsed.error) });
     return new EnvOverrides(values);
   }
 
+  // Stored keys an admin cannot override are dropped here too: the schema also reads the values only they fall back to
+  // (the shared Azure app, the legacy Heroku app, URL_GITLAB_LOGIN), and a stored one must never replace the env's.
   static restore(record: TEnvOverridesRecord): EnvOverrides {
-    return new EnvOverrides({ ...record });
+    return new EnvOverrides(EnvOverrides.onlyOverridable(record));
   }
 
   // The stored form: the JSON object, as every release has written it.
@@ -475,5 +477,9 @@ export class EnvOverrides {
 
   toJSON(): TEnvOverridesRecord {
     return { ...this.values };
+  }
+
+  private static onlyOverridable(record: TEnvOverridesRecord): TEnvOverridesRecord {
+    return Object.fromEntries(Object.entries(record).filter(([key]) => EnvOverrides.KEYS.includes(key)));
   }
 }
