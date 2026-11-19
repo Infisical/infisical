@@ -287,7 +287,10 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
                           <FieldTitle>{option.title}</FieldTitle>
                           <FieldDescription>{option.description}</FieldDescription>
                         </FieldContent>
-                        <RadioGroupItem id={`renewal-approval-${option.value}`} value={option.value} />
+                        <RadioGroupItem
+                          id={`renewal-approval-${option.value}`}
+                          value={option.value}
+                        />
                       </Field>
                     </FieldLabel>
                   ))}
@@ -312,8 +315,8 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
                     Bypass approval for machine identities
                   </FieldLabel>
                   <FieldDescription>
-                    When enabled, machine identities can issue and renew certificates without requiring
-                    approval
+                    When enabled, machine identities can issue and renew certificates without
+                    requiring approval
                   </FieldDescription>
                 </FieldContent>
               </Field>

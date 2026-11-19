@@ -10,6 +10,11 @@ import { CA_TYPE_LABEL } from "./external-metadata-schemas";
 // certificate invites a retry that issues a duplicate. At the CA, the upstream text is quoted (it is already
 // stored on the request) and `message`, a job's stored reason, stands in when there is no error. Infisical's own
 // errors carry text a user can act on only when they are request errors.
+export const formatCaLabel = (ca: { name: string; externalCa?: { type?: string | null } | null }) => {
+  const caType = ca.externalCa?.type as CaType | undefined;
+  return caType ? `CA '${ca.name}' (${CA_TYPE_LABEL[caType] ?? caType})` : `CA '${ca.name}'`;
+};
+
 export const describeCaOperationFailure = ({
   action,
   stage,
@@ -25,9 +30,7 @@ export const describeCaOperationFailure = ({
   message?: string | null;
   fallback: string;
 }) => {
-  const caType = ca?.externalCa?.type as CaType | undefined;
-  let caLabel: string | undefined;
-  if (ca) caLabel = caType ? `CA '${ca.name}' (${CA_TYPE_LABEL[caType] ?? caType})` : `CA '${ca.name}'`;
+  const caLabel = ca ? formatCaLabel(ca) : undefined;
 
   if (stage === CaOperationFailureStage.AttachingIssuedCertificate) {
     return `${caLabel ?? "The CA"} issued the certificate, but Infisical couldn't link it to this request. Find it in the certificate inventory before you renew or request it again.`;

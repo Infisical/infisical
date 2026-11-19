@@ -25,8 +25,15 @@ export const PolicyReviewStep = () => {
   const { data: members = [] } = useGetWorkspaceUsers(projectId);
   const { data: groups = [] } = useListWorkspaceGroups(projectId);
 
-  const { name, policyType, conditions, maxRequestTtl, renewalApproval, bypassForMachineIdentities, steps } =
-    watch();
+  const {
+    name,
+    policyType,
+    conditions,
+    maxRequestTtl,
+    renewalApproval,
+    bypassForMachineIdentities,
+    steps
+  } = watch();
   const isRevocationPolicy = policyType === ApprovalPolicyType.CertRevocation;
 
   const getApproverLabel = (approverId: string, approverType: ApproverType) => {
@@ -65,8 +72,8 @@ export const PolicyReviewStep = () => {
               <ReviewField
                 label="Renewals Requiring Approval"
                 value={
-                  RENEWAL_APPROVAL_OPTIONS.find((option) => option.value === renewalApproval)?.title ??
-                  "Not set"
+                  RENEWAL_APPROVAL_OPTIONS.find((option) => option.value === renewalApproval)
+                    ?.title ?? "Not set"
                 }
               />
               <ReviewField

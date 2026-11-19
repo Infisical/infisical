@@ -142,7 +142,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
     const policyFields = {
       ...data,
       bypassForMachineIdentities: isRevocationPolicy ? false : data.bypassForMachineIdentities,
-      ...(!isRevocationPolicy && { constraints: { renewalApproval } })
+      constraints: isRevocationPolicy ? {} : { renewalApproval }
     };
 
     try {
