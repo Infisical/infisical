@@ -726,3 +726,55 @@ describe("alert service", () => {
     );
   });
 });
+
+describe("copyAlertsToResource", () => {
+  test("copies every channel column, including the Slack integration it posts through", async () => {
+    const createdChannels: Record<string, unknown>[] = [];
+    const service = alertServiceFactory({
+      alertDAL: {
+        find: async () => [
+          { id: "alert-1", name: "reminder", resourceType: RESOURCE_TYPE, resourceId: "from", condition: null }
+        ],
+        create: async (data: Record<string, unknown>) => ({ ...data, id: "alert-2" })
+      },
+      alertChannelDAL: {
+        findByAlertIds: async () => [
+          {
+            id: "ch-1",
+            alertId: "alert-1",
+            name: "Slack",
+            channelType: AlertChannelType.SLACK_APP,
+            encryptedConfig: Buffer.from("{}"),
+            workflowIntegrationId: "wi-1",
+            enabled: true,
+            orgId: "org-1",
+            projectId: "proj-1",
+            createdByActorId: "user-1",
+            createdByActorType: "user",
+            createdAt: new Date(),
+            updatedAt: new Date()
+          }
+        ],
+        create: async (data: Record<string, unknown>) => {
+          createdChannels.push(data);
+          return { ...data, id: "ch-2" };
+        }
+      },
+      alertChannelMembershipDAL: { insertMany: async () => [] },
+      alertChannelRecipientDAL: { findByChannelIds: async () => [], insertMany: async () => [] }
+    } as unknown as TAlertServiceFactoryDep);
+
+    await service.copyAlertsToResource(
+      { resourceType: RESOURCE_TYPE, projectId: "proj-1", fromResourceId: "from", toResourceId: "to" },
+      {} as never
+    );
+
+    expect(createdChannels).toHaveLength(1);
+    expect(createdChannels[0]).toMatchObject({
+      channelType: AlertChannelType.SLACK_APP,
+      workflowIntegrationId: "wi-1"
+    });
+    expect(createdChannels[0]).not.toHaveProperty("id");
+    expect(createdChannels[0]).not.toHaveProperty("alertId");
+  });
+});

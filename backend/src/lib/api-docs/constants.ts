@@ -2672,7 +2672,8 @@ export const ALERTING = {
       "The settings of the alert's event, for example `alertBefore` on an expiry event. The accepted fields depend on `eventType`.",
     enabled: "Whether the alert is enabled. Defaults to true.",
     projectId: "The ID of the project to create the alert in. Optional when the resource belongs to a project.",
-    channels: "The channels the alert notifies. Each is email, Slack, webhook, or PagerDuty."
+    channels:
+      "The channels the alert notifies. `channelType` is `email`, `slack-app` (posts through a Slack integration; set `config.workflowIntegrationId` and `config.channels`, 1 to 20 `{ id, name }` Slack channels), `slack` (incoming webhook), `webhook`, or `pagerduty`."
   },
   TEST_CHANNEL: {
     resourceType: "The type of resource the alert watches.",
