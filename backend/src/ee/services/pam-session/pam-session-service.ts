@@ -492,6 +492,43 @@ export const pamSessionServiceFactory = ({
     };
   };
 
+  // Called by the user or identity that launched the session. A session through a gateway is left to the
+  // gateway, which would otherwise keep serving it while the session list shows it as ended
+  const endOwnSession = async (sessionId: string, ctx: TActorContext) => {
+    const session = await pamSessionDAL.findById(sessionId);
+    const ownerId = ctx.actor === ActorType.IDENTITY ? session?.identityId : session?.userId;
+    if (!session || ownerId !== ctx.actorId) {
+      throw new NotFoundError({ message: `Session '${sessionId}' not found` });
+    }
+
+    await verifyProductMembership(permissionService, session.projectId, ctx);
+
+    if (session.gatewayId) {
+      throw new BadRequestError({
+        message: `Session '${sessionId}' runs through a gateway, so it ends when you close it in the CLI`
+      });
+    }
+
+    const updatedSession = await pamSessionDAL.endSessionById(sessionId);
+
+    if (updatedSession) {
+      void reportPamSessionEnded({
+        session: updatedSession,
+        orgId: ctx.actorOrgId,
+        endReason: PamSessionEndReason.Completed,
+        telemetryService,
+        userDAL
+      });
+    }
+
+    return {
+      projectId: session.projectId,
+      accountId: session.accountId,
+      accountName: session.accountName,
+      alreadyEnded: !updatedSession
+    };
+  };
+
   const resolveAccountByPath = (projectId: string, path: string) =>
     resolveAccountByPathFn({ pamFolderDAL, pamAccountDAL }, projectId, path);
 
@@ -968,6 +1005,7 @@ export const pamSessionServiceFactory = ({
     getSessionById,
     getSessionCredentials,
     endSessionFromGateway,
+    endOwnSession,
     terminateSession
   };
 };
