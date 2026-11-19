@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
-import { TriangleAlertIcon, WebhookIcon } from "lucide-react";
+import { BookOpenTextIcon, TriangleAlertIcon, WebhookIcon } from "lucide-react";
 import ms from "ms";
 import { z } from "zod";
 
@@ -40,15 +40,18 @@ import {
   useGetAgentVaultAccessBundle,
   useListAgentVaultHooks,
   useListAgentVaultServices,
+  useListAgentVaultSkills,
   useListAllAgentVaultServicesRequiringSetup
 } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultAccessBundleListItem,
   TAgentVaultHook,
   TAgentVaultProjectService,
-  TAgentVaultService
+  TAgentVaultService,
+  TAgentVaultSkill
 } from "@app/hooks/api/agentVault/types";
 
+import { TSessionFieldErrors } from "./sessionFormErrors";
 import { sessionLabelSchema } from "./sessionLabelSchema";
 import { SessionMetadataFields } from "./SessionMetadataFields";
 import { metadataRowsToRecord, sessionMetadataRowsSchema } from "./sessionMetadataSchema";
@@ -66,9 +69,11 @@ const TTL_PRESETS = [
 ];
 const DEFAULT_TTL_PRESET = "7d";
 
-// The most of the project's services the API takes on one session.
-const MAX_NAMED_SERVICES = 50;
+// The most of the project's services and skills the API takes on one session.
+const MAX_SERVICES = 50;
 const SERVICE_PICKER_LIMIT = 50;
+const MAX_SKILLS = 20;
+const SKILL_PICKER_LIMIT = 50;
 const HOOK_PICKER_LIMIT = 50;
 
 const MIN_TTL_MS = 60 * 1000;
@@ -92,6 +97,7 @@ const getCustomTtlError = (value: string) => {
 const schema = z
   .object({
     services: z.custom<TAgentVaultProjectService[]>(),
+    skills: z.custom<TAgentVaultSkill[]>(),
     hook: z.custom<TAgentVaultHook | null>(),
     label: sessionLabelSchema,
     metadata: sessionMetadataRowsSchema,
@@ -99,12 +105,21 @@ const schema = z
     customTtl: z.string()
   })
   .superRefine((data, ctx) => {
-    if (data.services.length > MAX_NAMED_SERVICES) {
+    if (data.services.length > MAX_SERVICES) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["services"],
-        message: `A session can name up to ${MAX_NAMED_SERVICES} services. Remove ${
-          data.services.length - MAX_NAMED_SERVICES
+        message: `You can pick up to ${MAX_SERVICES} services. Remove ${
+          data.services.length - MAX_SERVICES
+        } to continue.`
+      });
+    }
+    if (data.skills.length > MAX_SKILLS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["skills"],
+        message: `You can pick up to ${MAX_SKILLS} skills. Remove ${
+          data.skills.length - MAX_SKILLS
         } to continue.`
       });
     }
@@ -121,20 +136,16 @@ export type TDashboardSessionInput = {
   metadata?: Record<string, string>;
   ttl: string;
   services: string[];
+  skills: string[];
   hookId?: string;
 };
-
-// The API's refusals of a service the session names: one that shares a host with another service in the session, or
-// one the caller can't use, which includes one deleted since it was picked.
-export const isSessionServicesError = (message: string) =>
-  message.includes("both cover") || message.includes("can't name a service");
 
 const PICK_SOMETHING_ERROR = "pickSomething";
 
 type Props = {
   formId: string;
   accessBundle: TAgentVaultAccessBundleListItem | null;
-  onSubmit: (input: TDashboardSessionInput) => Promise<{ servicesError?: string } | undefined>;
+  onSubmit: (input: TDashboardSessionInput) => Promise<TSessionFieldErrors | undefined>;
 };
 
 export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) => {
@@ -145,6 +156,7 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
     resolver: zodResolver(schema),
     defaultValues: {
       services: [],
+      skills: [],
       hook: null,
       label: "",
       metadata: [],
@@ -155,25 +167,41 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
   const { control, handleSubmit, watch, setError, clearErrors, getFieldState } = formMethods;
   const ttlPreset = watch("ttlPreset");
   const selectedServices = watch("services");
+  const selectedSkillCount = watch("skills").length;
 
-  // The bundle is picked outside this form, so nothing re-validates the services field when it changes.
+  // The bundle is picked outside this form, and picking a skill re-validates only the skills field, so neither clears
+  // the error that asked for something to be picked, which sits on services.
   useEffect(() => {
-    if (accessBundle && getFieldState("services").error?.type === PICK_SOMETHING_ERROR) {
+    if (
+      (accessBundle || selectedSkillCount > 0) &&
+      getFieldState("services").error?.type === PICK_SOMETHING_ERROR
+    ) {
       clearErrors("services");
     }
-  }, [accessBundle?.id]);
+  }, [accessBundle?.id, selectedSkillCount]);
 
-  // An admin can name any of the project's services, and a member only those in their bundles, which is what this
+  // An admin can pick any of the project's services, and a member only those in their bundles, which is what this
   // list returns to each.
   const [serviceSearch, setServiceSearch] = useState("");
   const [debouncedServiceSearch] = useDebounce(serviceSearch);
-  const { data: nameableServices, isFetching: isSearchingServices } = useListAgentVaultServices(
+  const { data: pickableServices, isFetching: isSearchingServices } = useListAgentVaultServices(
     projectId,
     {
       search: debouncedServiceSearch.trim() || undefined,
       orderBy: "name",
       orderDirection: "asc",
       limit: SERVICE_PICKER_LIMIT
+    }
+  );
+
+  // The same for skills: an admin can pick any of them, and a member only those in their bundles.
+  const [skillSearch, setSkillSearch] = useState("");
+  const [debouncedSkillSearch] = useDebounce(skillSearch);
+  const { data: pickableSkills, isFetching: isSearchingSkills } = useListAgentVaultSkills(
+    projectId,
+    {
+      search: debouncedSkillSearch.trim() || undefined,
+      limit: SKILL_PICKER_LIMIT
     }
   );
 
@@ -224,18 +252,19 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
     <form
       id={formId}
       onSubmit={handleSubmit(
-        async ({ services, hook, label, metadata, ttlPreset: preset, customTtl }) => {
+        async ({ services, skills, hook, label, metadata, ttlPreset: preset, customTtl }) => {
           // The bundle is picked outside this form, so this check can't live in the schema.
-          if (!accessBundle && !services.length) {
+          if (!accessBundle && !services.length && !skills.length) {
             setError("services", {
               type: PICK_SOMETHING_ERROR,
-              message: "Pick an access bundle or at least one service."
+              message: "Pick an access bundle, or at least one service or skill."
             });
             return;
           }
           const metadataRecord = metadataRowsToRecord(metadata);
           const result = await onSubmit({
             services: services.map((service) => service.name),
+            skills: skills.map((skill) => skill.name),
             hookId: hook?.id,
             label: label || undefined,
             metadata: Object.keys(metadataRecord).length > 0 ? metadataRecord : undefined,
@@ -243,6 +272,9 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
           });
           if (result?.servicesError) {
             setError("services", { type: "server", message: result.servicesError });
+          }
+          if (result?.skillsError) {
+            setError("skills", { type: "server", message: result.skillsError });
           }
         }
       )}
@@ -258,7 +290,7 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
               <Combobox<TAgentVaultProjectService>
                 id="agent-vault-session-services"
                 multiple
-                options={nameableServices?.services ?? []}
+                options={pickableServices?.services ?? []}
                 value={field.value}
                 isLoading={isSearchingServices}
                 onSearchChange={setServiceSearch}
@@ -288,6 +320,50 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
               <FieldDescription>
                 The project&apos;s services this session reaches, beside or instead of an access
                 bundle.
+              </FieldDescription>
+              <FieldError>{fieldState.error?.message}</FieldError>
+            </FieldContent>
+          </Field>
+        )}
+      />
+      <Controller
+        control={control}
+        name="skills"
+        render={({ field, fieldState }) => (
+          <Field>
+            <FieldLabel htmlFor="agent-vault-session-skills">Skills</FieldLabel>
+            <FieldContent>
+              <Combobox<TAgentVaultSkill>
+                id="agent-vault-session-skills"
+                multiple
+                options={pickableSkills?.skills ?? []}
+                value={field.value}
+                isLoading={isSearchingSkills}
+                onSearchChange={setSkillSearch}
+                includeMissingSelectedOptions
+                getOptionValue={(skill) => skill.id}
+                getOptionLabel={(skill) => skill.name}
+                renderOption={(skill) => (
+                  <div className="flex min-w-0 items-center gap-2">
+                    <BookOpenTextIcon className="size-4 shrink-0 text-muted" />
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate text-sm">{skill.name}</span>
+                      <span className="truncate text-xs text-muted">{skill.description}</span>
+                    </div>
+                  </div>
+                )}
+                placeholder="Pick skills"
+                searchAriaLabel="Search skills"
+                emptyMessage={
+                  skillSearch ? "No skills match your search" : "No skills you can use yet"
+                }
+                modal
+                isError={Boolean(fieldState.error)}
+                onValueChange={field.onChange}
+              />
+              <FieldDescription>
+                The project&apos;s skills an agent gets with this session, beside or instead of an
+                access bundle&apos;s.
               </FieldDescription>
               <FieldError>{fieldState.error?.message}</FieldError>
             </FieldContent>
@@ -345,94 +421,96 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
           )}
         />
       )}
-      <Controller
-        control={control}
-        name="label"
-        render={({ field, fieldState }) => (
-          <Field>
-            <FieldLabel htmlFor="agent-vault-session-label">
-              Label <span className="text-muted">(optional)</span>
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                {...field}
-                id="agent-vault-session-label"
-                placeholder="Nightly deploy"
-                isError={Boolean(fieldState.error)}
+      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[minmax(0,1fr)_10rem]">
+        <Controller
+          control={control}
+          name="label"
+          render={({ field, fieldState }) => (
+            <Field>
+              <FieldLabel htmlFor="agent-vault-session-label">
+                Label <span className="text-muted">(optional)</span>
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  {...field}
+                  id="agent-vault-session-label"
+                  placeholder="Nightly deploy"
+                  isError={Boolean(fieldState.error)}
+                />
+                <FieldDescription>Describes what this session is for.</FieldDescription>
+                <FieldError>{fieldState.error?.message}</FieldError>
+              </FieldContent>
+            </Field>
+          )}
+        />
+
+        <Field>
+          <FieldLabel>Expires</FieldLabel>
+          <FieldContent>
+            <Controller
+              control={control}
+              name="ttlPreset"
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={(value) => {
+                    shouldFocusCustomTtlRef.current = value === CUSTOM_TTL;
+                    field.onChange(value);
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent
+                    position="popper"
+                    onCloseAutoFocus={(e) => {
+                      if (!shouldFocusCustomTtlRef.current) return;
+                      shouldFocusCustomTtlRef.current = false;
+                      e.preventDefault();
+                      customTtlInputRef.current?.focus();
+                    }}
+                  >
+                    {TTL_PRESETS.map((preset) => (
+                      <SelectItem key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {ttlPreset === CUSTOM_TTL && (
+              <Controller
+                control={control}
+                name="customTtl"
+                render={({ field, fieldState }) => (
+                  <>
+                    <Input
+                      {...field}
+                      ref={(el) => {
+                        field.ref(el);
+                        customTtlInputRef.current = el;
+                      }}
+                      className="mt-2"
+                      placeholder="90m"
+                      isError={Boolean(fieldState.error)}
+                    />
+                    <FieldDescription>A duration such as 30m, 8h, or 7d.</FieldDescription>
+                    <FieldError>{fieldState.error?.message}</FieldError>
+                  </>
+                )}
               />
-              <FieldDescription>Describes what this session is for.</FieldDescription>
-              <FieldError>{fieldState.error?.message}</FieldError>
-            </FieldContent>
-          </Field>
-        )}
-      />
+            )}
+            {ttlPreset === NEVER_TTL && (
+              <FieldDescription>This session runs until someone revokes it.</FieldDescription>
+            )}
+          </FieldContent>
+        </Field>
+      </div>
 
       <FormProvider {...formMethods}>
         <SessionMetadataFields idPrefix="agent-vault-session" />
       </FormProvider>
-
-      <Field>
-        <FieldLabel>Expires</FieldLabel>
-        <FieldContent>
-          <Controller
-            control={control}
-            name="ttlPreset"
-            render={({ field }) => (
-              <Select
-                value={field.value}
-                onValueChange={(value) => {
-                  shouldFocusCustomTtlRef.current = value === CUSTOM_TTL;
-                  field.onChange(value);
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent
-                  position="popper"
-                  onCloseAutoFocus={(e) => {
-                    if (!shouldFocusCustomTtlRef.current) return;
-                    shouldFocusCustomTtlRef.current = false;
-                    e.preventDefault();
-                    customTtlInputRef.current?.focus();
-                  }}
-                >
-                  {TTL_PRESETS.map((preset) => (
-                    <SelectItem key={preset.value} value={preset.value}>
-                      {preset.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-          {ttlPreset === CUSTOM_TTL && (
-            <Controller
-              control={control}
-              name="customTtl"
-              render={({ field, fieldState }) => (
-                <>
-                  <Input
-                    {...field}
-                    ref={(el) => {
-                      field.ref(el);
-                      customTtlInputRef.current = el;
-                    }}
-                    className="mt-2"
-                    placeholder="90m"
-                    isError={Boolean(fieldState.error)}
-                  />
-                  <FieldDescription>A duration such as 30m, 8h, or 7d.</FieldDescription>
-                  <FieldError>{fieldState.error?.message}</FieldError>
-                </>
-              )}
-            />
-          )}
-          {ttlPreset === NEVER_TTL && (
-            <FieldDescription>This session runs until someone revokes it.</FieldDescription>
-          )}
-        </FieldContent>
-      </Field>
 
       {/* A warning, not a block: the session works for every other service, and picks up values
           set up later on the proxy's next poll. */}

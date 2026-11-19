@@ -5,7 +5,6 @@ import { AgentVaultHookMode } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultHook } from "@app/hooks/api/agentVault/types";
 
 import { UNCHANGED_SECRET } from "../service-sheet/serviceSchema";
-
 import {
   blankHookRule,
   buildCreateHookRequest,

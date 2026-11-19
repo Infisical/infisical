@@ -1,4 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
+import { TReadOptions } from "@app/domains/lib/data-access";
 import { TTransaction, TTransactionRunner } from "@app/domains/lib/transactions";
 
 import {
@@ -23,8 +24,8 @@ export type TOrganizationsProjectsService = {
   resolveRootOrgId(orgId: string): Promise<string>;
   // Not cached: name and slug can change.
   findOrganization(orgId: string): Promise<TOrganization | null>;
-  // Includes sub-orgs.
-  countWorkspaces(orgId: string): Promise<number>;
+  // Includes sub-orgs. Pass readFrom primary right after a commit that changed it.
+  countWorkspaces(orgId: string, options?: TReadOptions): Promise<number>;
   // Org members in a Secret Manager/KMS project or in none. Null orgId = whole instance.
   countBillableOrgActors(orgId: string | null): Promise<{ users: number; identities: number }>;
   getBillableIdentityOwnershipBreakdown(orgId: string | null): Promise<TIdentityOwnership[]>;
@@ -68,8 +69,8 @@ export class OrganizationsProjectsService implements TOrganizationsProjectsServi
     return this.organizationStore.findById(orgId);
   }
 
-  countWorkspaces(orgId: string): Promise<number> {
-    return this.organizationStore.countWorkspaces(orgId);
+  countWorkspaces(orgId: string, options?: TReadOptions): Promise<number> {
+    return this.organizationStore.countWorkspaces(orgId, options);
   }
 
   countBillableOrgActors(orgId: string | null) {

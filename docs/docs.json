@@ -747,7 +747,14 @@
                       }
                     ]
                   },
-                  "documentation/platform/agent-vault/variables",
+                  {
+                    "group": "Variables",
+                    "root": "documentation/platform/agent-vault/variables",
+                    "pages": [
+                      "documentation/platform/agent-vault/text-variables",
+                      "documentation/platform/agent-vault/oauth-variables"
+                    ]
+                  },
                   "documentation/platform/agent-vault/skills"
                 ]
               },
@@ -4700,7 +4707,9 @@
                       "api-reference/endpoints/agent-vault-variables/create",
                       "api-reference/endpoints/agent-vault-variables/update",
                       "api-reference/endpoints/agent-vault-variables/delete",
-                      "api-reference/endpoints/agent-vault-variables/get-value"
+                      "api-reference/endpoints/agent-vault-variables/get-value",
+                      "api-reference/endpoints/agent-vault-variables/start-oauth-sign-in",
+                      "api-reference/endpoints/agent-vault-variables/complete-oauth-sign-in"
                     ]
                   },
                   {

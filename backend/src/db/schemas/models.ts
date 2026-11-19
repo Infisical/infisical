@@ -288,6 +288,7 @@ export enum TableName {
   AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
   AgentVaultSessionInlineService = "agent_vault_session_inline_services",
   AgentVaultSessionService = "agent_vault_session_services",
+  AgentVaultSessionSkill = "agent_vault_session_skills",
   AgentVaultSessionStats = "agent_vault_session_stats",
   AgentVaultDelegation = "agent_vault_delegations",
   AgentVaultDelegationSubject = "agent_vault_delegation_subjects",

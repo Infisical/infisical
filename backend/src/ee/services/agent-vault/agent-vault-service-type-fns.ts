@@ -130,10 +130,12 @@ export const AGENT_VAULT_SERVICE_TYPES: Record<AgentVaultServiceType, TAgentVaul
     label: "HTTP",
     article: "An",
     configSchema: AgentVaultHttpServiceConfigSchema,
+    // OAuth only through an OAuth variable, which the save checks: there is no sign-in on an HTTP service.
     allowedCredentialTypes: [
       AgentVaultCredentialType.Bearer,
       AgentVaultCredentialType.Basic,
-      AgentVaultCredentialType.Passthrough
+      AgentVaultCredentialType.Passthrough,
+      AgentVaultCredentialType.OAuth
     ],
     deriveHostPattern: null,
     supportsRequestRules: true,

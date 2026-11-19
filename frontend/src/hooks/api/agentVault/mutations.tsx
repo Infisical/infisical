@@ -5,6 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 
 import { ApiErrorTypes } from "../types";
+import { AgentVaultSessionErrorCode } from "./enums";
 import { agentVaultKeys } from "./queries";
 import {
   TAddAgentVaultMembersDTO,
@@ -43,6 +44,7 @@ import {
   TCreateAgentVaultSessionDTO,
   TCreateAgentVaultHookDTO,
   TCreateAgentVaultSkillDTO,
+  TAgentVaultOauthVariableSignInStart,
   TCreateAgentVaultVariableDTO,
   TDeleteAgentVaultPersonalValuesDTO,
   TListAgentVaultMcpToolsDTO,
@@ -56,6 +58,7 @@ import {
   TUpdateAgentVaultSessionLogSettingsDTO,
   TUpdateAgentVaultHookDTO,
   TUpdateAgentVaultSkillDTO,
+  TStartAgentVaultOauthVariableSignInDTO,
   TUpdateAgentVaultVariableDTO
 } from "./types";
 
@@ -376,12 +379,17 @@ export const useRevokeAgentVaultAccessBundleMembers = (projectId: string) => {
   });
 };
 
+// The create session form shows a refused service or skill under its field, and toasts any other 400 itself.
+export const CREATE_SESSION_HANDLED_ERROR_CODES: string[] = [
+  ApiErrorTypes.BadRequestError,
+  ...Object.values(AgentVaultSessionErrorCode)
+];
+
 export const useCreateAgentVaultSession = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    // The form shows a refusal of its services under that field and toasts any other.
-    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] },
+    meta: { handledErrorCodes: CREATE_SESSION_HANDLED_ERROR_CODES },
     mutationFn: async (params: TCreateAgentVaultSessionDTO) => {
       const { data } = await apiRequest.post<{ session: TAgentVaultMintedSession }>(
         "/api/v1/agent-vault/sessions",
@@ -651,6 +659,27 @@ export const useDeleteAgentVaultVariable = (projectId: string) => {
     },
     onSuccess: () => invalidateVariables(queryClient, currentOrg.id, projectId)
   });
+};
+
+// The sign-in itself is written into the variable when the callback page completes it, so the variables and the
+// services that use them are refreshed once the poll sees it finish, with useRefreshAgentVaultVariables.
+export const useStartAgentVaultOauthVariableSignIn = () =>
+  useMutation({
+    // The variable dialog shows every failure in place, discovery and registration ones naming the server.
+    meta: { skipErrorToast: true },
+    mutationFn: async ({ variableId, ...params }: TStartAgentVaultOauthVariableSignInDTO) => {
+      const { data } = await apiRequest.post<TAgentVaultOauthVariableSignInStart>(
+        `/api/v1/agent-vault/variables/${variableId}/authorizations`,
+        params
+      );
+      return data;
+    }
+  });
+
+export const useRefreshAgentVaultVariables = (projectId: string) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return () => invalidateVariables(queryClient, currentOrg.id, projectId);
 };
 
 // A mutation rather than a query, so a revealed value never enters the query cache.

@@ -5,11 +5,14 @@ import {
   AgentVaultOauthAuthorizationStatus,
   isTerminalOauthAuthorizationError,
   useCreateAgentVaultOauthAuthorization,
-  useGetAgentVaultOauthAuthorization
+  useGetAgentVaultOauthAuthorization,
+  useStartAgentVaultOauthVariableSignIn
 } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultOauthAuthorization,
-  TCreateAgentVaultOauthAuthorizationDTO
+  TAgentVaultOauthVariableSignInStart,
+  TCreateAgentVaultOauthAuthorizationDTO,
+  TStartAgentVaultOauthVariableSignInDTO
 } from "@app/hooks/api/agentVault/types";
 
 const POLL_TIMEOUT_MS = 5 * 60 * 1000;
@@ -35,6 +38,7 @@ export const useOAuthAuthorize = ({
   onAuthorized: (authorization: TAgentVaultOauthAuthorization) => void;
 }) => {
   const createAuthorization = useCreateAgentVaultOauthAuthorization();
+  const startVariableSignIn = useStartAgentVaultOauthVariableSignIn();
   const [state, setState] = useState<TOAuthAuthorizeState>({ status: "idle" });
   const [isClientRequired, setIsClientRequired] = useState(false);
   const [redirectUri, setRedirectUri] = useState<string | null>(null);
@@ -102,9 +106,10 @@ export const useOAuthAuthorize = ({
   }, [pendingAuthorization, fail]);
 
   // Call straight from the click handler: browsers only allow a popup opened during a user gesture,
-  // so it is opened blank first and pointed at the authorize URL once the server returns it.
-  const authorize = useCallback(
-    (params: TCreateAgentVaultOauthAuthorizationDTO) => {
+  // so it is opened blank first and pointed at the authorize URL once the server returns it. `start` returns the
+  // sign-in to open, or null after it has handled an answer that needs more from the user first.
+  const begin = useCallback(
+    (start: () => Promise<{ id: string; authorizeUrl: string } | null>) => {
       stop();
       const attempt = attemptRef.current;
 
@@ -121,35 +126,72 @@ export const useOAuthAuthorize = ({
       popupRef.current = popup;
       setState({ status: "starting" });
 
-      createAuthorization
-        .mutateAsync(params)
-        .then(
-          ({
-            registrationRequired,
-            oauthAdvertised,
-            redirectUri: uri,
-            authorization: createdAuthorization
-          }) => {
-            if (attemptRef.current !== attempt) return;
-            if (registrationRequired || !createdAuthorization) {
-              stop();
-              setIsClientRequired(true);
-              setRedirectUri(uri);
-              setIsOAuthAdvertised(oauthAdvertised);
-              setState({ status: "idle" });
-              return;
-            }
-            popup.location.href = createdAuthorization.authorizeUrl;
-            setState({ status: "pending" });
-            setPendingAuthorization({ id: createdAuthorization.id, attempt });
+      start()
+        .then((createdAuthorization) => {
+          if (attemptRef.current !== attempt) return;
+          if (!createdAuthorization) {
+            stop();
+            setState({ status: "idle" });
+            return;
           }
-        )
+          popup.location.href = createdAuthorization.authorizeUrl;
+          setState({ status: "pending" });
+          setPendingAuthorization({ id: createdAuthorization.id, attempt });
+        })
         .catch((error: unknown) => {
           if (attemptRef.current !== attempt) return;
           fail(serverMessage(error) ?? "Couldn't start the sign-in.");
         });
     },
-    [createAuthorization, fail, stop]
+    [fail, stop]
+  );
+
+  const authorize = useCallback(
+    (params: TCreateAgentVaultOauthAuthorizationDTO) => {
+      begin(async () => {
+        const attempt = attemptRef.current;
+        const {
+          registrationRequired,
+          oauthAdvertised,
+          redirectUri: uri,
+          authorization: createdAuthorization
+        } = await createAuthorization.mutateAsync(params);
+        if (attemptRef.current !== attempt) return null;
+        if (registrationRequired || !createdAuthorization) {
+          setIsClientRequired(true);
+          setRedirectUri(uri);
+          setIsOAuthAdvertised(oauthAdvertised);
+          return null;
+        }
+        return createdAuthorization;
+      });
+    },
+    [begin, createAuthorization]
+  );
+
+  // An OAuth variable's sign-in, which the callback writes into the variable. `prepare` runs once the window is open,
+  // so it can save the variable first. An answer with no link says what the variable needs first, and goes to
+  // onNotReady.
+  const authorizeVariable = useCallback(
+    (
+      prepare: () => Promise<TStartAgentVaultOauthVariableSignInDTO>,
+      onNotReady: (start: TAgentVaultOauthVariableSignInStart) => void
+    ) => {
+      begin(async () => {
+        const attempt = attemptRef.current;
+        const params = await prepare();
+        if (attemptRef.current !== attempt) return null;
+        const start = await startVariableSignIn.mutateAsync(params);
+        if (attemptRef.current !== attempt) return null;
+        setRedirectUri(start.redirectUri);
+        if (!start.authorization) {
+          onNotReady(start);
+          return null;
+        }
+        return start.authorization;
+      });
+    },
+    [begin, startVariableSignIn]
   );
 
   const cancel = useCallback(() => {
@@ -163,6 +205,7 @@ export const useOAuthAuthorize = ({
     isOAuthAdvertised,
     redirectUri,
     authorize,
+    authorizeVariable,
     cancel
   };
 };

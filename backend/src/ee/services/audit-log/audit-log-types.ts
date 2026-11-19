@@ -839,6 +839,7 @@ export enum EventType {
   AGENT_VAULT_VARIABLE_UPDATE = "agent-vault-variable-update",
   AGENT_VAULT_VARIABLE_DELETE = "agent-vault-variable-delete",
   AGENT_VAULT_VARIABLE_VALUE_VIEW = "agent-vault-variable-value-view",
+  AGENT_VAULT_OAUTH_VARIABLE_CONNECT = "agent-vault-oauth-variable-connect",
   AGENT_VAULT_PERSONAL_VALUES_SET = "agent-vault-personal-values-set",
   AGENT_VAULT_PERSONAL_VALUES_DELETE = "agent-vault-personal-values-delete",
   AGENT_VAULT_SKILL_CREATE = "agent-vault-skill-create",
@@ -6774,9 +6775,10 @@ interface AgentVaultServiceCreateEvent {
     // Absent for a database or SSH service.
     hostPattern?: string;
     credentialType: string;
-    // OAuth credentials only.
+    // OAuth credentials only. A service that sends an OAuth variable's sign-in names the variable instead.
     oauthIssuer?: string;
     oauthScopes?: string[];
+    oauthVariable?: { id: string; key: string };
     headerName?: string;
     headerPrefix?: string;
     allowedMethods?: string[] | null;
@@ -6824,9 +6826,11 @@ interface AgentVaultServiceUpdateEvent {
     hookSecretReplaced?: boolean;
     hostPattern?: string;
     credentialType?: string;
-    // Present when the update connected or reauthorized an OAuth credential.
+    // Present when the update connected or reauthorized an OAuth credential, or the variable when it chose an OAuth
+    // variable.
     oauthIssuer?: string;
     oauthScopes?: string[];
+    oauthVariable?: { id: string; key: string };
     headerName?: string;
     headerPrefix?: string;
     allowedMethods?: string[] | null;
@@ -6871,6 +6875,12 @@ interface AgentVaultVariableCreateEvent {
     key: string;
     // global, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
     scope?: string;
+    // text or oauth. Absent on events from before OAuth variables.
+    type?: string;
+    // OAuth variables only: where its sign-in goes. Never a token.
+    oauthIssuer?: string;
+    oauthTokenEndpoint?: string;
+    oauthScopes?: string[];
   };
 }
 
@@ -6883,8 +6893,15 @@ interface AgentVaultVariableUpdateEvent {
     key: string;
     // global, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
     scope?: string;
+    // text or oauth. Absent on events from before OAuth variables.
+    type?: string;
+    // OAuth variables only: where its sign-in goes. Never a token.
+    oauthIssuer?: string;
+    oauthTokenEndpoint?: string;
+    oauthScopes?: string[];
     // Present only when the update changed the key.
     previousKey?: string;
+    // For an OAuth variable: whether its tokens were replaced by an import or removed by a disconnect.
     valueReplaced: boolean;
   };
 }
@@ -6898,6 +6915,25 @@ interface AgentVaultVariableDeleteEvent {
     key: string;
     // global, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
     scope?: string;
+    // text or oauth. Absent on events from before OAuth variables.
+    type?: string;
+    // OAuth variables only: where its sign-in goes. Never a token.
+    oauthIssuer?: string;
+    oauthTokenEndpoint?: string;
+    oauthScopes?: string[];
+  };
+}
+
+// An OAuth variable that got tokens: a sign-in (`sign-in` the first time, `reconnect` when it replaced tokens) or tokens
+// an API caller imported (`import`). Recorded only on success, and never with a token.
+interface AgentVaultOauthVariableConnectEvent {
+  type: EventType.AGENT_VAULT_OAUTH_VARIABLE_CONNECT;
+  metadata: {
+    variableId: string;
+    key: string;
+    method: "sign-in" | "reconnect" | "import";
+    oauthIssuer: string;
+    oauthScopes: string[];
   };
 }
 
@@ -7091,9 +7127,19 @@ interface AgentVaultSkillsDeliveredEvent {
   type: EventType.AGENT_VAULT_SKILLS_DELIVERED;
   metadata: {
     sessionId: string;
-    accessBundleId: string;
-    accessBundleName: string;
-    skills: { skillId: string; skillName: string; version: number; sha256: string }[];
+    // The session's access bundle, when any skill delivered came through it.
+    accessBundleId: string | null;
+    accessBundleName: string | null;
+    skills: {
+      skillId: string;
+      skillName: string;
+      version: number;
+      sha256: string;
+      // Null for a skill the session lists by name or was sent with, rather than one it got through its access bundle.
+      accessBundleId: string | null;
+      accessBundleName: string | null;
+      isInline: boolean;
+    }[];
     // Set when the machine identity in the actor started the session on this user's behalf.
     onBehalfOfUserId?: string;
     onBehalfOfUserName?: string;
@@ -7183,37 +7229,57 @@ interface AgentVaultSessionMintEvent {
     accessBundleId: string | null;
     accessBundleName: string | null;
     expiresAt: string | null;
-    // Set when the session names project services, in the order it named them.
-    namedServices?: { serviceId: string; name: string }[];
-    // Set when an admin sent services inline with the session. Never their values.
-    services?: {
-      serviceId: string;
-      // The name it was sent with, or its first host when it was sent without one.
-      name: string;
-      description?: string | null;
-      serviceType: string;
-      serverUrl?: string;
-      transport?: string;
-      // Absent for a database or SSH service, which reports host, port and database instead.
-      hostPattern?: string;
-      host?: string;
-      port?: number;
-      database?: string;
-      tlsEnabled?: boolean;
-      tlsVerify?: boolean;
-      // Whether the proxy checks the server's certificate against a CA sent with the service rather than the system's.
-      hasTlsCa?: boolean;
-      credentialType: string;
-      headerName?: string;
-      allowedMethods: string[] | null;
-      allowedPathPrefixes: string[] | null;
-      // Absent for every type but MCP. Null when the agent can call every tool.
-      allowedTools?: string[] | null;
-      customHeaderNames: string[];
-      substitutionPlaceholders: string[];
-      // Present only on events recorded before hooks moved off services to their own resource.
-      hookUrl?: string;
-    }[];
+    // Set when the session has skills besides its access bundle's, in the order they were sent, the same way as the
+    // API's. One sent inline also carries the hash and size of its files, never the files.
+    skills?: (
+      | { skillId: string; name: string; isInline: false }
+      | {
+          skillId: string;
+          name: string;
+          isInline: true;
+          description: string;
+          sha256: string;
+          sizeBytes: number;
+          fileCount: number;
+        }
+    )[];
+    // Set when the session has services besides its access bundle's, in the order they were sent, the same way as the
+    // API's. One an admin sent inline also carries what it was sent with, never its values.
+    services?: (
+      | { serviceId: string; name: string; isInline: false }
+      | {
+          serviceId: string;
+          // The name it was sent with, or its first host when it was sent without one.
+          name: string;
+          isInline: true;
+          description?: string | null;
+          serviceType: string;
+          serverUrl?: string;
+          transport?: string;
+          // Absent for a database or SSH service, which reports host, port and database instead.
+          hostPattern?: string;
+          host?: string;
+          port?: number;
+          database?: string;
+          tlsEnabled?: boolean;
+          tlsVerify?: boolean;
+          // Whether the proxy checks the server's certificate against a CA sent with the service rather than the system's.
+          hasTlsCa?: boolean;
+          credentialType: string;
+          headerName?: string;
+          // OAuth only: the OAuth variable whose sign-in the service sends, or the issuer of tokens sent with the session.
+          oauthVariable?: { id: string; key: string };
+          oauthIssuer?: string;
+          allowedMethods: string[] | null;
+          allowedPathPrefixes: string[] | null;
+          // Absent for every type but MCP. Null when the agent can call every tool.
+          allowedTools?: string[] | null;
+          customHeaderNames: string[];
+          substitutionPlaceholders: string[];
+          // Present only on events recorded before hooks moved off services to their own resource.
+          hookUrl?: string;
+        }
+    )[];
     // Set when the session was started with a saved hook.
     hookId?: string;
     hookName?: string;
@@ -9295,6 +9361,7 @@ export type Event =
   | AgentVaultVariableUpdateEvent
   | AgentVaultVariableDeleteEvent
   | AgentVaultVariableValueViewEvent
+  | AgentVaultOauthVariableConnectEvent
   | AgentVaultPersonalValuesSetEvent
   | AgentVaultPersonalValuesDeleteEvent
   | AgentVaultHookCreateEvent

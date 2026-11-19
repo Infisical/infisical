@@ -318,6 +318,7 @@ export enum ProjectPermissionAgentVaultSessionActions {
   EditAny = "edit-any",
   RevokeAny = "revoke-any",
   CreateWithInlineServices = "create-with-inline-services",
+  CreateWithInlineSkills = "create-with-inline-skills",
   CreateWithInlineHook = "create-with-inline-hook"
 }
 
