@@ -458,6 +458,8 @@ export enum EventType {
   REVOKE_CERT = "revoke-cert",
   REQUEST_CERT_REVOCATION = "request-cert-revocation",
   CERT_REVOCATION_FAILED = "cert-revocation-failed",
+  REQUEST_CERT_DELETION = "request-cert-deletion",
+  CERT_DELETION_FAILED = "cert-deletion-failed",
   ASSIGN_CERT_TO_APPLICATION = "assign-cert-to-application",
   GET_CERT_BODY = "get-cert-body",
   GET_CERT_PRIVATE_KEY = "get-cert-private-key",
@@ -3394,6 +3396,9 @@ interface DeleteCert {
     statusAtDeletion: CertStatus;
     applicationId?: string | null;
     applicationName?: string | null;
+    approvalRequestId?: string;
+    requesterName?: string;
+    requesterEmail?: string;
   };
 }
 
@@ -3440,6 +3445,39 @@ interface CertRevocationFailed {
     applicationId: string;
     applicationName?: string | null;
     revocationReason: CrlReason;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
+    error: string;
+  };
+}
+
+interface RequestCertDeletion {
+  type: EventType.REQUEST_CERT_DELETION;
+  metadata: {
+    certId: string;
+    cn: string;
+    friendlyName?: string | null;
+    serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
+    approvalPolicyId: string;
+    approvalPolicyName: string;
+  };
+}
+
+interface CertDeletionFailed {
+  type: EventType.CERT_DELETION_FAILED;
+  metadata: {
+    certId: string;
+    cn: string;
+    friendlyName?: string | null;
+    serialNumber: string;
+    applicationId: string;
+    applicationName?: string | null;
     approvalRequestId: string;
     requesterName: string;
     requesterEmail: string;
@@ -9026,6 +9064,8 @@ export type Event =
   | RevokeCert
   | RequestCertRevocation
   | CertRevocationFailed
+  | RequestCertDeletion
+  | CertDeletionFailed
   | AssignCertToApplication
   | GetCertBody
   | GetCertPrivateKey

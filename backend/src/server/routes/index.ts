@@ -306,6 +306,7 @@ import {
 } from "@app/services/approval-policy/approval-request-dal";
 import { approvalPolicyAutoApprovalDALFactory } from "@app/services/approval-policy/auto-approval/auto-approval-dal";
 import { autoApprovalServiceFactory } from "@app/services/approval-policy/auto-approval/auto-approval-service";
+import { certDeletionApprovalResourceFactory } from "@app/services/approval-policy/cert-deletion/cert-deletion-policy-factory";
 import { certRequestApprovalResourceFactory } from "@app/services/approval-policy/cert-request/cert-request-policy-factory";
 import { certRevocationApprovalResourceFactory } from "@app/services/approval-policy/cert-revocation/cert-revocation-policy-factory";
 import { codeSigningApprovalResourceFactory } from "@app/services/approval-policy/code-signing/code-signing-policy-factory";
@@ -4427,6 +4428,17 @@ export const registerRoutes = async (
   }) as TApprovalResourceRegistry[ApprovalPolicyType];
 
   approvalResources[ApprovalPolicyType.CertRevocation] = certRevocationApprovalResourceFactory({
+    approvalPolicyDAL,
+    certificateService,
+    membershipDAL,
+    membershipRoleDAL,
+    userGroupMembershipDAL,
+    orgDAL,
+    userDAL,
+    groupDAL
+  }) as TApprovalResourceRegistry[ApprovalPolicyType];
+
+  approvalResources[ApprovalPolicyType.CertDeletion] = certDeletionApprovalResourceFactory({
     approvalPolicyDAL,
     certificateService,
     membershipDAL,

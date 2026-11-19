@@ -751,9 +751,13 @@ export const approvalPolicyServiceFactory = ({
       policyType
     );
 
-    // Certificate issuance and revocation only: code signing follows pkiCodeSigning and PAM has its own
+    // Certificate issuance, revocation, and deletion only: code signing follows pkiCodeSigning and PAM has its own
     // product entitlement.
-    if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertRevocation) {
+    if (
+      policyType === ApprovalPolicyType.CertRequest ||
+      policyType === ApprovalPolicyType.CertRevocation ||
+      policyType === ApprovalPolicyType.CertDeletion
+    ) {
       const plan = await licenseService.getPlan(actor.orgId);
       if (!plan.has(PlanFeature.PkiApprovals)) {
         throw new BadRequestError({

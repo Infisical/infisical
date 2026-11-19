@@ -89,6 +89,7 @@ export enum ResourcePermissionCertificateActions {
   Edit = "edit",
   Delete = "delete",
   RequestRevocation = "request-revocation",
+  RequestDeletion = "request-deletion",
   ReadPrivateKey = "read-private-key",
   Import = "import"
 }

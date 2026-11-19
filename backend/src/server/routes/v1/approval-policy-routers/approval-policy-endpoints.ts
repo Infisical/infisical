@@ -28,6 +28,10 @@ import {
   AutoApprovalSiblingsSchema
 } from "@app/services/approval-policy/auto-approval/auto-approval-schemas";
 import {
+  CreateCertDeletionPolicySchema,
+  UpdateCertDeletionPolicySchema
+} from "@app/services/approval-policy/cert-deletion/cert-deletion-policy-schemas";
+import {
   CreateCertRequestPolicySchema,
   UpdateCertRequestPolicySchema
 } from "@app/services/approval-policy/cert-request/cert-request-policy-schemas";
@@ -50,16 +54,19 @@ type TCreatePolicySchema =
   | typeof CreatePamAccessPolicySchema
   | typeof CreateCertRequestPolicySchema
   | typeof CreateCertRevocationPolicySchema
+  | typeof CreateCertDeletionPolicySchema
   | typeof CreateCodeSigningPolicySchema;
 type TUpdatePolicySchema =
   | typeof UpdatePamAccessPolicySchema
   | typeof UpdateCertRequestPolicySchema
   | typeof UpdateCertRevocationPolicySchema
+  | typeof UpdateCertDeletionPolicySchema
   | typeof UpdateCodeSigningPolicySchema;
 
 const PKI_APPROVAL_POLICY_TYPES = new Set<ApprovalPolicyType>([
   ApprovalPolicyType.CertRequest,
   ApprovalPolicyType.CertRevocation,
+  ApprovalPolicyType.CertDeletion,
   ApprovalPolicyType.CertCodeSigning
 ]);
 
