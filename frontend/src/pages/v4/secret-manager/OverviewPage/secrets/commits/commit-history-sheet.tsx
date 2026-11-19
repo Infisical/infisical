@@ -22,6 +22,7 @@ import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
+import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
 import {
   Sheet,
   SheetBody,
@@ -41,23 +42,40 @@ import {
   MinimizeIcon
 } from "lucide-react";
 
-import type { Commit } from "@app/hooks/api/folderCommits/types";
+import type {
+  Commit,
+  CommitWithChanges,
+  RollbackPreview,
+  TFolderCommitChanges
+} from "@app/hooks/api/folderCommits/types";
 import { wasErrorReported } from "@app/hooks/api/reactQuery";
 
 import { errorMessage } from "../../../../access/toast";
 import { copyText } from "../../../../clipboard";
 import { useV4Adapter } from "../../../../data/adapters";
+import type { Scope } from "../../secrets-model";
 import { environmentLabel, Gate } from "../flows/shared";
 import { ActionButton } from "../overview-cells";
 import type { OverlayHostProps } from "../row-actions/types";
 import { toCommitChange } from "./commit-changes";
-import { type CommitResourceChange, type CommitSummary, summarizeChanges } from "./commits-model";
-import { ResourceChangeCard, sortChanges } from "./resource-change-card";
+import {
+  type CommitResourceChange,
+  type CommitSummary,
+  hasHiddenState,
+  sortChanges,
+  summarizeChanges
+} from "./commits-model";
+import { ResourceChangeCard } from "./resource-change-card";
 
 import styles from "./commits.module.css";
 
 const MAX_RESTORE_MESSAGE_LENGTH = 256;
 const PLATFORM_HINT = "Made automatically by Infisical, not by a user.";
+const SYSTEM_TITLES: Record<string, string> = {
+  "Secret Created": "Secret created",
+  "Secret Updated": "Secret updated",
+  "Secret Deleted": "Secret deleted"
+};
 
 type View =
   | { name: "history" }
@@ -85,6 +103,16 @@ const toViewCommit = (commit: Commit): ViewCommit => ({
 const authorName = (commit: ViewCommit) =>
   commit.actorType === "platform" ? "Platform" : commit.actor;
 const shortId = (id: string) => id.substring(0, 8);
+const commitTitle = (message?: string | null) =>
+  message ? (
+    (SYSTEM_TITLES[message] ?? message)
+  ) : (
+    <span className={styles.noMessage}>No message</span>
+  );
+const changeAction = (change: { changeType: string; isUpdate: boolean }) => {
+  if (change.changeType === "delete") return "delete";
+  return change.isUpdate ? "update" : "create";
+};
 const plural = (count: number, singular: string) =>
   `${count} ${count === 1 ? singular : `${singular}s`}`;
 
@@ -96,12 +124,15 @@ const resourceSummary = (summary: CommitSummary) =>
     .filter(Boolean)
     .join(", ");
 
-function ChangeSummary({ summary, showLabels }: { summary: CommitSummary; showLabels?: boolean }) {
-  const kinds = [
+const changeKinds = (summary: CommitSummary) =>
+  [
     { count: summary.addedCount, symbol: "+", label: "added" },
     { count: summary.updatedCount, symbol: "~", label: "updated" },
     { count: summary.deletedCount, symbol: "-", label: "deleted" }
   ].filter((kind) => kind.count > 0);
+
+function ChangeSummary({ summary, showLabels }: { summary: CommitSummary; showLabels?: boolean }) {
+  const kinds = changeKinds(summary);
   if (!kinds.length) return null;
   return (
     <span className={styles.summary}>
@@ -136,9 +167,7 @@ function CommitRow({ commit, onSelect }: { commit: ViewCommit; onSelect: () => v
   return (
     <button type="button" className={styles.commitRow} onClick={onSelect}>
       <span className={styles.commitMain}>
-        <span className={styles.commitMessage}>
-          {commit.message || <span className={styles.noMessage}>No message</span>}
-        </span>
+        <span className={styles.commitMessage}>{commitTitle(commit.message)}</span>
         <span className={styles.meta}>
           <Author commit={commit} />
           <time dateTime={commit.createdAt}>{format(new Date(commit.createdAt), "h:mm a")}</time>
@@ -158,6 +187,100 @@ function BackLink({ label, onClick }: { label: string; onClick: () => void }) {
       <Icon name="chev-left" />
       {label}
     </Button>
+  );
+}
+
+function RestoreMenu({
+  latest,
+  block,
+  onRollBack,
+  onRevert,
+  children
+}: {
+  latest: boolean;
+  block?: string;
+  onRollBack: () => void;
+  onRevert: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <DropdownMenu>
+      <Gate reason={block}>
+        <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+      </Gate>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          disabled={latest}
+          description={
+            latest
+              ? "This is already the latest commit for this folder."
+              : "Discards every change made after this commit."
+          }
+          onSelect={onRollBack}
+        >
+          Roll back to this commit
+        </DropdownMenuItem>
+        <DropdownMenuItem description="Undoes only the changes in this commit." onSelect={onRevert}>
+          Revert changes
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function CommitMeta({
+  commit,
+  envName,
+  path,
+  onCopied
+}: {
+  commit: ViewCommit;
+  envName: string;
+  path: string;
+  onCopied: () => void;
+}) {
+  return (
+    <SheetDescription asChild>
+      <div className={styles.detailMeta}>
+        <span className={styles.meta}>
+          <Author commit={commit} />
+          <time dateTime={commit.createdAt}>
+            {format(new Date(commit.createdAt), "MMM d, yyyy, h:mm a")}
+          </time>
+          <span className={styles.inlineGroup}>
+            <code className={styles.mono}>{shortId(commit.id)}</code>
+            <ActionButton
+              label="Copy commit ID"
+              name="copy"
+              onClick={async () => {
+                if (await copyText(commit.id)) onCopied();
+              }}
+            />
+          </span>
+        </span>
+        <span className={styles.location}>
+          <Badge tone="outline">{envName}</Badge>
+          {path !== "/" && (
+            <span className={styles.path}>
+              <Icon name="folder" size={14} className={styles.titleIcon} />
+              <MiddleTruncate mono keepEnd={24}>
+                {path}
+              </MiddleTruncate>
+            </span>
+          )}
+        </span>
+      </div>
+    </SheetDescription>
+  );
+}
+
+function ChangedCount({ count, summary }: { count: number; summary: CommitSummary }) {
+  const kinds = changeKinds(summary);
+  return (
+    <span className={styles.changedCount}>
+      <span>{`${plural(count, "resource")} ${kinds.length === 1 ? kinds[0].label : "changed"}`}</span>
+      {kinds.length > 1 && <ChangeSummary summary={summary} showLabels />}
+    </span>
   );
 }
 
@@ -189,6 +312,431 @@ function ChangeCards({
     </div>
   );
 }
+
+type CommitGroup = { date: string; commits: ViewCommit[] };
+type RestoreFolder = { path: string; changes: CommitResourceChange[] };
+
+const groupByDate = (commits: ViewCommit[]) =>
+  commits.reduce<CommitGroup[]>((acc, commit) => {
+    const date = format(new Date(commit.createdAt), "MMM d, yyyy");
+    const group = acc.at(-1);
+    if (group?.date === date) group.commits.push(commit);
+    else acc.push({ date, commits: [commit] });
+    return acc;
+  }, []);
+
+const toDetailChanges = (changes: TFolderCommitChanges[], scope: Scope) =>
+  changes
+    .map((change) =>
+      toCommitChange(scope, {
+        id: change.id,
+        type: change.secretVersionId || change.secretKey ? "secret" : "folder",
+        action: changeAction(change),
+        name: change.secretKey ?? change.folderName ?? "Unnamed",
+        versions: change.versions as unknown as { version: number }[]
+      })
+    )
+    .filter((change): change is CommitResourceChange => change !== null);
+
+const toRestoreFolders = (
+  preview: RollbackPreview[],
+  folderId: string | undefined,
+  scope: Scope
+): RestoreFolder[] =>
+  [...preview]
+    .sort((x, y) => Number(y.folderId === folderId) - Number(x.folderId === folderId))
+    .map((item) => ({
+      path: item.folderPath,
+      changes: item.changes
+        .map((change) => {
+          const extra = change as typeof change & {
+            secretKey?: string;
+            folderName?: string;
+            versions?: { version: number }[];
+          };
+          return toCommitChange(
+            { ...scope, path: item.folderPath },
+            {
+              id: change.id,
+              type: change.type,
+              action: change.changeType === "add" ? "create" : change.changeType,
+              name: (change.type === "secret" ? extra.secretKey : extra.folderName) || "Unnamed",
+              versions: extra.versions,
+              isRollback: true
+            }
+          );
+        })
+        .filter((change): change is CommitResourceChange => change !== null)
+    }));
+
+function HistoryToolbar({
+  search,
+  onSearch,
+  author,
+  authors,
+  onAuthor,
+  sort,
+  onSort
+}: {
+  search: string;
+  onSearch: (search: string) => void;
+  author?: string;
+  authors: string[];
+  onAuthor: (author?: string) => void;
+  sort: "asc" | "desc";
+  onSort: (sort: "asc" | "desc") => void;
+}) {
+  return (
+    <>
+      <Input
+        icon="search"
+        className={styles.search}
+        value={search}
+        aria-label="Search commits"
+        placeholder="Search commits, keys, or folders..."
+        onChange={(event) => {
+          onSearch(event.target.value);
+        }}
+        trailing={
+          search ? (
+            <Button variant="ghost" size="icon-xs" iconOnly icon="x" onClick={() => onSearch("")}>
+              Clear search
+            </Button>
+          ) : undefined
+        }
+      />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button layout="trigger" variant="outline">
+            <span className={styles.authorLabel}>{`Author: ${author ?? "Anyone"}`}</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => onAuthor(undefined)}>Anyone</DropdownMenuItem>
+          {authors.map((name) => (
+            <DropdownMenuItem key={name} onSelect={() => onAuthor(name)}>
+              {name}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button layout="trigger" variant="outline">
+            {sort === "desc" ? "Newest first" : "Oldest first"}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => onSort("desc")}>
+            <Icon icon={ArrowDownWideNarrowIcon} />
+            Newest first
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onSort("asc")}>
+            <Icon icon={ArrowUpWideNarrowIcon} />
+            Oldest first
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
+  );
+}
+
+function HistoryGroups({
+  groups,
+  remaining,
+  sort,
+  onSelect,
+  onLoadMore
+}: {
+  groups: CommitGroup[];
+  remaining: number;
+  sort: "asc" | "desc";
+  onSelect: (id: string) => void;
+  onLoadMore: () => void;
+}) {
+  return groups.length ? (
+    <div className={styles.groups}>
+      {groups.map((group) => (
+        <section key={group.date} aria-label={group.date}>
+          <div className={styles.groupHead}>
+            <Icon name="git" size={16} className={styles.titleIcon} />
+            <h3 className={styles.groupDate}>{group.date}</h3>
+            <span className={styles.groupCount}>{plural(group.commits.length, "commit")}</span>
+          </div>
+          <div className={styles.rail}>
+            {group.commits.map((item) => (
+              <CommitRow key={item.id} commit={item} onSelect={() => onSelect(item.id)} />
+            ))}
+          </div>
+        </section>
+      ))}
+      {remaining > 0 && (
+        <div className={styles.loadMore}>
+          <Button variant="outline" onClick={onLoadMore}>
+            {`Load ${remaining} ${sort === "desc" ? "older" : "newer"} commits`}
+          </Button>
+        </div>
+      )}
+    </div>
+  ) : (
+    <EmptyState icon="git" title="No commits found" />
+  );
+}
+
+function RestoreFolderList({
+  folders,
+  selectedPath,
+  onSelect
+}: {
+  folders: RestoreFolder[];
+  selectedPath: string;
+  onSelect: (path: string) => void;
+}) {
+  const folderButton = (item: RestoreFolder) => (
+    <button
+      key={item.path}
+      type="button"
+      className={styles.folderButton}
+      data-current={item.path === selectedPath || undefined}
+      aria-pressed={item.path === selectedPath}
+      onClick={() => onSelect(item.path)}
+    >
+      <span className={styles.folderName}>
+        <Icon name="folder" size={16} />
+        <span className={styles.truncate}>{item.path}</span>
+      </span>
+      {item.changes.length > 0 && <Badge tone="soft">{item.changes.length}</Badge>}
+    </button>
+  );
+  return (
+    <nav className={styles.folderList} aria-label="Folders to restore">
+      {folderButton(folders[0])}
+      <div className={styles.folderListLabel}>Child folders to restore</div>
+      {folders.slice(1).map(folderButton)}
+    </nav>
+  );
+}
+
+function DetailHeading({
+  title,
+  latest,
+  block,
+  onRollBack,
+  onRevert
+}: {
+  title: ReactNode;
+  latest: boolean;
+  block?: string;
+  onRollBack: () => void;
+  onRevert: () => void;
+}) {
+  const menu = { latest, block, onRollBack, onRevert };
+  return (
+    <div className={styles.detailHead}>
+      <SheetTitle className={styles.detailTitle}>{title}</SheetTitle>
+      <span className={styles.restoreWide}>
+        <RestoreMenu {...menu}>
+          <Button layout="trigger" variant="outline" size="xs" disabled={Boolean(block)}>
+            Restore options
+          </Button>
+        </RestoreMenu>
+      </span>
+      <span className={styles.restoreNarrow}>
+        <RestoreMenu {...menu}>
+          <Button variant="ghost" size="icon-sm" iconOnly icon="more" disabled={Boolean(block)}>
+            Restore options
+          </Button>
+        </RestoreMenu>
+      </span>
+    </div>
+  );
+}
+
+function ExpandAllButton({
+  everyFull,
+  onToggle
+}: {
+  everyFull: boolean;
+  onToggle: (full: boolean) => void;
+}) {
+  return (
+    <Button variant="ghost" size="xs" onClick={() => onToggle(!everyFull)}>
+      <Icon icon={everyFull ? MinimizeIcon : MaximizeIcon} />
+      {everyFull ? "Collapse all to summary" : "Expand all to full state"}
+    </Button>
+  );
+}
+
+function RestoreMessage({
+  message,
+  onMessage,
+  block,
+  onRestore
+}: {
+  message: string;
+  onMessage: (message: string) => void;
+  block?: string;
+  onRestore: () => void;
+}) {
+  return (
+    <>
+      <Field label="Restore message" wide>
+        <Input
+          value={message}
+          placeholder="Why are you restoring this commit?"
+          maxLength={MAX_RESTORE_MESSAGE_LENGTH}
+          onChange={(event) => onMessage(event.target.value)}
+        />
+      </Field>
+      <Gate reason={block}>
+        <Button disabled={Boolean(block)} onClick={onRestore}>
+          Restore
+        </Button>
+      </Gate>
+    </>
+  );
+}
+
+function RevertDialog({
+  open,
+  onOpenChange,
+  onConfirm
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent tone="danger" icon="history" confirmText="revert">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Revert changes</AlertDialogTitle>
+          <AlertDialogDescription>
+            Restores the previous version of every resource this commit touched.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={onConfirm}>
+            Revert changes
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function RestoreDialog({
+  open,
+  onOpenChange,
+  commitId,
+  deep,
+  onConfirm
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  commitId: string;
+  deep: boolean;
+  onConfirm: () => void;
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent tone="danger" icon="history">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{`Restore commit ${shortId(commitId)}?`}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {deep
+              ? "Returns this folder and its child folders to this commit."
+              : "Returns this folder to this commit."}{" "}
+            Later changes are permanently removed.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={onConfirm}>
+            Restore
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function RestoreLayout({
+  folders,
+  selectedPath,
+  onSelect,
+  children
+}: {
+  folders: RestoreFolder[];
+  selectedPath: string;
+  onSelect: (path: string) => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className={styles.restoreLayout}>
+      {folders.length > 0 && (
+        <RestoreFolderList folders={folders} selectedPath={selectedPath} onSelect={onSelect} />
+      )}
+      <div className={styles.restoreChanges}>{children}</div>
+    </div>
+  );
+}
+
+const NO_ENVIRONMENT = { value: "", label: "" };
+
+const historyList = (
+  data: { commits: Commit[]; total: number } | undefined,
+  author: string | undefined
+) => {
+  const loaded = (data?.commits ?? []).map(toViewCommit);
+  return {
+    authors: [...new Set(loaded.map(authorName))].sort((a, b) => a.localeCompare(b)),
+    groups: groupByDate(loaded.filter((commit) => !author || authorName(commit) === author)),
+    remaining: Math.max((data?.total ?? 0) - loaded.length, 0)
+  };
+};
+
+const toDetailCommit = (details: CommitWithChanges["changes"]): ViewCommit => ({
+  id: details.id,
+  message: details.message,
+  actor: details.actorMetadata?.name ?? "Unknown",
+  actorType: details.actorType,
+  createdAt: details.createdAt,
+  summary: undefined
+});
+
+const restoreState = ({
+  folders,
+  path,
+  fallbackPath,
+  message,
+  rollbackBlock
+}: {
+  folders: RestoreFolder[];
+  path: string;
+  fallbackPath: string;
+  message: string;
+  rollbackBlock?: string;
+}) => {
+  const selected = folders.find((item) => item.path === path) ??
+    folders[0] ?? { path: fallbackPath, changes: [] };
+  let restoreBlock = rollbackBlock;
+  if (!restoreBlock && !folders.some((item) => item.changes.length > 0))
+    restoreBlock = "Nothing to restore";
+  if (!restoreBlock && !message.trim()) restoreBlock = "Enter a restore message";
+  return { selected, changes: sortChanges(selected.changes), restoreBlock };
+};
+
+const missingContent = (onBack: () => void) => [
+  <SheetHeader key="header">
+    <BackLink label="Commit history" onClick={onBack} />
+    <SheetTitle className="sr-only">Commit details</SheetTitle>
+  </SheetHeader>,
+  <SheetBody key="body">
+    <EmptyState icon="git" title="Commit not found" />
+  </SheetBody>
+];
 
 export function CommitHistorySheet({
   onClose,
@@ -225,7 +773,7 @@ export function CommitHistorySheet({
     }
   }
 
-  const environment = shown ?? scope.visibleEnvironments[0] ?? { value: "", label: "" };
+  const environment = shown ?? scope.visibleEnvironments[0] ?? NO_ENVIRONMENT;
   const folder = {
     projectId: scope.project,
     environment: environment.value,
@@ -239,42 +787,12 @@ export function CommitHistorySheet({
     sort,
     enabled: open
   });
-  const loaded = (history.data?.commits ?? []).map(toViewCommit);
-  const authors = [...new Set(loaded.map(authorName))].sort((a, b) => a.localeCompare(b));
-  const visible = loaded.filter((commit) => !author || authorName(commit) === author);
-  const groups = visible.reduce<{ date: string; commits: ViewCommit[] }[]>((acc, commit) => {
-    const date = format(new Date(commit.createdAt), "MMM d, yyyy");
-    const group = acc.at(-1);
-    if (group?.date === date) group.commits.push(commit);
-    else acc.push({ date, commits: [commit] });
-    return acc;
-  }, []);
-  const remaining = Math.max((history.data?.total ?? 0) - loaded.length, 0);
+  const { authors, groups, remaining } = historyList(history.data, author);
 
   const commitId = view.name === "history" ? "" : view.commitId;
   const details = adapter.useCommitDetails(scope.project, commitId).data?.changes;
-  const commit: ViewCommit | undefined = details && {
-    id: details.id,
-    message: details.message,
-    actor: details.actorMetadata?.name ?? "Unknown",
-    actorType: details.actorType,
-    createdAt: details.createdAt,
-    summary: undefined
-  };
-  const commitChanges = (details?.changes ?? [])
-    .map((change) =>
-      toCommitChange(changeScope, {
-        id: change.id,
-        type: change.folderVersionId || change.folderName ? "folder" : "secret",
-        action:
-          change.changeType === "add"
-            ? "create"
-            : (change.changeType as "create" | "update" | "delete"),
-        name: change.secretKey ?? change.folderName ?? "Unnamed",
-        versions: change.versions as unknown as { version: number }[]
-      })
-    )
-    .filter((change): change is CommitResourceChange => change !== null);
+  const commit = details && toDetailCommit(details);
+  const commitChanges = toDetailChanges(details?.changes ?? [], changeScope);
   const preview = adapter.useRollbackPreview({
     projectId: scope.project,
     folderId: view.name === "restore" ? (details?.folderId ?? "") : "",
@@ -333,17 +851,7 @@ export function CommitHistorySheet({
     }, failed("Failed to restore commit"));
   };
 
-  const missing = [
-    <SheetHeader key="header">
-      <BackLink label="Commit history" onClick={backToHistory} />
-      <SheetTitle className="sr-only">Commit details</SheetTitle>
-    </SheetHeader>,
-    <SheetBody key="body">
-      <EmptyState icon="git" title="Commit not found" />
-    </SheetBody>
-  ];
-
-  let content: ReactNode = missing;
+  let content: ReactNode = missingContent(backToHistory);
   if (view.name === "history")
     content = [
       <SheetHeader key="header">
@@ -358,177 +866,60 @@ export function CommitHistorySheet({
         </SheetDescription>
       </SheetHeader>,
       <SheetSubheader key="subheader" className={styles.toolbar}>
-        <Input
-          icon="search"
-          className={styles.search}
-          value={search}
-          aria-label="Search commits"
-          placeholder="Search commits, keys, or folders..."
-          onChange={(event) => {
-            setSearch(event.target.value);
-          }}
-          trailing={
-            search ? (
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                iconOnly
-                icon="x"
-                onClick={() => setSearch("")}
-              >
-                Clear search
-              </Button>
-            ) : undefined
-          }
+        <HistoryToolbar
+          search={search}
+          onSearch={setSearch}
+          author={author}
+          authors={authors}
+          onAuthor={setAuthor}
+          sort={sort}
+          onSort={setSort}
         />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button layout="trigger" variant="outline">
-              <span className={styles.authorLabel}>{`Author: ${author ?? "Anyone"}`}</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => setAuthor(undefined)}>Anyone</DropdownMenuItem>
-            {authors.map((name) => (
-              <DropdownMenuItem key={name} onSelect={() => setAuthor(name)}>
-                {name}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button layout="trigger" variant="outline">
-              {sort === "desc" ? "Newest first" : "Oldest first"}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => setSort("desc")}>
-              <Icon icon={ArrowDownWideNarrowIcon} />
-              Newest first
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setSort("asc")}>
-              <Icon icon={ArrowUpWideNarrowIcon} />
-              Oldest first
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </SheetSubheader>,
       <SheetBody key="body">
-        {groups.length ? (
-          <div className={styles.groups}>
-            {groups.map((group) => (
-              <section key={group.date} aria-label={group.date}>
-                <div className={styles.groupHead}>
-                  <Icon name="git" size={16} className={styles.titleIcon} />
-                  <h3 className={styles.groupDate}>{group.date}</h3>
-                  <span className={styles.groupCount}>
-                    {plural(group.commits.length, "commit")}
-                  </span>
-                </div>
-                <div className={styles.rail}>
-                  {group.commits.map((item) => (
-                    <CommitRow key={item.id} commit={item} onSelect={() => openDetails(item.id)} />
-                  ))}
-                </div>
-              </section>
-            ))}
-            {remaining > 0 && (
-              <div className={styles.loadMore}>
-                <Button variant="outline" onClick={() => history.fetchNextPage()}>
-                  {`Load ${remaining} ${sort === "desc" ? "older" : "newer"} commits`}
-                </Button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <EmptyState icon="git" title="No commits found" />
-        )}
+        <HistoryGroups
+          groups={groups}
+          remaining={remaining}
+          sort={sort}
+          onSelect={openDetails}
+          onLoadMore={() => history.fetchNextPage()}
+        />
       </SheetBody>
     ];
 
   if (view.name === "details" && commit) {
     const changes = sortChanges(commitChanges);
-    const summary = summarizeChanges(commitChanges);
-    const everyFull = changes.length > 0 && changes.every((change) => fullState[change.id]);
-    const latest = Boolean(details?.isLatest);
+    const expandable = changes.filter(hasHiddenState);
     content = [
-      <SheetHeader key="header">
+      <SheetHeader key="header" className={styles.detailHeader}>
         <BackLink label="Commit history" onClick={backToHistory} />
-        <div className={styles.detailHead}>
-          <div className={styles.detailTitle}>
-            <SheetTitle>
-              {commit.message || <span className={styles.noMessage}>No message</span>}
-            </SheetTitle>
-            <SheetDescription className={styles.meta}>
-              <Author commit={commit} />
-              <time dateTime={commit.createdAt}>
-                {format(new Date(commit.createdAt), "MMM d, yyyy, h:mm a")}
-              </time>
-              <span className={styles.inlineGroup}>
-                <code className={styles.mono}>{shortId(commit.id)}</code>
-                <ActionButton
-                  label="Copy commit ID"
-                  name="copy"
-                  onClick={async () => {
-                    if (await copyText(commit.id)) {
-                      onToast("ok", { title: "Commit ID copied to clipboard" });
-                    }
-                  }}
-                />
-              </span>
-              <Badge tone="outline">{envName}</Badge>
-              <code className={styles.mono}>{scope.path}</code>
-            </SheetDescription>
-          </div>
-          <DropdownMenu>
-            <Gate reason={rollbackBlock}>
-              <DropdownMenuTrigger asChild>
-                <Button layout="trigger" variant="outline" disabled={Boolean(rollbackBlock)}>
-                  Restore options
-                </Button>
-              </DropdownMenuTrigger>
-            </Gate>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                disabled={latest}
-                description={
-                  latest
-                    ? "This is already the latest commit for this folder."
-                    : "Discards every change made after this commit."
-                }
-                onSelect={() => openRestore(commit.id)}
-              >
-                Roll back to this commit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                description="Undoes only the changes in this commit."
-                onSelect={() => setRevertOpen(true)}
-              >
-                Revert changes
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <DetailHeading
+          title={commitTitle(commit.message)}
+          latest={Boolean(details?.isLatest)}
+          block={rollbackBlock}
+          onRollBack={() => openRestore(commit.id)}
+          onRevert={() => setRevertOpen(true)}
+        />
+        <CommitMeta
+          commit={commit}
+          envName={envName}
+          path={scope.path}
+          onCopied={() => onToast("ok", { title: "Commit ID copied to clipboard" })}
+        />
       </SheetHeader>,
-      changes.length > 0 && (
+      changes.length > 1 && (
         <SheetSubheader key="subheader" className={styles.changedBar}>
-          <span className={styles.changedCount}>
-            <span>{`${plural(changes.length, "resource")} changed`}</span>
-            <ChangeSummary summary={summary} showLabels />
-          </span>
-          <Button
-            variant="ghost"
-            size="xs"
-            onClick={() =>
-              setFullState(
-                everyFull ? {} : Object.fromEntries(changes.map((change) => [change.id, true]))
-              )
-            }
-          >
-            <Icon icon={everyFull ? MinimizeIcon : MaximizeIcon} />
-            {everyFull ? "Collapse all to summary" : "Expand all to full state"}
-          </Button>
+          <ChangedCount count={changes.length} summary={summarizeChanges(commitChanges)} />
+          {expandable.length > 1 && (
+            <ExpandAllButton
+              everyFull={expandable.every((change) => fullState[change.id])}
+              onToggle={(full) =>
+                setFullState(
+                  full ? Object.fromEntries(expandable.map((change) => [change.id, true])) : {}
+                )
+              }
+            />
+          )}
         </SheetSubheader>
       ),
       <SheetBody key="body">
@@ -548,58 +939,14 @@ export function CommitHistorySheet({
   }
 
   if (view.name === "restore" && commit) {
-    const folders = [...(preview ?? [])]
-      .sort(
-        (x, y) =>
-          Number(y.folderId === details?.folderId) - Number(x.folderId === details?.folderId)
-      )
-      .map((item) => ({
-        path: item.folderPath,
-        changes: item.changes
-          .map((change) => {
-            const extra = change as typeof change & {
-              secretKey?: string;
-              folderName?: string;
-              versions?: { version: number }[];
-            };
-            return toCommitChange(
-              { ...changeScope, path: item.folderPath },
-              {
-                id: change.id,
-                type: change.type,
-                action: change.changeType === "add" ? "create" : change.changeType,
-                name: (change.type === "secret" ? extra.secretKey : extra.folderName) || "Unnamed",
-                versions: extra.versions,
-                isRollback: true
-              }
-            );
-          })
-          .filter((change): change is CommitResourceChange => change !== null)
-      }));
-    const nested = folders.slice(1);
-    const selected = folders.find((item) => item.path === (deep ? selectedPath : scope.path)) ??
-      folders[0] ?? { path: scope.path, changes: [] };
-    const changes = sortChanges(selected.changes);
-    const hasAnyChanges = folders.some((item) => item.changes.length > 0);
-    const folderButton = (item: (typeof folders)[number]) => (
-      <button
-        key={item.path}
-        type="button"
-        className={styles.folderButton}
-        data-current={item.path === selected.path || undefined}
-        aria-pressed={item.path === selected.path}
-        onClick={() => setSelectedPath(item.path)}
-      >
-        <span className={styles.folderName}>
-          <Icon name="folder" size={16} />
-          <span className={styles.truncate}>{item.path}</span>
-        </span>
-        {item.changes.length > 0 && <Badge tone="soft">{item.changes.length}</Badge>}
-      </button>
-    );
-    let restoreBlock = rollbackBlock;
-    if (!restoreBlock && !hasAnyChanges) restoreBlock = "Nothing to restore";
-    if (!restoreBlock && !message.trim()) restoreBlock = "Enter a restore message";
+    const folders = toRestoreFolders(preview ?? [], details?.folderId, changeScope);
+    const { selected, changes, restoreBlock } = restoreState({
+      folders,
+      path: deep ? selectedPath : scope.path,
+      fallbackPath: scope.path,
+      message,
+      rollbackBlock
+    });
     content = [
       <SheetHeader key="header">
         <BackLink label="Commit details" onClick={() => openDetails(commit.id)} />
@@ -620,47 +967,35 @@ export function CommitHistorySheet({
         />
       </SheetSubheader>,
       <SheetBody key="body">
-        <div className={styles.restoreLayout}>
-          {deep && nested.length > 0 && (
-            <nav className={styles.folderList} aria-label="Folders to restore">
-              {folderButton(folders[0])}
-              <div className={styles.folderListLabel}>Child folders to restore</div>
-              {nested.map(folderButton)}
-            </nav>
+        <RestoreLayout
+          folders={deep && folders.length > 1 ? folders : []}
+          selectedPath={selected.path}
+          onSelect={setSelectedPath}
+        >
+          {changes.length ? (
+            <ChangeCards
+              changes={changes}
+              collapsed={collapsed}
+              fullState={fullState}
+              onToggleCollapse={toggle(setCollapsed)}
+              onToggleFullState={toggle(setFullState)}
+            />
+          ) : (
+            <EmptyState
+              icon="git"
+              title="Nothing to restore"
+              description="This folder already matches its state at this commit."
+            />
           )}
-          <div className={styles.restoreChanges}>
-            {changes.length ? (
-              <ChangeCards
-                changes={changes}
-                collapsed={collapsed}
-                fullState={fullState}
-                onToggleCollapse={toggle(setCollapsed)}
-                onToggleFullState={toggle(setFullState)}
-              />
-            ) : (
-              <EmptyState
-                icon="git"
-                title="Nothing to restore"
-                description="This folder already matches its state at this commit."
-              />
-            )}
-          </div>
-        </div>
+        </RestoreLayout>
       </SheetBody>,
       <SheetFooter key="footer" className={styles.restoreFooter}>
-        <Field label="Restore message" wide>
-          <Input
-            value={message}
-            placeholder="Why are you restoring this commit?"
-            maxLength={MAX_RESTORE_MESSAGE_LENGTH}
-            onChange={(event) => setMessage(event.target.value)}
-          />
-        </Field>
-        <Gate reason={restoreBlock}>
-          <Button disabled={Boolean(restoreBlock)} onClick={() => setConfirmOpen(true)}>
-            Restore
-          </Button>
-        </Gate>
+        <RestoreMessage
+          message={message}
+          onMessage={setMessage}
+          block={restoreBlock}
+          onRestore={() => setConfirmOpen(true)}
+        />
       </SheetFooter>
     ];
   }
@@ -677,51 +1012,14 @@ export function CommitHistorySheet({
           {content}
         </SheetContent>
       </Sheet>
-      <AlertDialog open={revertOpen} onOpenChange={setRevertOpen}>
-        <AlertDialogContent tone="danger" icon="history" confirmText="revert">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Revert changes</AlertDialogTitle>
-            <AlertDialogDescription>
-              Restores the previous version of every resource this commit touched.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={() => {
-                revert();
-              }}
-            >
-              Revert changes
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent tone="danger" icon="history">
-          <AlertDialogHeader>
-            <AlertDialogTitle>{`Restore commit ${shortId(commit?.id ?? "")}?`}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deep
-                ? "Returns this folder and its child folders to this commit."
-                : "Returns this folder to this commit."}{" "}
-              Later changes are permanently removed.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={() => {
-                rollback();
-              }}
-            >
-              Restore
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <RevertDialog open={revertOpen} onOpenChange={setRevertOpen} onConfirm={revert} />
+      <RestoreDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        commitId={commit?.id ?? ""}
+        deep={deep}
+        onConfirm={rollback}
+      />
     </>
   );
 }
