@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectType, TMemberships } from "@app/db/schemas";
@@ -12,7 +12,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { PgSqlLock } from "@app/keystore/keystore";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TGenericPermission } from "@app/lib/types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { lockMembershipsById, TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -44,6 +44,7 @@ import {
 import { TAgentVaultMemberDALFactory } from "./agent-vault-member-dal";
 import {
   AGENT_VAULT_ROLE_ASSIGNMENT,
+  findAgentVaultMemberRole,
   isAgentVaultSelf,
   resolveAgentVaultMemberRoles,
   TAgentVaultResolvedRole
@@ -223,10 +224,18 @@ export const agentVaultMembershipServiceFactory = ({
     projectId: string,
     ctx: TGenericPermission,
     change: TMemberChange,
-    types: AgentVaultMemberType[]
+    types: AgentVaultMemberType[],
+    identityIds: string[] = []
   ) => {
     const { permission, hasRole } = await getActorPermission(projectId, ctx);
     assertCanChangeActorTypes(permission, change, types);
+    // A role can limit its identity rules to some identities, so each one named is checked, as the generic routes do.
+    identityIds.forEach((identityId) =>
+      ForbiddenError.from(permission).throwUnlessCan(
+        MEMBER_CHANGE_ACTIONS[change].identity,
+        subject(ProjectPermissionSub.Identity, { identityId })
+      )
+    );
     return { permission, isAdmin: hasRole(ProjectMembershipRole.Admin) };
   };
 
@@ -571,12 +580,12 @@ export const agentVaultMembershipServiceFactory = ({
     });
   };
 
-  // Read outside the write's transaction: the boundary check reads roles and the org, and the write re-reads under lock.
-  // Custom roles by their slug, the way the boundary check names them.
-  const currentRolesOf = async (projectId: string, actors: TAgentVaultActorRef[]) => {
-    const memberships = await findMembershipsForActors(projectId, actors);
+  // Read outside the write's transaction: the boundary check reads roles and the org, and the write reads them again
+  // under its lock (assertRolesUnchanged). Custom roles by their slug, the way the boundary check names them.
+  const currentRolesOf = async (projectId: string, actors: TAgentVaultActorRef[], tx?: Knex) => {
+    const memberships = await findMembershipsForActors(projectId, actors, tx);
     const membershipIds = [...memberships.values()].map((membership) => membership.id);
-    const roles = membershipIds.length ? await membershipRoleDAL.findRolesByMembershipIds(membershipIds) : [];
+    const roles = membershipIds.length ? await membershipRoleDAL.findRolesByMembershipIds(membershipIds, tx) : [];
     return actors.flatMap((actor) => {
       const membership = memberships.get(actorKey(actor));
       if (!membership) return [];
@@ -589,6 +598,24 @@ export const agentVaultMembershipServiceFactory = ({
         }
       ];
     });
+  };
+
+  // The admin and boundary checks ran on roles read before the write's lock. If another change got in since, this write
+  // would skip those checks for the roles it now finds (an admin promoted in the meantime, say), so it starts over. An
+  // admin passes both checks whatever the members hold, so callers skip this for one.
+  const assertRolesUnchanged = async (
+    projectId: string,
+    actors: TAgentVaultActorRef[],
+    checked: { actor: TAgentVaultActorRef; roles: string[] }[],
+    tx: Knex
+  ) => {
+    const byActor = (entries: { actor: TAgentVaultActorRef; roles: string[] }[]) =>
+      new Map(entries.map(({ actor, roles }) => [actorKey(actor), [...roles].sort().join(",")]));
+    const before = byActor(checked);
+    const now = byActor(await currentRolesOf(projectId, actors, tx));
+    if (before.size !== now.size || [...before].some(([key, roles]) => now.get(key) !== roles)) {
+      throw new ConflictError({ message: "A member's roles changed while this request was running. Try again." });
+    }
   };
 
   const roleRowsFor = (membershipIds: string[], resolved: TAgentVaultResolvedRole[]) =>
@@ -608,7 +635,8 @@ export const agentVaultMembershipServiceFactory = ({
       projectId,
       ctx,
       "add",
-      memberTypesOf({ ...ids, emails: [...emails, ...usernames] })
+      memberTypesOf({ ...ids, emails: [...emails, ...usernames] }),
+      ids.machineIdentityIds
     );
     const resolved = await resolveAgentVaultMemberRoles(roleDAL, { projectId, slugs: roles });
     const slugs = resolved.map((entry) => entry.slug);
@@ -699,7 +727,13 @@ export const agentVaultMembershipServiceFactory = ({
     ctx,
     ...ids
   }: TUpdateAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultWrittenMember> => {
-    const { permission, isAdmin } = await checkCanChangeMembers(projectId, ctx, "edit", memberTypesOf(ids));
+    const { permission, isAdmin } = await checkCanChangeMembers(
+      projectId,
+      ctx,
+      "edit",
+      memberTypesOf(ids),
+      ids.machineIdentityIds
+    );
     const resolved = await resolveAgentVaultMemberRoles(roleDAL, { projectId, slugs: roles });
     const slugs = resolved.map((entry) => entry.slug);
     const givesAdmin = slugs.includes(ProjectMembershipRole.Admin);
@@ -743,6 +777,7 @@ export const agentVaultMembershipServiceFactory = ({
       // Before the roles are read, not only around the admin count: two changes for one member that both
       // read the old role would each insert their own, leaving the member with two roles.
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("project", projectId)]);
+      if (!isAdmin) await assertRolesUnchanged(projectId, actors, current, tx);
       const existing = await findMembershipsForActors(projectId, actors, tx);
       const held = actors.filter((actor) => existing.has(actorKey(actor)));
       const heldMembershipIds = held.map((actor) => existing.get(actorKey(actor))!.id);
@@ -762,14 +797,18 @@ export const agentVaultMembershipServiceFactory = ({
           );
         }
       }
-      const keptOf = (membershipId: string) =>
-        currentRoles.filter(
-          (row) => row.membershipId === membershipId && row.customRoleId && bundleRoles.has(row.customRoleId)
-        );
       const keyOfRole = ({ role, customRoleId }: { role: string; customRoleId?: string | null }) =>
         customRoleId ? `custom:${customRoleId}` : role;
-      const wantedOf = (membershipId: string) =>
-        new Set([...resolved.map(keyOfRole), ...keptOf(membershipId).map(keyOfRole)]);
+      const requestedKeys = new Set(resolved.map(keyOfRole));
+      const isKeptBundleRole = (row: { customRoleId?: string | null }) =>
+        Boolean(row.customRoleId && bundleRoles.has(row.customRoleId));
+      // A role the request names again keeps its row as it is, temporary access included, so resending a member's roles
+      // to add one never makes an expired or time-limited role permanent. A bundle's role stays too when it's kept.
+      const keptOf = (membershipId: string) =>
+        currentRoles.filter(
+          (row) => row.membershipId === membershipId && (requestedKeys.has(keyOfRole(row)) || isKeptBundleRole(row))
+        );
+      const wantedOf = (membershipId: string) => new Set([...requestedKeys, ...keptOf(membershipId).map(keyOfRole)]);
       const alreadyInRole = new Set(
         heldMembershipIds.filter((membershipId) => {
           const heldRoles = new Set(currentRoles.filter((el) => el.membershipId === membershipId).map(keyOfRole));
@@ -808,6 +847,7 @@ export const agentVaultMembershipServiceFactory = ({
       const rolesOf = (membershipId: string) => [
         ...slugs,
         ...keptOf(membershipId)
+          .filter(isKeptBundleRole)
           .map((row) => bundleRoles.get(row.customRoleId!)!)
           .filter((slug) => !slugs.includes(slug))
       ];
@@ -832,7 +872,13 @@ export const agentVaultMembershipServiceFactory = ({
     ctx,
     ...ids
   }: TRevokeAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultAuditedActor> => {
-    const { permission, isAdmin } = await checkCanChangeMembers(projectId, ctx, "remove", memberTypesOf(ids));
+    const { permission, isAdmin } = await checkCanChangeMembers(
+      projectId,
+      ctx,
+      "remove",
+      memberTypesOf(ids),
+      ids.machineIdentityIds
+    );
 
     const actors = await resolveNamedActors({ ...ids, emails: [] }, ctx.actorOrgId);
 
@@ -872,6 +918,9 @@ export const agentVaultMembershipServiceFactory = ({
     const nameByKey = await resolveActorNames(actors);
 
     const written = await membershipDAL.transaction(async (tx) => {
+      // The lock a role change takes, so a promotion can't land between the checks above and this removal.
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("project", projectId)]);
+      if (!isAdmin) await assertRolesUnchanged(projectId, actors, current, tx);
       const existing = await findMembershipsForActors(projectId, actors, tx);
       const skipped = actors.filter((actor) => !existing.has(actorKey(actor)));
       const held = actors.filter((actor) => existing.has(actorKey(actor)));
@@ -919,11 +968,18 @@ export const agentVaultMembershipServiceFactory = ({
 
     return { members: written.removed, skipped: written.skipped };
   };
+
+  // The current slug of the Member role the role migration made, found by its id, so a renamed or suffixed slug still
+  // reads as `member` in the deprecated `role` field and another role's slug never does. Null in a project without one.
+  const findMemberRoleSlug = async (projectId: string) =>
+    (await findAgentVaultMemberRole(roleDAL, projectId))?.slug ?? null;
+
   return {
     listProductMembers,
     listAvailableProductMembers,
     addProductMembers,
     updateProductMemberRoles,
-    revokeProductMembers
+    revokeProductMembers,
+    findMemberRoleSlug
   };
 };

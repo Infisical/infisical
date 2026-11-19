@@ -1,9 +1,10 @@
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, subject as caslSubject } from "@casl/ability";
 import { unpackRules } from "@casl/ability/extra";
 import { Knex } from "knex";
 
 import {
   AccessScope,
+  ActionProjectType,
   ProjectMembershipRole,
   ProjectType,
   TAgentVaultServiceCustomHeaders,
@@ -43,6 +44,7 @@ import { hasPostgresConstraintViolation, hasPostgresErrorCode } from "@app/lib/e
 import { shake } from "@app/lib/fn";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { assertAgentVaultAdminOnlyChange } from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
@@ -167,7 +169,13 @@ import {
   TUpdateAccessBundleDTO,
   TUpdateServiceDTO
 } from "./agent-vault-access-bundle-types";
-import { bundleRolePermissions, ensureBundleRole, giveBundleRole, takeBundleRole } from "./agent-vault-bundle-role-fns";
+import {
+  anyActorHoldsAdmin,
+  bundleRolePermissions,
+  ensureBundleRole,
+  giveBundleRole,
+  takeBundleRole
+} from "./agent-vault-bundle-role-fns";
 import {
   assertNativeBasicHasUsername,
   isStoredSecretReplaced,
@@ -2719,29 +2727,55 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
   // The deprecated grant endpoints work on the bundle's role (see agent-vault-bundle-role-fns). Changing who holds a
   // role is a member change, so they take edit on this bundle and what the members API takes to change a role for each
-  // kind of actor.
+  // kind of actor: edit on users and groups, and on each identity named, since a role can limit its identity rules to
+  // some identities.
   const requireGrantChange = (
     permission: TAgentVaultPermission["permission"],
     accessBundleId: string,
-    kinds: { users: boolean; groups: boolean; identities: boolean }
+    named: { users: boolean; groups: boolean; identityIds: string[] }
   ) => {
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.Edit,
       bundleSubject(accessBundleId)
     );
-    if (kinds.users) {
+    if (named.users) {
       ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
     }
-    if (kinds.groups) {
+    if (named.groups) {
       ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionGroupActions.Edit, ProjectPermissionSub.Groups);
     }
-    if (kinds.identities) {
+    named.identityIds.forEach((identityId) =>
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionIdentityActions.Edit,
-        ProjectPermissionSub.Identity
-      );
-    }
+        caslSubject(ProjectPermissionSub.Identity, { identityId })
+      )
+    );
   };
+
+  const isProjectAdmin = async ({ projectId, ctx }: { projectId: string; ctx: TGetAccessBundleDTO["ctx"] }) =>
+    (
+      await permissionService.getProjectPermission({
+        actor: ctx.actor,
+        actorId: ctx.actorId,
+        projectId,
+        actorAuthMethod: ctx.actorAuthMethod,
+        actorOrgId: ctx.actorOrgId,
+        actionProjectType: ActionProjectType.AgentVault
+      })
+    ).hasRole(ProjectMembershipRole.Admin);
+
+  // Giving or taking a bundle's role changes the target's roles, so only an admin can do it to an admin, as on the
+  // members API. Read under the write's lock, so a promotion can't slip in after the check.
+  const assertAdminTargetsAllowed = async (
+    { projectId, actors, callerIsAdmin }: { projectId: string; actors: TGrantActor[]; callerIsAdmin: boolean },
+    tx: Knex
+  ) =>
+    assertAgentVaultAdminOnlyChange({
+      project: { type: ProjectType.AgentVault },
+      hasRole: (role) => callerIsAdmin && role === ProjectMembershipRole.Admin,
+      givesAdmin: false,
+      touchesAdmin: await anyActorHoldsAdmin({ membershipDAL, membershipRoleDAL }, { projectId, actors }, tx)
+    });
 
   // Giving or taking the bundle's role is giving or taking a role, so it is bounded the way the members API bounds one:
   // assign-role on each kind of member, and on the legacy privilege system everything the role grants. The role is a
@@ -2854,8 +2888,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     requireGrantChange(permission, bundle.id, {
       users: userIds.length > 0,
       groups: groupIds.length > 0,
-      identities: machineIdentityIds.length > 0
+      identityIds: machineIdentityIds
     });
+    const callerIsAdmin = await isProjectAdmin(rest);
 
     const actors = actorsOf({ userIds, groupIds, machineIdentityIds });
     // The role boundary lets someone who can assign roles give one to themselves, so the caller can't name themselves
@@ -2887,6 +2922,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         tx
       );
       if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
+      await assertAdminTargetsAllowed({ projectId: rest.projectId, actors, callerIsAdmin }, tx);
       const role = await ensureBundleRole({ roleDAL, agentVaultAccessBundleDAL }, locked, tx);
       return giveBundleRole(
         { membershipDAL, membershipRoleDAL },
@@ -2913,8 +2949,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     requireGrantChange(permission, bundle.id, {
       users: userIds.length > 0,
       groups: groupIds.length > 0,
-      identities: machineIdentityIds.length > 0
+      identityIds: machineIdentityIds
     });
+    const callerIsAdmin = await isProjectAdmin(rest);
 
     const actors = actorsOf({ userIds, groupIds, machineIdentityIds });
     const nameByKey = await resolveActorNames(actors);
@@ -2938,6 +2975,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       );
       if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
       if (!locked.grantRoleId) return { removed: [] as TGrantActor[], skipped: actors };
+      await assertAdminTargetsAllowed({ projectId: rest.projectId, actors, callerIsAdmin }, tx);
       return takeBundleRole(
         { membershipDAL, membershipRoleDAL },
         { projectId: rest.projectId, roleId: locked.grantRoleId, actors },

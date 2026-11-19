@@ -1,4 +1,5 @@
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
+import { agentVaultMemberRoleIdOf } from "@app/ee/services/agent-vault-member/agent-vault-member-role-fns";
 
 import {
   convertAgentVaultMemberRows,
@@ -329,6 +330,124 @@ describe("Agent Vault through the generic membership routes", () => {
       });
       expect(updated.statusCode, updated.payload).toBe(200);
       expect(await roleSlugsOf(membershipId)).toEqual([bundleRoleSlug, await memberRoleSlug()].sort());
+    });
+  });
+
+  describe("the Agent Vault members API's role limits hold here too", () => {
+    const NO_ACCESS_ALONE = "No Access can't be given together with another role.";
+
+    test("No Access can't sit beside another role, on the identity, user and group routes", async () => {
+      const mixed = [{ role: ProjectMembershipRole.NoAccess }, { role: "membership-manager" }];
+
+      const identityId = await createOrgIdentity("av-generic-limits");
+      const added = await asAdmin("POST", identityPath(identityId), { roles: mixed });
+      expect(added.statusCode).toBe(400);
+      expect(added.json().message).toBe(NO_ACCESS_ALONE);
+
+      const membershipId = await createProjectUser(ProjectMembershipRole.NoAccess);
+      const updated = await asAdmin("PATCH", `/api/v1/projects/${projectId}/memberships/${membershipId}`, {
+        roles: mixed
+      });
+      expect(updated.statusCode).toBe(400);
+      expect(updated.json().message).toBe(NO_ACCESS_ALONE);
+
+      const restoreLicense = overrideLicenseFeatures({ groups: true });
+      try {
+        const group = await asAdmin("POST", "/api/v1/groups", {
+          name: `av-generic-limits-group-${Date.now()}`,
+          role: OrgMembershipRole.NoAccess
+        });
+        expect(group.statusCode, group.payload).toBe(200);
+        const groupAdded = await asAdmin(
+          "POST",
+          `/api/v1/projects/${projectId}/memberships/groups/${group.json().id as string}`,
+          { roles: mixed }
+        );
+        expect(groupAdded.statusCode).toBe(400);
+        expect(groupAdded.json().message).toBe(NO_ACCESS_ALONE);
+      } finally {
+        restoreLicense();
+      }
+    });
+
+    test("a member holds at most 10 roles", async () => {
+      const slugs: string[] = [];
+      for (let i = 0; i < 11; i += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        const role = await asAdmin("POST", `/api/v1/projects/${projectId}/roles`, {
+          slug: `generic-limit-${i}-${Date.now()}`,
+          name: `generic-limit-${i}`,
+          permissions: [{ subject: "agent-vault-sessions", action: ["read"] }]
+        });
+        expect(role.statusCode, role.payload).toBe(200);
+        slugs.push(role.json().role.slug as string);
+      }
+      const identityId = await createOrgIdentity("av-generic-ten");
+      const added = await asAdmin("POST", identityPath(identityId), { roles: [{ role: slugs[0] }] });
+      expect(added.statusCode, added.payload).toBe(200);
+
+      const tooMany = await asAdmin("PATCH", identityPath(identityId), { roles: slugs.map((role) => ({ role })) });
+      expect(tooMany.statusCode).toBe(400);
+      expect(tooMany.json().message).toBe("A member can have at most 10 roles.");
+      const membership = await projectMembershipOf({ actorIdentityId: identityId });
+      expect(await roleSlugsOf(membership.id)).toEqual([slugs[0]]);
+    });
+  });
+
+  describe("the deprecated role field names the Member role by its id", () => {
+    const deprecatedRoleIn = async (inProjectId: string, identityId: string) => {
+      const listed = await asAdmin("GET", `/api/v1/agent-vault/members?projectId=${inProjectId}&limit=100`);
+      expect(listed.statusCode, listed.payload).toBe(200);
+      return (listed.json().members as { id: string; role: string; roles: string[] }[]).find(
+        (member) => member.id === identityId
+      );
+    };
+
+    test("a renamed Member role still reads as member", async () => {
+      const identityId = await createOrgIdentity("av-generic-renamed");
+      const added = await asAdmin("POST", "/api/v1/agent-vault/members", {
+        projectId,
+        machineIdentityIds: [identityId],
+        roles: [ProjectMembershipRole.Member]
+      });
+      expect(added.statusCode, added.payload).toBe(200);
+
+      const memberRole = TableName.Role;
+      const { slug } = (await testDb(memberRole).where({ id: agentVaultMemberRoleIdOf(projectId) }).first()) as {
+        slug: string;
+      };
+      try {
+        await testDb(memberRole).where({ id: agentVaultMemberRoleIdOf(projectId) }).update({ slug: "renamed-member" });
+        expect(await deprecatedRoleIn(projectId, identityId)).toMatchObject({
+          role: ProjectMembershipRole.Member,
+          roles: ["renamed-member"]
+        });
+      } finally {
+        await testDb(memberRole).where({ id: agentVaultMemberRoleIdOf(projectId) }).update({ slug });
+      }
+    });
+
+    test("another role with the slug member-role reads as itself", async () => {
+      const bare = await createAgentVaultProject({ authToken: adminToken, name: `av-generic-lookalike-${Date.now()}` });
+      try {
+        const role = await asAdmin("POST", `/api/v1/projects/${bare}/roles`, {
+          slug: "member-role",
+          name: "Looks like Member",
+          permissions: [{ subject: "agent-vault-sessions", action: ["read"] }]
+        });
+        expect(role.statusCode, role.payload).toBe(200);
+        const identityId = await createOrgIdentity("av-generic-lookalike");
+        const added = await asAdmin("POST", "/api/v1/agent-vault/members", {
+          projectId: bare,
+          machineIdentityIds: [identityId],
+          roles: ["member-role"]
+        });
+        expect(added.statusCode, added.payload).toBe(200);
+        expect(added.json().members[0]).toMatchObject({ role: "member-role" });
+        expect(await deprecatedRoleIn(bare, identityId)).toMatchObject({ role: "member-role", roles: ["member-role"] });
+      } finally {
+        await deleteAgentVaultProject({ authToken: adminToken, projectId: bare });
+      }
     });
   });
 });

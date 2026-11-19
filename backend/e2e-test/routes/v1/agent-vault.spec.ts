@@ -12031,6 +12031,186 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
+    test("changing a member's roles takes edit on each identity named, and only an admin changes an admin's", async () => {
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle(`id-scope-${unique()}`);
+      const [allowed, denied] = [
+        await createOrgIdentity(`av-id-scope-allowed-${unique()}`),
+        await createOrgIdentity(`av-id-scope-denied-${unique()}`)
+      ];
+      const editor = await createMemberIdentity(`id-scope-editor-${unique()}`);
+      const bundleMembersUrl = `/api/v1/agent-vault/access-bundles/${bundle.id}/members`;
+      const grant = (identityId: string) => editor.as("POST", bundleMembersUrl, { machineIdentityIds: [identityId] });
+      const ONLY_AN_ADMIN = "Only an Agent Vault admin can change or remove another admin.";
+      try {
+        const added = await inject("POST", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [allowed.id, denied.id],
+          roles: [ProjectMembershipRole.NoAccess]
+        });
+        expect(added.statusCode, added.payload).toBe(200);
+        // Everything a grant takes, with edit on one identity only.
+        const role = await createAgentVaultRole(projectId, `id-scope-${unique()}`, [
+          ...SESSION_RULES,
+          {
+            subject: "agent-vault-access-bundles",
+            action: ["read", "use", "edit"],
+            conditions: { accessBundleId: bundle.id }
+          },
+          { subject: "identity", action: ["read", "assign-role"] },
+          { subject: "identity", action: ["edit"], conditions: { identityId: allowed.id } }
+        ]);
+        await setMemberRoles({ machineIdentityIds: [editor.id] }, [role.slug]);
+
+        expect((await grant(denied.id)).statusCode).toBe(403);
+        expect(await grantRows(bundle.id, { actorIdentityId: denied.id })).toHaveLength(0);
+        const changed = await editor.as("PATCH", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [denied.id],
+          roles: [role.slug]
+        });
+        expect(changed.statusCode).toBe(403);
+        expect(await projectRolesOf(projectId, denied.id)).toEqual([
+          expect.objectContaining({ role: ProjectMembershipRole.NoAccess })
+        ]);
+
+        const granted = await grant(allowed.id);
+        expect(granted.statusCode, granted.payload).toBe(200);
+
+        // An admin's roles are an admin's to change, through the old endpoints too.
+        const membership = await testDb("memberships")
+          .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorIdentityId: allowed.id })
+          .first();
+        await testDb("membership_roles").insert({ membershipId: membership.id, role: ProjectMembershipRole.Admin });
+        const revoked = await editor.as("DELETE", bundleMembersUrl, { machineIdentityIds: [allowed.id] });
+        expect(revoked.statusCode).toBe(403);
+        expect(revoked.json().message).toBe(ONLY_AN_ADMIN);
+        expect(await grantRows(bundle.id, { actorIdentityId: allowed.id })).toHaveLength(1);
+
+        expect((await inject("DELETE", bundleMembersUrl, { machineIdentityIds: [allowed.id] })).statusCode).toBe(200);
+        const regranted = await grant(allowed.id);
+        expect(regranted.statusCode).toBe(403);
+        expect(regranted.json().message).toBe(ONLY_AN_ADMIN);
+        expect(await grantRows(bundle.id, { actorIdentityId: allowed.id })).toHaveLength(0);
+      } finally {
+        await editor.cleanup();
+        await deleteOrgIdentity(allowed.id);
+        await deleteOrgIdentity(denied.id);
+      }
+    });
+
+    test("adding a role leaves the member's other roles as they were, time limits included", async () => {
+      const projectId = await getProjectId();
+      const [timed, extra] = [
+        await createAgentVaultRole(projectId, `keep-timed-${unique()}`, SESSION_RULES),
+        await createAgentVaultRole(projectId, `keep-extra-${unique()}`, SESSION_RULES)
+      ];
+      const identity = await createOrgIdentity(`av-keep-roles-${unique()}`);
+      try {
+        const added = await inject("POST", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [identity.id],
+          roles: [timed.slug]
+        });
+        expect(added.statusCode, added.payload).toBe(200);
+        const membership = await testDb("memberships")
+          .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorIdentityId: identity.id })
+          .first();
+        // Given for a time through the generic routes, and already over.
+        const endedAt = new Date(Date.now() - 3_600_000);
+        await testDb("membership_roles").where({ membershipId: membership.id, customRoleId: timed.id }).update({
+          isTemporary: true,
+          temporaryMode: "relative",
+          temporaryRange: "1h",
+          temporaryAccessStartTime: new Date(endedAt.getTime() - 3_600_000),
+          temporaryAccessEndTime: endedAt
+        });
+
+        // What the dashboard's Assigned To sends: every role the member holds, and the new one.
+        const updated = await inject("PATCH", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [identity.id],
+          roles: [timed.slug, extra.slug]
+        });
+        expect(updated.statusCode, updated.payload).toBe(200);
+        const rows = await testDb("membership_roles")
+          .where({ membershipId: membership.id })
+          .select("customRoleId", "isTemporary", "temporaryAccessEndTime");
+        expect(rows).toHaveLength(2);
+        expect(rows).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ customRoleId: timed.id, isTemporary: true, temporaryAccessEndTime: endedAt }),
+            expect.objectContaining({ customRoleId: extra.id, isTemporary: false, temporaryAccessEndTime: null })
+          ])
+        );
+      } finally {
+        await deleteOrgIdentity(identity.id);
+      }
+    });
+
+    test("a role change or removal refuses when the member's roles changed after it checked them", async () => {
+      const projectId = await getProjectId();
+      const identity = await createOrgIdentity(`av-stale-roles-${unique()}`);
+      const editor = await createMemberIdentity(`stale-editor-${unique()}`);
+      try {
+        const added = await inject("POST", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [identity.id],
+          roles: [ProjectMembershipRole.NoAccess]
+        });
+        expect(added.statusCode, added.payload).toBe(200);
+        const role = await createAgentVaultRole(projectId, `stale-editor-${unique()}`, [
+          ...SESSION_RULES,
+          { subject: "identity", action: ["read", "edit", "delete", "assign-role"] }
+        ]);
+        await setMemberRoles({ machineIdentityIds: [editor.id] }, [role.slug]);
+        const membership = await testDb("memberships")
+          .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorIdentityId: identity.id })
+          .first();
+
+        const changes = [
+          () =>
+            editor.as("PATCH", "/api/v1/agent-vault/members", { machineIdentityIds: [identity.id], roles: [role.slug] }),
+          () => editor.as("DELETE", "/api/v1/agent-vault/members", { machineIdentityIds: [identity.id] })
+        ];
+        for (const change of changes) {
+          // An admin promotes the member while the editor's change waits for the project's member-change lock.
+          // eslint-disable-next-line no-await-in-loop
+          const trx = await testDb.transaction();
+          let pending: ReturnType<typeof change> | undefined;
+          try {
+            // eslint-disable-next-line no-await-in-loop
+            const { rows } = await trx.raw("select pg_backend_pid() as pid");
+            // eslint-disable-next-line no-await-in-loop
+            await trx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("project", projectId)]);
+            // eslint-disable-next-line no-await-in-loop
+            const [promotion] = await trx("membership_roles")
+              .insert({ membershipId: membership.id, role: ProjectMembershipRole.Admin })
+              .returning("id");
+            pending = change();
+            // eslint-disable-next-line no-await-in-loop
+            await waitUntilBlockedBy(rows[0].pid);
+            // eslint-disable-next-line no-await-in-loop
+            await trx.commit();
+
+            // eslint-disable-next-line no-await-in-loop
+            const res = await pending;
+            expect(res.statusCode).toBe(409);
+            expect(res.json().message).toBe("A member's roles changed while this request was running. Try again.");
+            // eslint-disable-next-line no-await-in-loop
+            await testDb("membership_roles").where({ id: promotion.id }).delete();
+          } catch (err) {
+            // eslint-disable-next-line no-await-in-loop
+            if (!trx.isCompleted()) await trx.rollback();
+            // eslint-disable-next-line no-await-in-loop
+            await pending?.catch(() => undefined);
+            throw err;
+          }
+        }
+        expect(await projectRolesOf(projectId, identity.id)).toEqual([
+          expect.objectContaining({ role: ProjectMembershipRole.NoAccess })
+        ]);
+      } finally {
+        await editor.cleanup();
+        await deleteOrgIdentity(identity.id);
+      }
+    });
+
     test("two revokes for one member at once leave them No Access, not without a role", async () => {
       const projectId = await getProjectId();
       const [first, second] = [

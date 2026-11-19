@@ -18,6 +18,7 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import {
   assertAgentVaultAdminOnlyChange,
+  assertAgentVaultRoleLimits,
   filterRolesNeedingPrivilegeBoundary,
   resolveMembershipRoleSlugs,
   rolesGiveAdmin
@@ -109,6 +110,7 @@ export const newProjectMembershipIdentityFactory = ({
       }
     }
 
+    assertAgentVaultRoleLimits({ project, roles: dto.data.roles });
     assertAgentVaultAdminOnlyChange({
       project,
       hasRole,
@@ -217,6 +219,7 @@ export const newProjectMembershipIdentityFactory = ({
       identityId: dto.selector.identityId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    assertAgentVaultRoleLimits({ project, roles: dto.data.roles });
     assertAgentVaultAdminOnlyChange({
       project,
       hasRole,

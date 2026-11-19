@@ -143,6 +143,21 @@ export const giveBundleRole = async (
   return { added, skipped };
 };
 
+// Whether any of the actors holds Admin on their project membership.
+export const anyActorHoldsAdmin = async (
+  deps: Pick<TBundleRoleDeps, "membershipDAL" | "membershipRoleDAL">,
+  { projectId, actors }: { projectId: string; actors: TBundleRoleActor[] },
+  tx: Knex
+) => {
+  const membershipIds = [...new Set((await projectMembershipsOf(deps, { projectId, actors }, tx)).values())];
+  if (!membershipIds.length) return false;
+  const adminRows = await deps.membershipRoleDAL.find(
+    { role: ProjectMembershipRole.Admin, $in: { membershipId: membershipIds } },
+    { tx }
+  );
+  return adminRows.length > 0;
+};
+
 // Takes the role from each actor holding it. One left with no role at all gets No Access, since a membership needs one.
 export const takeBundleRole = async (
   deps: Pick<TBundleRoleDeps, "membershipDAL" | "membershipRoleDAL">,

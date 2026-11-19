@@ -714,7 +714,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         accessBundleId: req.params.accessBundleId,
         ...req.query
       });
-      return { members: members.map(withDeprecatedRole), totalCount };
+      const memberRoleSlug = await server.services.agentVaultMembership.findMemberRoleSlug(projectId);
+      return { members: members.map(withDeprecatedRole(memberRoleSlug)), totalCount };
     }
   });
 

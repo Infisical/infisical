@@ -24,6 +24,7 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
   assertAgentVaultAdminOnlyChange,
+  assertAgentVaultRoleLimits,
   filterRolesNeedingPrivilegeBoundary,
   resolveMembershipRoleSlugs,
   rolesGiveAdmin
@@ -135,6 +136,7 @@ export const newProjectMembershipUserFactory = ({
       }
     }
 
+    assertAgentVaultRoleLimits({ project, roles: dto.data.roles });
     assertAgentVaultAdminOnlyChange({
       project,
       hasRole,
@@ -288,6 +290,7 @@ export const newProjectMembershipUserFactory = ({
       userId: dto.selector.userId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    assertAgentVaultRoleLimits({ project, roles: dto.data.roles });
     assertAgentVaultAdminOnlyChange({
       project,
       hasRole,

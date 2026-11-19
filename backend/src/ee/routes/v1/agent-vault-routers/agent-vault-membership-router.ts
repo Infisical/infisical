@@ -59,7 +59,8 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         ...query,
         ctx: actorContext(req)
       });
-      return { members: members.map(withDeprecatedRole), totalCount };
+      const memberRoleSlug = await server.services.agentVaultMembership.findMemberRoleSlug(projectId);
+      return { members: members.map(withDeprecatedRole(memberRoleSlug)), totalCount };
     }
   });
 
@@ -121,6 +122,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         ...body,
         ctx: actorContext(req)
       });
+      const memberRoleSlug = await server.services.agentVaultMembership.findMemberRoleSlug(projectId);
 
       await Promise.all(
         members.map((member) =>
@@ -132,7 +134,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
               type: EventType.AGENT_VAULT_MEMBER_ADD,
               metadata: {
                 ...auditActorFields(member),
-                role: deprecatedRoleOf(member.roles),
+                role: deprecatedRoleOf(member.roles, memberRoleSlug),
                 roles: member.roles
               }
             }
@@ -145,13 +147,13 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
           event: PostHogEventTypes.AgentVaultProductMemberAdded,
           properties: {
             memberType: member.type,
-            role: telemetryRoleOf(member.roles),
+            role: telemetryRoleOf(member.roles, memberRoleSlug),
             roleCount: member.roles.length
           }
         })
       );
 
-      return { members: members.map(withDeprecatedRole), skipped };
+      return { members: members.map(withDeprecatedRole(memberRoleSlug)), skipped };
     }
   });
 
@@ -182,6 +184,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         ...body,
         ctx: actorContext(req)
       });
+      const memberRoleSlug = await server.services.agentVaultMembership.findMemberRoleSlug(projectId);
 
       await Promise.all(
         members.map((member) =>
@@ -193,7 +196,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
               type: EventType.AGENT_VAULT_MEMBER_UPDATE,
               metadata: {
                 ...auditActorFields(member),
-                role: deprecatedRoleOf(member.roles),
+                role: deprecatedRoleOf(member.roles, memberRoleSlug),
                 roles: member.roles
               }
             }
@@ -206,13 +209,13 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
           event: PostHogEventTypes.AgentVaultProductMemberUpdated,
           properties: {
             memberType: member.type,
-            role: telemetryRoleOf(member.roles),
+            role: telemetryRoleOf(member.roles, memberRoleSlug),
             roleCount: member.roles.length
           }
         })
       );
 
-      return { members: members.map(withDeprecatedRole), skipped };
+      return { members: members.map(withDeprecatedRole(memberRoleSlug)), skipped };
     }
   });
 

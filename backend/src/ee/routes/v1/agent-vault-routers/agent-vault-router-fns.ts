@@ -1,7 +1,6 @@
 import { FastifyRequest } from "fastify";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
-import { AGENT_VAULT_MEMBER_ROLE_SLUG } from "@app/ee/services/agent-vault-member/agent-vault-member-role-fns";
 import {
   AgentVaultHttpMethod,
   AgentVaultMcpTransport,
@@ -105,21 +104,24 @@ export const serviceTransformationNamesOf = (service: {
 
 // The single `role` that clients, audit readers and analytics knew when a member had one role, admin or member. The
 // Member role the role migration made reads as member again, and a member holding neither gets their first role.
-export const deprecatedRoleOf = (roles: string[]) => {
+// memberRoleSlug is that role's current slug (findMemberRoleSlug), null in a project without one.
+export const deprecatedRoleOf = (roles: string[], memberRoleSlug: string | null) => {
   if (roles.includes(ProjectMembershipRole.Admin)) return ProjectMembershipRole.Admin;
-  if (roles.includes(AGENT_VAULT_MEMBER_ROLE_SLUG)) return ProjectMembershipRole.Member;
+  if (memberRoleSlug && roles.includes(memberRoleSlug)) return ProjectMembershipRole.Member;
   return roles[0] ?? "";
 };
 
 // Analytics takes the built-in values and `custom` for anything else: a custom role's slug is something a user typed,
 // with no bound on how many there are.
-export const telemetryRoleOf = (roles: string[]) => {
-  const role = deprecatedRoleOf(roles);
+export const telemetryRoleOf = (roles: string[], memberRoleSlug: string | null) => {
+  const role = deprecatedRoleOf(roles, memberRoleSlug);
   const builtIn: string[] = [ProjectMembershipRole.Admin, ProjectMembershipRole.Member, ProjectMembershipRole.NoAccess];
   return builtIn.includes(role) ? role : ProjectMembershipRole.Custom;
 };
 
-export const withDeprecatedRole = <T extends { roles: string[] }>(member: T) => ({
-  ...member,
-  role: deprecatedRoleOf(member.roles)
-});
+export const withDeprecatedRole =
+  (memberRoleSlug: string | null) =>
+  <T extends { roles: string[] }>(member: T) => ({
+    ...member,
+    role: deprecatedRoleOf(member.roles, memberRoleSlug)
+  });

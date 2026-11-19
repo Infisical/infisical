@@ -70,14 +70,9 @@ export const agentVaultNoSuchRoleMessage = (slug: string) =>
 
 export type TAgentVaultResolvedRole = { slug: string; role: string; customRoleId?: string };
 
-/**
- * The membership_roles rows for a list of role slugs: built-in ones as they are, custom ones by their id. No Access
- * means no access, so it can't sit beside another role.
- */
-export const resolveAgentVaultMemberRoles = async (
-  roleDAL: Pick<TRoleDALFactory, "find" | "findById">,
-  { projectId, slugs }: { projectId: string; slugs: string[] }
-): Promise<TAgentVaultResolvedRole[]> => {
+// The limits on one member's roles, wherever an Agent Vault member's roles are set. No Access means no access, so it
+// can't sit beside another role.
+export const assertAgentVaultRoleSetLimits = (slugs: string[]) => {
   const unique = [...new Set(slugs)];
   if (!unique.length) throw new BadRequestError({ message: "Give each member at least one role." });
   if (unique.length > AGENT_VAULT_MAX_MEMBER_ROLES) {
@@ -86,6 +81,15 @@ export const resolveAgentVaultMemberRoles = async (
   if (unique.includes(ProjectMembershipRole.NoAccess) && unique.length > 1) {
     throw new BadRequestError({ message: "No Access can't be given together with another role." });
   }
+};
+
+// The membership_roles rows for a list of role slugs: built-in ones as they are, custom ones by their id.
+export const resolveAgentVaultMemberRoles = async (
+  roleDAL: Pick<TRoleDALFactory, "find" | "findById">,
+  { projectId, slugs }: { projectId: string; slugs: string[] }
+): Promise<TAgentVaultResolvedRole[]> => {
+  assertAgentVaultRoleSetLimits(slugs);
+  const unique = [...new Set(slugs)];
 
   const customSlugs = unique.filter(
     (slug) => !AGENT_VAULT_BUILT_IN_ROLES.includes(slug) && slug !== AGENT_VAULT_MEMBER_ROLE_ALIAS

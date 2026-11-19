@@ -137,7 +137,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
                     type: EventType.AGENT_VAULT_MEMBER_ADD,
                     metadata: {
                       ...auditActorFields(member),
-                      role: deprecatedRoleOf(member.roles),
+                      role: deprecatedRoleOf(member.roles, null),
                       roles: member.roles
                     }
                   }
@@ -146,7 +146,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
                   event: PostHogEventTypes.AgentVaultProductMemberAdded,
                   properties: {
                     memberType: AgentVaultMemberType.User,
-                    role: telemetryRoleOf(member.roles),
+                    role: telemetryRoleOf(member.roles, null),
                     roleCount: member.roles.length
                   }
                 });

@@ -132,11 +132,17 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   identities add or promote an admin. On top of that, only an admin can give the admin role or change or remove an
   admin (`assertAdminOnlyChange`), so a custom role that manages members can't make or unmake one.
 - **Members take a list of roles** (`roles`, at most `AGENT_VAULT_MAX_MEMBER_ROLES`, resolved by
-  `resolveAgentVaultMemberRoles`): admin, no-access or a custom role's slug, and No Access only alone. The deprecated
-  `role` field still takes admin or member, where member is the migrated `member-role`, and keeps the member's bundle
-  roles (`keepBundleRoles`), since it never touched grants. Responses carry `roles` and the deprecated `role`
-  (`withDeprecatedRole`), which reads admin or member whenever the member holds one of them so old clients keep working.
-  The generic project membership routes read `member` and `viewer` for an Agent Vault project as `member-role` too
+  `resolveAgentVaultMemberRoles`): admin, no-access or a custom role's slug, and No Access only alone. The generic
+  membership routes apply the same limits (`assertAgentVaultRoleLimits`), so neither can save a set the other refuses.
+  A role change keeps the row of every role it names again, temporary access included. A non-admin's change or removal
+  re-reads the targets' roles under the project's `LastAdminGuard` lock and answers 409 if they changed since its admin
+  and boundary checks, which an admin passes whatever the targets hold.
+  The deprecated `role` field still takes admin or member, where member is the Member role the migration made, and keeps
+  the member's bundle roles (`keepBundleRoles`), since it never touched grants. Responses carry `roles` and the
+  deprecated `role` (`withDeprecatedRole`), which reads admin or member whenever the member holds one of them so old
+  clients keep working. It finds the Member role by its derived id (`findMemberRoleSlug`), never by slug: the migration
+  may have suffixed it, an admin may rename it, and a project made since can hold an unrelated `member-role`.
+  The generic project membership routes read `member` and `viewer` for an Agent Vault project as the Member role too
   (`withAgentVaultMemberAlias` in `membership-fns.ts`): a raw `member` row grants nothing there now.
 - **`create-with-inline-skills` on sessions is held by admin and the migrated Member role.** A skill sent with a
   session carries instructions, not credentials or hosts, so Member always could send one; it is an action so a role can
@@ -170,7 +176,8 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   /access-bundles/:id/members` (and `/members/available`) give, take and list the bundle's role (`grantRoleId`,
   `agent-vault-bundle-role-fns.ts`): `ensureBundleRole` makes `<bundle> users` (read and use on that bundle) the first
   time one is needed, and taking the last role from a membership leaves it No Access, since a membership needs a role.
-  They need bundle `edit` plus `edit` on each kind of member named, and member `read` to list. Each locks the bundle
+  They need bundle `edit` plus `edit` on users and groups and on each identity named, and member `read` to list, and
+  only an admin can give one to or take one from an admin (`assertAdminTargetsAllowed`). Each locks the bundle
   row first, so two calls can't make two roles and the dedupe read inside it is authoritative. They are hidden from the
   API reference and go after 2027-01-04 with the role helpers.
 - **The bundle's creator gets its role when their own roles can't use it** (`createAccessBundle`), so whoever built a

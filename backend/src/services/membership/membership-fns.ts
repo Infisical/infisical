@@ -12,6 +12,7 @@ import {
 import { PlanProduct, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   agentVaultNoSuchRoleMessage,
+  assertAgentVaultRoleSetLimits,
   findAgentVaultMemberRole
 } from "@app/ee/services/agent-vault-member/agent-vault-member-role-fns";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
@@ -281,6 +282,19 @@ export const assertAgentVaultAdminOnlyChange = ({
       ? "Only an Agent Vault admin can give the admin role."
       : "Only an Agent Vault admin can change or remove another admin."
   });
+};
+
+// The members API's limits on one member's roles (assertAgentVaultRoleSetLimits), so a generic route can't save a set the
+// members API and the dashboard would refuse.
+export const assertAgentVaultRoleLimits = ({
+  project,
+  roles
+}: {
+  project: { type?: string | null } | undefined | null;
+  roles: { role: string }[];
+}) => {
+  if (project?.type !== ProjectType.AgentVault) return;
+  assertAgentVaultRoleSetLimits(roles.map((el) => el.role));
 };
 
 export const rolesGiveAdmin = (roles: { role: string }[]) =>

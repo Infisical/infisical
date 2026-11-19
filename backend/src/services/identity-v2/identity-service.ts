@@ -53,6 +53,7 @@ import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import {
   assertAgentVaultAdminOnlyChange,
+  assertAgentVaultRoleLimits,
   assertProductWillRetainAdmin,
   customRolesNeedRbacPlan,
   filterRolesNeedingPrivilegeBoundary,
@@ -182,6 +183,7 @@ export const identityV2ServiceFactory = ({
           });
         }
       }
+      assertAgentVaultRoleLimits({ project, roles: data.roles });
       assertAgentVaultAdminOnlyChange({
         project,
         hasRole,

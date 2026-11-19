@@ -18,6 +18,7 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
   assertAgentVaultAdminOnlyChange,
+  assertAgentVaultRoleLimits,
   filterRolesNeedingPrivilegeBoundary,
   resolveMembershipRoleSlugs,
   rolesGiveAdmin
@@ -100,6 +101,7 @@ export const newProjectMembershipGroupFactory = ({
     if (!orgMembership)
       throw new BadRequestError({ message: `Group ${dto.data.groupId} is missing organization membership` });
 
+    assertAgentVaultRoleLimits({ project, roles: dto.data.roles });
     assertAgentVaultAdminOnlyChange({
       project,
       hasRole,
@@ -197,6 +199,7 @@ export const newProjectMembershipGroupFactory = ({
       groupId: dto.selector.groupId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    assertAgentVaultRoleLimits({ project, roles: dto.data.roles });
     assertAgentVaultAdminOnlyChange({
       project,
       hasRole,
