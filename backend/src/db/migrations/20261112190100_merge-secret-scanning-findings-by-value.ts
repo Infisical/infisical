@@ -11,6 +11,7 @@ const RESOURCE_BATCH_SIZE = 500;
 const FINDING_BATCH_SIZE = 5_000;
 const BATCH_STATEMENT_TIMEOUT_MS = 60_000;
 const ALTER_LOCK_TIMEOUT_MS = 10_000;
+const LAST_DETECTED_AT_CHECK = "secret_scanning_findings_last_detected_at_not_null";
 
 type TMergeScope = { sql: string; bindings: Knex.RawBinding[] };
 
@@ -183,11 +184,27 @@ export async function up(knex: Knex): Promise<void> {
     lastResourceId = resourceIds[resourceIds.length - 1];
   }
 
-  // Rows saved while this ran got the column's default, so this only covers a row no batch could give a location.
+  // SET NOT NULL scans the table under an ACCESS EXCLUSIVE lock unless a valid check already proves it. The check goes
+  // in NOT VALID, which holds that lock only briefly, and is validated after commit under SHARE UPDATE EXCLUSIVE, which
+  // lets reads and writes through.
   await knex.transaction(async (tx) => {
     await tx.raw(`SET LOCAL lock_timeout = ${ALTER_LOCK_TIMEOUT_MS}`);
-    await tx.raw(`UPDATE ?? SET "lastDetectedAt" = "createdAt" WHERE "lastDetectedAt" IS NULL`, [FINDING]);
+    await tx.raw(`ALTER TABLE ?? DROP CONSTRAINT IF EXISTS ??`, [FINDING, LAST_DETECTED_AT_CHECK]);
+    await tx.raw(`ALTER TABLE ?? ADD CONSTRAINT ?? CHECK ("lastDetectedAt" IS NOT NULL) NOT VALID`, [
+      FINDING,
+      LAST_DETECTED_AT_CHECK
+    ]);
+  });
+
+  // Rows saved while this ran got the column's default, so this only covers a row no batch could give a location. It
+  // runs after the check is in, so no NULL can be saved after it and fail the validation.
+  await knex.raw(`UPDATE ?? SET "lastDetectedAt" = "createdAt" WHERE "lastDetectedAt" IS NULL`, [FINDING]);
+  await knex.raw(`ALTER TABLE ?? VALIDATE CONSTRAINT ??`, [FINDING, LAST_DETECTED_AT_CHECK]);
+
+  await knex.transaction(async (tx) => {
+    await tx.raw(`SET LOCAL lock_timeout = ${ALTER_LOCK_TIMEOUT_MS}`);
     await tx.raw(`ALTER TABLE ?? ALTER COLUMN "lastDetectedAt" SET NOT NULL`, [FINDING]);
+    await tx.raw(`ALTER TABLE ?? DROP CONSTRAINT ??`, [FINDING, LAST_DETECTED_AT_CHECK]);
   });
 }
 

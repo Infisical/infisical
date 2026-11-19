@@ -961,9 +961,10 @@ export const secretScanningV2QueueServiceFactory = ({
 
       // a new location of a false positive or an ignored finding needs no action, so it isn't a leak
       if (unresolvedFindingsCount) {
-        // every location of a diff scan is in the pushed commits, so any leak's author is the person to tell
-        const leakDetails = scannedLocations.find(({ status }) => status === SecretScanningFindingStatus.Unresolved)
-          ?.details as TGitRepositoryScanFindingDetails | undefined;
+        // a pull request's scan also matches leaks an earlier push saved, so the author comes from a leak this scan saved
+        const leakDetails = scannedLocations.find(
+          ({ isNew, status }) => isNew && status === SecretScanningFindingStatus.Unresolved
+        )?.details as TGitRepositoryScanFindingDetails | undefined;
 
         await queueService.queue(
           QueueName.SecretScanningV2,

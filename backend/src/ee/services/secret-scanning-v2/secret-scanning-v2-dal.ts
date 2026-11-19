@@ -341,7 +341,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           : findingByValue.get(valueKeyOf({ secretFindingBlindIndex: row.secretFindingBlindIndex, fingerprint }))!;
         const status = reopenedIds.has(finding.id) ? SecretScanningFindingStatus.Unresolved : finding.status;
 
-        return { id: finding.id, status, fingerprint, rule, details };
+        return { id: finding.id, status, fingerprint, rule, details, isNew: !existingFindingId };
       });
 
       return { scannedLocations, reopenedFindings };

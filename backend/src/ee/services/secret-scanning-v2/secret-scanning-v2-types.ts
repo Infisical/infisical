@@ -386,8 +386,9 @@ export type TFindingLocationRow = Omit<TFindingsPayload[number], "secretValue"> 
 };
 
 // A place a scan matched, with the finding (the secret value) it belongs to: `id` and `status` are the finding's.
+// `isNew` is false when an earlier scan saved the location first.
 export type TSecretScanningScannedLocation = Pick<TFindingLocationRow, "fingerprint" | "rule" | "details"> &
-  Pick<TSecretScanningFindings, "id" | "status">;
+  Pick<TSecretScanningFindings, "id" | "status"> & { isNew: boolean };
 export type TGetFindingsPayload = Promise<TFindingsPayload>;
 
 export type TSecretScanningFindingLocation = z.infer<typeof SecretScanningFindingLocationSchema>;
