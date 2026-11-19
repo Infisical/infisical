@@ -152,4 +152,27 @@ describe("invalidateSecretCacheByProjectId", () => {
 
     expect(deleteItemCalls).toEqual([expect.stringContaining("project-A")]);
   });
+
+  it("invalidates source project cache even if grant lookup fails without tx", async () => {
+    const db = {
+      replicaNode: () => () => ({
+        where: () => ({
+          select: () => ({
+            groupBy: async () => {
+              throw new Error("Read replica timeout");
+            }
+          })
+        })
+      })
+    } as unknown as Knex;
+    const { keyStore, pgIncrementByCalls, deleteItemCalls } = createMockKeyStore();
+
+    const dal = secretV2BridgeDALFactory({ db, keyStore });
+    await dal.invalidateSecretCacheByProjectId("project-A");
+
+    expect(pgIncrementByCalls.map((c) => c.key)).toEqual([
+      KeyStorePrefixes.SecretDalVersion("project-A")
+    ]);
+    expect(deleteItemCalls).toEqual([expect.stringContaining("project-A")]);
+  });
 });

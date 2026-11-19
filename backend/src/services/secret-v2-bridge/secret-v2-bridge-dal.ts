@@ -46,16 +46,22 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     // When a source project's secrets change, target projects that consume them
     // via cross-project grants must also be invalidated so they don't serve
     // stale source values from cache.
-    const targetGrants = await (tx || db.replicaNode())(TableName.ProjectFolderGrant)
-      .where("sourceProjectId", projectId)
-      .select("targetProjectId")
-      .groupBy("targetProjectId");
+    let targetProjectIds: string[] = [];
+    try {
+      const targetGrants = await (tx || db.replicaNode())(TableName.ProjectFolderGrant)
+        .where("sourceProjectId", projectId)
+        .select("targetProjectId")
+        .groupBy("targetProjectId");
+      targetProjectIds = targetGrants.map(({ targetProjectId }) => targetProjectId);
+    } catch (err) {
+      if (tx) throw err;
+    }
 
     // Acquire cache-version locks in deterministic order across all affected
     // projects (source and targets) to prevent deadlocks when concurrent
     // transactions involve reciprocal cross-project grants.
     const allProjectIds = Array.from(
-      new Set([projectId, ...targetGrants.map(({ targetProjectId }) => targetProjectId)])
+      new Set([projectId, ...targetProjectIds])
     ).sort();
 
     const stamp = utcDayStamp();
