@@ -196,7 +196,7 @@ const addListIssues = (
 const toolError = (tool: string, existing: string[]) =>
   toolNameError(tool) ?? (existing.includes(tool) ? `"${tool}" is listed twice.` : null);
 
-export const hookFormSchema = () =>
+export const hookFormSchema = (savedRules?: TAgentVaultHookRule[]) =>
   z
     .object({
       name: z
@@ -222,9 +222,11 @@ export const hookFormSchema = () =>
         if (secretIssue) issue(["secret"], secretIssue);
       }
 
+      // Unchanged rules aren't sent, so a rule on a deleted service only blocks a save that sends the rules.
+      const rulesUnchanged = Boolean(savedRules) && sameRules(data.rules.map(buildHookRule), savedRules ?? []);
       data.rules.forEach((rule, index) => {
         // A deleted service's ID can't be saved again, so the rule has to move to another service or go.
-        const serviceIssue = isDeletedServiceRule(rule)
+        const serviceIssue = isDeletedServiceRule(rule) && !rulesUnchanged
           ? "This service was deleted. Pick another service or remove the rule."
           : !rule.serviceId && hookRuleServiceError(rule.service);
         if (serviceIssue) issue(["rules", index, "service"], serviceIssue);

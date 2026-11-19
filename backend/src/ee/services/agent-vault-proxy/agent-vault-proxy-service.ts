@@ -1267,7 +1267,11 @@ export const agentVaultProxyServiceFactory = ({
         ids: collectHookRuleServiceIds(rules),
         onPrimary: readFromPrimary
       });
-      return { ...row, rules: toResolvedHookRules(rules, serviceNamesById) };
+      const resolvedRules = toResolvedHookRules(rules, serviceNamesById);
+      // No rules means every request, so a hook whose rules all named since-deleted services goes out as no hook
+      // rather than suddenly checking everything.
+      if (rules.length > 0 && resolvedRules.length === 0) return undefined;
+      return { ...row, rules: resolvedRules };
     };
 
     const serviceIds = rows.map((row) => row.id);

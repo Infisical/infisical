@@ -1013,6 +1013,23 @@ describe("hooks on resolve", () => {
     );
   });
 
+  test("a hook whose rules all named deleted services goes out as no hook, not as one checking everything", async () => {
+    const { service } = setup(noRefresh, [hookedRow], [], {
+      session: { hookId: savedHook.id },
+      hookRow: { ...savedHook, rules: [{ serviceId: "22222222-2222-4222-8222-222222222222", methods: ["POST"] }] },
+      hookRuleServiceNames: {}
+    });
+    expect((await resolve(service)).hook).toBeNull();
+  });
+
+  test("a hook saved with no rules still checks everything", async () => {
+    const { service } = setup(noRefresh, [hookedRow], [], {
+      session: { hookId: savedHook.id },
+      hookRow: { ...savedHook, rules: [] }
+    });
+    expect((await resolve(service)).hook).toMatchObject({ id: savedHook.id, rules: [] });
+  });
+
   test("a hook that lost its secret fails the resolve rather than go out as no hook", async () => {
     const { service } = setup(noRefresh, [hookedRow], [], {
       session: { hookId: savedHook.id },

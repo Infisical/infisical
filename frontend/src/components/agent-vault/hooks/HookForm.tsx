@@ -70,7 +70,7 @@ const HookFormBody = ({
   const updateHook = useUpdateAgentVaultHook(projectId);
   const isUpdate = Boolean(hook);
   const [isSecretVisible, setIsSecretVisible] = useState(false);
-  const schema = useMemo(() => hookFormSchema(), []);
+  const schema = useMemo(() => hookFormSchema(hook?.rules), [hook]);
 
   const formMethods = useForm<THookForm>({
     resolver: zodResolver(schema),

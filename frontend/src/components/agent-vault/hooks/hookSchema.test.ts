@@ -42,8 +42,8 @@ const form = (overrides: Partial<THookForm> = {}): THookForm => ({
   ...overrides
 });
 
-const issuesOf = (data: THookForm) => {
-  const result = hookFormSchema().safeParse(data);
+const issuesOf = (data: THookForm, savedRules?: TAgentVaultHook["rules"]) => {
+  const result = hookFormSchema(savedRules).safeParse(data);
   return result.success
     ? []
     : result.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message }));
@@ -149,6 +149,12 @@ describe("hookFormSchema", () => {
         message: "This service was deleted. Pick another service or remove the rule."
       }
     ]);
+  });
+
+  it("lets a hook save while its rule on a deleted service is left as it was", () => {
+    const rule = { ...blankHookRule(), serviceId: GITHUB_ID, service: "" };
+    const saved = [{ serviceId: GITHUB_ID, service: null }] as TAgentVaultHook["rules"];
+    expect(issuesOf(form({ rules: [rule] }), saved)).toEqual([]);
   });
 
   it("asks for a method when every one is cleared", () => {
