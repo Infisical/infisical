@@ -126,7 +126,8 @@ const buildDeps = (overrides?: {
       },
       alertChannelService: {
         validateRecipients: async () => {},
-        assertRecipientTypesAllowed: () => {}
+        assertRecipientTypesAllowed: () => {},
+        assertActorMayUseConfig: async () => {}
       },
       alertProviderRegistry: overrides?.registry ?? buildProvider(),
       kmsDataKeyService: {

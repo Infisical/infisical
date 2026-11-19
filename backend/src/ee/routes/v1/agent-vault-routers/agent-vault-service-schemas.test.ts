@@ -337,7 +337,6 @@ describe("service responses", () => {
   });
 
   test.each([
-    [AgentVaultServiceType.Http, { type: AgentVaultCredentialType.OAuth, issuer: "https://auth.example.com" }],
     [AgentVaultServiceType.Http, { ...SSH_KEY }],
     [AgentVaultServiceType.Mcp, { type: AgentVaultCredentialType.Passthrough }],
     [AgentVaultServiceType.Mcp, { ...BASIC }],
@@ -578,5 +577,80 @@ describe("credential titles", () => {
     [AgentVaultServiceType.Postgres, AgentVaultServiceType.Mysql, AgentVaultServiceType.Ssh].forEach((type) =>
       expect(credentialTitlesOf(AgentVaultServiceSchema, type).basic).toBe("Username and Password")
     );
+  });
+});
+
+describe("an OAuth credential from an OAuth variable", () => {
+  const VARIABLE_ID = "00000000-0000-4000-8000-000000000077";
+  const http = (credential: Record<string, unknown>) => ({
+    type: "http",
+    name: "gdrive",
+    hostPattern: "www.googleapis.com",
+    credential
+  });
+  const mcp = (credential: Record<string, unknown>) => ({
+    type: "mcp",
+    name: "drive",
+    serverUrl: "https://mcp.example.com/mcp",
+    transport: "streamable-http",
+    credential
+  });
+
+  test("an HTTP or MCP service takes one by key, on create and update", () => {
+    expect(createMessages(http({ type: "oauth", variable: "GDRIVE_U123" }))).toEqual([]);
+    expect(createMessages(mcp({ type: "oauth", variable: "GDRIVE_U123" }))).toEqual([]);
+    expect(updateMessages({ type: "http", credential: { type: "oauth", variable: "GDRIVE_U123" } })).toEqual([]);
+  });
+
+  test("a variable can't be sent with a sign-in, members' sign-ins or a client", () => {
+    expect(
+      createMessages(
+        mcp({ type: "oauth", variable: "GDRIVE_U123", authorizationId: "00000000-0000-4000-8000-000000000001" })
+      )
+    ).toEqual(["Send either 'variable' or 'authorizationId', not both."]);
+    expect(
+      createMessages(mcp({ type: "oauth", variable: "GDRIVE_U123", memberProvidedFields: ["credential-value"] }))
+    ).toEqual(["Send either 'variable' or memberProvidedFields: an OAuth variable's sign-in is shared."]);
+    expect(createMessages(mcp({ type: "oauth", variable: "GDRIVE_U123", clientId: "client-1" }))).toEqual([
+      "Leave 'clientId' out: the OAuth variable holds its own client."
+    ]);
+    expect(createMessages(http({ type: "oauth", variable: "not a key" }))).not.toEqual([]);
+  });
+
+  test("an HTTP service's response carries the variable and its status", () => {
+    const parsed = AgentVaultServiceSchema.parse(
+      bundleService({
+        ...toServiceTypeFields(STORED_TYPES[0]),
+        credential: {
+          type: AgentVaultCredentialType.OAuth,
+          source: "variable",
+          memberProvidedFields: [],
+          variable: { id: VARIABLE_ID, key: "GDRIVE_U123" },
+          status: "not-connected",
+          grantedScopes: [],
+          requiredScopes: []
+        }
+      })
+    );
+    expect(parsed).toMatchObject({ credential: { source: "variable", variable: { key: "GDRIVE_U123" } } });
+    expect(parsed).not.toHaveProperty("credential.issuer");
+  });
+
+  test("a session's own service takes a variable or tokens, and returns neither token", () => {
+    const parsed = AgentVaultInlineServiceSchema.parse({
+      id: "00000000-0000-4000-8000-000000000001",
+      name: "gdrive",
+      description: null,
+      hook: null,
+      ...toServiceTypeFields(STORED_TYPES[0]),
+      customHeaders: [],
+      substitutions: [],
+      credential: { type: AgentVaultCredentialType.OAuth, source: "inline", issuer: "https://accounts.google.com" }
+    });
+    expect(parsed).toHaveProperty("credential", {
+      type: AgentVaultCredentialType.OAuth,
+      source: "inline",
+      issuer: "https://accounts.google.com"
+    });
   });
 });

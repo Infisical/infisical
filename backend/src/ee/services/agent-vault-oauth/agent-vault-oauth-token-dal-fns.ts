@@ -5,9 +5,21 @@ import { TDbClient } from "@app/db";
 import { AgentVaultOauthStatus } from "../agent-vault/agent-vault-enums";
 import { MAX_OAUTH_SCOPES } from "./agent-vault-oauth-discovery-fns";
 
-// Where a set of OAuth tokens lives: a service row (its sealed credential and credentialConfig) or a member's personal
-// value row (its encryptedValue and oauthConfig). Refresh and scope reports run the same SQL against either.
-export type TOauthTokenColumns = { table: string; secretColumn: string; configColumn: string };
+// Where a set of OAuth tokens lives: a service row (its sealed credential and credentialConfig), a member's personal
+// value row (its encryptedValue and oauthConfig), or an OAuth variable (its encryptedValue and the `connection` key of
+// its oauthConfig, named by `configKey`). Refresh and scope reports run the same SQL against each.
+export type TOauthTokenColumns = { table: string; secretColumn: string; configColumn: string; configKey?: string };
+
+// The jsonb the token config is read from, and how a new value for it is written back. With a `configKey` the rest of
+// the column (an OAuth variable's settings) is left as it is. Column and key are constants of the DAL, never input.
+const tokenConfigSql = ({ configColumn, configKey }: TOauthTokenColumns) => {
+  const column = `"${configColumn}"`;
+  if (!configKey) return { read: column, write: (value: string) => value };
+  return {
+    read: `${column}->'${configKey}'`,
+    write: (value: string) => `jsonb_set(COALESCE(${column}, '{}'::jsonb), '{${configKey}}', ${value})`
+  };
+};
 
 /**
  * A refresh writes only if the sealed tokens are still the ones it read, so a reauthorization in between keeps the
@@ -17,7 +29,7 @@ export type TOauthTokenColumns = { table: string; secretColumn: string; configCo
  */
 export const compareAndSwapOauthTokens = async <TRow>(
   db: TDbClient,
-  { table, secretColumn, configColumn }: TOauthTokenColumns,
+  columns: TOauthTokenColumns,
   {
     where,
     expectedSecret,
@@ -35,13 +47,17 @@ export const compareAndSwapOauthTokens = async <TRow>(
   },
   tx?: Knex
 ): Promise<TRow | undefined> => {
+  const { table, secretColumn, configColumn } = columns;
+  const { read, write } = tokenConfigSql(columns);
   const patch = JSON.stringify(configPatch);
   const config = keepAdditionalScopesStatus
     ? db.raw(
-        `CASE WHEN ??->>'status' = ? THEN COALESCE(??, '{}'::jsonb) || (?::jsonb - 'status') ELSE COALESCE(??, '{}'::jsonb) || ?::jsonb END`,
-        [configColumn, AgentVaultOauthStatus.NeedsAdditionalScopes, configColumn, patch, configColumn, patch]
+        write(
+          `CASE WHEN ${read}->>'status' = ? THEN COALESCE(${read}, '{}'::jsonb) || (?::jsonb - 'status') ELSE COALESCE(${read}, '{}'::jsonb) || ?::jsonb END`
+        ),
+        [AgentVaultOauthStatus.NeedsAdditionalScopes, patch, patch]
       )
-    : db.raw(`COALESCE(??, '{}'::jsonb) || ?::jsonb`, [configColumn, patch]);
+    : db.raw(write(`COALESCE(${read}, '{}'::jsonb) || ?::jsonb`), [patch]);
   const rows = (await (tx || db)(table)
     .where({ ...where, [secretColumn]: expectedSecret })
     .update({ ...(secret ? { [secretColumn]: secret } : {}), [configColumn]: config })
@@ -57,7 +73,7 @@ export const compareAndSwapOauthTokens = async <TRow>(
  */
 export const addOauthRequiredScopes = async <TRow>(
   db: TDbClient,
-  { table, secretColumn, configColumn }: TOauthTokenColumns,
+  columns: TOauthTokenColumns,
   {
     where,
     expectedSecret,
@@ -73,7 +89,8 @@ export const addOauthRequiredScopes = async <TRow>(
   },
   tx?: Knex
 ): Promise<TRow | undefined> => {
-  const column = `"${configColumn}"`;
+  const { table, secretColumn, configColumn } = columns;
+  const { read: column, write } = tokenConfigSql(columns);
   const stored = `COALESCE(${column}->'requiredScopes', '[]'::jsonb)`;
   const granted = `COALESCE(${column}->'grantedScopes', '[]'::jsonb)`;
   const reported = JSON.stringify([...new Set(requiredScopes)]);
@@ -87,7 +104,9 @@ export const addOauthRequiredScopes = async <TRow>(
     )
     .update({
       [configColumn]: db.raw(
-        `COALESCE(${column}, '{}'::jsonb) || jsonb_build_object('status', ?::text, 'requiredScopes', ${stored} || COALESCE((SELECT jsonb_agg(added.scope ORDER BY added.ord) FROM (SELECT reported.scope, reported.ord, row_number() OVER (ORDER BY reported.ord) AS position FROM jsonb_array_elements_text(?::jsonb) WITH ORDINALITY AS reported(scope, ord) WHERE NOT ${stored} @> jsonb_build_array(reported.scope) AND NOT ${granted} @> jsonb_build_array(reported.scope)) AS added WHERE added.position <= ?::int - jsonb_array_length(${stored})), '[]'::jsonb))`,
+        write(
+          `COALESCE(${column}, '{}'::jsonb) || jsonb_build_object('status', ?::text, 'requiredScopes', ${stored} || COALESCE((SELECT jsonb_agg(added.scope ORDER BY added.ord) FROM (SELECT reported.scope, reported.ord, row_number() OVER (ORDER BY reported.ord) AS position FROM jsonb_array_elements_text(?::jsonb) WITH ORDINALITY AS reported(scope, ord) WHERE NOT ${stored} @> jsonb_build_array(reported.scope) AND NOT ${granted} @> jsonb_build_array(reported.scope)) AS added WHERE added.position <= ?::int - jsonb_array_length(${stored})), '[]'::jsonb))`
+        ),
         [AgentVaultOauthStatus.NeedsAdditionalScopes, reported, MAX_OAUTH_SCOPES]
       )
     })

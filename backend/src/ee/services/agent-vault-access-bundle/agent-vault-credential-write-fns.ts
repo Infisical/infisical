@@ -213,7 +213,7 @@ export const nextMemberFieldsOf = (credential: TAgentVaultCredentialUpdate, stor
   if (
     credential.type !== stored.credentialType ||
     credential.type === AgentVaultCredentialType.Passthrough ||
-    (credential.type === AgentVaultCredentialType.OAuth && credential.authorizationId) ||
+    (credential.type === AgentVaultCredentialType.OAuth && (credential.authorizationId || credential.variable)) ||
     credential.type === AgentVaultCredentialType.SshKey
   ) {
     return memberFieldsOf(credential);

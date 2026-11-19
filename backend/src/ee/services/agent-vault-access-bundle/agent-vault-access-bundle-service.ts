@@ -30,11 +30,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
-import {
-  findCallerDelegation,
-  resolveOnBehalfOfUser,
-  TOnBehalfOfDeps
-} from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
+import { findOnBehalfOfListScope, TOnBehalfOfDeps } from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
 import { TAgentVaultMemberDALFactory } from "../agent-vault-member/agent-vault-member-dal";
 import {
   checkOauthClaimUnderLock,
@@ -45,15 +41,18 @@ import {
 import {
   hashAccessToken,
   isMemberProvidedOauth,
+  isVariableOauth,
   memberOauthSetupOf,
-  oauthConnectionStatusOf
+  oauthConnectionStatusOf,
+  oauthVariableIdOf
 } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
 import {
   AGENT_VAULT_OAUTH_HEADER_NAME,
   AGENT_VAULT_OAUTH_HEADER_PREFIX,
   AgentVaultOauthRegistration,
   TAgentVaultOauthConfig,
-  TAgentVaultOauthMemberConfig
+  TAgentVaultOauthMemberConfig,
+  TAgentVaultOauthVariableCredentialConfig
 } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
 import {
@@ -61,7 +60,11 @@ import {
   sameMemberProvidedFields
 } from "../agent-vault-personal-value/agent-vault-personal-value-fns";
 import { TAgentVaultPersonalValueServiceFactory } from "../agent-vault-personal-value/agent-vault-personal-value-service";
-import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
+import {
+  TAgentVaultOauthVariableRow,
+  TAgentVaultVariableDALFactory
+} from "../agent-vault-variable/agent-vault-variable-dal";
+import { TAgentVaultOauthVariableConfig } from "../agent-vault-variable/agent-vault-variable-types";
 import {
   agentVaultActorKey,
   resolveAgentVaultActorNames,
@@ -79,6 +82,7 @@ import {
   AgentVaultServiceType,
   AgentVaultSubstitutionSurface,
   AgentVaultVariableReferenceField,
+  AgentVaultVariableType,
   TAgentVaultMemberProvidedField
 } from "../agent-vault/agent-vault-enums";
 import {
@@ -96,7 +100,6 @@ import { ownerOrNullOf } from "../agent-vault/agent-vault-owner-fns";
 import {
   getAgentVaultGrantedReachability,
   getAgentVaultReachability,
-  intersectAccessBundleIds,
   serviceIdsReachedThrough,
   TAgentVaultPermission
 } from "../agent-vault/agent-vault-permission";
@@ -184,7 +187,10 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
   agentVaultServiceDAL: TAgentVaultServiceDALFactory;
   agentVaultServiceCustomHeaderDAL: TAgentVaultServiceCustomHeaderDALFactory;
   agentVaultServiceSubstitutionDAL: TAgentVaultServiceSubstitutionDALFactory;
-  agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findKeys" | "lockForReference" | "findValuesForResolve">;
+  agentVaultVariableDAL: Pick<
+    TAgentVaultVariableDALFactory,
+    "findKeys" | "lockForReference" | "findValuesForResolve" | "findOauthForResolve"
+  >;
   agentVaultServiceVariableReferenceDAL: TAgentVaultServiceVariableReferenceDALFactory;
   agentVaultPersonalValueDAL: Pick<
     TAgentVaultPersonalValueDALFactory,
@@ -211,6 +217,7 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
     | "buildCredentialFromAuthorization"
     | "readAuthorizationAccessToken"
     | "refreshServiceToken"
+    | "refreshVariableToken"
     | "prepareMemberOauth"
   >;
 } & TAgentVaultActorNameDALs;
@@ -218,7 +225,12 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
 export type TAgentVaultAccessBundleServiceFactory = ReturnType<typeof agentVaultAccessBundleServiceFactory>;
 
 export const OAUTH_NEEDS_AUTHORIZATION_OR_MEMBERS_MESSAGE =
-  "An OAuth credential needs a completed authorization, or memberProvidedFields ['credential-value'] to leave the sign-in to each member.";
+  "An OAuth credential needs 'variable' with the key of a global OAuth variable, a completed authorization, or memberProvidedFields ['credential-value'] to leave the sign-in to each member.";
+
+export const HTTP_OAUTH_NEEDS_VARIABLE_MESSAGE =
+  "An HTTP service can use OAuth only through an OAuth variable. Send 'variable' with the key of a global OAuth variable.";
+
+type TOauthVariablesById = ReadonlyMap<string, TAgentVaultOauthVariableRow>;
 
 // The old shape capped the array at 100 entries; the cap moves here now that the body is three lists.
 export const AGENT_VAULT_MAX_GRANTEES = 100;
@@ -419,17 +431,36 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   const getProjectCipher = (projectId: string) =>
     kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
-  const summarizeCredential = (service: TAgentVaultServices): TAgentVaultCredentialSummary => {
+  const summarizeCredential = (
+    service: TAgentVaultServices,
+    oauthVariables: TOauthVariablesById = new Map()
+  ): TAgentVaultCredentialSummary => {
     const config = service.credentialConfig as Record<string, string>;
     const memberProvidedFields = service.memberProvidedFields ?? [];
     switch (service.credentialType as AgentVaultCredentialType) {
       // Nothing secret and nothing that identifies the token. The member-provided summary includes the client ID, so the
       // UI can show which admin-entered client is kept.
       case AgentVaultCredentialType.OAuth: {
+        const variableId = oauthVariableIdOf(service);
+        if (variableId) {
+          // A variable the read can't find is one deleted since: its reference row holds it while the service uses it.
+          const variable = oauthVariables.get(variableId);
+          const connection = variable ? (variable.oauthConfig as TAgentVaultOauthVariableConfig).connection : null;
+          return {
+            type: AgentVaultCredentialType.OAuth,
+            source: "variable",
+            memberProvidedFields: [],
+            ...(variable ? { variable: { id: variable.id, key: variable.key } } : {}),
+            ...(connection
+              ? oauthConnectionStatusOf(connection as TAgentVaultOauthConfig)
+              : { status: AgentVaultOauthStatus.NotConnected, grantedScopes: [], requiredScopes: [] })
+          };
+        }
         if (isMemberProvidedOauth(service)) {
           const memberOauth = service.credentialConfig as TAgentVaultOauthMemberConfig;
           return {
             type: AgentVaultCredentialType.OAuth,
+            source: "member",
             memberProvidedFields: [AgentVaultVariableReferenceField.CredentialValue],
             issuer: memberOauth.issuer,
             grantedScopes: [],
@@ -440,6 +471,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         }
         return {
           type: AgentVaultCredentialType.OAuth,
+          source: "service",
           memberProvidedFields: [],
           ...oauthConnectionStatusOf(service.credentialConfig as TAgentVaultOauthConfig)
         };
@@ -510,7 +542,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     service: TAgentVaultCatalogService,
     customHeaders: TAgentVaultServiceCustomHeaders[],
     substitutions: TAgentVaultServiceSubstitutions[],
-    variableReferences: TAgentVaultVariableReferenceWithKey[]
+    variableReferences: TAgentVaultVariableReferenceWithKey[],
+    oauthVariables?: TOauthVariablesById
   ): TAgentVaultServiceSummary => {
     const base = {
       id: service.id,
@@ -521,7 +554,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       hook: service.hookUrl ? { url: service.hookUrl } : null
     };
     const references = variableReferences.map(summarizeVariableReference);
-    const credential = summarizeCredential(service);
+    const credential = summarizeCredential(service, oauthVariables);
     const customHeaderSummaries = customHeaders.map((header) => ({
       id: header.id,
       name: header.name,
@@ -541,8 +574,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           !isCredentialOfType(credential, [
             AgentVaultCredentialType.Bearer,
             AgentVaultCredentialType.Basic,
-            AgentVaultCredentialType.Passthrough
-          ])
+            AgentVaultCredentialType.Passthrough,
+            AgentVaultCredentialType.OAuth
+          ]) ||
+          (credential.type === AgentVaultCredentialType.OAuth && credential.source !== "variable")
         ) {
           throw unsupportedCredential();
         }
@@ -617,36 +652,50 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       service,
       transformations.customHeaders.filter((header) => header.serviceId === service.id),
       transformations.substitutions.filter((substitution) => substitution.serviceId === service.id),
-      transformations.variableReferences.filter((reference) => reference.serviceId === service.id)
+      transformations.variableReferences.filter((reference) => reference.serviceId === service.id),
+      transformations.oauthVariables
     );
-    const { credential } = projected;
+    let { credential } = projected;
+    // An OAuth variable's key is a variable read, like the keys in variableReferences.
+    if (credential.type === AgentVaultCredentialType.OAuth && !canReadVariables) {
+      credential = { ...credential, variable: undefined };
+    }
+    if (credential.type === AgentVaultCredentialType.OAuth && !canSeeSetup) {
+      credential = { ...credential, expiresAt: undefined, authorizedAt: undefined, lastError: undefined };
+    }
     return {
       ...projected,
+      credential,
       ...(canReadVariables ? {} : { variableReferences: undefined }),
-      ...(canSeeSetup
-        ? {}
-        : {
-            hook: undefined,
-            ...(credential.type === AgentVaultCredentialType.OAuth
-              ? { credential: { ...credential, expiresAt: undefined, authorizedAt: undefined, lastError: undefined } }
-              : {})
-          }),
+      ...(canSeeSetup ? {} : { hook: undefined }),
       // The caller's own values, null when the admin sets the whole credential.
       personalValues: status ? { isConfigured: status.isConfigured, fields: status.fields } : null
     };
   };
 
+  const loadOauthVariables = async (
+    projectId: string,
+    services: Pick<TAgentVaultServices, "credentialType" | "credentialConfig">[]
+  ): Promise<TOauthVariablesById> => {
+    const variableIds = [...new Set(services.map(oauthVariableIdOf).filter((id): id is string => Boolean(id)))];
+    if (!variableIds.length) return new Map();
+    const rows = await agentVaultVariableDAL.findOauthForResolve({ variableIds, projectId });
+    return new Map(rows.map((row) => [row.id, row]));
+  };
+
   const loadTransformations = async (
-    serviceIds: string[],
+    services: Pick<TAgentVaultServices, "id" | "projectId" | "credentialType" | "credentialConfig">[],
     tx?: Knex,
     { withVariableReferences = true }: { withVariableReferences?: boolean } = {}
   ) => {
-    const [customHeaders, substitutions, variableReferences] = await Promise.all([
+    const serviceIds = services.map((service) => service.id);
+    const [customHeaders, substitutions, variableReferences, oauthVariables] = await Promise.all([
       agentVaultServiceCustomHeaderDAL.findByServiceIds(serviceIds, tx),
       agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds, tx),
-      withVariableReferences ? agentVaultServiceVariableReferenceDAL.findByServiceIds(serviceIds, tx) : []
+      withVariableReferences ? agentVaultServiceVariableReferenceDAL.findByServiceIds(serviceIds, tx) : [],
+      services.length ? loadOauthVariables(services[0].projectId, services) : new Map()
     ]);
-    return { customHeaders, substitutions, variableReferences };
+    return { customHeaders, substitutions, variableReferences, oauthVariables };
   };
 
   // What a missing key's error calls the field. Never the value itself, which is secret.
@@ -705,11 +754,22 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const variables = await agentVaultVariableDAL.findKeys({ projectId, owner: null });
     const idOfKey = new Map(variables.map((variable) => [variable.key, variable.id]));
 
+    // Resolve never puts an OAuth variable's tokens into text, so a reference to one would reach the host as braces.
+    const oauthKeys = new Set(
+      variables.filter((variable) => variable.type === AgentVaultVariableType.OAuth).map((variable) => variable.key)
+    );
     texts.forEach(({ label, text }) => {
-      const missing = findVariableKeys(text).find((key) => !idOfKey.has(key));
+      const keys = findVariableKeys(text);
+      const missing = keys.find((key) => !idOfKey.has(key));
       if (missing) {
         throw new BadRequestError({
           message: `${label} uses ${toVariableReference(missing)}, but there's no global variable named '${missing}'. Add it under Variables, or correct the name.`
+        });
+      }
+      const oauthKey = keys.find((key) => oauthKeys.has(key));
+      if (oauthKey) {
+        throw new BadRequestError({
+          message: `${label} uses ${toVariableReference(oauthKey)}, but '${oauthKey}' is an OAuth variable, which can't be used in text. Set the service's credential to OAuth and choose the variable there.`
         });
       }
     });
@@ -818,6 +878,68 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
   };
 
+  // An HTTP service has no sign-in of its own, so its OAuth tokens can only come from an OAuth variable: the one named,
+  // or on an update, the one it already uses when the credential is sent with nothing in it.
+  const assertOauthCredentialFitsType = (
+    serviceType: AgentVaultServiceType,
+    credential?: TAgentVaultCredentialUpdate,
+    storedService?: Pick<TAgentVaultServices, "credentialType" | "credentialConfig">
+  ) => {
+    if (
+      serviceType === AgentVaultServiceType.Http &&
+      credential?.type === AgentVaultCredentialType.OAuth &&
+      !credential.variable &&
+      !(storedService && isVariableOauth(storedService) && !credential.authorizationId && !memberFieldsOf(credential))
+    ) {
+      throw new BadRequestError({ message: HTTP_OAUTH_NEEDS_VARIABLE_MESSAGE });
+    }
+  };
+
+  // Naming an OAuth variable sends its tokens to the service's host, as a typed {{KEY}} sends a value, so it takes
+  // ReadValue on variables too, checked before the lookup so a missing key can't be told from one the caller may not
+  // read. Read on the primary, since a variable created a moment earlier may not be on a replica yet.
+  const findOauthVariableForCredential = async (
+    { projectId, permission }: { projectId: string; permission: TAgentVaultPermission["permission"] },
+    key: string
+  ) => {
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionAgentVaultVariableActions.ReadValue,
+      ProjectPermissionSub.AgentVaultVariables
+    );
+    const variable = (await agentVaultVariableDAL.findKeys({ projectId, owner: null })).find((row) => row.key === key);
+    if (!variable) {
+      throw new BadRequestError({
+        message: `There's no global variable named '${key}'. Add it under Variables as an OAuth variable, or correct the name.`,
+        details: { field: "credential.variable" }
+      });
+    }
+    if (variable.type !== AgentVaultVariableType.OAuth) {
+      throw new BadRequestError({
+        message: `'${key}' is a text variable, and an OAuth credential takes an OAuth variable. To send a text variable, use a bearer or basic credential with ${toVariableReference(key)}.`,
+        details: { field: "credential.variable" }
+      });
+    }
+    return { id: variable.id, key: variable.key };
+  };
+
+  const oauthVariableCredentialConfigOf = (variableId: string): TAgentVaultOauthVariableCredentialConfig => ({
+    type: AgentVaultCredentialType.OAuth,
+    source: "variable",
+    variableId
+  });
+
+  // The row that holds an OAuth variable in place while a service sends it, the way a typed reference's row does.
+  const oauthVariableReferenceRow = (
+    serviceId: string,
+    variableId: string
+  ): TAgentVaultServiceVariableReferencesInsert => ({
+    serviceId,
+    variableId,
+    field: AgentVaultVariableReferenceField.CredentialValue,
+    customHeaderId: null,
+    substitutionId: null
+  });
+
   // The tokens come from an authorization the same user completed. Claiming it deletes it right before the write,
   // and a save that then fails puts it back, so it can be retried without authorizing again.
   const claimOauthCredential = async ({
@@ -867,35 +989,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return { bundle, ...reachability };
   };
 
-  // What a session on the user's behalf could use: the bundles both the user and the caller reach, counted against
-  // the user's personal values. Like minting that session, it checks the delegation and then the caller's own bundles
-  // before it looks the user up, so a caller granted no bundle learns nothing about who is in the org.
-  const $onBehalfOfListScope = async ({
-    projectId,
-    ctx,
-    onBehalfOf,
-    callerAccessBundleIds
-  }: {
-    projectId: string;
-    ctx: TListAccessBundlesDTO["ctx"];
-    onBehalfOf: NonNullable<TListAccessBundlesDTO["onBehalfOf"]>;
-    callerAccessBundleIds: string[] | null;
-  }) => {
-    const delegation = await findCallerDelegation({ agentVaultDelegationDAL }, { projectId, ctx });
-    if (callerAccessBundleIds?.length === 0) {
-      return { scopeIds: [] as string[], excludeIds: [] as string[], owner: null };
-    }
-
-    const { user, accessBundleIds: userAccessBundleIds } = await resolveOnBehalfOfUser(
+  // What a session on the user's behalf could use, counted against the user's personal values.
+  const $onBehalfOfListScope = async (scope: Parameters<typeof findOnBehalfOfListScope>[1]) => ({
+    ...(await findOnBehalfOfListScope(
       { agentVaultDelegationDAL, userDAL, orgDAL, permissionService, membershipDAL },
-      { projectId, ctx, onBehalfOf, delegation }
-    );
-    return {
-      scopeIds: intersectAccessBundleIds(userAccessBundleIds, callerAccessBundleIds),
-      excludeIds: [] as string[],
-      owner: { userId: user.id }
-    };
-  };
+      scope
+    )),
+    excludeIds: [] as string[]
+  });
 
   // Setup is counted over every bundle the caller reaches, since an admin can start a session on one they were never
   // granted.
@@ -983,11 +1084,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const { canReadVariables, canSeeSetup } = serviceVisibilityOf(permission);
 
     const services = await agentVaultServiceDAL.findByAccessBundleId(bundle.id);
-    const { customHeaders, substitutions, variableReferences } = await loadTransformations(
-      services.map((service) => service.id),
-      undefined,
-      { withVariableReferences: canReadVariables }
-    );
+    const transformations = await loadTransformations(services, undefined, {
+      withVariableReferences: canReadVariables
+    });
     const owner = ownerOrNullOf(dto.ctx);
     const statuses = owner
       ? await agentVaultPersonalValueService.findStatusesForOwner({
@@ -1006,11 +1105,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       services: services.map((service) => ({
         // The bundle being read. Python SDK v1.4.0 and older fail to parse a service without it.
         accessBundleId: bundle.id,
-        ...viewService(
-          service,
-          { customHeaders, substitutions, variableReferences },
-          { canReadVariables, canSeeSetup, status: statuses.find((entry) => entry.serviceId === service.id) }
-        )
+        ...viewService(service, transformations, {
+          canReadVariables,
+          canSeeSetup,
+          status: statuses.find((entry) => entry.serviceId === service.id)
+        })
       }))
     };
   };
@@ -1210,6 +1309,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const bundles = await findBundlesInProject(rest.projectId, accessBundleIds);
 
     const serviceType = getAgentVaultServiceType(type);
+    assertOauthCredentialFitsType(serviceType.type, credential);
     assertServiceFieldsSupported(serviceType, {
       hostPattern: requestedHostPattern,
       allowedMethods,
@@ -1250,6 +1350,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       }))
     ]);
     const store = (text: string) => toStoredVariableReferences(text, idOfKey);
+    const oauthVariable =
+      credential.type === AgentVaultCredentialType.OAuth && credential.variable
+        ? await findOauthVariableForCredential({ projectId: rest.projectId, permission }, credential.variable)
+        : null;
 
     // Encrypt before the lock: KMS is a network call and the transaction has to stay short.
     const split =
@@ -1287,7 +1391,12 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             clientSecret: credential.clientSecret
           })
         : null;
-    if (credential.type === AgentVaultCredentialType.OAuth && !memberOauth && !credential.authorizationId) {
+    if (
+      credential.type === AgentVaultCredentialType.OAuth &&
+      !memberOauth &&
+      !credential.authorizationId &&
+      !oauthVariable
+    ) {
       throw new BadRequestError({ message: OAUTH_NEEDS_AUTHORIZATION_OR_MEMBERS_MESSAGE });
     }
     const oauth =
@@ -1299,7 +1408,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             authorizationId: credential.authorizationId
           })
         : null;
-    const credentialConfig: TAgentVaultCredentialConfig = oauth?.config ?? memberOauth?.config ?? split!.config;
+    const credentialConfig: TAgentVaultCredentialConfig =
+      oauth?.config ??
+      memberOauth?.config ??
+      (oauthVariable ? oauthVariableCredentialConfigOf(oauthVariable.id) : split!.config);
     const memberProvidedFields = memberOauth
       ? [AgentVaultVariableReferenceField.CredentialValue]
       : (split?.memberProvidedFields ?? null);
@@ -1363,6 +1475,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
         const referenceRows = [
           ...credentialReferenceRowsOf(created.id, secret, variableIds),
+          ...(oauthVariable ? [oauthVariableReferenceRow(created.id, oauthVariable.id)] : []),
           ...insertedCustomHeaders.flatMap((row) =>
             referenceRowsOf(
               created.id,
@@ -1418,7 +1531,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           result.created as TAgentVaultCatalogService,
           result.insertedCustomHeaders,
           result.insertedSubstitutions,
-          result.variableReferences
+          result.variableReferences,
+          await loadOauthVariables(rest.projectId, [result.created])
         ),
         accessBundles: bundles
       }
@@ -1513,6 +1627,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       tls
     });
     if (credential) assertCredentialTypeSupported(serviceType, credential.type);
+    assertOauthCredentialFitsType(serviceType.type, credential, service);
 
     // The fields of the type's config this request sent. Ones left out keep their stored value, so the config
     // is merged here for the fast checks and again under the lock against the row read there.
@@ -1527,12 +1642,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const storedMemberOauth = isMemberProvidedOauth(service)
       ? (service.credentialConfig as TAgentVaultOauthMemberConfig)
       : undefined;
+    // The service's own sign-in. An OAuth variable's tokens aren't bound to the service's server.
     const storedOauth =
-      service.credentialType === AgentVaultCredentialType.OAuth && !storedMemberOauth
+      service.credentialType === AgentVaultCredentialType.OAuth && !storedMemberOauth && !isVariableOauth(service)
         ? (service.credentialConfig as TAgentVaultOauthConfig)
         : undefined;
     const oauthAuthorizationId =
       credential?.type === AgentVaultCredentialType.OAuth ? credential.authorizationId : undefined;
+    const oauthVariableKey = credential?.type === AgentVaultCredentialType.OAuth ? credential.variable : undefined;
     const storedServerUrl = getServiceServerUrl(service.config);
     const serverUrlChanged = serverUrl !== undefined && serverUrl !== storedServerUrl;
     // Whether each member signs in once this update is applied. Their tokens are bound to the server and client, so
@@ -1540,11 +1657,25 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const endsMemberOauth = credential
       ? credential.type === AgentVaultCredentialType.OAuth && Boolean(nextMemberFieldsOf(credential, service)?.length)
       : Boolean(storedMemberOauth);
-    const staysOauth = credential ? credential.type === AgentVaultCredentialType.OAuth : Boolean(storedOauth);
-    if (serverUrlChanged && staysOauth && !endsMemberOauth && !oauthAuthorizationId) {
+    // An OAuth credential sent with nothing in it keeps what is stored, so it stays on an OAuth variable it uses.
+    const keepsVariable =
+      isVariableOauth(service) &&
+      credential?.type === AgentVaultCredentialType.OAuth &&
+      !oauthAuthorizationId &&
+      !endsMemberOauth;
+    const staysOwnOauth = credential
+      ? credential.type === AgentVaultCredentialType.OAuth && !oauthVariableKey && !keepsVariable
+      : Boolean(storedOauth);
+    if (serverUrlChanged && staysOwnOauth && !endsMemberOauth && !oauthAuthorizationId) {
       throw new BadRequestError({ message: OAUTH_SERVER_URL_NEEDS_AUTHORIZATION_MESSAGE });
     }
-    if (credential?.type === AgentVaultCredentialType.OAuth && !endsMemberOauth && !oauthAuthorizationId) {
+    if (
+      credential?.type === AgentVaultCredentialType.OAuth &&
+      !endsMemberOauth &&
+      !oauthAuthorizationId &&
+      !oauthVariableKey &&
+      !keepsVariable
+    ) {
       throw new BadRequestError({ message: OAUTH_NEEDS_AUTHORIZATION_OR_MEMBERS_MESSAGE });
     }
 
@@ -1596,6 +1727,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       storedSecret ? Object.values(storedSecret) : []
     );
     const store = (text: string) => toStoredVariableReferences(text, idOfKey);
+    const oauthVariable = oauthVariableKey
+      ? await findOauthVariableForCredential({ projectId: rest.projectId, permission }, oauthVariableKey)
+      : null;
 
     let credentialUpdate = {};
     // Undefined leaves the sealed secret, and the references read off it, as they are.
@@ -1684,6 +1818,19 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         encryptedCredential !== undefined && (Boolean(service.encryptedCredential) || encryptedCredential !== null);
     }
 
+    if (oauthVariable) {
+      credentialUpdate = {
+        credentialType: AgentVaultCredentialType.OAuth,
+        credentialConfig: oauthVariableCredentialConfigOf(oauthVariable.id),
+        encryptedCredential: null,
+        memberProvidedFields: null
+      };
+      effectiveCredentialConfig = oauthVariableCredentialConfigOf(oauthVariable.id);
+      // Clears the credential's reference rows, and the variable's row is written again with them.
+      writtenSecret = null;
+      credentialReplaced = Boolean(service.encryptedCredential) || oauthVariableIdOf(service) !== oauthVariable.id;
+    }
+
     const newHookSigningSecret = hookChange && hookChange.kind !== "removed" ? hookChange.signingSecret : undefined;
     const cipherForTransformations =
       customHeaders?.length || substitutions?.length || newHookSigningSecret !== undefined
@@ -1755,7 +1902,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     // reauthorized it, and writing over it from the first read would undo it. Pure, so it can't touch the database.
     const reconcileWithLockedRow = (locked: TAgentVaultServices) => {
       const lockedOauth =
-        locked.credentialType === AgentVaultCredentialType.OAuth && !isMemberProvidedOauth(locked)
+        locked.credentialType === AgentVaultCredentialType.OAuth &&
+        !isMemberProvidedOauth(locked) &&
+        !isVariableOauth(locked)
           ? (locked.credentialConfig as TAgentVaultOauthConfig)
           : undefined;
       let lockedServiceConfig = serviceConfig;
@@ -1771,6 +1920,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           lockedOauth &&
           !oauth &&
           !memberOauth &&
+          !oauthVariable &&
           (!credential || credential.type === AgentVaultCredentialType.OAuth)
         ) {
           checkOauthServerUnderLock({
@@ -2055,6 +2205,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         }
         const referenceRows = [
           ...(writtenSecret === undefined ? [] : credentialReferenceRowsOf(service.id, writtenSecret, variableIds)),
+          ...(oauthVariable ? [oauthVariableReferenceRow(service.id, oauthVariable.id)] : []),
           ...rewrittenCustomHeaders.flatMap(({ id, storedValue }) =>
             referenceRowsOf(
               service.id,
@@ -2115,7 +2266,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           result.updatedService as TAgentVaultCatalogService,
           result.updatedCustomHeaders,
           result.updatedSubstitutions,
-          result.variableReferences
+          result.variableReferences,
+          await loadOauthVariables(rest.projectId, [result.updatedService])
         ),
         accessBundles: await bundlesOf()
       },
@@ -2188,22 +2340,77 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     let credentialHeader: { name: string; prefix?: string; value: string; isTyped: boolean };
     // Set when the token is the service's saved OAuth token, which can be refreshed if the server refuses it.
     let refreshSavedToken: ((rejectedTokenHash: string) => Promise<string>) | undefined;
+    // Set when an OAuth variable's token is refreshed with no saved service pinning it, which a refusal may blame even
+    // for a request unlike the saved service.
+    let refreshesVariableOnly = false;
     const credentialType = credential?.type ?? (service?.credentialType as AgentVaultCredentialType | undefined);
     if (credentialType === AgentVaultCredentialType.OAuth) {
-      const memberSignIn =
-        credential?.type === AgentVaultCredentialType.OAuth
-          ? Boolean(memberFieldsOf(credential)) ||
-            (!credential.authorizationId && Boolean(service && isMemberProvidedOauth(service)))
-          : Boolean(service && isMemberProvidedOauth(service));
+      const sentOauth = credential?.type === AgentVaultCredentialType.OAuth ? credential : undefined;
+      const memberSignIn = sentOauth
+        ? Boolean(memberFieldsOf(sentOauth)) ||
+          (!sentOauth.authorizationId && !sentOauth.variable && Boolean(service && isMemberProvidedOauth(service)))
+        : Boolean(service && isMemberProvidedOauth(service));
       if (memberSignIn) {
         throw new BadRequestError({
           message: "Each member signs in to this service, so Infisical has no connection to load its tools with."
         });
       }
+      let oauthVariableId: string | null = null;
+      if (sentOauth?.variable) {
+        oauthVariableId = (
+          await findOauthVariableForCredential({ projectId: rest.projectId, permission }, sentOauth.variable)
+        ).id;
+      } else if (!sentOauth?.authorizationId && service && isVariableOauth(service)) {
+        oauthVariableId = oauthVariableIdOf(service);
+      }
       let accessToken: string;
-      if (credential?.type === AgentVaultCredentialType.OAuth && credential.authorizationId) {
+      if (oauthVariableId) {
+        const [variable] = await agentVaultVariableDAL.findOauthForResolve({
+          variableIds: [oauthVariableId],
+          projectId: rest.projectId
+        });
+        const connection = variable && (variable.oauthConfig as TAgentVaultOauthVariableConfig).connection;
+        if (!variable?.encryptedValue || !connection) {
+          throw new BadRequestError({
+            message: `The OAuth variable${variable ? ` '${variable.key}'` : ""} isn't connected. Authorize it on the Variables page, then load the tools.`
+          });
+        }
+        const storedServerUrl = service ? getServiceServerUrl(service.config) : null;
+        const variableIdToRefresh = oauthVariableId;
+        const variableKey = variable.key;
+        // Through the saved service when the request sends the token where it points, so the refresh is pinned to it.
+        // Otherwise the token goes only to the URL typed here, so the variable is refreshed on its own.
+        const savedService =
+          service && oauthVariableIdOf(service) === oauthVariableId && serverUrl === storedServerUrl ? service : null;
+        const refreshToken = async (rejectedTokenHash?: string) => {
+          const refreshed = savedService
+            ? await agentVaultOauthService.refreshServiceToken({
+                serviceId: savedService.id,
+                projectId: rest.projectId,
+                variableId: variableIdToRefresh,
+                expiresWithinSeconds: 60,
+                rejectedTokenHash,
+                destination: { hostPattern: savedService.hostPattern ?? null, serverUrl: storedServerUrl }
+              })
+            : await agentVaultOauthService.refreshVariableToken({
+                variableId: variableIdToRefresh,
+                projectId: rest.projectId,
+                expiresWithinSeconds: 60,
+                rejectedTokenHash
+              });
+          if (refreshed.status === AgentVaultOauthStatus.NeedsReauthorization) {
+            throw new BadRequestError({
+              message: `The sign-in stored in the OAuth variable '${variableKey}' is no longer accepted. Authorize it again on the Variables page, then load the tools again.`
+            });
+          }
+          return refreshed.credential.value;
+        };
+        accessToken = await refreshToken();
+        refreshSavedToken = refreshToken;
+        refreshesVariableOnly = !savedService;
+      } else if (sentOauth?.authorizationId) {
         accessToken = await agentVaultOauthService.readAuthorizationAccessToken({
-          authorizationId: credential.authorizationId,
+          authorizationId: sentOauth.authorizationId,
           projectId: rest.projectId,
           serviceId: service?.id,
           ctx: rest.ctx,
@@ -2335,8 +2542,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     } catch (err) {
       // A saved token can be refused before it expires (revoked, or no expiry from the provider), so it is refreshed
       // once, as the proxy does, before the admin is asked to reauthorize.
-      if (!(err instanceof McpListError && err.isCredentialRejected) || !refreshSavedToken || !isSavedConnection)
-        throw err;
+      // With no custom header, nothing but the variable's token can have been refused, whatever else differs.
+      const blamesToken = isSavedConnection || (refreshesVariableOnly && !headerValues.length);
+      if (!(err instanceof McpListError && err.isCredentialRejected) || !refreshSavedToken || !blamesToken) throw err;
       const refreshedToken = await refreshSavedToken(hashAccessToken(credentialValue));
       if (refreshedToken === credentialValue) throw err;
       return { tools: await listWith(refreshedToken) };
@@ -2351,14 +2559,20 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     if (!service) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
 
     // Read before the delete, since CASCADE takes these rows with the service.
-    const [{ customHeaders, substitutions, variableReferences }, bundlesByService] = await Promise.all([
-      loadTransformations([service.id]),
+    const [{ customHeaders, substitutions, variableReferences, oauthVariables }, bundlesByService] = await Promise.all([
+      loadTransformations([service]),
       agentVaultServiceDAL.findBundlesForServices([service.id], null)
     ]);
     const deleted = await agentVaultServiceDAL.deleteById(service.id);
     return {
       service: {
-        ...projectService(deleted as TAgentVaultCatalogService, customHeaders, substitutions, variableReferences),
+        ...projectService(
+          deleted as TAgentVaultCatalogService,
+          customHeaders,
+          substitutions,
+          variableReferences,
+          oauthVariables
+        ),
         accessBundles: bundlesByService.get(service.id) ?? []
       }
     };
@@ -2385,7 +2599,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   ) => {
     const serviceIds = services.map((service) => service.id);
     const [transformations, bundlesByService, statuses] = await Promise.all([
-      loadTransformations(serviceIds, undefined, { withVariableReferences: visibility.canReadVariables }),
+      loadTransformations(services, undefined, { withVariableReferences: visibility.canReadVariables }),
       agentVaultServiceDAL.findBundlesForServices(serviceIds, accessBundleIds),
       owner && serviceIds.length
         ? agentVaultPersonalValueService.findStatusesForOwner({

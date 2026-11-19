@@ -42,6 +42,7 @@ export type MicrosoftTeamsIntegration = {
 export type SlackIntegrationChannel = {
   id: string;
   name: string;
+  isArchived?: boolean;
 };
 
 export type TUpdateSlackIntegrationDTO = {

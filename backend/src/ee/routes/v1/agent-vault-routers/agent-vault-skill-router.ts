@@ -91,17 +91,30 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       description:
         "List the skills in an Agent Vault project and the access bundles each is in, ordered by name. A member sees only the skills on access bundles they have been granted.",
       tags: [ApiDocsTags.AgentVaultSkills],
-      querystring: z.object({
-        projectId: AgentVaultProjectIdSchema,
-        name: z
-          .string()
-          .trim()
-          .min(1)
-          .max(AGENT_VAULT_SKILL_NAME_MAX_LENGTH)
-          .optional()
-          .describe(AGENT_VAULT.SKILL.nameFilter),
-        ...agentVaultListQuery(AGENT_VAULT.SKILL)
-      }),
+      querystring: z
+        .object({
+          projectId: AgentVaultProjectIdSchema,
+          name: z
+            .string()
+            .trim()
+            .min(1)
+            .max(AGENT_VAULT_SKILL_NAME_MAX_LENGTH)
+            .optional()
+            .describe(AGENT_VAULT.SKILL.nameFilter),
+          onBehalfOfUserId: z.string().uuid().optional().describe(AGENT_VAULT.SKILL.onBehalfOfUserId),
+          onBehalfOfUserEmail: z
+            .string()
+            .trim()
+            .toLowerCase()
+            .email()
+            .max(255)
+            .optional()
+            .describe(AGENT_VAULT.SKILL.onBehalfOfUserEmail),
+          ...agentVaultListQuery(AGENT_VAULT.SKILL)
+        })
+        .refine((query) => !(query.onBehalfOfUserId && query.onBehalfOfUserEmail), {
+          message: "Name the user by onBehalfOfUserId or by onBehalfOfUserEmail, not both"
+        }),
       response: {
         200: z.object({
           skills: AgentVaultSkillDetailSchema.array(),
@@ -111,12 +124,16 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { projectId: requestedProjectId, ...query } = req.query;
+      const { projectId: requestedProjectId, onBehalfOfUserId, onBehalfOfUserEmail, ...query } = req.query;
       const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
       return server.services.agentVaultSkill.listSkills({
         projectId,
         ctx: actorContext(req),
-        ...query
+        ...query,
+        onBehalfOf:
+          onBehalfOfUserId || onBehalfOfUserEmail
+            ? { userId: onBehalfOfUserId, userEmail: onBehalfOfUserEmail }
+            : undefined
       });
     }
   });

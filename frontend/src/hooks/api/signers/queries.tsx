@@ -8,6 +8,7 @@ import { ResourcePermissionResponse } from "@app/helpers/resourcePermissions";
 import {
   SignerStatus,
   TGetPublicKeyResponse,
+  TGetSigningActivityTrendDTO,
   TGetUserSignerPermissionDTO,
   TListEffectiveSignerMembersDTO,
   TListEffectiveSignerMembersResponse,
@@ -21,6 +22,7 @@ import {
   TListSigningOperationsResponse,
   TSigner,
   TSignerPolicy,
+  TSigningActivityPeriod,
   TSigningOperationDetail,
   getOpenCertificateRequest
 } from "./types";
@@ -51,6 +53,8 @@ export const signerKeys = {
     [...signerKeys.list(filters.projectId), filters] as const,
   byId: (signerId: string) => [...signerKeys.all, "detail", signerId] as const,
   publicKey: (signerId: string) => [...signerKeys.all, "publicKey", signerId] as const,
+  activityTrend: (filters: TGetSigningActivityTrendDTO) =>
+    [...signerKeys.all, "activity-trend", filters] as const,
   operations: (signerId: string) => [...signerKeys.all, "operations", signerId] as const,
   operationsWithOpts: (filters: TListSigningOperationsDTO) =>
     [...signerKeys.operations(filters.signerId), filters] as const,
@@ -141,6 +145,26 @@ export const useGetSignerPublicKey = (signerId: string) => {
       return data;
     },
     enabled: Boolean(signerId)
+  });
+};
+
+export const useGetSigningActivityTrend = (
+  dto: TGetSigningActivityTrendDTO,
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
+  return useQuery({
+    queryKey: signerKeys.activityTrend(dto),
+    queryFn: async () => {
+      const params = new URLSearchParams({ range: dto.range });
+      if (dto.signerId) params.set("signerId", dto.signerId);
+
+      const { data } = await apiRequest.get<{ periods: TSigningActivityPeriod[] }>(
+        `/api/v1/cert-manager/signers/activity-trend?${params.toString()}`
+      );
+      return data.periods;
+    },
+    enabled,
+    placeholderData: (previousData) => previousData
   });
 };
 

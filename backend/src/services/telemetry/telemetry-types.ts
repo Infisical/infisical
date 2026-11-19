@@ -325,6 +325,7 @@ export enum PostHogEventTypes {
   AgentVaultVariableCreated = "Agent Vault Variable Created",
   AgentVaultVariableUpdated = "Agent Vault Variable Updated",
   AgentVaultVariableDeleted = "Agent Vault Variable Deleted",
+  AgentVaultOauthVariableConnected = "Agent Vault OAuth Variable Connected",
   AgentVaultSkillCreated = "Agent Vault Skill Created",
   AgentVaultSkillVersionPublished = "Agent Vault Skill Version Published",
   AgentVaultSkillDeleted = "Agent Vault Skill Deleted",
@@ -2496,7 +2497,14 @@ export type TAgentVaultServiceDeletedEvent = {
 
 export type TAgentVaultVariableCreatedEvent = {
   event: PostHogEventTypes.AgentVaultVariableCreated;
-  properties: TAgentVaultEventBase & { variableId: string; scope: string };
+  // type: text or oauth.
+  properties: TAgentVaultEventBase & { variableId: string; scope: string; type: string };
+};
+
+// Backend-owned: an OAuth variable that got tokens. method: sign-in, reconnect or import.
+export type TAgentVaultOauthVariableConnectedEvent = {
+  event: PostHogEventTypes.AgentVaultOauthVariableConnected;
+  properties: TAgentVaultEventBase & { variableId: string; method: string };
 };
 
 export type TAgentVaultVariableUpdatedEvent = {
@@ -2586,6 +2594,8 @@ export type TAgentVaultSessionCreatedEvent = {
     accessBundleId: string | null;
     inlineServiceCount: number;
     namedServiceCount: number;
+    inlineSkillCount: number;
+    namedSkillCount: number;
     // How many metadata entries the session was created with. Never the keys or values.
     metadataCount: number;
     ttlSeconds: number | null;
@@ -2712,6 +2722,7 @@ export type TAgentVaultPostHogEvent =
   | TAgentVaultVariableCreatedEvent
   | TAgentVaultVariableUpdatedEvent
   | TAgentVaultVariableDeletedEvent
+  | TAgentVaultOauthVariableConnectedEvent
   | TAgentVaultSkillCreatedEvent
   | TAgentVaultSkillVersionPublishedEvent
   | TAgentVaultSkillDeletedEvent
