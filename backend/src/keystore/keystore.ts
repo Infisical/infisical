@@ -219,6 +219,9 @@ export const KeyStorePrefixes = {
     `signing-activity-trend:${projectId}:${range}:${signerId ?? "all"}` as const,
   RefreshTokenGrace: (sessionId: string, refreshVersion: number) =>
     `refresh-token-grace:${sessionId}:${refreshVersion}` as const,
+  // The single per-session key servers before per-version grace read and write; kept in step so a rolling
+  // upgrade does not revoke sessions refreshed across old and new servers.
+  RefreshTokenGraceLegacy: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
   EmailSignupOtpHash: (hash: string) => `email-signup-otp:${hash}:hash` as const,
   EmailSignupOtpLock: (hash: string) => `email-signup-otp:${hash}:lock` as const,
   EmailDispatchCooldown: (purpose: string, mailboxHash: string) =>
@@ -307,6 +310,9 @@ export const KeyStoreTtls = {
   ProjectSSEConnectionTtlSeconds: 180, // Must be > heartbeat interval (60s) * 2
   TelemetryIdentifyIdentityInSeconds: 86400, // 24 hours
   RefreshTokenGraceInSeconds: 10,
+  // Outlives the slowest rotation: knex's default 60s wait for a pool connection plus the update's 5s bound
+  // (REFRESH_ROTATION_DB_TIMEOUT_MS), so the entry is still there when the new version commits.
+  RefreshTokenGracePendingInSeconds: 75,
   EmailSignupOtpInSeconds: 300, // 5 minutes
   EmailDispatchCooldownInSeconds: 60, // 1 minute
   EmailDispatchMailboxWindowInSeconds: 86400, // 24 hours

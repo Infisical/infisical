@@ -4,8 +4,17 @@ import { OrgMembershipStatus, TAuthTokens, TAuthTokenSessions, TUsers } from "@a
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import {
+  BadRequestError,
+  ForbiddenRequestError,
+  GatewayTimeoutError,
+  NotFoundError,
+  UnauthorizedError
+} from "@app/lib/errors";
+import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { chunkArray } from "@app/lib/fn/array";
+import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
@@ -244,8 +253,11 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     return session;
   };
 
-  const clearTokenSessionById = async (userId: string, sessionId: string): Promise<TAuthTokenSessions | undefined> =>
-    tokenDAL.incrementTokenSessionVersion(userId, sessionId);
+  const clearTokenSessionById = async (userId: string, sessionId: string): Promise<TAuthTokenSessions | undefined> => {
+    const session = await tokenDAL.incrementTokenSessionVersion(userId, sessionId);
+    await keyStore.deleteItem(KeyStorePrefixes.RefreshTokenGraceLegacy(sessionId));
+    return session;
+  };
 
   const getUserTokenSessionById = async (id: string, userId: string) => tokenDAL.findOneTokenSession({ id, userId });
 
@@ -314,6 +326,11 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
         return { decodedToken, tokenVersion, isGraceHit: true };
       }
 
+      const legacyGraceValue = await keyStore.getItem(KeyStorePrefixes.RefreshTokenGraceLegacy(tokenVersion.id));
+      if (legacyGraceValue !== null && Number(legacyGraceValue) === decodedToken.refreshVersion) {
+        return { decodedToken, tokenVersion, isGraceHit: true };
+      }
+
       // An old token used outside the grace window is treated as stolen.
       await tokenDAL.deleteTokenSession({ id: tokenVersion.id, userId: decodedToken.userId });
 
@@ -337,18 +354,39 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     const oldRefreshVersion = tokenVersion.refreshVersion;
 
     const graceKey = KeyStorePrefixes.RefreshTokenGrace(tokenVersion.id, oldRefreshVersion);
-    const writeGraceEntry = () =>
-      keyStore.setItemWithExpiry(graceKey, KeyStoreTtls.RefreshTokenGraceInSeconds, String(tokenVersion.accessVersion));
+    const legacyGraceKey = KeyStorePrefixes.RefreshTokenGraceLegacy(tokenVersion.id);
+    const writeGraceEntries = (ttlInSeconds: number) =>
+      Promise.all([
+        keyStore.setItemWithExpiry(graceKey, ttlInSeconds, String(tokenVersion.accessVersion)),
+        keyStore.setItemWithExpiry(legacyGraceKey, ttlInSeconds, String(oldRefreshVersion))
+      ]);
+    // Brings the window back to the grace period from now. A failure is only logged: the pending entry still
+    // covers the window, for longer, and failing the request after the version moved would leave the client
+    // holding only its old token.
+    const settleGraceEntries = async () => {
+      try {
+        await writeGraceEntries(KeyStoreTtls.RefreshTokenGraceInSeconds);
+      } catch (error) {
+        logger.warn(error, `Failed to shorten the refresh token grace entry [sessionId=${tokenVersion.id}]`);
+      }
+    };
 
-    // Written before the increment: a concurrent request holding the old token that reads the new version
-    // in between must find the grace entry, or it would revoke the session as reuse.
-    await writeGraceEntry();
+    // Written before the increment, with a TTL that outlives it: a concurrent request holding the old token
+    // that reads the new version must find the entry, or it would revoke the session as reuse.
+    await writeGraceEntries(KeyStoreTtls.RefreshTokenGracePendingInSeconds);
 
-    const updatedSession = await tokenDAL.incrementRefreshVersion(
-      tokenVersion.id,
-      decodedToken.userId,
-      oldRefreshVersion
-    );
+    let updatedSession: Awaited<ReturnType<typeof tokenDAL.incrementRefreshVersion>>;
+    try {
+      updatedSession = await tokenDAL.incrementRefreshVersion(tokenVersion.id, decodedToken.userId, oldRefreshVersion);
+    } catch (error) {
+      if (
+        hasPostgresErrorCode(error, DatabaseErrorCode.LockNotAvailable) ||
+        hasPostgresErrorCode(error, DatabaseErrorCode.QueryCanceled)
+      ) {
+        throw new GatewayTimeoutError({ message: "Refreshing your session took too long. Try again.", error });
+      }
+      throw error;
+    }
     if (!updatedSession) {
       // Either a concurrent request with the same token rotated it first (a grace hit), or the session was
       // revoked or signed out meanwhile, which also bumps accessVersion.
@@ -358,12 +396,12 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
         { readFromPrimary: true }
       );
       if (!current || current.accessVersion !== tokenVersion.accessVersion) throw sessionNoLongerValid();
+      // This request's pending write may have landed after the winner settled the entry.
+      await settleGraceEntries();
       return { isGraceHit: true };
     }
 
-    // Written again so the grace window runs from the commit; an update that waited on a row lock could
-    // otherwise land after the first entry expired.
-    await writeGraceEntry();
+    await settleGraceEntries();
 
     // Determine refresh token expiry
     let refreshTokenExpiresIn: string | number = appCfg.JWT_REFRESH_LIFETIME;
