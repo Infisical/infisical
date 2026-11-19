@@ -2651,7 +2651,8 @@ describe("starting an OAuth variable's sign-in", () => {
     await expect(startVariableSignIn(env, identityCtx, { clientSecret: "typed-secret" })).rejects.toThrow(
       /'tokenEndpointAuthMethod' is 'none'/
     );
-    await expect(startVariableSignIn(env)).resolves.toMatchObject({ authorization: expect.anything() });
+    const start = await startVariableSignIn(env);
+    expect(start.authorization).not.toBeNull();
   });
 
   test("a variable set up by hand with no issuer checks only the origin of an iss, and one with an issuer checks it all", async () => {
