@@ -1,6 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { BanIcon, BotIcon, PackageIcon, PencilIcon, UserIcon } from "lucide-react";
+import {
+  BanIcon,
+  BookOpenTextIcon,
+  BotIcon,
+  PackageIcon,
+  PencilIcon,
+  UserIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
@@ -29,26 +36,30 @@ import {
 import { useOrganization, useProject, useProjectPermission, useUser } from "@app/context";
 import { canActOnAgentVaultSession } from "@app/helpers/agentVaultPermissions";
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
-import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultSession, TAgentVaultSessionSkill } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
 import {
-  InlineServicesList,
-  NamedServicesList,
-  ServicesHoverCard
-} from "./InlineServicesHoverCard";
-import { SessionExpiry } from "./SessionExpiry";
-import {
   inlineServiceTarget,
   sessionInlineServices,
-  sessionNamedServices
-} from "./sessionInlineServices";
+  sessionInlineSkills,
+  sessionListedServices,
+  sessionListedSkills
+} from "./sessionAccess";
+import {
+  InlineServicesList,
+  ServicesList,
+  SessionAccessHoverCard,
+  SessionSkillsList
+} from "./SessionAccessHoverCard";
+import { SessionExpiry } from "./SessionExpiry";
 import { SessionLogsPanel } from "./SessionLogsPanel";
 import { SessionRequestCount } from "./SessionRequestCount";
 import { SessionStatusBadge } from "./SessionStatusBadge";
 
 const SHOWN_INLINE_SERVICES = 1;
-const SHOWN_NAMED_SERVICES = 2;
+const SHOWN_SERVICES = 2;
+const SHOWN_SKILLS = 2;
 
 // An element rather than a component, so the hover card's trigger hands its ref and handlers to the button itself.
 // One text node: a dotted underline restarts its dots at each node, leaving a dash at the seam.
@@ -60,6 +71,47 @@ const moreButton = (count: number) => (
     <span className="underline decoration-dotted underline-offset-2">{`+${count} more`}</span>
   </button>
 );
+
+// A session's skills, listed by name or inline: the first few by name, with the rest behind a hover card.
+const SkillsDetail = ({
+  label,
+  skills,
+  isInline
+}: {
+  label: string;
+  skills: TAgentVaultSessionSkill[];
+  isInline: boolean;
+}) => {
+  const more = skills.slice(SHOWN_SKILLS);
+  return (
+    <Detail className="min-w-0">
+      <DetailLabel>{label}</DetailLabel>
+      <DetailValue className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        {skills.slice(0, SHOWN_SKILLS).map((skill) => (
+          <Tooltip key={skill.id}>
+            <TooltipTrigger asChild>
+              <span className="flex min-w-0 items-center gap-2">
+                <BookOpenTextIcon className="size-4 shrink-0 text-muted" />
+                <span className="truncate">{skill.name}</span>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-sm">
+              {isInline
+                ? "Sent with this session when it was created"
+                : "A project skill picked when this session was created"}
+              <span className="block">{skill.description}</span>
+            </TooltipContent>
+          </Tooltip>
+        ))}
+        {more.length > 0 && (
+          <SessionAccessHoverCard content={<SessionSkillsList skills={more} isInline={isInline} />}>
+            {moreButton(more.length)}
+          </SessionAccessHoverCard>
+        )}
+      </DetailValue>
+    </Detail>
+  );
+};
 
 type Props = {
   session: TAgentVaultSession | undefined;
@@ -90,11 +142,13 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
   );
   const metadataEntries = Object.entries(session?.metadata ?? {});
   const inlineServices = session ? sessionInlineServices(session) : [];
-  const shownServices = inlineServices.slice(0, SHOWN_INLINE_SERVICES);
-  const moreServices = inlineServices.slice(SHOWN_INLINE_SERVICES);
-  const namedServices = session ? sessionNamedServices(session) : [];
-  const shownNamedServices = namedServices.slice(0, SHOWN_NAMED_SERVICES);
-  const moreNamedServices = namedServices.slice(SHOWN_NAMED_SERVICES);
+  const shownInlineServices = inlineServices.slice(0, SHOWN_INLINE_SERVICES);
+  const moreInlineServices = inlineServices.slice(SHOWN_INLINE_SERVICES);
+  const listedServices = session ? sessionListedServices(session) : [];
+  const shownServices = listedServices.slice(0, SHOWN_SERVICES);
+  const moreServices = listedServices.slice(SHOWN_SERVICES);
+  const listedSkills = session ? sessionListedSkills(session) : [];
+  const inlineSkills = session ? sessionInlineSkills(session) : [];
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && closeSheet()}>
@@ -208,11 +262,11 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                         </DetailValue>
                       </Detail>
                     )}
-                    {namedServices.length > 0 && (
+                    {listedServices.length > 0 && (
                       <Detail className="min-w-0">
                         <DetailLabel>Services</DetailLabel>
                         <DetailValue className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                          {shownNamedServices.map((service) => (
+                          {shownServices.map((service) => (
                             <Tooltip key={service.id}>
                               <TooltipTrigger asChild>
                                 <span className="flex min-w-0 items-center gap-2">
@@ -225,19 +279,19 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent className="max-w-sm">
-                                A project service this session names
+                                A project service picked when this session was created
                                 {service.description && (
                                   <span className="block">{service.description}</span>
                                 )}
                               </TooltipContent>
                             </Tooltip>
                           ))}
-                          {moreNamedServices.length > 0 && (
-                            <ServicesHoverCard
-                              content={<NamedServicesList services={moreNamedServices} />}
+                          {moreServices.length > 0 && (
+                            <SessionAccessHoverCard
+                              content={<ServicesList services={moreServices} />}
                             >
-                              {moreButton(moreNamedServices.length)}
-                            </ServicesHoverCard>
+                              {moreButton(moreServices.length)}
+                            </SessionAccessHoverCard>
                           )}
                         </DetailValue>
                       </Detail>
@@ -246,7 +300,7 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                       <Detail className="min-w-0">
                         <DetailLabel>Inline Services</DetailLabel>
                         <DetailValue className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                          {shownServices.map((service) => (
+                          {shownInlineServices.map((service) => (
                             <Tooltip key={service.id}>
                               <TooltipTrigger asChild>
                                 <span className="flex min-w-0 items-center gap-2">
@@ -269,15 +323,21 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                               </TooltipContent>
                             </Tooltip>
                           ))}
-                          {moreServices.length > 0 && (
-                            <ServicesHoverCard
-                              content={<InlineServicesList services={moreServices} />}
+                          {moreInlineServices.length > 0 && (
+                            <SessionAccessHoverCard
+                              content={<InlineServicesList services={moreInlineServices} />}
                             >
-                              {moreButton(moreServices.length)}
-                            </ServicesHoverCard>
+                              {moreButton(moreInlineServices.length)}
+                            </SessionAccessHoverCard>
                           )}
                         </DetailValue>
                       </Detail>
+                    )}
+                    {listedSkills.length > 0 && (
+                      <SkillsDetail label="Skills" skills={listedSkills} isInline={false} />
+                    )}
+                    {inlineSkills.length > 0 && (
+                      <SkillsDetail label="Inline Skills" skills={inlineSkills} isInline />
                     )}
                     <Detail>
                       <DetailLabel>Created</DetailLabel>

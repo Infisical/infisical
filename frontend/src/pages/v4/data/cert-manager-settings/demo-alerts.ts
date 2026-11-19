@@ -114,6 +114,10 @@ export const toStoredChannel = (
   const before = previous?.config ?? {};
   const stored: Record<AlertChannelType, () => Record<string, unknown>> = {
     [AlertChannelType.Email]: () => ({}),
+    [AlertChannelType.SlackApp]: () => ({
+      workflowIntegrationId: config.workflowIntegrationId,
+      channels: config.channels ?? []
+    }),
     [AlertChannelType.Slack]: () => ({
       hasWebhookUrl: savedFlag(config.webhookUrl, before.hasWebhookUrl)
     }),
@@ -301,9 +305,15 @@ const identityAlerts = () => [
       {
         id: "c1a2b3c4-0102-4000-8000-000000000002",
         name: "Slack",
-        channelType: AlertChannelType.Slack,
+        channelType: AlertChannelType.SlackApp,
         enabled: true,
-        config: { hasWebhookUrl: true },
+        config: {
+          workflowIntegrationId: "wf-slack-acme",
+          channels: [
+            { id: "C06PAYMENTS", name: "payments-oncall" },
+            { id: "C04SEC0PS", name: "security-ops" }
+          ]
+        },
         recipients: []
       },
       {

@@ -5,8 +5,10 @@ import {
   displayHostPattern,
   HTTP_METHODS,
   isNativeService,
+  isOAuthVariableService,
   McpToolScope,
   storedMemberFields,
+  storedOAuthVariableKey,
   type TServiceForm,
   UNCHANGED_SECRET
 } from "@app/components/agent-vault/service-sheet/serviceSchema";
@@ -75,6 +77,8 @@ export const BLANK_SERVICE_FORM: TServiceForm = {
   oauthClientId: "",
   oauthClientSecret: "",
   oauthAutomaticSetup: false,
+  oauthUsesVariable: false,
+  oauthVariableKey: "",
   memberProvidedFields: [],
   methods: [...HTTP_METHODS],
   pathPrefixes: [],
@@ -160,6 +164,8 @@ export const formFromService = (service: TAgentVaultService): TServiceForm => {
       memberProvidedFields,
       oauthClientId:
         credential.type === AgentVaultCredentialType.OAuth ? (credential.clientId ?? "") : "",
+      oauthUsesVariable: isOAuthVariableService(service),
+      oauthVariableKey: storedOAuthVariableKey(service),
       customHeaders: service.customHeaders.map((header) => ({
         id: header.id,
         name: header.name,
@@ -190,6 +196,7 @@ export const formFromService = (service: TAgentVaultService): TServiceForm => {
         ? ""
         : storedValue(AgentVaultVariableReferenceField.CredentialValue),
     memberProvidedFields,
+    oauthVariableKey: storedOAuthVariableKey(service),
     methods: service.allowedMethods ?? [...HTTP_METHODS],
     pathPrefixes: service.allowedPathPrefixes ?? [],
     customHeaders: service.customHeaders.map((header) => ({

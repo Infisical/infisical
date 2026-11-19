@@ -20,6 +20,7 @@ import type {
   TSecretScanningDataSourceOption,
   TSecretScanningDataSourceWithDetails,
   TSecretScanningFinding,
+  TSecretScanningFindingLocation,
   TSecretScanningResource,
   TSecretScanningScanWithDetails,
   TTriggerSecretScanningDataSourceDTO,
@@ -39,6 +40,15 @@ export type SecretScanningAdapter = {
     dto: TListSecretScanningFindingsDTO,
     options?: PollOptions
   ) => V4QueryResult<TListSecretScanningFindingsResponse> & { isPlaceholderData: boolean };
+  useFindingLocations: (findingId: string) => V4QueryResult<{
+    locations: TSecretScanningFindingLocation[];
+    totalCount: number;
+  }> & {
+    hasNextPage: boolean;
+    isFetchingNextPage: boolean;
+    fetchNextPage: () => Promise<unknown>;
+    refetch: () => Promise<unknown>;
+  };
   useUnresolvedFindingCount: (projectId: string) => V4QueryResult<number>;
   useDataSources: (projectId: string) => V4QueryResult<TSecretScanningDataSource[]>;
   useDashboardDataSources: (

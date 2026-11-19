@@ -101,6 +101,8 @@ import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/clou
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
 import { ValidateConvexConnectionCredentialsSchema } from "./convex";
 import { convexConnectionService } from "./convex/convex-connection-service";
+import { ValidateCoolifyConnectionCredentialsSchema } from "./coolify";
+import { coolifyConnectionService } from "./coolify/coolify-connection-service";
 import { TAppConnectionCredentialRotationServiceFactory } from "./credential-rotation";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
@@ -343,6 +345,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Rundeck]: ValidateRundeckConnectionCredentialsSchema,
   [AppConnection.Portainer]: ValidatePortainerConnectionCredentialsSchema,
   [AppConnection.Jenkins]: ValidateJenkinsConnectionCredentialsSchema,
+  [AppConnection.Coolify]: ValidateCoolifyConnectionCredentialsSchema,
   [AppConnection.Qovery]: ValidateQoveryConnectionCredentialsSchema,
   [AppConnection.LiteLLM]: ValidateLiteLLMConnectionCredentialsSchema,
   [AppConnection.Fireworks]: ValidateFireworksConnectionCredentialsSchema,
@@ -1586,6 +1589,7 @@ export const appConnectionServiceFactory = ({
     rundeck: rundeckConnectionService(connectAppConnectionById),
     portainer: portainerConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     jenkins: jenkinsConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
+    coolify: coolifyConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById),
     netlify: netlifyConnectionService(connectAppConnectionById),
     northflank: northflankConnectionService(connectAppConnectionById),

@@ -31,7 +31,12 @@ import {
   CertSource,
   CertStatus
 } from "@app/hooks/api/certificates/enums";
-import type { TCertificate, TDashboardDistribution } from "@app/hooks/api/certificates/types";
+import {
+  CertificateRevocationStatus,
+  type TCertificate,
+  type TDashboardDistribution,
+  type TRevokeCertResponse
+} from "@app/hooks/api/certificates/types";
 import { SigningAlgorithm } from "@app/hooks/api/cmeks/types";
 import {
   PkiInstallationLocationType,
@@ -47,6 +52,7 @@ import {
   type TSigningOperation
 } from "@app/hooks/api/signers/types";
 
+import { requestDemoRevocation } from "../approval-requests/demo";
 import { useDemoCreatedCas } from "../certificate-authorities/demo";
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
 import { demoApplications, demoCertificateRequests } from "../pki-applications/demo-store";
@@ -845,10 +851,21 @@ export const certificatesDemo: CertificatesAdapter = {
   useDeleteCertificate: fixtureMutation(({ id }) =>
     change(id, { deletedAt: new Date().toISOString() })
   ),
-  useRevokeCertificate: fixtureMutation(({ id }) => {
+  useRevokeCertificate: fixtureMutation(({ id, revocationReason }): TRevokeCertResponse => {
+    const current = store.get().find((cert) => cert.id === id);
+    if (!current) throw new Error("Certificate not found");
+    const approvalRequestId = requestDemoRevocation(current, revocationReason);
+    if (approvalRequestId)
+      return {
+        message: "Revocation request submitted for approval",
+        status: CertificateRevocationStatus.PendingApproval,
+        serialNumber: current.serialNumber,
+        approvalRequestId
+      };
     const cert = change(id, { status: CertStatus.REVOKED });
     return {
       message: "Successfully revoked certificate",
+      status: CertificateRevocationStatus.Revoked,
       serialNumber: cert.serialNumber,
       revokedAt: new Date().toISOString()
     };

@@ -26,7 +26,12 @@ import {
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, v4Path } from "../../links";
 import { RequestsTab as CertificateRequestsTab } from "../ApplicationDetailsByIDPage/requests-tab";
-import { certDataOf, RequestStatus, requestedAgo, signingDataOf } from "../components/approval";
+import {
+  applicationRequestSummaryOf,
+  RequestStatus,
+  requestedAgo,
+  signingDataOf
+} from "../components/approval";
 import { CertManagerNotSetUp, useCertManagerProjectId } from "../components/certificate";
 
 const routeId = v4Path("/organizations/$orgId/cert-manager/requests");
@@ -91,13 +96,10 @@ const RequestsTable = ({
     .filter((request) => {
       if (!term) return true;
       const requester = `${request.requesterName} ${request.requesterEmail}`;
+      const summary = applicationRequestSummaryOf(request);
       const haystack = isSigning
         ? [signingDataOf(request)?.signerName, requester]
-        : [
-            certDataOf(request)?.certificateRequest?.commonName,
-            certDataOf(request)?.profileName,
-            requester
-          ];
+        : [summary.commonName, summary.typeLabel, summary.profileName, requester];
       return haystack.some((value) => value?.toLowerCase().includes(term));
     });
   const applicationOf = (request: TApprovalRequest) =>
@@ -109,7 +111,7 @@ const RequestsTable = ({
       link={{
         to: detailPath,
         params: { orgId, approvalRequestId: request.id },
-        search: { policyType, from: "root-requests" }
+        search: { policyType: request.type, from: "root-requests" }
       }}
     >
       {text}
@@ -155,15 +157,21 @@ const RequestsTable = ({
           header: "Common name",
           primary: true,
           grow: true,
-          text: (request) => certDataOf(request)?.certificateRequest?.commonName ?? "",
+          text: (request) => applicationRequestSummaryOf(request).commonName,
           render: (request) =>
-            link(request, certDataOf(request)?.certificateRequest?.commonName || "No common name")
+            link(request, applicationRequestSummaryOf(request).displayName || "No common name")
+        },
+        {
+          id: "type",
+          header: "Type",
+          width: 120,
+          render: (request) => applicationRequestSummaryOf(request).typeLabel
         },
         {
           id: "profile",
           header: "Profile",
           width: 152,
-          render: (request) => certDataOf(request)?.profileName ?? "None"
+          render: (request) => applicationRequestSummaryOf(request).profileName || "None"
         },
         {
           id: "application",
@@ -200,7 +208,7 @@ const RequestsTable = ({
             placeholder={
               isSigning
                 ? "Search by signer or requester"
-                : "Search by common name, profile or requester"
+                : "Search by common name, type, profile or requester"
             }
             slashShortcut
             value={query}
@@ -218,7 +226,7 @@ const RequestsTable = ({
         rowLabel={(request) =>
           (isSigning
             ? signingDataOf(request)?.signerName
-            : certDataOf(request)?.certificateRequest?.commonName) ?? request.id
+            : applicationRequestSummaryOf(request).displayName) || request.id
         }
         empty={
           filtered && requests.length ? (
@@ -246,7 +254,7 @@ const RequestsTable = ({
               description={
                 isSigning
                   ? "Code signing requests from any signer appear here."
-                  : "Certificate requests from any application appear here."
+                  : "Certificate issuance, renewal and revocation requests from any application appear here."
               }
             />
           )
@@ -270,6 +278,14 @@ const RequestsContent = () => {
     policyType: ApprovalPolicyType.CertRequest,
     ...scope
   });
+  const revocationRequests = approvals.useRequests({
+    policyType: ApprovalPolicyType.CertRevocation,
+    ...scope
+  });
+  const applicationRequests = [
+    ...(certRequests.data ?? []),
+    ...(revocationRequests.data ?? [])
+  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const signingRequests = approvals.useRequests({
     policyType: ApprovalPolicyType.CertCodeSigning,
     ...scope
@@ -298,7 +314,7 @@ const RequestsContent = () => {
                 {
                   value: "application-requests",
                   label: "Application requests",
-                  count: pendingCount(certRequests.data)
+                  count: pendingCount(applicationRequests)
                 },
                 {
                   value: "signing-requests",
@@ -318,8 +334,8 @@ const RequestsContent = () => {
             key="application-requests"
             orgId={orgId}
             policyType={ApprovalPolicyType.CertRequest}
-            requests={certRequests.data ?? []}
-            loading={certRequests.isPending}
+            requests={applicationRequests}
+            loading={certRequests.isPending || revocationRequests.isPending}
           />
         )}
         {tab === "signing-requests" && (

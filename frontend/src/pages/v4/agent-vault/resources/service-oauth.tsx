@@ -41,7 +41,8 @@ const CALLBACK_PATH = "/agent-vault/oauth/callback";
 const STATUS_TONE = {
   [AgentVaultOauthStatus.Connected]: "ok",
   [AgentVaultOauthStatus.NeedsReauthorization]: "bad",
-  [AgentVaultOauthStatus.NeedsAdditionalScopes]: "warn"
+  [AgentVaultOauthStatus.NeedsAdditionalScopes]: "warn",
+  [AgentVaultOauthStatus.NotConnected]: "outline"
 } as const;
 
 export const OAuthStatusBadge = ({ status }: { status: AgentVaultOauthStatus }) => (

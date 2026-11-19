@@ -77,3 +77,14 @@ export const createUserAccessToken = async ({ userId, orgId }: { userId: string;
     { expiresIn: "1h" }
   );
 };
+
+// Goes through the route an org admin uses, so whatever deactivation does to the member's access happens here too.
+export const deactivateOrgMembership = async (dto: { orgId: string; membershipId: string; authToken: string }) => {
+  const res = await testServer.inject({
+    method: "PATCH",
+    url: `/api/v2/organizations/${dto.orgId}/memberships/${dto.membershipId}`,
+    headers: { authorization: `Bearer ${dto.authToken}` },
+    body: { isActive: false }
+  });
+  expect(res.statusCode, res.payload).toBe(200);
+};

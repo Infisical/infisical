@@ -1,3 +1,5 @@
+import { CoolifyResourceType } from "@app/hooks/api/appConnections/coolify/types";
+
 import type { SyncHostingLookups } from "./contract-sync-hosting";
 import { listOf, ready } from "./demo-options";
 
@@ -99,5 +101,35 @@ export const syncHostingDemo: SyncHostingLookups = {
     { id: 11, name: "acme-demo-api", environmentId: 1, isGitBased: true },
     { id: 12, name: "acme-demo-worker", environmentId: 1, isGitBased: false },
     { id: 21, name: "acme-demo-staging-web", environmentId: 2, isGitBased: false }
+  ]),
+  useCoolifyResources: listOf([
+    {
+      id: "k8w0cg4ososwc0o4kkg8gk0s",
+      name: "acme-demo-api",
+      type: CoolifyResourceType.Application,
+      projectName: "acme-demo",
+      environmentName: "production"
+    },
+    {
+      id: "p0gkc8o4wc4w8s0c0wcgs4ko",
+      name: "acme-demo-postgres",
+      type: CoolifyResourceType.Database,
+      projectName: "acme-demo",
+      environmentName: "production"
+    },
+    {
+      id: "z4c8ckgsw80ko0gs4okw8k0c",
+      name: "acme-demo-plausible",
+      type: CoolifyResourceType.Service,
+      projectName: "acme-demo",
+      environmentName: "production"
+    },
+    {
+      id: "e0wkgo8sg4c8c4ogwc0s8wks",
+      name: "acme-demo-api",
+      type: CoolifyResourceType.Application,
+      projectName: "acme-demo",
+      environmentName: "staging"
+    }
   ])
 };

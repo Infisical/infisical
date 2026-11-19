@@ -13,25 +13,28 @@ import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
+import { Inline } from "@infisical/cipher/ui/layout";
 import { Select } from "@infisical/cipher/ui/select";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
 import { resolveCertManagerProjectId } from "@app/helpers/certManagerActiveProject";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability, type CaType } from "@app/hooks/api/ca/enums";
 import { crlReasons } from "@app/hooks/api/certificates/constants";
 import { CertSource, CertStatus, CrlReason } from "@app/hooks/api/certificates/enums";
-import type { TCertificate } from "@app/hooks/api/certificates/types";
+import { CertificateRevocationStatus, type TCertificate } from "@app/hooks/api/certificates/types";
 import {
   canRevokeAfterDeletion,
   DELETED_CERTIFICATE_NO_ACTIONS,
   getCertificateDeletionWarning,
   getCertificateDisplayStatus,
+  getPendingRevocationState,
   isExpiringWithinOneDay,
   isManagedCertificate,
   RENEWAL_UNAVAILABLE_NO_PROFILE
 } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
 
-import { failed } from "../../access/toast";
+import { failed, saved, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref } from "../../links";
@@ -58,12 +61,53 @@ const statusTone: Record<CertStatus, "ok" | "bad" | "soft" | "outline"> = {
   [CertStatus.DELETED]: "outline"
 };
 
-export const CertificateStatusBadge = ({ cert }: { cert: TCertificate }) => {
+export const useRevocationApprovals = (applicationId?: string | null) => {
+  const approvals = useV4Adapter("approvalRequests");
+  const { data: pending } = approvals.usePendingRevocations(applicationId);
+  const { data: profileNames } = approvals.useRevocationPolicyProfileNames(applicationId);
+  return (cert: TCertificate) => {
+    const isRevocationApprovalRequired = Boolean(
+      cert.profileName && profileNames?.has(cert.profileName)
+    );
+    const pendingRequest = pending?.get(cert.id);
+    return {
+      isRevocationApprovalRequired,
+      requestId: pendingRequest?.id,
+      ...getPendingRevocationState({
+        pendingRequest,
+        isRevoked: cert.status === CertStatus.REVOKED,
+        isRevocationApprovalRequired
+      })
+    };
+  };
+};
+
+export type CertificateRevocation = ReturnType<ReturnType<typeof useRevocationApprovals>>;
+
+export const CertificateStatusBadge = ({
+  cert,
+  revocation
+}: {
+  cert: TCertificate;
+  revocation?: CertificateRevocation;
+}) => {
   const { status, label } = getCertificateDisplayStatus(cert);
-  return (
+  const statusBadge = (
     <Badge tone={statusTone[status]} dot={status !== CertStatus.RENEWED}>
       {label}
     </Badge>
+  );
+  if (!revocation?.isPending) return statusBadge;
+  const pendingBadge = <Badge tone="warn">Revocation pending</Badge>;
+  return (
+    <Inline gap={6} align="center">
+      {status !== CertStatus.ACTIVE && statusBadge}
+      {revocation.revokeReplacesRequestReason ? (
+        <Tooltip content={revocation.revokeReplacesRequestReason}>{pendingBadge}</Tooltip>
+      ) : (
+        pendingBadge
+      )}
+    </Inline>
   );
 };
 
@@ -110,8 +154,14 @@ const syncBlock = (cert: TCertificate, isInventoryView: boolean) => {
   return undefined;
 };
 
-const revokeBlock = (cert: TCertificate, isInventoryView: boolean, caType?: CaType) => {
+const revokeBlock = (
+  cert: TCertificate,
+  isInventoryView: boolean,
+  caType?: CaType,
+  revocation?: CertificateRevocation
+) => {
   if (cert.status === CertStatus.REVOKED) return "Already revoked";
+  if (revocation?.revokeBlockedReason) return revocation.revokeBlockedReason;
   if (!cert.caId || (caType && !caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES)))
     return "Its certificate authority cannot revoke certificates";
   if (cert.deletedAt && !canRevokeAfterDeletion(cert, cert.caType ?? caType))
@@ -128,13 +178,17 @@ const deleteBlock = (cert: TCertificate, isInventoryView: boolean) => {
 
 export const certificateBlocks = (
   cert: TCertificate,
-  { isInventoryView, caType }: { isInventoryView: boolean; caType?: CaType }
+  {
+    isInventoryView,
+    caType,
+    revocation
+  }: { isInventoryView: boolean; caType?: CaType; revocation?: CertificateRevocation }
 ) => ({
   export: cert.deletedAt ? DELETED_CERTIFICATE_NO_ACTIONS : undefined,
   renew: renewBlock(cert, isInventoryView),
   autoRenew: autoRenewBlock(cert, isInventoryView),
   sync: syncBlock(cert, isInventoryView),
-  revoke: revokeBlock(cert, isInventoryView, caType),
+  revoke: revokeBlock(cert, isInventoryView, caType, revocation),
   delete: deleteBlock(cert, isInventoryView)
 });
 
@@ -165,9 +219,11 @@ export const CertManagerNotSetUp = ({ orgId }: { orgId: string }) => (
 
 export const RevokeCertificateDialog = ({
   cert,
+  isRevocationApprovalRequired = false,
   onClose
 }: {
   cert?: TCertificate;
+  isRevocationApprovalRequired?: boolean;
   onClose: () => void;
 }) => {
   const [reason, setReason] = useState<string>(CrlReason.UNSPECIFIED);
@@ -185,8 +241,9 @@ export const RevokeCertificateDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle>{`Revoke ${cert ? certificateName(cert) : "certificate"}?`}</AlertDialogTitle>
           <AlertDialogDescription>
-            The next CRL lists it, and clients that check revocation reject it. You cannot undo
-            this.
+            {isRevocationApprovalRequired
+              ? "Submitting creates an approval request. The certificate isn't revoked until it's approved."
+              : "The next CRL lists it, and clients that check revocation reject it. You cannot undo this."}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <Field label="Revocation reason">
@@ -202,14 +259,36 @@ export const RevokeCertificateDialog = ({
           <AlertDialogAction asChild>
             <Button
               variant="destructive"
-              onClick={() =>
-                cert &&
-                revoke
-                  .mutateAsync({ id: cert.id, revocationReason: reason })
-                  .catch((error) => failed("Failed to revoke certificate", error))
-              }
+              onClick={async () => {
+                if (!cert) return;
+                try {
+                  const response = await revoke.mutateAsync({
+                    id: cert.id,
+                    revocationReason: reason
+                  });
+                  if (response.status === CertificateRevocationStatus.PendingApproval) {
+                    toast({
+                      tone: "ok",
+                      title: "Revocation request submitted",
+                      description: "The certificate stays active until the request is approved."
+                    });
+                    return;
+                  }
+                  if (response.crlWarning) {
+                    toast({
+                      tone: "neutral",
+                      title: "Certificate revoked, CRL not regenerated",
+                      description: response.crlWarning
+                    });
+                    return;
+                  }
+                  saved("Certificate revoked");
+                } catch (error) {
+                  failed("Failed to revoke certificate", error);
+                }
+              }}
             >
-              Revoke certificate
+              {isRevocationApprovalRequired ? "Request revocation" : "Revoke certificate"}
             </Button>
           </AlertDialogAction>
         </AlertDialogFooter>

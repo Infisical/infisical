@@ -24,6 +24,7 @@ import {
   useListSecretScanningBasicDataSources,
   useListSecretScanningBasicResources,
   useListSecretScanningDataSources,
+  useListSecretScanningFindingLocations,
   useListSecretScanningFindings,
   useSecretScanningDataSourceOptions,
   useListSecretScanningResources,
@@ -51,10 +52,27 @@ const useResolvedProjectId: SecretScanningAdapter["useProjectId"] = (orgId) => {
   };
 };
 
+const useFindingLocations: SecretScanningAdapter["useFindingLocations"] = (findingId) => {
+  const query = useListSecretScanningFindingLocations(findingId);
+  return {
+    data: query.data && {
+      locations: query.data.pages.flatMap((page) => page.locations),
+      totalCount: query.data.pages[0]?.totalCount ?? 0
+    },
+    isPending: query.isPending,
+    error: query.error,
+    hasNextPage: query.hasNextPage,
+    isFetchingNextPage: query.isFetchingNextPage,
+    fetchNextPage: query.fetchNextPage,
+    refetch: query.refetch
+  };
+};
+
 export const secretScanningLive: SecretScanningAdapter = {
   useProjectId: useResolvedProjectId,
   useInstanceState: (orgId) => useGetSecretScanningInstanceState(orgId),
   useFindings: useListSecretScanningFindings,
+  useFindingLocations,
   useUnresolvedFindingCount: useGetSecretScanningUnresolvedFindingCount,
   useDataSources: useListSecretScanningBasicDataSources,
   useDashboardDataSources: useListSecretScanningDataSources,

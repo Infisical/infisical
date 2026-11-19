@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
@@ -17,21 +18,34 @@ import { SecretInput } from "@infisical/cipher/ui/secret-input";
 import { Select } from "@infisical/cipher/ui/select";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { SmallText } from "@infisical/cipher/ui/text";
+import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
 
 import { CertificateEnterpriseAlertingUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
 import { isValidEmail } from "@app/helpers/email";
 import {
+  ADD_MENU_CHANNEL_TYPES,
   ALERT_CHANNEL_TYPE_LABELS,
   AlertChannelType,
   AlertPrincipalType,
   channelFormSchema,
   isWebhookUrlChanged,
+  MAX_SLACK_APP_CHANNELS,
+  SLACK_CHANNEL_TYPES,
   type TAlertChannelRecipient,
   WEBHOOK_AUTH_FIELDS,
   WebhookAuthType
 } from "@app/hooks/api/alerts/types";
 import { toChannelInput } from "@app/hooks/api/alerts/utils";
+import {
+  WorkflowIntegrationPlatform,
+  WorkflowIntegrationStatus
+} from "@app/hooks/api/workflowIntegrations/types";
 
+import { useOrgId, useOrgPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useUpgradeGate } from "../../license";
@@ -79,6 +93,17 @@ export const AddChannelMenu = ({
   onAdd: (channelType: AlertChannelType) => void;
 }) => {
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
+  const { permission } = useOrgPermission();
+  const canPickSlackIntegration = permission.can(
+    OrgPermissionActions.Read,
+    OrgPermissionSubjects.Settings
+  );
+  const addChannel = (channelType: AlertChannelType) =>
+    onAdd(
+      channelType === AlertChannelType.SlackApp && !canPickSlackIntegration
+        ? AlertChannelType.Slack
+        : channelType
+    );
   return (
     <>
       <DropdownMenu>
@@ -99,13 +124,13 @@ export const AddChannelMenu = ({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          {Object.values(AlertChannelType).map((channelType) => {
+          {ADD_MENU_CHANNEL_TYPES.map((channelType) => {
             const isLocked = !hasEnterprise && ENTERPRISE_CHANNEL_TYPES.includes(channelType);
             const glyph = CHANNEL_ICONS[channelType];
             return (
               <DropdownMenuItem
                 key={channelType}
-                onSelect={() => (isLocked ? openUpgradeGate(upgrade) : onAdd(channelType))}
+                onSelect={() => (isLocked ? openUpgradeGate(upgrade) : addChannel(channelType))}
               >
                 {typeof glyph === "string" ? <Icon name={glyph} /> : <Icon icon={glyph} />}
                 {ALERT_CHANNEL_TYPE_LABELS[channelType]}
@@ -439,6 +464,186 @@ const WebhookHeadersField = ({ channel, error, onChange }: TChannelFieldProps) =
   );
 };
 
+const SLACK_METHODS = [
+  { channelType: AlertChannelType.SlackApp, label: "Slack app" },
+  { channelType: AlertChannelType.Slack, label: "Webhook URL" }
+];
+
+const SlackMethodSwitch = ({ channel, onChange }: TChannelFieldProps) => {
+  const { savedChannel, channelType } = channel;
+  const selectMethod = (nextType: AlertChannelType) => {
+    if (nextType === channelType) return;
+    const isSavedMethod = savedChannel?.channelType === nextType;
+    onChange(
+      {
+        channelType: nextType,
+        id: isSavedMethod ? savedChannel.id : undefined,
+        hasWebhookUrl: isSavedMethod ? savedChannel.hasWebhookUrl : false
+      },
+      () => ({})
+    );
+  };
+
+  return (
+    <Stack gap={6}>
+      <ToggleGroup
+        type="single"
+        size="sm"
+        aria-label="How to post to Slack"
+        value={channelType}
+        onValueChange={(value) => value && selectMethod(value as AlertChannelType)}
+      >
+        {SLACK_METHODS.map((method) => (
+          <ToggleGroupItem key={method.channelType} value={method.channelType}>
+            {method.label}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+      {savedChannel && savedChannel.channelType !== channelType && (
+        <SmallText muted>Saving the alert replaces this Slack channel with a new one.</SmallText>
+      )}
+    </Stack>
+  );
+};
+
+const SlackChannelsWithoutAccess = ({ channel, error }: TChannelFieldProps) => {
+  const names = (channel.slackChannels ?? []).map(({ name }) => `#${name}`).join(", ");
+  return (
+    <Field
+      wide
+      label="Slack channels"
+      error={error("workflowIntegrationId") ?? error("slackChannels")}
+      description="Picking a Slack integration and channels needs permission to read organization settings. Ask an organization admin, or select Webhook URL instead."
+    >
+      {names ? <SmallText>{names}</SmallText> : null}
+    </Field>
+  );
+};
+
+const SlackChannelPickers = ({ channel, error, onChange }: TChannelFieldProps) => {
+  const orgId = useOrgId();
+  const integrationsAdapter = useV4Adapter("projectIntegrations");
+  const integrationsQuery = integrationsAdapter.useWorkflowIntegrations(orgId);
+  const workflowIntegrationId = channel.workflowIntegrationId ?? "";
+  const channelsQuery = integrationsAdapter.useSlackChannels(workflowIntegrationId || undefined);
+  const [isSavedIntegrationDeleted, setIsSavedIntegrationDeleted] = useState(false);
+
+  const integrations = (integrationsQuery.data ?? []).filter(
+    (integration) =>
+      integration.integration === WorkflowIntegrationPlatform.SLACK &&
+      integration.status === WorkflowIntegrationStatus.Installed
+  );
+  const isIntegrationMissing =
+    Boolean(integrationsQuery.data) &&
+    Boolean(workflowIntegrationId) &&
+    !integrations.some((integration) => integration.id === workflowIntegrationId);
+  const { isFetching, isFetchedAfterMount, refetch } = integrationsQuery;
+
+  useEffect(() => {
+    if (!isIntegrationMissing || isFetching) return;
+    if (!isFetchedAfterMount) {
+      refetch();
+      return;
+    }
+    setIsSavedIntegrationDeleted(true);
+    onChange({ workflowIntegrationId: "" }, (errors) => errors);
+  }, [isIntegrationMissing, isFetching, isFetchedAfterMount, refetch, onChange]);
+
+  const selected = channel.slackChannels ?? [];
+  const selectedIds = selected.map(({ id }) => id);
+  const slackChannels = channelsQuery.data ?? [];
+  const knownById = new Map(slackChannels.map((slackChannel) => [slackChannel.id, slackChannel]));
+  const isAtLimit = selected.length >= MAX_SLACK_APP_CHANNELS;
+  const channelOptions = [
+    ...slackChannels
+      .filter(({ id, isArchived }) => !isArchived || selectedIds.includes(id))
+      .map(({ id, name, isArchived }) => ({
+        value: id,
+        label: isArchived ? `#${name} (archived)` : `#${name}`,
+        disabled: isAtLimit && !selectedIds.includes(id)
+      })),
+    ...(channelsQuery.data
+      ? selected
+          .filter(({ id }) => !knownById.has(id))
+          .map(({ id, name }) => ({ value: id, label: `#${name} (not found in Slack)` }))
+      : selected.map(({ id, name }) => ({ value: id, label: `#${name}` })))
+  ];
+
+  const integrationError =
+    error("workflowIntegrationId") ??
+    (isSavedIntegrationDeleted && !workflowIntegrationId
+      ? "The Slack integration this channel posted through was deleted. Select another one."
+      : undefined);
+  const channelsError = error("slackChannels");
+
+  return (
+    <>
+      <Field
+        wide
+        label="Slack integration"
+        error={
+          integrationError ??
+          (integrationsQuery.error ? "Couldn't load Slack integrations." : undefined)
+        }
+      >
+        <Combobox
+          label="Slack integration"
+          placeholder="Select a Slack integration"
+          options={integrations.map(({ id, slug }) => ({ value: id, label: slug }))}
+          value={workflowIntegrationId}
+          loading={integrationsQuery.isPending}
+          invalid={Boolean(integrationError)}
+          emptyText="No Slack integrations found. Connect one under Workflow Integrations first."
+          onChange={(value) => {
+            if (value === workflowIntegrationId) return;
+            setIsSavedIntegrationDeleted(false);
+            onChange({ workflowIntegrationId: value, slackChannels: [] });
+          }}
+        />
+      </Field>
+      <Field
+        wide
+        label="Slack channels"
+        error={
+          channelsError ??
+          (channelsQuery.error
+            ? "Couldn't load channels from Slack. If this keeps happening, reconnect the integration under Workflow Integrations."
+            : undefined)
+        }
+        description={`Up to ${MAX_SLACK_APP_CHANNELS} channels. To post to a private channel, add the Infisical app to it in Slack first.`}
+      >
+        <Combobox
+          multiple
+          label="Slack channels"
+          placeholder={workflowIntegrationId ? "Add Slack channels" : "Select an integration first"}
+          options={channelOptions}
+          value={selectedIds}
+          disabled={!workflowIntegrationId}
+          invalid={Boolean(channelsError)}
+          emptyText="No channels found. Private channels appear once the Infisical app is added to them."
+          onChange={(ids) =>
+            onChange({
+              slackChannels: ids.flatMap((id) => {
+                const match = knownById.get(id) ?? selected.find((entry) => entry.id === id);
+                return match ? [{ id: match.id, name: match.name }] : [];
+              })
+            })
+          }
+        />
+      </Field>
+    </>
+  );
+};
+
+const SlackAppChannelFields = (props: TChannelFieldProps) => {
+  const { permission } = useOrgPermission();
+  return permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings) ? (
+    <SlackChannelPickers {...props} />
+  ) : (
+    <SlackChannelsWithoutAccess {...props} />
+  );
+};
+
 const SavedSecretField = ({
   channel,
   error,
@@ -567,6 +772,8 @@ const ChannelCard = ({
             allowEmailAddresses={allowEmailAddresses}
           />
         )}
+        {SLACK_CHANNEL_TYPES.includes(channelType) && <SlackMethodSwitch {...fieldProps} />}
+        {channelType === AlertChannelType.SlackApp && <SlackAppChannelFields {...fieldProps} />}
         {channelType === AlertChannelType.Slack && (
           <SavedSecretField
             {...fieldProps}

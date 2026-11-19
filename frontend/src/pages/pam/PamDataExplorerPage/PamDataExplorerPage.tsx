@@ -299,7 +299,7 @@ export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
 
   if (isConnecting && !isConnected) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-background">
+      <div className="flex h-dvh w-screen flex-col items-center justify-center gap-4 bg-background">
         <Spinner label="Connecting to database" />
         <p className="text-sm text-muted">Connecting to database...</p>
       </div>
@@ -361,7 +361,7 @@ export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
   const tabOpeningDisabled = isOpeningTab || atTabLimit;
 
   return (
-    <div ref={mountRef} className="flex h-screen w-screen flex-col bg-background">
+    <div ref={mountRef} className="flex h-dvh w-screen flex-col bg-background">
       <div className="flex flex-1 overflow-hidden">
         <DataExplorerSidebar
           schemas={schemas}

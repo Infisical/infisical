@@ -104,7 +104,7 @@ export const GitLabOAuthCallbackPage = () => {
   ]);
 
   return (
-    <div className="flex h-screen items-center justify-center">
+    <div className="flex h-dvh items-center justify-center">
       <PageTitle title="Connecting GitLab Integration" />
       <div className="text-center">
         <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-project" />

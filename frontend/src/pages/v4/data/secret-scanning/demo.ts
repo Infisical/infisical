@@ -20,6 +20,7 @@ import type {
   TSecretScanningDataSourceOption,
   TSecretScanningDataSourceWithDetails,
   TSecretScanningFinding,
+  TSecretScanningFindingLocation,
   TSecretScanningResource,
   TSecretScanningResourceWithDetails,
   TSecretScanningScanWithDetails
@@ -325,25 +326,20 @@ const closed = Array.from({ length: 37 }, (_, index) => {
   };
 });
 
-const finding = (
+const location = (
   [repo, file, line, rule, author, commit, minutes]: Seed,
-  index: number,
-  status: SecretScanningFindingStatus
-): TSecretScanningFinding => {
-  const resource = resources.find((entry) => entry.name === repo) ?? resources[0];
-  const dataSource = seeded.find((entry) => entry.id === resource.dataSourceId) ?? seeded[0];
+  findingIndex: number,
+  resourceId: string,
+  index: number
+): TSecretScanningFindingLocation => {
   const fingerprint = `${commit}:${file}:${rule}:${line}`;
   return {
-    id: uuid("f1", index + 1),
-    resourceId: resource.id,
-    resourceName: repo,
-    dataSourceId: dataSource.id,
-    dataSourceName: dataSource.name,
-    dataSourceType: dataSource.type,
-    rule,
-    severity: SecretScanningFindingSeverity.High,
-    status,
+    id: uuid("f2", findingIndex * 10 + index + 1),
+    findingId: uuid("f1", findingIndex + 1),
+    resourceId,
+    scanId: uuid("a5", 1),
     fingerprint,
+    rule,
     details: {
       description: `Detected a ${rule} in ${file}`,
       startLine: line,
@@ -363,11 +359,55 @@ const finding = (
       ruleID: rule,
       fingerprint
     },
-    projectId,
-    scanId: uuid("a5", 1),
-    createdAt: ago(minutes),
-    updatedAt: ago(minutes)
+    createdAt: ago(minutes)
   };
+};
+
+const locationsByFinding = new Map<string, TSecretScanningFindingLocation[]>();
+
+const finding = (seed: Seed, index: number, status: SecretScanningFindingStatus) => {
+  const [repo, file, line, rule, , , minutes] = seed;
+  const resource = resources.find((entry) => entry.name === repo) ?? resources[0];
+  const dataSource = seeded.find((entry) => entry.id === resource.dataSourceId) ?? seeded[0];
+  const id = uuid("f1", index + 1);
+  const copies = (index % 2 === 0 ? 1 : 0) + (index % 3 === 0 ? 1 : 0);
+  const locations = [
+    location(seed, index, resource.id, 0),
+    ...Array.from({ length: copies }, (_, copy) => {
+      const olderCommit = ((index + copy + 3) * 2246822519).toString(16).slice(-7);
+      return location(
+        [
+          repo,
+          files[(files.indexOf(file) + copy + 1) % files.length],
+          line + (copy + 1) * 4,
+          rule,
+          authors[(index + copy + 1) % authors.length],
+          olderCommit,
+          minutes + 60 * 24 * 3 * (copy + 1)
+        ],
+        index,
+        resource.id,
+        copy + 1
+      );
+    })
+  ];
+  locationsByFinding.set(id, locations);
+  return {
+    id,
+    resourceId: resource.id,
+    resourceName: repo,
+    dataSourceId: dataSource.id,
+    dataSourceName: dataSource.name,
+    dataSourceType: dataSource.type,
+    rule,
+    severity: SecretScanningFindingSeverity.High,
+    status,
+    locationCount: locations.length,
+    projectId,
+    lastDetectedAt: locations[0].createdAt,
+    createdAt: locations[locations.length - 1].createdAt,
+    updatedAt: ago(minutes)
+  } satisfies TSecretScanningFinding;
 };
 
 const store = createFixtureStore<TSecretScanningFinding[]>([
@@ -376,10 +416,10 @@ const store = createFixtureStore<TSecretScanningFinding[]>([
 ]);
 
 const sortKey: Record<SecretScanningFindingOrderBy, (entry: TSecretScanningFinding) => string> = {
+  [SecretScanningFindingOrderBy.LastDetectedAt]: (entry) => entry.lastDetectedAt,
   [SecretScanningFindingOrderBy.CreatedAt]: (entry) => entry.createdAt,
   [SecretScanningFindingOrderBy.Rule]: (entry) => entry.rule,
   [SecretScanningFindingOrderBy.ResourceName]: (entry) => entry.resourceName,
-  [SecretScanningFindingOrderBy.Author]: (entry) => entry.details.author,
   [SecretScanningFindingOrderBy.Status]: (entry) => entry.status
 };
 
@@ -555,6 +595,18 @@ export const secretScanningDemo: SecretScanningAdapter = {
       isPending: false,
       isPlaceholderData: false,
       error: null
+    };
+  },
+  useFindingLocations: (findingId) => {
+    const locations = locationsByFinding.get(findingId) ?? [];
+    return {
+      data: { locations, totalCount: locations.length },
+      isPending: false,
+      error: null,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: async () => undefined,
+      refetch: async () => undefined
     };
   },
   useUnresolvedFindingCount: () => ({

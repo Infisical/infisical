@@ -4,12 +4,14 @@ import { getMemberLabel } from "@app/helpers/members";
 import {
   approvalPolicyQuery,
   useDeleteApprovalPolicy,
+  useRevocationPolicyProfileNames,
   useUpdateApprovalPolicy
 } from "@app/hooks/api/approvalPolicies";
 import {
   approvalRequestQuery,
   useApproveApprovalRequest,
   useCancelApprovalRequest,
+  usePendingCertificateRevocations,
   useRejectApprovalRequest
 } from "@app/hooks/api/approvalRequests";
 import { useGetCertificateProfileById } from "@app/hooks/api/certificateProfiles/queries";
@@ -76,6 +78,8 @@ export const approvalRequestsLive: ApprovalRequestsAdapter = {
   useApplication: (applicationId) => useGetPkiApplicationById(applicationId),
   useProfile: (profileId) => useGetCertificateProfileById({ profileId }),
   useCertificateRequest: useGetCertificateRequest,
+  usePendingRevocations: usePendingCertificateRevocations,
+  useRevocationPolicyProfileNames,
   useApprove: useApproveApprovalRequest,
   useReject: useRejectApprovalRequest,
   useCancel: useCancelApprovalRequest,

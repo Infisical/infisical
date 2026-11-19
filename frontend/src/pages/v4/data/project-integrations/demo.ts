@@ -294,7 +294,12 @@ export const projectIntegrationsDemo: ProjectIntegrationsAdapter = {
     }));
     return {};
   }),
-  useWorkflowIntegrations: () => loaded(workflowIntegrations),
+  useWorkflowIntegrations: () => ({
+    ...loaded(workflowIntegrations),
+    isFetching: false,
+    isFetchedAfterMount: true,
+    refetch: () => Promise.resolve()
+  }),
   useMicrosoftTeamsIntegrations: () => loaded(microsoftTeamsIntegrations),
   useSlackChannels: (integrationId) =>
     loaded(integrationId ? (slackChannels[integrationId] ?? []) : []),

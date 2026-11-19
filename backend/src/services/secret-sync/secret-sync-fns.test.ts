@@ -56,6 +56,15 @@ describe("assertKeySchemaProducesValidNames", () => {
     ).not.toThrow();
   });
 
+  it("checks Coolify key schemas against the environment and Coolify's managed SERVICE_ prefix", () => {
+    const check = (keySchema: string, environment: string) => () =>
+      assertKeySchemaProducesValidNames({ destination: SecretSync.Coolify, keySchema, environment });
+
+    expect(check("{{environment}}_{{secretKey}}", "prod-eu")).toThrow("'prod-eu_A'");
+    expect(check("SERVICE_{{secretKey}}", "prod")).toThrow(BadRequestError);
+    expect(check("app.{{environment}}_{{secretKey}}", "prod")).not.toThrow();
+  });
+
   it("skips syncs without a key schema and destinations without a name rule", () => {
     expect(() =>
       assertKeySchemaProducesValidNames({ destination: SecretSync.Convex, environment: "prod-eu" })

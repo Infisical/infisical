@@ -1,4 +1,9 @@
-import { isMemberOauthConnectionUsable, isMemberProvidedOauth } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
+import {
+  isMemberOauthConnectionUsable,
+  isMemberProvidedOauth,
+  isVariableOauth,
+  oauthVariableIdOf
+} from "../agent-vault-oauth/agent-vault-oauth-token-fns";
 import {
   AgentVaultCredentialType,
   AgentVaultMcpTransport,
@@ -40,6 +45,9 @@ export type TSessionServiceFacts = {
   customHeaderNames: string[];
   substitutions: { placeholder: string; surfaces: string[] }[];
   personalValuesMissing: boolean;
+  // The service sends an OAuth variable that isn't signed in, or was deleted. Comes with personalValuesMissing, as
+  // resolve sends it, but nothing is the member's to set.
+  credentialNotConnected?: boolean;
   // Some part of the credential is the session owner's own, so a rejection is theirs to fix, not an admin's.
   memberProvided: boolean;
   // Each member signs in to the service with OAuth, so what they're missing is a connected account.
@@ -187,6 +195,9 @@ const howToUse = (
   description: Omit<TSessionServiceDescription, "howToUse">,
   onBehalfOfUser: boolean
 ) => {
+  if (service.credentialNotConnected) {
+    return `Not usable yet: the sign-in ${JSON.stringify(service.name)} uses isn't connected in Agent Vault or was removed. An Agent Vault admin has to sign it in, or, if it was removed, a new session is needed. The proxy refuses requests to it until then.`;
+  }
   if (service.personalValuesMissing) {
     // A sign-in that expired needs connecting again, not values set, so one sentence covers both.
     const setUp = service.memberSignsIn ? "connect their account" : "set their personal values";
@@ -367,6 +378,23 @@ export const toSetPersonalFields = (
 };
 
 /**
+ * Whether resolve would send an OAuth variable's tokens: it exists and is signed in. Read from the rows
+ * `findOauthForResolve` returns, without opening the sealed value.
+ */
+export const oauthVariableSignedInOf = (
+  variables: { id: string; encryptedValue?: Buffer | null; oauthConfig?: unknown }[]
+) => {
+  const signedIn = new Set(
+    variables
+      .filter((variable) =>
+        Boolean(variable.encryptedValue && (variable.oauthConfig as { connection?: unknown } | null)?.connection)
+      )
+      .map((variable) => variable.id)
+  );
+  return (variableId: string) => signedIn.has(variableId);
+};
+
+/**
  * What the proxy would send for a bundle service, without decrypting anything. A field left to members makes the
  * credential the member's, which only counts once they have set every such field.
  */
@@ -376,12 +404,17 @@ export const toBundleServiceFacts = (
     customHeaderNames: string[];
     substitutions: { placeholder: string; surfaces: string[] }[];
     setPersonalFields: Set<string>;
+    isOauthVariableSignedIn: (variableId: string) => boolean;
   }
 ): TSessionServiceFacts => {
   const memberFields = row.memberProvidedFields ?? [];
-  const personalValuesMissing = memberFields.some((field) => !context.setPersonalFields.has(field));
+  const variableId = oauthVariableIdOf(row);
+  const credentialNotConnected = Boolean(variableId && !context.isOauthVariableSignedIn(variableId));
+  const personalValuesMissing =
+    credentialNotConnected || memberFields.some((field) => !context.setPersonalFields.has(field));
   const config = (row.credentialConfig ?? {}) as Record<string, string | undefined>;
-  const hasCredential = Boolean(row.encryptedCredential) || memberFields.length > 0;
+  // An OAuth variable's tokens live on the variable, so the service row seals nothing.
+  const hasCredential = Boolean(row.encryptedCredential) || memberFields.length > 0 || isVariableOauth(row);
 
   let credential: TSessionServiceCredential = { type: "none" };
   if (!personalValuesMissing && hasCredential) {
@@ -389,7 +422,7 @@ export const toBundleServiceFacts = (
       credential = { type: "bearer", headerName: config.headerName ?? null };
     } else if (
       row.credentialType === AgentVaultCredentialType.OAuth &&
-      (row.encryptedCredential || isMemberProvidedOauth(row))
+      (row.encryptedCredential || isMemberProvidedOauth(row) || isVariableOauth(row))
     ) {
       // A service whose members sign in seals at most its client's secret, so the token is the member's.
       credential = { type: "oauth" };
@@ -412,6 +445,7 @@ export const toBundleServiceFacts = (
     customHeaderNames: context.customHeaderNames,
     substitutions: context.substitutions,
     personalValuesMissing,
+    ...(credentialNotConnected ? { credentialNotConnected } : {}),
     memberProvided: memberFields.length > 0,
     memberSignsIn: isMemberProvidedOauth(row)
   };

@@ -112,15 +112,23 @@ export const pkiApplicationsLive: PkiApplicationsAdapter = {
   useCertificateRequests: useListCertificateRequests,
   useApplicationSyncs: (projectId, applicationId) =>
     useListPkiSyncs(projectId, { enabled: Boolean(projectId), applicationId }),
-  useApplicationPolicies: (applicationId) =>
-    useQuery({
+  useApplicationPolicies: (applicationId) => {
+    const listOf = (policyType: ApprovalPolicyType) => ({
       ...approvalPolicyQuery.list({
-        policyType: ApprovalPolicyType.CertRequest,
+        policyType,
         scope: ApprovalPolicyScope.PkiApplication,
         scopeId: applicationId
       }),
       enabled: Boolean(applicationId)
-    }),
+    });
+    const issuance = useQuery(listOf(ApprovalPolicyType.CertRequest));
+    const revocation = useQuery(listOf(ApprovalPolicyType.CertRevocation));
+    return {
+      data: issuance.data && revocation.data ? [...issuance.data, ...revocation.data] : undefined,
+      isPending: issuance.isPending || revocation.isPending,
+      error: issuance.error ?? revocation.error
+    };
+  },
   useApplicationAlerts: (dto) => useListAlerts(dto, { enabled: Boolean(dto.resourceId) }),
   useLegacyAlerts: (applicationId) => {
     const query = useGetPkiAlertsV2({ applicationId, limit: 100 });

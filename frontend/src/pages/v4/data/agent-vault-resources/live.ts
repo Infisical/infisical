@@ -7,7 +7,8 @@ import { apiRequest } from "@app/config/request";
 import { VARIABLE_KEY_MAX_LENGTH, VARIABLE_KEY_RE } from "@app/helpers/agentVaultVariables";
 import {
   AgentVaultOauthAuthorizationStatus,
-  AgentVaultVariableScope
+  AgentVaultVariableScope,
+  AgentVaultVariableType
 } from "@app/hooks/api/agentVault/enums";
 import { SkillVersionConflictError } from "@app/hooks/api/agentVault/mutations";
 import {
@@ -240,11 +241,13 @@ const useAgentVaultVariableKeyStatus = (
   {
     enabled = true,
     isCached = true,
-    scope = AgentVaultVariableScope.Global
+    scope = AgentVaultVariableScope.Global,
+    type
   }: {
     enabled?: boolean;
     isCached?: boolean;
     scope?: AgentVaultVariableScope;
+    type?: AgentVaultVariableType;
   } = {}
 ) => {
   const orgId = useOrgId();
@@ -253,14 +256,19 @@ const useAgentVaultVariableKeyStatus = (
   const { data } = useQuery({
     queryKey: agentVaultKeys.variableKeyStatus(orgId, projectId, scope, possibleKeys),
     queryFn: async () => {
-      const found: string[] = [];
+      const found: [string, AgentVaultVariableType][] = [];
       for (let i = 0; i < possibleKeys.length; i += KEY_LOOKUP_BATCH_SIZE) {
         // eslint-disable-next-line no-await-in-loop
         const page = await fetchAgentVaultVariables(projectId, {
           scope,
           keys: possibleKeys.slice(i, i + KEY_LOOKUP_BATCH_SIZE)
         });
-        found.push(...page.variables.map((variable) => variable.key));
+        found.push(
+          ...page.variables.map((variable): [string, AgentVaultVariableType] => [
+            variable.key,
+            variable.type
+          ])
+        );
       }
       return { asked: possibleKeys, found };
     },
@@ -274,15 +282,21 @@ const useAgentVaultVariableKeyStatus = (
   const keySignature = keys.join(",");
   return useMemo(() => {
     const asked = new Set(data?.asked);
-    const found = new Set(data?.found);
+    const typeOf = new Map(data?.found);
     const current = keySignature ? keySignature.split(",") : [];
+    const isOfType = (key: string) => !type || typeOf.get(key) === type;
     return {
-      existing: new Set(current.filter((key) => found.has(key))) as ReadonlySet<string>,
+      existing: new Set(
+        current.filter((key) => typeOf.has(key) && isOfType(key))
+      ) as ReadonlySet<string>,
+      ofOtherType: new Set(
+        current.filter((key) => typeOf.has(key) && !isOfType(key))
+      ) as ReadonlySet<string>,
       missing: new Set(
-        current.filter((key) => !isPossibleVariableKey(key) || (asked.has(key) && !found.has(key)))
+        current.filter((key) => !isPossibleVariableKey(key) || (asked.has(key) && !typeOf.has(key)))
       ) as ReadonlySet<string>
     };
-  }, [data, keySignature]);
+  }, [data, keySignature, type]);
 };
 
 const useListAgentVaultServices = (

@@ -350,6 +350,7 @@
                       "integrations/secret-syncs/cloudflare-secrets-store",
                       "integrations/secret-syncs/cloudflare-workers",
                       "integrations/secret-syncs/convex",
+                      "integrations/secret-syncs/coolify",
                       "integrations/secret-syncs/databricks",
                       "integrations/secret-syncs/daytona",
                       "integrations/secret-syncs/devin",
@@ -747,7 +748,14 @@
                       }
                     ]
                   },
-                  "documentation/platform/agent-vault/variables",
+                  {
+                    "group": "Variables",
+                    "root": "documentation/platform/agent-vault/variables",
+                    "pages": [
+                      "documentation/platform/agent-vault/text-variables",
+                      "documentation/platform/agent-vault/oauth-variables"
+                    ]
+                  },
                   "documentation/platform/agent-vault/skills"
                 ]
               },
@@ -1107,6 +1115,7 @@
                   "integrations/app-connections/cloud-66",
                   "integrations/app-connections/cloudflare",
                   "integrations/app-connections/convex",
+                  "integrations/app-connections/coolify",
                   "integrations/app-connections/databricks",
                   "integrations/app-connections/datadog",
                   "integrations/app-connections/daytona",
@@ -1919,6 +1928,18 @@
                           "api-reference/endpoints/app-connections/cloudflare/create",
                           "api-reference/endpoints/app-connections/cloudflare/update",
                           "api-reference/endpoints/app-connections/cloudflare/delete"
+                        ]
+                      },
+                      {
+                        "group": "Coolify",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/coolify/list",
+                          "api-reference/endpoints/app-connections/coolify/available",
+                          "api-reference/endpoints/app-connections/coolify/get-by-id",
+                          "api-reference/endpoints/app-connections/coolify/get-by-name",
+                          "api-reference/endpoints/app-connections/coolify/create",
+                          "api-reference/endpoints/app-connections/coolify/update",
+                          "api-reference/endpoints/app-connections/coolify/delete"
                         ]
                       },
                       {
@@ -3642,6 +3663,20 @@
                         ]
                       },
                       {
+                        "group": "Coolify",
+                        "pages": [
+                          "api-reference/endpoints/secret-syncs/coolify/list",
+                          "api-reference/endpoints/secret-syncs/coolify/get-by-id",
+                          "api-reference/endpoints/secret-syncs/coolify/get-by-name",
+                          "api-reference/endpoints/secret-syncs/coolify/create",
+                          "api-reference/endpoints/secret-syncs/coolify/update",
+                          "api-reference/endpoints/secret-syncs/coolify/delete",
+                          "api-reference/endpoints/secret-syncs/coolify/sync-secrets",
+                          "api-reference/endpoints/secret-syncs/coolify/import-secrets",
+                          "api-reference/endpoints/secret-syncs/coolify/remove-secrets"
+                        ]
+                      },
+                      {
                         "group": "Databricks",
                         "pages": [
                           "api-reference/endpoints/secret-syncs/databricks/list",
@@ -4700,7 +4735,9 @@
                       "api-reference/endpoints/agent-vault-variables/create",
                       "api-reference/endpoints/agent-vault-variables/update",
                       "api-reference/endpoints/agent-vault-variables/delete",
-                      "api-reference/endpoints/agent-vault-variables/get-value"
+                      "api-reference/endpoints/agent-vault-variables/get-value",
+                      "api-reference/endpoints/agent-vault-variables/start-oauth-sign-in",
+                      "api-reference/endpoints/agent-vault-variables/complete-oauth-sign-in"
                     ]
                   },
                   {

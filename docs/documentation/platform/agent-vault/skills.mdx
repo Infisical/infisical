@@ -1,9 +1,9 @@
 ---
 title: "Skills"
-description: "Instructions you keep in an Agent Vault project and install to your agents."
+description: "Instructions you keep in an Agent Vault project or send with a session, and install to your agents."
 ---
 
-A skill is a folder containing a `SKILL.md` file with metadata and instructions that tell an agent how to perform a specific task. If you add a skill to an [access bundle](/documentation/platform/agent-vault/access-bundles), the CLI installs the skill any time you run [`infisical agent-vault run`](/cli/reference#agent-vault-run) with that access bundle.
+A skill is a folder containing a `SKILL.md` file with metadata and instructions that tell an agent how to perform a specific task. If you add a skill to an [access bundle](/documentation/platform/agent-vault/access-bundles), the CLI installs the skill any time you run [`infisical agent-vault run`](/cli/reference#agent-vault-run) with that access bundle. You can also [give a session skills from the project one by one, or send skills with the session](#sessions).
 
 <Tip>
 Skills follow the [Agent Skills](https://agentskills.io) format, so the same folder works in Claude Code, Codex, and any other agents that support it.
@@ -221,7 +221,7 @@ To delete a skill and every version of it:
   </Step>
 </Steps>
 
-Infisical removes the skill from every access bundle.
+Infisical removes the skill from every access bundle and every session that has it.
 
 <Note>
 The CLI doesn't delete copies of the skill that were already installed. To stop agents from using the skill, delete the installed copies from each device.
@@ -255,9 +255,50 @@ To add skills through the API, call the [Add skills to access bundle](/api-refer
 
 In the access bundle's **Skills** section, open the skill's actions menu and select **Remove From Bundle**, then type the skill's name and select **Remove**. The CLI doesn't delete copies of the skill that it already installed, so to stop agents from using the skill, delete the installed copies.
 
+## Sessions
+
+Instead of an access bundle, or alongside it, you can give a session skills from the project and send skills with the session. An agent that you start with the session gets these skills along with the access bundle's. Infisical shows skills sent with a session as inline skills, both in the sessions table and under **Inline Skills** in the session's details.
+
+### Pick skills from the project
+
+When you [create a session](/documentation/platform/agent-vault/create-a-session), pick skills under **Skills**, or list their names in `skills` through the API. Admins of the project can pick any of its skills. Anyone else can pick only the skills in the access bundles granted to them, directly or through a group.
+
+Each time an agent starts with the session, it gets the latest version of each skill you picked. If the user or machine identity that created the session loses access to a skill, or someone deletes the skill, agents that start afterwards don't get it.
+
+### Send skills with a session
+
+To give one session a skill that you don't keep in the project, send the skill's files in `skills` when you call the [Create session](/api-reference/endpoints/agent-vault-sessions/create) endpoint. Each skill takes the same `files` as the [Create skill](/api-reference/endpoints/agent-vault-skills/create) endpoint, and Infisical reads the skill's name and description from its `SKILL.md`:
+
+```json
+{
+  "projectId": "<project-id>",
+  "accessBundle": "<access-bundle-name>",
+  "ttl": "1h",
+  "skills": [
+    "code-review",
+    {
+      "files": [
+        { "path": "SKILL.md", "mode": "0644", "contentBase64": "<base64-encoded-SKILL.md>" }
+      ]
+    }
+  ]
+}
+```
+
+Anyone who can create a session can send skills with it, within these limits:
+
+- A session can have up to 20 skills from the project and up to 5 skills sent with it
+- The files of all the skills you send share the request's 2 MB limit
+- Each name can appear only once in `skills` (if a name repeats, the request fails with a 422 error that includes the name)
+- A skill you send can't have the same name as a skill in the session's access bundle (if it does, the request fails with a 400 error that names the skill and the access bundle)
+
+If someone later adds a skill to the access bundle with the same name as a skill you sent, or renames a skill in the access bundle to that name, agents that start with the session afterwards get the access bundle's skill instead of yours.
+
+The skills you send belong to that session only, and nobody can edit them. Infisical deletes their files when the session is revoked, or within an hour after it expires.
+
 ## Skill installation
 
-When you start an agent with [`infisical agent-vault run`](/cli/reference#agent-vault-run), the CLI gets the latest version of each skill in the session's access bundle through the proxy, and installs the skills before the agent starts. It also installs Agent Vault's [built-in skill](/documentation/platform/agent-vault/service-discovery#the-built-in-skill):
+When you start an agent with [`infisical agent-vault run`](/cli/reference#agent-vault-run), the CLI gets the session's skills through the proxy and installs them before the agent starts: the latest version of each skill in the session's access bundle and of each skill picked from the project, and the skills sent with the session. It also installs Agent Vault's [built-in skill](/documentation/platform/agent-vault/service-discovery#the-built-in-skill):
 
 - To leave out only the built-in skill, pass [`--no-agent-vault-skill`](/cli/reference#agent-vault-run--flag-no-agent-vault-skill)
 - To start the agent without any skills, pass [`--no-skills`](/cli/reference#agent-vault-run--flag-no-skills)
@@ -292,7 +333,7 @@ Infisical writes an audit event when someone:
 - Adds a skill to an access bundle or removes it from one
 - Opens a version of a skill
 
-When the CLI gets a session's skills, Infisical writes one event for the session that lists the version and SHA-256 checksum of each skill, so you can see which version each agent got. If the CLI got the skills through the proxy, the event shows the proxy's IP address.
+When the CLI gets a session's skills, Infisical writes one event for the session that lists the version and SHA-256 checksum of each skill, and the access bundle each one came from (none for a skill picked from the project or sent with the session), so you can see which version each agent got. If the CLI got the skills through the proxy, the event shows the proxy's IP address.
 
 To review these events, open **Audit Logs** in your Agent Vault project, or scope an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to the Agent Vault product.
 

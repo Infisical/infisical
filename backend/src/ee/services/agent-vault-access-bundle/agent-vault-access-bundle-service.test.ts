@@ -12,17 +12,29 @@ import {
 import { BadRequestError, ConflictError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
+import { hashAccessToken } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
 import {
   AgentVaultCredentialType,
   AgentVaultMcpTransport,
-  AgentVaultServiceType
+  AgentVaultServiceType,
+  AgentVaultVariableType
 } from "../agent-vault/agent-vault-enums";
 import {
   AGENT_VAULT_HOOK_CHANGED_DURING_SAVE_MESSAGE,
   AGENT_VAULT_HOOK_SIGNING_SECRET_REQUIRED_MESSAGE,
   AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE
 } from "../agent-vault/agent-vault-hook-fns";
-import { agentVaultAccessBundleServiceFactory } from "./agent-vault-access-bundle-service";
+import {
+  agentVaultAccessBundleServiceFactory,
+  HTTP_OAUTH_NEEDS_VARIABLE_MESSAGE
+} from "./agent-vault-access-bundle-service";
+import { McpListError } from "./agent-vault-mcp-tool-list-fns";
+
+const listMcpServerTools = vi.hoisted(() => vi.fn());
+vi.mock("./agent-vault-mcp-tool-list-fns", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./agent-vault-mcp-tool-list-fns")>()),
+  listMcpServerTools
+}));
 
 const PROJECT_ID = "project-1";
 const BUNDLE_ID = "bundle-1";
@@ -62,7 +74,9 @@ const buildService = ({
   hooksOnPlan = true,
   member = false,
   rules,
-  variableKeys = []
+  variableKeys = [],
+  oauthVariableKeys = [],
+  oauthVariableTokens = {}
 }: {
   firstRead: TAgentVaultServices;
   locked: TAgentVaultServices;
@@ -72,6 +86,9 @@ const buildService = ({
   // A role of its own, in place of admin or member.
   rules?: RawRuleOf<MongoAbility>[];
   variableKeys?: string[];
+  oauthVariableKeys?: string[];
+  // The access token each connected OAuth variable holds, by key. One left out isn't connected.
+  oauthVariableTokens?: Record<string, string>;
 }) => {
   const tx = {};
   const agentVaultServiceDAL = {
@@ -106,15 +123,57 @@ const buildService = ({
     createCipherPairWithDataKey: vi.fn().mockResolvedValue({
       encryptor: ({ plainText }: { plainText: Buffer }) => ({
         cipherTextBlob: Buffer.concat([Buffer.from("sealed:"), plainText])
-      })
+      }),
+      decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob.subarray("sealed:".length)
     })
   };
   const licenseService = {
     getPlan: vi.fn().mockResolvedValue(Plan.restore({ ...testFeatures(), agentVaultHooks: hooksOnPlan }))
   };
   const agentVaultVariableDAL = {
-    findKeys: vi.fn().mockResolvedValue(variableKeys.map((key) => ({ id: `variable-${key}`, key }))),
-    lockForReference: vi.fn()
+    findKeys: vi
+      .fn()
+      .mockResolvedValue([
+        ...variableKeys.map((key) => ({ id: `variable-${key}`, key, type: AgentVaultVariableType.Text })),
+        ...oauthVariableKeys.map((key) => ({ id: `variable-${key}`, key, type: AgentVaultVariableType.OAuth }))
+      ]),
+    lockForReference: vi.fn(async ({ variableIds }: { variableIds: string[] }) => variableIds),
+    findValuesForResolve: vi.fn().mockResolvedValue([]),
+    findOauthForResolve: vi.fn(async ({ variableIds }: { variableIds: string[] }) =>
+      oauthVariableKeys
+        .map((key) => {
+          const token = oauthVariableTokens[key];
+          return {
+            id: `variable-${key}`,
+            key,
+            encryptedValue: token ? Buffer.from(`sealed:${JSON.stringify({ accessToken: token })}`) : null,
+            oauthConfig: {
+              settings: {},
+              connection: token
+                ? { status: "connected", issuer: "https://accounts.google.com", grantedScopes: ["drive"] }
+                : null
+            }
+          };
+        })
+        .filter((row) => variableIds.includes(row.id))
+    )
+  };
+  const agentVaultServiceVariableReferenceDAL = {
+    findByServiceIds: vi.fn().mockResolvedValue([]),
+    delete: vi.fn(),
+    insertMany: vi.fn()
+  };
+  const agentVaultOauthService = {
+    refreshServiceToken: vi.fn(async () => ({
+      credential: { value: "refreshed-access" },
+      status: "connected"
+    })),
+    refreshVariableToken: vi.fn<
+      (dto: { rejectedTokenHash?: string }) => Promise<{ credential: { value: string }; status: string }>
+    >(async () => ({
+      credential: { value: "variable-refreshed-access" },
+      status: "connected"
+    }))
   };
   const service = agentVaultAccessBundleServiceFactory({
     agentVaultAccessBundleDAL: {
@@ -124,12 +183,9 @@ const buildService = ({
     agentVaultServiceDAL,
     agentVaultServiceCustomHeaderDAL: transformationDAL(),
     agentVaultServiceSubstitutionDAL: transformationDAL(),
-    agentVaultServiceVariableReferenceDAL: {
-      findByServiceIds: vi.fn().mockResolvedValue([]),
-      delete: vi.fn(),
-      insertMany: vi.fn()
-    },
+    agentVaultServiceVariableReferenceDAL,
     agentVaultVariableDAL,
+    agentVaultOauthService,
     agentVaultPersonalValueDAL: { delete: vi.fn(), deleteForServiceExceptFields: vi.fn() },
     permissionService: {
       getProjectPermission: vi.fn().mockResolvedValue({
@@ -155,7 +211,15 @@ const buildService = ({
     kmsDataKeyService,
     licenseService
   } as unknown as Parameters<typeof agentVaultAccessBundleServiceFactory>[0]);
-  return { service, agentVaultServiceDAL, agentVaultVariableDAL, kmsDataKeyService, licenseService };
+  return {
+    service,
+    agentVaultServiceDAL,
+    agentVaultVariableDAL,
+    agentVaultServiceVariableReferenceDAL,
+    agentVaultOauthService,
+    kmsDataKeyService,
+    licenseService
+  };
 };
 
 const updatePort = (
@@ -570,6 +634,18 @@ describe("global variable references", () => {
     await expect(create(built.service, "{{NOT_DEFINED}}")).rejects.toThrow("no global variable named 'NOT_DEFINED'");
   });
 
+  test("a reference to an OAuth variable is refused, since resolve never puts its tokens in text", async () => {
+    const built = buildService({
+      firstRead: plainService(),
+      locked: plainService(),
+      rules: withReadValue,
+      oauthVariableKeys: ["GDRIVE_U123"]
+    });
+
+    await expect(create(built.service, "{{GDRIVE_U123}}")).rejects.toThrow("'GDRIVE_U123' is an OAuth variable");
+    expect(built.agentVaultServiceDAL.create).not.toHaveBeenCalled();
+  });
+
   test("an update that sends no new text needs no read-value", async () => {
     const built = buildService({
       firstRead: sshService({ hasCertificate: false, secret: "key" }),
@@ -617,5 +693,332 @@ describe("global variable references", () => {
       })
     ).rejects.toBeInstanceOf(ForbiddenError);
     expect(built.agentVaultVariableDAL.findKeys).not.toHaveBeenCalled();
+  });
+});
+
+describe("an OAuth credential from an OAuth variable", () => {
+  const VARIABLE_A = "variable-GDRIVE_A";
+  const VARIABLE_B = "variable-GDRIVE_B";
+  const bundleEditor = [
+    {
+      action: ProjectPermissionAgentVaultAccessBundleActions.Edit,
+      subject: ProjectPermissionSub.AgentVaultAccessBundles
+    }
+  ];
+
+  const usingVariable = (variableId: string, overrides: Partial<TAgentVaultServices> = {}): TAgentVaultServices => ({
+    ...plainService(),
+    name: "gdrive",
+    type: AgentVaultServiceType.Http,
+    hostPattern: "www.googleapis.com",
+    config: {},
+    credentialType: AgentVaultCredentialType.OAuth,
+    credentialConfig: { type: AgentVaultCredentialType.OAuth, source: "variable", variableId },
+    encryptedCredential: null,
+    ...overrides
+  });
+  const mcpUsingVariable = (variableId: string) =>
+    usingVariable(variableId, {
+      name: "drive-mcp",
+      type: AgentVaultServiceType.Mcp,
+      hostPattern: "mcp.example.com",
+      config: { serverUrl: "https://mcp.example.com/mcp", transport: AgentVaultMcpTransport.StreamableHttp }
+    });
+
+  const createHttp = (service: ReturnType<typeof buildService>["service"], variable?: string) =>
+    service.createService({
+      projectId: PROJECT_ID,
+      ctx,
+      type: AgentVaultServiceType.Http,
+      name: "gdrive",
+      hostPattern: "www.googleapis.com",
+      credential: { type: AgentVaultCredentialType.OAuth, ...(variable ? { variable } : {}) }
+    });
+
+  test("an HTTP service stores the variable's id, seals nothing, and holds the variable with a reference row", async () => {
+    const built = buildService({
+      firstRead: plainService(),
+      locked: plainService(),
+      oauthVariableKeys: ["GDRIVE_A"],
+      oauthVariableTokens: { GDRIVE_A: "variable-access" }
+    });
+
+    const { service } = await createHttp(built.service, "GDRIVE_A");
+
+    expect(built.agentVaultServiceDAL.create.mock.calls[0][0]).toMatchObject({
+      credentialType: AgentVaultCredentialType.OAuth,
+      credentialConfig: { type: AgentVaultCredentialType.OAuth, source: "variable", variableId: VARIABLE_A },
+      encryptedCredential: null,
+      memberProvidedFields: null
+    });
+    expect(built.agentVaultVariableDAL.lockForReference).toHaveBeenCalledWith(
+      { projectId: PROJECT_ID, owner: null, variableIds: [VARIABLE_A] },
+      expect.anything()
+    );
+    expect(built.agentVaultServiceVariableReferenceDAL.insertMany.mock.calls[0][0]).toEqual([
+      {
+        serviceId: SERVICE_ID,
+        variableId: VARIABLE_A,
+        field: "credential-value",
+        customHeaderId: null,
+        substitutionId: null
+      }
+    ]);
+    expect(service.credential).toMatchObject({
+      type: AgentVaultCredentialType.OAuth,
+      source: "variable",
+      variable: { id: VARIABLE_A, key: "GDRIVE_A" },
+      status: "connected",
+      issuer: "https://accounts.google.com"
+    });
+  });
+
+  test("an HTTP service's OAuth comes only from a variable", async () => {
+    const built = buildService({ firstRead: plainService(), locked: plainService() });
+
+    await expect(createHttp(built.service)).rejects.toThrow(HTTP_OAUTH_NEEDS_VARIABLE_MESSAGE);
+    expect(built.agentVaultServiceDAL.create).not.toHaveBeenCalled();
+  });
+
+  test("a key naming a text variable, or nothing, is refused on the variable field", async () => {
+    const built = buildService({ firstRead: plainService(), locked: plainService(), variableKeys: ["OPENAI_KEY"] });
+
+    await expect(createHttp(built.service, "OPENAI_KEY")).rejects.toThrow("'OPENAI_KEY' is a text variable");
+    await expect(createHttp(built.service, "MISSING")).rejects.toThrow("no global variable named 'MISSING'");
+    await expect(createHttp(built.service, "OPENAI_KEY")).rejects.toMatchObject({
+      details: { field: "credential.variable" }
+    });
+    await expect(createHttp(built.service, "MISSING")).rejects.toMatchObject({
+      details: { field: "credential.variable" }
+    });
+    expect(built.agentVaultServiceDAL.create).not.toHaveBeenCalled();
+  });
+
+  test("naming a variable needs read-value, checked before the key is looked up", async () => {
+    const built = buildService({
+      firstRead: plainService(),
+      locked: plainService(),
+      rules: bundleEditor,
+      oauthVariableKeys: ["GDRIVE_A"]
+    });
+
+    await expect(createHttp(built.service, "GDRIVE_A")).rejects.toBeInstanceOf(ForbiddenError);
+    expect(built.agentVaultVariableDAL.findKeys).not.toHaveBeenCalled();
+  });
+
+  test("switching to another variable moves the reference row to it", async () => {
+    const built = buildService({
+      firstRead: usingVariable(VARIABLE_A),
+      locked: usingVariable(VARIABLE_A),
+      oauthVariableKeys: ["GDRIVE_A", "GDRIVE_B"]
+    });
+
+    const result = await built.service.updateService({
+      projectId: PROJECT_ID,
+      ctx,
+      serviceId: SERVICE_ID,
+      type: AgentVaultServiceType.Http,
+      credential: { type: AgentVaultCredentialType.OAuth, variable: "GDRIVE_B" }
+    });
+
+    expect(writtenColumns(built.agentVaultServiceDAL)).toMatchObject({
+      credentialConfig: { type: AgentVaultCredentialType.OAuth, source: "variable", variableId: VARIABLE_B },
+      encryptedCredential: null
+    });
+    expect(built.agentVaultServiceVariableReferenceDAL.delete).toHaveBeenCalledWith(
+      { serviceId: SERVICE_ID, $in: { field: ["credential-value", "credential-username"] } },
+      expect.anything()
+    );
+    expect(built.agentVaultServiceVariableReferenceDAL.insertMany.mock.calls[0][0]).toEqual([
+      {
+        serviceId: SERVICE_ID,
+        variableId: VARIABLE_B,
+        field: "credential-value",
+        customHeaderId: null,
+        substitutionId: null
+      }
+    ]);
+    expect(result.credentialReplaced).toBe(true);
+  });
+
+  test("an edit that leaves the credential alone keeps the reference row", async () => {
+    const built = buildService({
+      firstRead: usingVariable(VARIABLE_A),
+      locked: usingVariable(VARIABLE_A),
+      oauthVariableKeys: ["GDRIVE_A"]
+    });
+
+    await built.service.updateService({
+      projectId: PROJECT_ID,
+      ctx,
+      serviceId: SERVICE_ID,
+      type: AgentVaultServiceType.Http,
+      name: "google-drive"
+    });
+
+    expect(built.agentVaultServiceVariableReferenceDAL.delete).not.toHaveBeenCalled();
+    expect(built.agentVaultServiceVariableReferenceDAL.insertMany).not.toHaveBeenCalled();
+  });
+
+  test("an HTTP service sent an OAuth credential with nothing in it keeps its variable", async () => {
+    const built = buildService({
+      firstRead: usingVariable(VARIABLE_A),
+      locked: usingVariable(VARIABLE_A),
+      oauthVariableKeys: ["GDRIVE_A"]
+    });
+
+    const result = await built.service.updateService({
+      projectId: PROJECT_ID,
+      ctx,
+      serviceId: SERVICE_ID,
+      type: AgentVaultServiceType.Http,
+      name: "google-drive",
+      credential: { type: AgentVaultCredentialType.OAuth }
+    });
+
+    expect(writtenColumns(built.agentVaultServiceDAL)).not.toHaveProperty("credentialConfig");
+    expect(built.agentVaultServiceVariableReferenceDAL.delete).not.toHaveBeenCalled();
+    expect(result.credentialReplaced).toBe(false);
+  });
+
+  test("an MCP service using a variable can move to another server without authorizing again", async () => {
+    const built = buildService({
+      firstRead: mcpUsingVariable(VARIABLE_A),
+      locked: mcpUsingVariable(VARIABLE_A),
+      oauthVariableKeys: ["GDRIVE_A"]
+    });
+
+    await built.service.updateService({
+      projectId: PROJECT_ID,
+      ctx,
+      serviceId: SERVICE_ID,
+      type: AgentVaultServiceType.Mcp,
+      serverUrl: "https://mcp2.example.com/mcp"
+    });
+
+    expect(writtenColumns(built.agentVaultServiceDAL).config).toMatchObject({
+      serverUrl: "https://mcp2.example.com/mcp"
+    });
+  });
+
+  test("a member reads the variable's id and key only with read on variables", async () => {
+    const reader = buildService({
+      firstRead: usingVariable(VARIABLE_A),
+      locked: usingVariable(VARIABLE_A),
+      member: true,
+      oauthVariableKeys: ["GDRIVE_A"],
+      oauthVariableTokens: { GDRIVE_A: "variable-access" }
+    });
+
+    const { service } = await reader.service.getService({ projectId: PROJECT_ID, ctx, serviceId: SERVICE_ID });
+
+    expect(service.credential).toMatchObject({ type: AgentVaultCredentialType.OAuth, source: "variable" });
+    expect(service.credential).not.toHaveProperty("variable", expect.anything());
+    expect(service.credential).not.toHaveProperty("lastError", expect.anything());
+  });
+
+  const listUnsavedWithVariable = (built: ReturnType<typeof buildService>, extra: Record<string, unknown> = {}) =>
+    built.service.listMcpTools({
+      projectId: PROJECT_ID,
+      ctx,
+      serverUrl: "https://mcp.example.com/mcp",
+      transport: AgentVaultMcpTransport.StreamableHttp,
+      credential: { type: AgentVaultCredentialType.OAuth, variable: "GDRIVE_A" },
+      ...extra
+    });
+  const unsavedWithVariable = () =>
+    buildService({
+      firstRead: plainService(),
+      locked: plainService(),
+      oauthVariableKeys: ["GDRIVE_A"],
+      oauthVariableTokens: { GDRIVE_A: "variable-access" }
+    });
+  const rejected = () => Object.assign(new McpListError({ message: "rejected" }), { isCredentialRejected: true });
+
+  test("tools load with an unsaved service's variable token, refreshed through the variable alone", async () => {
+    listMcpServerTools.mockResolvedValueOnce([{ name: "search" }]);
+    const built = unsavedWithVariable();
+
+    const result = await listUnsavedWithVariable(built);
+
+    expect(result.tools).toEqual([{ name: "search" }]);
+    expect(built.agentVaultOauthService.refreshVariableToken).toHaveBeenCalledWith({
+      variableId: VARIABLE_A,
+      projectId: PROJECT_ID,
+      expiresWithinSeconds: 60,
+      rejectedTokenHash: undefined
+    });
+    expect(built.agentVaultOauthService.refreshServiceToken).not.toHaveBeenCalled();
+    expect((listMcpServerTools.mock.lastCall![0] as { headers: unknown }).headers).toEqual({
+      Authorization: "Bearer variable-refreshed-access"
+    });
+  });
+
+  test("an unsaved service's variable token refused by the server is refreshed once and retried", async () => {
+    listMcpServerTools.mockRejectedValueOnce(rejected()).mockResolvedValueOnce([{ name: "search" }]);
+    const built = unsavedWithVariable();
+    built.agentVaultOauthService.refreshVariableToken.mockImplementation(async ({ rejectedTokenHash }) => ({
+      credential: { value: rejectedTokenHash ? "after-rejection" : "variable-refreshed-access" },
+      status: "connected"
+    }));
+
+    const result = await listUnsavedWithVariable(built);
+
+    expect(result.tools).toEqual([{ name: "search" }]);
+    expect(built.agentVaultOauthService.refreshVariableToken).toHaveBeenLastCalledWith(
+      expect.objectContaining({ rejectedTokenHash: hashAccessToken("variable-refreshed-access") })
+    );
+    expect((listMcpServerTools.mock.lastCall![0] as { headers: unknown }).headers).toEqual({
+      Authorization: "Bearer after-rejection"
+    });
+  });
+
+  test("a refusal with a typed custom header beside the variable's token doesn't refresh it", async () => {
+    listMcpServerTools.mockRejectedValueOnce(rejected());
+    const built = unsavedWithVariable();
+
+    await expect(
+      listUnsavedWithVariable(built, { customHeaders: [{ name: "X-Workspace", value: "acme" }] })
+    ).rejects.toThrow("rejected");
+    expect(built.agentVaultOauthService.refreshVariableToken).toHaveBeenCalledTimes(1);
+  });
+
+  test("tools for a saved service load with the variable's token, refreshed through the service", async () => {
+    listMcpServerTools.mockResolvedValueOnce([{ name: "search" }]);
+    const built = buildService({
+      firstRead: mcpUsingVariable(VARIABLE_A),
+      locked: mcpUsingVariable(VARIABLE_A),
+      oauthVariableKeys: ["GDRIVE_A"],
+      oauthVariableTokens: { GDRIVE_A: "variable-access" }
+    });
+
+    await built.service.listMcpTools({
+      projectId: PROJECT_ID,
+      ctx,
+      serviceId: SERVICE_ID,
+      serverUrl: "https://mcp.example.com/mcp",
+      transport: AgentVaultMcpTransport.StreamableHttp
+    });
+
+    expect(built.agentVaultOauthService.refreshServiceToken).toHaveBeenCalledWith(
+      expect.objectContaining({ serviceId: SERVICE_ID, variableId: VARIABLE_A })
+    );
+    expect((listMcpServerTools.mock.lastCall![0] as { headers: unknown }).headers).toEqual({
+      Authorization: "Bearer refreshed-access"
+    });
+  });
+
+  test("tools can't load with a variable that isn't connected", async () => {
+    const built = buildService({ firstRead: plainService(), locked: plainService(), oauthVariableKeys: ["GDRIVE_A"] });
+
+    await expect(
+      built.service.listMcpTools({
+        projectId: PROJECT_ID,
+        ctx,
+        serverUrl: "https://mcp.example.com/mcp",
+        transport: AgentVaultMcpTransport.StreamableHttp,
+        credential: { type: AgentVaultCredentialType.OAuth, variable: "GDRIVE_A" }
+      })
+    ).rejects.toThrow("The OAuth variable 'GDRIVE_A' isn't connected");
   });
 });

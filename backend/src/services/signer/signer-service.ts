@@ -30,7 +30,8 @@ import {
   ResourcePermissionSignerActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { withCache } from "@app/lib/cache/with-cache";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { signingService } from "@app/lib/crypto/sign/signing";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
@@ -135,6 +136,7 @@ import { TSignerIssuanceServiceFactory } from "./signer-issuance-service";
 import { TSignerRevocationDALFactory } from "./signer-revocation-dal";
 import {
   SignerExternalCaConfigSchema,
+  SigningActivityRange,
   TCheckCertificateImportDTO,
   TCreateSignerDTO,
   TDeleteSignerDTO,
@@ -143,6 +145,7 @@ import {
   TExportCertificateDTO,
   TGetPublicKeyDTO,
   TGetSignerDTO,
+  TGetSigningActivityTrendDTO,
   TGetSigningOperationDTO,
   TImportCertificateDTO,
   TListSignersDTO,
@@ -292,7 +295,7 @@ type TSignerServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete" | "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem" | "setItemWithExpiry">;
   orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess" | "findMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -2962,6 +2965,84 @@ export const signerServiceFactory = ({
     };
   };
 
+  const getActivityTrend = async (dto: TGetSigningActivityTrendDTO) => {
+    const { permission, hasRole } = await permissionService.getProjectPermission({
+      actor: dto.actor,
+      actorId: dto.actorId,
+      projectId: dto.projectId,
+      actorAuthMethod: dto.actorAuthMethod,
+      actorOrgId: dto.actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCodeSigningActions.Read,
+      ProjectPermissionSub.CodeSigners
+    );
+
+    const canReadSigner = async (signerId: string) => {
+      const { permission: signerPermission } = await $loadSignerResourcePermission(
+        signerId,
+        dto.projectId,
+        dto.actor,
+        dto.actorId,
+        dto.actorAuthMethod,
+        dto.actorOrgId
+      );
+      return signerPermission.can(ResourcePermissionSignerActions.Read, ResourcePermissionSub.Signer);
+    };
+
+    const isCacheable = Boolean(dto.signerId) || hasRole(ProjectMembershipRole.Admin);
+
+    let signerIds: string[] | undefined;
+    if (dto.signerId) {
+      const signer = await signerDAL.findById(dto.signerId);
+      if (!signer || signer.projectId !== dto.projectId) {
+        throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
+      }
+      if (!(await canReadSigner(signer.id))) {
+        throw new ForbiddenRequestError({ message: `You do not have permission to read signer '${dto.signerId}'` });
+      }
+      signerIds = [signer.id];
+    } else if (!hasRole(ProjectMembershipRole.Admin)) {
+      const memberships = await membershipDAL.findResourceMembershipsForActor({
+        projectId: dto.projectId,
+        resourceType: ResourceType.Signer,
+        actorType: dto.actor === ActorType.IDENTITY ? ActorType.IDENTITY : ActorType.USER,
+        actorId: dto.actorId
+      });
+      const memberSignerIds = Array.from(
+        new Set(memberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id)))
+      );
+      const readable = await Promise.all(memberSignerIds.map(canReadSigner));
+      signerIds = memberSignerIds.filter((_, i) => readable[i]);
+    }
+
+    const daysBackByRange: Record<SigningActivityRange, number> = {
+      [SigningActivityRange.SevenDays]: 7,
+      [SigningActivityRange.ThirtyDays]: 30,
+      [SigningActivityRange.SixMonths]: 180
+    };
+
+    const fetchPeriods = () =>
+      signingOperationDAL.getActivityTrend({
+        projectId: dto.projectId,
+        signerIds,
+        daysBack: daysBackByRange[dto.range]
+      });
+
+    const periods = isCacheable
+      ? await withCache({
+          keyStore,
+          key: KeyStorePrefixes.SigningActivityTrend(dto.projectId, dto.range, dto.signerId),
+          ttlSeconds: KeyStoreTtls.SigningActivityTrendInSeconds,
+          fetcher: fetchPeriods
+        })
+      : await fetchPeriods();
+
+    return { periods };
+  };
+
   const listOperations = async (dto: TListSigningOperationsDTO) => {
     const signer = await signerDAL.findById(dto.signerId);
     if (!signer) {
@@ -3112,6 +3193,7 @@ export const signerServiceFactory = ({
     exportCertificate,
     sign,
     getPublicKey,
+    getActivityTrend,
     listOperations,
     getOperationById,
     autoRenewCertificate,

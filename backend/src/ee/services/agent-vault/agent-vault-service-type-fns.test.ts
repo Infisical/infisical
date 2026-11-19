@@ -197,15 +197,13 @@ describe("credential types", () => {
     expect(() => assertCredentialTypeSupported(mcp, AgentVaultCredentialType.Passthrough)).toThrow();
   });
 
-  test("an HTTP service takes every credential type but OAuth and an SSH key", () => {
+  // OAuth only through an OAuth variable, which the service save checks.
+  test("an HTTP service takes every credential type but an SSH key", () => {
     Object.values(AgentVaultCredentialType)
-      .filter((type) => type !== AgentVaultCredentialType.OAuth && type !== AgentVaultCredentialType.SshKey)
+      .filter((type) => type !== AgentVaultCredentialType.SshKey)
       .forEach((type) => {
         expect(() => assertCredentialTypeSupported(http, type)).not.toThrow();
       });
-    expect(() => assertCredentialTypeSupported(http, AgentVaultCredentialType.OAuth)).toThrow(
-      "An HTTP service can't use OAuth as its credential."
-    );
     expect(() => assertCredentialTypeSupported(http, AgentVaultCredentialType.SshKey)).toThrow(
       "An HTTP service can't use an SSH key as its credential."
     );

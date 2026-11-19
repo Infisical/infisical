@@ -4,6 +4,7 @@ import type {
   TListApprovalPoliciesDTO,
   TUpdateApprovalPolicyDTO
 } from "@app/hooks/api/approvalPolicies/types";
+import type { TPendingRevocation } from "@app/hooks/api/approvalRequests/pending-revocations";
 import type {
   TApprovalRequest,
   TApproveApprovalRequestDTO,
@@ -42,6 +43,10 @@ export type ApprovalRequestsAdapter = {
   useApplication: (applicationId: string) => V4QueryResult<ApprovalApplication>;
   useProfile: (profileId: string) => V4QueryResult<TCertificateProfileWithDetails>;
   useCertificateRequest: (requestId: string) => V4QueryResult<TCertificateRequestDetails>;
+  usePendingRevocations: (applicationId?: string | null) => {
+    data: Map<string, TPendingRevocation> | undefined;
+  };
+  useRevocationPolicyProfileNames: (applicationId?: string | null) => V4QueryResult<Set<string>>;
   useApprove: V4Mutation<TApproveApprovalRequestDTO, TApprovalRequest>;
   useReject: V4Mutation<TRejectApprovalRequestDTO, TApprovalRequest>;
   useCancel: V4Mutation<TCancelApprovalRequestDTO, TApprovalRequest>;

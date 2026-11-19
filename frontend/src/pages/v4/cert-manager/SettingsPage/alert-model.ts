@@ -498,6 +498,7 @@ export const toAlertDraft = (form: TAlertForm): TAlertDraft => ({
 });
 
 export const ENTERPRISE_CHANNEL_TYPES = [
+  AlertChannelType.SlackApp,
   AlertChannelType.Slack,
   AlertChannelType.Webhook,
   AlertChannelType.PagerDuty
@@ -505,6 +506,7 @@ export const ENTERPRISE_CHANNEL_TYPES = [
 
 export const CHANNEL_ICONS: Record<AlertChannelType, IconName | typeof MailIcon> = {
   [AlertChannelType.Email]: MailIcon,
+  [AlertChannelType.SlackApp]: HashIcon,
   [AlertChannelType.Slack]: HashIcon,
   [AlertChannelType.Webhook]: "link",
   [AlertChannelType.PagerDuty]: "alert"
@@ -529,7 +531,9 @@ export const buildNextChannel = (
     url: "",
     signingSecret: "",
     headers: [],
-    integrationKey: ""
+    integrationKey: "",
+    workflowIntegrationId: "",
+    slackChannels: []
   };
 };
 
@@ -571,6 +575,8 @@ export const describeChannel = (channel: TChannelForm, members: TMemberEmails): 
     }
     case AlertChannelType.Webhook:
       return channel.url ?? "";
+    case AlertChannelType.SlackApp:
+      return (channel.slackChannels ?? []).map(({ name }) => `#${name}`).join(", ");
     case AlertChannelType.Slack:
       return "Slack incoming webhook";
     case AlertChannelType.PagerDuty:

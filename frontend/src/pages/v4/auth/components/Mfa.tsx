@@ -1,23 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert } from "@infisical/cipher/ui/alert";
+import { AnimatedCollapse } from "@infisical/cipher/ui/animated-collapse";
 import { Button } from "@infisical/cipher/ui/button";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Separator } from "@infisical/cipher/ui/separator";
 import { toast } from "@infisical/cipher/ui/sonner";
 import { Text } from "@infisical/cipher/ui/text";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { useNavigate } from "@tanstack/react-router";
+import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 
 import { waitForMinimumAuthVerificationLoading } from "@app/components/auth/authTiming";
-import { MFA_METHOD_LABELS } from "@app/components/mfa/setup/types";
+import { MFA_METHOD_ICONS, MFA_METHOD_LABELS } from "@app/components/mfa/setup/types";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useActivateMfa, useLogoutUser, useSendMfaToken } from "@app/hooks/api";
-import {
-  checkUserTotpMfa,
-  checkUserWebAuthnMfa,
-  verifyMfaToken,
-  verifyRecoveryCode
-} from "@app/hooks/api/auth/queries";
+import { getMfaMethods, verifyMfaToken, verifyRecoveryCode } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getMfaTempToken } from "@app/hooks/api/reactQuery";
 import { fetchUserDetails } from "@app/hooks/api/users/queries";
@@ -55,10 +53,19 @@ const PREVIEW_RECOVERY_CODES = [
   "w7s3e5ik"
 ];
 
+const PREVIEW_USABLE_METHODS = [MfaMethod.TOTP, MfaMethod.EMAIL, MfaMethod.WEBAUTHN];
+
 export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }: Props) => {
   const navigate = useNavigate();
   const [mfaCode, setMfaCode] = useState("");
   const [showRecoveryCodeInput, setShowRecoveryCodeInput] = useState(preview === "recovery");
+  const [activeMethod, setActiveMethod] = useState<MfaMethod>(method);
+  const [usableMethods, setUsableMethods] = useState<MfaMethod[]>(
+    preview ? PREVIEW_USABLE_METHODS : [method]
+  );
+  const [enrollableMethods, setEnrollableMethods] = useState<MfaMethod[]>([]);
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const hasSentEmailCodeRef = useRef(method === MfaMethod.EMAIL);
   const [resendDelayEnd, setResendDelayEnd] = useState(() =>
     method === MfaMethod.EMAIL ? Date.now() + CLIENT_RESEND_DELAY_SECONDS * 1000 : 0
   );
@@ -66,12 +73,12 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingResend, setIsLoadingResend] = useState(false);
   const [triesLeft, setTriesLeft] = useState<number | undefined>(undefined);
-  const [shouldShowTotpRegistration, setShouldShowTotpRegistration] = useState(false);
-  const [shouldShowWebAuthnRegistration, setShouldShowWebAuthnRegistration] = useState(false);
+  const [showEnrollment, setShowEnrollment] = useState(false);
   const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[] | null>(
     preview === "codes" ? PREVIEW_RECOVERY_CODES : null
   );
   const wasMfaEnabledRef = useRef(true);
+  const [hasRecoveryCodes, setHasRecoveryCodes] = useState(true);
   const mfaTokenRef = useRef(getMfaTempToken());
   const [isRecoveringFromSetup, setIsRecoveringFromSetup] = useState(false);
   const { mutateAsync: activateMfa } = useActivateMfa();
@@ -87,40 +94,41 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
     return () => window.clearInterval(timer);
   }, [remainingResendSeconds > 0]);
 
+  const loadMethods = async () => {
+    try {
+      const methods = await getMfaMethods();
+      setUsableMethods(methods.usableMethods);
+      setEnrollableMethods(methods.enrollableMethods);
+      if (methods.usableMethods.length) {
+        setActiveMethod(methods.challengeMethod);
+        return;
+      }
+      if (methods.enrollableMethods.length) setShowEnrollment(true);
+    } catch {
+      // Keep the method select-organization returned; the user can still verify it or use a recovery code.
+    }
+  };
+
   useEffect(() => {
     if (preview) return;
     fetchUserDetails()
       .then((user) => {
         wasMfaEnabledRef.current = Boolean(user.isMfaEnabled);
+        setHasRecoveryCodes(Boolean(user.isMfaEnabled));
       })
       .catch(() => {});
 
-    if (method === MfaMethod.TOTP) {
-      checkUserTotpMfa().then((isVerified) => {
-        if (!isVerified) {
-          SecurityClient.setMfaToken("");
-          setShouldShowTotpRegistration(true);
-        }
-      });
-    } else if (method === MfaMethod.WEBAUTHN) {
-      checkUserWebAuthnMfa().then((hasPasskeys) => {
-        if (!hasPasskeys) setShouldShowWebAuthnRegistration(true);
-      });
-    }
+    setActiveMethod(method);
+    hasSentEmailCodeRef.current = method === MfaMethod.EMAIL;
+    loadMethods();
   }, [method]);
 
   const expectedCodeLength = showRecoveryCodeInput ? 8 : 6;
   const isLockedOut = typeof triesLeft === "number" && triesLeft <= 0;
 
-  const showFactorSetup = () => {
-    if (method === MfaMethod.TOTP) setShouldShowTotpRegistration(true);
-    else setShouldShowWebAuthnRegistration(true);
-  };
-
   const switchToRecoveryCode = () => {
     SecurityClient.setMfaToken(mfaTokenRef.current);
-    setShouldShowTotpRegistration(false);
-    setShouldShowWebAuthnRegistration(false);
+    setShowEnrollment(false);
     setShowRecoveryCodeInput(true);
     setIsRecoveringFromSetup(true);
   };
@@ -128,14 +136,17 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
   let recoveryToggleLabel = "Use authenticator code";
   if (isRecoveringFromSetup) recoveryToggleLabel = "Back to setup";
   else if (!showRecoveryCodeInput) recoveryToggleLabel = "Use a recovery code";
-  else if (method === MfaMethod.WEBAUTHN) recoveryToggleLabel = "Use passkey instead";
-  else if (method === MfaMethod.EMAIL) recoveryToggleLabel = "Use email code";
+  else if (activeMethod === MfaMethod.WEBAUTHN) recoveryToggleLabel = "Use passkey instead";
+  else if (activeMethod === MfaMethod.EMAIL) recoveryToggleLabel = "Use email code";
 
   const completeLogin = async () => {
     await successCallback({ needsFactorSetup: isRecoveringFromSetup });
     if (isRecoveringFromSetup) {
+      const requiredLabels = (enrollableMethods.length ? enrollableMethods : [activeMethod])
+        .map((requiredMethod) => MFA_METHOD_LABELS[requiredMethod].toLowerCase())
+        .join(" or ");
       toast.info(
-        `Set up your ${MFA_METHOD_LABELS[method].toLowerCase()} in Personal Settings. Your organization requires it to sign in.`
+        `Set up your ${requiredLabels} in Personal Settings. Your organization requires it to sign in.`
       );
     }
   };
@@ -194,7 +205,7 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
     try {
       const result = showRecoveryCodeInput
         ? await verifyRecoveryCode(mfaCode.trim())
-        : await verifyMfaToken({ email, mfaCode: mfaCode.trim(), mfaMethod: method });
+        : await verifyMfaToken({ email, mfaCode: mfaCode.trim(), mfaMethod: activeMethod });
       sessionToken = result.token;
     } catch {
       const isLocked = await countFailedAttempt(
@@ -206,7 +217,7 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
 
     try {
       await waitForMinimumAuthVerificationLoading(verificationStartedAt);
-      await finalizeAfterMfaVerification(sessionToken, method, showRecoveryCodeInput);
+      await finalizeAfterMfaVerification(sessionToken, activeMethod, showRecoveryCodeInput);
     } finally {
       setIsLoading(false);
     }
@@ -222,6 +233,17 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
       console.error(err);
     } finally {
       setIsLoadingResend(false);
+    }
+  };
+
+  const switchMethod = async (nextMethod: MfaMethod) => {
+    setMfaCode("");
+    setShowRecoveryCodeInput(false);
+    setShowMoreOptions(false);
+    setActiveMethod(nextMethod);
+    if (nextMethod === MfaMethod.EMAIL && !hasSentEmailCodeRef.current) {
+      hasSentEmailCodeRef.current = true;
+      await handleResendMfaCode();
     }
   };
 
@@ -291,16 +313,16 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
     );
   }
 
-  if (shouldShowTotpRegistration || shouldShowWebAuthnRegistration) {
+  if (showEnrollment) {
     return (
       <MfaEnrollment
-        method={method}
+        methods={enrollableMethods.length ? enrollableMethods : [activeMethod]}
         onComplete={async () => {
-          setShouldShowTotpRegistration(false);
-          setShouldShowWebAuthnRegistration(false);
+          setShowEnrollment(false);
           await successCallback();
+          await loadMethods();
         }}
-        onUseRecoveryCode={switchToRecoveryCode}
+        onUseRecoveryCode={hasRecoveryCodes ? switchToRecoveryCode : undefined}
       />
     );
   }
@@ -309,16 +331,16 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
   let description: React.ReactNode;
   if (showRecoveryCodeInput) {
     description = "Enter one of your backup recovery codes.";
-  } else if (method === MfaMethod.EMAIL) {
+  } else if (activeMethod === MfaMethod.EMAIL) {
     title = "Check your email";
     description = (
       <>
         Enter the code we sent to <span className={styles.recipient}>{email}</span>
       </>
     );
-  } else if (method === MfaMethod.TOTP) {
+  } else if (activeMethod === MfaMethod.TOTP) {
     description = "Enter the verification code from your authenticator app.";
-  } else if (method === MfaMethod.WEBAUTHN) {
+  } else if (activeMethod === MfaMethod.WEBAUTHN) {
     title = "Passkey authentication";
     description = "Use your registered passkey to continue.";
   }
@@ -327,10 +349,51 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
   if (isLoadingResend) resendLabel = "Resending";
   else if (remainingResendSeconds > 0) resendLabel = `Resend code in ${remainingResendSeconds}s`;
 
-  const recoveryActions = (
+  const otherMethods = usableMethods.filter((usableMethod) => usableMethod !== activeMethod);
+  const hasMoreOptions =
+    otherMethods.length > 0 && !showRecoveryCodeInput && !isRecoveringFromSetup;
+
+  const moreOptions = hasMoreOptions && (
+    <Stack gap={8}>
+      <Button
+        type="button"
+        variant="outline"
+        size="lg"
+        className="w-full"
+        aria-controls="mfa-more-options"
+        aria-expanded={showMoreOptions}
+        iconRight={showMoreOptions ? ChevronUpIcon : ChevronDownIcon}
+        onClick={() => setShowMoreOptions(!showMoreOptions)}
+      >
+        More options
+      </Button>
+      <AnimatedCollapse id="mfa-more-options" open={showMoreOptions}>
+        <Stack gap={8}>
+          <Separator />
+          {otherMethods.map((otherMethod) => (
+            <Button
+              key={otherMethod}
+              type="button"
+              variant="outline"
+              size="lg"
+              className="w-full"
+              icon={MFA_METHOD_ICONS[otherMethod]}
+              onClick={() => switchMethod(otherMethod)}
+            >
+              {MFA_METHOD_LABELS[otherMethod]}
+            </Button>
+          ))}
+        </Stack>
+      </AnimatedCollapse>
+    </Stack>
+  );
+
+  const showRecoveryToggle = showRecoveryCodeInput || isRecoveringFromSetup || hasRecoveryCodes;
+  const hasRecoveryActions = activeMethod === MfaMethod.EMAIL || showRecoveryToggle;
+  const recoveryActions = hasRecoveryActions && (
     <Stack gap={8}>
       <Inline justify="between">
-        {!showRecoveryCodeInput && method === MfaMethod.EMAIL ? (
+        {!showRecoveryCodeInput && activeMethod === MfaMethod.EMAIL ? (
           <Button
             type="button"
             variant="link"
@@ -342,23 +405,25 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
         ) : (
           <span />
         )}
-        <Button
-          type="button"
-          variant="link"
-          onClick={() => {
-            setMfaCode("");
-            if (isRecoveringFromSetup) {
-              SecurityClient.setMfaToken("");
-              setShowRecoveryCodeInput(false);
-              setIsRecoveringFromSetup(false);
-              showFactorSetup();
-              return;
-            }
-            setShowRecoveryCodeInput(!showRecoveryCodeInput);
-          }}
-        >
-          {recoveryToggleLabel}
-        </Button>
+        {showRecoveryToggle && (
+          <Button
+            type="button"
+            variant="link"
+            onClick={() => {
+              setMfaCode("");
+              if (isRecoveringFromSetup) {
+                SecurityClient.setMfaToken("");
+                setShowRecoveryCodeInput(false);
+                setIsRecoveringFromSetup(false);
+                setShowEnrollment(true);
+                return;
+              }
+              setShowRecoveryCodeInput(!showRecoveryCodeInput);
+            }}
+          >
+            {recoveryToggleLabel}
+          </Button>
+        )}
       </Inline>
       {showRecoveryCodeInput && (
         <Text muted>
@@ -389,7 +454,7 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
         ) : undefined
       }
     >
-      {method === MfaMethod.WEBAUTHN && !showRecoveryCodeInput ? (
+      {activeMethod === MfaMethod.WEBAUTHN && !showRecoveryCodeInput ? (
         <Stack gap={16}>
           {typeof triesLeft === "number" && (
             <Alert tone="bad" title="Failed authentication">
@@ -408,10 +473,11 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
             Authenticate with passkey
           </Button>
           {recoveryActions}
+          {moreOptions}
         </Stack>
       ) : (
         <CodeForm
-          key={showRecoveryCodeInput ? "recovery" : method}
+          key={showRecoveryCodeInput ? "recovery" : activeMethod}
           label={showRecoveryCodeInput ? "Recovery code" : "Verification code"}
           length={expectedCodeLength}
           value={mfaCode}
@@ -426,6 +492,7 @@ export const Mfa = ({ successCallback, email, method, onChangeAccount, preview }
           }
         >
           {recoveryActions}
+          {moreOptions}
         </CodeForm>
       )}
     </AuthPage>

@@ -3,6 +3,7 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
 import { Cloud66ConnectionMethod } from "@app/hooks/api/appConnections/types/cloud-66-connection";
 import { ConvexConnectionMethod } from "@app/hooks/api/appConnections/types/convex-connection";
+import { CoolifyConnectionMethod } from "@app/hooks/api/appConnections/types/coolify-connection";
 import { FlyioConnectionMethod } from "@app/hooks/api/appConnections/types/flyio-connection";
 import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
 import { HumanitecConnectionMethod } from "@app/hooks/api/appConnections/types/humanitec-connection";
@@ -26,6 +27,7 @@ import {
   vercelConnectionFormSchema,
   teamCityConnectionFormSchema,
   jenkinsConnectionFormSchema,
+  coolifyConnectionFormSchema,
   renderConnectionFormSchema,
   flyioConnectionFormSchema,
   railwayConnectionFormSchema,
@@ -124,6 +126,29 @@ export const DEPLOY_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>>
             placeholder: "https://jenkins.example.com"
           },
           { name: "credentials.username", label: "Username" },
+          { name: "credentials.apiToken", label: "API token", kind: "secret" }
+        ]
+      }
+    ]
+  },
+  [AppConnection.Coolify]: {
+    app: AppConnection.Coolify,
+    name: APP_CONNECTION_MAP[AppConnection.Coolify].name,
+    schema: coolifyConnectionFormSchema,
+    methods: [
+      {
+        value: CoolifyConnectionMethod.ApiToken,
+        label: methodLabel(CoolifyConnectionMethod.ApiToken),
+        credentials: { instanceUrl: "https://app.coolify.io", apiToken: "" },
+        fields: [
+          {
+            name: "credentials.instanceUrl",
+            label: "Instance URL",
+            mono: true,
+            placeholder: "https://coolify.example.com",
+            description:
+              "Keep https://app.coolify.io for Coolify Cloud. For a self-hosted instance, enter the URL of its dashboard."
+          },
           { name: "credentials.apiToken", label: "API token", kind: "secret" }
         ]
       }

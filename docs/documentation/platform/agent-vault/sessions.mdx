@@ -5,6 +5,8 @@ description: "Time-bound grants that let AI agents access services without holdi
 
 A session is a time-bound grant in an [Agent Vault project](/documentation/platform/agent-vault/projects), and it works only through a proxy in that project. It's scoped to the [services](/documentation/platform/agent-vault/services) you give it when you create it. Infisical returns a session token that identifies the session, and the agent uses that token to authenticate to the [proxy](/documentation/platform/agent-vault/proxies) on every outbound request. The proxy then attaches the real credential from the matching service before it forwards the request.
 
+A session also gives the agent [skills](/documentation/platform/agent-vault/skills): its access bundle's, skills in the project that you pick, and skills you send with the session. The CLI installs them when the agent starts.
+
 You choose how long a session lasts when you create it. After the session expires, or after [you revoke it](/documentation/platform/agent-vault/revoke-a-session), the proxy stops attaching credentials to the agent's requests within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
 
 <CardGroup cols={2}>
@@ -98,7 +100,7 @@ To find the sessions of a run, list sessions by metadata with the [List sessions
 
 ## Access changes
 
-You choose a session's services when you create it, and you can't change them afterwards. However, the proxy checks each session's access again once every [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default). Here's how common access changes affect a session:
+You choose a session's services and skills when you create it, and you can't change them afterwards. However, the proxy checks each session's access again once every [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default). Here's how common access changes affect a session:
 
 - If someone no longer has any grant on an access bundle, directly or through a group, their sessions for that bundle stop getting credentials
 - If someone still has another grant on the bundle, such as through a group, revoking one grant doesn't affect their sessions
@@ -108,6 +110,8 @@ You choose a session's services when you create it, and you can't change them af
 - If someone loses access to a service they picked for a session, the session stops getting that service's credential
 - If you remove someone from the project, the proxy refuses every request on their sessions
 - If the user or machine identity that created a session loses the **Admin** role in the project, the session stops getting credentials for its [inline services](/documentation/platform/agent-vault/inline-services)
+- If someone loses access to a skill they picked for a session, agents that start with the session afterwards don't get the skill
+- If you delete a skill, agents that start afterwards don't get it
 
 None of these changes removes the [skills](/documentation/platform/agent-vault/skills) that the CLI already installed on the agent's host. To stop agents from using those skills, delete the installed copies.
 

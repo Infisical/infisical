@@ -37,7 +37,8 @@ import {
   DeleteCertificateDialog,
   ExpiryBadge,
   RevokeCertificateDialog,
-  shortDate
+  shortDate,
+  useRevocationApprovals
 } from "../components/certificate";
 import { ImportCertificatesSheet } from "../components/certificate-requests/import-sheet";
 import { appCan, plural } from "./shared";
@@ -82,6 +83,7 @@ export const CertificatesTab = ({
   const navigate = useNavigate();
   const adapter = useV4Adapter("pkiApplications");
   const { data: authorities = [] } = useV4Adapter("certificates").useCertificateAuthorities();
+  const revocationOf = useRevocationApprovals(application.id);
   const { data: profiles = [] } = adapter.useApplicationProfiles(application.id);
   const [query, setQuery] = useState(initialSearch ?? "");
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
@@ -176,7 +178,7 @@ export const CertificatesTab = ({
       id: "status",
       header: "Status",
       width: 112,
-      render: (cert) => <CertificateStatusBadge cert={cert} />
+      render: (cert) => <CertificateStatusBadge cert={cert} revocation={revocationOf(cert)} />
     },
     {
       id: "issued",
@@ -275,11 +277,19 @@ export const CertificatesTab = ({
         }}
         rowActions={{
           renderMenu: (cert) => {
+            const revocation = revocationOf(cert);
             const blocks = certificateBlocks(cert, {
               isInventoryView: false,
-              caType: caType(cert)
+              caType: caType(cert),
+              revocation
             });
-            const revokeBlocked = blocks.revoke ?? certificateAccess.revokeBlockedReason;
+            const revokeBlocked =
+              blocks.revoke ??
+              getApplicationCertificateAccess({
+                applicationName: application.name,
+                permission: access.permission,
+                isRevocationApprovalRequired: revocation.isRevocationApprovalRequired
+              }).revokeBlockedReason;
             const deleteBlocked = blocks.delete ?? certificateAccess.deleteBlockedReason;
             return (
               <>
@@ -291,11 +301,13 @@ export const CertificatesTab = ({
                 <DropdownMenuItem
                   variant="destructive"
                   disabled={Boolean(revokeBlocked)}
-                  description={revokeBlocked}
+                  description={revokeBlocked ?? revocation.revokeReplacesRequestReason}
                   onSelect={() => setRevoking(cert)}
                 >
                   <Icon name="x" />
-                  Revoke certificate
+                  {revocation.isRevocationApprovalRequired
+                    ? "Request revocation"
+                    : "Revoke certificate"}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   variant="destructive"
@@ -352,7 +364,13 @@ export const CertificatesTab = ({
           ) : undefined
         }
       />
-      <RevokeCertificateDialog cert={revoking} onClose={() => setRevoking(undefined)} />
+      <RevokeCertificateDialog
+        cert={revoking}
+        isRevocationApprovalRequired={Boolean(
+          revoking && revocationOf(revoking).isRevocationApprovalRequired
+        )}
+        onClose={() => setRevoking(undefined)}
+      />
       <DeleteCertificateDialog
         cert={deleting}
         caType={deleting ? caType(deleting) : undefined}

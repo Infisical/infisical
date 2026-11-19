@@ -63,6 +63,7 @@ import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/ci
 import { ClickHouseConnectionMethod } from "@app/hooks/api/appConnections/types/clickhouse-connection";
 import { Cloud66ConnectionMethod } from "@app/hooks/api/appConnections/types/cloud-66-connection";
 import { ConvexConnectionMethod } from "@app/hooks/api/appConnections/types/convex-connection";
+import { CoolifyConnectionMethod } from "@app/hooks/api/appConnections/types/coolify-connection";
 import { DatadogConnectionMethod } from "@app/hooks/api/appConnections/types/datadog-connection";
 import { DigiCertConnectionMethod } from "@app/hooks/api/appConnections/types/digicert-connection";
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
@@ -731,6 +732,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "Jenkins.png",
     category: "CI/CD",
     description: "Credentials and folder access for Jenkins."
+  },
+  [AppConnection.Coolify]: {
+    name: "Coolify",
+    image: "Coolify.png",
+    category: "HOSTING",
+    description: "Application, service and database access for Coolify."
   }
 };
 
@@ -845,6 +852,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case PortainerConnectionMethod.ApiToken:
     case JiraConnectionMethod.ApiToken:
     case JenkinsConnectionMethod.ApiToken:
+    case CoolifyConnectionMethod.ApiToken:
       return { name: "API Token", icon: KeyRoundIcon };
     case VenafiConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };
