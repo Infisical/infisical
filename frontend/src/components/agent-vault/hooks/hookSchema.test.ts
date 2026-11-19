@@ -4,6 +4,8 @@ import { AgentVaultHttpMethod, AgentVaultServiceType } from "@app/hooks/api/agen
 import { AgentVaultHookMode } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultHook } from "@app/hooks/api/agentVault/types";
 
+import { UNCHANGED_SECRET } from "../service-sheet/serviceSchema";
+
 import {
   blankHookRule,
   buildCreateHookRequest,
@@ -41,8 +43,8 @@ const form = (overrides: Partial<THookForm> = {}): THookForm => ({
   ...overrides
 });
 
-const issuesOf = (data: THookForm, isSecretRequired = true) => {
-  const result = hookFormSchema(() => isSecretRequired).safeParse(data);
+const issuesOf = (data: THookForm) => {
+  const result = hookFormSchema().safeParse(data);
   return result.success
     ? []
     : result.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message }));
@@ -121,11 +123,17 @@ describe("hookFormSchema", () => {
     expect(issuesOf(form())).toEqual([]);
   });
 
-  it("checks the secret only when one is required", () => {
+  it("checks the secret unless the saved one is kept", () => {
     expect(issuesOf(form({ secret: "" }))).toEqual([
       { path: "secret", message: "Enter a secret for the hook." }
     ]);
-    expect(issuesOf(form({ secret: "" }), false)).toEqual([]);
+    expect(issuesOf(form({ secret: UNCHANGED_SECRET }))).toEqual([]);
+  });
+
+  it("asks for a name in words a person reads", () => {
+    expect(issuesOf(form({ name: "" }))).toEqual([
+      { path: "name", message: "Enter a name for the hook." }
+    ]);
   });
 
   it("asks for a service on every rule", () => {
@@ -229,7 +237,12 @@ describe("hook requests", () => {
 
   it("sends nothing an edit didn't change", () => {
     const untouched = { ...hookFormOf(storedHook) };
+    expect(untouched.secret).toBe(UNCHANGED_SECRET);
     expect(buildUpdateHookRequest(storedHook, untouched)).toEqual({});
+  });
+
+  it("prefills the name of a new hook", () => {
+    expect(hookFormOf(null, new Map(), "release-guard").name).toBe("release-guard");
   });
 
   it("sends only the changed fields, and null to remove a description", () => {

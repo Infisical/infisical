@@ -15,7 +15,12 @@ import {
 } from "@app/hooks/api/agentVault/types";
 import { slugSchema } from "@app/lib/schemas";
 
-import { HTTP_METHODS, isAllMethods, toolNameError } from "../service-sheet/serviceSchema";
+import {
+  HTTP_METHODS,
+  isAllMethods,
+  toolNameError,
+  UNCHANGED_SECRET
+} from "../service-sheet/serviceSchema";
 
 // Mirrors agent-vault-hook-fns.ts on the backend, so a value the API would refuse is marked on its field.
 const MAX_HOOK_URL_LENGTH = 2048;
@@ -178,10 +183,14 @@ const addListIssues = (
 const toolError = (tool: string, existing: string[]) =>
   toolNameError(tool) ?? (existing.includes(tool) ? `"${tool}" is listed twice.` : null);
 
-export const hookFormSchema = (isSecretRequired: () => boolean) =>
+export const hookFormSchema = () =>
   z
     .object({
-      name: slugSchema({ max: 64, field: "Name" }),
+      name: z
+        .string()
+        .trim()
+        .min(1, "Enter a name for the hook.")
+        .pipe(slugSchema({ max: 64, field: "Name" })),
       description: agentVaultDescriptionSchema,
       url: z.string(),
       secret: z.string(),
@@ -195,7 +204,7 @@ export const hookFormSchema = (isSecretRequired: () => boolean) =>
 
       const urlIssue = hookUrlError(data.url);
       if (urlIssue) issue(["url"], urlIssue);
-      if (isSecretRequired()) {
+      if (data.secret !== UNCHANGED_SECRET) {
         const secretIssue = hookSecretError(data.secret);
         if (secretIssue) issue(["secret"], secretIssue);
       }
@@ -233,12 +242,13 @@ export type THookForm = z.infer<ReturnType<typeof hookFormSchema>>;
 
 export const hookFormOf = (
   hook?: TAgentVaultHook | null,
-  serviceTypes: Map<string, AgentVaultServiceType> = new Map()
+  serviceTypes: Map<string, AgentVaultServiceType> = new Map(),
+  initialName = ""
 ): THookForm => ({
-  name: hook?.name ?? "",
+  name: hook?.name ?? initialName,
   description: hook?.description ?? "",
   url: hook?.url ?? "",
-  secret: "",
+  secret: hook ? UNCHANGED_SECRET : "",
   rules: (hook?.rules ?? []).map((rule) => hookRuleDraftOf(rule, serviceTypes.get(rule.service)))
 });
 
@@ -276,7 +286,7 @@ export const buildUpdateHookRequest = (
       ? { description: data.description || null }
       : {}),
     ...(url !== hook.url ? { url } : {}),
-    ...(data.secret ? { secret: data.secret } : {}),
+    ...(data.secret !== UNCHANGED_SECRET ? { secret: data.secret } : {}),
     ...(sameRules(rules, hook.rules) ? {} : { rules })
   };
 };

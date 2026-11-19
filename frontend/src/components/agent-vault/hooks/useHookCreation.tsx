@@ -55,9 +55,10 @@ export const useHookCreation = (
     formatLabel: () => "Create New Hook",
     isPending,
     onDismiss: requestCancel,
-    renderForm: ({ complete, cancel }) => (
+    renderForm: ({ initialInput, complete, cancel }) => (
       <>
         <HookForm
+          initialName={initialInput}
           onSaved={(hook) => {
             if (attempt !== attemptRef.current) return;
             setIsDirty(false);

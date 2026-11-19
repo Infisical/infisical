@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
@@ -22,6 +22,7 @@ import {
   SheetTitle,
   Spinner
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { useProject } from "@app/context";
 import {
   useCreateAgentVaultHook,
@@ -30,6 +31,7 @@ import {
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultHook, TAgentVaultProjectService } from "@app/hooks/api/agentVault/types";
 
+import { UNCHANGED_SECRET } from "../service-sheet/serviceSchema";
 import { HookRulesField } from "./HookRulesField";
 import {
   buildCreateHookRequest,
@@ -44,6 +46,8 @@ const SERVICE_PICKER_LIMIT = 100;
 
 type Props = {
   hook?: TAgentVaultHook | null;
+  /** Prefills Name on create, such as what was typed into the picker that opened the form. */
+  initialName?: string;
   isReadOnly?: boolean;
   onSaved: (hook: TAgentVaultHook) => void;
   onCancel: () => void;
@@ -53,6 +57,7 @@ type Props = {
 
 const HookFormBody = ({
   hook,
+  initialName,
   services,
   isReadOnly = false,
   onSaved,
@@ -64,25 +69,20 @@ const HookFormBody = ({
   const createHook = useCreateAgentVaultHook(projectId);
   const updateHook = useUpdateAgentVaultHook(projectId);
   const isUpdate = Boolean(hook);
-  const [isReplacingSecret, setIsReplacingSecret] = useState(false);
   const [isSecretVisible, setIsSecretVisible] = useState(false);
-
-  const isSecretRequiredRef = useRef(!hook);
-  isSecretRequiredRef.current = !hook || isReplacingSecret;
-  const schema = useMemo(() => hookFormSchema(() => isSecretRequiredRef.current), []);
+  const schema = useMemo(() => hookFormSchema(), []);
 
   const formMethods = useForm<THookForm>({
     resolver: zodResolver(schema),
     defaultValues: hookFormOf(
       hook,
-      new Map(services.map((service) => [service.name, service.type]))
+      new Map(services.map((service) => [service.name, service.type])),
+      initialName
     )
   });
   const {
     control,
     handleSubmit,
-    setValue,
-    clearErrors,
     formState: { isDirty, isSubmitting }
   } = formMethods;
   const url = useWatch({ control, name: "url" });
@@ -157,7 +157,11 @@ const HookFormBody = ({
                   <Input
                     {...field}
                     id="agent-vault-hook-description"
-                    placeholder="Asks the on-call engineer before destructive calls"
+                    placeholder={
+                      isReadOnly
+                        ? "No description"
+                        : "Asks the on-call engineer before destructive calls"
+                    }
                     disabled={isReadOnly}
                     isError={Boolean(fieldState.error)}
                   />
@@ -200,29 +204,33 @@ const HookFormBody = ({
                 <Field>
                   <FieldLabel htmlFor="agent-vault-hook-secret">Secret</FieldLabel>
                   <FieldContent>
-                    {hook && !isReplacingSecret ? (
-                      <div className="flex h-9 items-center gap-3 text-sm">
-                        <span className="text-accent">Saved</span>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="xs"
-                          onClick={() => setIsReplacingSecret(true)}
-                        >
-                          Replace
-                        </Button>
-                      </div>
-                    ) : (
-                      <InputGroup>
-                        <InputGroupInput
-                          {...field}
-                          id="agent-vault-hook-secret"
-                          type={isSecretVisible ? "text" : "password"}
-                          placeholder="At least 32 characters"
-                          autoComplete="new-password"
-                          spellCheck={false}
-                          isError={Boolean(fieldState.error)}
-                        />
+                    <InputGroup>
+                      <InputGroupInput
+                        {...field}
+                        id="agent-vault-hook-secret"
+                        placeholder="At least 32 characters"
+                        // Not type="password", so password managers don't offer to fill it; masked in CSS as the
+                        // service credential fields are, which also keeps the saved-secret sentinel unreadable.
+                        className={cn(
+                          (!isSecretVisible || field.value === UNCHANGED_SECRET) &&
+                            "[-webkit-text-security:disc]"
+                        )}
+                        autoComplete="off"
+                        spellCheck={false}
+                        data-1p-ignore
+                        data-lpignore="true"
+                        data-bwignore
+                        isError={Boolean(fieldState.error)}
+                        onFocus={() => {
+                          if (field.value === UNCHANGED_SECRET) field.onChange("");
+                        }}
+                        // Left empty, the saved secret stays: clicking in must not discard it.
+                        onBlur={() => {
+                          if (hook && !field.value) field.onChange(UNCHANGED_SECRET);
+                          field.onBlur();
+                        }}
+                      />
+                      {field.value !== UNCHANGED_SECRET && (
                         <InputGroupAddon align="inline-end">
                           <InputGroupButton
                             isDisabled={!field.value}
@@ -232,27 +240,12 @@ const HookFormBody = ({
                             {isSecretVisible ? <EyeOffIcon /> : <EyeIcon />}
                           </InputGroupButton>
                         </InputGroupAddon>
-                      </InputGroup>
-                    )}
-                    <FieldDescription>
-                      {hook && isReplacingSecret ? (
-                        <>
-                          Proxies switch to the new secret on their next check-in.{" "}
-                          <button
-                            type="button"
-                            className="underline underline-offset-2 hover:text-foreground"
-                            onClick={() => {
-                              setIsReplacingSecret(false);
-                              setValue("secret", "", { shouldDirty: true });
-                              clearErrors("secret");
-                            }}
-                          >
-                            Keep the saved one
-                          </button>
-                        </>
-                      ) : (
-                        "Signs each check the proxy sends, so your server can verify it. It is never shown again."
                       )}
+                    </InputGroup>
+                    <FieldDescription>
+                      {hook
+                        ? "Type a new secret to replace the saved one. Proxies switch to it on their next check-in."
+                        : "Signs each check the proxy sends, so your server can verify it. It is never shown again."}
                     </FieldDescription>
                     <FieldError>{fieldState.error?.message}</FieldError>
                   </FieldContent>
