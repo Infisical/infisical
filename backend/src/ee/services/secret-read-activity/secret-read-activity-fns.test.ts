@@ -285,7 +285,7 @@ describe("createAccessDating", () => {
     activity({ secret: { key: "DB_PASS", tags: [], folderId } as unknown as TSecretActivity["secret"], environment });
   const noneReopened = () => ({
     folderReopenedAt: new Map<string, Date>(),
-    environmentReopenedAt: new Map<string, Date>(),
+    subtreesReopenedByActorId: {} as Record<string, { environment: string; secretPath: string; date: Date }[]>,
     accessReopenedAt: new Map<string, Date>()
   });
   const dating = (sources: TAccessSource[], reopened: Partial<ReturnType<typeof noneReopened>> = {}) =>
@@ -413,11 +413,31 @@ describe("createAccessDating", () => {
     expect(edited.accessSinceOf(actor, secretIn("dev", "f1"))).toEqual(sept);
 
     const expired = dating([{ date: sept, permission: () => readsAll }], {
-      environmentReopenedAt: new Map([["actor:prod", oct]])
+      subtreesReopenedByActorId: { actor: [{ environment: "prod", secretPath: "/", date: oct }] }
     });
     expect(expired.accessSinceOf(actor, secretIn("prod", "f1"))).toEqual(oct);
     expect(expired.accessSinceOf(actor, secretIn("prod", "other"))).toEqual(oct);
     expect(expired.accessSinceOf(actor, secretIn("dev", "f1"))).toEqual(sept);
+    expect(expired.latestAccessChangeOf(actor)).toEqual(oct);
+  });
+
+  test("floors only the folder and the folders below it for an expired recursive grant on a nested folder", () => {
+    const secretAt = (secretPath: string, environment = "prod") =>
+      activity({
+        secret: { key: "DB_PASS", tags: [], folderId: secretPath } as unknown as TSecretActivity["secret"],
+        environment,
+        secretPath
+      });
+    const expired = dating([{ date: sept, permission: () => readsAll }], {
+      subtreesReopenedByActorId: { actor: [{ environment: "prod", secretPath: "/apps/sandbox", date: oct }] }
+    });
+
+    expect(expired.accessSinceOf(actor, secretAt("/apps/sandbox"))).toEqual(oct);
+    expect(expired.accessSinceOf(actor, secretAt("/apps/sandbox/keys"))).toEqual(oct);
+    expect(expired.accessSinceOf(actor, secretAt("/apps"))).toEqual(sept);
+    expect(expired.accessSinceOf(actor, secretAt("/apps/sandbox-two"))).toEqual(sept);
+    expect(expired.accessSinceOf(actor, secretAt("/infra"))).toEqual(sept);
+    expect(expired.accessSinceOf(actor, secretAt("/apps/sandbox", "dev"))).toEqual(sept);
     expect(expired.latestAccessChangeOf(actor)).toEqual(oct);
   });
 

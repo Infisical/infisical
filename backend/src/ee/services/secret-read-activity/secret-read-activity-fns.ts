@@ -179,19 +179,19 @@ export const buildFolderGrantSourceRules = <T extends TProjectFolderScopedPrivil
 // change only restarts the window for the secrets it opened. With no single source granting it (rules that only
 // add up together), the newest source date is used. Restrictions that ended can have given access back, so access
 // dates no earlier than an expired folder grant in its folder (folderReopenedAt, by "<actorId>:<folderId>") or, for a
-// recursive one, anywhere in its environment (environmentReopenedAt, by "<actorId>:<environment slug>"), an edited
-// folder grant in its folder and every folder below it, or an expired temporary role or privilege anywhere
+// recursive one, in its folder and every folder below it (subtreesReopenedByActorId), an edited folder grant in its
+// folder and every folder below it, or an expired temporary role or privilege anywhere
 // (accessReopenedAt, by actor, since what it held back is not worked out). Sources are checked once per secret,
 // shared ones (a role, a group) once for every actor holding them, and only the current secret's checks are kept.
 export const createAccessDating = (
   sourcesByActorId: Record<string, TAccessSource[]>,
   {
     folderReopenedAt,
-    environmentReopenedAt,
+    subtreesReopenedByActorId,
     accessReopenedAt
   }: {
     folderReopenedAt: Map<string, Date>;
-    environmentReopenedAt: Map<string, Date>;
+    subtreesReopenedByActorId: Record<string, { environment: string; secretPath: string; date: Date }[]>;
     accessReopenedAt: Map<string, Date>;
   }
 ): Pick<TProjectAccess, "accessSinceOf" | "latestAccessChangeOf"> => {
@@ -204,7 +204,9 @@ export const createAccessDating = (
     sources.forEach((source) => raise(actorId, source.date))
   );
   folderReopenedAt.forEach((date, key) => raise(key.slice(0, key.indexOf(":")), date));
-  environmentReopenedAt.forEach((date, key) => raise(key.slice(0, key.indexOf(":")), date));
+  Object.entries(subtreesReopenedByActorId).forEach(([actorId, subtrees]) =>
+    subtrees.forEach(({ date }) => raise(actorId, date))
+  );
   accessReopenedAt.forEach((date, actorId) => raise(actorId, date));
 
   let checkedSecret: TSecretActivity | undefined;
@@ -241,8 +243,8 @@ export const createAccessDating = (
       : latestByActorId.get(actorId);
     const floors = [
       folderReopenedAt.get(`${actorId}:${activity.secret.folderId}`),
-      environmentReopenedAt.get(`${actorId}:${activity.environment}`),
       accessReopenedAt.get(actorId),
+      ...(subtreesReopenedByActorId[actorId] ?? []).filter(reaches).map(({ date }) => date),
       ...sources.filter((source) => source.restartsReach && reaches(source.restartsReach)).map((source) => source.date)
     ];
     return floors.reduce((latest, floor) => (floor && (!latest || floor > latest) ? floor : latest), since);
