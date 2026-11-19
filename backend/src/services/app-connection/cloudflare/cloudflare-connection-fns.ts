@@ -15,6 +15,7 @@ import {
   TCloudflareR2Bucket,
   TCloudflareR2BucketsApiResponse,
   TCloudflareSecretsStore,
+  TCloudflareWorkersPreview,
   TCloudflareWorkersScript,
   TCloudflareZone
 } from "./cloudflare-connection-types";
@@ -116,6 +117,25 @@ export const listCloudflareWorkersScripts = async (
 
   return data.result.map((a) => ({
     id: a.id
+  }));
+};
+
+export const listCloudflareWorkersPreviews = async (
+  appConnection: TCloudflareConnection,
+  scriptId: string
+): Promise<TCloudflareWorkersPreview[]> => {
+  const {
+    credentials: { apiToken, accountId }
+  } = appConnection;
+
+  const previews = await paginateCloudflare<{ id: string; name: string }>(
+    `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/workers/workers/${encodeURIComponent(scriptId)}/previews`,
+    { apiToken }
+  );
+
+  return previews.map((a) => ({
+    id: a.id,
+    name: a.name
   }));
 };
 

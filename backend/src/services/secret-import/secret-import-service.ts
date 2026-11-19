@@ -79,7 +79,7 @@ type TSecretImportServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "findOne" | "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionFingerprint">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionCacheFingerprint">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
   licenseService: TLicenseService;
   kmsDataKeyService: TKmsDataKeyService;
@@ -964,7 +964,6 @@ export const secretImportServiceFactory = ({
 
     const permissionHash = generateCacheKeyFromData(permission.rules);
     const permissionFingerprint = await getSecretEtagPermissionFingerprint({
-      keyStore,
       permissionService,
       projectId,
       actor,

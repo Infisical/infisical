@@ -152,7 +152,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   kmsDataKeyService: TKmsDataKeyService;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretTagDAL: TSecretTagDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionFingerprint">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionCacheFingerprint">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   eventEmitter: TEventEmitter;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
@@ -1404,7 +1404,6 @@ export const secretV2BridgeServiceFactory = ({
     } = dto;
 
     const permissionFingerprint = await getSecretEtagPermissionFingerprint({
-      keyStore,
       permissionService,
       projectId,
       actor,

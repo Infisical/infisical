@@ -4,6 +4,7 @@ import {
   CopyIcon,
   EyeIcon,
   EyeOffIcon,
+  KeyRoundIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
@@ -12,7 +13,9 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { VariableFormDialog } from "@app/components/agent-vault/VariableFormDialog";
+import { OAuthStatusBadge } from "@app/components/agent-vault/service-sheet/OAuthAuthorizeCard";
+import { useOAuthAuthorize } from "@app/components/agent-vault/service-sheet/useOAuthAuthorize";
+import { VariableFormSheet } from "@app/components/agent-vault/VariableFormSheet";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -37,6 +40,7 @@ import {
   InputGroupInput,
   Pagination,
   Skeleton,
+  Spinner,
   Table,
   TableBody,
   TableCell,
@@ -65,11 +69,17 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { useDebounce, useResetPageHelper } from "@app/hooks";
 import {
+  AgentVaultOauthStatus,
   AgentVaultVariableScope,
+  AgentVaultVariableType,
   useListAgentVaultVariables,
+  useRefreshAgentVaultVariables,
   useRevealAgentVaultVariableValue
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
+import {
+  TAgentVaultOauthVariableSignInStart,
+  TAgentVaultVariable
+} from "@app/hooks/api/agentVault/types";
 
 import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 import { DeleteVariableDialog } from "./DeleteVariableDialog";
@@ -81,6 +91,9 @@ enum SortColumn {
 }
 
 const MASK = "•".repeat(8);
+
+const isOAuthVariable = (variable: TAgentVaultVariable) =>
+  variable.type === AgentVaultVariableType.OAuth;
 
 // A revealed value is held against the version it was read from, so an edit hides it again.
 const revealSlot = (variable: TAgentVaultVariable) => `${variable.id}:${variable.updatedAt}`;
@@ -227,7 +240,8 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
   const canEdit = canGlobal(ProjectPermissionAgentVaultVariableActions.Edit);
   const canDelete = canGlobal(ProjectPermissionAgentVaultVariableActions.Delete);
   const canReadValue = canGlobal(ProjectPermissionAgentVaultVariableActions.ReadValue);
-  const hasRowActions = canReadValue || canEdit || canDelete;
+  const hasRowActions = (variable: TAgentVaultVariable) =>
+    canEdit || canDelete || (isOAuthVariable(variable) ? canCreate : canReadValue);
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
@@ -239,6 +253,8 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
   );
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [variableToEdit, setVariableToEdit] = useState<TAgentVaultVariable | null>(null);
+  const [signInStart, setSignInStart] = useState<TAgentVaultOauthVariableSignInStart | null>(null);
+  const [authorizingVariable, setAuthorizingVariable] = useState<TAgentVaultVariable | null>(null);
   const [variableToDelete, setVariableToDelete] = useState<TAgentVaultVariable | null>(null);
   const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [revealingId, setRevealingId] = useState<string | null>(null);
@@ -333,9 +349,56 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
   const maxVariables = isPersonal ? MAX_PERSONAL_VARIABLES : MAX_VARIABLES;
   const isAtLimit = (unfilteredData?.totalCount ?? 0) >= maxVariables;
 
-  const openForm = (variable: TAgentVaultVariable | null) => {
+  const openForm = (
+    variable: TAgentVaultVariable | null,
+    { start = null }: { start?: TAgentVaultOauthVariableSignInStart | null } = {}
+  ) => {
     setVariableToEdit(variable);
+    setSignInStart(start);
     setIsFormOpen(true);
+  };
+
+  const refreshVariables = useRefreshAgentVaultVariables(projectId);
+  const {
+    state: authorizeState,
+    authorizeVariable,
+    cancel: cancelAuthorize
+  } = useOAuthAuthorize({
+    onAuthorized: () => {
+      if (authorizingVariable) {
+        createNotification({ text: `Authorized ${authorizingVariable.key}`, type: "success" });
+      }
+      setAuthorizingVariable(null);
+      refreshVariables();
+    }
+  });
+  const isAuthorizing = authorizeState.status === "starting" || authorizeState.status === "pending";
+
+  useEffect(() => {
+    if (authorizeState.status !== "failed") return;
+    createNotification({
+      title: "Couldn't Authorize",
+      text: authorizeState.message,
+      type: "error"
+    });
+    setAuthorizingVariable(null);
+  }, [authorizeState]);
+
+  // A variable that needs more settings first opens in its dialog, which says what to fill in. So does an own app's
+  // variable that was never signed in, as only its dialog can send the client secret, which is stored on a sign-in.
+  const authorize = (variable: TAgentVaultVariable) => {
+    if (variable.oauth?.clientId && !variable.oauth.connection) {
+      openForm(variable);
+      return;
+    }
+    setAuthorizingVariable(variable);
+    authorizeVariable(
+      async () => ({ variableId: variable.id }),
+      (start) => {
+        setAuthorizingVariable(null);
+        openForm(variable, { start });
+      }
+    );
   };
 
   return (
@@ -353,9 +416,9 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
             </>
           ) : (
             <>
-              A global variable stores one value that any service can use as{" "}
-              <code className="font-mono">{toVariableReference("KEY")}</code>. Managing these and
-              seeing their values each take their own permission.
+              A global variable stores a value that any service can use as{" "}
+              <code className="font-mono">{toVariableReference("KEY")}</code>, or an OAuth sign-in
+              that any service can use as its credential.
             </>
           )}
         </CardDescription>
@@ -426,14 +489,15 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
           <TableHeader>
             <TableRow>
               <TableHead
-                className="w-[35%]"
+                className={isPersonal ? "w-[35%]" : "w-[30%]"}
                 sortDirection={sortColumn === SortColumn.Key ? sortDirection : "none"}
                 onSortChange={(direction) => handleSort(SortColumn.Key, direction)}
               >
                 Key
                 <ChevronDownIcon className={sortIconClassName(SortColumn.Key)} />
               </TableHead>
-              <TableHead className="w-[35%]">Value</TableHead>
+              {!isPersonal && <TableHead className="w-24">Type</TableHead>}
+              <TableHead className={isPersonal ? "w-[35%]" : "w-[30%]"}>Value</TableHead>
               <TableHead
                 sortDirection={sortColumn === SortColumn.ServiceCount ? sortDirection : "none"}
                 onSortChange={(direction) => handleSort(SortColumn.ServiceCount, direction)}
@@ -449,7 +513,7 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
               Array.from({ length: 3 }).map((_, index) => (
                 // eslint-disable-next-line react/no-array-index-key
                 <TableRow key={`variable-skeleton-${index}`}>
-                  {Array.from({ length: 3 }).map((__, cell) => (
+                  {Array.from({ length: isPersonal ? 3 : 4 }).map((__, cell) => (
                     // eslint-disable-next-line react/no-array-index-key
                     <TableCell key={`variable-skeleton-${index}-${cell}`}>
                       <Skeleton className="h-4 w-full" />
@@ -462,33 +526,55 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
               displayed.map((variable) => {
                 const revealedValue = revealed[revealSlot(variable)];
                 const isRevealed = revealedValue !== undefined;
+                const isOAuth = isOAuthVariable(variable);
+                const oauthStatus = variable.oauth?.status ?? AgentVaultOauthStatus.NotConnected;
+                // A sign-in for a variable whose app hosts the callback can only start in that app.
+                const canAuthorize = isOAuth && canEdit && !variable.oauth?.redirectUri;
+                const isRowAuthorizing = isAuthorizing && authorizingVariable?.id === variable.id;
                 return (
                   <TableRow key={variable.id}>
                     <TableCell>
                       <TruncatedKey value={variable.key} />
                     </TableCell>
+                    {!isPersonal && (
+                      <TableCell>
+                        <span className="text-sm">{isOAuth ? "OAuth" : "Text"}</span>
+                      </TableCell>
+                    )}
                     <TableCell>
-                      <div className="flex items-center gap-1.5">
-                        <RevealableValue value={revealedValue} />
-                        {canReadValue && (
-                          <IconButton
-                            variant="ghost"
-                            size="xs"
-                            className="shrink-0"
-                            aria-label={`${isRevealed ? "Hide" : "Reveal"} ${variable.key}`}
-                            isPending={revealingId === variable.id}
-                            onClick={() => toggleReveal(variable)}
-                          >
-                            {isRevealed ? <EyeOffIcon /> : <EyeIcon />}
-                          </IconButton>
-                        )}
-                      </div>
+                      {isOAuth && isRowAuthorizing && (
+                        <div className="flex items-center gap-2 text-sm text-muted">
+                          <Spinner size="xs" className="m-0 shrink-0" variant="av" />
+                          Waiting for sign-in...
+                          <Button variant="ghost" size="xs" onClick={cancelAuthorize}>
+                            Cancel
+                          </Button>
+                        </div>
+                      )}
+                      {isOAuth && !isRowAuthorizing && <OAuthStatusBadge status={oauthStatus} />}
+                      {!isOAuth && (
+                        <div className="flex items-center gap-1.5">
+                          <RevealableValue value={revealedValue} />
+                          {canReadValue && (
+                            <IconButton
+                              variant="ghost"
+                              size="xs"
+                              className="shrink-0"
+                              aria-label={`${isRevealed ? "Hide" : "Reveal"} ${variable.key}`}
+                              isPending={revealingId === variable.id}
+                              onClick={() => toggleReveal(variable)}
+                            >
+                              {isRevealed ? <EyeOffIcon /> : <EyeIcon />}
+                            </IconButton>
+                          )}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <UsedByServiceBadges usedByServices={variable.usedByServices} />
                     </TableCell>
                     <TableCell variant="action">
-                      {hasRowActions && (
+                      {hasRowActions(variable) && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton
@@ -500,10 +586,19 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
                             </IconButton>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent sideOffset={2} align="end">
-                            {canReadValue && (
+                            {canReadValue && !isOAuth && (
                               <DropdownMenuItem onClick={() => copyValue(variable)}>
                                 <CopyIcon />
                                 Copy Value
+                              </DropdownMenuItem>
+                            )}
+                            {canAuthorize && (
+                              <DropdownMenuItem
+                                isDisabled={isAuthorizing}
+                                onClick={() => authorize(variable)}
+                              >
+                                <KeyRoundIcon />
+                                {variable.oauth?.connection ? "Reauthorize" : "Authorize"}
                               </DropdownMenuItem>
                             )}
                             {canEdit && (
@@ -548,11 +643,12 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
         </CardContent>
       )}
 
-      <VariableFormDialog
+      <VariableFormSheet
         scope={scope}
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
         variable={variableToEdit}
+        signInStart={signInStart}
       />
 
       <DeleteVariableDialog

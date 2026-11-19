@@ -30,7 +30,7 @@ To add an HTTP service to an access bundle:
   <Step>
     Fill in the template's steps. Enter the API's credential on the **Credential** step.
 
-    To use a value that several services share, type `{{` in a [field that accepts variables](/documentation/platform/agent-vault/variables#use-a-variable-in-a-service) and select a variable from the list that opens.
+    To use a value that several services share, type `{{` in a [field that accepts variables](/documentation/platform/agent-vault/text-variables#use-a-variable-in-a-service) and select a variable from the list that opens.
 
     <Frame>
       <img src="/images/platform/agent-vault/service-credential.png" alt="The Credential step of the github service, with a Bearer credential whose token uses the GITHUB_TOKEN variable, and the Sends preview showing the Authorization header" />
@@ -66,6 +66,14 @@ Basic is the right choice for APIs behind HTTP basic authentication, including o
 The proxy attaches no credential. Unless the service adds [custom headers](#custom-headers) or [substitutions](#substitutions), the proxy forwards the agent's request to the API unchanged.
 
 Pass-through is the right choice when the proxy's strict [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy) would otherwise block the host. It lets the request reach the API without attaching a credential.
+
+### OAuth
+
+The proxy attaches the access token of an [OAuth variable](/documentation/platform/agent-vault/oauth-variables) as `Authorization: Bearer <access-token>`. Infisical renews the token before it expires.
+
+OAuth is the right choice for APIs that take a user's sign-in, such as Google Drive. Under **Credential Type**, select **OAuth**, then pick the variable, or select **Create OAuth Variable** to create one. Several services can use the same variable.
+
+If the provider stops accepting the sign-in, the proxy answers the agent's requests with a `401` response that says the sign-in has expired. If the API needs scopes that the sign-in didn't grant, the proxy answers with a `403` response instead. In either case, [reauthorize the variable](/documentation/platform/agent-vault/oauth-variables#reauthorize-a-variable). If nobody has authorized the variable yet, or an edit disconnected it, the proxy says the sign-in used by the service isn't connected in Infisical Agent Vault. Authorize the variable to fix it.
 
 ## Member-provided values
 
@@ -148,6 +156,8 @@ If you don't name the port, the host will only match [port `443`](#default-port)
 The proxy sends the credential to a plaintext host unencrypted, so anyone who can read traffic between the proxy and the API can read the credential. Only use plaintext hosts on a network you trust.
 </Warning>
 
+The proxy refuses to send an [OAuth](#oauth) token over plain HTTP, so an OAuth service needs a host that serves HTTPS.
+
 ### Wildcards
 
 Wildcards match exactly one label. The pattern below matches `api.atlassian.net`, but not `a.b.atlassian.net` or `atlassian.net`.
@@ -172,7 +182,7 @@ The proxy applies only the more specific service's [methods and paths](#methods-
 </Warning>
 
 <Note>
-Different access bundles can hold different services for the same host. However, creating a session fails if two of its services cover the same host with the same pattern, such as a service in its access bundle and a service it names from another access bundle.
+Different access bundles can hold different services for the same host. However, creating a session fails if two of its services cover the same host with the same pattern, such as a service in its access bundle and a service you picked from another access bundle.
 </Note>
 
 ## Methods and paths

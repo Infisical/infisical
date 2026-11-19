@@ -226,7 +226,7 @@ export const projectCleanupQueueFactory = ({
       }
 
       await releaseCaKeys();
-      await licenseService.invalidatePlan(project.orgId);
+      await licenseService.refreshWorkspacesUsed(project.orgId);
       await auditLogService.createAuditLog({
         orgId: project.orgId,
         projectId,

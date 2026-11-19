@@ -61,6 +61,7 @@ export const ALERT_RESOURCE_TYPES_WITH_PROJECT_RECIPIENTS: string[] = [
 
 export enum AlertChannelType {
   Email = "email",
+  SlackApp = "slack-app",
   Slack = "slack",
   Webhook = "webhook",
   PagerDuty = "pagerduty"
@@ -211,10 +212,25 @@ export type TAlertChannelPaywall = {
 
 export const ALERT_CHANNEL_TYPE_LABELS: Record<AlertChannelType, string> = {
   [AlertChannelType.Email]: "Email",
+  [AlertChannelType.SlackApp]: "Slack",
   [AlertChannelType.Slack]: "Slack",
   [AlertChannelType.Webhook]: "Webhook",
   [AlertChannelType.PagerDuty]: "PagerDuty"
 };
+
+export const MAX_SLACK_APP_CHANNELS = 20;
+
+export const SLACK_CHANNEL_TYPES: AlertChannelType[] = [
+  AlertChannelType.SlackApp,
+  AlertChannelType.Slack
+];
+
+// A webhook Slack channel is added by switching a Slack card's method, so it has no menu entry of its own.
+export const ADD_MENU_CHANNEL_TYPES = Object.values(AlertChannelType).filter(
+  (channelType) => channelType !== AlertChannelType.Slack
+);
+
+export type TAlertSlackChannel = { id: string; name: string };
 
 export type TAlertChannelRecipient = {
   principalType: AlertPrincipalType;
@@ -347,6 +363,8 @@ export const channelFormSchema = z
       )
       .default([]),
     integrationKey: z.string().optional(),
+    workflowIntegrationId: z.string().optional(),
+    slackChannels: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
     recipients: z
       .array(
         z.object({
@@ -361,7 +379,14 @@ export const channelFormSchema = z
     hasBasicPassword: z.boolean().optional(),
     hasAuthHeaderValue: z.boolean().optional(),
     hasIntegrationKey: z.boolean().optional(),
-    savedUrl: z.string().optional()
+    savedUrl: z.string().optional(),
+    savedChannel: z
+      .object({
+        id: z.string(),
+        channelType: z.nativeEnum(AlertChannelType),
+        hasWebhookUrl: z.boolean()
+      })
+      .optional()
   })
   .superRefine((channel, ctx) => {
     const isNew = !channel.id;
@@ -372,6 +397,27 @@ export const channelFormSchema = z
             code: z.ZodIssueCode.custom,
             path: ["recipients"],
             message: "Add at least one recipient"
+          });
+        }
+        break;
+      case AlertChannelType.SlackApp:
+        if (!channel.workflowIntegrationId) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["workflowIntegrationId"],
+            message: "Select a Slack integration"
+          });
+        } else if (!channel.slackChannels?.length) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["slackChannels"],
+            message: "Select at least one Slack channel"
+          });
+        } else if (channel.slackChannels.length > MAX_SLACK_APP_CHANNELS) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["slackChannels"],
+            message: `Select at most ${MAX_SLACK_APP_CHANNELS} Slack channels`
           });
         }
         break;

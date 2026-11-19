@@ -34,8 +34,11 @@ import {
   TAgentVaultOauthServiceFactory
 } from "../agent-vault-oauth/agent-vault-oauth-service";
 import {
+  isInlineTokensOauth,
   isMemberOauthConnectionUsable,
   isMemberProvidedOauth,
+  isVariableOauth,
+  oauthVariableIdOf,
   toResolvedOauthCredential
 } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
 import { TAgentVaultOauthConfig, TAgentVaultOauthSecret } from "../agent-vault-oauth/agent-vault-oauth-types";
@@ -49,12 +52,15 @@ import { describeSessionForAudit, hashSessionToken } from "../agent-vault-sessio
 import { TAgentVaultSessionInlineServiceDALFactory } from "../agent-vault-session/agent-vault-session-inline-service-dal";
 import {
   openInlineServiceSecrets,
+  TInlineOauthResolution,
   toInlineServiceFacts,
   toResolvedInlineService,
   withoutShadowedServices
 } from "../agent-vault-session/agent-vault-session-inline-service-fns";
+import { TAgentVaultSessionInlineSkillDALFactory } from "../agent-vault-session/agent-vault-session-inline-skill-dal";
 import { deserializeSkillFiles } from "../agent-vault-skill/agent-vault-skill-fns";
 import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
+import { TAgentVaultOauthVariableConfig } from "../agent-vault-variable/agent-vault-variable-types";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import {
   AgentVaultCredentialType,
@@ -107,6 +113,7 @@ import {
 import { TAgentVaultResolveDALFactory, TResolveServiceRow } from "./agent-vault-resolve-dal";
 import {
   buildSessionServicesDocument,
+  oauthVariableSignedInOf,
   toBundleServiceFacts,
   toSetPersonalFields
 } from "./agent-vault-session-services-fns";
@@ -128,7 +135,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   >;
   agentVaultServiceCustomHeaderDAL: Pick<TAgentVaultServiceCustomHeaderDALFactory, "findByServiceIds">;
   agentVaultServiceSubstitutionDAL: Pick<TAgentVaultServiceSubstitutionDALFactory, "findByServiceIds">;
-  agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findValuesForResolve">;
+  agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findValuesForResolve" | "findOauthForResolve">;
   agentVaultPersonalValueDAL: Pick<TAgentVaultPersonalValueDALFactory, "findForResolve">;
   agentVaultSessionDAL: Pick<
     TAgentVaultSessionDALFactory,
@@ -142,6 +149,10 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultSessionInlineServiceDAL: Pick<
     TAgentVaultSessionInlineServiceDALFactory,
     "findBySessionId" | "deleteSecretsBySessionId"
+  >;
+  agentVaultSessionInlineSkillDAL: Pick<
+    TAgentVaultSessionInlineSkillDALFactory,
+    "findWithFilesBySessionId" | "deleteFilesBySessionId"
   >;
   agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "identityCoversUser">;
   agentVaultSessionLogConfigDAL: Pick<TAgentVaultSessionLogConfigDALFactory, "findOne" | "findByProjectIdFromPrimary">;
@@ -203,6 +214,7 @@ export const agentVaultProxyServiceFactory = ({
   agentVaultPersonalValueDAL,
   agentVaultSessionDAL,
   agentVaultSessionInlineServiceDAL,
+  agentVaultSessionInlineSkillDAL,
   agentVaultDelegationDAL,
   agentVaultSessionLogConfigDAL,
   membershipDAL,
@@ -578,11 +590,12 @@ export const agentVaultProxyServiceFactory = ({
   ): TResolvedService["credential"] => {
     const config = (row.credentialConfig ?? {}) as Record<string, string>;
     // The sealed half of a sign-in left to members is the client's secret, never a token. $applyPersonalValues fills in
-    // the member's own token.
+    // the member's own token, and an OAuth variable's token is read from the variable.
     if (
       row.credentialType === AgentVaultCredentialType.Passthrough ||
       !row.encryptedCredential ||
-      isMemberProvidedOauth(row)
+      isMemberProvidedOauth(row) ||
+      isVariableOauth(row)
     ) {
       return { type: AgentVaultCredentialType.Passthrough };
     }
@@ -886,7 +899,8 @@ export const agentVaultProxyServiceFactory = ({
 
   // Shared by the proxy's session routes and the CLI's skills fetch, so none of them can reach a bundle resolve
   // would not. Returns the bundles the session reaches now, null for every bundle: its owner's, and on a user's behalf
-  // only those the user reaches too. Also whether the owner is an admin now, which inline services need.
+  // only those the user reaches too. Also whether the owner may still send inline services and inline skills, which
+  // each need to be delivered.
   const $authorizeSessionOwner = async (session: TAgentVaultSessions, orgId: string) => {
     if (session.revokedAt) throw new UnauthorizedError({ message: "This session has been revoked" });
     if (session.expiresAt && session.expiresAt <= new Date()) {
@@ -933,6 +947,7 @@ export const agentVaultProxyServiceFactory = ({
     // throws on `undefined` but passes on `null`, and the session row stores no auth method.
     let reachesEveryBundle: boolean;
     let canUseInlineServices: boolean;
+    let canUseInlineSkills: boolean;
     let liveGroupIds: string[];
     try {
       const { permission, hasRole, memberships } = await permissionService.getProjectPermission({
@@ -949,6 +964,10 @@ export const agentVaultProxyServiceFactory = ({
       reachesEveryBundle = hasRoleReachingEveryBundle(hasRole);
       canUseInlineServices = permission.can(
         ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
+        ProjectPermissionSub.AgentVaultSessions
+      );
+      canUseInlineSkills = permission.can(
+        ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills,
         ProjectPermissionSub.AgentVaultSessions
       );
       liveGroupIds = liveGroupIdsFrom(memberships);
@@ -970,7 +989,8 @@ export const agentVaultProxyServiceFactory = ({
         });
     return {
       accessBundleIds: onBehalfOf ? intersectAccessBundleIds(actorReach, onBehalfOf.reach) : actorReach,
-      ownerCanUseInlineServices: canUseInlineServices
+      ownerCanUseInlineServices: canUseInlineServices,
+      ownerCanUseInlineSkills: canUseInlineSkills
     };
   };
 
@@ -1036,68 +1056,170 @@ export const agentVaultProxyServiceFactory = ({
         .map((row) => [row.serviceId, row.oauthConfig as TAgentVaultOauthConfig])
     );
 
+    // The OAuth variables the session's services send, read once like the personal values: a variable shared by several
+    // services is refreshed once, and each service sends what it holds.
+    const liveInlineRows = inlineServiceRows.filter((row) => !row.secretsDeletedAt);
+    const oauthVariableRows = await agentVaultVariableDAL.findOauthForResolve({
+      variableIds: [
+        ...new Set([...rows, ...liveInlineRows].map(oauthVariableIdOf).filter((id): id is string => Boolean(id)))
+      ],
+      projectId: session.projectId
+    });
+    const oauthVariableById = new Map(oauthVariableRows.map((row) => [row.id, row]));
+    const oauthVariableConnectionOf = (variableId: string) =>
+      (oauthVariableById.get(variableId)?.oauthConfig as TAgentVaultOauthVariableConfig | undefined)?.connection ??
+      null;
+
     // A token that expires before the proxy's next poll is refreshed now, which also keeps proxies that can't
     // refresh on their own working. The proxy gives up on resolve after 15 seconds, and one refresh can wait on
     // another's lock and then on a slow provider, so resolve waits for all of them together for a short budget
     // only. A refresh that fails or is still running sends the stored token; one still running finishes in the
     // background and stores its result for the next poll.
     const refreshWithinSeconds = proxy.pollInterval + 60;
-    const refreshedCredentials = new Map<
-      string,
-      { credential: TResolvedService["credential"]; status: AgentVaultOauthStatus }
-    >();
-    const isDue = (oauth: TAgentVaultOauthConfig) =>
+    type TRefreshed = { credential: TResolvedService["credential"]; status: AgentVaultOauthStatus };
+    // By service, for a service's own tokens, a member's and those sent with the session; by variable for the rest.
+    const refreshedCredentials = new Map<string, TRefreshed>();
+    const refreshedVariables = new Map<string, TRefreshed>();
+    // Services whose refresh was refused because they moved or switched variables: a token refreshed through a
+    // sibling must not reach the host this snapshot still holds for them. Only services tried before the one that
+    // refreshed are checked; a later one that moved gets the token until the next poll, an accepted window.
+    const refusedVariableServices = new Set<string>();
+    const isDue = (oauth: Pick<TAgentVaultOauthConfig, "status" | "expiresAt">) =>
       oauth.status !== AgentVaultOauthStatus.NeedsReauthorization &&
       Boolean(oauth.expiresAt) &&
       new Date(oauth.expiresAt!).getTime() <= Date.now() + refreshWithinSeconds * 1000;
-    const dueForRefresh = rows.filter((row) => {
-      if (row.credentialType !== AgentVaultCredentialType.OAuth) return false;
-      if (isMemberProvidedOauth(row)) {
-        const connection = personalOauthConfigs.get(row.id);
-        return Boolean(connection && isDue(connection));
-      }
-      return isDue(row.credentialConfig as TAgentVaultOauthConfig);
+    const destinationOf = (row: { hostPattern?: string | null; config?: unknown }) => ({
+      hostPattern: row.hostPattern ?? null,
+      serverUrl: getServiceServerUrl(row.config)
     });
-    if (dueForRefresh.length) {
-      let budgetSpent = false;
-      const pending = new Set(dueForRefresh.map((row) => row.id));
-      const refreshes = dueForRefresh.map((row) =>
-        agentVaultOauthService
-          .refreshServiceToken({
-            serviceId: row.id,
-            projectId: session.projectId,
-            ...(isMemberProvidedOauth(row) ? { owner } : {}),
-            expiresWithinSeconds: refreshWithinSeconds,
-            // The answer pairs this row's host with the credential, so a refreshed one has to be for the same server.
-            destination: {
-              hostPattern: row.hostPattern,
-              serverUrl: getServiceServerUrl(row.config)
-            }
-          })
-          .then((refreshed) => {
-            if (!budgetSpent) refreshedCredentials.set(row.id, refreshed);
-          })
-          .catch((error) => {
-            if (error instanceof ConflictError) {
-              logger.info(
-                `agentVaultResolve: service moved during its OAuth refresh, sending the stored token until the next poll [sessionId=${session.id}] [serviceId=${row.id}]`
-              );
-              return;
-            }
-            // The member disconnected, or an admin's edit ended every member's connection, while it ran.
-            if (error instanceof NotFoundError && isMemberProvidedOauth(row)) {
-              logger.info(
-                `agentVaultResolve: member's OAuth connection removed during its refresh [sessionId=${session.id}] [serviceId=${row.id}] [ownerId=${owner.userId ?? owner.identityId}]`
-              );
-              return;
-            }
-            logger.error(
-              error,
-              `agentVaultResolve: OAuth refresh failed, sending the stored token [sessionId=${session.id}] [serviceId=${row.id}]`
-            );
-          })
-          .finally(() => pending.delete(row.id))
+
+    type TRefreshTask = { id: string; run: (isCurrent: () => boolean) => Promise<void> };
+    const refreshTasks: TRefreshTask[] = [];
+    const logRefreshFailure = (error: unknown, label: string, removedMessage?: string) => {
+      if (error instanceof ConflictError) {
+        logger.info(
+          `agentVaultResolve: service moved during its OAuth refresh, sending the stored token until the next poll [sessionId=${session.id}] ${label}`
+        );
+        return;
+      }
+      if (error instanceof NotFoundError && removedMessage) {
+        logger.info(`agentVaultResolve: ${removedMessage} [sessionId=${session.id}] ${label}`);
+        return;
+      }
+      logger.error(
+        error,
+        `agentVaultResolve: OAuth refresh failed, sending the stored token [sessionId=${session.id}] ${label}`
       );
+    };
+
+    rows.forEach((row) => {
+      if (row.credentialType !== AgentVaultCredentialType.OAuth || isVariableOauth(row)) return;
+      const memberOauth = isMemberProvidedOauth(row);
+      const connection = memberOauth
+        ? personalOauthConfigs.get(row.id)
+        : (row.credentialConfig as TAgentVaultOauthConfig);
+      if (!connection || !isDue(connection)) return;
+      refreshTasks.push({
+        id: row.id,
+        run: (isCurrent) =>
+          agentVaultOauthService
+            .refreshServiceToken({
+              serviceId: row.id,
+              projectId: session.projectId,
+              ...(memberOauth ? { owner } : {}),
+              expiresWithinSeconds: refreshWithinSeconds,
+              // The answer pairs this row's host with the credential, so a refreshed one has to be for the same server.
+              destination: destinationOf(row)
+            })
+            .then((refreshed) => {
+              if (isCurrent()) refreshedCredentials.set(row.id, refreshed);
+            })
+            .catch((error) =>
+              // The member disconnected, or an admin's edit ended every member's connection, while it ran.
+              logRefreshFailure(
+                error,
+                `[serviceId=${row.id}]${memberOauth ? ` [ownerId=${owner.userId ?? owner.identityId}]` : ""}`,
+                memberOauth ? "member's OAuth connection removed during its refresh" : undefined
+              )
+            )
+      });
+    });
+
+    liveInlineRows.forEach((row) => {
+      if (!isInlineTokensOauth(row) || !isDue(row.credentialConfig as TAgentVaultOauthConfig)) return;
+      refreshTasks.push({
+        id: row.id,
+        run: (isCurrent) =>
+          agentVaultOauthService
+            .refreshServiceToken({
+              serviceId: row.id,
+              projectId: session.projectId,
+              inline: true,
+              expiresWithinSeconds: refreshWithinSeconds,
+              destination: destinationOf(row)
+            })
+            .then((refreshed) => {
+              if (isCurrent()) refreshedCredentials.set(row.id, refreshed);
+            })
+            .catch((error) =>
+              logRefreshFailure(
+                error,
+                `[inlineServiceId=${row.id}]`,
+                "session's OAuth tokens deleted during their refresh"
+              )
+            )
+      });
+    });
+
+    // Once per variable, through the first service that still points where this snapshot says. Every service using the
+    // variable then sends its token, which is the variable's whichever service refreshed it.
+    const servicesByVariable = new Map<string, { id: string; hostPattern?: string | null; config?: unknown }[]>();
+    [...rows, ...liveInlineRows].forEach((row) => {
+      const variableId = oauthVariableIdOf(row);
+      if (!variableId) return;
+      servicesByVariable.set(variableId, [...(servicesByVariable.get(variableId) ?? []), row]);
+    });
+    servicesByVariable.forEach((services, variableId) => {
+      const connection = oauthVariableConnectionOf(variableId);
+      if (!connection || !isDue(connection)) return;
+      refreshTasks.push({
+        id: `variable:${variableId}`,
+        run: async (isCurrent) => {
+          for (const service of services) {
+            try {
+              // eslint-disable-next-line no-await-in-loop
+              const refreshed = await agentVaultOauthService.refreshServiceToken({
+                serviceId: service.id,
+                projectId: session.projectId,
+                variableId,
+                expiresWithinSeconds: refreshWithinSeconds,
+                destination: destinationOf(service)
+              });
+              if (isCurrent()) refreshedVariables.set(variableId, refreshed);
+              return;
+            } catch (error) {
+              if (!(error instanceof ConflictError)) {
+                logRefreshFailure(
+                  error,
+                  `[variableId=${variableId}] [serviceId=${service.id}]`,
+                  "OAuth variable disconnected or deleted during its refresh"
+                );
+                return;
+              }
+              refusedVariableServices.add(service.id);
+            }
+          }
+          logger.info(
+            `agentVaultResolve: every service using an OAuth variable moved during its refresh, sending the stored token until the next poll [sessionId=${session.id}] [variableId=${variableId}]`
+          );
+        }
+      });
+    });
+
+    if (refreshTasks.length) {
+      let budgetSpent = false;
+      const pending = new Set(refreshTasks.map((task) => task.id));
+      const refreshes = refreshTasks.map((task) => task.run(() => !budgetSpent).finally(() => pending.delete(task.id)));
 
       let budgetTimer: NodeJS.Timeout | undefined;
       await Promise.race([
@@ -1137,6 +1259,7 @@ export const agentVaultProxyServiceFactory = ({
     // a kms_keys read (or an external KMS round trip) per resolve for nothing.
     const hasSealedValue =
       rows.some((row) => row.encryptedCredential || row.encryptedHookSecret || row.memberProvidedFields?.length) ||
+      oauthVariableRows.some((row) => row.encryptedValue) ||
       inlineServiceRows.some(
         (row) =>
           !row.secretsDeletedAt &&
@@ -1162,6 +1285,32 @@ export const agentVaultProxyServiceFactory = ({
     const $decryptValue = (encryptedValue: Buffer | null | undefined) => {
       if (!encryptedValue) throw new InternalServerError({ message: "Failed to resolve the session's credentials" });
       return ($decryptJson(encryptedValue) as { value: string }).value;
+    };
+
+    // An OAuth variable's token as resolve sends it: the one just refreshed, else the stored one. A service whose
+    // variable is gone or isn't connected is flagged so the proxy refuses it rather than send it without a token.
+    const $oauthVariableCredential = (variableId: string, serviceId: string): TInlineOauthResolution => {
+      const variable = oauthVariableById.get(variableId);
+      if (!variable) return { removed: true };
+      const refreshed = refreshedVariables.get(variableId);
+      if (refreshed && !refusedVariableServices.has(serviceId)) return { credential: refreshed.credential };
+      const connection = oauthVariableConnectionOf(variableId);
+      if (!variable.encryptedValue || !connection) return { notConnected: true };
+      return {
+        credential: toResolvedOauthCredential(
+          connection as TAgentVaultOauthConfig,
+          ($decryptJson(variable.encryptedValue) as TAgentVaultOauthSecret).accessToken
+        )
+      };
+    };
+    const variableCredentialFields = (variableId: string, serviceId: string) => {
+      const { credential, removed, notConnected } = $oauthVariableCredential(variableId, serviceId);
+      return {
+        credential: credential ?? { type: AgentVaultCredentialType.Passthrough as const },
+        personalValuesMissing: !credential,
+        ...(removed ? { credentialRemoved: true } : {}),
+        ...(notConnected ? { credentialNotConnected: true } : {})
+      };
     };
 
     const decryptedServices: TResolvedService[] = rows.map((row) => ({
@@ -1190,7 +1339,8 @@ export const agentVaultProxyServiceFactory = ({
         })),
       personalValuesMissing: false,
       memberProvided: Boolean(row.memberProvidedFields?.length),
-      hook: row.hookUrl ? { url: row.hookUrl, secret: $decryptValue(row.encryptedHookSecret) } : null
+      hook: row.hookUrl ? { url: row.hookUrl, secret: $decryptValue(row.encryptedHookSecret) } : null,
+      ...(isVariableOauth(row) ? variableCredentialFields(oauthVariableIdOf(row)!, row.id) : {})
     }));
 
     const bundleServices = await $applyPersonalValues({
@@ -1213,7 +1363,14 @@ export const agentVaultProxyServiceFactory = ({
     // Never expanded: an inline service's values were sent exactly as they are. After the bundle's services, so a host a
     // later bundle edit shares with one goes to the bundle's service, which the Go matcher picks on a tie by order.
     const inlineServices = inlineServiceRows.flatMap((row) => {
-      const resolved = toResolvedInlineService(row, openInlineServiceSecrets(row, $decryptJson));
+      const variableId = oauthVariableIdOf(row);
+      const resolved = toResolvedInlineService(
+        row,
+        openInlineServiceSecrets(row, $decryptJson),
+        variableId
+          ? $oauthVariableCredential(variableId, row.id)
+          : { credential: refreshedCredentials.get(row.id)?.credential }
+      );
       if (!resolved) {
         logger.warn(
           `agentVaultResolve: inline service has no secrets to send, leaving it out [sessionId=${session.id}] [inlineServiceId=${row.id}]`
@@ -1291,14 +1448,26 @@ export const agentVaultProxyServiceFactory = ({
     serviceId,
     hostPattern
   }: Pick<TRefreshCredentialDTO, "proxyId" | "orgId" | "sessionToken" | "serviceId" | "hostPattern">) => {
-    const { session, onPrimary, accessBundleIds } = await $authorizeSession({ proxyId, orgId, sessionToken });
-    const [row] = await agentVaultResolveDAL.findResolvableServices({
+    const { session, onPrimary, accessBundleIds, ownerCanUseInlineServices } = await $authorizeSession({
+      proxyId,
+      orgId,
+      sessionToken
+    });
+    const [bundleRow] = await agentVaultResolveDAL.findResolvableServices({
       sessionId: session.id,
       projectId: session.projectId,
       accessBundleIds,
       serviceId,
       onPrimary
     });
+    // A session's own service, while its owner may still send them and its secrets are kept, as resolve sends it.
+    const inlineRow =
+      !bundleRow && ownerCanUseInlineServices
+        ? (await agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary })).find(
+            (candidate) => candidate.id === serviceId && !candidate.secretsDeletedAt
+          )
+        : undefined;
+    const row = bundleRow ?? inlineRow;
     if (!row) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found in this session` });
     if (row.credentialType !== AgentVaultCredentialType.OAuth) {
       throw new BadRequestError({
@@ -1308,8 +1477,27 @@ export const agentVaultProxyServiceFactory = ({
     // The proxy retries with whatever comes back against the host it cached, so a service that moved since must
     // not hand it the new server's token. The refresh re-checks against the primary, which this replica read may
     // trail.
-    if (row.hostPattern !== hostPattern) throw new ConflictError({ message: AGENT_VAULT_SERVICE_MOVED_MESSAGE });
+    if ((row.hostPattern ?? null) !== hostPattern) {
+      throw new ConflictError({ message: AGENT_VAULT_SERVICE_MOVED_MESSAGE });
+    }
     return { session, row };
+  };
+
+  // Which tokens a proxy's call is about: an OAuth variable's, tokens sent with the session, or the session's member's.
+  const $tokenHolderFieldsOf = (
+    session: TAgentVaultSessions,
+    row: {
+      credentialType: string;
+      credentialConfig?: unknown;
+      memberProvidedFields?: string[] | null;
+      sessionId?: string | null;
+    }
+  ) => {
+    const variableId = oauthVariableIdOf(row);
+    if (variableId) return { variableId };
+    if (isInlineTokensOauth(row)) return { inline: true };
+    // The proxy caches credentials per session, so the token it was refused with is this session's member's.
+    return isMemberProvidedOauth(row) ? { owner: personalValuesOwner(session) } : {};
   };
 
   // After the upstream rejected a token. Never audited, like resolve: it is proxy-driven and per request.
@@ -1319,8 +1507,7 @@ export const agentVaultProxyServiceFactory = ({
     const result = await agentVaultOauthService.refreshServiceToken({
       serviceId: row.id,
       projectId: session.projectId,
-      // The proxy caches credentials per session, so the token it was refused with is this session's member's.
-      ...(isMemberProvidedOauth(row) ? { owner: personalValuesOwner(session) } : {}),
+      ...$tokenHolderFieldsOf(session, row),
       rejectedTokenHash: rejectedTokenHash.toLowerCase(),
       destination: { hostPattern: dto.hostPattern }
     });
@@ -1335,7 +1522,7 @@ export const agentVaultProxyServiceFactory = ({
     const { session, row } = await $findSessionOauthService(dto);
     await agentVaultOauthService.reportMissingScopes({
       serviceId: row.id,
-      ...(isMemberProvidedOauth(row) ? { owner: personalValuesOwner(session) } : {}),
+      ...$tokenHolderFieldsOf(session, row),
       rejectedTokenHash: rejectedTokenHash.toLowerCase(),
       requiredScopes,
       hostPattern: dto.hostPattern
@@ -1345,8 +1532,9 @@ export const agentVaultProxyServiceFactory = ({
     );
   };
 
-  // Called by the CLI once when an agent starts: the latest files of every skill on the session's reachable bundles.
-  // The session token is the only credential, so an unknown one gets the same 401 as any other refusal.
+  // Called by the CLI once when an agent starts: the latest files of every skill on the session's reachable bundles and
+  // every skill it lists that its owner still reaches, and the files of the skills sent with it. The session
+  // token is the only credential, so an unknown one gets the same 401 as any other refusal.
   const getSessionSkills = async ({ sessionToken }: TGetSessionSkillsDTO) => {
     const { session } = await $findSessionByToken(sessionToken);
     const project = session ? await projectDAL.findById(session.projectId) : undefined;
@@ -1354,32 +1542,58 @@ export const agentVaultProxyServiceFactory = ({
       throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });
     }
 
-    const { accessBundleIds } = await $authorizeSessionOwner(session, project.orgId);
+    const { accessBundleIds, ownerCanUseInlineSkills } = await $authorizeSessionOwner(session, project.orgId);
 
-    const rows = await agentVaultResolveDAL.findSessionSkills({
-      sessionId: session.id,
-      projectId: session.projectId,
-      accessBundleIds
-    });
+    // Sending inline skills takes its own permission, re-checked on every fetch like the one inline services take.
+    const [projectRows, inlineRows] = await Promise.all([
+      agentVaultResolveDAL.findSessionSkills({
+        sessionId: session.id,
+        projectId: session.projectId,
+        accessBundleIds
+      }),
+      ownerCanUseInlineSkills ? agentVaultSessionInlineSkillDAL.findWithFilesBySessionId(session.id) : []
+    ]);
+    // The project's skill wins over one sent with the session that has its name. Creating the session refuses that clash,
+    // so it only arises when a skill of the name joins the session's bundle, or a project skill takes the name, after the
+    // session exists, and the project's copy is the one an admin put there. Each skill installs as a folder of its name,
+    // so the agent can have only one by that name.
+    const projectNames = new Set(projectRows.map((row) => row.name));
+    const sentRows = inlineRows.filter((row) => !projectNames.has(row.name));
 
-    const decryptor = rows.length
-      ? (
-          await kmsDataKeyService.createCipherPairWithDataKey({
-            type: KmsDataKey.SecretManager,
-            projectId: session.projectId
-          })
-        ).decryptor
-      : null;
+    const decryptor =
+      projectRows.length || sentRows.length
+        ? (
+            await kmsDataKeyService.createCipherPairWithDataKey({
+              type: KmsDataKey.SecretManager,
+              projectId: session.projectId
+            })
+          ).decryptor
+        : null;
+    const filesOf = (encryptedFiles: Buffer) => deserializeSkillFiles(decryptor!({ cipherTextBlob: encryptedFiles }));
 
-    const skills = rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      version: row.version,
-      sha256: row.sha256,
-      files: deserializeSkillFiles(decryptor!({ cipherTextBlob: row.encryptedFiles })),
-      accessBundleId: row.accessBundleId,
-      accessBundleName: row.accessBundleName
-    }));
+    const skills = [
+      ...projectRows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        version: row.version,
+        sha256: row.sha256,
+        files: filesOf(row.encryptedFiles),
+        accessBundleId: row.accessBundleId,
+        accessBundleName: row.accessBundleName,
+        isInline: false
+      })),
+      // An inline skill has one version, the files it was sent with.
+      ...sentRows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        version: 1,
+        sha256: row.sha256,
+        files: filesOf(row.encryptedFiles),
+        accessBundleId: null,
+        accessBundleName: null,
+        isInline: true
+      }))
+    ].sort((a, b) => (a.name < b.name ? -1 : 1));
 
     // The session snapshots its owner at mint. Name a user as they are now, as PAM does, and fall back to the
     // snapshot for one who is gone.
@@ -1444,31 +1658,44 @@ export const agentVaultProxyServiceFactory = ({
       sessionInlineRows
     );
     const serviceIds = rows.map((row) => row.id);
-    const [customHeaderRows, substitutionRows, personalValueRows, proxy] = await Promise.all([
+    const [customHeaderRows, substitutionRows, personalValueRows, oauthVariableRows, proxy] = await Promise.all([
       agentVaultServiceCustomHeaderDAL.findByServiceIds(serviceIds),
       agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds),
       agentVaultPersonalValueDAL.findForResolve({
         serviceIds: rows.filter((row) => row.memberProvidedFields?.length).map((row) => row.id),
         owner: personalValuesOwner(session)
       }),
+      // Only to tell whether each variable is signed in, read for the same rows as resolve; nothing sealed is opened.
+      agentVaultVariableDAL.findOauthForResolve({
+        variableIds: [
+          ...new Set(
+            [...rows, ...inlineRows.filter((row) => !row.secretsDeletedAt)]
+              .map(oauthVariableIdOf)
+              .filter((id): id is string => Boolean(id))
+          )
+        ],
+        projectId: session.projectId
+      }),
       proxyId ? agentVaultProxyDAL.findByIdWithOrg(proxyId) : undefined
     ]);
 
     const setPersonalFields = toSetPersonalFields(rows, personalValueRows);
+    const isOauthVariableSignedIn = oauthVariableSignedInOf(oauthVariableRows);
     const factsOf = (row: (typeof rows)[number]) =>
       toBundleServiceFacts(row, {
         customHeaderNames: customHeaderRows.filter((header) => header.serviceId === row.id).map(({ name }) => name),
         substitutions: substitutionRows
           .filter((substitution) => substitution.serviceId === row.id)
           .map(({ placeholder, surfaces }) => ({ placeholder, surfaces })),
-        setPersonalFields: setPersonalFields.get(row.id) ?? new Set<string>()
+        setPersonalFields: setPersonalFields.get(row.id) ?? new Set<string>(),
+        isOauthVariableSignedIn
       });
 
-    // The order resolve sends them in: bundle and named services, inline ones, then overrides.
+    // The order resolve sends them in: bundle and listed services, inline ones, then overrides.
     const services = [
       ...rows.filter((row) => !row.isOverride).map(factsOf),
       ...inlineRows.flatMap((row) => {
-        const facts = toInlineServiceFacts(row);
+        const facts = toInlineServiceFacts(row, isOauthVariableSignedIn);
         return facts ? [facts] : [];
       }),
       ...rows.filter((row) => row.isOverride).map(factsOf)
@@ -1525,8 +1752,10 @@ export const agentVaultProxyServiceFactory = ({
       const revokedRow = session.revokedAt
         ? undefined
         : await agentVaultSessionDAL.revokeIfActive(session.id, new Date(), tx);
-      // Revoked by this call or found already over, the session can't use its inline services' secrets again.
+      // Revoked by this call or found already over, the session can't use its inline services' secrets or its inline
+      // skills' files again.
       await agentVaultSessionInlineServiceDAL.deleteSecretsBySessionId(session.id, tx);
+      await agentVaultSessionInlineSkillDAL.deleteFilesBySessionId(session.id, tx);
 
       const currentRow =
         revokedRow ?? (await agentVaultSessionDAL.findByIdOnPrimary(session.id, session.projectId, tx)) ?? session;

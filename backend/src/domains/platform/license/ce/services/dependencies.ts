@@ -10,13 +10,15 @@ export type TInstanceEntitlementsCache = {
 };
 
 export type TPlanCache = {
-  read(rootOrgId: string): Promise<{ plan: Plan | null; passThrough: boolean }>;
-  write(rootOrgId: string, plan: Plan): Promise<void>;
+  read(rootOrgId: string): Promise<{ plan: Plan | null; passThrough: boolean; stale: boolean }>;
+  write(rootOrgId: string, plan: Plan, workspacesUsed: number): Promise<void>;
+  writeWorkspacesUsed(rootOrgId: string, workspacesUsed: number): Promise<void>;
   writeFallback(rootOrgId: string, plan: Plan): Promise<void>;
   lastKnown(rootOrgId: string): Promise<{ plan: Plan; fetchedAt: number } | null>;
   markForRevalidation(rootOrgId: string, checkout: boolean): Promise<void>;
   invalidate(rootOrgId: string): Promise<void>;
-  acquireRevalidateLock(rootOrgId: string): Promise<boolean>;
+  acquireRevalidateLock(rootOrgId: string): Promise<string | null>;
+  releaseRevalidateLock(rootOrgId: string, token: string): Promise<void>;
 };
 
 export type TUsageReportCache = {

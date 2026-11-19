@@ -68,7 +68,7 @@ The service covers every request to the server URL's host, whatever the path. If
 
 ## Credential types
 
-An MCP service signs in to the server with [OAuth](#oauth) or a [Bearer token](#bearer-token). Either one can be your own or [each member's](#member-provided-credentials).
+An MCP service signs in to the server with [OAuth](#oauth), an [OAuth variable](#oauth-variable), or a [Bearer token](#bearer-token). OAuth and a Bearer token can be your own or [each member's](#member-provided-credentials).
 
 ### OAuth
 
@@ -108,7 +108,7 @@ If the provider also returns a refresh token, Infisical renews the access token 
 
 ### Use your own OAuth app
 
-Some servers, such as GitHub's, don't let Infisical register itself as an OAuth client. For these servers, the **Credential** step shows the fields for an OAuth app of your own:
+Some servers, such as GitHub's, don't let Infisical register itself as an OAuth client. For these servers, the **Credential** step shows the fields for an OAuth app of your own. To use your own app with any other server, select **Custom** under **OAuth App**.
 
 <Steps>
   <Step>
@@ -121,6 +121,12 @@ Some servers, such as GitHub's, don't let Infisical register itself as an OAuth 
     Select **Authorize**. If the credential is [member provided](#member-provided-credentials), continue to the **Review** step instead, and select **Add Service**, or **Save** if you're editing the service.
   </Step>
 </Steps>
+
+### OAuth variable
+
+If several services share one sign-in, or you already signed in to the provider in an [OAuth variable](/documentation/platform/agent-vault/oauth-variables), the service can use the variable's sign-in instead of its own. Under **Credential Type**, select **OAuth**, then select **Use an OAuth Variable** and pick the variable. To create one without leaving the service, select **Create OAuth Variable** at the end of the list.
+
+To renew the sign-in, [reauthorize the variable](/documentation/platform/agent-vault/oauth-variables#reauthorize-a-variable) on the **Variables** page instead of the service.
 
 ### Bearer token
 
@@ -300,7 +306,7 @@ Then start Claude Code with `--mcp-config` set to `mcp_config`.
   <Accordion title="The agent gets a 502 response from the MCP server">
     If the server rejects an OAuth service's token, the proxy gets a fresh token from Infisical and sends the request again. If that doesn't work, or if the server rejects a Bearer token, the proxy returns a `502` response to the agent. Its message says what to do:
 
-    **The service needs to be reauthorized:** The provider no longer accepts the service's login, or the server asked for scopes the authorization lacks. The access bundle's **Services** table shows **Needs Reauthorization** or **Missing Scopes** for the service. Open the service's menu, select **Edit**, and continue to the **Credential** step. Select **Reauthorize**, sign in to the provider again, then continue and select **Save**.
+    **The sign-in used by the service has expired, or is missing a permission it needs, and has to be connected again:** The message names the service. The provider no longer accepts the service's login, or the server asked for scopes the authorization lacks. The access bundle's **Services** table shows **Needs Reauthorization** or **Missing Scopes** for the service. Open the service's menu, select **Edit**, and continue to the **Credential** step. Select **Reauthorize**, sign in to the provider again, then continue and select **Save**. If the service uses an [OAuth variable](#oauth-variable), [reauthorize the variable](/documentation/platform/agent-vault/oauth-variables#reauthorize-a-variable) instead.
 
     <Frame>
       <img src="/images/platform/agent-vault/access-bundle-mcp-services.png" alt="The support-triage access bundle in the Customer Support project, listing slack and zendesk as HTTP APIs and linear and notion as MCP servers, with a Needs Reauthorization badge on linear" />
@@ -313,6 +319,9 @@ Then start Claude Code with `--mcp-config` set to `mcp_config`.
     **The service rejected your credential:** The server rejected the token you set for a [member-provided](#member-provided-credentials) service. [Update your personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for the service.
 
     **Reconnect your account:** The service is [member provided](#member-provided-credentials), and the provider no longer accepts your login, or the server asked for scopes your connection doesn't grant. On the **Services** page, select **Requires Setup** or **Missing Scopes** next to the service, then select **Reconnect**. If the message under your connection says the provider refused the service's OAuth app, reconnecting won't help. Ask a project admin to update the service's OAuth app.
+  </Accordion>
+  <Accordion title="The agent gets a 403 response that says the sign-in isn't connected">
+    The proxy refuses requests to the service with a `403` response and the `policy_blocked` error code, and the message says the sign-in used by the service isn't connected in Infisical Agent Vault. The service uses an [OAuth variable](#oauth-variable) that nobody has authorized yet, or an edit disconnected it. [Authorize the variable](/documentation/platform/agent-vault/oauth-variables#create-an-oauth-variable).
   </Accordion>
   <Accordion title="Authorize fails on a self-hosted instance">
     The redirect URI that Infisical gives the provider is your instance's `SITE_URL` followed by `/agent-vault/oauth/callback`. Check that:

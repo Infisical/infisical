@@ -170,7 +170,13 @@ export const withCacheFingerprint = async <T>({
     try {
       const cachedData = JSON.parse(cachedDataStr) as TCachedData<T>;
       if (cachedData.fingerprint === currentFingerprint) {
-        await cacheSet(keyStore, markerKey, markerTtlSeconds, "1", "withCacheFingerprint: marker reset failed");
+        await cacheSet(
+          keyStore,
+          markerKey,
+          markerTtlSeconds,
+          currentFingerprint,
+          "withCacheFingerprint: marker reset failed"
+        );
         const revived = applyReviver(cachedData.payload, reviver);
         permissionCacheLookupCounter.add(1, { "cache.result": "fingerprint_match" });
         return revived;
@@ -194,7 +200,48 @@ export const withCacheFingerprint = async <T>({
     JSON.stringify({ fingerprint: currentFingerprint, payload: result }),
     "withCacheFingerprint: data write failed"
   );
-  await cacheSet(keyStore, markerKey, markerTtlSeconds, "1", "withCacheFingerprint: marker write failed");
+  await cacheSet(
+    keyStore,
+    markerKey,
+    markerTtlSeconds,
+    currentFingerprint,
+    "withCacheFingerprint: marker write failed"
+  );
 
   return result;
+};
+
+// Markers written before they carried the fingerprint (old pods during a deploy) say nothing about which data is live.
+const LEGACY_MARKER = "1";
+
+/**
+ * The fingerprint of the data withCacheFingerprint serves for these keys: the marker's value while it is live,
+ * otherwise a fresh one (and the marker is renewed when the stored data still matches it). A cache keyed by this
+ * can't pair a new fingerprint with an answer built from older cached data.
+ */
+export const readCacheFingerprint = async ({
+  keyStore,
+  dataKey,
+  markerKey,
+  markerTtlSeconds,
+  fingerprintFetcher
+}: Pick<
+  TWithCacheFingerprintOpts<unknown>,
+  "keyStore" | "dataKey" | "markerKey" | "markerTtlSeconds" | "fingerprintFetcher"
+>): Promise<string> => {
+  const markerValue = await cacheGet(keyStore, markerKey, "readCacheFingerprint: marker read failed");
+  if (markerValue !== null && markerValue !== LEGACY_MARKER) return markerValue;
+
+  const fingerprint = await fingerprintFetcher();
+  const cachedDataStr = await cacheGet(keyStore, dataKey, "readCacheFingerprint: data read failed");
+  if (cachedDataStr !== null) {
+    try {
+      if ((JSON.parse(cachedDataStr) as TCachedData<unknown>).fingerprint === fingerprint) {
+        await cacheSet(keyStore, markerKey, markerTtlSeconds, fingerprint, "readCacheFingerprint: marker reset failed");
+      }
+    } catch {
+      // withCacheFingerprint refetches unreadable data on the next read.
+    }
+  }
+  return fingerprint;
 };

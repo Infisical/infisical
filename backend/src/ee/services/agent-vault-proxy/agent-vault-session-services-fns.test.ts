@@ -362,10 +362,11 @@ describe("a bundle service's facts", () => {
     position: 0,
     ...overrides
   });
-  const context = (setPersonalFields: string[] = []) => ({
+  const context = (setPersonalFields: string[] = [], signedInVariableIds: string[] = ["variable-1"]) => ({
     customHeaderNames: [],
     substitutions: [],
-    setPersonalFields: new Set(setPersonalFields)
+    setPersonalFields: new Set(setPersonalFields),
+    isOauthVariableSignedIn: (variableId: string) => signedInVariableIds.includes(variableId)
   });
 
   test("a stored credential counts, and a service with nothing stored adds nothing", () => {
@@ -380,6 +381,52 @@ describe("a bundle service's facts", () => {
         context()
       ).credential
     ).toEqual({ type: "none" });
+  });
+
+  test("an OAuth variable's sign-in counts though the service seals nothing, and the agent is told the proxy adds it", () => {
+    const variableRow = row({
+      credentialType: AgentVaultCredentialType.OAuth,
+      credentialConfig: { type: AgentVaultCredentialType.OAuth, source: "variable", variableId: "variable-1" },
+      encryptedCredential: null
+    });
+    const httpFacts = toBundleServiceFacts(variableRow, context());
+    expect(httpFacts.credential).toEqual({ type: "oauth" });
+    expect(describeSessionService(httpFacts).howToUse).toMatch(
+      /^Call https:\/\/api\.github\.com directly\. The proxy sets the Authorization header/
+    );
+
+    const mcpFacts = toBundleServiceFacts(
+      { ...variableRow, type: AgentVaultServiceType.Mcp, config: { serverUrl: "https://mcp.example.com/mcp" } },
+      context()
+    );
+    // `run` gives an MCP client a placeholder Authorization header only for a credential the proxy adds.
+    expect(describeSessionService(mcpFacts).credential).toEqual({
+      type: "oauth",
+      header: "Authorization",
+      addedByProxy: true,
+      memberProvided: false
+    });
+  });
+
+  test("an OAuth variable that isn't signed in makes its service not ready, and an admin has to sign it in", () => {
+    const variableRow = row({
+      credentialType: AgentVaultCredentialType.OAuth,
+      credentialConfig: { type: AgentVaultCredentialType.OAuth, source: "variable", variableId: "variable-1" },
+      encryptedCredential: null
+    });
+    const variableFacts = toBundleServiceFacts(variableRow, context([], []));
+    expect(variableFacts).toMatchObject({
+      personalValuesMissing: true,
+      credentialNotConnected: true,
+      memberSignsIn: false,
+      credential: { type: "none" }
+    });
+    const described = describeSessionService(variableFacts);
+    expect(described.status).toBe("needs-personal-values");
+    expect(described.howToUse).toBe(
+      'Not usable yet: the sign-in "github" uses isn\'t connected in Agent Vault or was removed. An Agent Vault admin has to sign it in, or, if it was removed, a new session is needed. The proxy refuses requests to it until then.'
+    );
+    expect(described.howToUse).not.toMatch(/personal values|connect their account/);
   });
 
   test("a field left to members counts only once the member has set every one of them", () => {

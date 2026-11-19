@@ -109,6 +109,11 @@ export const mockKeyStore = (): TKeyStoreFactory => {
       store[chosen] = String(current + 1);
       return bestIdx;
     },
+    deleteItemIfValue: async (key, value) => {
+      if (store[key] !== value) return false;
+      delete store[key];
+      return true;
+    },
     decrementIfExists: async (key) => {
       if (typeof store[key] !== "string") {
         return null;

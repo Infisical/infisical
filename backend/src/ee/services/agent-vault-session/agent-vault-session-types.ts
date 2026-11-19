@@ -1,5 +1,7 @@
 import { TGenericPermission } from "@app/lib/types";
 
+import { AgentVaultOauthClientAuthMethod } from "../agent-vault-oauth/agent-vault-oauth-types";
+import { TAgentVaultSkillFile } from "../agent-vault-skill/agent-vault-skill-types";
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
@@ -47,7 +49,24 @@ export type TAgentVaultInlineServiceInput = {
         memberProvidedFields?: string[];
       }
     | { type: AgentVaultCredentialType.Passthrough }
-    | { type: AgentVaultCredentialType.OAuth; authorizationId?: string }
+    | {
+        type: AgentVaultCredentialType.OAuth;
+        // Accepted only so a sign-in is refused by name.
+        authorizationId?: string;
+        // A global OAuth variable's key, or the tokens and the provider's details below, never both.
+        variable?: string;
+        accessToken?: string;
+        refreshToken?: string;
+        expiresAt?: string;
+        authorizationEndpoint?: string;
+        tokenEndpoint?: string;
+        issuer?: string;
+        clientId?: string;
+        clientSecret?: string;
+        tokenEndpointAuthMethod?: AgentVaultOauthClientAuthMethod;
+        scopes?: string[];
+        resource?: string;
+      }
     | { type: AgentVaultCredentialType.SshKey; username: string; privateKey: string; certificate?: string };
   customHeaders?: { name: string; prefix?: string; value: string }[];
   substitutions?: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[]; value: string }[];
@@ -60,11 +79,22 @@ export type TAgentVaultInlineBearerCredentialSummary = {
   headerPrefix: string;
 };
 
+export type TAgentVaultInlineOauthCredentialSummary = {
+  type: AgentVaultCredentialType.OAuth;
+  source: "variable" | "inline";
+  // Absent once the variable is deleted, and for a caller who can't read variables.
+  variable?: { id: string; key: string };
+  // Tokens sent with the session only.
+  issuer?: string;
+  grantedScopes?: string[];
+};
+
 export type TAgentVaultInlineCredentialSummary =
   | TAgentVaultInlineBearerCredentialSummary
   | { type: AgentVaultCredentialType.Basic }
   | { type: AgentVaultCredentialType.Passthrough }
-  | { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean };
+  | { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean }
+  | TAgentVaultInlineOauthCredentialSummary;
 
 export type TAgentVaultInlineCustomHeaderSummary = { name: string; prefix: string };
 
@@ -84,7 +114,7 @@ export type TAgentVaultInlineServiceSummary = {
       substitutions: TAgentVaultInlineSubstitutionSummary[];
     })
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Mcp }> & {
-      credential: TAgentVaultInlineBearerCredentialSummary;
+      credential: TAgentVaultInlineBearerCredentialSummary | TAgentVaultInlineOauthCredentialSummary;
       customHeaders: TAgentVaultInlineCustomHeaderSummary[];
     })
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql }> & {
@@ -98,29 +128,53 @@ export type TAgentVaultInlineServiceSummary = {
     })
 );
 
-/** A project service a session names, as every read returns it: only what identifies it. */
-export type TAgentVaultSessionNamedServiceSummary = {
+/**
+ * A session's services as every read returns them, in the order sent: one it lists by name with only what identifies
+ * it, and one sent inline with its settings but never its secrets.
+ */
+export type TAgentVaultSessionServiceSummary =
+  | {
+      id: string;
+      name: string;
+      type: AgentVaultServiceType;
+      description: string | null;
+      // The host an HTTP or MCP service matches. Null for database and SSH services, which have none.
+      hostPattern: string | null;
+      isInline: false;
+    }
+  | (TAgentVaultInlineServiceSummary & { isInline: true });
+
+// A skill sent with a session: the files of a skill uploaded to the project, its name and description in SKILL.md.
+export type TAgentVaultInlineSkillInput = { files: TAgentVaultSkillFile[] };
+
+/** A skill sent with a session, as every read returns it: never with its files. */
+export type TAgentVaultSessionInlineSkillSummary = {
   id: string;
   name: string;
-  type: AgentVaultServiceType;
-  description: string | null;
-  // The host an HTTP or MCP service matches. Null for database and SSH services, which have none.
-  hostPattern: string | null;
-  isInline: false;
+  description: string;
+  sha256: string;
+  sizeBytes: number;
+  fileCount: number;
+  isInline: true;
 };
 
-/** A session's services as every read returns them, the ones it names and the ones sent inline, in the order sent. */
-export type TAgentVaultSessionServiceSummary =
-  | TAgentVaultSessionNamedServiceSummary
-  | (TAgentVaultInlineServiceSummary & { isInline: true });
+/**
+ * A session's skills as every read returns them, in the order sent: one it lists by name with only what identifies it,
+ * and one sent inline, never with its files.
+ */
+export type TAgentVaultSessionSkillSummary =
+  | { id: string; name: string; description: string; isInline: false }
+  | TAgentVaultSessionInlineSkillSummary;
 
 export type TMintSessionDTO = {
   projectId: string;
   ctx: TGenericPermission;
-  // Leave it out for a session with only the services it names or sends.
+  // Leave it out for a session with only services or skills, listed by name or sent inline.
   accessBundle?: string;
   // Each one the name of a project service, or a service sent inline.
   services?: (string | TAgentVaultInlineServiceInput)[];
+  // Each one the name of a project skill, or a skill sent inline.
+  skills?: (string | TAgentVaultInlineSkillInput)[];
   /** The caller's name and email, snapshotted from the request. */
   actorName: string;
   actorEmail: string | null;

@@ -21,8 +21,6 @@ import {
   InternalMetadataType,
   TInternalMetadata
 } from "@app/ee/services/secret-change-request/secret-change-request-types";
-import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
-import { withCache } from "@app/lib/cache/with-cache";
 import { BadRequestError, NotFoundError, throwIfAnySettledClientClosed } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -721,16 +719,16 @@ export const recursivelyGetSecretPaths = async ({
   return pathsInCurrentDirectory;
 };
 
+// The fingerprint of the permission a secret read is answered with, read from the permission cache's own marker.
+// It gates only the ETag; the real check is still getProjectPermission.
 export const getSecretEtagPermissionFingerprint = async ({
-  keyStore,
   permissionService,
   projectId,
   actor,
   actorId,
   actorOrgId
 }: {
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermissionFingerprint">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermissionCacheFingerprint">;
   projectId: string;
   actor: ActorType;
   actorId: string;
@@ -738,17 +736,12 @@ export const getSecretEtagPermissionFingerprint = async ({
 }) => {
   if (actor !== ActorType.USER && actor !== ActorType.IDENTITY) return "";
 
-  return withCache({
-    keyStore,
-    key: KeyStorePrefixes.SecretPermissionFingerprint(projectId, actor, actorId),
-    ttlSeconds: KeyStoreTtls.ProjectPermissionMarkerTtlSeconds,
-    fetcher: () =>
-      permissionService.getProjectPermissionFingerprint({
-        projectId,
-        orgId: actorOrgId,
-        actorId,
-        actorType: actor
-      })
+  return permissionService.getProjectPermissionCacheFingerprint({
+    actor,
+    actorId,
+    projectId,
+    actorOrgId,
+    actionProjectType: ActionProjectType.SecretManager
   });
 };
 

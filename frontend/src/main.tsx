@@ -76,7 +76,7 @@ const router = createRouter({
   routeTree,
   context: { serverConfig: null, queryClient },
   defaultPendingComponent: () => (
-    <div className="flex h-full w-full items-center justify-center bg-page [#root>&]:h-screen">
+    <div className="flex h-full w-full items-center justify-center bg-page [#root>&]:h-dvh">
       <PageTitle title="Loading" />
       <Loader variant="brand" className="h-32 w-32" label="Loading page" />
     </div>

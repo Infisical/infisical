@@ -9,6 +9,7 @@ import {
   listCloudflarePermissionGroups,
   listCloudflareR2Buckets,
   listCloudflareSecretsStores,
+  listCloudflareWorkersPreviews,
   listCloudflareWorkersScripts,
   listCloudflareZones
 } from "./cloudflare-connection-fns";
@@ -44,6 +45,20 @@ export const cloudflareConnectionService = (getAppConnection: TGetAppConnectionF
       logger.error(
         error,
         `Failed to list Cloudflare Workers scripts for Cloudflare connection [connectionId=${connectionId}]`
+      );
+      return [];
+    }
+  };
+
+  const listWorkersPreviews = async (connectionId: string, scriptId: string, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.Cloudflare, connectionId, actor);
+    try {
+      const previews = await listCloudflareWorkersPreviews(appConnection, scriptId);
+      return previews;
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to list Cloudflare Workers Previews for Cloudflare connection [connectionId=${connectionId}] [scriptId=${scriptId}]`
       );
       return [];
     }
@@ -107,6 +122,7 @@ export const cloudflareConnectionService = (getAppConnection: TGetAppConnectionF
   return {
     listPagesProjects,
     listWorkersScripts,
+    listWorkersPreviews,
     listSecretsStores,
     listZones,
     listPermissionGroups,

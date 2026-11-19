@@ -48,8 +48,10 @@ import { agentVaultSessionLogServiceFactory } from "@app/ee/services/agent-vault
 import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-access-bundle-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionInlineServiceDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-service-dal";
+import { agentVaultSessionInlineSkillDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-skill-dal";
 import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
 import { agentVaultSessionServiceDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service-dal";
+import { agentVaultSessionSkillDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-skill-dal";
 import { agentVaultSessionStatsDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-stats-dal";
 import { agentVaultSkillBundleDALFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-bundle-dal";
 import { agentVaultSkillDALFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-dal";
@@ -305,6 +307,7 @@ import {
 import { approvalPolicyAutoApprovalDALFactory } from "@app/services/approval-policy/auto-approval/auto-approval-dal";
 import { autoApprovalServiceFactory } from "@app/services/approval-policy/auto-approval/auto-approval-service";
 import { certRequestApprovalResourceFactory } from "@app/services/approval-policy/cert-request/cert-request-policy-factory";
+import { certRevocationApprovalResourceFactory } from "@app/services/approval-policy/cert-revocation/cert-revocation-policy-factory";
 import { codeSigningApprovalResourceFactory } from "@app/services/approval-policy/code-signing/code-signing-policy-factory";
 import { secretAccessApprovalGlobalResourceFactory } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
@@ -1139,7 +1142,8 @@ export const registerRoutes = async (
     alertProviderRegistry,
     alertRecipientResolver,
     kmsDataKeyService,
-    smtpService
+    smtpService,
+    slackIntegrationDAL
   });
   const alertQueue = alertQueueServiceFactory({
     cronJob,
@@ -1170,7 +1174,9 @@ export const registerRoutes = async (
     orgDAL,
     projectDAL,
     groupDAL,
-    emailDomainDAL
+    emailDomainDAL,
+    slackIntegrationDAL,
+    permissionService
   });
   const alertService = alertServiceFactory({
     alertDAL,
@@ -1203,6 +1209,7 @@ export const registerRoutes = async (
     alertProviderRegistry,
     kmsDataKeyService,
     smtpService,
+    slackIntegrationDAL,
     keyStore
   });
 
@@ -1604,7 +1611,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipUserDAL,
     permissionService,
-    mfaLockoutService
+    mfaLockoutService,
+    userService
   });
 
   const samlService = samlConfigServiceFactory({
@@ -2019,6 +2027,8 @@ export const registerRoutes = async (
   const agentVaultSessionAccessBundleDAL = agentVaultSessionAccessBundleDALFactory(db);
   const agentVaultSessionInlineServiceDAL = agentVaultSessionInlineServiceDALFactory(db);
   const agentVaultSessionServiceDAL = agentVaultSessionServiceDALFactory(db);
+  const agentVaultSessionSkillDAL = agentVaultSessionSkillDALFactory(db);
+  const agentVaultSessionInlineSkillDAL = agentVaultSessionInlineSkillDALFactory(db);
   const agentVaultSessionStatsDAL = agentVaultSessionStatsDALFactory(db);
   const agentVaultProxyDAL = agentVaultProxyDALFactory(db);
   const agentVaultResolveDAL = agentVaultResolveDALFactory(db);
@@ -2035,7 +2045,10 @@ export const registerRoutes = async (
     agentVaultServiceDAL,
     agentVaultPersonalValueDAL,
     permissionService,
-    membershipDAL
+    membershipDAL,
+    agentVaultVariableDAL,
+    projectDAL,
+    agentVaultSessionInlineServiceDAL
   });
 
   const agentVaultVariableService = agentVaultVariableServiceFactory({
@@ -2043,7 +2056,8 @@ export const registerRoutes = async (
     agentVaultPersonalValueDAL,
     membershipDAL,
     permissionService,
-    kmsDataKeyService
+    kmsDataKeyService,
+    agentVaultOauthService
   });
 
   const agentVaultPersonalValueService = agentVaultPersonalValueServiceFactory({
@@ -2064,7 +2078,10 @@ export const registerRoutes = async (
     agentVaultAccessBundleDAL,
     permissionService,
     membershipDAL,
-    kmsDataKeyService
+    kmsDataKeyService,
+    agentVaultDelegationDAL,
+    userDAL,
+    orgDAL
   });
 
   const agentVaultAccessBundleService = agentVaultAccessBundleServiceFactory({
@@ -2097,8 +2114,13 @@ export const registerRoutes = async (
     agentVaultSessionAccessBundleDAL,
     agentVaultSessionInlineServiceDAL,
     agentVaultSessionServiceDAL,
+    agentVaultSessionSkillDAL,
+    agentVaultSessionInlineSkillDAL,
     agentVaultAccessBundleDAL,
     agentVaultServiceDAL,
+    agentVaultVariableDAL,
+    agentVaultSkillDAL,
+    agentVaultSkillBundleDAL,
     agentVaultDelegationDAL,
     resourceMetadataDAL,
     agentVaultResolveDAL,
@@ -2231,6 +2253,7 @@ export const registerRoutes = async (
     agentVaultPersonalValueDAL,
     agentVaultSessionDAL,
     agentVaultSessionInlineServiceDAL,
+    agentVaultSessionInlineSkillDAL,
     agentVaultDelegationDAL,
     agentVaultSessionLogConfigDAL,
     membershipDAL,
@@ -3137,7 +3160,8 @@ export const registerRoutes = async (
     certificateRequestDAL,
     scepTransactionDAL,
     honeyTokenCleanupQueue,
-    agentVaultSessionInlineServiceDAL
+    agentVaultSessionInlineServiceDAL,
+    agentVaultSessionInlineSkillDAL
   });
 
   const healthAlert = healthAlertServiceFactory({
@@ -3242,7 +3266,8 @@ export const registerRoutes = async (
     kmsDataKeyService,
     kmsRootKeyService,
     slackIntegrationDAL,
-    workflowIntegrationDAL
+    workflowIntegrationDAL,
+    alertChannelDAL
   });
 
   const workflowIntegrationService = workflowIntegrationServiceFactory({
@@ -3994,6 +4019,77 @@ export const registerRoutes = async (
     kmsKeyService
   });
 
+  const pamAccessApprovalResource = pamAccessApprovalResourceFactory({
+    pamFolderNotificationConfigDAL,
+    approvalPolicyDAL,
+    userGroupMembershipDAL,
+    approvalRequestDAL,
+    approvalRequestGrantsDAL,
+    pamAccountDAL,
+    pamAccountTemplateDAL,
+    pamFolderDAL,
+    pamSessionDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    permissionService,
+    userDAL,
+    gatewayV2Service,
+    kmsDataKeyService
+  });
+
+  const approvalResources: TApprovalResourceRegistry = {
+    [ApprovalPolicyType.PamAccess]: pamAccessApprovalResource as TApprovalResourceRegistry[ApprovalPolicyType],
+    [ApprovalPolicyType.CertCodeSigning]: codeSigningApprovalResourceFactory({
+      approvalPolicyDAL,
+      approvalRequestGrantsDAL
+    }) as TApprovalResourceRegistry[ApprovalPolicyType]
+  };
+
+  const aiService = aiServiceFactory({
+    orgDAL,
+    appConnectionDAL,
+    appConnectionService,
+    permissionService,
+    kmsDataKeyService
+  });
+
+  const autoApprovalService = autoApprovalServiceFactory({
+    approvalPolicyAutoApprovalDAL,
+    appConnectionDAL,
+    appConnectionService,
+    aiService,
+    kmsDataKeyService,
+    gatewayV2Service,
+    gatewayPoolService
+  });
+
+  const approvalPolicyService = approvalPolicyServiceFactory({
+    approvalPolicyDAL,
+    approvalPolicyStepsDAL,
+    approvalPolicyStepApproversDAL,
+    approvalPolicyBypassersDAL,
+    permissionService,
+    licenseService,
+    projectMembershipDAL,
+    membershipDAL,
+    pkiApplicationDAL,
+    approvalRequestDAL,
+    approvalRequestStepsDAL,
+    approvalRequestStepEligibleApproversDAL,
+    approvalRequestApprovalsDAL,
+    userGroupMembershipDAL,
+    notificationService,
+    approvalRequestGrantsDAL,
+    smtpService,
+    userDAL,
+    groupDAL,
+    slackIntegrationDAL,
+    kmsDataKeyService,
+    eventEmitter: eventOutboxService,
+    autoApprovalService,
+    resources: approvalResources
+  });
+
   const certificateService = certificateServiceFactory({
     certManagerService,
     keyStore,
@@ -4031,7 +4127,10 @@ export const registerRoutes = async (
     internalCertificateAuthorityDAL,
     signerDAL,
     userDAL,
-    identityDAL
+    identityDAL,
+    approvalPolicyService,
+    approvalRequestDAL,
+    telemetryService
   });
 
   const godaddyCaFns = GoDaddyCertificateAuthorityFns({
@@ -4118,77 +4217,6 @@ export const registerRoutes = async (
     certificateAlertEventEmitter
   });
 
-  const pamAccessApprovalResource = pamAccessApprovalResourceFactory({
-    pamFolderNotificationConfigDAL,
-    approvalPolicyDAL,
-    userGroupMembershipDAL,
-    approvalRequestDAL,
-    approvalRequestGrantsDAL,
-    pamAccountDAL,
-    pamAccountTemplateDAL,
-    pamFolderDAL,
-    pamSessionDAL,
-    membershipDAL,
-    membershipRoleDAL,
-    permissionService,
-    userDAL,
-    gatewayV2Service,
-    kmsDataKeyService
-  });
-
-  const approvalResources: TApprovalResourceRegistry = {
-    [ApprovalPolicyType.PamAccess]: pamAccessApprovalResource as TApprovalResourceRegistry[ApprovalPolicyType],
-    [ApprovalPolicyType.CertCodeSigning]: codeSigningApprovalResourceFactory({
-      approvalPolicyDAL,
-      approvalRequestGrantsDAL
-    }) as TApprovalResourceRegistry[ApprovalPolicyType]
-  };
-
-  const aiService = aiServiceFactory({
-    orgDAL,
-    appConnectionDAL,
-    appConnectionService,
-    permissionService,
-    kmsDataKeyService
-  });
-
-  const autoApprovalService = autoApprovalServiceFactory({
-    approvalPolicyAutoApprovalDAL,
-    appConnectionDAL,
-    appConnectionService,
-    aiService,
-    kmsDataKeyService,
-    gatewayV2Service,
-    gatewayPoolService
-  });
-
-  const approvalPolicyService = approvalPolicyServiceFactory({
-    approvalPolicyDAL,
-    approvalPolicyStepsDAL,
-    approvalPolicyStepApproversDAL,
-    approvalPolicyBypassersDAL,
-    permissionService,
-    licenseService,
-    projectMembershipDAL,
-    membershipDAL,
-    pkiApplicationDAL,
-    approvalRequestDAL,
-    approvalRequestStepsDAL,
-    approvalRequestStepEligibleApproversDAL,
-    approvalRequestApprovalsDAL,
-    userGroupMembershipDAL,
-    notificationService,
-    approvalRequestGrantsDAL,
-    smtpService,
-    userDAL,
-    groupDAL,
-    slackIntegrationDAL,
-    kmsDataKeyService,
-    eventEmitter: eventOutboxService,
-    autoApprovalService,
-    resources: approvalResources
-  });
-
   const pkiApplicationEnrollmentService = pkiApplicationEnrollmentServiceFactory({
     pkiApplicationDAL,
     pkiApplicationProfileDAL,
@@ -4250,6 +4278,7 @@ export const registerRoutes = async (
     userDAL,
     orgDAL,
     mfaSessionService,
+    userService,
     permissionService,
     kmsDataKeyService,
     gatewayV2DAL,
@@ -4321,6 +4350,7 @@ export const registerRoutes = async (
     pamSessionExpirationService,
     pamAccessRequestService,
     mfaSessionService,
+    userService,
     orgDAL,
     telemetryService
   });
@@ -4346,6 +4376,7 @@ export const registerRoutes = async (
     kmsDataKeyService,
     userDAL,
     mfaSessionService,
+    userService,
     orgDAL,
     membershipDAL,
     membershipRoleDAL,
@@ -4396,6 +4427,17 @@ export const registerRoutes = async (
     certificateRequestService,
     certificateRenewalService: certificateV3Service,
     telemetryService
+  }) as TApprovalResourceRegistry[ApprovalPolicyType];
+
+  approvalResources[ApprovalPolicyType.CertRevocation] = certRevocationApprovalResourceFactory({
+    approvalPolicyDAL,
+    certificateService,
+    membershipDAL,
+    membershipRoleDAL,
+    userGroupMembershipDAL,
+    orgDAL,
+    userDAL,
+    groupDAL
   }) as TApprovalResourceRegistry[ApprovalPolicyType];
 
   const certificateV3Queue = certificateV3QueueServiceFactory({

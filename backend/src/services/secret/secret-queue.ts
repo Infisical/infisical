@@ -762,7 +762,7 @@ export const secretQueueFactory = ({
       const linkSourceDto = {
         projectId,
         importEnv: folder.environment.id,
-        importPath: secretPath,
+        importPath: folder.path,
         isReplication: false
       };
       const imports = await secretImportDAL.find(linkSourceDto);
@@ -876,7 +876,7 @@ export const secretQueueFactory = ({
       // Cross-project imports: find imports from other projects that import from this folder
       const crossProjectImports = await secretImportDAL.findCrossProjectImportsBySourceFolder(
         folder.environment.id,
-        secretPath,
+        folder.path,
         projectId
       );
       if (crossProjectImports.length) {
