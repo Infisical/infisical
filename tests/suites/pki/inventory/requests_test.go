@@ -29,6 +29,7 @@ func TestCertificateRequests_List(t *testing.T) {
 		pki.Issue(t, otherApp, other, pki.ServerCertificate(id.Short()+".other.test"))
 
 		// Action
+		//lint:ignore SA1019 the deprecated list route is still served, and this subtest covers it
 		res, err := tn.Admin.API.ListCertificateRequestsWithResponse(t.Context(), &api.ListCertificateRequestsParams{ProfileIds: new(g.Profile.ID.String())})
 
 		// Assert
