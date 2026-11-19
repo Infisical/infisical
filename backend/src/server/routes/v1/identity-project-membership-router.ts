@@ -461,8 +461,15 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
             ),
             lastLoginAuthMethod: z.string().nullable().optional(),
             lastLoginTime: z.date().nullable().optional(),
-            identity: IdentitiesSchema.pick({ name: true, id: true, orgId: true, projectId: true }).extend({
+            identity: IdentitiesSchema.pick({
+              name: true,
+              id: true,
+              orgId: true,
+              projectId: true,
+              hasDeleteProtection: true
+            }).extend({
               authMethods: z.array(z.string()),
+              activeLockoutAuthMethods: z.array(z.string()),
               metadata: z
                 .object({
                   id: z.string().trim().min(1),
