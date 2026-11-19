@@ -1,9 +1,7 @@
 package secrets_test
 
 import (
-	"bytes"
 	"context"
-	"io"
 	"net/http"
 	"testing"
 
@@ -346,22 +344,13 @@ func identityWithGroupAccess(t *testing.T, h *harness.Stack) (*fixture.Project, 
 
 func listSecretsWithEtag(t *testing.T, pr *harness.Principal, proj *fixture.Project, etag string) *api.ListSecretsV4Response {
 	t.Helper()
-	raw, err := pr.API.ClientInterface.(*api.Client).ListSecretsV4(t.Context(), &api.ListSecretsV4Params{ProjectId: &proj.ID, Environment: new("dev")},
+	res, err := pr.API.ListSecretsV4WithResponse(t.Context(), &api.ListSecretsV4Params{ProjectId: &proj.ID, Environment: new("dev")},
 		func(_ context.Context, req *http.Request) error {
 			if etag != "" {
 				req.Header.Set("If-None-Match", etag)
 			}
 			return nil
 		})
-	require.NoError(t, err)
-	body, _ := io.ReadAll(raw.Body)
-	_ = raw.Body.Close()
-	raw.Body = io.NopCloser(bytes.NewReader(body))
-	res, err := api.ParseListSecretsV4Response(raw)
-	if err != nil {
-		t.Logf("DEBUG unparseable list response: status=%d proto=%s headers=%v bodyLen=%d body=%q sentEtag=%q",
-			raw.StatusCode, raw.Proto, raw.Header, len(body), body, etag)
-	}
 	require.NoError(t, err)
 	return res
 }
