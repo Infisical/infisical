@@ -1,12 +1,15 @@
 import { CapacityExceededError } from "@app/domains/lib/errors";
 import { createKeyedInFlightCounter } from "@app/lib/concurrency/concurrency-limiter";
+import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
 import { TCipherPair } from "../../models/data-key";
 import { KmsDataKey, TEncryptWithKmsDataKeyDTO, TKmsDataKeyService } from "../data-key/service";
 
-export const SECRET_DECRYPT_MAX_IN_FLIGHT_PER_ORG = 1000;
-const SATURATION_LOG_INTERVAL_MS = 10_000;
+type TSecretDecryptLimit = {
+  maxInFlight: number;
+  logIntervalMs: number;
+};
 
 export type TSecretDecryptLease = {
   orgId?: string;
@@ -46,14 +49,24 @@ const activeLease = (lease: TSecretDecryptLease | undefined): TAdmittedLease | u
   return lease as TAdmittedLease;
 };
 
-const refuseWhileOthersHoldLimit = (lease: TAdmittedLease) => {
-  const heldByOtherRequests = inFlightDecrypts.get(lease.orgId) - lease.held;
-  if (heldByOtherRequests < SECRET_DECRYPT_MAX_IN_FLIGHT_PER_ORG) return;
+const enabledSecretDecryptLimit = (): TSecretDecryptLimit | undefined => {
+  const config = getConfig();
+  if (!config.SECRET_DECRYPT_LIMIT_ENABLED) return undefined;
 
-  if (Date.now() - lastSaturationLogAt > SATURATION_LOG_INTERVAL_MS) {
+  return {
+    maxInFlight: config.SECRET_DECRYPT_MAX_IN_FLIGHT_PER_ORG,
+    logIntervalMs: config.SECRET_DECRYPT_SATURATION_LOG_INTERVAL_MS
+  };
+};
+
+const refuseWhileOthersHoldLimit = (lease: TAdmittedLease, limit: TSecretDecryptLimit) => {
+  const heldByOtherRequests = inFlightDecrypts.get(lease.orgId) - lease.held;
+  if (heldByOtherRequests < limit.maxInFlight) return;
+
+  if (Date.now() - lastSaturationLogAt > limit.logIntervalMs) {
     lastSaturationLogAt = Date.now();
     logger.warn(
-      `Secret decrypt limit reached, shedding request [orgId=${lease.orgId}] [inFlightDecrypts=${heldByOtherRequests}] [limit=${SECRET_DECRYPT_MAX_IN_FLIGHT_PER_ORG}]`
+      `Secret decrypt limit reached, shedding request [orgId=${lease.orgId}] [inFlightDecrypts=${heldByOtherRequests}] [limit=${limit.maxInFlight}]`
     );
   }
   throw new CapacityExceededError({
@@ -69,7 +82,10 @@ const admit = (
   const admitted = activeLease(lease);
   if (!admitted) return undefined;
 
-  refuseWhileOthersHoldLimit(admitted);
+  const limit = enabledSecretDecryptLimit();
+  if (!limit) return undefined;
+
+  refuseWhileOthersHoldLimit(admitted, limit);
   return admitted;
 };
 
@@ -131,7 +147,10 @@ export const createSecretDecryptReservations = (
     const lease = activeLease(currentLease());
     if (!lease || count <= 0) return;
 
-    refuseWhileOthersHoldLimit(lease);
+    const limit = enabledSecretDecryptLimit();
+    if (!limit) return;
+
+    refuseWhileOthersHoldLimit(lease, limit);
     inFlightDecrypts.add(lease.orgId, count);
     lease.held += count;
     lease.reservedUndecrypted += count;

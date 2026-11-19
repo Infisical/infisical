@@ -12,14 +12,25 @@ import {
   createSecretDecryptReservations,
   getInFlightSecretDecrypts,
   releaseSecretDecryptLease,
-  SECRET_DECRYPT_MAX_IN_FLIGHT_PER_ORG,
   TSecretDecryptLease,
   withSecretDecryptLimit
 } from "./service";
 
+const config = vi.hoisted(() => ({
+  SECRET_DECRYPT_LIMIT_ENABLED: true,
+  SECRET_DECRYPT_MAX_IN_FLIGHT_PER_ORG: 1000,
+  SECRET_DECRYPT_SATURATION_LOG_INTERVAL_MS: 10_000
+}));
+
+vi.mock("@app/lib/config/env", () => ({
+  getConfig: () => config
+}));
+
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
 }));
+
+const { SECRET_DECRYPT_MAX_IN_FLIGHT_PER_ORG } = config;
 
 const cipherPair: TCipherPair = {
   encryptor: ({ plainText }) => ({ cipherTextBlob: Buffer.from(plainText) }),
@@ -184,6 +195,26 @@ describe("withSecretDecryptLimit", () => {
 
     // Assert
     expect(lease.held).toBe(0);
+  });
+
+  test("should not count or refuse decrypts when the limit is disabled", async () => {
+    config.SECRET_DECRYPT_LIMIT_ENABLED = false;
+    try {
+      // Setup
+      const { orgId, dataKeys, startRequest, decryptTimes } = setup();
+      startRequest();
+      await decryptTimes(SECRET_DECRYPT_MAX_IN_FLIGHT_PER_ORG);
+      startRequest();
+
+      // Action
+      const result = dataKeys.createCipherPairWithDataKey(projectKey);
+
+      // Assert
+      await expect(result).resolves.toBeDefined();
+      expect(getInFlightSecretDecrypts(orgId)).toBe(0);
+    } finally {
+      config.SECRET_DECRYPT_LIMIT_ENABLED = true;
+    }
   });
 });
 

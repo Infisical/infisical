@@ -321,6 +321,23 @@ const envSchema = z
       .min(1)
       .default(1000)
       .describe("Most secrets one API request to list secrets can return, imported secrets and subfolders included"),
+    SECRET_DECRYPT_LIMIT_ENABLED: zodStrBool
+      .default("false")
+      .describe(
+        "Refuse secret decrypts for an organization that already has SECRET_DECRYPT_MAX_IN_FLIGHT_PER_ORG decrypts in flight"
+      ),
+    SECRET_DECRYPT_MAX_IN_FLIGHT_PER_ORG: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(1000)
+      .describe("Most secret decrypts one organization may have in flight at once"),
+    SECRET_DECRYPT_SATURATION_LOG_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(10_000)
+      .describe("How often, in milliseconds, to log that the secret decrypt limit is shedding requests"),
     DB_ROOT_CERT: zpStr(z.string().describe("Postgres database base64-encoded CA cert").optional()),
     DB_HOST: zpStr(z.string().describe("Postgres database host").optional()),
     DB_PORT: zpStr(z.string().describe("Postgres database port").optional()).default("5432"),

@@ -40,7 +40,6 @@ export {
   createSecretDecryptLease,
   createSecretDecryptReservations,
   releaseSecretDecryptLease,
-  SECRET_DECRYPT_MAX_IN_FLIGHT_PER_ORG,
   withSecretDecryptLimit
 } from "./services/secret-decrypt-limit/service";
 export type {

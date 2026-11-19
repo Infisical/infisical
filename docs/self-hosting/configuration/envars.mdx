@@ -197,6 +197,20 @@ Example values:
   If your applications read more than 1000 secrets from one secret path, raise the limit.
 </ParamField>
 
+<ParamField query="SECRET_DECRYPT_LIMIT_ENABLED" type="bool" default="false" optional>
+  Infisical refuses a request to decrypt secrets when other requests for the same organization are already decrypting at least `SECRET_DECRYPT_MAX_IN_FLIGHT_PER_ORG` secrets. The request fails with a `429` response. Retry the request a few seconds later. Leave this unset, and Infisical doesn't apply the limit.
+</ParamField>
+
+<ParamField query="SECRET_DECRYPT_MAX_IN_FLIGHT_PER_ORG" type="int" default="1000" optional>
+  Maximum number of secrets that other requests for one organization can be decrypting at the same time. Only used when `SECRET_DECRYPT_LIMIT_ENABLED` is `true`.
+
+  One request can still decrypt more secrets than this number.
+</ParamField>
+
+<ParamField query="SECRET_DECRYPT_SATURATION_LOG_INTERVAL_MS" type="int" default="10000" optional>
+  How often, in milliseconds, Infisical logs that it refused a request because an organization reached `SECRET_DECRYPT_MAX_IN_FLIGHT_PER_ORG`. Only used when `SECRET_DECRYPT_LIMIT_ENABLED` is `true`. Set this to `0` to log every refusal.
+</ParamField>
+
 ## CORS
 
 Cross-Origin Resource Sharing (CORS) is a security feature that allows web applications running on one domain to access resources from another domain.
