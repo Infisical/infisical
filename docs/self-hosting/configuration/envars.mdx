@@ -191,10 +191,8 @@ Example values:
   Limits how many API requests to list secrets, such as requests to the Secrets [List](/api-reference/endpoints/secrets/list) endpoint, run at the same time on each Infisical instance. A request over the limit waits for its turn. If it waits longer than `SECRET_READ_MAX_QUEUE_WAIT_MS`, or too many requests are already waiting, it fails with a `429` response. Retry the request a few seconds later.
 </ParamField>
 
-<ParamField query="SECRET_READ_MAX_IN_FLIGHT_PER_ORG" type="int" default="number of CPUs" optional>
+<ParamField query="SECRET_READ_MAX_IN_FLIGHT_PER_ORG" type="int" default="1" optional>
   Maximum number of requests to list secrets that one organization can run at the same time on each instance. Sub-organizations count toward their root organization. Only used when `SECRET_READ_CONCURRENCY_LIMIT_ENABLED` is `true`.
-
-  If you leave it unset, Infisical uses the number of CPUs available to the container.
 </ParamField>
 
 <ParamField query="SECRET_READ_MAX_IN_FLIGHT" type="int" default="8" optional>
