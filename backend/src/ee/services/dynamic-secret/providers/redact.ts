@@ -64,27 +64,23 @@ export const redactStoredInputs = (type: DynamicSecretProviders, inputs: unknown
   return secretFields.reduce<unknown>((acc, field) => omitPath(acc, field.split(".")), inputs);
 };
 
-export const getOmittedSecretFields = (
-  type: DynamicSecretProviders,
-  storedInputs: object,
-  updateInputs: unknown
-): string[] =>
-  (DYNAMIC_SECRET_SECRET_FIELDS[type] ?? []).filter((field) => {
-    const path = field.split(".");
-    return getPath(storedInputs, path) !== undefined && getPath(updateInputs, path) === undefined;
-  });
-
 // reads never return secret fields, so an edit that leaves one out keeps the stored value; the provider
 // schema drops it again if the edit switched to a shape that has no such field
 export const restoreOmittedSecretFields = (
   type: DynamicSecretProviders,
   storedInputs: object,
   newInputs: object
-): object =>
-  getOmittedSecretFields(type, storedInputs, newInputs).reduce<Record<string, unknown>>(
+): object => {
+  const secretFields = DYNAMIC_SECRET_SECRET_FIELDS[type];
+  if (!secretFields?.length) return newInputs;
+
+  return secretFields.reduce<Record<string, unknown>>(
     (acc, field) => {
       const path = field.split(".");
-      return setPath(acc, path, getPath(storedInputs, path));
+      const storedValue = getPath(storedInputs, path);
+      if (storedValue === undefined || getPath(acc, path) !== undefined) return acc;
+      return setPath(acc, path, storedValue);
     },
     newInputs as Record<string, unknown>
   );
+};

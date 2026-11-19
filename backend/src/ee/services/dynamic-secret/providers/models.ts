@@ -1220,9 +1220,7 @@ export const DynamicSecretKafkaSchema = z.object({
 });
 
 export enum NeonLeaseType {
-  // each lease is a new Postgres role on an existing branch
   Role = "role",
-  // each lease is a new copy-on-write branch with its own compute endpoint
   Branch = "branch"
 }
 
@@ -1361,8 +1359,6 @@ export type TDynamicProviderValidateMetadata = {
   defaultTTL?: string;
   maxTTL?: string | null;
   hasActiveLeases?: boolean;
-  // secret fields the update left out, which hold the stored value in the inputs being validated
-  omittedSecretFields?: string[];
 };
 
 export type TDynamicProviderFns = {

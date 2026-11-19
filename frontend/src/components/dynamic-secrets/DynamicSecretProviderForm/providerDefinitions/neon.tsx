@@ -31,7 +31,7 @@ const getNeonConnectionFields = (mode: TDynamicSecretProviderRendererProps["mode
       autoComplete: "new-password",
       description:
         mode === "edit"
-          ? "Leave blank to keep the current API key. Enter it again if you change the API Base URL."
+          ? "Leave blank to keep the current API key."
           : "A Neon API key with access to the project. An organization or project API key works.",
       isOptional: mode === "edit"
     },
@@ -63,6 +63,22 @@ const getNeonConnectionFields = (mode: TDynamicSecretProviderRendererProps["mode
     }
   ] satisfies readonly TDynamicSecretProviderField<TNeonFormValues>[];
 
+const databaseNameField = {
+  name: "inputs.databaseName",
+  type: "text",
+  label: "Database",
+  placeholder: "neondb",
+  description: "Database used in the returned connection string.",
+  layout: "half"
+} as const satisfies TDynamicSecretProviderField<TNeonFormValues>;
+
+const pooledField = {
+  name: "inputs.pooled",
+  type: "switch",
+  label: "Pooled Connection",
+  description: "Return the PgBouncer (-pooler) connection string."
+} as const satisfies TDynamicSecretProviderField<TNeonFormValues>;
+
 const neonRoleFields = [
   {
     name: "inputs.branchId",
@@ -72,20 +88,8 @@ const neonRoleFields = [
     description: "The branch each lease's role is created on.",
     layout: "half"
   },
-  {
-    name: "inputs.databaseName",
-    type: "text",
-    label: "Database",
-    placeholder: "neondb",
-    description: "Database used in the returned connection string.",
-    layout: "half"
-  },
-  {
-    name: "inputs.pooled",
-    type: "switch",
-    label: "Pooled Connection",
-    description: "Return the PgBouncer (-pooler) connection string."
-  }
+  databaseNameField,
+  pooledField
 ] as const satisfies readonly TDynamicSecretProviderField<TNeonFormValues>[];
 
 const neonBranchFields = [
@@ -98,13 +102,7 @@ const neonBranchFields = [
       "Each lease branches from this branch. Leave empty to use the project's default branch.",
     isOptional: true
   },
-  {
-    name: "inputs.databaseName",
-    type: "text",
-    label: "Database",
-    placeholder: "neondb",
-    layout: "half"
-  },
+  databaseNameField,
   {
     name: "inputs.roleName",
     type: "text",
@@ -113,12 +111,7 @@ const neonBranchFields = [
     description: "Existing role whose credentials are returned for the new branch.",
     layout: "half"
   },
-  {
-    name: "inputs.pooled",
-    type: "switch",
-    label: "Pooled Connection",
-    description: "Return the PgBouncer (-pooler) connection string."
-  },
+  pooledField,
   {
     name: "inputs.resetRolePassword",
     type: "switch",
@@ -135,17 +128,6 @@ const neonBranchFields = [
   }
 ] as const satisfies readonly TDynamicSecretProviderField<TNeonFormValues>[];
 
-const neonNameTemplateField = (leaseType?: NeonLeaseType) =>
-  [
-    {
-      name: "usernameTemplate",
-      type: "text",
-      label: leaseType === NeonLeaseType.Branch ? "Branch Name Template" : "Role Name Template",
-      placeholder: DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE,
-      isOptional: true
-    }
-  ] satisfies readonly TDynamicSecretProviderField<TNeonFormValues>[];
-
 const NeonFields = ({ mode }: TDynamicSecretProviderRendererProps) => {
   const { watch } = useFormContext<TNeonFormValues>();
   const leaseType = watch("inputs.leaseType");
@@ -156,7 +138,18 @@ const NeonFields = ({ mode }: TDynamicSecretProviderRendererProps) => {
       <DynamicSecretProviderFields
         fields={leaseType === NeonLeaseType.Branch ? neonBranchFields : neonRoleFields}
       />
-      <DynamicSecretProviderFields fields={neonNameTemplateField(leaseType)} />
+      <DynamicSecretProviderFields
+        fields={[
+          {
+            name: "usernameTemplate",
+            type: "text",
+            label:
+              leaseType === NeonLeaseType.Branch ? "Branch Name Template" : "Role Name Template",
+            placeholder: DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE,
+            isOptional: true
+          }
+        ]}
+      />
     </DynamicSecretProviderGroup>
   );
 };

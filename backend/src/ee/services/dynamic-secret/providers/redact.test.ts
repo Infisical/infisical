@@ -3,12 +3,7 @@ import { describe, expect, test } from "vitest";
 import { SshCertKeyAlgorithm } from "@app/lib/ssh";
 
 import { DynamicSecretProviders, OAuth2ClientAuthMethod, OAuth2GrantType } from "./models";
-import {
-  DYNAMIC_SECRET_SECRET_FIELDS,
-  getOmittedSecretFields,
-  redactStoredInputs,
-  restoreOmittedSecretFields
-} from "./redact";
+import { DYNAMIC_SECRET_SECRET_FIELDS, redactStoredInputs, restoreOmittedSecretFields } from "./redact";
 
 const oauth2StoredInputs = {
   grantType: OAuth2GrantType.ClientCredentials,
@@ -94,26 +89,5 @@ describe("restoreOmittedSecretFields", () => {
     const edited = { host: "db.internal" };
 
     expect(restoreOmittedSecretFields(DynamicSecretProviders.SqlDatabase, { password: "x" }, edited)).toBe(edited);
-  });
-});
-
-describe("getOmittedSecretFields", () => {
-  test("lists a stored secret the update left out", () => {
-    expect(
-      getOmittedSecretFields(DynamicSecretProviders.OAuth2, oauth2StoredInputs, {
-        clientAuth: { method: OAuth2ClientAuthMethod.ClientSecretPost }
-      })
-    ).toStrictEqual(["clientAuth.clientSecret"]);
-    expect(getOmittedSecretFields(DynamicSecretProviders.OAuth2, oauth2StoredInputs, undefined)).toStrictEqual([
-      "clientAuth.clientSecret"
-    ]);
-  });
-
-  test("leaves out a secret the update supplied or that was never stored", () => {
-    expect(
-      getOmittedSecretFields(DynamicSecretProviders.Neon, { apiKey: "stored-key" }, { apiKey: "new-key" })
-    ).toStrictEqual([]);
-    expect(getOmittedSecretFields(DynamicSecretProviders.Neon, { projectId: "p" }, {})).toStrictEqual([]);
-    expect(getOmittedSecretFields(DynamicSecretProviders.SqlDatabase, { password: "x" }, {})).toStrictEqual([]);
   });
 });

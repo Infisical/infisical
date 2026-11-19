@@ -30,7 +30,7 @@ import { AzureEntraIDProvider } from "./providers/azure-entra-id";
 import { GcpIamServiceAccountSuffixError } from "./providers/gcp-iam";
 import { IbmApiConnectProvider } from "./providers/ibm-api-connect";
 import { DynamicSecretProviders, SshStoredSchema, TDynamicProviderFns } from "./providers/models";
-import { getOmittedSecretFields, redactStoredInputs, restoreOmittedSecretFields } from "./providers/redact";
+import { redactStoredInputs, restoreOmittedSecretFields } from "./providers/redact";
 
 type TDynamicSecretServiceFactoryDep = {
   dynamicSecretDAL: TDynamicSecretDALFactory;
@@ -377,12 +377,7 @@ export const dynamicSecretServiceFactory = ({
       previousInputs: decryptedStoredInput,
       defaultTTL,
       maxTTL,
-      hasActiveLeases: activeLeaseCount > 0,
-      omittedSecretFields: getOmittedSecretFields(
-        dynamicSecretCfg.type as DynamicSecretProviders,
-        decryptedStoredInput,
-        inputs
-      )
+      hasActiveLeases: activeLeaseCount > 0
     });
 
     const updatedFields = getUpdatedFieldPaths(

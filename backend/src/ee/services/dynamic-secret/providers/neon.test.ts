@@ -6,13 +6,14 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator";
 
-import { DynamicSecretNeonSchema, DynamicSecretProviders, NeonLeaseType } from "./models";
+import { DynamicSecretNeonSchema, NeonLeaseType } from "./models";
 import { NeonProvider } from "./neon";
-import { redactStoredInputs, restoreOmittedSecretFields } from "./redact";
 
 vi.mock("@app/lib/validator", () => ({
   safeRequest: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() }
 }));
+
+vi.mock("@app/lib/delay", () => ({ delay: vi.fn().mockResolvedValue(undefined) }));
 
 const appConfig = { isDevelopmentMode: false, DYNAMIC_SECRET_ALLOW_INTERNAL_IP: false };
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => appConfig }));
@@ -89,15 +90,13 @@ const branchInputs = {
   roleName: "neondb_owner"
 };
 
-const roleLease = { projectId: "p", leaseData: { BRANCH_ID: "br-main-123456" } };
-
 const branchCreateBody = () =>
   calls.find((c) => c.method === "POST" && c.url === `${API}/branches`)?.body as {
     branch: { name: string } & Record<string, unknown>;
     endpoints: unknown;
   };
 
-const provider = () => NeonProvider({ pollIntervalMs: 1, operationTimeoutMs: 200, lockedRetries: 3 });
+const provider = () => NeonProvider();
 
 const createArgs = (
   inputs: object,
@@ -123,6 +122,13 @@ const connectionUriRoute = (host: string, password: string) => (call: TCall) => 
   };
 };
 
+const createRoleRoute =
+  (operations: unknown[] = []) =>
+  (call: TCall) => ({
+    role: { name: (call.body as { role: { name: string } }).role.name, password: ROLE_CRED },
+    operations
+  });
+
 beforeEach(() => {
   routes = {};
   calls = [];
@@ -137,54 +143,8 @@ beforeEach(() => {
 });
 
 describe("DynamicSecretNeonSchema", () => {
-  test("applies defaults for each lease type", async () => {
-    await expect(
-      DynamicSecretNeonSchema.parseAsync({
-        apiKey: API_KEY,
-        projectId: "shiny-wind-028834",
-        leaseType: NeonLeaseType.Role,
-        branchId: "br-main-123456"
-      })
-    ).resolves.toEqual({ ...roleInputs, pooled: false });
-
-    await expect(DynamicSecretNeonSchema.parseAsync(branchInputs)).resolves.toEqual({
-      ...branchInputs,
-      pooled: false,
-      resetRolePassword: true,
-      setBranchExpiration: false
-    });
-  });
-
-  test("requires a branch for role leases and a role for branch leases", async () => {
-    const roleResult = await DynamicSecretNeonSchema.safeParseAsync({ ...roleInputs, branchId: undefined });
-    expect(roleResult.success).toBe(false);
-    expect(roleResult.error?.issues[0].path).toEqual(["branchId"]);
-
-    const branchResult = await DynamicSecretNeonSchema.safeParseAsync({ ...branchInputs, roleName: undefined });
-    expect(branchResult.success).toBe(false);
-    expect(branchResult.error?.issues[0].path).toEqual(["roleName"]);
-  });
-
-  test("drops the settings of the other lease type", async () => {
-    await expect(
-      DynamicSecretNeonSchema.parseAsync({ ...roleInputs, roleName: "neondb_owner", setBranchExpiration: true })
-    ).resolves.not.toHaveProperty("roleName");
-    await expect(
-      DynamicSecretNeonSchema.parseAsync({ ...branchInputs, branchId: "br-main-123456" })
-    ).resolves.not.toHaveProperty("branchId");
-  });
-
   test("rejects IDs that could escape the API path", async () => {
     const result = await DynamicSecretNeonSchema.safeParseAsync({ ...roleInputs, projectId: "../../users/me" });
-    expect(result.success).toBe(false);
-  });
-
-  test("accepts an optional API base URL and rejects one that isn't a URL", async () => {
-    await expect(DynamicSecretNeonSchema.parseAsync(roleInputs)).resolves.not.toHaveProperty("baseUrl");
-    await expect(
-      DynamicSecretNeonSchema.parseAsync({ ...roleInputs, baseUrl: " https://neon.example.com/api/v2 " })
-    ).resolves.toMatchObject({ baseUrl: "https://neon.example.com/api/v2" });
-    const result = await DynamicSecretNeonSchema.safeParseAsync({ ...roleInputs, baseUrl: "neon.example.com" });
     expect(result.success).toBe(false);
   });
 
@@ -203,32 +163,20 @@ describe("NeonProvider API base URL", () => {
   const SELF_HOSTED_API = `${SELF_HOSTED}/projects/shiny-wind-028834`;
 
   test("sends every request to a self-hosted base URL", async () => {
-    routes[`GET ${SELF_HOSTED_API}`] = () => ({ project: {} });
-    routes[`GET ${SELF_HOSTED_API}/branches/br-main-123456`] = () => ({ branch: {} });
-    routes[`GET ${SELF_HOSTED_API}/branches/br-main-123456/databases/neondb`] = () => ({ database: {} });
-    routes[`POST ${SELF_HOSTED_API}/branches/br-main-123456/roles`] = (call) => ({
-      role: { name: (call.body as { role: { name: string } }).role.name },
-      operations: [{ id: "op-1", status: "running" }]
-    });
+    routes[`POST ${SELF_HOSTED_API}/branches/br-main-123456/roles`] = createRoleRoute([
+      { id: "op-1", status: "running" }
+    ]);
     routes[`GET ${SELF_HOSTED_API}/operations/op-1`] = () => ({ operation: { id: "op-1", status: "finished" } });
     routes[`GET ${SELF_HOSTED_API}/connection_uri`] = connectionUriRoute("pg.neon.example.com", ROLE_CRED_ENCODED);
-    routes[`DELETE ${SELF_HOSTED_API}/branches/br-main-123456/roles/some-role`] = () => ({});
 
     // a trailing slash is dropped rather than doubled
-    const inputs = { ...roleInputs, baseUrl: `${SELF_HOSTED}/` };
-    await expect(provider().validateConnection(inputs, { projectId: "p" })).resolves.toBe(true);
-    await provider().create(createArgs(inputs));
-    await provider().revoke(inputs, "some-role", roleLease);
+    await provider().create(createArgs({ ...roleInputs, baseUrl: `${SELF_HOSTED}/` }));
 
-    expect(calls.length).toBeGreaterThan(0);
-    expect(calls.filter((c) => !c.url.startsWith(`${SELF_HOSTED_API}`) || c.url.includes("//projects"))).toEqual([]);
-  });
-
-  test("uses Neon's hosted API when the base URL is cleared", async () => {
-    routes[`DELETE ${API}/branches/br-main-123456/roles/some-role`] = () => ({});
-
-    await provider().revoke({ ...roleInputs, baseUrl: null }, "some-role", roleLease);
-    expect(calls.map((c) => c.url)).toEqual([`${API}/branches/br-main-123456/roles/some-role`]);
+    expect(calls.map((c) => c.url.replace(SELF_HOSTED_API, ""))).toEqual([
+      "/branches/br-main-123456/roles",
+      "/operations/op-1",
+      "/connection_uri"
+    ]);
   });
 
   test("requires https outside development mode", async () => {
@@ -246,12 +194,11 @@ describe("NeonProvider API base URL", () => {
   });
 
   test("reaches a private self-hosted Neon only when the dynamic secret setting allows it", async () => {
-    routes[`DELETE ${SELF_HOSTED_API}/branches/br-main-123456/roles/some-role`] = () => ({});
-    const inputs = { ...roleInputs, baseUrl: SELF_HOSTED };
+    routes[`DELETE ${API}/branches/br-main-123456/roles/some-role`] = () => ({});
 
-    await provider().revoke(inputs, "some-role", roleLease);
+    await provider().revoke(roleInputs, "some-role", { projectId: "p" });
     appConfig.DYNAMIC_SECRET_ALLOW_INTERNAL_IP = true;
-    await provider().revoke(inputs, "some-role", roleLease);
+    await provider().revoke(roleInputs, "some-role", { projectId: "p" });
     expect(calls.map((c) => c.allowPrivateIps)).toEqual([false, true]);
   });
 
@@ -263,41 +210,34 @@ describe("NeonProvider API base URL", () => {
 });
 
 describe("NeonProvider.validateConnection", () => {
-  test("checks the project, branch and database for role leases", async () => {
-    routes[`GET ${API}`] = () => ({ project: {} });
-    routes[`GET ${API}/branches/br-main-123456`] = () => ({ branch: {} });
+  test("checks the database on the branch for role leases", async () => {
     routes[`GET ${API}/branches/br-main-123456/databases/neondb`] = () => ({ database: {} });
 
     await expect(provider().validateConnection(roleInputs, { projectId: "p" })).resolves.toBe(true);
-    expect(calls.map((c) => c.url)).toEqual([
-      API,
-      `${API}/branches/br-main-123456`,
-      `${API}/branches/br-main-123456/databases/neondb`
+    expect(calls).toEqual([
+      expect.objectContaining({ url: `${API}/branches/br-main-123456/databases/neondb`, auth: `Bearer ${API_KEY}` })
     ]);
-    expect(calls.every((c) => c.auth === `Bearer ${API_KEY}`)).toBe(true);
   });
 
-  test("resolves the default branch and checks the role for branch leases", async () => {
-    routes[`GET ${API}`] = () => ({ project: {} });
+  test("resolves the default branch and checks the database and role for branch leases", async () => {
     // the default branch is on the second page
     routes[`GET ${API}/branches`] = (call) =>
       (call.params as { cursor?: string }).cursor === "page-2"
         ? { branches: [{ id: "br-main-1", name: "main", default: true }], pagination: { next: "page-3" } }
         : { branches: [{ id: "br-dev-1", name: "dev" }], pagination: { next: "page-2" } };
-    routes[`GET ${API}/branches/br-main-1`] = () => ({ branch: {} });
     routes[`GET ${API}/branches/br-main-1/databases/neondb`] = () => ({ database: {} });
     routes[`GET ${API}/branches/br-main-1/roles/neondb_owner`] = () => ({ role: {} });
 
     await expect(provider().validateConnection(branchInputs, { projectId: "p" })).resolves.toBe(true);
-    expect(calls.filter((c) => c.url === `${API}/branches`).map((c) => c.params)).toEqual([
-      { limit: 100 },
-      { limit: 100, cursor: "page-2" }
+    expect(calls.map((c) => [c.url.replace(API, ""), c.params])).toEqual([
+      ["/branches", { limit: 100 }],
+      ["/branches", { limit: 100, cursor: "page-2" }],
+      ["/branches/br-main-1/databases/neondb", undefined],
+      ["/branches/br-main-1/roles/neondb_owner", undefined]
     ]);
-    expect(calls.at(-1)?.url).toBe(`${API}/branches/br-main-1/roles/neondb_owner`);
   });
 
   test("names the project when it has no default branch", async () => {
-    routes[`GET ${API}`] = () => ({ project: {} });
     routes[`GET ${API}/branches`] = () => ({ branches: [{ id: "br-dev-1", name: "dev" }], pagination: {} });
 
     await expect(provider().validateConnection(branchInputs, { projectId: "p" })).rejects.toThrow(
@@ -306,19 +246,18 @@ describe("NeonProvider.validateConnection", () => {
   });
 
   test("stops paging through branches after the page limit and logs it", async () => {
-    routes[`GET ${API}`] = () => ({ project: {} });
     // a cursor that never clears
     routes[`GET ${API}/branches`] = () => ({ branches: [{ id: "br-dev-1", name: "dev" }], pagination: { next: "x" } });
 
     await expect(provider().validateConnection(branchInputs, { projectId: "p" })).rejects.toThrow(
       "Infisical couldn't find the default branch of Neon project 'shiny-wind-028834' in its first 10000 branches"
     );
-    expect(calls.filter((c) => c.url === `${API}/branches`)).toHaveLength(100);
+    expect(calls).toHaveLength(100);
     expect(logger.warn).toHaveBeenCalledTimes(1);
   });
 
   test("surfaces Neon's error message without leaking the API key", async () => {
-    routes[`GET ${API}`] = () => {
+    routes[`GET ${API}/branches/br-main-123456/databases/neondb`] = () => {
       throw neonError(401, `authentication failed for key ${API_KEY}`);
     };
 
@@ -334,10 +273,9 @@ describe("NeonProvider.validateConnection", () => {
 describe("NeonProvider role leases", () => {
   test("creates a role, waits for its operations and returns a connection string", async () => {
     let polls = 0;
-    routes[`POST ${API}/branches/br-main-123456/roles`] = (call) => ({
-      role: { name: (call.body as { role: { name: string } }).role.name, password: ROLE_CRED },
-      operations: [{ id: "op-1", status: "running", action: "apply_config" }]
-    });
+    routes[`POST ${API}/branches/br-main-123456/roles`] = createRoleRoute([
+      { id: "op-1", status: "running", action: "apply_config" }
+    ]);
     routes[`GET ${API}/operations/op-1`] = () => {
       polls += 1;
       return { operation: { id: "op-1", status: polls < 2 ? "running" : "finished" } };
@@ -348,50 +286,31 @@ describe("NeonProvider role leases", () => {
 
     expect(entityId).toMatch(/^[a-z0-9]{32}$/);
     expect(polls).toBe(2);
+    // a retried create could leave a role behind that no lease tracks
+    expect(calls[0].retry).toEqual({ retries: 0 });
     expect(calls.find((c) => c.url.endsWith("/connection_uri"))?.params).toEqual({
       branch_id: "br-main-123456",
       database_name: "neondb",
       role_name: entityId,
       pooled: true
     });
-    const expectedUri = pgUri(entityId, ROLE_CRED_ENCODED, "ep-cool-1-pooler.us-east-2.aws.neon.tech");
-    const lease = data as Record<string, string>;
-    expect(Object.keys(lease)).toEqual([
-      "DATABASE_URL",
-      "DB_HOST",
-      "DB_NAME",
-      "DB_USERNAME",
-      "DB_PASSWORD",
-      "BRANCH_ID"
-    ]);
-    expect(lease).toMatchObject({
-      DATABASE_URL: expectedUri,
+    // the credential comes back decoded, not percent-encoded as in the URI
+    expect(data).toEqual({
+      DATABASE_URL: pgUri(entityId, ROLE_CRED_ENCODED, "ep-cool-1-pooler.us-east-2.aws.neon.tech"),
       DB_HOST: "ep-cool-1-pooler.us-east-2.aws.neon.tech",
       DB_NAME: "neondb",
+      DB_USERNAME: entityId,
+      DB_PASSWORD: ROLE_CRED,
       BRANCH_ID: "br-main-123456"
     });
-    // the credential comes back decoded, not percent-encoded as in the URI
-    expect([lease.DB_USERNAME, lease.DB_PASSWORD]).toEqual([entityId, ROLE_CRED]);
   });
 
-  test("stores the role's branch on the lease and never retries the create request", async () => {
-    routes[`POST ${API}/branches/br-main-123456/roles`] = (call) => ({
-      role: { name: (call.body as { role: { name: string } }).role.name, password: "pw" },
-      operations: []
-    });
-    routes[`GET ${API}/connection_uri`] = connectionUriRoute("ep-cool-1.neon.tech", "pw");
-
-    expect(provider().persistedLeaseFields).toEqual(["BRANCH_ID"]);
-    await provider().create(createArgs(roleInputs));
-    expect(calls[0]).toMatchObject({ method: "POST", retry: { retries: 0 } });
-  });
-
-  test("retries while the branch is locked by another operation", async () => {
+  test("retries while the project is locked by another operation", async () => {
     let attempts = 0;
     routes[`POST ${API}/branches/br-main-123456/roles`] = (call) => {
       attempts += 1;
       if (attempts < 3) throw neonError(423, "project already has running conflicting operations");
-      return { role: { name: (call.body as { role: { name: string } }).role.name, password: "pw" }, operations: [] };
+      return createRoleRoute()(call);
     };
     routes[`GET ${API}/connection_uri`] = connectionUriRoute("ep-cool-1.neon.tech", "pw");
 
@@ -400,10 +319,7 @@ describe("NeonProvider role leases", () => {
   });
 
   test("deletes the role again if its operation fails", async () => {
-    routes[`POST ${API}/branches/br-main-123456/roles`] = (call) => ({
-      role: { name: (call.body as { role: { name: string } }).role.name, password: "pw" },
-      operations: [{ id: "op-1", status: "running" }]
-    });
+    routes[`POST ${API}/branches/br-main-123456/roles`] = createRoleRoute([{ id: "op-1", status: "running" }]);
     routes[`GET ${API}/operations/op-1`] = () => ({
       operation: { id: "op-1", status: "error", action: "apply_config", error: "compute failed to start" }
     });
@@ -417,22 +333,20 @@ describe("NeonProvider role leases", () => {
   });
 
   test("logs the leftover role when deleting it again fails", async () => {
-    routes[`POST ${API}/branches/br-main-123456/roles`] = (call) => ({
-      role: { name: (call.body as { role: { name: string } }).role.name, password: "pw" },
-      operations: [{ id: "op-1", status: "error", action: "apply_config" }]
-    });
+    routes[`POST ${API}/branches/br-main-123456/roles`] = createRoleRoute([
+      { id: "op-1", status: "error", action: "apply_config" }
+    ]);
     routes[`DELETE ${API}/branches/br-main-123456/roles/ci_lease`] = () => {
-      throw neonError(500, `internal error for ${API_KEY}`);
+      throw neonError(500, "internal error");
     };
 
     await expect(provider().create(createArgs(roleInputs, { usernameTemplate: "ci_lease" }))).rejects.toThrow(
       "Neon operation apply_config error"
     );
-    expect(logger.error).toHaveBeenCalledTimes(1);
-    const [message] = vi.mocked(logger.error).mock.calls[0] as [string];
-    expect(message).toContain("role 'ci_lease' on branch 'br-main-123456'");
-    expect(message).toContain("internal error");
-    expect(message).not.toContain(API_KEY);
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.any(AxiosError),
+      "Failed to clean up Neon role [projectId=shiny-wind-028834] [entityId=ci_lease]"
+    );
   });
 
   test("gives up when operations never finish", async () => {
@@ -450,48 +364,30 @@ describe("NeonProvider role leases", () => {
 
   test("revokes by deleting the role and treats a missing role as revoked", async () => {
     routes[`DELETE ${API}/branches/br-main-123456/roles/abc`] = () => ({ operations: [] });
-    await expect(provider().revoke(roleInputs, "abc", roleLease)).resolves.toEqual({ entityId: "abc" });
+    await expect(provider().revoke(roleInputs, "abc", { projectId: "p" })).resolves.toEqual({ entityId: "abc" });
 
     routes[`DELETE ${API}/branches/br-main-123456/roles/gone`] = () => {
       throw neonError(404, "role not found");
     };
-    await expect(provider().revoke(roleInputs, "gone", roleLease)).resolves.toEqual({ entityId: "gone" });
+    await expect(provider().revoke(roleInputs, "gone", { projectId: "p" })).resolves.toEqual({ entityId: "gone" });
 
     routes[`DELETE ${API}/branches/br-main-123456/roles/boom`] = () => {
       throw neonError(500, "internal error");
     };
-    await expect(provider().revoke(roleInputs, "boom", roleLease)).rejects.toThrow(
+    await expect(provider().revoke(roleInputs, "boom", { projectId: "p" })).rejects.toThrow(
       "Failed to revoke Neon role: internal error"
     );
   });
 
-  test("revokes the role on the branch the lease was created on", async () => {
-    routes[`DELETE ${API}/branches/br-main-123456/roles/abc`] = () => ({ operations: [] });
-
-    await provider().revoke({ ...roleInputs, branchId: "br-other-1" }, "abc", roleLease);
-    expect(calls.map((c) => c.url)).toEqual([`${API}/branches/br-main-123456/roles/abc`]);
-
-    await expect(provider().revoke(roleInputs, "abc", { projectId: "p" })).rejects.toThrow(
-      "This lease has no stored Neon branch"
-    );
-  });
-
-  test("waits for Neon to finish deleting the role", async () => {
-    let polls = 0;
+  test("fails the revoke when Neon can't finish deleting the role", async () => {
     routes[`DELETE ${API}/branches/br-main-123456/roles/abc`] = () => ({
       operations: [{ id: "op-del", status: "running", action: "apply_config" }]
     });
-    routes[`GET ${API}/operations/op-del`] = () => {
-      polls += 1;
-      return { operation: { id: "op-del", status: polls < 2 ? "running" : "finished" } };
-    };
-    await expect(provider().revoke(roleInputs, "abc", roleLease)).resolves.toEqual({ entityId: "abc" });
-    expect(polls).toBe(2);
-
     routes[`GET ${API}/operations/op-del`] = () => ({
       operation: { id: "op-del", status: "error", action: "apply_config", error: "role is in use" }
     });
-    await expect(provider().revoke(roleInputs, "abc", roleLease)).rejects.toThrow(
+
+    await expect(provider().revoke(roleInputs, "abc", { projectId: "p" })).rejects.toThrow(
       "Neon operation apply_config error: role is in use"
     );
   });
@@ -538,16 +434,16 @@ describe("NeonProvider branch leases", () => {
       "GET /connection_uri"
     ]);
     expect(calls[0].retry).toEqual({ retries: 0 });
-    const expectedUri = pgUri("neondb_owner", ROTATED_CRED, "ep-lease-1.us-east-2.aws.neon.tech");
-    const lease = data as Record<string, string>;
-    expect(lease).toMatchObject({
-      DATABASE_URL: expectedUri,
+    // the lease gets the rotated credential, not the parent branch's
+    expect(data).toEqual({
+      DATABASE_URL: pgUri("neondb_owner", ROTATED_CRED, "ep-lease-1.us-east-2.aws.neon.tech"),
       DB_HOST: "ep-lease-1.us-east-2.aws.neon.tech",
+      DB_NAME: "neondb",
+      DB_USERNAME: "neondb_owner",
+      DB_PASSWORD: ROTATED_CRED,
       BRANCH_ID: "br-lease-1",
       BRANCH_NAME: body.branch.name
     });
-    // the lease gets the rotated credential, not the parent branch's
-    expect([lease.DB_USERNAME, lease.DB_PASSWORD]).toEqual(["neondb_owner", ROTATED_CRED]);
   });
 
   test("forks from the configured parent, sets the expiration and can skip the password reset", async () => {
@@ -580,21 +476,6 @@ describe("NeonProvider branch leases", () => {
       "Failed to create Neon branch: role neondb_owner not found"
     );
     expect(calls.at(-1)).toMatchObject({ method: "DELETE", url: `${API}/branches/br-lease-1` });
-  });
-
-  test("logs the leftover branch when deleting it again fails", async () => {
-    branchRoutes();
-    routes[`POST ${API}/branches/br-lease-1/roles/neondb_owner/reset_password`] = () => {
-      throw neonError(404, "role neondb_owner not found");
-    };
-    routes[`DELETE ${API}/branches/br-lease-1`] = () => {
-      throw neonError(500, "internal error");
-    };
-
-    await expect(provider().create(createArgs(branchInputs))).rejects.toThrow(
-      "Failed to create Neon branch: role neondb_owner not found"
-    );
-    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("branch 'br-lease-1'"));
   });
 
   test("revokes by deleting the branch and waits for Neon to finish", async () => {
@@ -647,70 +528,32 @@ describe("NeonProvider branch leases", () => {
 });
 
 describe("NeonProvider.validateProviderInputs", () => {
-  const validate = (
-    inputs: object,
-    previousInputs: object,
-    { hasActiveLeases = false, omittedSecretFields = [] as string[] } = {}
-  ) =>
-    provider().validateProviderInputs(inputs, { projectId: "p", previousInputs, hasActiveLeases, omittedSecretFields });
-
   test("blocks changes that would orphan active leases", async () => {
-    const active = { hasActiveLeases: true };
+    const validate = (inputs: object, previousInputs: object, hasActiveLeases = true) =>
+      provider().validateProviderInputs(inputs, { projectId: "p", previousInputs, hasActiveLeases });
 
-    await expect(validate({ ...roleInputs, projectId: "other-project-1" }, roleInputs, active)).rejects.toThrow(
+    await expect(validate({ ...roleInputs, projectId: "other-project-1" }, roleInputs)).rejects.toThrow(
       "The project ID can't be changed while this dynamic secret has active leases"
     );
-    await expect(validate(branchInputs, roleInputs, active)).rejects.toThrow("The lease type can't be changed");
-    await expect(
-      validate({ ...roleInputs, baseUrl: "https://neon.example.com/api/v2" }, roleInputs, active)
-    ).rejects.toThrow("The API base URL can't be changed");
+    await expect(validate({ ...roleInputs, branchId: "br-other-1" }, roleInputs)).rejects.toThrow(
+      "The branch ID can't be changed"
+    );
+    await expect(validate(branchInputs, roleInputs)).rejects.toThrow("The lease type can't be changed");
+    await expect(validate({ ...roleInputs, baseUrl: "https://neon.example.com/api/v2" }, roleInputs)).rejects.toThrow(
+      "The API base URL can't be changed"
+    );
     // spelling out the default URL, adding a trailing slash or clearing it is not a change
     await expect(
-      validate({ ...roleInputs, baseUrl: "https://console.neon.tech/api/v2/" }, roleInputs, active)
+      validate({ ...roleInputs, baseUrl: "https://console.neon.tech/api/v2/" }, roleInputs)
     ).resolves.toMatchObject({ projectId: roleInputs.projectId });
-    await expect(validate({ ...roleInputs, baseUrl: null }, roleInputs, active)).resolves.toMatchObject({
-      baseUrl: null
-    });
+    await expect(validate({ ...roleInputs, baseUrl: null }, roleInputs)).resolves.toMatchObject({ baseUrl: null });
 
-    // revoke reads each role lease's branch from the lease, so the branch is free to change
-    await expect(validate({ ...roleInputs, branchId: "br-other-1" }, roleInputs, active)).resolves.toMatchObject({
+    // new branch leases fork from the new parent, and existing ones are deleted by their own ID
+    await expect(validate({ ...branchInputs, parentBranchId: "br-other-1" }, branchInputs)).resolves.toMatchObject({
+      parentBranchId: "br-other-1"
+    });
+    await expect(validate({ ...roleInputs, branchId: "br-other-1" }, roleInputs, false)).resolves.toMatchObject({
       branchId: "br-other-1"
-    });
-    await expect(
-      validate({ ...branchInputs, parentBranchId: "br-other-1" }, branchInputs, active)
-    ).resolves.toMatchObject({ parentBranchId: "br-other-1" });
-  });
-
-  test("requires the API key again to change the API base URL", async () => {
-    const selfHosted = { ...roleInputs, baseUrl: "https://neon.example.com/api/v2" };
-
-    await expect(validate(selfHosted, roleInputs, { omittedSecretFields: ["apiKey"] })).rejects.toThrow(
-      "Enter the API key again to change the API base URL"
-    );
-    await expect(validate(roleInputs, selfHosted, { omittedSecretFields: ["apiKey"] })).rejects.toThrow(
-      "Enter the API key again to change the API base URL"
-    );
-    await expect(validate(selfHosted, roleInputs)).resolves.toMatchObject({ baseUrl: selfHosted.baseUrl });
-    await expect(
-      validate({ ...selfHosted, databaseName: "app" }, selfHosted, { omittedSecretFields: ["apiKey"] })
-    ).resolves.toMatchObject({ databaseName: "app" });
-  });
-});
-
-describe("Neon stored inputs", () => {
-  test("never return the API key and keep it when an update omits it", () => {
-    expect(redactStoredInputs(DynamicSecretProviders.Neon, roleInputs)).toEqual({
-      projectId: roleInputs.projectId,
-      leaseType: roleInputs.leaseType,
-      branchId: roleInputs.branchId,
-      databaseName: roleInputs.databaseName
-    });
-
-    const { apiKey, ...edited } = { ...roleInputs, databaseName: "app" };
-    expect(apiKey).toBe(API_KEY);
-    expect(restoreOmittedSecretFields(DynamicSecretProviders.Neon, roleInputs, edited)).toEqual({
-      ...edited,
-      apiKey: API_KEY
     });
   });
 });

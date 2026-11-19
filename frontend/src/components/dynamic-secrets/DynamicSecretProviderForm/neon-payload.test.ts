@@ -67,33 +67,28 @@ const storedBranchInputs = {
 };
 
 describe("Neon dynamic secret form", () => {
-  it("requires a branch ID for role leases", () => {
-    const result = neonCreateFormSchema.safeParse(formValues({ leaseType: NeonLeaseType.Role }));
+  it.each([
+    [NeonLeaseType.Role, "branchId"],
+    [NeonLeaseType.Branch, "roleName"]
+  ])("requires the %s lease field %s", (leaseType, field) => {
+    const result = neonCreateFormSchema.safeParse(formValues({ leaseType }));
     assert.equal(result.success, false);
-    assert.deepEqual(result.error?.issues[0].path, ["inputs", "branchId"]);
+    assert.deepEqual(result.error?.issues[0].path, ["inputs", field]);
   });
 
-  it("requires a role for branch leases but not a parent branch", () => {
-    const missingRole = neonCreateFormSchema.safeParse(
-      formValues({ leaseType: NeonLeaseType.Branch, roleName: "" })
-    );
-    assert.equal(missingRole.success, false);
-    assert.deepEqual(missingRole.error?.issues[0].path, ["inputs", "roleName"]);
-
-    const valid = neonCreateFormSchema.safeParse(
-      formValues({ leaseType: NeonLeaseType.Branch, roleName: "neondb_owner" })
-    );
-    assert.equal(valid.success, true);
-  });
-
-  it("rejects malformed project and branch IDs", () => {
+  it("rejects a malformed API base URL and malformed project and branch IDs", () => {
     const result = neonCreateFormSchema.safeParse(
-      formValues({ projectId: "Not A Project", branchId: "br/../x", parentBranchId: "br/../y" })
+      formValues({
+        baseUrl: "neon.example.com",
+        projectId: "Not A Project",
+        branchId: "br/../x",
+        parentBranchId: "br/../y"
+      })
     );
     assert.equal(result.success, false);
     assert.deepEqual(
       result.error?.issues.map((issue) => issue.path.join(".")),
-      ["inputs.projectId", "inputs.branchId", "inputs.parentBranchId"]
+      ["inputs.baseUrl", "inputs.projectId", "inputs.branchId", "inputs.parentBranchId"]
     );
   });
 
@@ -139,53 +134,22 @@ describe("Neon dynamic secret form", () => {
     });
   });
 
-  it("sends a self-hosted API base URL and an empty one as null for Neon's hosted API", () => {
-    const selfHosted = createPayload({
-      branchId: "br-main-1",
-      baseUrl: " https://neon.example.com/api/v2 "
-    });
-    assert.equal(selfHosted.provider.inputs.baseUrl, "https://neon.example.com/api/v2");
-
-    assert.equal(
-      createPayload({ branchId: "br-main-1", baseUrl: "" }).provider.inputs.baseUrl,
-      null
-    );
-
-    const invalid = neonCreateFormSchema.safeParse(
-      formValues({ branchId: "br-main-1", baseUrl: "neon.example.com" })
-    );
-    assert.equal(invalid.success, false);
-    assert.deepEqual(invalid.error?.issues[0].path, ["inputs", "baseUrl"]);
-  });
-
-  it("keeps the stored API key when the edit form leaves it blank", () => {
+  it("keeps the stored API key when left blank and sends cleared optional fields as null", () => {
     const context = editContext(storedBranchInputs);
     const values = getNeonEditDefaultValues(context);
     assert.equal(values.inputs.apiKey, "");
+    assert.equal(values.inputs.baseUrl, "https://neon.example.com/api/v2");
     assert.equal(values.inputs.parentBranchId, "br-staging-9");
 
-    const keep = getNeonEditPayload(neonEditFormSchema.parse(values), context);
-    assert.equal("apiKey" in (keep.data.inputs as object), false);
-
-    const replace = getNeonEditPayload(
-      neonEditFormSchema.parse({ ...values, inputs: { ...values.inputs, apiKey: " napi_new " } }),
-      context
-    );
-    assert.equal((replace.data.inputs as { apiKey?: string }).apiKey, "napi_new");
-  });
-
-  it("sends cleared optional fields as null so the edit removes them", () => {
-    const context = editContext(storedBranchInputs);
-    const values = getNeonEditDefaultValues(context);
-
-    const cleared = getNeonEditPayload(
+    const { inputs } = getNeonEditPayload(
       neonEditFormSchema.parse({
         ...values,
         inputs: { ...values.inputs, baseUrl: "", parentBranchId: "" }
       }),
       context
-    );
-    assert.equal((cleared.data.inputs as { baseUrl?: string | null }).baseUrl, null);
-    assert.equal((cleared.data.inputs as { parentBranchId?: string | null }).parentBranchId, null);
+    ).data;
+    assert.equal("apiKey" in (inputs as object), false);
+    assert.equal((inputs as { baseUrl?: string | null }).baseUrl, null);
+    assert.equal((inputs as { parentBranchId?: string | null }).parentBranchId, null);
   });
 });

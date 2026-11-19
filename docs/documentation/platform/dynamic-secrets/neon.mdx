@@ -45,7 +45,7 @@ To learn how leases work across providers, see [Dynamic secrets](/documentation/
     </ParamField>
 
     <ParamField path="API Key" type="string" required>
-      Your Neon API key. When you edit the dynamic secret, leave this blank to keep the current key. If you also change the **API Base URL**, you need to enter the key again, because Infisical only sends a saved key to the URL it was saved with.
+      Your Neon API key. When you edit the dynamic secret, leave this blank to keep the current key.
     </ParamField>
 
     <ParamField path="API Base URL" type="string" default="https://console.neon.tech/api/v2">
@@ -73,7 +73,7 @@ To learn how leases work across providers, see [Dynamic secrets](/documentation/
         </Warning>
 
         <ParamField path="Branch ID" type="string" required>
-          The ID of the branch to create each lease's role on. If you change the branch later, only new leases use the new branch.
+          The ID of the branch to create each lease's role on.
         </ParamField>
 
         <ParamField path="Database" type="string" required default="neondb">
@@ -166,7 +166,7 @@ To learn how leases work across providers, see [Dynamic secrets](/documentation/
 
 Select the dynamic secret to see its leases, then select **Revoke lease** next to a lease to delete its role or branch in Neon before the lease expires. When a lease expires, Infisical deletes its role or branch automatically. In both cases, Infisical revokes the lease only after Neon finishes deleting the role or branch. Infisical still revokes the lease if the role or branch was already deleted, for example in the Neon Console or when the branch reached its expiration time in Neon.
 
-While the dynamic secret has active leases, you can't change its **API Base URL**, **Project ID**, or **Each Lease Creates**, because Infisical needs those values to delete the roles and branches of the leases. To change one of these fields, revoke the active leases first.
+While the dynamic secret has active leases, you can't change its **API Base URL**, **Project ID**, **Each Lease Creates**, or **Branch ID**, because Infisical needs those values to delete the roles and branches of the leases. To change one of these fields, revoke the active leases first.
 
 ## Renew a lease
 

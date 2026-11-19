@@ -132,25 +132,6 @@ const defaultInputs: TNeonFormValues["inputs"] = {
   setBranchExpiration: false
 };
 
-const hydrate = (raw: TNeonInputs): TNeonFormValues["inputs"] => {
-  const shared = {
-    ...defaultInputs,
-    baseUrl: raw.baseUrl ?? "",
-    projectId: raw.projectId,
-    leaseType: raw.leaseType,
-    databaseName: raw.databaseName,
-    pooled: raw.pooled
-  };
-  if (raw.leaseType === NeonLeaseType.Role) return { ...shared, branchId: raw.branchId };
-  return {
-    ...shared,
-    parentBranchId: raw.parentBranchId ?? "",
-    roleName: raw.roleName,
-    resetRolePassword: raw.resetRolePassword,
-    setBranchExpiration: raw.setBranchExpiration
-  };
-};
-
 export const getNeonCreateDefaultValues = (
   context: TCreateDynamicSecretProviderFormContext
 ): TNeonFormValues => ({
@@ -164,14 +145,23 @@ export const getNeonCreateDefaultValues = (
 
 export const getNeonEditDefaultValues = (
   context: TEditDynamicSecretProviderFormContext
-): TNeonFormValues => ({
-  name: context.dynamicSecret.name,
-  defaultTTL: context.dynamicSecret.defaultTTL,
-  maxTTL: context.dynamicSecret.maxTTL,
-  usernameTemplate:
-    context.dynamicSecret.usernameTemplate || DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE,
-  inputs: hydrate(context.dynamicSecret.inputs as TNeonInputs)
-});
+): TNeonFormValues => {
+  const inputs = context.dynamicSecret.inputs as TNeonInputs;
+  return {
+    name: context.dynamicSecret.name,
+    defaultTTL: context.dynamicSecret.defaultTTL,
+    maxTTL: context.dynamicSecret.maxTTL,
+    usernameTemplate:
+      context.dynamicSecret.usernameTemplate || DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE,
+    inputs: {
+      ...defaultInputs,
+      ...inputs,
+      apiKey: "",
+      baseUrl: inputs.baseUrl ?? "",
+      parentBranchId: (inputs.leaseType === NeonLeaseType.Branch && inputs.parentBranchId) || ""
+    }
+  };
+};
 
 export const getNeonCreatePayload = (
   values: TNeonFormValues,
