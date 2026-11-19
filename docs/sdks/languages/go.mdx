@@ -1576,17 +1576,45 @@ result, err := client.AgentVault().Sessions().List(infisical.AgentVaultListSessi
 ```
 
 **Parameters:**
-- `options` (AgentVaultListSessionsOptions):
-  - `ProjectID` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list sessions from
-  - `Scope` (AgentVaultSessionScope, optional): whose sessions to list, either `AgentVaultSessionScopeMine` for your own sessions or `AgentVaultSessionScopeAll` for every session if you're an admin (defaults to `AgentVaultSessionScopeMine`)
-  - `Statuses` ([]AgentVaultSessionStatus, optional): the statuses to include, from `AgentVaultSessionStatusActive`, `AgentVaultSessionStatusRevoked`, and `AgentVaultSessionStatusExpired` (defaults to all three)
-  - `Search` (string, optional): text to find in each session's [label](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata), owner name, owner email, access bundle name, or the name or email of the user that the session was [created on behalf of](/documentation/platform/agent-vault/sessions-on-behalf-of-users)
-  - `Metadata` (map[string]string, optional): only sessions whose [metadata](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata) has every one of these keys with exactly these values (up to 20)
-  - `Limit` (int, optional): the maximum number of sessions to return, from 1 to 100 (defaults to `20`)
-  - `Offset` (int, optional): the number of sessions to skip (defaults to `0`)
+
+<ResponseField name="options" type="AgentVaultListSessionsOptions" required>
+  <Expandable title="properties">
+    <ResponseField name="ProjectID" type="string" required>
+      The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list sessions from.
+    </ResponseField>
+    <ResponseField name="Scope" type="AgentVaultSessionScope" default="AgentVaultSessionScopeMine">
+      The sessions to list: `AgentVaultSessionScopeMine` for your own sessions, or `AgentVaultSessionScopeAll` for every session if you're an admin.
+    </ResponseField>
+    <ResponseField name="Statuses" type="[]AgentVaultSessionStatus">
+      The statuses to include, from `AgentVaultSessionStatusActive`, `AgentVaultSessionStatusRevoked`, and `AgentVaultSessionStatusExpired`. Defaults to all three.
+    </ResponseField>
+    <ResponseField name="Search" type="string">
+      Text to find in each session's [label](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata), owner name, owner email, access bundle name, or the name or email of the user that the session was [created on behalf of](/documentation/platform/agent-vault/sessions-on-behalf-of-users).
+    </ResponseField>
+    <ResponseField name="Metadata" type="map[string]string">
+      Up to 20 key/value pairs. `List` returns only the sessions whose [metadata](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata) has every one of these keys with exactly these values.
+    </ResponseField>
+    <ResponseField name="Limit" type="int" default="20">
+      The maximum number of sessions to return, from 1 to 100.
+    </ResponseField>
+    <ResponseField name="Offset" type="int" default="0">
+      The number of sessions to skip.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 **Returns:**
-- `AgentVaultListSessionsResult`: the sessions in `Sessions`, and the total number of matching sessions in `TotalCount`
+
+<ResponseField name="result" type="AgentVaultListSessionsResult">
+  <Expandable title="properties">
+    <ResponseField name="Sessions" type="[]AgentVaultSession">
+      The matching sessions, up to `Limit` of them.
+    </ResponseField>
+    <ResponseField name="TotalCount" type="int">
+      The total number of matching sessions.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 ### Get session
 
@@ -1595,10 +1623,16 @@ session, err := client.AgentVault().Sessions().Get("<session-id>")
 ```
 
 **Parameters:**
-- `sessionID` (string): the ID of the session
+
+<ResponseField name="sessionID" type="string" required>
+  The ID of the session.
+</ResponseField>
 
 **Returns:**
-- `AgentVaultSession`: the session
+
+<ResponseField name="session" type="AgentVaultSession">
+  The session.
+</ResponseField>
 
 ### Create session
 
@@ -1613,17 +1647,46 @@ session, err := client.AgentVault().Sessions().Create(infisical.AgentVaultCreate
 ```
 
 **Parameters:**
-- `options` (AgentVaultCreateSessionOptions):
-  - `ProjectID` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to create the session in
-  - `AccessBundle` (string, optional): the name of the access bundle that the agent can use during the session (set `AccessBundle`, `Services`, or both)
-  - `Services` ([]AgentVaultInlineService, optional): [inline services](#create-a-session-with-inline-services) to send with the session (Agent Vault admins only, up to 20)
-  - `TTL` (string, optional): how long the session lasts, as a duration of at least one minute such as `30m`, `8h`, or `7d`, or as `never` for a session that doesn't expire (defaults to `7d`, or to `1h` for a session on behalf of a user)
-  - `Label` (string, optional): a short description of what the session is for, such as `nightly deploy` (up to 128 characters, without line breaks, tabs, or invisible characters)
-  - `Metadata` (map[string]string, optional): key/value pairs that say who or what the session is for, such as a run ID or ticket (up to 20 keys, each key up to 255 characters and each value 1 to 1020, without line breaks, tabs, or invisible characters, and no `=` in a key)
-  - `OnBehalfOf` (*AgentVaultOnBehalfOf, optional): the user that the session is [created on behalf of](#create-a-session-on-behalf-of-a-user), by `UserEmail` or `UserID` (returns an error if you set both)
+
+<ResponseField name="options" type="AgentVaultCreateSessionOptions" required>
+  <Expandable title="properties">
+    <ResponseField name="ProjectID" type="string" required>
+      The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to create the session in.
+    </ResponseField>
+    <ResponseField name="AccessBundle" type="string">
+      The name of the access bundle that the agent can use during the session. Set `AccessBundle`, `Services`, or both.
+    </ResponseField>
+    <ResponseField name="Services" type="[]AgentVaultInlineService">
+      Up to 20 [inline services](#create-a-session-with-inline-services) to send with the session. Only Agent Vault admins can send inline services.
+    </ResponseField>
+    <ResponseField name="TTL" type="string">
+      The session's lifetime: a duration of at least one minute, such as `30m`, `8h`, or `7d`, or `never` for a session that doesn't expire. Defaults to `7d`, or to `1h` for a session on behalf of a user.
+    </ResponseField>
+    <ResponseField name="Label" type="string">
+      A short description of the session's purpose, such as `nightly deploy`. Up to 128 characters, without line breaks, tabs, or invisible characters.
+    </ResponseField>
+    <ResponseField name="Metadata" type="map[string]string">
+      Key/value pairs that record who or what the session is for, such as a run ID or ticket. Up to 20 keys, each key up to 255 characters and each value 1 to 1020, without line breaks, tabs, or invisible characters, and no `=` in a key.
+    </ResponseField>
+    <ResponseField name="OnBehalfOf" type="*AgentVaultOnBehalfOf">
+      The user that the session is [created on behalf of](#create-a-session-on-behalf-of-a-user). Set `UserEmail` or `UserID`, not both, or `Create` returns an error.
+      <Expandable title="properties">
+        <ResponseField name="UserEmail" type="string">
+          The user's email address.
+        </ResponseField>
+        <ResponseField name="UserID" type="string">
+          The user's ID.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 **Returns:**
-- `AgentVaultCreatedSession`: the new session, with the session token in `Token` (Infisical returns the token only once)
+
+<ResponseField name="session" type="AgentVaultCreatedSession">
+  The new session, with the session token in `Token`. Infisical returns the token only once.
+</ResponseField>
 
 To pass `session.Token` to the agent, follow the steps in [Start the agent](/documentation/platform/agent-vault/create-a-session#start-the-agent).
 
@@ -1684,13 +1747,27 @@ session, err := client.AgentVault().Sessions().Update("<session-id>", infisical.
 ```
 
 **Parameters:**
-- `sessionID` (string): the ID of the session
-- `options` (AgentVaultUpdateSessionOptions):
-  - `Label` (*string, optional): the new label, or a pointer to an empty string to remove the label (up to 128 characters, without line breaks, tabs, or invisible characters; leave it `nil` to keep the current label)
-  - `Metadata` (map[string]string, optional): the new [metadata](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata), which replaces all of it, or an empty, non-nil map to remove it (up to 20 keys, each key up to 255 characters and each value 1 to 1020, without line breaks, tabs, or invisible characters, and no `=` in a key; leave it `nil` to keep the current metadata)
+
+<ResponseField name="sessionID" type="string" required>
+  The ID of the session.
+</ResponseField>
+
+<ResponseField name="options" type="AgentVaultUpdateSessionOptions" required>
+  <Expandable title="properties">
+    <ResponseField name="Label" type="*string">
+      The new label, or a pointer to an empty string to remove the label. Up to 128 characters, without line breaks, tabs, or invisible characters. Leave it `nil` to keep the current label.
+    </ResponseField>
+    <ResponseField name="Metadata" type="map[string]string">
+      The new [metadata](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata), which replaces all of the current metadata, or an empty, non-nil map to remove it. Up to 20 keys, each key up to 255 characters and each value 1 to 1020, without line breaks, tabs, or invisible characters, and no `=` in a key. Leave it `nil` to keep the current metadata.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 **Returns:**
-- `AgentVaultSession`: the updated session
+
+<ResponseField name="session" type="AgentVaultSession">
+  The updated session.
+</ResponseField>
 
 ### Revoke session
 
@@ -1713,10 +1790,16 @@ runAgent(session.Token) // Your code that starts the agent with the session toke
 ```
 
 **Parameters:**
-- `sessionID` (string): the ID of the session
+
+<ResponseField name="sessionID" type="string" required>
+  The ID of the session.
+</ResponseField>
 
 **Returns:**
-- `AgentVaultSession`: the revoked session, with `AccessBundle` and `Services` set to `nil` (call `Get` for them)
+
+<ResponseField name="session" type="AgentVaultSession">
+  The revoked session, with `AccessBundle` and `Services` set to `nil`. To get them, call `Get`.
+</ResponseField>
 
 ## Agent Vault proxies
 
@@ -1738,16 +1821,42 @@ result, err := client.AgentVault().Proxies().List(infisical.AgentVaultListProxie
 ```
 
 **Parameters:**
-- `options` (AgentVaultListProxiesOptions):
-  - `ProjectID` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list proxies from
-  - `Search` (string, optional): text to find in proxy names and descriptions
-  - `OrderBy` (string, optional): what to sort the proxies by, `name` or `createdAt` (defaults to `createdAt`)
-  - `OrderDirection` (AgentVaultOrderDirection, optional): the direction to sort in, `AgentVaultOrderDirectionAsc` or `AgentVaultOrderDirectionDesc` (defaults to `AgentVaultOrderDirectionDesc`)
-  - `Limit` (int, optional): the maximum number of proxies to return, from 1 to 100 (defaults to `20`)
-  - `Offset` (int, optional): the number of proxies to skip (defaults to `0`)
+
+<ResponseField name="options" type="AgentVaultListProxiesOptions" required>
+  <Expandable title="properties">
+    <ResponseField name="ProjectID" type="string" required>
+      The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list proxies from.
+    </ResponseField>
+    <ResponseField name="Search" type="string">
+      Text to find in proxy names and descriptions.
+    </ResponseField>
+    <ResponseField name="OrderBy" type="string" default="createdAt">
+      The field to sort the proxies by, `name` or `createdAt`.
+    </ResponseField>
+    <ResponseField name="OrderDirection" type="AgentVaultOrderDirection" default="AgentVaultOrderDirectionDesc">
+      The direction to sort in, `AgentVaultOrderDirectionAsc` or `AgentVaultOrderDirectionDesc`.
+    </ResponseField>
+    <ResponseField name="Limit" type="int" default="20">
+      The maximum number of proxies to return, from 1 to 100.
+    </ResponseField>
+    <ResponseField name="Offset" type="int" default="0">
+      The number of proxies to skip.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 **Returns:**
-- `AgentVaultListProxiesResult`: the proxies in `Proxies`, and the total number of matching proxies in `TotalCount`
+
+<ResponseField name="result" type="AgentVaultListProxiesResult">
+  <Expandable title="properties">
+    <ResponseField name="Proxies" type="[]AgentVaultProxy">
+      The matching proxies, up to `Limit` of them.
+    </ResponseField>
+    <ResponseField name="TotalCount" type="int">
+      The total number of matching proxies.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 If the client logs in as a member, the proxies have no `TrafficPolicy`, `AllowedHosts`, `PollInterval`, or `CreatedAt`.
 
@@ -1765,16 +1874,42 @@ result, err := client.AgentVault().Proxies().Create(infisical.AgentVaultCreatePr
 ```
 
 **Parameters:**
-- `options` (AgentVaultCreateProxyOptions):
-  - `ProjectID` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to create the proxy in
-  - `Name` (string): the name of the proxy, in lowercase letters, numbers, and hyphens (up to 64 characters)
-  - `TrafficPolicy` (AgentVaultTrafficPolicy, optional): the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), either `AgentVaultTrafficPolicyAnyHost` to forward requests to any host or `AgentVaultTrafficPolicyServiceHosts` to refuse requests to hosts that none of the session's services cover (defaults to `AgentVaultTrafficPolicyAnyHost`)
-  - `AllowedHosts` ([]string, optional): hosts that agents can reach under `AgentVaultTrafficPolicyServiceHosts` even if none of the session's services cover them (see [Exceptions](/documentation/platform/agent-vault/proxies#exceptions))
-  - `PollInterval` (int, optional): how often, in seconds, the proxy checks its sessions and settings with Infisical, from 10 to 300 (defaults to `60`)
-  - `Description` (string, optional): what the proxy is for (up to 256 characters, without line breaks or tabs)
+
+<ResponseField name="options" type="AgentVaultCreateProxyOptions" required>
+  <Expandable title="properties">
+    <ResponseField name="ProjectID" type="string" required>
+      The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to create the proxy in.
+    </ResponseField>
+    <ResponseField name="Name" type="string" required>
+      The name of the proxy, in lowercase letters, numbers, and hyphens. Up to 64 characters.
+    </ResponseField>
+    <ResponseField name="TrafficPolicy" type="AgentVaultTrafficPolicy" default="AgentVaultTrafficPolicyAnyHost">
+      The proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy): `AgentVaultTrafficPolicyAnyHost` to forward requests to any host, or `AgentVaultTrafficPolicyServiceHosts` to refuse requests to hosts that none of the session's services cover.
+    </ResponseField>
+    <ResponseField name="AllowedHosts" type="[]string">
+      The [exceptions](/documentation/platform/agent-vault/proxies#exceptions): hosts that agents can reach under `AgentVaultTrafficPolicyServiceHosts` even if none of the session's services cover them.
+    </ResponseField>
+    <ResponseField name="PollInterval" type="int" default="60">
+      The number of seconds between the proxy's checks of its sessions and settings with Infisical, from 10 to 300.
+    </ResponseField>
+    <ResponseField name="Description" type="string">
+      A description of the proxy's purpose. Up to 256 characters, without line breaks or tabs.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 **Returns:**
-- `AgentVaultProxyWithToken`: the proxy in `Proxy`, and its proxy token in `ProxyToken` (Infisical returns the token only once)
+
+<ResponseField name="result" type="AgentVaultProxyWithToken">
+  <Expandable title="properties">
+    <ResponseField name="Proxy" type="AgentVaultProxy">
+      The new proxy.
+    </ResponseField>
+    <ResponseField name="ProxyToken" type="string">
+      The proxy's token. Infisical returns the token only once.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 To start the proxy with the proxy token, run one of the commands in [Create a proxy and start it](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it).
 
@@ -1793,16 +1928,36 @@ proxy, err := client.AgentVault().Proxies().Update("<proxy-id>", infisical.Agent
 ```
 
 **Parameters:**
-- `proxyID` (string): the ID of the proxy
-- `options` (AgentVaultUpdateProxyOptions):
-  - `Name` (*string, optional): the new name of the proxy
-  - `TrafficPolicy` (AgentVaultTrafficPolicy, optional): the new traffic policy
-  - `AllowedHosts` ([]string, optional): the new exceptions, which replace the current ones, or an empty, non-nil slice to remove every exception
-  - `PollInterval` (int, optional): the new poll interval in seconds, from 10 to 300
-  - `Description` (*string, optional): the new description, or a pointer to an empty string to remove the description
+
+<ResponseField name="proxyID" type="string" required>
+  The ID of the proxy.
+</ResponseField>
+
+<ResponseField name="options" type="AgentVaultUpdateProxyOptions" required>
+  <Expandable title="properties">
+    <ResponseField name="Name" type="*string">
+      The new name of the proxy.
+    </ResponseField>
+    <ResponseField name="TrafficPolicy" type="AgentVaultTrafficPolicy">
+      The new traffic policy.
+    </ResponseField>
+    <ResponseField name="AllowedHosts" type="[]string">
+      The new exceptions, which replace the current ones, or an empty, non-nil slice to remove every exception.
+    </ResponseField>
+    <ResponseField name="PollInterval" type="int">
+      The new poll interval in seconds, from 10 to 300.
+    </ResponseField>
+    <ResponseField name="Description" type="*string">
+      The new description, or a pointer to an empty string to remove the description.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 **Returns:**
-- `AgentVaultProxy`: the updated proxy
+
+<ResponseField name="proxy" type="AgentVaultProxy">
+  The updated proxy.
+</ResponseField>
 
 ### Delete proxy
 
@@ -1815,10 +1970,16 @@ deleted, err := client.AgentVault().Proxies().Delete("<proxy-id>")
 ```
 
 **Parameters:**
-- `proxyID` (string): the ID of the proxy
+
+<ResponseField name="proxyID" type="string" required>
+  The ID of the proxy.
+</ResponseField>
 
 **Returns:**
-- `AgentVaultProxyRef`: the deleted proxy's `ID` and `Name`
+
+<ResponseField name="deleted" type="AgentVaultProxyRef">
+  The deleted proxy's `ID` and `Name`.
+</ResponseField>
 
 ### Rotate proxy token
 
@@ -1829,10 +1990,23 @@ result, err := client.AgentVault().Proxies().RotateToken("<proxy-id>")
 ```
 
 **Parameters:**
-- `proxyID` (string): the ID of the proxy
+
+<ResponseField name="proxyID" type="string" required>
+  The ID of the proxy.
+</ResponseField>
 
 **Returns:**
-- `AgentVaultProxyWithToken`: the proxy in `Proxy`, and the new proxy token in `ProxyToken` (Infisical returns the token only once)
+
+<ResponseField name="result" type="AgentVaultProxyWithToken">
+  <Expandable title="properties">
+    <ResponseField name="Proxy" type="AgentVaultProxy">
+      The proxy.
+    </ResponseField>
+    <ResponseField name="ProxyToken" type="string">
+      The new proxy token. Infisical returns the token only once.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 ### Revoke proxy
 
@@ -1843,10 +2017,16 @@ proxy, err := client.AgentVault().Proxies().Revoke("<proxy-id>")
 ```
 
 **Parameters:**
-- `proxyID` (string): the ID of the proxy
+
+<ResponseField name="proxyID" type="string" required>
+  The ID of the proxy.
+</ResponseField>
 
 **Returns:**
-- `AgentVaultProxy`: the revoked proxy
+
+<ResponseField name="proxy" type="AgentVaultProxy">
+  The revoked proxy.
+</ResponseField>
 
 ## Agent Vault access bundles
 
@@ -1870,19 +2050,59 @@ result, err := client.AgentVault().AccessBundles().List(infisical.AgentVaultList
 ```
 
 **Parameters:**
-- `options` (AgentVaultListAccessBundlesOptions):
-  - `ProjectID` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list access bundles from
-  - `Search` (string, optional): text to find in access bundle names and descriptions
-  - `RequiresSetup` (*bool, optional): `true` to list only the access bundles with services that still need your [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values), or `false` to list the rest (defaults to listing both)
-  - `Granted` (*bool, optional): `true` to list only the access bundles granted to you directly or through a group, or `false` to list the ones you can use only because you're an admin (defaults to listing both)
-  - `OnBehalfOf` (*AgentVaultOnBehalfOf, optional): a user, by `UserEmail` or `UserID`, to list the access bundles that a session on behalf of the user could use (returns an error if you set both)
-  - `OrderBy` (string, optional): what to sort the access bundles by, `name`, `serviceCount`, or `createdAt` (defaults to `createdAt`)
-  - `OrderDirection` (AgentVaultOrderDirection, optional): the direction to sort in, `AgentVaultOrderDirectionAsc` or `AgentVaultOrderDirectionDesc` (defaults to `AgentVaultOrderDirectionDesc`)
-  - `Limit` (int, optional): the maximum number of access bundles to return, from 1 to 100 (defaults to `20`)
-  - `Offset` (int, optional): the number of access bundles to skip (defaults to `0`)
+
+<ResponseField name="options" type="AgentVaultListAccessBundlesOptions" required>
+  <Expandable title="properties">
+    <ResponseField name="ProjectID" type="string" required>
+      The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list access bundles from.
+    </ResponseField>
+    <ResponseField name="Search" type="string">
+      Text to find in access bundle names and descriptions.
+    </ResponseField>
+    <ResponseField name="RequiresSetup" type="*bool">
+      `true` to list only the access bundles with services that still need your [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values), or `false` to list the rest. Defaults to listing both.
+    </ResponseField>
+    <ResponseField name="Granted" type="*bool">
+      `true` to list only the access bundles granted to you directly or through a group, or `false` to list the ones you can use only because you're an admin. Defaults to listing both.
+    </ResponseField>
+    <ResponseField name="OnBehalfOf" type="*AgentVaultOnBehalfOf">
+      A user, to list the access bundles that a session on behalf of the user could use. Set `UserEmail` or `UserID`, not both, or `List` returns an error.
+      <Expandable title="properties">
+        <ResponseField name="UserEmail" type="string">
+          The user's email address.
+        </ResponseField>
+        <ResponseField name="UserID" type="string">
+          The user's ID.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="OrderBy" type="string" default="createdAt">
+      The field to sort the access bundles by, `name`, `serviceCount`, or `createdAt`.
+    </ResponseField>
+    <ResponseField name="OrderDirection" type="AgentVaultOrderDirection" default="AgentVaultOrderDirectionDesc">
+      The direction to sort in, `AgentVaultOrderDirectionAsc` or `AgentVaultOrderDirectionDesc`.
+    </ResponseField>
+    <ResponseField name="Limit" type="int" default="20">
+      The maximum number of access bundles to return, from 1 to 100.
+    </ResponseField>
+    <ResponseField name="Offset" type="int" default="0">
+      The number of access bundles to skip.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 **Returns:**
-- `AgentVaultListAccessBundlesResult`: the access bundles in `AccessBundles`, and the total number of matching access bundles in `TotalCount` (in each access bundle, `ServicesRequiringSetup` lists the services that still need your personal values)
+
+<ResponseField name="result" type="AgentVaultListAccessBundlesResult">
+  <Expandable title="properties">
+    <ResponseField name="AccessBundles" type="[]AgentVaultAccessBundleSummary">
+      The matching access bundles, up to `Limit` of them. In each access bundle, `ServicesRequiringSetup` lists the services that still need your personal values.
+    </ResponseField>
+    <ResponseField name="TotalCount" type="int">
+      The total number of matching access bundles.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 If the client logs in as a member, `List` returns only the access bundles granted to the member.
 
@@ -1895,10 +2115,16 @@ accessBundle, err := client.AgentVault().AccessBundles().Get("<access-bundle-id>
 ```
 
 **Parameters:**
-- `accessBundleID` (string): the ID of the access bundle
+
+<ResponseField name="accessBundleID" type="string" required>
+  The ID of the access bundle.
+</ResponseField>
 
 **Returns:**
-- `AgentVaultAccessBundleWithServices`: the access bundle, with its services in `Services` (each service has only the fields of its `Type`, so check `Type` before you read a field such as `HostPattern`)
+
+<ResponseField name="accessBundle" type="AgentVaultAccessBundleWithServices">
+  The access bundle, with its services in `Services`. Each service has only the fields of its `Type`, so check `Type` before you read a field such as `HostPattern`.
+</ResponseField>
 
 ### Create access bundle
 
@@ -1911,13 +2137,26 @@ accessBundle, err := client.AgentVault().AccessBundles().Create(infisical.AgentV
 ```
 
 **Parameters:**
-- `options` (AgentVaultCreateAccessBundleOptions):
-  - `ProjectID` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to create the access bundle in
-  - `Name` (string): the name of the access bundle, in lowercase letters, numbers, and hyphens (up to 64 characters)
-  - `Description` (string, optional): what the access bundle is for (up to 256 characters, without line breaks or tabs)
+
+<ResponseField name="options" type="AgentVaultCreateAccessBundleOptions" required>
+  <Expandable title="properties">
+    <ResponseField name="ProjectID" type="string" required>
+      The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to create the access bundle in.
+    </ResponseField>
+    <ResponseField name="Name" type="string" required>
+      The name of the access bundle, in lowercase letters, numbers, and hyphens. Up to 64 characters.
+    </ResponseField>
+    <ResponseField name="Description" type="string">
+      A description of the access bundle's purpose. Up to 256 characters, without line breaks or tabs.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 **Returns:**
-- `AgentVaultAccessBundle`: the new access bundle
+
+<ResponseField name="accessBundle" type="AgentVaultAccessBundle">
+  The new access bundle.
+</ResponseField>
 
 Infisical grants the new access bundle to you, unless you're in the Agent Vault project only through a group. The SDK can't add services to an access bundle. To add them in Infisical, see [Services](/documentation/platform/agent-vault/services).
 
@@ -1933,13 +2172,27 @@ accessBundle, err := client.AgentVault().AccessBundles().Update("<access-bundle-
 ```
 
 **Parameters:**
-- `accessBundleID` (string): the ID of the access bundle
-- `options` (AgentVaultUpdateAccessBundleOptions):
-  - `Name` (*string, optional): the new name of the access bundle
-  - `Description` (*string, optional): the new description, or a pointer to an empty string to remove the description
+
+<ResponseField name="accessBundleID" type="string" required>
+  The ID of the access bundle.
+</ResponseField>
+
+<ResponseField name="options" type="AgentVaultUpdateAccessBundleOptions" required>
+  <Expandable title="properties">
+    <ResponseField name="Name" type="*string">
+      The new name of the access bundle.
+    </ResponseField>
+    <ResponseField name="Description" type="*string">
+      The new description, or a pointer to an empty string to remove the description.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 **Returns:**
-- `AgentVaultAccessBundle`: the updated access bundle
+
+<ResponseField name="accessBundle" type="AgentVaultAccessBundle">
+  The updated access bundle.
+</ResponseField>
 
 ### Delete access bundle
 
@@ -1950,10 +2203,16 @@ accessBundle, err := client.AgentVault().AccessBundles().Delete("<access-bundle-
 ```
 
 **Parameters:**
-- `accessBundleID` (string): the ID of the access bundle
+
+<ResponseField name="accessBundleID" type="string" required>
+  The ID of the access bundle.
+</ResponseField>
 
 **Returns:**
-- `AgentVaultAccessBundle`: the deleted access bundle
+
+<ResponseField name="accessBundle" type="AgentVaultAccessBundle">
+  The deleted access bundle.
+</ResponseField>
 
 ### List grantees
 
@@ -1969,15 +2228,40 @@ result, err := client.AgentVault().AccessBundles().ListGrantees("<access-bundle-
 ```
 
 **Parameters:**
-- `accessBundleID` (string): the ID of the access bundle
-- `options` (AgentVaultListGranteesOptions):
-  - `ActorType` (AgentVaultMemberType, optional): `AgentVaultMemberTypeUser`, `AgentVaultMemberTypeMachineIdentity`, or `AgentVaultMemberTypeGroup`, to list only that kind of grantee (defaults to listing all three)
-  - `Search` (string, optional): text to find in names, usernames, and email addresses
-  - `Limit` (int, optional): the maximum number of grantees to return, from 1 to 100 (defaults to `20`)
-  - `Offset` (int, optional): the number of grantees to skip (defaults to `0`)
+
+<ResponseField name="accessBundleID" type="string" required>
+  The ID of the access bundle.
+</ResponseField>
+
+<ResponseField name="options" type="AgentVaultListGranteesOptions" required>
+  <Expandable title="properties">
+    <ResponseField name="ActorType" type="AgentVaultMemberType">
+      `AgentVaultMemberTypeUser`, `AgentVaultMemberTypeMachineIdentity`, or `AgentVaultMemberTypeGroup`, to list only that kind of grantee. Defaults to listing all three.
+    </ResponseField>
+    <ResponseField name="Search" type="string">
+      Text to find in names, usernames, and email addresses.
+    </ResponseField>
+    <ResponseField name="Limit" type="int" default="20">
+      The maximum number of grantees to return, from 1 to 100.
+    </ResponseField>
+    <ResponseField name="Offset" type="int" default="0">
+      The number of grantees to skip.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 **Returns:**
-- `AgentVaultListGranteesResult`: the grantees in `Members`, and the total number of matching grantees in `TotalCount`
+
+<ResponseField name="result" type="AgentVaultListGranteesResult">
+  <Expandable title="properties">
+    <ResponseField name="Members" type="[]AgentVaultGrantee">
+      The matching grantees, up to `Limit` of them.
+    </ResponseField>
+    <ResponseField name="TotalCount" type="int">
+      The total number of matching grantees.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 ### List available grantees
 
@@ -1993,15 +2277,40 @@ result, err := client.AgentVault().AccessBundles().ListAvailableGrantees("<acces
 ```
 
 **Parameters:**
-- `accessBundleID` (string): the ID of the access bundle
-- `options` (AgentVaultListGranteesOptions):
-  - `ActorType` (AgentVaultMemberType, optional): `AgentVaultMemberTypeUser`, `AgentVaultMemberTypeMachineIdentity`, or `AgentVaultMemberTypeGroup`, to list only that kind of member (defaults to listing all three)
-  - `Search` (string, optional): text to find in names, usernames, and email addresses
-  - `Limit` (int, optional): the maximum number of members to return, from 1 to 100 (defaults to `20`)
-  - `Offset` (int, optional): the number of members to skip (defaults to `0`)
+
+<ResponseField name="accessBundleID" type="string" required>
+  The ID of the access bundle.
+</ResponseField>
+
+<ResponseField name="options" type="AgentVaultListGranteesOptions" required>
+  <Expandable title="properties">
+    <ResponseField name="ActorType" type="AgentVaultMemberType">
+      `AgentVaultMemberTypeUser`, `AgentVaultMemberTypeMachineIdentity`, or `AgentVaultMemberTypeGroup`, to list only that kind of member. Defaults to listing all three.
+    </ResponseField>
+    <ResponseField name="Search" type="string">
+      Text to find in names, usernames, and email addresses.
+    </ResponseField>
+    <ResponseField name="Limit" type="int" default="20">
+      The maximum number of members to return, from 1 to 100.
+    </ResponseField>
+    <ResponseField name="Offset" type="int" default="0">
+      The number of members to skip.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 **Returns:**
-- `AgentVaultListMembersResult`: the members in `Members`, and the total number of matching members in `TotalCount`
+
+<ResponseField name="result" type="AgentVaultListMembersResult">
+  <Expandable title="properties">
+    <ResponseField name="Members" type="[]AgentVaultMember">
+      The matching members, up to `Limit` of them.
+    </ResponseField>
+    <ResponseField name="TotalCount" type="int">
+      The total number of matching members.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 ### Grant access
 
@@ -2018,14 +2327,37 @@ result, err := client.AgentVault().AccessBundles().Grant("<access-bundle-id>", i
 ```
 
 **Parameters:**
-- `accessBundleID` (string): the ID of the access bundle
-- `options` (AgentVaultChangeGrantsOptions):
-  - `UserIDs` ([]string, optional): the IDs of the users to grant the access bundle to
-  - `MachineIdentityIDs` ([]string, optional): the IDs of the machine identities to grant the access bundle to
-  - `GroupIDs` ([]string, optional): the IDs of the groups to grant the access bundle to
+
+<ResponseField name="accessBundleID" type="string" required>
+  The ID of the access bundle.
+</ResponseField>
+
+<ResponseField name="options" type="AgentVaultChangeGrantsOptions" required>
+  <Expandable title="properties">
+    <ResponseField name="UserIDs" type="[]string">
+      The IDs of the users to grant the access bundle to.
+    </ResponseField>
+    <ResponseField name="MachineIdentityIDs" type="[]string">
+      The IDs of the machine identities to grant the access bundle to.
+    </ResponseField>
+    <ResponseField name="GroupIDs" type="[]string">
+      The IDs of the groups to grant the access bundle to.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 **Returns:**
-- `AgentVaultGrantResult`: the new grants in `Members`, and the users, machine identities, and groups that already had the access bundle in `Skipped`
+
+<ResponseField name="result" type="AgentVaultGrantResult">
+  <Expandable title="properties">
+    <ResponseField name="Members" type="[]AgentVaultGrant">
+      The new grants.
+    </ResponseField>
+    <ResponseField name="Skipped" type="[]AgentVaultActorRef">
+      The users, machine identities, and groups that already had the access bundle.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 ### Revoke access
 
@@ -2043,14 +2375,37 @@ result, err := client.AgentVault().AccessBundles().Revoke("<access-bundle-id>", 
 ```
 
 **Parameters:**
-- `accessBundleID` (string): the ID of the access bundle
-- `options` (AgentVaultChangeGrantsOptions):
-  - `UserIDs` ([]string, optional): the IDs of the users to revoke the access bundle from
-  - `MachineIdentityIDs` ([]string, optional): the IDs of the machine identities to revoke the access bundle from
-  - `GroupIDs` ([]string, optional): the IDs of the groups to revoke the access bundle from
+
+<ResponseField name="accessBundleID" type="string" required>
+  The ID of the access bundle.
+</ResponseField>
+
+<ResponseField name="options" type="AgentVaultChangeGrantsOptions" required>
+  <Expandable title="properties">
+    <ResponseField name="UserIDs" type="[]string">
+      The IDs of the users to revoke the access bundle from.
+    </ResponseField>
+    <ResponseField name="MachineIdentityIDs" type="[]string">
+      The IDs of the machine identities to revoke the access bundle from.
+    </ResponseField>
+    <ResponseField name="GroupIDs" type="[]string">
+      The IDs of the groups to revoke the access bundle from.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 **Returns:**
-- `AgentVaultRevokeGrantsResult`: the revoked grants in `Members`, and the users, machine identities, and groups that didn't have the access bundle in `Skipped`
+
+<ResponseField name="result" type="AgentVaultRevokeGrantsResult">
+  <Expandable title="properties">
+    <ResponseField name="Members" type="[]AgentVaultActorRef">
+      The users, machine identities, and groups that lost the access bundle.
+    </ResponseField>
+    <ResponseField name="Skipped" type="[]AgentVaultActorRef">
+      The users, machine identities, and groups that didn't have the access bundle.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 ## Agent Vault delegations
 
@@ -2070,14 +2425,36 @@ result, err := client.AgentVault().Delegations().List(infisical.AgentVaultListDe
 ```
 
 **Parameters:**
-- `options` (AgentVaultListDelegationsOptions):
-  - `ProjectID` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list delegations from
-  - `MachineIdentityIDs` ([]string, optional): the IDs of the machine identities whose delegations to list (up to 100)
-  - `Limit` (int, optional): the maximum number of delegations to return, from 1 to 100 (defaults to `100`)
-  - `Offset` (int, optional): the number of delegations to skip (defaults to `0`)
+
+<ResponseField name="options" type="AgentVaultListDelegationsOptions" required>
+  <Expandable title="properties">
+    <ResponseField name="ProjectID" type="string" required>
+      The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list delegations from.
+    </ResponseField>
+    <ResponseField name="MachineIdentityIDs" type="[]string">
+      The IDs of up to 100 machine identities, to list only their delegations.
+    </ResponseField>
+    <ResponseField name="Limit" type="int" default="100">
+      The maximum number of delegations to return, from 1 to 100.
+    </ResponseField>
+    <ResponseField name="Offset" type="int" default="0">
+      The number of delegations to skip.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 **Returns:**
-- `AgentVaultListDelegationsResult`: the delegations in `Delegations`, and the total number of matching delegations in `TotalCount` (without `MissingAccessBundles`, which `Get` returns)
+
+<ResponseField name="result" type="AgentVaultListDelegationsResult">
+  <Expandable title="properties">
+    <ResponseField name="Delegations" type="[]AgentVaultDelegation">
+      The matching delegations, up to `Limit` of them, without `MissingAccessBundles`. To get `MissingAccessBundles`, call `Get`.
+    </ResponseField>
+    <ResponseField name="TotalCount" type="int">
+      The total number of matching delegations.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 ### Get delegation
 
@@ -2090,12 +2467,24 @@ delegation, err := client.AgentVault().Delegations().Get("<machine-identity-id>"
 ```
 
 **Parameters:**
-- `machineIdentityID` (string): the ID of the machine identity
-- `options` (AgentVaultProjectOptions):
-  - `ProjectID` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to get the delegation from
+
+<ResponseField name="machineIdentityID" type="string" required>
+  The ID of the machine identity.
+</ResponseField>
+
+<ResponseField name="options" type="AgentVaultProjectOptions" required>
+  <Expandable title="properties">
+    <ResponseField name="ProjectID" type="string" required>
+      The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to get the delegation from.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 **Returns:**
-- `AgentVaultDelegation`: the delegation, including `MissingAccessBundles`
+
+<ResponseField name="delegation" type="AgentVaultDelegation">
+  The delegation, including `MissingAccessBundles`.
+</ResponseField>
 
 If the machine identity has no delegation, `Get` returns an `*errors.APIError` whose `StatusCode` is `404`. The `errors` package is `github.com/infisical/go-sdk/packages/errors`.
 
@@ -2115,15 +2504,33 @@ delegation, err := client.AgentVault().Delegations().Set("<machine-identity-id>"
 ```
 
 **Parameters:**
-- `machineIdentityID` (string): the ID of the machine identity, which must be a member of the Agent Vault project
-- `options` (AgentVaultSetDelegationOptions):
-  - `ProjectID` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to set the delegation in
-  - `Scope` (AgentVaultDelegationScope): either `AgentVaultDelegationScopeSelected` for only the users and groups that you pass, or `AgentVaultDelegationScopeAllMembers` for every member of the Agent Vault project, admins included
-  - `UserIDs` ([]string, optional): with `AgentVaultDelegationScopeSelected`, the IDs of the users that the machine identity can act on behalf of (up to 100)
-  - `GroupIDs` ([]string, optional): with `AgentVaultDelegationScopeSelected`, the IDs of the groups whose members the machine identity can act on behalf of (up to 100)
+
+<ResponseField name="machineIdentityID" type="string" required>
+  The ID of the machine identity, which must be a member of the Agent Vault project.
+</ResponseField>
+
+<ResponseField name="options" type="AgentVaultSetDelegationOptions" required>
+  <Expandable title="properties">
+    <ResponseField name="ProjectID" type="string" required>
+      The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to set the delegation in.
+    </ResponseField>
+    <ResponseField name="Scope" type="AgentVaultDelegationScope" required>
+      `AgentVaultDelegationScopeSelected` for only the users and groups that you pass, or `AgentVaultDelegationScopeAllMembers` for every member of the Agent Vault project, admins included.
+    </ResponseField>
+    <ResponseField name="UserIDs" type="[]string">
+      With `AgentVaultDelegationScopeSelected`, the IDs of up to 100 users that the machine identity can act on behalf of.
+    </ResponseField>
+    <ResponseField name="GroupIDs" type="[]string">
+      With `AgentVaultDelegationScopeSelected`, the IDs of up to 100 groups whose members the machine identity can act on behalf of.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 **Returns:**
-- `AgentVaultDelegation`: the delegation, with `MissingAccessBundles`
+
+<ResponseField name="delegation" type="AgentVaultDelegation">
+  The delegation, with `MissingAccessBundles`.
+</ResponseField>
 
 With `AgentVaultDelegationScopeSelected`, pass at least one user or group. With `AgentVaultDelegationScopeAllMembers`, pass no users or groups. To stop the machine identity from acting on behalf of anyone, [delete the delegation](#delete-delegation).
 
@@ -2144,16 +2551,43 @@ result, err := client.AgentVault().Delegations().ListAvailableSubjects("<machine
 ```
 
 **Parameters:**
-- `machineIdentityID` (string): the ID of the machine identity
-- `options` (AgentVaultListAvailableDelegationSubjectsOptions):
-  - `ProjectID` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list users and groups from
-  - `ActorType` (AgentVaultMemberType, optional): either `AgentVaultMemberTypeUser` to list only users or `AgentVaultMemberTypeGroup` to list only groups (defaults to listing both)
-  - `Search` (string, optional): text to find in user names, usernames, email addresses, and group names
-  - `Limit` (int, optional): the maximum number of users and groups to return, from 1 to 100 (defaults to `20`)
-  - `Offset` (int, optional): the number of users and groups to skip (defaults to `0`)
+
+<ResponseField name="machineIdentityID" type="string" required>
+  The ID of the machine identity.
+</ResponseField>
+
+<ResponseField name="options" type="AgentVaultListAvailableDelegationSubjectsOptions" required>
+  <Expandable title="properties">
+    <ResponseField name="ProjectID" type="string" required>
+      The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to list users and groups from.
+    </ResponseField>
+    <ResponseField name="ActorType" type="AgentVaultMemberType">
+      `AgentVaultMemberTypeUser` to list only users, or `AgentVaultMemberTypeGroup` to list only groups. Defaults to listing both.
+    </ResponseField>
+    <ResponseField name="Search" type="string">
+      Text to find in user names, usernames, email addresses, and group names.
+    </ResponseField>
+    <ResponseField name="Limit" type="int" default="20">
+      The maximum number of users and groups to return, from 1 to 100.
+    </ResponseField>
+    <ResponseField name="Offset" type="int" default="0">
+      The number of users and groups to skip.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 **Returns:**
-- `AgentVaultListMembersResult`: the users and groups in `Members`, and the total number of matching users and groups in `TotalCount`
+
+<ResponseField name="result" type="AgentVaultListMembersResult">
+  <Expandable title="properties">
+    <ResponseField name="Members" type="[]AgentVaultMember">
+      The matching users and groups, up to `Limit` of them.
+    </ResponseField>
+    <ResponseField name="TotalCount" type="int">
+      The total number of matching users and groups.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 ### Add users and groups
 
@@ -2171,14 +2605,30 @@ delegation, err := client.AgentVault().Delegations().AddSubjects("<machine-ident
 ```
 
 **Parameters:**
-- `machineIdentityID` (string): the ID of the machine identity
-- `options` (AgentVaultChangeDelegationSubjectsOptions):
-  - `ProjectID` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) that the delegation is in
-  - `UserIDs` ([]string, optional): the IDs of the users to add (up to 100)
-  - `GroupIDs` ([]string, optional): the IDs of the groups to add (up to 100)
+
+<ResponseField name="machineIdentityID" type="string" required>
+  The ID of the machine identity.
+</ResponseField>
+
+<ResponseField name="options" type="AgentVaultChangeDelegationSubjectsOptions" required>
+  <Expandable title="properties">
+    <ResponseField name="ProjectID" type="string" required>
+      The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) that the delegation is in.
+    </ResponseField>
+    <ResponseField name="UserIDs" type="[]string">
+      The IDs of up to 100 users to add.
+    </ResponseField>
+    <ResponseField name="GroupIDs" type="[]string">
+      The IDs of up to 100 groups to add.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 **Returns:**
-- `AgentVaultDelegation`: the delegation after the change, with `MissingAccessBundles`
+
+<ResponseField name="delegation" type="AgentVaultDelegation">
+  The delegation after the change, with `MissingAccessBundles`.
+</ResponseField>
 
 ### Remove users and groups
 
@@ -2196,14 +2646,30 @@ delegation, err := client.AgentVault().Delegations().RemoveSubjects("<machine-id
 ```
 
 **Parameters:**
-- `machineIdentityID` (string): the ID of the machine identity
-- `options` (AgentVaultChangeDelegationSubjectsOptions):
-  - `ProjectID` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) that the delegation is in
-  - `UserIDs` ([]string, optional): the IDs of the users to remove (up to 100)
-  - `GroupIDs` ([]string, optional): the IDs of the groups to remove (up to 100)
+
+<ResponseField name="machineIdentityID" type="string" required>
+  The ID of the machine identity.
+</ResponseField>
+
+<ResponseField name="options" type="AgentVaultChangeDelegationSubjectsOptions" required>
+  <Expandable title="properties">
+    <ResponseField name="ProjectID" type="string" required>
+      The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) that the delegation is in.
+    </ResponseField>
+    <ResponseField name="UserIDs" type="[]string">
+      The IDs of up to 100 users to remove.
+    </ResponseField>
+    <ResponseField name="GroupIDs" type="[]string">
+      The IDs of up to 100 groups to remove.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 **Returns:**
-- `*AgentVaultDelegation`: the delegation after the change, with `MissingAccessBundles`, or `nil` if Infisical deleted the delegation
+
+<ResponseField name="delegation" type="*AgentVaultDelegation">
+  The delegation after the change, with `MissingAccessBundles`, or `nil` if Infisical deleted the delegation.
+</ResponseField>
 
 ### Delete delegation
 
@@ -2216,9 +2682,21 @@ delegation, err := client.AgentVault().Delegations().Delete("<machine-identity-i
 ```
 
 **Parameters:**
-- `machineIdentityID` (string): the ID of the machine identity
-- `options` (AgentVaultProjectOptions):
-  - `ProjectID` (string): the ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to delete the delegation from
+
+<ResponseField name="machineIdentityID" type="string" required>
+  The ID of the machine identity.
+</ResponseField>
+
+<ResponseField name="options" type="AgentVaultProjectOptions" required>
+  <Expandable title="properties">
+    <ResponseField name="ProjectID" type="string" required>
+      The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects#find-the-project-id) to delete the delegation from.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 **Returns:**
-- `AgentVaultDelegation`: the deleted delegation, without `MissingAccessBundles`
+
+<ResponseField name="delegation" type="AgentVaultDelegation">
+  The deleted delegation, without `MissingAccessBundles`.
+</ResponseField>
