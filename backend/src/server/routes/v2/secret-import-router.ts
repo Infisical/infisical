@@ -8,6 +8,7 @@ import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { fastJsonSerializerCompiler } from "@app/server/plugins/fastify-zod";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -465,6 +466,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     config: {
       rateLimit: secretsLimit
     },
+    serializerCompiler: fastJsonSerializerCompiler,
     schema: {
       hide: false,
       operationId: "getRawSecretsFromImports",

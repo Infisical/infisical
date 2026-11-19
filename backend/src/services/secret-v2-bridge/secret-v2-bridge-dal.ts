@@ -194,7 +194,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         key: "id",
         parentMapper: (el) => ({
           _id: el.id,
-          ...SecretsV2Schema.parse(el),
+          ...pickSecretV2Columns(el),
           isHoneyTokenSecret: Boolean(el.honeyTokenId),
           rotationId: el.rotationId,
           isRotatedSecret: Boolean(el.rotationId),

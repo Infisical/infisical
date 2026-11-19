@@ -7,6 +7,7 @@ import { getConfig } from "@app/lib/config/env";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { fastJsonSerializerCompiler } from "@app/server/plugins/fastify-zod";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 import { secretRawSchema } from "../sanitizedSchemas";
@@ -467,6 +468,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
     config: {
       rateLimit: secretsLimit
     },
+    serializerCompiler: fastJsonSerializerCompiler,
     schema: {
       hide: false,
       tags: [ApiDocsTags.SecretImports],

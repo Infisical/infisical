@@ -15,6 +15,7 @@ import { SecretNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { fastJsonSerializerCompiler } from "@app/server/plugins/fastify-zod";
 import {
   booleanSchema,
   SanitizedDynamicSecretSchema,
@@ -2083,6 +2084,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: secretsLimit
     },
+    serializerCompiler: fastJsonSerializerCompiler,
     schema: {
       operationId: "getSecretImports",
       querystring: z.object({
