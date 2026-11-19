@@ -36,17 +36,6 @@ export type { TReadOptions } from "@app/domains/lib/data-access";
 export { KmsKeyOrderBy } from "./services/kms-key/service";
 export type { TKmsKeyService } from "./services/kms-key/service";
 export type { TKmsRootKeyService } from "./services/root-key/service";
-export {
-  createSecretDecryptLease,
-  createSecretDecryptReservations,
-  releaseSecretDecryptLease,
-  withSecretDecryptLimit
-} from "./services/secret-decrypt-limit/service";
-export type {
-  TCurrentSecretDecryptLease,
-  TSecretDecryptLease,
-  TSecretDecryptReservations
-} from "./services/secret-decrypt-limit/service";
 
 type TKmsCoreStoreAccess = {
   transactionRunner: TTransactionRunner<TKmsCoreStores>;

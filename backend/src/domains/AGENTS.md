@@ -32,7 +32,7 @@ Read a domain's `AGENTS.md` before changing it: [license](platform/license/AGENT
 
 | Folder | Exports | Test doubles |
 | --- | --- | --- |
-| `lib/errors/` | `RuleViolationError`, `EntityNotFoundError`, `StateConflictError`, `CapacityExceededError`, `ExternalSystemError` | |
+| `lib/errors/` | `RuleViolationError`, `EntityNotFoundError`, `StateConflictError`, `ExternalSystemError` | |
 | `lib/transactions/` | `TransactionRunner`, `TTransaction`, `TTransactionRunner`, `TStoreLocks`, `sealKnexTransaction`, `unsealTransaction` | `InMemoryTransactionRunner` |
 | `lib/key-store/` | `TDomainKeyStore` | `InMemoryKeyStore` |
 | `lib/jobs/` | `TDomainQueue`, `TDomainCron` | `FakeQueue` |
@@ -296,7 +296,6 @@ maps them at the HTTP boundary.
 | `RuleViolationError` | The caller asked for something the rules refuse: bad input, a limit reached, a feature not on the plan | 400 |
 | `EntityNotFoundError` | The thing doesn't exist, or belongs to another org or project (same answer, so another tenant's ids don't reveal they exist) | 404 |
 | `StateConflictError` | The request is valid, but the current state prevents it: the name is taken, it is in use, or it changed since it was read | 409 |
-| `CapacityExceededError` | Too much of the same work is already in flight for this caller (KMS Core's per-organization secret decrypt limit); the same request works later | 429 |
 | `ExternalSystemError` | Something the domain depends on failed (the License Server, a cloud API); nothing the caller sent is wrong | 500 |
 
 Who throws:

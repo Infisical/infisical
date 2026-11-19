@@ -31,8 +31,5 @@ export class EntityNotFoundError extends DomainError {}
 // and retrying may work.
 export class StateConflictError extends DomainError {}
 
-// The same request works later.
-export class CapacityExceededError extends DomainError {}
-
 // Something we depend on failed. Nothing the caller sent is wrong.
 export class ExternalSystemError extends DomainError {}

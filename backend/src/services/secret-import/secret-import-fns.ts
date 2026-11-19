@@ -250,7 +250,6 @@ export const fnSecretsV2FromImports = async ({
   secretDAL,
   secretImportDAL,
   decryptor,
-  reserveDecrypts,
   expandSecretReferences,
   hasSecretAccess,
   importAccessScopeByFolderId,
@@ -273,7 +272,6 @@ export const fnSecretsV2FromImports = async ({
   secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   decryptor: (value?: Buffer | null) => string;
-  reserveDecrypts?: (count: number) => void;
   expandSecretReferences?: (inputSecret: {
     value?: string;
     skipMultilineEncoding?: boolean | null;
@@ -393,8 +391,6 @@ export const fnSecretsV2FromImports = async ({
       );
     }
 
-    reserveDecrypts?.(importedSecrets.length);
-
     const importedSecretsGroupByFolderId = groupBy(importedSecrets, (i) => i.folderId);
 
     const processedBatchImports = await processReservedImports(uniqueImports, secretImportDAL);
@@ -465,33 +461,32 @@ export const fnSecretsV2FromImports = async ({
           ? projectDecryptors.get(importEnv.projectId)!
           : decryptor;
 
-      const accessibleSecrets = (importedSecretsGroupByFolderId?.[importedFolders?.[i]?.id as string] || []).filter(
-        (item) =>
+      const secretsWithDuplicate = (importedSecretsGroupByFolderId?.[importedFolders?.[i]?.id as string] || [])
+        .filter((item) =>
           hasSecretAccess(
             accessScope.environment,
             accessScope.secretPath,
             item.key,
             item.tags.map((el) => el.slug)
           )
-      );
-
-      const secretsWithDuplicate = accessibleSecrets.map((item) => ({
-        ...item,
-        secretKey: item.key,
-        secretMetadata: item.secretMetadata.map((metadata) => ({
-          key: metadata.key,
-          value: metadata.encryptedValue ? activeDecryptor(metadata.encryptedValue) : metadata.value || "",
-          isEncrypted: Boolean(metadata.encryptedValue)
-        })),
-        secretValue: viewSecretValue ? activeDecryptor(item.encryptedValue) : INFISICAL_SECRET_VALUE_HIDDEN_MASK,
-        secretValueHidden: !viewSecretValue,
-        secretTags: item.tags,
-        secretComment: activeDecryptor(item.encryptedComment),
-        environment: importEnv.slug,
-        secretPath: importAccessScopeByFolderId?.get(folderId)?.secretPath ?? inheritedSecretPath ?? "",
-        workspace: "", // This field should not be used, it's only here to keep the older Python SDK versions backwards compatible with the new Postgres backend.
-        _id: item.id // The old Python SDK depends on the _id field being returned. We return this to keep the older Python SDK versions backwards compatible with the new Postgres backend.
-      }));
+        )
+        .map((item) => ({
+          ...item,
+          secretKey: item.key,
+          secretMetadata: item.secretMetadata.map((metadata) => ({
+            key: metadata.key,
+            value: metadata.encryptedValue ? activeDecryptor(metadata.encryptedValue) : metadata.value || "",
+            isEncrypted: Boolean(metadata.encryptedValue)
+          })),
+          secretValue: viewSecretValue ? activeDecryptor(item.encryptedValue) : INFISICAL_SECRET_VALUE_HIDDEN_MASK,
+          secretValueHidden: !viewSecretValue,
+          secretTags: item.tags,
+          secretComment: activeDecryptor(item.encryptedComment),
+          environment: importEnv.slug,
+          secretPath: importAccessScopeByFolderId?.get(folderId)?.secretPath ?? inheritedSecretPath ?? "",
+          workspace: "", // This field should not be used, it's only here to keep the older Python SDK versions backwards compatible with the new Postgres backend.
+          _id: item.id // The old Python SDK depends on the _id field being returned. We return this to keep the older Python SDK versions backwards compatible with the new Postgres backend.
+        }));
 
       if (!isCrossProject && deeperImportsGroupByFolderId?.[sourceImportFolder?.id || ""]) {
         const deeperImportsForFolder = deeperImportsGroupByFolderId[sourceImportFolder?.id || ""];

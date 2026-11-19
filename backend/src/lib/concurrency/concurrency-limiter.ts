@@ -23,7 +23,7 @@ export const createConcurrencyLimiter = ({ limit, maxWaitMs, maxQueueDepth }: TC
     waiter.admit();
   };
 
-  const run = async <T>(fn: () => Promise<T>): Promise<T | null> => {
+  const run = async <T>(fn: () => Promise<T>, waitMs = maxWaitMs): Promise<T | null> => {
     if (active < limit) {
       active += 1;
     } else {
@@ -34,7 +34,7 @@ export const createConcurrencyLimiter = ({ limit, maxWaitMs, maxQueueDepth }: TC
           const index = queue.findIndex((waiter) => waiter.timer === timer);
           if (index >= 0) queue.splice(index, 1);
           resolve(false);
-        }, maxWaitMs);
+        }, waitMs);
 
         queue.push({ admit: () => resolve(true), timer });
       });
@@ -97,7 +97,10 @@ export const createKeyedConcurrencyLimiter = ({
         perKeyLimiters.set(key, keyLimiter);
       }
 
-      return await keyLimiter.run(() => globalLimiter.run(fn));
+      // One deadline across both queues, so a request waits at most maxWaitMs in total rather than that long for
+      // its key and again for a global slot.
+      const deadline = Date.now() + maxWaitMs;
+      return await keyLimiter.run(() => globalLimiter.run(fn, Math.max(0, deadline - Date.now())));
     } finally {
       totalInFlight -= 1;
     }
@@ -114,26 +117,3 @@ export const createKeyedConcurrencyLimiter = ({
 };
 
 export type TKeyedConcurrencyLimiter = ReturnType<typeof createKeyedConcurrencyLimiter>;
-
-export const createKeyedInFlightCounter = () => {
-  const counts = new Map<string, number>();
-
-  const add = (key: string, count = 1) => {
-    counts.set(key, (counts.get(key) ?? 0) + count);
-  };
-
-  const remove = (key: string, count = 1) => {
-    const remaining = (counts.get(key) ?? 0) - count;
-    if (remaining > 0) counts.set(key, remaining);
-    else counts.delete(key);
-  };
-
-  return {
-    add,
-    remove,
-    get: (key: string) => counts.get(key) ?? 0,
-    getTrackedKeyCount: () => counts.size
-  };
-};
-
-export type TKeyedInFlightCounter = ReturnType<typeof createKeyedInFlightCounter>;

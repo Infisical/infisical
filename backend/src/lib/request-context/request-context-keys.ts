@@ -13,7 +13,6 @@ export enum RequestContextKey {
   OrgName = "orgName",
   ProjectDetails = "projectDetails",
   ReqId = "reqId",
-  SecretDecryptLease = "secretDecryptLease",
   UserAgent = "userAgent",
   UserAuthInfo = "userAuthInfo"
 }

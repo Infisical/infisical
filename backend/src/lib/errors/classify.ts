@@ -2,7 +2,6 @@ import { ForbiddenError } from "@casl/ability";
 import jwt from "jsonwebtoken";
 
 import {
-  CapacityExceededError,
   EntityNotFoundError,
   ExternalSystemError,
   RuleViolationError,
@@ -76,12 +75,7 @@ export const classifyError = (err: unknown): ErrorType => {
   if (err instanceof UnauthorizedError) return "auth";
   if (err instanceof ForbiddenError || err instanceof ForbiddenRequestError || err instanceof PermissionBoundaryError)
     return "permission";
-  if (
-    err instanceof RateLimitError ||
-    err instanceof DailyQuotaExceededError ||
-    err instanceof CapacityExceededError
-  )
-    return "rate_limit";
+  if (err instanceof RateLimitError || err instanceof DailyQuotaExceededError) return "rate_limit";
   if (err instanceof NotFoundError || err instanceof EntityNotFoundError) return "not_found";
   // StateConflictError only gets here outside HTTP: the HTTP error handler maps it to ConflictError first.
   if (

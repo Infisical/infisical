@@ -312,23 +312,6 @@ const envSchema = z
       z.string().describe("PostgreSQL role to grant read access to the sanitized schema").optional()
     ),
     MAX_LEASE_LIMIT: z.coerce.number().default(10000),
-    SECRET_DECRYPT_LIMIT_ENABLED: zodStrBool
-      .default("false")
-      .describe(
-        "Refuse secret decrypts for an organization that already has SECRET_DECRYPT_MAX_IN_FLIGHT_PER_ORG decrypts in flight"
-      ),
-    SECRET_DECRYPT_MAX_IN_FLIGHT_PER_ORG: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .default(1000)
-      .describe("Most secret decrypts one organization may have in flight at once"),
-    SECRET_DECRYPT_SATURATION_LOG_INTERVAL_MS: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .default(10_000)
-      .describe("How often, in milliseconds, to log that the secret decrypt limit is shedding requests"),
     SECRET_READ_CONCURRENCY_LIMIT_ENABLED: zodStrBool
       .default("false")
       .describe(

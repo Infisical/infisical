@@ -1,10 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import {
-  createConcurrencyLimiter,
-  createKeyedConcurrencyLimiter,
-  createKeyedInFlightCounter
-} from "./concurrency-limiter";
+import { createConcurrencyLimiter, createKeyedConcurrencyLimiter } from "./concurrency-limiter";
 
 const deferred = () => {
   let resolve!: () => void;
@@ -147,6 +143,42 @@ describe("createKeyedConcurrencyLimiter", () => {
     expect(quiet).toBe("served");
   });
 
+  it("should bound the total wait by maxWaitMs across the key and global queues", async () => {
+    vi.useFakeTimers();
+    try {
+      const limiter = createKeyedConcurrencyLimiter({
+        globalLimit: 1,
+        perKeyLimit: 1,
+        maxWaitMs: 200,
+        maxQueueDepth: 64,
+        maxTrackedKeys: 8,
+        maxTotalInFlight: 512
+      });
+      const gate = deferred();
+      const holder = limiter.run("other", () => gate.promise);
+      const first = limiter.run("key", async () => "first");
+      let secondSettledAt: number | undefined;
+      const second = limiter
+        .run("key", async () => "second")
+        .then((result) => {
+          secondSettledAt = Date.now();
+          return result;
+        });
+      const start = Date.now();
+
+      await vi.advanceTimersByTimeAsync(201);
+
+      await expect(first).resolves.toBeNull();
+      await expect(second).resolves.toBeNull();
+      expect((secondSettledAt ?? Infinity) - start).toBeLessThanOrEqual(201);
+
+      gate.resolve();
+      await holder;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("should prune idle per-key limiters rather than growing without bound", async () => {
     const limiter = createKeyedConcurrencyLimiter({
       globalLimit: 8,
@@ -205,42 +237,5 @@ describe("aggregate admission across keys", () => {
 
     expect(results.filter((result) => result === null).length).toBeGreaterThan(0);
     expect(limiter.getTotalInFlight()).toBe(0);
-  });
-});
-
-describe("createKeyedInFlightCounter", () => {
-  it("should count entries per key", () => {
-    const counter = createKeyedInFlightCounter();
-
-    counter.add("org-a");
-    counter.add("org-a", 4);
-    counter.add("org-b", 2);
-
-    expect(counter.get("org-a")).toBe(5);
-    expect(counter.get("org-b")).toBe(2);
-    expect(counter.get("org-c")).toBe(0);
-  });
-
-  it("should drop a key once all of its entries are removed", () => {
-    const counter = createKeyedInFlightCounter();
-
-    counter.add("org-a", 3);
-    counter.remove("org-a", 2);
-    expect(counter.get("org-a")).toBe(1);
-    expect(counter.getTrackedKeyCount()).toBe(1);
-
-    counter.remove("org-a");
-    expect(counter.get("org-a")).toBe(0);
-    expect(counter.getTrackedKeyCount()).toBe(0);
-  });
-
-  it("should never go below zero", () => {
-    const counter = createKeyedInFlightCounter();
-
-    counter.add("org-a");
-    counter.remove("org-a", 5);
-
-    expect(counter.get("org-a")).toBe(0);
-    expect(counter.getTrackedKeyCount()).toBe(0);
   });
 });

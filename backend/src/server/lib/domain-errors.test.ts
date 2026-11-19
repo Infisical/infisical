@@ -1,11 +1,10 @@
 import {
-  CapacityExceededError,
   EntityNotFoundError,
   ExternalSystemError,
   RuleViolationError,
   StateConflictError
 } from "@app/domains/lib/errors";
-import { BadRequestError, ConflictError, InternalServerError, NotFoundError, RateLimitError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, InternalServerError, NotFoundError } from "@app/lib/errors";
 
 import { toHttpError } from "./domain-errors";
 
@@ -60,18 +59,6 @@ describe("toHttpError", () => {
     // Assert
     expect(result).toBeInstanceOf(ConflictError);
     expect(result).toMatchObject({ name: "Conflict", message: "The staged encryption key is 'a', not 'b'." });
-  });
-
-  test("should turn an exceeded capacity into a rate limit error that keeps its message", () => {
-    // Setup
-    const error = new CapacityExceededError({ message: "Too many secrets are being decrypted right now." });
-
-    // Action
-    const result = toHttpError(error);
-
-    // Assert
-    expect(result).toBeInstanceOf(RateLimitError);
-    expect(result.message).toBe("Too many secrets are being decrypted right now.");
   });
 
   test("should return an error that is not a domain error unchanged", () => {

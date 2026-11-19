@@ -4,7 +4,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
-import { KmsDataKey, TKmsDataKeyService, TSecretDecryptReservations } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   hasSecretReadValueOrDescribePermission,
@@ -83,7 +83,6 @@ type TSecretImportServiceFactoryDep = {
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
   licenseService: TLicenseService;
   kmsDataKeyService: TKmsDataKeyService;
-  secretDecryptReservations: TSecretDecryptReservations;
   keyStore: Pick<
     TKeyStoreFactory,
     | "getItem"
@@ -118,7 +117,6 @@ export const secretImportServiceFactory = ({
   projectBotService,
   secretV2BridgeDAL,
   kmsDataKeyService,
-  secretDecryptReservations,
   keyStore
 }: TSecretImportServiceFactoryDep) => {
   const $annotateCrossProjectImports = async <
@@ -1054,7 +1052,6 @@ export const secretImportServiceFactory = ({
       secretDAL: secretV2BridgeDAL,
       secretImportDAL,
       decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
-      reserveDecrypts: secretDecryptReservations.reserveDecrypts,
       importAccessScopeByFolderId: new Map([[folder.id, { environment, secretPath }]]),
       hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
         hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {

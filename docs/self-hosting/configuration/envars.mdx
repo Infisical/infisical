@@ -187,20 +187,6 @@ Example values:
   </Warning>
 </ParamField>
 
-<ParamField query="SECRET_DECRYPT_LIMIT_ENABLED" type="bool" default="false" optional>
-  Infisical refuses a request to decrypt secrets when other requests for the same organization are already decrypting at least `SECRET_DECRYPT_MAX_IN_FLIGHT_PER_ORG` secrets. The request fails with a `429` response. Retry the request a few seconds later. Leave this unset, and Infisical doesn't apply the limit.
-</ParamField>
-
-<ParamField query="SECRET_DECRYPT_MAX_IN_FLIGHT_PER_ORG" type="int" default="1000" optional>
-  Maximum number of secrets that other requests for one organization can be decrypting at the same time. Only used when `SECRET_DECRYPT_LIMIT_ENABLED` is `true`.
-
-  One request can still decrypt more secrets than this number.
-</ParamField>
-
-<ParamField query="SECRET_DECRYPT_SATURATION_LOG_INTERVAL_MS" type="int" default="10000" optional>
-  How often, in milliseconds, Infisical logs that it refused a request because an organization reached `SECRET_DECRYPT_MAX_IN_FLIGHT_PER_ORG`. Only used when `SECRET_DECRYPT_LIMIT_ENABLED` is `true`. Set this to `0` to log every refusal.
-</ParamField>
-
 <ParamField query="SECRET_READ_CONCURRENCY_LIMIT_ENABLED" type="bool" default="false" optional>
   Limits how many API requests to list secrets, such as requests to the Secrets [List](/api-reference/endpoints/secrets/list) endpoint, run at the same time on each Infisical instance. A request over the limit waits for its turn. If it waits longer than `SECRET_READ_MAX_QUEUE_WAIT_MS`, or too many requests are already waiting, it fails with a `429` response. Retry the request a few seconds later.
 </ParamField>

@@ -10,7 +10,7 @@ import {
   TableName,
   TSecretsV2
 } from "@app/db/schemas";
-import { KmsDataKey, TKmsDataKeyService, TSecretDecryptReservations } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
@@ -190,7 +190,6 @@ type TSecretV2BridgeServiceFactoryDep = {
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
-  secretDecryptReservations: TSecretDecryptReservations;
 };
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
@@ -219,8 +218,7 @@ export const secretV2BridgeServiceFactory = ({
   reminderService,
   secretValidationRuleService,
   projectFolderGrantDAL,
-  orgDAL,
-  secretDecryptReservations
+  orgDAL
 }: TSecretV2BridgeServiceFactoryDep) => {
   // Which secret already holds a duplicated value is only named to a writer who may read there, so the
   // message is resolved against their permission rather than formatted inside validation.
@@ -1585,7 +1583,7 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     // scott: if any of this changes it also needs to be mirrored in secret rotation for getting dashboard secrets
-    const readableSecrets: { secret: (typeof secrets)[number]; secretPath: string; isValueMasked: boolean }[] = [];
+    const decryptedSecrets: ReturnType<typeof reshapeBridgeSecret>[] = [];
     for (const secret of secrets) {
       const secretPath = groupedPaths[secret.folderId][0].path;
       const secretSubjectFields = {
@@ -1625,13 +1623,8 @@ export const secretV2BridgeServiceFactory = ({
       }
 
       const isPersonalSecret = secret.userId === actorId && secret.type === SecretType.Personal;
-      readableSecrets.push({ secret, secretPath, isValueMasked: !canReadValue && !isPersonalSecret });
-    }
+      const isValueMasked = !canReadValue && !isPersonalSecret;
 
-    secretDecryptReservations.reserveDecrypts(readableSecrets.length);
-
-    const decryptedSecrets: ReturnType<typeof reshapeBridgeSecret>[] = [];
-    for (const { secret, secretPath, isValueMasked } of readableSecrets) {
       decryptedSecrets.push(
         reshapeBridgeSecret(
           projectId,
@@ -1802,7 +1795,6 @@ export const secretV2BridgeServiceFactory = ({
           ? expandImportedSecretReferences
           : expandSecretReferences,
       decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
-      reserveDecrypts: secretDecryptReservations.reserveDecrypts,
       importAccessScopeByFolderId: new Map(
         paths.map((folderPath) => [
           folderPath.folderId,
