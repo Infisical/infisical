@@ -191,4 +191,40 @@ describe("KmsKeyStore on Postgres", () => {
       expect(() => restored?.openDataKey(rootKeyForTests, sealed)).not.toThrow();
     });
   });
+
+  describe("before external_kms.providerInputsVersion exists", () => {
+    afterEach(() => KmsKeyStore.resetColumnProbe());
+
+    test("should write and read an external key as legacy inputs", async () => {
+      // Setup
+      const tn = await h.newTenant();
+      KmsKeyStore.resetColumnProbe();
+      const trx = await h.db.transaction();
+      onTestFinished(async () => {
+        if (!trx.isCompleted()) await trx.rollback();
+      });
+      await trx.schema.alterTable(TableName.ExternalKms, (t) => t.dropColumn("providerInputsVersion"));
+      const store = new KmsKeyStore(singleStoreConnection(trx));
+      const key = KmsKey.createExternal({
+        orgId: tn.org.id,
+        name: "aws-key",
+        provider: "aws",
+        encryptedProviderInputs: Buffer.from("inputs"),
+        providerInputsVersion: 2
+      });
+
+      // Action
+      await store.insert(key);
+      const loaded = (await store.findForUpdate(key.id)) as KmsKey;
+      loaded.replaceProviderInputs(Buffer.from("new-inputs"), 2, loaded);
+      await store.save(loaded);
+      const restored = await store.findById(key.id);
+
+      // Assert
+      expect(restored?.toJSON().external).toMatchObject({
+        encryptedProviderInputs: Buffer.from("new-inputs"),
+        providerInputsVersion: 1
+      });
+    });
+  });
 });

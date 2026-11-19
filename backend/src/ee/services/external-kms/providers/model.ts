@@ -5,14 +5,6 @@ export enum KmsProviders {
   Gcp = "gcp"
 }
 
-export enum ExternalKmsProviderInputsVersion {
-  // AWS assume-role external IDs were taken as given; they are still sent as stored unless they name
-  // another organization or one of its projects.
-  Legacy = 1,
-  // AWS assume-role external IDs must be the organization ID.
-  OrgBoundExternalId = 2
-}
-
 export enum KmsAwsCredentialType {
   AssumeRole = "assume-role",
   AccessKey = "access-key"
