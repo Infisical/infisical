@@ -17,8 +17,8 @@ export type TPlanCache = {
   lastKnown(rootOrgId: string): Promise<{ plan: Plan; fetchedAt: number } | null>;
   markForRevalidation(rootOrgId: string, checkout: boolean): Promise<void>;
   invalidate(rootOrgId: string): Promise<void>;
-  acquireRevalidateLock(rootOrgId: string): Promise<boolean>;
-  releaseRevalidateLock(rootOrgId: string): Promise<void>;
+  acquireRevalidateLock(rootOrgId: string): Promise<string | null>;
+  releaseRevalidateLock(rootOrgId: string, token: string): Promise<void>;
 };
 
 export type TUsageReportCache = {

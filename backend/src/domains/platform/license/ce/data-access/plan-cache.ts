@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import type { TDomainKeyStore } from "@app/domains/lib/key-store";
 import { applyJitter } from "@app/lib/dates";
 
@@ -110,17 +112,19 @@ export class PlanCache implements TPlanCache {
     await this.keyStore.deleteItem(PlanKeys.fresh(rootOrgId));
   }
 
-  // Single-flight for a plan fetch: only the caller that sets the lock fetches.
-  async acquireRevalidateLock(rootOrgId: string) {
+  // Single-flight for a plan fetch: only the caller that sets the lock fetches. Returns the holder's token, or null.
+  async acquireRevalidateLock(rootOrgId: string): Promise<string | null> {
+    const token = randomUUID();
     const acquired = await this.keyStore.setItemWithExpiryNX(
       PlanKeys.revalidateLock(rootOrgId),
       PlanKeyTtls.revalidateLockInSeconds,
-      "1"
+      token
     );
-    return acquired === "OK";
+    return acquired === "OK" ? token : null;
   }
 
-  async releaseRevalidateLock(rootOrgId: string) {
-    await this.keyStore.deleteItem(PlanKeys.revalidateLock(rootOrgId));
+  // A fetch can outlive the lock's TTL, so only the holder's own lock is released, never one taken after it.
+  async releaseRevalidateLock(rootOrgId: string, token: string) {
+    await this.keyStore.deleteItemIfValue(PlanKeys.revalidateLock(rootOrgId), token);
   }
 }

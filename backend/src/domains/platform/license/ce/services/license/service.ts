@@ -1,3 +1,4 @@
+import { ReadFrom } from "@app/domains/lib/data-access";
 import { EntityNotFoundError, ExternalSystemError } from "@app/domains/lib/errors";
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { logger } from "@app/lib/logger";
@@ -137,10 +138,11 @@ export class LicenseService implements TLicenseService {
       const { plan } = await this.planCache.read(rootOrgId);
       // With no plan cached, the next fetch counts.
       if (!plan || !plan.isLimited(PlanLimit.Projects)) return;
-      await this.planCache.writeWorkspacesUsed(
-        rootOrgId,
-        await this.organizationsProjectsService.countWorkspaces(rootOrgId)
-      );
+      // Right after the commit: a replica may not have the change yet, and nothing recounts until the next one.
+      const workspacesUsed = await this.organizationsProjectsService.countWorkspaces(rootOrgId, {
+        readFrom: ReadFrom.Primary
+      });
+      await this.planCache.writeWorkspacesUsed(rootOrgId, workspacesUsed);
     } catch (error) {
       logger.error(error, `refreshWorkspacesUsed: failed to recount projects [orgId=${orgId}]`);
     }
@@ -174,11 +176,12 @@ export class LicenseService implements TLicenseService {
   // One caller per root org fetches; the others serve the last-known plan meanwhile, so a burst of requests on a
   // miss doesn't become a burst of License Server calls and project counts. Without one, they all fetch.
   private async fetchOnMiss(rootOrgId: string): Promise<Plan> {
-    if (await this.planCache.acquireRevalidateLock(rootOrgId)) {
+    const lockToken = await this.planCache.acquireRevalidateLock(rootOrgId);
+    if (lockToken) {
       try {
         return await this.fetchPlanOrFallback(rootOrgId);
       } finally {
-        await this.planCache.releaseRevalidateLock(rootOrgId);
+        await this.planCache.releaseRevalidateLock(rootOrgId, lockToken);
       }
     }
     const lastKnown = await this.planCache.lastKnown(rootOrgId);

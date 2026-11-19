@@ -1,3 +1,4 @@
+import { ReadFrom, TReadOptions } from "@app/domains/lib/data-access";
 import { ExternalSystemError } from "@app/domains/lib/errors";
 
 import { InstanceType } from "../../models/instance-entitlements";
@@ -25,9 +26,13 @@ const countingWorkspaces = () => {
   const counts = {
     calls: 0,
     used: WORKSPACES_USED,
+    failure: null as Error | null,
+    lastOptions: undefined as TReadOptions | undefined,
     organizations: {
-      countWorkspaces: async () => {
+      countWorkspaces: async (_orgId: string, options?: TReadOptions) => {
         counts.calls += 1;
+        counts.lastOptions = options;
+        if (counts.failure) throw counts.failure;
         return counts.used;
       }
     }
@@ -175,12 +180,11 @@ describe("LicenseService.getPlan", () => {
   });
 
   test("should serve the cached plan near expiry and refresh it once in the background", async () => {
-    // Setup
-    let now = 1_000_000;
-    const { licenseService, licenseServer } = await buildLicense({ now: () => now });
+    // Setup: the plan's own TTL is jittered, so drop only the refresh marker rather than advancing the clock.
+    const { licenseService, licenseServer, keyStore } = await buildLicense();
     await licenseService.getPlan(ROOT.id);
     licenseServer.plans.set(ROOT.id, { ...enterprisePlan(), slug: "pro" });
-    now += 880 * 1000;
+    await keyStore.deleteItem(`infisical-cloud-plan-fresh-${ROOT.id}`);
 
     // Action
     const served = await licenseService.getPlan(ROOT.id);
@@ -540,6 +544,7 @@ describe("LicenseService.refreshWorkspacesUsed", () => {
     // Assert
     expect((await licenseService.getPlan(SUB_ORG_ID)).toJSON().workspacesUsed).toBe(7);
     expect(licenseServer.fetches).toHaveLength(1);
+    expect(counts.lastOptions).toEqual({ readFrom: ReadFrom.Primary });
   });
 
   test("should not overwrite a plan fetched after it with the plan it read", async () => {
@@ -585,25 +590,21 @@ describe("LicenseService.refreshWorkspacesUsed", () => {
 
   test("should not throw when the count fails", async () => {
     // Setup
+    const counts = countingWorkspaces();
     const licenseServer = new FakeLicenseServer();
     licenseServer.plans.set(ROOT.id, limitedPlan());
-    const { licenseService } = await buildLicense({ licenseServer });
+    const { licenseService } = await buildLicense({ licenseServer, organizations: counts.organizations });
     await licenseService.getPlan(ROOT.id);
-    const failing = await buildLicense({
-      licenseServer,
-      organizations: {
-        countWorkspaces: async () => {
-          throw new Error("replica timeout");
-        }
-      }
-    });
-    await failing.licenseService.refreshPlan(ROOT.id).catch(() => undefined);
+    counts.failure = new Error("primary timeout");
+    counts.calls = 0;
 
     // Action
-    const result = failing.licenseService.refreshWorkspacesUsed(ROOT.id);
+    const result = licenseService.refreshWorkspacesUsed(ROOT.id);
 
     // Assert
     await expect(result).resolves.toBeUndefined();
+    expect(counts.calls).toBe(1);
+    expect((await licenseService.getPlan(ROOT.id)).toJSON().workspacesUsed).toBe(WORKSPACES_USED);
   });
 });
 
