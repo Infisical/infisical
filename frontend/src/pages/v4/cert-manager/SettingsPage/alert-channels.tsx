@@ -537,12 +537,17 @@ const SlackChannelPickers = ({ channel, error, onChange }: TChannelFieldProps) =
     Boolean(integrationsQuery.data) &&
     Boolean(workflowIntegrationId) &&
     !integrations.some((integration) => integration.id === workflowIntegrationId);
+  const { isFetching, isFetchedAfterMount, refetch } = integrationsQuery;
 
   useEffect(() => {
-    if (!isIntegrationMissing) return;
+    if (!isIntegrationMissing || isFetching) return;
+    if (!isFetchedAfterMount) {
+      refetch();
+      return;
+    }
     setIsSavedIntegrationDeleted(true);
     onChange({ workflowIntegrationId: "" }, (errors) => errors);
-  }, [isIntegrationMissing, onChange]);
+  }, [isIntegrationMissing, isFetching, isFetchedAfterMount, refetch, onChange]);
 
   const selected = channel.slackChannels ?? [];
   const selectedIds = selected.map(({ id }) => id);

@@ -62,7 +62,11 @@ export type ProjectIntegrationsAdapter = {
   }) => V4QueryResult<ProjectWorkflowIntegrationConfig | null>;
   useUpdateWorkflowIntegrationConfig: V4Mutation<TUpdateProjectWorkflowIntegrationConfigDTO>;
   useDeleteWorkflowIntegration: V4Mutation<TDeleteProjectWorkflowIntegrationDTO>;
-  useWorkflowIntegrations: (orgId?: string) => V4QueryResult<WorkflowIntegration[]>;
+  useWorkflowIntegrations: (orgId?: string) => V4QueryResult<WorkflowIntegration[]> & {
+    isFetching: boolean;
+    isFetchedAfterMount: boolean;
+    refetch: () => Promise<unknown>;
+  };
   useMicrosoftTeamsIntegrations: (orgId?: string) => V4QueryResult<MicrosoftTeamsIntegration[]>;
   useSlackChannels: (integrationId?: string) => V4QueryResult<SlackIntegrationChannel[]>;
   useMicrosoftTeamsTeams: (

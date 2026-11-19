@@ -24,7 +24,10 @@ import {
   type CertRequestPolicyConditions,
   type TApprovalPolicy
 } from "@app/hooks/api/approvalPolicies/types";
-import type { TPkiApplicationMember } from "@app/hooks/api/pkiApplications/types";
+import {
+  PkiApplicationMemberRole,
+  type TPkiApplicationMember
+} from "@app/hooks/api/pkiApplications/types";
 
 import { useProjectPermission } from "../../access/permissions";
 import { readableFailure, saved } from "../../access/toast";
@@ -137,11 +140,13 @@ const hasErrors = (errors: Errors) =>
 
 const memberOptions = (
   members: TPkiApplicationMember[] | undefined,
-  key: "actorUserId" | "actorGroupId"
+  key: "actorUserId" | "actorGroupId",
+  excludeAuditors: boolean
 ) =>
   (members ?? []).flatMap((member) => {
     const id = member[key];
     if (!id) return [];
+    if (excludeAuditors && member.role === PkiApplicationMemberRole.Auditor) return [];
     const { name, username, email } = member.details ?? {};
     return [{ value: id, label: name || username || email || id }];
   });
@@ -199,10 +204,10 @@ const PolicyForm = ({ projectId, policy, application, onClose }: PolicySheetProp
     ])
   ].map((slug) => ({ value: slug, label: slug }));
   const userOptions = application
-    ? memberOptions(appMembers, "actorUserId")
+    ? memberOptions(appMembers, "actorUserId", isRevocation)
     : (directory?.users ?? []).map(({ id, label }) => ({ value: id, label }));
   const groupOptions = application
-    ? memberOptions(appMembers, "actorGroupId")
+    ? memberOptions(appMembers, "actorGroupId", isRevocation)
     : (directory?.groups ?? []).map(({ id, label }) => ({ value: id, label }));
   const nameOf = (options: { value: string; label: string }[], id: string) =>
     options.find((option) => option.value === id)?.label ?? id;
