@@ -189,15 +189,16 @@ export const fnSecretsFromImports = async ({
     (item) => `${item.envId}-${item.secretPath}`
   );
 
-  const importedFolders = (await folderDAL.findByManySecretPath(uniqueSourcePaths)).filter(Boolean); // remove undefined ones
+  const rawImportedFolders = await folderDAL.findByManySecretPath(uniqueSourcePaths);
+  const importedFolders = rawImportedFolders.filter((folder): folder is NonNullable<typeof folder> => Boolean(folder));
   if (!importedFolders.length) {
     return [];
   }
 
-  const importedFolderIds = importedFolders.map((el) => el?.id) as string[];
+  const importedFolderIds = importedFolders.map((el) => el.id);
   const importedFolderGroupBySourceImport = groupBy(
     importedFolders,
-    (i) => `${i?.envId}-${normalizeSecretPath(i?.path)}`
+    (i) => `${i.envId}-${normalizeSecretPath(i.path)}`
   );
   const importedSecrets = await secretDAL.find(
     {
@@ -366,7 +367,10 @@ export const fnSecretsV2FromImports = async ({
       (item) => `${item.envId}-${item.secretPath}`
     );
 
-    const importedFolders = (await folderDAL.findByManySecretPath(uniqueSourcePaths)).filter(Boolean);
+    const rawImportedFolders = await folderDAL.findByManySecretPath(uniqueSourcePaths);
+    const importedFolders = rawImportedFolders.filter((folder): folder is NonNullable<typeof folder> =>
+      Boolean(folder)
+    );
     if (!importedFolders.length) continue;
 
     const importedFolderIds = importedFolders.map((el) => el.id);
@@ -375,7 +379,7 @@ export const fnSecretsV2FromImports = async ({
 
     const importedFolderGroupBySourceImport = groupBy(
       importedFolders,
-      (i) => `${i?.envId}-${normalizeSecretPath(i?.path)}`
+      (i) => `${i.envId}-${normalizeSecretPath(i.path)}`
     );
 
     // Map each unique import's source folder BEFORE processReservedImports rewrites importPath/importEnv
