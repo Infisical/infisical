@@ -151,6 +151,8 @@ Both automatic types reissue the certificate exactly as it is. To change the sub
 
 Revoke a certificate when it's compromised or no longer needed. Specify a [reason code](https://datatracker.ietf.org/doc/html/rfc5280#section-5.3.1) (key compromise, superseded, etc.).
 
+If a [revocation policy](/documentation/platform/pki/applications/approvals#revocation) covers the certificate's profile, revoking the certificate creates an approval request, and Infisical doesn't revoke the certificate for that request until the request is approved.
+
 Revoked certificates are added to the issuing CA's [CRL](/documentation/platform/pki/ca/crl-distribution). Verify revocation status:
 
 ```bash
@@ -170,7 +172,7 @@ openssl verify -crl_check -CAfile chain.pem -CRLfile crl.pem cert.pem
     Get notified before certificates expire.
   </Card>
   <Card title="Approvals" icon="check-check" href="/documentation/platform/pki/applications/approvals">
-    Require human review before issuance.
+    Require human review before issuance or revocation.
   </Card>
   <Card title="Enrollment Methods" icon="log-in" href="/documentation/platform/pki/applications/enrollment-methods/overview">
     Configure how certificates are requested.

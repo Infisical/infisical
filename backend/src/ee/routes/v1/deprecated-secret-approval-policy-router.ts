@@ -3,12 +3,14 @@ import { z } from "zod";
 
 import { ApproverType, BypasserType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { SECRET_CHANGE_POLICIES } from "@app/lib/api-docs";
-import { removeTrailingSlash } from "@app/lib/fn";
+import { canonicalizeSecretPathPattern, hasDotPathSegment, removeTrailingSlash } from "@app/lib/fn";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { secretChangePolicyPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+
+const SECRET_PATH_DOT_SEGMENT_ERR_MSG = "Secret path cannot contain '.' or '..' as a folder name";
 
 export const registerDeprecatedSecretApprovalPolicyRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -27,7 +29,9 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           secretPath: z
             .string()
             .min(1, { message: "Secret path cannot be empty" })
-            .transform((val) => removeTrailingSlash(val)),
+            .max(1000)
+            .refine((val) => !hasDotPathSegment(val), SECRET_PATH_DOT_SEGMENT_ERR_MSG)
+            .transform(canonicalizeSecretPathPattern),
           approvers: z
             .discriminatedUnion("type", [
               z.object({ type: z.literal(ApproverType.Group), id: z.string() }),
@@ -117,8 +121,10 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           .string()
           .trim()
           .min(1, { message: "Secret path cannot be empty" })
+          .max(1000)
+          .refine((val) => !hasDotPathSegment(val), SECRET_PATH_DOT_SEGMENT_ERR_MSG)
           .optional()
-          .transform((val) => (val ? removeTrailingSlash(val) : undefined)),
+          .transform((val) => (val ? canonicalizeSecretPathPattern(val) : undefined)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
         allowedSelfApprovals: z.boolean().default(true),
         enforceImportReplication: z.boolean().optional().describe(SECRET_CHANGE_POLICIES.enforceImportReplication),

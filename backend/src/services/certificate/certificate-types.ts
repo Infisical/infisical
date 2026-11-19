@@ -127,6 +127,23 @@ export type TDeleteCertDTO = {
   auditLogInfo?: AuditLogInfo;
 } & Omit<TProjectPermission, "projectId">;
 
+export enum CertificateRevocationStatus {
+  Revoked = "revoked",
+  PendingApproval = "pending_approval"
+}
+
+export enum ApprovedRevocationOutcomeKind {
+  Revoked = "revoked",
+  AlreadyRevoked = "already-revoked",
+  Failed = "failed"
+}
+
+export enum ApprovedRevocationFailureStage {
+  Infisical = "infisical",
+  Ca = "ca",
+  AfterCa = "after-ca"
+}
+
 export enum CertificateRevocationSource {
   MicrosoftIntune = "microsoft-intune"
 }

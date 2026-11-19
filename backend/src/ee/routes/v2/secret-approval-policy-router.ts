@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { ApproverType, BypasserType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { SECRET_CHANGE_POLICIES } from "@app/lib/api-docs";
-import { removeTrailingSlash } from "@app/lib/fn";
+import { canonicalizeSecretPathPattern, hasDotPathSegment, removeTrailingSlash } from "@app/lib/fn";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -12,6 +12,8 @@ import { secretChangePolicyPubSchema } from "@app/server/routes/sanitizedSchemas
 import { AuthMode } from "@app/services/auth/auth-type";
 import { DelegatedApprovalSchema } from "@app/services/delegated-approval/delegated-approval-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+const SECRET_PATH_DOT_SEGMENT_ERR_MSG = "Secret path cannot contain '.' or '..' as a folder name";
 
 export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -31,7 +33,9 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           secretPath: z
             .string()
             .min(1, { message: "Secret path cannot be empty" })
-            .transform((val) => removeTrailingSlash(val)),
+            .max(1000)
+            .refine((val) => !hasDotPathSegment(val), SECRET_PATH_DOT_SEGMENT_ERR_MSG)
+            .transform(canonicalizeSecretPathPattern),
           approvers: z
             .discriminatedUnion("type", [
               z.object({ type: z.literal(ApproverType.Group), id: z.string() }),
@@ -143,8 +147,10 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           .string()
           .trim()
           .min(1, { message: "Secret path cannot be empty" })
+          .max(1000)
+          .refine((val) => !hasDotPathSegment(val), SECRET_PATH_DOT_SEGMENT_ERR_MSG)
           .optional()
-          .transform((val) => (val ? removeTrailingSlash(val) : undefined)),
+          .transform((val) => (val ? canonicalizeSecretPathPattern(val) : undefined)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
         allowedSelfApprovals: z.boolean().default(true),
         enforceImportReplication: z.boolean().optional().describe(SECRET_CHANGE_POLICIES.enforceImportReplication),
