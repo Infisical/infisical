@@ -6,9 +6,10 @@ import RE2 from "re2";
 export const isSamePath = (from: string, to: string) => !path.relative(from, to);
 
 export const removeTrailingSlash = (str: string) => {
-  if (str === "/") return str;
+  if (!str) return str;
+  if (/^\/+$/.test(str)) return "/";
 
-  return str.endsWith("/") ? str.slice(0, -1) : str;
+  return str.replace(/\/+$/, "");
 };
 
 export const prefixWithSlash = (str: string) => {
@@ -37,3 +38,4 @@ export const sanitizeString = (dto: { unsanitizedString: string; tokens: string[
 export const sanitizeSqlLikeString = (value: string): string => {
   return String(value).replace(new RE2("[%_\\\\]", "g"), "\\$&");
 };
+
