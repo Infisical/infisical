@@ -15,28 +15,16 @@ import { TInstanceConfigEnv, TInstanceConfigStore, TInstanceConfigStores } from 
 import { InstanceConfigService, TInstanceConfigService } from "./services/instance-config/service";
 
 export { ReadFrom } from "@app/domains/lib/data-access";
-export type { TReadOptions } from "@app/domains/lib/data-access";
-export type { TEnvOverrideGroups, TEnvOverridesRecord, TOrganizedEnvOverrides } from "./models/env-overrides";
-export { GitHubAppCredentials } from "./models/github-app-credentials";
-export type { TInstanceConfigSettings } from "./models/instance-config";
-export { MicrosoftTeamsAppCredentials } from "./models/microsoft-teams-app-credentials";
-export { SlackAppCredentials } from "./models/slack-app-credentials";
-export type { TInstanceConfigEnv, TResolvedOverridableEnv } from "./services/dependencies";
-export type {
-  TInstanceConfig,
-  TInstanceConfigPatch,
-  TInstanceConfigService,
-  TIntegrationCredentials,
-  TMicrosoftTeamsCredentials
-} from "./services/instance-config/service";
+export type { TInstanceConfigEnv } from "./services/dependencies";
+export type { TInstanceConfigPatch, TInstanceConfigService } from "./services/instance-config/service";
 
-export type TInstanceConfigStoreAccess = {
+type TInstanceConfigStoreAccess = {
   transactionRunner: TTransactionRunner<TInstanceConfigStores>;
   // Outside a transaction: the replica on the server.
   instanceConfigStore: TInstanceConfigStore;
 };
 
-export type TInstanceConfigCoreDeps = (
+type TInstanceConfigCoreDeps = (
   | { db: TDbClient }
   // Tests pass in-memory stores instead.
   | TInstanceConfigStoreAccess
