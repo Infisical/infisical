@@ -121,6 +121,9 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
 - **Only the admin rule set holds them.** In an Agent Vault project any role but admin resolves to the member set,
   custom roles and additional privileges included, so `buildAgentVaultProjectAdminPermissionRules` is the one place an
   action is granted. A new role is a new rule set, not a new branch in a service.
+- **`create-with-inline-skills` on sessions is the one session action both rule sets hold.** A skill sent with a session
+  carries instructions, not credentials or hosts, so any member may send one; it is still an action so a later role
+  can be denied it, and the skills fetch checks it like resolve checks `create-with-inline-services`.
 - **Reaching every bundle without a grant is the one rule that follows the role** (see below), because queries lock and
   read the role rows that confer it.
 - Keep each refusal's error type when a gate changes: an id you may not act on stays a 404.
@@ -168,7 +171,7 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
 ## Sessions and resolve
 
 - The token is the lookup key, so it is stored as sha256 (not bcrypt) and returned exactly once.
-- A session carries at most one bundle, and none when it carries only services it names or sends inline. The session API
+- A session carries at most one bundle, and none when it carries only services it lists by name or sends inline. The session API
   takes an optional `accessBundle` name and returns `accessBundle` as `{ id, name }` or null; the router still
   accepts the old `accessBundles` list (at most one name, mapped in a preprocess so the API reference does not
   show it) until 2027-01-04, the date in the router's comment. Storage was not narrowed: the junction
@@ -265,8 +268,10 @@ is one `agent_vault_delegations` row per identity and project, with a scope of `
   personal variables those values use or the user's OAuth connection, which only the user may read.
 - **Mint checks the delegation, then the identity's own bundles, then the user**, so an identity learns nothing about
   who is in the org until an admin has delegated it and granted it the bundle, and an unknown user gets the same message
-  as an uncovered one. Only a machine identity may send `onBehalfOf`. The user must be an active, accepted org member,
-  as resolve requires.
+  as an uncovered one. A request that names nothing, only inline skills, is refused before the user lookup when the
+  identity holds no bundle at all, as `findOnBehalfOfListScope` does for the lists; keep that guard for anything else a
+  member can send without a grant. Only a machine identity may send `onBehalfOf`. The user must be an active, accepted
+  org member, as resolve requires.
 - **The delegation read and write return `missingAccessBundles`**, per user and group and in total: the bundles they
   can use and the identity can't. Users and the identity go through `getAgentVaultReachability`, the function mint
   uses, so the view can't disagree with mint; a group's reach is its own live role and grants, read directly since a
@@ -330,7 +335,7 @@ keyed by the service, so a member sets them once however many bundles give them 
 - **A session's inline service wins over a bundle service with the same name, except an override.** Resolve and
   `GET /session/services` both pick one service per name through `withoutShadowedServices`, so the agent, the proxy
   and the session logs see the same set. Use that helper in any new path that lists a session's services. An override
-  (`isOverride`) wins over an inline service of its name instead, because it only narrows a named service's hosts and
+  (`isOverride`) wins over an inline service of its name instead, because it only narrows a listed service's hosts and
   the session's sender must not be able to switch it off; a mint refuses that name (`assertNoOverrideConflicts`). Admins can
   add or rename bundle services while sessions are live; a mint still refuses an inline service that clashes with its
   bundle, re-checked in its transaction under `AgentVaultServiceNames`, because the caller can rename it right there.
@@ -349,8 +354,7 @@ keyed by the service, so a member sets them once however many bundles give them 
 
 An Agent Vault admin can send services with a session itself, without an access bundle or alongside one, for a caller
 that holds its own credentials and needs a host for one session only. The API sends them in the session's `services`,
-beside the project services it names (`isInline` tells the two apart on reads, and the mint audit event lists named ones
-in `namedServices`); the code and the Sessions page say inline services, which is what tells them apart from a bundle's. They are rows of `agent_vault_services` with `sessionId` set, sharing every column and
+beside the services it lists by name (`isInline` tells the two apart on reads and in the mint audit event's `services`); the code and the Sessions page say inline services, which is what tells them apart from a bundle's. They are rows of `agent_vault_services` with `sessionId` set, sharing every column and
 child table with a project's services so the two can't drift, and only `agent-vault-session-inline-service-dal.ts`
 reads or writes them. They belong to that session alone: nothing edits them, no bundle or other session reads them, and
 only resolve opens their secrets. The `agent_vault_services_inline_only_check` keeps member fields and OAuth off them in
@@ -392,37 +396,73 @@ the database too.
   half-built one. Only a pass-through service with no custom headers, substitutions or hook goes out with nothing
   sealed.
 
-## Services a session names
+## Services a session lists by name
 
 Mint's `services` also takes a project service's name as a plain string, beside or instead of an access bundle and
 inline objects. `agent_vault_session_services` links the session to each one with the `position` it was sent at, which
 inline services share, so reads (`withSessionServices`) return both kinds in the order sent.
 
-- **A named service has to be in a bundle the owner could carry.** An admin (a role in
-  `AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE`) can name any project service, even one in no bundle; anyone else only a
+- **A listed service has to be in a bundle the owner could carry.** An admin (a role in
+  `AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE`) can list any project service, even one in no bundle; anyone else only a
   service in a bundle granted to them, directly or through a group; an on-behalf-of session only one in a bundle both the
   identity and the user reach. An unknown name and an unreachable one get the same 400, so mint never confirms a service
-  exists. Keep this rule identical to the access bundle's, or naming becomes a way round a bundle grant.
-- **Resolve re-checks it on every poll.** `findResolvableServices` returns a named service only while a link to a bundle
+  exists. Keep this rule identical to the access bundle's, or listing becomes a way round a bundle grant.
+- **Resolve re-checks it on every poll.** `findResolvableServices` returns a listed service only while a link to a bundle
   in the owner's live reach holds it (no check when the reach is every bundle), so losing the bundle drops the service
-  and deleting the service drops it by cascade. A named service resolves with `accessBundleId` and `accessBundleName`
+  and deleting the service drops it by cascade. A listed service resolves with `accessBundleId` and `accessBundleName`
   null, like an inline one, so a null bundle never means a service was sent with the session; catalog names are unique
   per project, so the proxy's inline-first rule never has two candidates.
-- **A named service brings its bundles' overrides.** An exact host beats a wildcard, so a bundle restricts or
-  re-credentials one host of a wildcard service with a second service for that host. Naming the wildcard service alone
-  would drop that, so `findOverridesOfNamedServices` adds every service that a bundle in the owner's reach holding the
-  named service uses for one of its hosts, and their own overrides in turn, read live on each resolve. They resolve with
+- **A listed service brings its bundles' overrides.** An exact host beats a wildcard, so a bundle restricts or
+  re-credentials one host of a wildcard service with a second service for that host. Listing the wildcard service alone
+  would drop that, so `findOverridesOfServices` adds every service that a bundle in the owner's reach holding the
+  listed service uses for one of its hosts, and their own overrides in turn, read live on each resolve. They resolve with
   `isOverride`, credited to that bundle, and go out after inline services, so they only take a host no other service in
-  the session names exactly. Not when the reach is every bundle: that owner could name the wildcard service alone
-  anyway. Keep any new path that resolves a session's services on `findResolvableServices`, or naming becomes a way
-  round a bundle's override. A mint checks inline names against them through `findNamedServiceOverrides`.
-- **Names are unique across the whole `services` array**, named and inline together, refused in the schema (422) like a
-  duplicate inline name. Host patterns are checked like a bundle's services: named against the bundle's and each other at
-  mint, and inline against both (`assertNoNamedServiceConflicts`). The named check runs off the replica to fail fast,
+  the session names exactly. Not when the reach is every bundle: that owner could list the wildcard service alone
+  anyway. Keep any new path that resolves a session's services on `findResolvableServices`, or listing becomes a way
+  round a bundle's override. A mint checks inline names against them through `findServiceOverrides`.
+- **Names are unique across the whole `services` array**, listed and inline together, refused in the schema (422) like a
+  duplicate inline name. Host patterns are checked like a bundle's services: listed ones against the bundle's and each other at
+  mint, and inline ones against both (`assertNoServiceConflicts`). The check of listed ones runs off the replica to fail fast,
   then again in the mint's transaction under `AgentVaultServiceNames` on the primary, because an admin can add a
   service to the bundle or change a host right then.
-- **Reads return only what identifies a named service** (`id`, `name`, `type`, `description`, `hostPattern`, `isInline: false`); the
+- **Reads return only what identifies a listed service** (`id`, `name`, `type`, `description`, `hostPattern`, `isInline: false`); the
   service's settings belong to the services API, which a member reaches through their bundles.
+
+## Skills a session lists or sends
+
+Mint's `skills` takes a project skill's name as a string or an inline skill as `{ files }`, the upload body of a project
+skill, with name and description read from its `SKILL.md`. `agent_vault_session_skills` links listed skills with the
+`position` they were sent at; inline skills are rows of `agent_vault_skills` with `sessionId` and the same positions,
+each with one `agent_vault_skill_versions` row holding its files, so reads return both in the order sent, told apart by
+`isInline`. Only `agent-vault-session-inline-skill-dal.ts` reads or writes inline skills, and nothing edits them.
+
+- **Every project skill query leaves inline rows out** (`whereNull("sessionId")`, as `agent-vault-skill-dal.ts` does
+  through `projectSkills`, and the project resolver for `/skills/:skillId`), so no list, read, count, bundle link or
+  picker sees them. Project names are unique only among project skills (`agent_vault_skills_project_name_unique`,
+  partial on `sessionId IS NULL`), so a project skill may share a name with a live inline skill, and inline skills
+  don't count toward `AGENT_VAULT_MAX_SKILLS`.
+- **A listed skill follows the listed-service rule exactly** (`skillIdsReachedThrough`, shared with the skills list's
+  scope): admin any skill, member only skills in a bundle they reach, on-behalf-of only skills in a bundle both reach,
+  and an unknown name gets the same 400 as an unreachable one. `findSessionSkills` re-checks it on every fetch, so a
+  lost bundle or a deleted skill drops it from the next agent start.
+- **Inline skills are validated like an upload** (`prepareInlineSkills` runs `validateSkillFiles` and
+  `assertSkillNameNotReserved`, prefixing each error with the skill) and sealed whole with the project's SecretManager
+  key. At most 5 per session, and their files share the session create body limit (`AGENT_VAULT_SKILL_UPLOAD_BODY_LIMIT`,
+  2 MB). Names are unique across the whole `skills` array, refused in the schema (422) by reading each inline
+  `SKILL.md` (`skillNameOf`).
+- **A session lists at most 20 skills by name** (`AGENT_VAULT_MAX_SESSION_SKILLS`): with the bundle's 25 and the 2 MB of
+  inline files, every skill at 1 MB still fits the 64 MB that released CLIs and proxies read from `GET /session/skills`.
+  Raise it only with those read limits; `agent-vault-session-skills-response.test.ts` works the worst case out from the
+  limits and fails if a change passes them.
+- **Delivery:** `getSessionSkills` returns bundle and listed skills (a skill in both once, as the bundle's), plus inline
+  skills while the owner holds `create-with-inline-skills`, each as version 1 with its own row id. Each skill installs as a
+  folder of its name, so mint refuses an inline skill named like one in the session's bundle (`SkillConflict`, as inline
+  services refuse a bundle's), and at fetch a project skill wins over an inline one of its name: one that joined the
+  bundle, or took the name, after the session was made.
+- **Files go when the session ends; the row stays.** The version's `encryptedFiles` is set to NULL and the skill's
+  `filesDeletedAt` set at revoke (both revoke routes) and by the hourly `deleteFilesOfEndedSessions`, the same predicate
+  and cron as inline service secrets. Only an inline skill's version may have no files, so a project read that opens
+  files goes through `findByVersion`, which never returns one.
 
 ## Database and SSH services
 
@@ -838,15 +878,16 @@ an installed copy.
   audit event (data-access class). So does `GET /skills/:skillId`, which returns the latest version's files with the
   skill (for that version); the list routes return no files and write none.
 - **`GET /session/skills`** returns the latest files of every skill on the session's reachable bundles (the same
-  intersection as the services), sorted by name, read from the primary. The CLI calls it through the proxy at the
+  intersection as the services) and of the skills it lists or was sent with (see
+  [Skills a session lists or sends](#skills-a-session-lists-or-sends)), sorted by name, read from the primary. The CLI calls it through the proxy at the
   proxy's Infisical host, or directly behind an older proxy, with `Authorization: Bearer agv_...` and no other credential, so `inject-identity` skips the path and the route
   parses the header itself. Any refusal is a 401, an unknown token included. It shares the owner checks of resolve
   and credential refresh (`$authorizeSessionOwner`), with the org taken from the session's project instead of a
   proxy. A call that returns at least one skill writes one `agent-vault-skills-delivered` audit event
-  (data-access class) listing every skill delivered (id, name, version, sha256), with the session's owner as the
-  actor (a user named as they are now, or from the session's snapshot if they are gone) and the session's access
-  bundle (sessions carry one today), plus one anonymous `Agent Vault Skills Delivered` PostHog event with the
-  count. A call with no skills records neither. Nothing caches; the route uses `readLimit`.
+  (data-access class) listing every skill delivered (id, name, version, sha256, the bundle it came through or null for
+  a listed or inline skill, and `isInline`), with the session's owner as the actor (a user named as they are now, or
+  from the session's snapshot if they are gone) and the session's access bundle when any skill came through it, plus
+  one anonymous `Agent Vault Skills Delivered` PostHog event with the count. A call with no skills records neither. Nothing caches; the route uses `readLimit`.
 - **`GET /session/skills` also returns the built-in `infisical-agent-vault` skill** (`isBuiltin: true`, left out with
   `includeBuiltin=false`), so an orchestrator that installs skills without `agent-vault run` gets it too. Its file
   is `agent-vault-skill/builtin-skill/SKILL.md`, read beside its loader at runtime (a dedicated `tsdown` copy rule

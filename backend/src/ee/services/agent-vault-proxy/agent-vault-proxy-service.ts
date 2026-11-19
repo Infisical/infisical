@@ -53,6 +53,7 @@ import {
   toResolvedInlineService,
   withoutShadowedServices
 } from "../agent-vault-session/agent-vault-session-inline-service-fns";
+import { TAgentVaultSessionInlineSkillDALFactory } from "../agent-vault-session/agent-vault-session-inline-skill-dal";
 import { deserializeSkillFiles } from "../agent-vault-skill/agent-vault-skill-fns";
 import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
@@ -143,6 +144,10 @@ type TAgentVaultProxyServiceFactoryDep = {
     TAgentVaultSessionInlineServiceDALFactory,
     "findBySessionId" | "deleteSecretsBySessionId"
   >;
+  agentVaultSessionInlineSkillDAL: Pick<
+    TAgentVaultSessionInlineSkillDALFactory,
+    "findWithFilesBySessionId" | "deleteFilesBySessionId"
+  >;
   agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "identityCoversUser">;
   agentVaultSessionLogConfigDAL: Pick<TAgentVaultSessionLogConfigDALFactory, "findOne" | "findByProjectIdFromPrimary">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
@@ -203,6 +208,7 @@ export const agentVaultProxyServiceFactory = ({
   agentVaultPersonalValueDAL,
   agentVaultSessionDAL,
   agentVaultSessionInlineServiceDAL,
+  agentVaultSessionInlineSkillDAL,
   agentVaultDelegationDAL,
   agentVaultSessionLogConfigDAL,
   membershipDAL,
@@ -886,7 +892,8 @@ export const agentVaultProxyServiceFactory = ({
 
   // Shared by the proxy's session routes and the CLI's skills fetch, so none of them can reach a bundle resolve
   // would not. Returns the bundles the session reaches now, null for every bundle: its owner's, and on a user's behalf
-  // only those the user reaches too. Also whether the owner is an admin now, which inline services need.
+  // only those the user reaches too. Also whether the owner may still send inline services and inline skills, which
+  // each need to be delivered.
   const $authorizeSessionOwner = async (session: TAgentVaultSessions, orgId: string) => {
     if (session.revokedAt) throw new UnauthorizedError({ message: "This session has been revoked" });
     if (session.expiresAt && session.expiresAt <= new Date()) {
@@ -933,6 +940,7 @@ export const agentVaultProxyServiceFactory = ({
     // throws on `undefined` but passes on `null`, and the session row stores no auth method.
     let reachesEveryBundle: boolean;
     let canUseInlineServices: boolean;
+    let canUseInlineSkills: boolean;
     let liveGroupIds: string[];
     try {
       const { permission, hasRole, memberships } = await permissionService.getProjectPermission({
@@ -949,6 +957,10 @@ export const agentVaultProxyServiceFactory = ({
       reachesEveryBundle = hasRoleReachingEveryBundle(hasRole);
       canUseInlineServices = permission.can(
         ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
+        ProjectPermissionSub.AgentVaultSessions
+      );
+      canUseInlineSkills = permission.can(
+        ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills,
         ProjectPermissionSub.AgentVaultSessions
       );
       liveGroupIds = liveGroupIdsFrom(memberships);
@@ -970,7 +982,8 @@ export const agentVaultProxyServiceFactory = ({
         });
     return {
       accessBundleIds: onBehalfOf ? intersectAccessBundleIds(actorReach, onBehalfOf.reach) : actorReach,
-      ownerCanUseInlineServices: canUseInlineServices
+      ownerCanUseInlineServices: canUseInlineServices,
+      ownerCanUseInlineSkills: canUseInlineSkills
     };
   };
 
@@ -1345,8 +1358,9 @@ export const agentVaultProxyServiceFactory = ({
     );
   };
 
-  // Called by the CLI once when an agent starts: the latest files of every skill on the session's reachable bundles.
-  // The session token is the only credential, so an unknown one gets the same 401 as any other refusal.
+  // Called by the CLI once when an agent starts: the latest files of every skill on the session's reachable bundles and
+  // every skill it lists that its owner still reaches, and the files of the skills sent with it. The session
+  // token is the only credential, so an unknown one gets the same 401 as any other refusal.
   const getSessionSkills = async ({ sessionToken }: TGetSessionSkillsDTO) => {
     const { session } = await $findSessionByToken(sessionToken);
     const project = session ? await projectDAL.findById(session.projectId) : undefined;
@@ -1354,32 +1368,58 @@ export const agentVaultProxyServiceFactory = ({
       throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });
     }
 
-    const { accessBundleIds } = await $authorizeSessionOwner(session, project.orgId);
+    const { accessBundleIds, ownerCanUseInlineSkills } = await $authorizeSessionOwner(session, project.orgId);
 
-    const rows = await agentVaultResolveDAL.findSessionSkills({
-      sessionId: session.id,
-      projectId: session.projectId,
-      accessBundleIds
-    });
+    // Sending inline skills takes its own permission, re-checked on every fetch like the one inline services take.
+    const [projectRows, inlineRows] = await Promise.all([
+      agentVaultResolveDAL.findSessionSkills({
+        sessionId: session.id,
+        projectId: session.projectId,
+        accessBundleIds
+      }),
+      ownerCanUseInlineSkills ? agentVaultSessionInlineSkillDAL.findWithFilesBySessionId(session.id) : []
+    ]);
+    // The project's skill wins over one sent with the session that has its name. Creating the session refuses that clash,
+    // so it only arises when a skill of the name joins the session's bundle, or a project skill takes the name, after the
+    // session exists, and the project's copy is the one an admin put there. Each skill installs as a folder of its name,
+    // so the agent can have only one by that name.
+    const projectNames = new Set(projectRows.map((row) => row.name));
+    const sentRows = inlineRows.filter((row) => !projectNames.has(row.name));
 
-    const decryptor = rows.length
-      ? (
-          await kmsDataKeyService.createCipherPairWithDataKey({
-            type: KmsDataKey.SecretManager,
-            projectId: session.projectId
-          })
-        ).decryptor
-      : null;
+    const decryptor =
+      projectRows.length || sentRows.length
+        ? (
+            await kmsDataKeyService.createCipherPairWithDataKey({
+              type: KmsDataKey.SecretManager,
+              projectId: session.projectId
+            })
+          ).decryptor
+        : null;
+    const filesOf = (encryptedFiles: Buffer) => deserializeSkillFiles(decryptor!({ cipherTextBlob: encryptedFiles }));
 
-    const skills = rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      version: row.version,
-      sha256: row.sha256,
-      files: deserializeSkillFiles(decryptor!({ cipherTextBlob: row.encryptedFiles })),
-      accessBundleId: row.accessBundleId,
-      accessBundleName: row.accessBundleName
-    }));
+    const skills = [
+      ...projectRows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        version: row.version,
+        sha256: row.sha256,
+        files: filesOf(row.encryptedFiles),
+        accessBundleId: row.accessBundleId,
+        accessBundleName: row.accessBundleName,
+        isInline: false
+      })),
+      // An inline skill has one version, the files it was sent with.
+      ...sentRows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        version: 1,
+        sha256: row.sha256,
+        files: filesOf(row.encryptedFiles),
+        accessBundleId: null,
+        accessBundleName: null,
+        isInline: true
+      }))
+    ].sort((a, b) => (a.name < b.name ? -1 : 1));
 
     // The session snapshots its owner at mint. Name a user as they are now, as PAM does, and fall back to the
     // snapshot for one who is gone.
@@ -1464,7 +1504,7 @@ export const agentVaultProxyServiceFactory = ({
         setPersonalFields: setPersonalFields.get(row.id) ?? new Set<string>()
       });
 
-    // The order resolve sends them in: bundle and named services, inline ones, then overrides.
+    // The order resolve sends them in: bundle and listed services, inline ones, then overrides.
     const services = [
       ...rows.filter((row) => !row.isOverride).map(factsOf),
       ...inlineRows.flatMap((row) => {
@@ -1525,8 +1565,10 @@ export const agentVaultProxyServiceFactory = ({
       const revokedRow = session.revokedAt
         ? undefined
         : await agentVaultSessionDAL.revokeIfActive(session.id, new Date(), tx);
-      // Revoked by this call or found already over, the session can't use its inline services' secrets again.
+      // Revoked by this call or found already over, the session can't use its inline services' secrets or its inline
+      // skills' files again.
       await agentVaultSessionInlineServiceDAL.deleteSecretsBySessionId(session.id, tx);
+      await agentVaultSessionInlineSkillDAL.deleteFilesBySessionId(session.id, tx);
 
       const currentRow =
         revokedRow ?? (await agentVaultSessionDAL.findByIdOnPrimary(session.id, session.projectId, tx)) ?? session;

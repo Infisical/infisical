@@ -7050,9 +7050,19 @@ interface AgentVaultSkillsDeliveredEvent {
   type: EventType.AGENT_VAULT_SKILLS_DELIVERED;
   metadata: {
     sessionId: string;
-    accessBundleId: string;
-    accessBundleName: string;
-    skills: { skillId: string; skillName: string; version: number; sha256: string }[];
+    // The session's access bundle, when any skill delivered came through it.
+    accessBundleId: string | null;
+    accessBundleName: string | null;
+    skills: {
+      skillId: string;
+      skillName: string;
+      version: number;
+      sha256: string;
+      // Null for a skill the session lists by name or was sent with, rather than one it got through its access bundle.
+      accessBundleId: string | null;
+      accessBundleName: string | null;
+      isInline: boolean;
+    }[];
     // Set when the machine identity in the actor started the session on this user's behalf.
     onBehalfOfUserId?: string;
     onBehalfOfUserName?: string;
@@ -7142,36 +7152,53 @@ interface AgentVaultSessionMintEvent {
     accessBundleId: string | null;
     accessBundleName: string | null;
     expiresAt: string | null;
-    // Set when the session names project services, in the order it named them.
-    namedServices?: { serviceId: string; name: string }[];
-    // Set when an admin sent services inline with the session. Never their values.
-    services?: {
-      serviceId: string;
-      // The name it was sent with, or its first host when it was sent without one.
-      name: string;
-      description?: string | null;
-      serviceType: string;
-      serverUrl?: string;
-      transport?: string;
-      // Absent for a database or SSH service, which reports host, port and database instead.
-      hostPattern?: string;
-      host?: string;
-      port?: number;
-      database?: string;
-      tlsEnabled?: boolean;
-      tlsVerify?: boolean;
-      // Whether the proxy checks the server's certificate against a CA sent with the service rather than the system's.
-      hasTlsCa?: boolean;
-      credentialType: string;
-      headerName?: string;
-      allowedMethods: string[] | null;
-      allowedPathPrefixes: string[] | null;
-      // Absent for every type but MCP. Null when the agent can call every tool.
-      allowedTools?: string[] | null;
-      customHeaderNames: string[];
-      substitutionPlaceholders: string[];
-      hookUrl?: string;
-    }[];
+    // Set when the session has skills besides its access bundle's, in the order they were sent, the same way as the
+    // API's. One sent inline also carries the hash and size of its files, never the files.
+    skills?: (
+      | { skillId: string; name: string; isInline: false }
+      | {
+          skillId: string;
+          name: string;
+          isInline: true;
+          description: string;
+          sha256: string;
+          sizeBytes: number;
+          fileCount: number;
+        }
+    )[];
+    // Set when the session has services besides its access bundle's, in the order they were sent, the same way as the
+    // API's. One an admin sent inline also carries what it was sent with, never its values.
+    services?: (
+      | { serviceId: string; name: string; isInline: false }
+      | {
+          serviceId: string;
+          // The name it was sent with, or its first host when it was sent without one.
+          name: string;
+          isInline: true;
+          description?: string | null;
+          serviceType: string;
+          serverUrl?: string;
+          transport?: string;
+          // Absent for a database or SSH service, which reports host, port and database instead.
+          hostPattern?: string;
+          host?: string;
+          port?: number;
+          database?: string;
+          tlsEnabled?: boolean;
+          tlsVerify?: boolean;
+          // Whether the proxy checks the server's certificate against a CA sent with the service rather than the system's.
+          hasTlsCa?: boolean;
+          credentialType: string;
+          headerName?: string;
+          allowedMethods: string[] | null;
+          allowedPathPrefixes: string[] | null;
+          // Absent for every type but MCP. Null when the agent can call every tool.
+          allowedTools?: string[] | null;
+          customHeaderNames: string[];
+          substitutionPlaceholders: string[];
+          hookUrl?: string;
+        }
+    )[];
     // Set when a machine identity started the session on this user's behalf.
     onBehalfOfUserId?: string;
     onBehalfOfUserName?: string;

@@ -4826,8 +4826,7 @@ export const AGENT_VAULT = {
     addServiceIds:
       "The IDs of the services to add, all in the same Agent Vault project. If any is missing or conflicts with a service in the bundle, none are added.",
     addedServices: "The services the request added to the access bundle.",
-    addSkippedServices:
-      "The services the request named that were already in the access bundle. They're left as they are.",
+    addSkippedServices: "The services in the request that were already in the access bundle. They're left as they are.",
     name: "The name of the service, unique in the Agent Vault project.",
     accessBundles: "The access bundles the service is in, by name. A member sees only the ones they have been granted.",
     accessBundleId: "The ID of the access bundle.",
@@ -4843,7 +4842,7 @@ export const AGENT_VAULT = {
     granted:
       "true lists only services in access bundles granted to you, leaving out ones an admin reaches only through their role.",
     onBehalfOfUserId:
-      "List the services a session on behalf of this user could name: those in an access bundle granted to both the user and your machine identity. accessBundles then lists those shared bundles, and requiresSetup and personalValues refer to the user's personal values, which say only whether each value is set. Only a machine identity whose delegation covers the user can do this, and granted can't be combined with it. Set this or onBehalfOfUserEmail, not both.",
+      "List the services a session on behalf of this user could use: those in an access bundle granted to both the user and your machine identity. accessBundles then lists those shared bundles, and requiresSetup and personalValues refer to the user's personal values, which say only whether each value is set. Only a machine identity whose delegation covers the user can do this, and granted can't be combined with it. Set this or onBehalfOfUserEmail, not both.",
     onBehalfOfUserEmail:
       "Like onBehalfOfUserId, naming the user by email address instead. Set this or onBehalfOfUserId, not both.",
     orderBy: "What to sort services by: name, type, or createdAt.",
@@ -5144,14 +5143,18 @@ export const AGENT_VAULT = {
     addSkillIds:
       "The IDs of the skills to add to the access bundle. If any is missing, or the bundle would hold more than 25 skills, none are added.",
     addedSkills: "The skills the request added to the access bundle.",
-    addSkippedSkills: "The skills the request named that were already in the access bundle. They're left as they are.",
+    addSkippedSkills: "The skills in the request that were already in the access bundle. They're left as they are.",
     search: "Match skills whose name or description contains this text.",
     nameFilter: "Return only the skill with exactly this name.",
     limit: "The maximum number of skills to return. Defaults to 20.",
     offset: "How many skills to skip.",
     totalCount: "How many skills match the filters, across every page.",
     sessionSkills:
-      "The latest version of each skill on the session's access bundles that the session's owner can still reach, plus the built-in infisical-agent-vault skill unless includeBuiltin is false, ordered by name.",
+      "The latest version of each skill on the session's access bundle and of each project skill the session was created with, while the session's owner can still reach them, every skill sent with the session, and the built-in infisical-agent-vault skill unless includeBuiltin is false, ordered by name. When a skill sent with the session has the same name as a skill from the project, the project's skill is returned and the sent one is left out.",
+    onBehalfOfUserId:
+      "List the skills a session on behalf of this user could use: those in an access bundle granted to both the user and your machine identity. accessBundles then lists those shared bundles. Only a machine identity whose delegation covers the user can do this. Set this or onBehalfOfUserEmail, not both.",
+    onBehalfOfUserEmail:
+      "Like onBehalfOfUserId, naming the user by email address instead. Set this or onBehalfOfUserId, not both.",
     includeBuiltin:
       "Whether to include infisical-agent-vault, the built-in skill that tells an agent how to work behind the Agent Vault proxy. Defaults to true.",
     isBuiltin:
@@ -5315,29 +5318,42 @@ export const AGENT_VAULT = {
     sessionId: "The ID of the session.",
     revokedAt: "When the session was revoked.",
     accessBundle:
-      "The name of the access bundle this session carries. Leave it out to start a session with only the services it names or sends.",
-    accessBundleRead:
-      "The access bundle this session carries. Null for a session with only the services it names or sends.",
+      "The name of the access bundle this session carries. Leave it out to start a session that has only services and skills, from the project or sent with it.",
+    accessBundleRead: "The access bundle this session carries. Null for a session without an access bundle.",
     services:
-      "The services this session reaches besides its access bundle's. Each entry is either the name of a service in the project, up to 50, or a service sent inline, up to 20. Names must be unique across the list. If a name repeats, the request fails with a 422 error that names it.",
+      "The services this session reaches besides its access bundle's. Each entry is either the name of a service in the project, up to 50, or a service sent inline, up to 20. Names must be unique across the list. If a name repeats, the request fails with a 422 error that says which one.",
     serviceName:
-      "The name of a service in this project. An Agent Vault admin can name any of them, and a member only a service in an access bundle granted to them. A session on behalf of a user can name only a service in an access bundle granted to both the user and the machine identity. On every request, the session reaches the service only while its owner still does.",
+      "The name of a service in this project. An Agent Vault admin can use any of them, and a member only a service in an access bundle granted to them. A session on behalf of a user can use only a service in an access bundle granted to both the user and the machine identity. On every request, the session reaches the service only while its owner still does.",
     servicesRead:
-      "The services this session names and the ones sent with it, in the order they were sent. Inline services are listed without their secrets. Its access bundle's services aren't listed here. Empty when the session carries only an access bundle.",
-    namedServiceId: "The ID of the project service.",
-    namedServiceName: "The name of the project service.",
-    namedServiceType: "The type of the project service.",
-    namedServiceHostPattern:
+      "The services from the project and the services sent with this session, in the order they were sent. Inline services are listed without their secrets. Its access bundle's services aren't listed here. Empty when the session carries only an access bundle.",
+    serviceIdRead: "The ID of the project service.",
+    serviceNameRead: "The name of the project service.",
+    serviceTypeRead: "The type of the project service.",
+    serviceHostPatternRead:
       "The host the project service matches, for an HTTP or MCP service. Null for a database or SSH service, which has no host pattern.",
-    serviceIsInline:
-      "Whether the service was sent with this session (true) or is a service in the project that the session names (false).",
+    serviceIsInline: "Whether the service was sent with this session (true) or is a service from the project (false).",
+    skills:
+      "The skills an agent gets in this session besides its access bundle's. Each entry is either the name of a skill in the project, up to 20, or a skill sent inline, up to 5. Names must be unique across the list. If a name repeats, the request fails with a 422 error that says which one.",
+    skillName:
+      "The name of a skill in this project. An Agent Vault admin can use any of them, and a member only a skill in an access bundle granted to them. A session on behalf of a user can use only a skill in an access bundle granted to both the user and the machine identity. Each time an agent asks for the session's skills, it gets the skill's latest version, and only while the session's owner can still use it.",
+    inlineSkills:
+      "A skill sent with this session, alongside its access bundle's skills and the skills from the project. Up to 5. Each takes the same files as a skill added to the project, with its name and description read from SKILL.md, and the files of every skill sent with the session share the 2 MB request limit. It belongs to this session only and can't be edited. If its name matches a skill in the access bundle, the request fails with a 400 error. If a skill from the project takes its name later, for example by joining the access bundle, the agent gets that skill instead. Its files are deleted when the session is revoked, or within an hour after it expires.",
+    skillsRead:
+      "The skills from the project and the skills sent with this session, in the order they were sent. Its access bundle's skills aren't listed here. Empty when the session has no skills besides its access bundle's.",
+    skillId: "The ID of the skill in the project, or of the skill sent with this session.",
+    skillNameRead: "The name of the skill.",
+    skillDescription: "What the skill is for, from the `description` in its SKILL.md.",
+    skillIsInline: "Whether the skill was sent with this session (true) or is a skill from the project (false).",
+    inlineSkillSha256: "The SHA-256 digest of the skill's files, as hex. An agent gets the files with the same digest.",
+    inlineSkillSizeBytes: "The total size of the skill's files in bytes.",
+    inlineSkillFileCount: "How many files the skill has.",
     stats:
       "How many requests went through this session, as counted by the proxy when it uploads session logs. Null when no logs were uploaded for the session, for example while session logs are off.",
     statsRequests: "Every request the proxy recorded for this session, whatever its decision.",
     statsBrokered:
       "The requests the proxy sent with a credential attached. Null when a proxy didn't report it for any of the session's logs.",
     inlineServices:
-      "A service sent with this session, alongside its access bundle's and the services it names. Agent Vault admins only, up to 20. Each takes the same fields as a service in an access bundle, with three differences: the name is optional, every value is sent exactly as given because variables aren't available, and no field can be left to members. They belong to this session only and can't be edited. Their credentials, custom header values and substitution values are deleted when the session is revoked, or within an hour after it expires.",
+      "A service sent with this session, alongside its access bundle's services and the services from the project. Agent Vault admins only, up to 20. Each takes the same fields as a service in an access bundle, with three differences: the name is optional, every value is sent exactly as given because variables aren't available, and no field can be left to members. They belong to this session only and can't be edited. Their credentials, custom header values and substitution values are deleted when the session is revoked, or within an hour after it expires.",
     inlineServiceName:
       "A name for the service, shown in session logs and in the proxy's error messages. Lowercase letters, numbers and hyphens. Leave it out and the service goes by its first host. Either way, it can't match the name of another service in the session or in its access bundle.",
     inlineServiceValue:

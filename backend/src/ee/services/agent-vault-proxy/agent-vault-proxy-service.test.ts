@@ -159,6 +159,10 @@ const setup = (
       findBySessionId: findInlineServices,
       deleteSecretsBySessionId: async () => {}
     },
+    agentVaultSessionInlineSkillDAL: {
+      findWithFilesBySessionId: async () => [],
+      deleteFilesBySessionId: async () => {}
+    },
     agentVaultDelegationDAL: { identityCoversUser: async () => false },
     agentVaultSessionLogConfigDAL: {
       findOne: async () => sessionLogConfig,
@@ -596,6 +600,10 @@ describe("resolve for a session on a user's behalf", () => {
           }) as never
       } as never,
       agentVaultSessionInlineServiceDAL: { findBySessionId: async () => [], deleteSecretsBySessionId: async () => {} },
+      agentVaultSessionInlineSkillDAL: {
+        findWithFilesBySessionId: async () => [],
+        deleteFilesBySessionId: async () => {}
+      },
       agentVaultDelegationDAL: { identityCoversUser: async () => delegationCoversUser },
       agentVaultSessionLogConfigDAL: {
         findOne: async () => sessionLogConfig,

@@ -96,3 +96,14 @@ backend/src/ee/services/dynamic-secret/providers/sql-database.test.ts:generic-pa
 backend/src/ee/services/agent-vault/agent-vault-service-type-fns.test.ts:private-key:351
 frontend/src/components/agent-vault/service-sheet/serviceRequest.test.ts:private-key:691
 frontend/src/components/agent-vault/service-sheet/serviceSchema.test.ts:private-key:576
+backend/src/domains/platform/kms-core/ce/models/instance-encryption-key.test.ts:generic-api-key:4
+backend/src/domains/platform/kms-core/ce/models/instance-encryption-key.test.ts:generic-api-key:144
+backend/src/domains/platform/kms-core/ce/services/wire-format.test.ts:generic-api-key:178
+backend/src/domains/platform/kms-core/ce/testing/fixtures/kms-wire-format.json:generic-api-key:4
+backend/src/domains/platform/kms-core/ce/testing/fixtures/kms-wire-format.json:generic-api-key:62
+backend/src/domains/platform/kms-core/ce/testing/fixtures/kms-wire-format.json:generic-api-key:68
+backend/src/domains/platform/kms-core/ce/testing/fixtures/kms-wire-format.json:generic-api-key:196
+backend/src/domains/platform/kms-core/ce/testing/fixtures/kms-wire-format.json:generic-api-key:204
+backend/src/domains/platform/kms-core/ce/testing/fixtures/kms-wire-format.json:generic-api-key:212
+backend/src/domains/platform/kms-core/ce/services/root-key/root-key-loader.test.ts:generic-api-key:23
+backend/src/domains/platform/kms-core/ce/testing/root-key-fixture.ts:generic-api-key:12
