@@ -25,7 +25,7 @@
   "thumbnails": {
     "preset": "classic",
     "appearance": "light",
-    "background": "/images/docs-preview-yellow.png",
+    "background": "https://raw.githubusercontent.com/Infisical/infisical/0c7063f8b9e644827792a1f2ee1193451a53fa25/docs/images/docs-preview-yellow.png",
     "fonts": {
       "family": "Alliance",
       "source": "/fonts/AllianceNo2-Regular.woff",
