@@ -1002,7 +1002,7 @@ List the PAM accounts you can access. Use [infisical pam accounts get](/cli/refe
   command="pam accounts get"
   usage="[path] [flags]"
   args={[
-    { name: "path", usage: "[path]", description: "One account to show, as `folder/account`. Without it, the command lists every account you can access." },
+    { name: "path", usage: "[path]", description: "A folder, to list only its accounts, or one account to show, as `folder/account`. Without it, the command lists every account you can access." },
   ]}
   flags={[
     { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the accounts as `json` or `yaml` instead of a table." },
@@ -1010,6 +1010,7 @@ List the PAM accounts you can access. Use [infisical pam accounts get](/cli/refe
   ]}
   examples={[
     { title: "List the accounts you can access", code: "infisical pam accounts get" },
+    { title: "List the accounts in one folder", code: "infisical pam accounts get prod" },
     { title: "Show how to connect to one account", code: "infisical pam accounts get prod/orders-db" },
     { title: "List the accounts as JSON", code: "infisical pam accounts get -o json" },
   ]}

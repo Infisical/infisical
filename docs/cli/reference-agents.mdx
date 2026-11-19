@@ -1374,7 +1374,7 @@ Name one account to see its details, any reason or MFA it requires, and a comman
 
 ### Arguments
 
-- `path` (optional): One account to show, as `folder/account`. Without it, the command lists every account you can access.
+- `path` (optional): A folder, to list only its accounts, or one account to show, as `folder/account`. Without it, the command lists every account you can access.
 
 ### Flags
 
@@ -1387,6 +1387,12 @@ List the accounts you can access
 
 ```bash
 infisical pam accounts get
+```
+
+List the accounts in one folder
+
+```bash
+infisical pam accounts get prod
 ```
 
 Show how to connect to one account
