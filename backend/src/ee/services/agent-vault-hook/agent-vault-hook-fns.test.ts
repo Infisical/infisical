@@ -246,6 +246,18 @@ describe("hook rule services", () => {
     ]);
   });
 
+  test("with name targets, only a name among them becomes an ID, and IDs still name any project service", () => {
+    const { rules } = toStoredHookRulesForSave(
+      [{ service: "github" }, { service: "linear" }, { serviceId: OTHER_ID }],
+      [
+        { id: SERVICE_ID, name: "github" },
+        { id: OTHER_ID, name: "linear" }
+      ],
+      [{ id: SERVICE_ID, name: "github" }]
+    );
+    expect(rules).toEqual([{ serviceId: SERVICE_ID }, { service: "linear" }, { serviceId: OTHER_ID }]);
+  });
+
   test("on save, a service ID that isn't the project's is refused", () => {
     expect(() => toStoredHookRulesForSave([{ service: "a" }, { serviceId: OTHER_ID }], [])).toThrow(
       `Rule 2 names a service with ID '${OTHER_ID}' that isn't in this project.`

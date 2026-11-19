@@ -784,16 +784,30 @@ export const agentVaultSessionServiceFactory = ({
     }));
 
     const encryptedInlineHookSecret = inlineHook ? seal({ value: inlineHook.secret }) : null;
-    const inlineHookRules = inlineHook?.rules?.length
-      ? toStoredHookRulesForSave(
-          inlineHook.rules,
-          await agentVaultHookDAL.findProjectServicesForHookRules({
-            projectId,
-            ids: inlineHook.rules.flatMap((rule) => (rule.serviceId ? [rule.serviceId] : [])),
-            names: inlineHook.rules.flatMap((rule) => (rule.service ? [rule.service] : []))
-          })
-        ).rules
-      : [];
+    // An inline hook lives with this session, so a name becomes a project service's ID only when that service is in
+    // the session. Otherwise it stays a name, and an inline service of the same name keeps its rule.
+    const $inlineHookRules = async () => {
+      if (!inlineHook?.rules?.length) return [];
+      const sessionProjectServices = [
+        ...listedServices,
+        ...(
+          await Promise.all(
+            accessBundles.map((name) => agentVaultServiceDAL.findByAccessBundleId(bundlesByName.get(name)!.id))
+          )
+        ).flat()
+      ].map(({ id, name }) => ({ id, name }));
+      const idTargets = await agentVaultHookDAL.findProjectServicesForHookRules({
+        projectId,
+        ids: inlineHook.rules.flatMap((rule) => (rule.serviceId ? [rule.serviceId] : [])),
+        names: []
+      });
+      return toStoredHookRulesForSave(
+        inlineHook.rules,
+        [...idTargets, ...sessionProjectServices],
+        sessionProjectServices
+      ).rules;
+    };
+    const inlineHookRules = await $inlineHookRules();
 
     const ttlMs = ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : ms(ttl);
     const expiresAt = ttlMs === null ? null : new Date(Date.now() + ttlMs);

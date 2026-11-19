@@ -226,7 +226,7 @@ describe("mintSession, an inline hook", () => {
     expect(JSON.stringify(result)).not.toContain(SECRET);
   });
 
-  test("a rule naming a project service is stored by the service's ID and reads back with its name", async () => {
+  test("a rule naming a project service that isn't in the session stays a name, so an inline service of that name keeps it", async () => {
     const { service, agentVaultHookDAL } = buildService();
 
     const result = await mintWithHook(service, {
@@ -234,9 +234,19 @@ describe("mintSession, an inline hook", () => {
     });
 
     expect(agentVaultHookDAL.insertInlineForSession.mock.calls[0][0]).toMatchObject({
-      rules: [{ serviceId: GITHUB_SERVICE_ID, methods: ["PUT"] }]
+      rules: [{ service: "github", methods: ["PUT"] }]
     });
-    expect(result.session.hook?.rules).toEqual([{ serviceId: GITHUB_SERVICE_ID, service: "github", methods: ["PUT"] }]);
+    expect(result.session.hook?.rules).toEqual([{ serviceId: null, service: "github", methods: ["PUT"] }]);
+  });
+
+  test("a rule's serviceId still names any project service", async () => {
+    const { service, agentVaultHookDAL } = buildService();
+
+    await mintWithHook(service, { hook: { url: HOOK_URL, secret: SECRET, rules: [{ serviceId: GITHUB_SERVICE_ID }] } });
+
+    expect(agentVaultHookDAL.insertInlineForSession.mock.calls[0][0]).toMatchObject({
+      rules: [{ serviceId: GITHUB_SERVICE_ID }]
+    });
   });
 
   test("is refused before any transaction with hooks off the plan", async () => {

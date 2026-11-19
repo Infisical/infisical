@@ -232,10 +232,12 @@ export const toResolvedHookRules = (
  */
 export const toStoredHookRulesForSave = (
   rules: TAgentVaultHookRuleInput[],
-  projectServices: { id: string; name: string }[]
+  projectServices: { id: string; name: string }[],
+  // The services a name may become the ID of; all of `projectServices` unless the caller narrows it.
+  nameTargets: { id: string; name: string }[] = projectServices
 ): { rules: TStoredHookRule[]; serviceNamesById: Map<string, string> } => {
   const serviceNamesById = new Map(projectServices.map((service) => [service.id, service.name]));
-  const serviceIdsByName = new Map(projectServices.map((service) => [service.name, service.id]));
+  const serviceIdsByName = new Map(nameTargets.map((service) => [service.name, service.id]));
   const stored = rules.map((rule, index): TStoredHookRule => {
     if (rule.serviceId) {
       if (!serviceNamesById.has(rule.serviceId)) {
