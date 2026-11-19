@@ -52,6 +52,11 @@ export const SESSION_HANDLERS: Partial<Record<PamAccountType, TSessionHandlerEnt
     gatewayAccountType: PamAccountType.Windows,
     handler: handleRdpSession
   },
+  // The gateway drives the browser and speaks the viewer protocol itself, so the tunnel only relays bytes
+  [PamAccountType.WebApp]: {
+    gatewayAccountType: PamAccountType.WebApp,
+    handler: handleRdpSession
+  },
   // Windows AD accounts use RDP through the Windows gateway protocol
   [PamAccountType.WindowsAd]: {
     gatewayAccountType: PamAccountType.Windows,

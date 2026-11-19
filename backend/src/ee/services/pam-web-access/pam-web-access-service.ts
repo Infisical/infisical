@@ -606,6 +606,7 @@ export const pamWebAccessServiceFactory = ({
 
       const createdSession = session;
       const isRdp = account.accountType === PamAccountType.Windows || account.accountType === PamAccountType.WindowsAd;
+      const isActivatedByGateway = isRdp || account.accountType === PamAccountType.WebApp;
 
       // Certs are minted per gateway, so each attempt has to re-mint. `eager` opens the tunnel
       // during setup, so an unreachable gateway fails here where another member can still be tried.
@@ -698,9 +699,9 @@ export const pamWebAccessServiceFactory = ({
         releaseEarlyBuffer();
       }
 
-      // RDP sessions are activated by the gateway after credential exchange,
+      // RDP and web app sessions are activated by the gateway after it fetches the credentials,
       // not by the web access service.
-      if (!isRdp) {
+      if (!isActivatedByGateway) {
         await pamSessionDAL.activateSession(session.id);
       }
 
