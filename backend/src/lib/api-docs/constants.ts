@@ -1430,7 +1430,10 @@ export const PROJECT_IDENTITY_MEMBERSHIP = {
   },
   GET_IDENTITY_MEMBERSHIP_BY_ID: {
     projectId: "The ID of the project to get the identity membership for.",
-    identityId: "The ID of the machine identity to get the membership for."
+    identityId: "The ID of the machine identity to get the membership for.",
+    hasDeleteProtection: "Whether the machine identity is protected from deletion.",
+    activeLockoutAuthMethods:
+      "The auth methods currently locked out for the machine identity after too many failed logins."
   },
   LIST_AVAILABLE_IDENTITIES: {
     projectId: "The ID of the project to list available identities for.",
