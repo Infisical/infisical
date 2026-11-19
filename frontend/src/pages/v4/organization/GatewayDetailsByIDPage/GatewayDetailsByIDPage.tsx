@@ -19,7 +19,7 @@ import { StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { BanIcon, HeartPulseIcon, PencilIcon } from "lucide-react";
+import { BanIcon, HeartPulseIcon } from "lucide-react";
 
 import {
   OrgGatewayPermissionActions,
@@ -146,7 +146,7 @@ export const GatewayDetailsByIDPage = () => {
   if (!gateway)
     return (
       <EmptyState
-        icon="globe"
+        icon="server"
         title="Gateway not found"
         actions={
           <Button variant="outline" asChild>
@@ -199,7 +199,7 @@ export const GatewayDetailsByIDPage = () => {
                 description={canEdit ? undefined : RESTRICTED}
                 onSelect={() => setDialog("rename")}
               >
-                <Icon icon={PencilIcon} />
+                <Icon name="pencil" />
                 Rename gateway
               </DropdownMenuItem>
               {isGatewayRegistered(gateway) && (

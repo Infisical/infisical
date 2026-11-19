@@ -180,7 +180,7 @@ export const SharedSecretsTable = ({ subOrganization }: { subOrganization?: stri
             <EmptyState
               size="sm"
               media="bare"
-              icon="link"
+              icon="send"
               title="No shared secrets"
               description="Create a secure link to share sensitive information."
             />

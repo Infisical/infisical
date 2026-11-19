@@ -22,7 +22,7 @@ import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
-import { ArrowRightIcon, PencilIcon, UserRoundXIcon } from "lucide-react";
+import { ArrowRightIcon, UserRoundXIcon } from "lucide-react";
 
 import {
   ProjectPermissionActions,
@@ -228,7 +228,7 @@ export const PamGroupsTab = () => {
           description={canEdit ? undefined : RESTRICTED}
           onSelect={() => setEditing(row)}
         >
-          <Icon icon={PencilIcon} />
+          <Icon name="pencil" />
           Edit product role
         </DropdownMenuItem>
         <DropdownMenuSeparator />

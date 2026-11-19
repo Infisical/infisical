@@ -32,7 +32,7 @@ import { Tabs } from "@infisical/cipher/ui/tabs";
 import { SmallText } from "@infisical/cipher/ui/text";
 import { useParams } from "@tanstack/react-router";
 import { format, formatDistanceToNow } from "date-fns";
-import { BanIcon, PencilIcon } from "lucide-react";
+import { BanIcon } from "lucide-react";
 
 import {
   OrgPermissionSubjects,
@@ -280,7 +280,7 @@ const ConnectedGatewaysCard = ({ relayId }: { relayId: string }) => {
       {empty ? (
         <EmptyState
           size="sm"
-          icon="globe"
+          icon="server"
           title="No connected gateways"
           description="Gateways that route through this relay will show up here."
         />
@@ -368,7 +368,7 @@ export const RelayDetailsByIDPage = () => {
   if (!relay)
     return (
       <EmptyState
-        icon="globe"
+        icon="server"
         title="Relay not found"
         actions={
           <Button variant="outline" asChild>
@@ -441,7 +441,7 @@ export const RelayDetailsByIDPage = () => {
               action={
                 <Button
                   variant="outline"
-                  icon={PencilIcon}
+                  icon="pencil"
                   iconOnly
                   aria-label="Edit relay host"
                   disabledReason={canEdit ? undefined : RESTRICTED}

@@ -27,11 +27,8 @@ import {
   LayoutGridIcon,
   ListIcon,
   type LucideIcon,
-  PencilIcon,
-  ServerIcon,
   Share2Icon,
   ShieldIcon,
-  TagIcon,
   UsersIcon
 } from "lucide-react";
 
@@ -46,10 +43,10 @@ type Glyph = { name: IconName } | { icon: LucideIcon };
 
 const TEMPLATE_ICONS: Record<string, Glyph> = {
   Eye: { name: "eye" },
-  Pencil: { icon: PencilIcon },
+  Pencil: { name: "pencil" },
   Users: { icon: UsersIcon },
   KeyRound: { name: "key" },
-  Server: { icon: ServerIcon },
+  Server: { name: "server" },
   Share2: { icon: Share2Icon },
   Bot: { name: "agent" }
 };
@@ -63,17 +60,17 @@ const SUBJECT_ICONS: Record<string, Glyph> = {
   "secret-syncs": { name: "sync" },
   "secret-rollback": { name: "history" },
   commits: { name: "git" },
-  environments: { name: "globe" },
-  tags: { icon: TagIcon },
+  environments: { name: "layers" },
+  tags: { name: "tag" },
   integrations: { name: "apps" },
-  "honey-tokens": { name: "alert" },
-  "proxied-services": { name: "link" },
+  "honey-tokens": { name: "honey" },
+  "proxied-services": { name: "proxy" },
   "audit-logs": { name: "history" },
   member: { name: "user" },
   groups: { icon: UsersIcon },
   identity: { name: "machine" },
   workspace: { name: "apps" },
-  role: { name: "lock" },
+  role: { name: "id-badge" },
   settings: { name: "settings" }
 };
 
@@ -81,7 +78,7 @@ const actionGlyph = (label: string, value: string): Glyph => {
   const haystack = `${label} ${value}`.toLowerCase();
   if (/(delete|remove)/.test(haystack)) return { name: "trash" };
   if (/(create|add|issue)/.test(haystack)) return { name: "plus" };
-  if (/(edit|modify|update|rename)/.test(haystack)) return { icon: PencilIcon };
+  if (/(edit|modify|update|rename)/.test(haystack)) return { name: "pencil" };
   if (/(read|view|describe|list)/.test(haystack)) return { name: "eye" };
   if (/lease/.test(haystack)) return { name: "clock" };
   if (/rotat/.test(haystack)) return { name: "sync" };

@@ -1,6 +1,5 @@
 import { Button } from "@infisical/cipher/ui/button";
 import { Icon } from "@infisical/cipher/ui/icon";
-import { Vault } from "lucide-react";
 
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
@@ -51,7 +50,7 @@ export function AgentProxyMovedDialog({
   return (
     <UpgradeDialogLayout
       scopeName="Agent Vault"
-      icon={<Icon icon={Vault} size={32} />}
+      icon={<Icon name="agent-lock" size={32} />}
       title="Agent Proxy is moving to Agent Vault"
       onOpenChange={onOpenChange}
       footer={

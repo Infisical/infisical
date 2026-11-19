@@ -27,7 +27,7 @@ import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { useParams } from "@tanstack/react-router";
-import { BanIcon, PencilIcon, UserRoundXIcon } from "lucide-react";
+import { BanIcon, UserRoundXIcon } from "lucide-react";
 
 import {
   OrgPermissionIdentityActions,
@@ -295,7 +295,7 @@ const DetailsCard = ({
           <Gate allowed={canEdit}>
             <Button
               variant="outline"
-              icon={PencilIcon}
+              icon="pencil"
               iconOnly
               aria-label="Edit machine identity"
               disabled={!canEdit}

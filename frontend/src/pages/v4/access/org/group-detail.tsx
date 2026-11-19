@@ -41,7 +41,6 @@ import { MultiSelect } from "@infisical/cipher/ui/multi-select";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { useParams } from "@tanstack/react-router";
-import { PencilIcon } from "lucide-react";
 
 import {
   OrgPermissionGroupActions,
@@ -496,7 +495,7 @@ export const OrgGroupDetail = () => {
                     description={canEdit ? undefined : RESTRICTED}
                     onSelect={() => setEditing(true)}
                   >
-                    <Icon icon={PencilIcon} />
+                    <Icon name="pencil" />
                     Edit group
                   </DropdownMenuItem>
                 )}
@@ -531,7 +530,7 @@ export const OrgGroupDetail = () => {
                   <Gate allowed={canEdit}>
                     <Button
                       variant="outline"
-                      icon={PencilIcon}
+                      icon="pencil"
                       iconOnly
                       aria-label="Edit group"
                       disabled={!canEdit}

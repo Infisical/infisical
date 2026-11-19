@@ -15,7 +15,7 @@ import { Progress } from "@infisical/cipher/ui/progress";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { SmallText, Text } from "@infisical/cipher/ui/text";
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowRightIcon, LayersIcon } from "lucide-react";
+import { ArrowRightIcon } from "lucide-react";
 
 import {
   OrgPermissionSecretsManagementInsightsActions,
@@ -100,7 +100,7 @@ const DuplicateGroups = ({ groups }: { groups: TOrgDuplicatedSecretGroup[] }) =>
                 <InlineGrow>
                   <Text>{`${group.secrets.length} secrets share an identical value`}</Text>
                 </InlineGrow>
-                <Badge tone={isCrossProject ? "accent" : "soft"} icon={LayersIcon}>
+                <Badge tone={isCrossProject ? "accent" : "soft"} icon="layers">
                   {isCrossProject
                     ? `${counted(group.projectCount, "Project")}, ${counted(group.locationCount, "Location")}`
                     : counted(group.locationCount, "Location")}

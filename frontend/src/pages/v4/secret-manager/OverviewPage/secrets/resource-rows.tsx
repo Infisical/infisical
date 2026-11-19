@@ -33,11 +33,9 @@ import {
   ActivityIcon,
   ArrowDownUpIcon,
   BanIcon,
-  EditIcon,
   FileKeyIcon,
   FolderInputIcon,
   HandshakeIcon,
-  LayersIcon,
   ListIcon,
   TriangleAlertIcon,
   UsersIcon,
@@ -246,7 +244,7 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
               description={editBlock}
               onSelect={run("edit")}
             >
-              <Icon icon={EditIcon} />
+              <Icon name="pencil" />
               Edit
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -379,7 +377,7 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
               description={editBlock}
               onSelect={run("edit")}
             >
-              <Icon icon={EditIcon} />
+              <Icon name="pencil" />
               Edit
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -444,7 +442,7 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem disabled={Boolean(block)} description={block} onSelect={run("edit")}>
-              <Icon icon={EditIcon} />
+              <Icon name="pencil" />
               Edit
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -518,7 +516,7 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
               description={editBlock}
               onSelect={run("edit")}
             >
-              <Icon icon={EditIcon} />
+              <Icon name="pencil" />
               Edit
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -776,7 +774,7 @@ function FolderRowView({
           description={editBlock}
           onSelect={() => onEdit(first)}
         >
-          <Icon icon={EditIcon} />
+          <Icon name="pencil" />
           Edit folder
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -866,7 +864,7 @@ function SiteLink({ site }: { site: EnvironmentOption }) {
           )
         }
       >
-        <Icon icon={LayersIcon} />
+        <Icon name="layers" />
         {site.label}
       </Link>
     </Badge>
@@ -946,7 +944,7 @@ function ImportedIn({ sites }: { sites: EnvironmentOption[] }) {
           </Button>
           {sites.map((site) => (
             <Badge key={site.value} tone="outline">
-              <Icon icon={LayersIcon} />
+              <Icon name="layers" />
               {site.label}
             </Badge>
           ))}
@@ -995,7 +993,7 @@ export function ImportRow({
       <span className={`${styles.importLabel} ${styles.importWide}`}>
         {crossProject && <Badge tone="warn">{sourceProject}</Badge>}
         <Badge tone="outline">
-          <Icon icon={LayersIcon} />
+          <Icon name="layers" />
           {sourceEnvironment}
         </Badge>
         <Icon name="folder" size={14} />

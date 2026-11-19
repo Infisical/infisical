@@ -2,11 +2,10 @@ import { useEffect, useEffectEvent, useRef } from "react";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
-import { Icon } from "@infisical/cipher/ui/icon";
+import { Icon, type IconName } from "@infisical/cipher/ui/icon";
 import { Separator } from "@infisical/cipher/ui/separator";
 import { Heading, Text } from "@infisical/cipher/ui/text";
 import { useLocation, useRouterState } from "@tanstack/react-router";
-import { Server, Shield, Vault } from "lucide-react";
 
 import { getProductPlanSummaries } from "@app/components/license/product-plan-summary";
 import {
@@ -129,9 +128,10 @@ const CapabilityUpgradeDialog = ({
   if (isInstance) scopeName = "Infisical Instance";
   else if (isAgentVault) scopeName = "Agent Vault";
 
-  let scopeIcon = Shield;
-  if (isInstance) scopeIcon = Server;
-  else if (isProduct || isAgentVault) scopeIcon = Vault;
+  let scopeIcon: IconName = "shield";
+  if (isInstance) scopeIcon = "server";
+  else if (isAgentVault) scopeIcon = "agent-lock";
+  else if (isProduct) scopeIcon = "vault";
 
   let actionLabel = isSubOrganization ? "Continue to root billing" : "View plans";
   if (isInstance) actionLabel = "Contact sales";
@@ -185,7 +185,7 @@ const CapabilityUpgradeDialog = ({
   return (
     <UpgradeDialogLayout
       scopeName={scopeName}
-      icon={<Icon icon={scopeIcon} size={32} />}
+      icon={<Icon name={scopeIcon} size={32} />}
       title={intent.title}
       description={scopeDescription}
       onOpenChange={onOpenChange}

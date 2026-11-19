@@ -55,7 +55,7 @@ export const SecretSharingPage = () => {
     tabs.find((tab) => tab.value === selectedTab)?.value ?? SecretSharingTab.ShareSecret;
   let body = <SharedSecretsTable subOrganization={subOrganization} />;
   let action = (
-    <Button variant="accent" icon="link" onClick={() => setSharing(true)}>
+    <Button variant="accent" icon="send" onClick={() => setSharing(true)}>
       Share secret
     </Button>
   );

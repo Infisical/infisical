@@ -10,7 +10,6 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
-import { PencilIcon } from "lucide-react";
 
 import { SecretApprovalPoliciesUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
 import {
@@ -430,7 +429,7 @@ export const ApprovalPolicies = ({
           inline: [
             {
               label: "Edit policy",
-              icon: PencilIcon,
+              icon: "pencil",
               onSelect: openEdit,
               disabledReason: () => (canEdit ? undefined : RESTRICTED)
             }

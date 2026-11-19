@@ -14,7 +14,6 @@ import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { PencilIcon } from "lucide-react";
 
 import {
   OrgPermissionAppConnectionActions,
@@ -384,12 +383,12 @@ const EmptyConnections = ({
         }
       />
     );
-  if (!isProject) return <EmptyState size="sm" icon="apps" title="No app connections yet" />;
+  if (!isProject) return <EmptyState size="sm" icon="cable" title="No app connections yet" />;
   return (
     <EmptyState
       size="sm"
       media="bare"
-      icon="apps"
+      icon="cable"
       title="No app connections yet"
       actions={
         <Button variant="outline" icon="plus" disabledReason={createBlock} onClick={onAdd}>
@@ -633,7 +632,7 @@ export const AppConnectionsTable = ({
           inline: [
             {
               label: "Edit details",
-              icon: PencilIcon,
+              icon: "pencil",
               disabledReason: editBlock,
               onSelect: (row) => setDialog({ kind: "details", connection: row })
             }

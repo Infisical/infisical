@@ -196,7 +196,7 @@ const AccessBadge = ({
     return (
       <Tooltip content={item.service.description ?? "A project service this session names"}>
         <Badge tone="outline" tabIndex={0} style={{ minWidth: 0 }}>
-          <Icon name="link" className="shrink-0" />
+          <Icon name="proxy" className="shrink-0" />
           <span className="truncate">{item.service.name}</span>
         </Badge>
       </Tooltip>
@@ -204,7 +204,7 @@ const AccessBadge = ({
   return (
     <Tooltip content={item.services.map((service) => service.name).join(", ")}>
       <Badge tone="outline" tabIndex={0} style={{ minWidth: 0 }}>
-        <Icon name="globe" className="shrink-0" />
+        <Icon name="proxy" className="shrink-0" />
         <span className="truncate">{accessItemLabel(item)}</span>
       </Badge>
     </Tooltip>
@@ -347,7 +347,7 @@ const SessionsEmpty = ({
       <EmptyState
         size="sm"
         media="bare"
-        icon="agent"
+        icon="id-card"
         title="No sessions yet"
         description="Create a session to get a token an agent can run with."
       />
@@ -357,7 +357,7 @@ const SessionsEmpty = ({
       <EmptyState
         size="sm"
         media="bare"
-        icon="agent"
+        icon="package"
         title="No access bundles granted to you"
         description="Ask an admin to grant you an access bundle."
       />
@@ -366,7 +366,7 @@ const SessionsEmpty = ({
     <EmptyState
       size="sm"
       media="bare"
-      icon="agent"
+      icon="id-card"
       title="No sessions yet"
       description="Add a service first, then create a session with it, on its own or through an access bundle. Agents also need a proxy to route through."
       actions={

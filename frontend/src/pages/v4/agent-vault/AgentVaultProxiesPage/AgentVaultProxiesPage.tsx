@@ -41,7 +41,7 @@ import { Meta } from "@infisical/cipher/ui/text";
 import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useParams } from "@tanstack/react-router";
 import { format, formatDistanceToNowStrict } from "date-fns";
-import { BanIcon, PencilIcon, RefreshCwIcon } from "lucide-react";
+import { BanIcon, RefreshCwIcon } from "lucide-react";
 import { z } from "zod";
 
 import { PageTitle } from "@app/components/PageTitle";
@@ -657,7 +657,7 @@ const Proxies = ({ projectId }: { projectId: string }) => {
             ? [
                 {
                   label: "Edit settings",
-                  icon: PencilIcon,
+                  icon: "pencil",
                   onSelect: (proxy) => setDialog({ proxy })
                 }
               ]
@@ -724,7 +724,7 @@ const Proxies = ({ projectId }: { projectId: string }) => {
             <EmptyState
               size="sm"
               media="bare"
-              icon="machine"
+              icon="server"
               title="No proxies yet"
               description="Create a proxy and start it where agent traffic leaves your network."
               actions={

@@ -13,7 +13,7 @@ import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { HeartPulseIcon, PencilIcon } from "lucide-react";
+import { HeartPulseIcon } from "lucide-react";
 
 import {
   OrgGatewayPermissionActions,
@@ -298,7 +298,7 @@ export const GatewaysPanel = ({
                   description={canEdit ? undefined : RESTRICTED}
                   onSelect={() => setRenaming(gateway)}
                 >
-                  <Icon icon={PencilIcon} />
+                  <Icon name="pencil" />
                   Rename gateway
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -327,7 +327,7 @@ export const GatewaysPanel = ({
                 }
               />
             ) : (
-              <EmptyState size="sm" icon="globe" title="No gateways yet" />
+              <EmptyState size="sm" icon="server" title="No gateways yet" />
             )
           }
         />

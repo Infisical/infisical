@@ -21,7 +21,7 @@ import {
 } from "@infisical/cipher/ui/sheet";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { Link } from "@tanstack/react-router";
-import { HardDriveIcon, UsersIcon } from "lucide-react";
+import { UsersIcon } from "lucide-react";
 
 import {
   OrgPermissionMemberActions,
@@ -67,9 +67,12 @@ const permissionColumns: { action: Action; label: string }[] = [
   { action: "edit", label: "Edit" },
   { action: "delete", label: "Delete" }
 ];
-const typeConfig: Record<RowType, { label: string; icon?: typeof UsersIcon; name?: "user" }> = {
+const typeConfig: Record<
+  RowType,
+  { label: string; icon?: typeof UsersIcon; name?: "user" | "machine" }
+> = {
   user: { label: "User", name: "user" },
-  identity: { label: "Machine Identity", icon: HardDriveIcon },
+  identity: { label: "Machine Identity", name: "machine" },
   group: { label: "Group", icon: UsersIcon }
 };
 const typeOrder: RowType[] = ["user", "identity", "group"];

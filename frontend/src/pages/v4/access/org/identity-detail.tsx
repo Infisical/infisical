@@ -32,7 +32,6 @@ import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Select } from "@infisical/cipher/ui/select";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { useParams } from "@tanstack/react-router";
-import { PencilIcon } from "lucide-react";
 
 import {
   OrgPermissionIdentityActions,
@@ -317,7 +316,7 @@ export const OrgIdentityDetail = () => {
     inline: [
       {
         label: "Edit auth method",
-        icon: PencilIcon,
+        icon: "pencil",
         disabledReason: () => (canEditAuth ? undefined : RESTRICTED),
         onSelect: (method) => setAuthForm({ method })
       }
@@ -371,7 +370,7 @@ export const OrgIdentityDetail = () => {
                 <Gate allowed={canEdit}>
                   <Button
                     variant="outline"
-                    icon={PencilIcon}
+                    icon="pencil"
                     iconOnly
                     aria-label="Edit machine identity"
                     disabled={!canEdit}

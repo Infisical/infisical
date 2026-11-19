@@ -33,7 +33,6 @@ import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Snippet } from "@infisical/cipher/ui/snippet";
 import { format } from "date-fns";
-import { ShieldCheckIcon } from "lucide-react";
 import { z } from "zod";
 
 import {
@@ -340,7 +339,7 @@ const EmailDomainsTable = ({
                     description={canVerify ? undefined : RESTRICTED}
                     onSelect={() => onVerify(row)}
                   >
-                    <Icon icon={ShieldCheckIcon} />
+                    <Icon name="shield-check" />
                     Verify
                   </DropdownMenuItem>
                 )}

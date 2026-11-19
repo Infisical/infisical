@@ -23,7 +23,6 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { Inline } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
-import { PencilIcon } from "lucide-react";
 
 import {
   ProjectPermissionHsmConnectorActions,
@@ -215,7 +214,7 @@ const ConnectorsCard = ({ orgId, plan }: { orgId: string; plan: HsmPlan }) => {
     inline: [
       {
         label: "Edit details",
-        icon: PencilIcon,
+        icon: "pencil",
         disabledReason: () => blocked(ProjectPermissionHsmConnectorActions.Edit),
         onSelect: setEditing
       }

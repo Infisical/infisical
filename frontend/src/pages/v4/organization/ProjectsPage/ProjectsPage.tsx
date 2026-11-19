@@ -113,7 +113,7 @@ export const ProjectsPage = () => {
           <Item
             asChild
             variant="outline"
-            icon={productOf(demoProject.type).icon}
+            icon={productOf(demoProject.type).folder}
             title={demoProject.name}
             description={`Continue in ${productOf(demoProject.type).label}`}
             actions={<Icon name="chev-right" size={16} />}

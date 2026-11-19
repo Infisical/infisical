@@ -41,7 +41,7 @@ import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Select } from "@infisical/cipher/ui/select";
 import { useParams } from "@tanstack/react-router";
-import { BanIcon, MailIcon, PencilIcon, UserCheckIcon } from "lucide-react";
+import { BanIcon, MailIcon, UserCheckIcon } from "lucide-react";
 
 import {
   OrgPermissionGroupActions,
@@ -391,7 +391,7 @@ export const OrgMemberDetail = () => {
                     description={canEdit ? undefined : RESTRICTED}
                     onSelect={() => setEditing(true)}
                   >
-                    <Icon icon={PencilIcon} />
+                    <Icon name="pencil" />
                     Edit user
                   </DropdownMenuItem>
                   <DropdownMenuItem
@@ -440,7 +440,7 @@ export const OrgMemberDetail = () => {
                   <Gate allowed={canEdit}>
                     <Button
                       variant="outline"
-                      icon={PencilIcon}
+                      icon="pencil"
                       iconOnly
                       aria-label="Edit user"
                       disabled={!canEdit}

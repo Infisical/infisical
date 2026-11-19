@@ -21,14 +21,7 @@ import { TableCell, TableRow } from "@infisical/cipher/ui/table";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import type { LinkOptions } from "@tanstack/react-router";
-import {
-  ClipboardPasteIcon,
-  FilterIcon,
-  FingerprintIcon,
-  HexagonIcon,
-  ImportIcon,
-  ListPlusIcon
-} from "lucide-react";
+import { ClipboardPasteIcon, FingerprintIcon, ImportIcon, ListPlusIcon } from "lucide-react";
 
 import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
 
@@ -80,7 +73,7 @@ export function ResourceFilterMenu({
       <Tooltip content="Filter resources">
         <DropdownMenuTrigger asChild>
           <Button variant="outline" aria-label="Filter resources">
-            <Icon icon={FilterIcon} />
+            <Icon name="funnel" />
             {active > 0 && <Count tone="ink">{active}</Count>}
           </Button>
         </DropdownMenuTrigger>
@@ -259,7 +252,7 @@ export function AddNewMenu({
           <KindIcon kind="proxy" />
           Add proxied service
         </DropdownMenuItem>
-        {item("honey", "Add honey token", <Icon icon={HexagonIcon} />)}
+        {item("honey", "Add honey token", <Icon name="honey" />)}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <Icon icon={ListPlusIcon} />
@@ -459,6 +452,7 @@ const noAnnotations: QuickAddAnnotations = { comment: "", tags: [], metadata: []
 function QuickAddValue({
   ref,
   scope,
+  multiple,
   value,
   onChange,
   onSave,
@@ -466,6 +460,7 @@ function QuickAddValue({
 }: {
   ref: Ref<HTMLTextAreaElement & HTMLInputElement>;
   scope: Scope;
+  multiple: boolean;
   value: string;
   onChange: (value: string) => void;
   onSave: () => void;
@@ -497,7 +492,7 @@ function QuickAddValue({
           rows={1}
           className={styles.inlineInput}
           aria-label="New secret value"
-          placeholder="Value"
+          placeholder={multiple ? "Add a secret value (applies to all)" : "Add a secret value"}
           autoComplete="off"
           spellCheck={false}
         />
@@ -630,7 +625,7 @@ export function QuickAddRow({
             ref={keyRef}
             className={styles.inlineInput}
             aria-label="New secret name"
-            placeholder="Secret name"
+            placeholder="Add a secret name or paste a .env"
             autoComplete="off"
             spellCheck={false}
             value={key}
@@ -745,6 +740,7 @@ export function QuickAddRow({
           <QuickAddValue
             ref={valueRef}
             scope={scope}
+            multiple={multiple}
             value={value}
             onChange={setValue}
             onSave={save}

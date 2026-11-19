@@ -95,7 +95,7 @@ const PolicyList = ({ orgId, projectId }: { orgId: string; projectId: string }) 
   ) : (
     <EmptyState
       size="sm"
-      icon="shield"
+      icon="shield-check"
       title="No certificate policies yet"
       description="Create a policy to set the rules your certificates must follow when issued."
       actions={

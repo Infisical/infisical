@@ -214,7 +214,7 @@ const Skills = ({ projectId }: { projectId: string }) => {
               <EmptyState
                 size="sm"
                 media="bare"
-                icon="file"
+                icon="book"
                 title="No skills yet"
                 description="A skill holds instructions agents follow, delivered through access bundles."
                 actions={

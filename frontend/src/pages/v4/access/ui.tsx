@@ -15,7 +15,7 @@ import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
-import { ClockAlertIcon, ClockIcon, FilterIcon } from "lucide-react";
+import { ClockAlertIcon, ClockIcon } from "lucide-react";
 
 import { grantLabel, isGrantExpired, type RoleGrant } from "./roles";
 
@@ -84,13 +84,13 @@ export const ListToolbar = ({
             aria-label={filter.label}
             disabledReason={filter.disabledReason}
           >
-            <Icon icon={FilterIcon} />
+            <Icon name="funnel" />
           </Button>
         ) : (
           <Tooltip content={filter.label}>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" aria-label={filter.label}>
-                <Icon icon={FilterIcon} />
+                <Icon name="funnel" />
                 {filter.selected.length > 0 && <Count tone="ink">{filter.selected.length}</Count>}
               </Button>
             </DropdownMenuTrigger>

@@ -232,12 +232,17 @@ export const V4Shell = ({
     product && at.projectId
       ? {
           label: nameLabel(projectName, "project"),
+          media: <Icon name={product.folder} />,
           href: resolve(`${base}${projectHome(product.type, at.projectId)}`),
           switcher: {
             label: "Switch project",
             options: session.projects
               .filter((entry) => entry.type === product.type)
-              .map((entry) => ({ value: entry.id, label: entry.name })),
+              .map((entry) => ({
+                value: entry.id,
+                label: entry.name,
+                media: <Icon name={product.folder} />
+              })),
             value: at.projectId,
             onChange: (id: string) => {
               const from = `${base}${projectBase(product.type, at.projectId!)}`;
