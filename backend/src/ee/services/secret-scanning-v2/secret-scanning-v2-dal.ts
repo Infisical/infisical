@@ -695,6 +695,26 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
 
   // Reads the primary: the caller writes these rows straight after, and a replica that still shows
   // a just-completed scan as in-progress would have it reaped.
+  const hasEarlierCompletedHistoricalScan = async (
+    { resourceId, scanId }: { resourceId: string; scanId: string },
+    tx?: Knex
+  ) => {
+    try {
+      const scan = await (tx || db)(TableName.SecretScanningScan)
+        .where({
+          resourceId,
+          type: SecretScanningScanType.Historical,
+          status: SecretScanningScanStatus.Completed
+        })
+        .whereNot({ id: scanId })
+        .first("id");
+
+      return Boolean(scan);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Has Earlier Completed Historical Scan - Secret Scanning Scan" });
+    }
+  };
+
   const findStuckScans = async (startedBefore: Date, limit: number, tx?: Knex) => {
     try {
       const scans = await (tx || db)(TableName.SecretScanningScan)
@@ -975,6 +995,27 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
+  // A finding's first location is written in the transaction that creates it, so the scan of its earliest location is
+  // the scan that created it, however many batches or attempts that scan took.
+  const countUnresolvedCreatedByScanId = async (scanId: string, tx?: Knex) => {
+    try {
+      const [result] = (await (tx || db)(TableName.SecretScanningFinding)
+        .where(`${TableName.SecretScanningFinding}.status`, SecretScanningFindingStatus.Unresolved)
+        .whereIn(`${TableName.SecretScanningFinding}.id`, (qb) => {
+          void qb.select("findingId").from(TableName.SecretScanningFindingLocation).where({ scanId });
+        })
+        .whereRaw(
+          `(SELECT "scanId" FROM ?? AS "firstLocation" WHERE "firstLocation"."findingId" = ??.id ORDER BY "firstLocation"."createdAt", "firstLocation".id LIMIT 1) = ?`,
+          [TableName.SecretScanningFindingLocation, TableName.SecretScanningFinding, scanId]
+        )
+        .count("* as count")) as { count: string }[];
+
+      return Number(result?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count Unresolved Created By Scan ID - Secret Scanning Finding" });
+    }
+  };
+
   // A pull request check that ran before findings were merged saved ids of findings that are now locations of another
   // finding, under the same ids.
   const findFindingsByIdsOrLocationIds = async (resourceId: string, ids: string[], tx?: Knex) => {
@@ -1035,6 +1076,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       findWithDetailsByDataSourceId: findScansWithDetailsByDataSourceId,
       findByDataSourceId: findScansByDataSourceId,
       findStuck: findStuckScans,
+      hasEarlierCompletedHistoricalScan,
       findQueuedHistorical: findQueuedHistoricalScans
     },
     findings: {
@@ -1042,6 +1084,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       persistLocations: persistFindingLocations,
       findByIdsOrLocationIds: findFindingsByIdsOrLocationIds,
       countByScanId: countFindingsByScanId,
+      countUnresolvedCreatedByScanId,
       findByProjectId: findFindingsByProjectId,
       findByIdWithDetails: findFindingByIdWithDetails,
       countByProjectId: countFindingsByProjectId

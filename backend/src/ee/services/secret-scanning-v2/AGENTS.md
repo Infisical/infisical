@@ -46,5 +46,14 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, findings, or 
   `findingIds`) still resolve through `findings.findByIdsOrLocationIds`.
 - A PR check is judged on the finding of every location the scan matched, including locations an earlier push saved,
   never only the new ones. Its counts are distinct findings.
-- Notifications count distinct unresolved findings with a location this scan found first (`findings.countByScanId`),
-  read back from the database so a resumed full scan counts every batch.
+- Notifications are alerts on the shared alert module (`secret-scanning.data-source` provider), bound to one data
+  source each: never send email or in-app notifications from this module. A scan emits `secrets-detected` or
+  `scan-failed` (`secret-scanning-v2-events.ts`) with its data source as the `resourceId`, in the transaction that
+  closes it, guarded on the status update matching, so a scan the reaper already closed emits nothing.
+- `secrets-detected` fires only for news: unresolved findings this scan created (`countUnresolvedCreatedByScanId`,
+  the scan of a finding's earliest location, so a resumed full scan counts every batch), plus, for diff scans only,
+  findings it reopened. A new location of a finding that's still unresolved was already alerted on, and a resource's
+  first full scan never alerts (`hasEarlierCompletedHistoricalScan`), since all of its history is new then.
+- Every data source gets its default alerts (`SECRET_SCANNING_DEFAULT_ALERTS`) in the transaction that creates it. Its
+  id is chosen before that transaction so the alerts can be prepared, a KMS call, outside it. Deleting a data source
+  reaps its alerts in the delete transaction (`deleteAlertsForDeletedResource`), since alerts have no foreign key to it.

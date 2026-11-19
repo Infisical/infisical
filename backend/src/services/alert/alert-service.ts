@@ -7,8 +7,9 @@ import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audi
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { TGenericPermission } from "@app/lib/types";
+import { ActorType } from "@app/services/auth/auth-type";
 
-import { getAlertChannelCipher } from "./alert-channel-crypto-fns";
+import { encryptChannelConfig, getAlertChannelCipher } from "./alert-channel-crypto-fns";
 import { TAlertChannelDALFactory } from "./alert-channel-dal";
 import { TAlertChannelMembershipDALFactory } from "./alert-channel-membership-dal";
 import { TAlertChannelRecipientDALFactory } from "./alert-channel-recipient-dal";
@@ -38,6 +39,7 @@ import {
   TGetAlertDTO,
   TListAlertsDTO,
   TPrepareAlertForResourceDTO,
+  TPrepareDefaultAlertDTO,
   TUpdateAlertDTO
 } from "./alert-service-types";
 import {
@@ -577,6 +579,56 @@ export const alertServiceFactory = ({
     await $applyPlan(prepared[PREPARED_ALERT], tx);
   };
 
+  // Built as the platform, so none of the permission or recipient checks a user's create runs apply: nobody
+  // asked for this alert, and its recipients are project-wide principals that resolve at send time.
+  const prepareDefaultAlert = async ({
+    orgId,
+    projectId,
+    resourceType,
+    resourceId,
+    eventType,
+    name,
+    recipients
+  }: TPrepareDefaultAlertDTO): Promise<TPreparedAlert> => {
+    const provider = $getProvider(resourceType);
+    const event = getAlertEvent(provider, eventType);
+    const cipher = await getAlertChannelCipher(kmsDataKeyService, { orgId, projectId });
+
+    const plan: TAlertWritePlan = {
+      kind: "create",
+      alert: {
+        name,
+        resourceType,
+        resourceId,
+        eventType,
+        triggerType: event.triggerType,
+        condition: null,
+        enabled: true,
+        orgId,
+        projectId,
+        createdByActorId: null,
+        createdByActorType: ActorType.PLATFORM
+      },
+      channels: [
+        {
+          row: {
+            name: "Email",
+            channelType: AlertChannelType.EMAIL,
+            encryptedConfig: encryptChannelConfig({}, cipher.encryptor),
+            workflowIntegrationId: null,
+            enabled: true,
+            orgId,
+            projectId,
+            createdByActorId: null,
+            createdByActorType: ActorType.PLATFORM
+          },
+          recipients
+        }
+      ]
+    };
+    return { [PREPARED_ALERT]: plan };
+  };
+
   const createAlert = async (dto: TCreateAlertDTO): Promise<TAlertResponse> => {
     const { plan, provider, cipher } = await $prepareCreate(dto);
 
@@ -918,6 +970,7 @@ export const alertServiceFactory = ({
     getAuditEvent,
     createAlert,
     prepareAlertForResource,
+    prepareDefaultAlert,
     applyPreparedAlert,
     getAlertById,
     listAlerts,

@@ -98,3 +98,15 @@ export type TPrepareAlertForResourceDTO = TGenericPermission & {
     | { replaceAll: TAlertChannelInput[] }
     | { replaceRecipients: { channelType: AlertChannelType; recipients: TChannelRecipientInput[] } };
 };
+
+// An alert a product gives a new resource that nobody created, the way a migration gives existing resources theirs.
+// It emails project-wide recipients.
+export type TPrepareDefaultAlertDTO = {
+  orgId: string;
+  projectId: string;
+  resourceType: string;
+  resourceId: string;
+  eventType: string;
+  name: string;
+  recipients: TChannelRecipientInput[];
+};

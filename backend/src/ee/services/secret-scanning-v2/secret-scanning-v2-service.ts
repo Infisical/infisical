@@ -1,7 +1,9 @@
+import crypto from "node:crypto";
+
 import { ForbiddenError } from "@casl/ability";
 import { join } from "path";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, TSecretScanningDataSourcesInsert } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -64,11 +66,14 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
+import { TAlertServiceFactory } from "@app/services/alert/alert-service";
+import { AlertPrincipalType } from "@app/services/alert/alert-types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { bitbucketSecretScanningService } from "./bitbucket/bitbucket-secret-scanning-service";
 import { gitlabSecretScanningService } from "./gitlab/gitlab-secret-scanning-service";
@@ -77,6 +82,7 @@ import {
   TListSecretScanningResourcesFilter,
   TSecretScanningV2DALFactory
 } from "./secret-scanning-v2-dal";
+import { SECRET_SCANNING_DEFAULT_ALERTS, SECRET_SCANNING_RESOURCE_TYPE } from "./secret-scanning-v2-events";
 import { TSecretScanningV2QueueServiceFactory } from "./secret-scanning-v2-queue";
 
 export type TSecretScanningV2ServiceFactoryDep = {
@@ -91,6 +97,11 @@ export type TSecretScanningV2ServiceFactoryDep = {
   >;
   kmsDataKeyService: TKmsDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  alertService: Pick<
+    TAlertServiceFactory,
+    "prepareDefaultAlert" | "applyPreparedAlert" | "deleteAlertsForDeletedResource"
+  >;
 };
 
 export type TSecretScanningV2ServiceFactory = ReturnType<typeof secretScanningV2ServiceFactory>;
@@ -105,7 +116,9 @@ export const secretScanningV2ServiceFactory = ({
   secretScanningV2Queue,
   appConnectionDAL,
   kmsDataKeyService,
-  keyStore
+  keyStore,
+  projectDAL,
+  alertService
 }: TSecretScanningV2ServiceFactoryDep) => {
   // A data source's webhook lives both with the provider and in its stored credentials, so changes that can touch it
   // run one at a time; two at once would each act on the same credentials and undo each other's webhook.
@@ -385,6 +398,24 @@ export const secretScanningV2ServiceFactory = ({
       kmsDataKeyService
     });
 
+    // The data source's id is chosen here so its default alerts can be bound to it before the transaction, since
+    // preparing them needs a KMS call that must not run inside it.
+    const dataSourceId = crypto.randomUUID();
+    const project = await projectDAL.findById(payload.projectId);
+    const defaultAlerts = await Promise.all(
+      SECRET_SCANNING_DEFAULT_ALERTS.map(({ eventType, name }) =>
+        alertService.prepareDefaultAlert({
+          orgId: project.orgId,
+          projectId: payload.projectId,
+          resourceType: SECRET_SCANNING_RESOURCE_TYPE,
+          resourceId: dataSourceId,
+          eventType,
+          name,
+          recipients: [{ principalType: AlertPrincipalType.PROJECT_ADMINS, principalId: payload.projectId }]
+        })
+      )
+    );
+
     try {
       const createdDataSource = await factory.initialize(
         {
@@ -412,12 +443,18 @@ export const secretScanningV2ServiceFactory = ({
             return await secretScanningV2DAL.dataSources.transaction(async (tx) => {
               const dataSource = await secretScanningV2DAL.dataSources.create(
                 {
+                  id: dataSourceId,
                   encryptedCredentials,
                   externalId,
                   ...payload
-                },
+                } as TSecretScanningDataSourcesInsert,
                 tx
               );
+
+              for (const alert of defaultAlerts) {
+                // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
+                await alertService.applyPreparedAlert(alert, tx);
+              }
 
               await factory.postInitialization({
                 payload: payload as TSecretScanningDataSourceInput,
@@ -687,7 +724,14 @@ export const secretScanningV2ServiceFactory = ({
       credentials
     });
 
-    await secretScanningV2DAL.dataSources.deleteById(dataSourceId);
+    // Alerts point at their data source without a foreign key, so nothing cascades to them.
+    await secretScanningV2DAL.dataSources.transaction(async (tx) => {
+      await alertService.deleteAlertsForDeletedResource(
+        { resourceType: SECRET_SCANNING_RESOURCE_TYPE, resourceId: dataSourceId },
+        tx
+      );
+      await secretScanningV2DAL.dataSources.deleteById(dataSourceId, tx);
+    });
 
     return dataSource as TSecretScanningDataSource;
   };

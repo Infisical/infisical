@@ -32,6 +32,7 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
@@ -49,11 +50,11 @@ import {
   SecretScanningScanTrigger,
   SecretScanningScanType
 } from "./secret-scanning-v2-enums";
+import { emitSecretScanningScanFailed, emitSecretScanningSecretsDetected } from "./secret-scanning-v2-events";
 import { SECRET_SCANNING_FACTORY_MAP } from "./secret-scanning-v2-factory";
 import {
   TFindingLocationRow,
   TFindingsPayload,
-  TGitRepositoryScanFindingDetails,
   TQueueSecretScanningDataSourceEvent,
   TQueueSecretScanningDataSourceFullScan,
   TQueueSecretScanningResourceDiffScan,
@@ -77,6 +78,7 @@ type TSecretRotationV2QueueServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "setItemWithExpiryNX" | "getItemPrimary" | "deleteItem">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  eventEmitter: TEventEmitter;
 };
 
 export type TSecretScanningV2QueueServiceFactory = ReturnType<typeof secretScanningV2QueueServiceFactory>;
@@ -115,7 +117,8 @@ export const secretScanningV2QueueServiceFactory = ({
   keyStore,
   appConnectionDAL,
   notificationService,
-  telemetryService
+  telemetryService,
+  eventEmitter
 }: TSecretRotationV2QueueServiceFactoryDep) => {
   // Resolves the org data key once per scan rather than once per finding. The blind index is generated the same way as
   // secrets_v2.secretValueOrgBlindIndex, so a finding can be matched against secrets in the org without decrypting.
@@ -222,21 +225,43 @@ export const secretScanningV2QueueServiceFactory = ({
    * row `queued`. A scan the reaper has already failed and notified on is left exactly as it is,
    * which is what the returned flag reports.
    */
-  const markScanAsFailed = async ({ scanId, statusMessage }: { scanId: string; statusMessage: string }) => {
-    const failedScans = await secretScanningV2DAL.scans.update(
-      {
-        id: scanId,
-        $in: { status: [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning] }
-      },
-      {
-        status: SecretScanningScanStatus.Failed,
-        statusMessage,
-        completedAt: new Date()
-      }
-    );
-
-    return failedScans.length > 0;
+  // The alert scope of a scan's data source. Read before the transaction that emits the alert, so the emit adds
+  // no read to it.
+  const getAlertScope = async (dataSource: { id: string; projectId: string }) => {
+    const project = await projectDAL.findById(dataSource.projectId);
+    return { orgId: project.orgId, projectId: dataSource.projectId, dataSourceId: dataSource.id };
   };
+
+  // Given an alert scope, a scan this call fails also emits the scan-failed alert, in the same transaction.
+  const markScanAsFailed = async ({
+    scanId,
+    statusMessage,
+    alertScope
+  }: {
+    scanId: string;
+    statusMessage: string;
+    alertScope?: { orgId: string; projectId: string; dataSourceId: string };
+  }) =>
+    secretScanningV2DAL.scans.transaction(async (tx) => {
+      const failedScans = await secretScanningV2DAL.scans.update(
+        {
+          id: scanId,
+          $in: { status: [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning] }
+        },
+        {
+          status: SecretScanningScanStatus.Failed,
+          statusMessage,
+          completedAt: new Date()
+        },
+        tx
+      );
+
+      if (failedScans.length && alertScope) {
+        await emitSecretScanningScanFailed(eventEmitter, { ...alertScope, scanId, errorMessage: statusMessage }, tx);
+      }
+
+      return failedScans.length > 0;
+    });
 
   // Callers emit only after their guarded status update matched, so a retried job cannot count a scan twice.
   const sendScanTelemetry = (
@@ -580,31 +605,57 @@ export const secretScanningV2QueueServiceFactory = ({
       // Guarded on the state this run is finishing: if the reaper already gave up on this scan, the
       // row keeps its failure and this update matches nothing. Findings are still written — they
       // are real — but the outcome the customer was told about is not rewritten underneath them.
-      const completedScans = stillOwned
-        ? await secretScanningV2DAL.scans.update(
-            { id: scanId, status: SecretScanningScanStatus.Scanning },
-            {
-              status: SecretScanningScanStatus.Completed,
-              statusMessage: null,
-              completedAt: new Date()
-            }
-          )
-        : [];
+      const alertScope = await getAlertScope(dataSource);
 
-      if (!completedScans.length) {
+      // Read back rather than counted in the handler: the findings an earlier attempt persisted are
+      // part of this scan's total, and a resumed attempt never scanned the batches they came from.
+      const completion = stillOwned
+        ? await secretScanningV2DAL.scans.transaction(async (tx) => {
+            const completedScans = await secretScanningV2DAL.scans.update(
+              { id: scanId, status: SecretScanningScanStatus.Scanning },
+              {
+                status: SecretScanningScanStatus.Completed,
+                statusMessage: null,
+                completedAt: new Date()
+              },
+              tx
+            );
+
+            if (!completedScans.length) return null;
+
+            const counts = await secretScanningV2DAL.findings.countByScanId(scanId, tx);
+
+            // A resource's first full scan reports the history it already had, which the findings page shows, so only
+            // a secret a later full scan finds for the first time alerts. A full scan never alerts on a finding it
+            // reopened either: a secret coming back is news when someone pushes it, not when history is read again.
+            const isFirstFullScan = !(await secretScanningV2DAL.scans.hasEarlierCompletedHistoricalScan(
+              { resourceId, scanId },
+              tx
+            ));
+            const newFindings = isFirstFullScan
+              ? 0
+              : await secretScanningV2DAL.findings.countUnresolvedCreatedByScanId(scanId, tx);
+
+            if (newFindings) {
+              await emitSecretScanningSecretsDetected(
+                eventEmitter,
+                { ...alertScope, scanId, unresolvedFindings: newFindings },
+                tx
+              );
+            }
+
+            return counts;
+          })
+        : null;
+
+      if (!completion) {
         logger.warn(
           `secretScanningV2Queue: Full Scan finished after the scan was already closed out ${logDetails} scannedFindings=[${scannedFindingsCount}] durationMs=[${Date.now() - startedAt}]`
         );
         return;
       }
 
-      // Read back rather than counted in the handler: the findings an earlier attempt persisted are
-      // part of this scan's total, and a resumed attempt never scanned the batches they came from.
-      const {
-        locations: locationsCount,
-        findings: findingsCount,
-        unresolvedFindings: unresolvedFindingsCount
-      } = await secretScanningV2DAL.findings.countByScanId(scanId);
+      const { locations: locationsCount, findings: findingsCount } = completion;
 
       sendScanTelemetry(dataSource, {
         event: PostHogEventTypes.SecretScanningScanCompleted,
@@ -614,23 +665,6 @@ export const secretScanningV2QueueServiceFactory = ({
           findingCount: locationsCount
         }
       });
-
-      // a new location of a false positive or an ignored finding needs no action, so it isn't a leak
-      if (unresolvedFindingsCount) {
-        await queueService.queue(
-          QueueName.SecretScanningV2,
-          QueueJobs.SecretScanningV2SendNotification,
-          {
-            status: SecretScanningScanStatus.Completed,
-            resourceName: resource.name,
-            isDiffScan: false,
-            dataSource,
-            numberOfSecrets: unresolvedFindingsCount,
-            scanId
-          },
-          { removeOnFail: true, jobId: `secret-scanning-notification-${scanId}` }
-        );
-      }
 
       await auditLogService.createAuditLog({
         projectId: dataSource.projectId,
@@ -667,21 +701,13 @@ export const secretScanningV2QueueServiceFactory = ({
       if (retryCount === retryLimit) {
         const errorMessage = parseScanErrorMessage(error);
 
-        const failed = await markScanAsFailed({ scanId, statusMessage: errorMessage });
+        const failed = await markScanAsFailed({
+          scanId,
+          statusMessage: errorMessage,
+          alertScope: await getAlertScope(dataSource)
+        });
 
         if (failed) {
-          await queueService.queue(
-            QueueName.SecretScanningV2,
-            QueueJobs.SecretScanningV2SendNotification,
-            {
-              status: SecretScanningScanStatus.Failed,
-              resourceName: resource.name,
-              dataSource,
-              errorMessage
-            },
-            { jobId: `secret-scanning-notification-${scanId}`, removeOnFail: true }
-          );
-
           await auditLogService.createAuditLog({
             projectId: dataSource.projectId,
             actor: {
@@ -911,8 +937,9 @@ export const secretScanningV2QueueServiceFactory = ({
 
       const buildFindingRows = await createFindingRowsBuilder(dataSource.projectId);
       const findingRows = await buildFindingRows(findingsPayload);
+      const alertScope = await getAlertScope(dataSource);
 
-      const { scannedLocations, reopenedFindings, closedOutByThisRun } = await secretScanningV2DAL.findings.transaction(
+      const { scannedLocations, reopenedFindings, counts } = await secretScanningV2DAL.findings.transaction(
         async (tx) => {
           const persisted = findingRows.length
             ? await secretScanningV2DAL.findings.persistLocations({ resourceId, scanId, rows: findingRows }, tx)
@@ -931,13 +958,32 @@ export const secretScanningV2QueueServiceFactory = ({
             tx
           );
 
-          return { ...persisted, closedOutByThisRun: Boolean(completedScans.length) };
+          if (!completedScans.length) return { ...persisted, counts: null };
+
+          const scanCounts = await secretScanningV2DAL.findings.countByScanId(scanId, tx);
+
+          // Only a secret this scan found first, or a resolved one it brought back, is news. A new location of a secret
+          // that's still unresolved has already been alerted on, and one of a false positive or an ignored finding
+          // needs no action.
+          const newFindings =
+            (await secretScanningV2DAL.findings.countUnresolvedCreatedByScanId(scanId, tx)) +
+            persisted.reopenedFindings.length;
+
+          if (newFindings) {
+            await emitSecretScanningSecretsDetected(
+              eventEmitter,
+              { ...alertScope, scanId, unresolvedFindings: newFindings },
+              tx
+            );
+          }
+
+          return { ...persisted, counts: scanCounts };
         }
       );
 
       await auditReopenedFindings(dataSource.projectId, resource, reopenedFindings);
 
-      if (!closedOutByThisRun) {
+      if (!counts) {
         logger.warn(
           `secretScanningV2Queue: Diff Scan finished after the scan was already closed out ${logDetails} findings=[${findingsPayload.length}] durationMs=[${Date.now() - startedAt}]`
         );
@@ -947,41 +993,14 @@ export const secretScanningV2QueueServiceFactory = ({
       // Every location the scan matched, including ones an earlier scan saved first, with its finding's status.
       await report?.complete({ findings: scannedLocations, details });
 
-      const { locations: locationsCount, unresolvedFindings: unresolvedFindingsCount } =
-        await secretScanningV2DAL.findings.countByScanId(scanId);
-
       sendScanTelemetry(dataSource, {
         event: PostHogEventTypes.SecretScanningScanCompleted,
         properties: {
           type: dataSource.type as SecretScanningDataSource,
           scanType: SecretScanningScanType.Realtime,
-          findingCount: locationsCount
+          findingCount: counts.locations
         }
       });
-
-      // a new location of a false positive or an ignored finding needs no action, so it isn't a leak
-      if (unresolvedFindingsCount) {
-        // a pull request's scan also matches leaks an earlier push saved, so the author comes from a leak this scan saved
-        const leakDetails = scannedLocations.find(
-          ({ isNew, status }) => isNew && status === SecretScanningFindingStatus.Unresolved
-        )?.details as TGitRepositoryScanFindingDetails | undefined;
-
-        await queueService.queue(
-          QueueName.SecretScanningV2,
-          QueueJobs.SecretScanningV2SendNotification,
-          {
-            status: SecretScanningScanStatus.Completed,
-            resourceName: resource.name,
-            isDiffScan: true,
-            dataSource,
-            numberOfSecrets: unresolvedFindingsCount,
-            scanId,
-            authorName: leakDetails?.author,
-            authorEmail: leakDetails?.email
-          },
-          { jobId: `secret-scanning-notification-${scanId}` }
-        );
-      }
 
       await auditLogService.createAuditLog({
         projectId: dataSource.projectId,
@@ -1018,22 +1037,14 @@ export const secretScanningV2QueueServiceFactory = ({
       if (retryCount === retryLimit) {
         const errorMessage = parseScanErrorMessage(error);
 
-        const failed = await markScanAsFailed({ scanId, statusMessage: errorMessage });
+        const failed = await markScanAsFailed({
+          scanId,
+          statusMessage: errorMessage,
+          alertScope: await getAlertScope(dataSource)
+        });
 
         if (failed) {
           await report?.fail({ reason: errorMessage });
-
-          await queueService.queue(
-            QueueName.SecretScanningV2,
-            QueueJobs.SecretScanningV2SendNotification,
-            {
-              status: SecretScanningScanStatus.Failed,
-              resourceName: resource.name,
-              dataSource,
-              errorMessage
-            },
-            { jobId: `secret-scanning-notification-${scanId}` }
-          );
 
           await auditLogService.createAuditLog({
             projectId: dataSource.projectId,
@@ -1068,6 +1079,9 @@ export const secretScanningV2QueueServiceFactory = ({
     }
   };
 
+  // Notifications now go out as alerts, emitted when a scan closes. This only drains the jobs pods running the
+  // previous release queued during a rolling deploy; their scans emitted no alert, so dropping them would lose
+  // the notification. Remove it in the release after this one, with the job type and both email templates.
   const handleSendNotification = async (job: { data: TQueueSecretScanningSendNotification }) => {
     const { dataSource, resourceName, ...payload } = job.data;
 
@@ -1180,22 +1194,36 @@ export const secretScanningV2QueueServiceFactory = ({
       scan.status === SecretScanningScanStatus.Queued ? NEVER_STARTED_SCAN_STATUS_MESSAGE : STUCK_SCAN_STATUS_MESSAGE;
 
     try {
-      // Guarded on the status we read: if the worker did finish between the read and this write, the
-      // update matches nothing and the scan keeps its real outcome.
-      const updatedScans = await secretScanningV2DAL.scans.update(
-        { id: scan.id, status: scan.status },
-        {
-          status: SecretScanningScanStatus.Failed,
-          statusMessage,
-          completedAt: new Date()
+      const dataSource = await secretScanningV2DAL.dataSources.findById(scan.dataSourceId);
+      const alertScope = dataSource ? await getAlertScope(dataSource) : undefined;
+
+      const updatedScans = await secretScanningV2DAL.scans.transaction(async (tx) => {
+        // Guarded on the status we read: if the worker did finish between the read and this write, the
+        // update matches nothing and the scan keeps its real outcome.
+        const updated = await secretScanningV2DAL.scans.update(
+          { id: scan.id, status: scan.status },
+          {
+            status: SecretScanningScanStatus.Failed,
+            statusMessage,
+            completedAt: new Date()
+          },
+          tx
+        );
+
+        if (updated.length && alertScope) {
+          await emitSecretScanningScanFailed(
+            eventEmitter,
+            { ...alertScope, scanId: scan.id, errorMessage: statusMessage },
+            tx
+          );
         }
-      );
+
+        return updated;
+      });
 
       if (!updatedScans.length) return;
 
       logger.warn(`secretScanningV2Queue: Reaped Stuck Scan ${logDetails}`);
-
-      const dataSource = await secretScanningV2DAL.dataSources.findById(scan.dataSourceId);
 
       if (!dataSource) return;
 
@@ -1205,18 +1233,6 @@ export const secretScanningV2QueueServiceFactory = ({
       })
         .getScanReport?.({ scan, dataSource, resourceName: scan.resourceName })
         ?.fail({ reason: statusMessage, isTimedOut: true });
-
-      await queueService.queue(
-        QueueName.SecretScanningV2,
-        QueueJobs.SecretScanningV2SendNotification,
-        {
-          status: SecretScanningScanStatus.Failed,
-          resourceName: scan.resourceName,
-          dataSource,
-          errorMessage: statusMessage
-        },
-        { jobId: `secret-scanning-notification-${scan.id}`, removeOnFail: true }
-      );
 
       await auditLogService.createAuditLog({
         projectId: dataSource.projectId,
