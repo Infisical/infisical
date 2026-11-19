@@ -1,4 +1,5 @@
 import { TAgentVaultSessionInlineServiceDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-service-dal";
+import { TAgentVaultSessionInlineSkillDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-skill-dal";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { THoneyTokenCleanupQueueFactory } from "@app/ee/services/honey-token/honey-token-cleanup-queue";
@@ -44,6 +45,7 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   scepTransactionDAL: Pick<TScepTransactionDALFactory, "pruneExpiredTransactions">;
   honeyTokenCleanupQueue: Pick<THoneyTokenCleanupQueueFactory, "queueFolderlessHoneyTokenCleanup">;
   agentVaultSessionInlineServiceDAL: Pick<TAgentVaultSessionInlineServiceDALFactory, "deleteSecretsOfEndedSessions">;
+  agentVaultSessionInlineSkillDAL: Pick<TAgentVaultSessionInlineSkillDALFactory, "deleteFilesOfEndedSessions">;
 };
 
 export type TDailyResourceCleanUpQueueServiceFactory = ReturnType<typeof dailyResourceCleanUpQueueServiceFactory>;
@@ -69,7 +71,8 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   certificateRequestDAL,
   scepTransactionDAL,
   honeyTokenCleanupQueue,
-  agentVaultSessionInlineServiceDAL
+  agentVaultSessionInlineServiceDAL,
+  agentVaultSessionInlineSkillDAL
 }: TDailyResourceCleanUpQueueServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -168,6 +171,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
         await honeyTokenCleanupQueue.queueFolderlessHoneyTokenCleanup();
         // Revoke deletes them at once, so this catches sessions that expired or lost their owner within the hour.
         await agentVaultSessionInlineServiceDAL.deleteSecretsOfEndedSessions();
+        await agentVaultSessionInlineSkillDAL.deleteFilesOfEndedSessions();
       }
     });
   };

@@ -148,3 +148,11 @@ export enum AgentVaultSessionLogStorageType {
   Default = "default",
   External = "external"
 }
+
+// The `error` the API gives a refused service or skill when a session is created, which the session form shows under
+// that field rather than in a toast.
+export enum AgentVaultSessionErrorCode {
+  ServiceNotGranted = "ServiceNotGranted",
+  SkillNotGranted = "SkillNotGranted",
+  ServiceHostConflict = "ServiceHostConflict"
+}

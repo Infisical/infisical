@@ -5,6 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 
 import { ApiErrorTypes } from "../types";
+import { AgentVaultSessionErrorCode } from "./enums";
 import { agentVaultKeys } from "./queries";
 import {
   TAddAgentVaultMembersDTO,
@@ -375,12 +376,17 @@ export const useRevokeAgentVaultAccessBundleMembers = (projectId: string) => {
   });
 };
 
+// The create session form shows a refused service or skill under its field, and toasts any other 400 itself.
+export const CREATE_SESSION_HANDLED_ERROR_CODES: string[] = [
+  ApiErrorTypes.BadRequestError,
+  ...Object.values(AgentVaultSessionErrorCode)
+];
+
 export const useCreateAgentVaultSession = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    // The form shows a refusal of its services under that field and toasts any other.
-    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] },
+    meta: { handledErrorCodes: CREATE_SESSION_HANDLED_ERROR_CODES },
     mutationFn: async (params: TCreateAgentVaultSessionDTO) => {
       const { data } = await apiRequest.post<{ session: TAgentVaultMintedSession }>(
         "/api/v1/agent-vault/sessions",

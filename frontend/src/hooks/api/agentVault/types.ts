@@ -253,7 +253,7 @@ export type TAgentVaultService = (
 
 export type TAgentVaultBundleRef = { id: string; name: string };
 
-// A service or skill an add request named that was already in the access bundle.
+// A service or skill in an add request that was already in the access bundle.
 export type TAgentVaultSkippedBundleItem = { id: string; name: string };
 
 // A service read from the project, with the access bundles it is in. A member gets only the ones they reach.
@@ -430,21 +430,37 @@ export type TAgentVaultSessionInlineService = (
   hook?: TAgentVaultServiceHook | null;
 };
 
-/** A project service a session names. Only what identifies it is returned. */
-export type TAgentVaultSessionNamedService = {
-  id: string;
-  name: string;
-  type: AgentVaultServiceType;
-  description: string | null;
-  /** The host an HTTP or MCP service matches. Null for database and SSH services. */
-  hostPattern: string | null;
-  isInline: false;
-};
-
-/** A session's service: a project service it names, or one sent with it. */
+/**
+ * A session's service: one it lists by name, which carries only what identifies it, or one sent with it. isInline tells
+ * them apart.
+ */
 export type TAgentVaultSessionService =
   | (TAgentVaultSessionInlineService & { isInline: true })
-  | TAgentVaultSessionNamedService;
+  | {
+      id: string;
+      name: string;
+      type: AgentVaultServiceType;
+      description: string | null;
+      /** The host an HTTP or MCP service matches. Null for database and SSH services. */
+      hostPattern: string | null;
+      isInline: false;
+    };
+
+/**
+ * A session's skill: one it lists by name, which carries only what identifies it, or one sent with it, which also
+ * carries the hash and size of its files.
+ */
+export type TAgentVaultSessionSkill =
+  | { id: string; name: string; description: string; isInline: false }
+  | {
+      id: string;
+      name: string;
+      description: string;
+      sha256: string;
+      sizeBytes: number;
+      fileCount: number;
+      isInline: true;
+    };
 
 export type TAgentVaultSessionActor =
   | (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }>, "id"> & {
@@ -471,8 +487,10 @@ export type TAgentVaultSession = {
   revokedAt: string | null;
   createdAt: string;
   accessBundle: TAgentVaultSessionAccessBundle | null;
-  /** The services it names and the ones sent with it, in the order they were sent. Its access bundle's aren't listed. */
+  /** Its services, listed by name or sent with it, in the order they were sent. Its access bundle's aren't listed. */
   services: TAgentVaultSessionService[];
+  /** Its skills, listed by name or sent with it, in the order they were sent. Its access bundle's aren't listed. */
+  skills: TAgentVaultSessionSkill[];
   /** Null until the proxy uploads the session's first log chunk. */
   stats: TAgentVaultSessionStats | null;
 };
@@ -533,6 +551,7 @@ export type TAgentVaultMintedSession = {
   projectId: string;
   accessBundle: TAgentVaultSessionAccessBundle | null;
   services: TAgentVaultSessionService[];
+  skills: TAgentVaultSessionSkill[];
 };
 
 export type TAgentVaultProxy = {
@@ -711,11 +730,12 @@ export type TAddAgentVaultMembersDTO = TAgentVaultActorIdsDTO & {
   accessBundleId: string;
 };
 
-// Needs an access bundle, at least one service, or both. Each is named rather than referenced by ID. The API also takes
-// services defined inline, which this UI doesn't send.
+// Needs an access bundle, or at least one service or skill. Each is named rather than referenced by ID. The API also
+// takes services and skills defined inline, which this UI doesn't send.
 export type TCreateAgentVaultSessionDTO = {
   accessBundle?: string;
   services?: string[];
+  skills?: string[];
   ttl: string;
   label?: string;
   metadata?: Record<string, string>;

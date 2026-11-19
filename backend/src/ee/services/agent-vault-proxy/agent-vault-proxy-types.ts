@@ -111,7 +111,7 @@ export type TResolvedNativeTarget = {
 export type TResolvedService = {
   id: string;
   name: string;
-  // Null for a service sent inline with the session and for a project service the session names, neither of which comes
+  // Null for a service sent inline with the session and for a service the session lists by name, neither of which comes
   // from a bundle. A null name alone doesn't say the service was sent with the session.
   accessBundleName: string | null;
   type: AgentVaultServiceType;
@@ -147,7 +147,7 @@ export type TResolvedService = {
   credentialNotConnected?: boolean;
   // Some of the credential is each member's own, so a rejection is theirs to fix, not the admin's.
   memberProvided: boolean;
-  // The bundle the service came from. Null for a service sent inline with the session and for one it names.
+  // The bundle the service came from. Null for a service sent inline with the session and for one it lists by name.
   accessBundleId: string | null;
   // Asked before each request (each connection for a database or SSH service). Null when the service has none.
   hook: { url: string; secret: string } | null;

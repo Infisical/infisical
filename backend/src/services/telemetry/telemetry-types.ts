@@ -2594,6 +2594,8 @@ export type TAgentVaultSessionCreatedEvent = {
     accessBundleId: string | null;
     inlineServiceCount: number;
     namedServiceCount: number;
+    inlineSkillCount: number;
+    namedSkillCount: number;
     // How many metadata entries the session was created with. Never the keys or values.
     metadataCount: number;
     ttlSeconds: number | null;

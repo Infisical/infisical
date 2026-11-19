@@ -29,7 +29,7 @@ describe("a session's services request schema", () => {
     ]);
   });
 
-  test("refuses a name used twice, whether named or sent inline, at the second one", () => {
+  test("refuses a name used twice, whether listed by name or sent inline, at the second one", () => {
     expect(issuesOf(["github", "github"])).toEqual([
       expect.objectContaining({
         path: [1],
@@ -40,11 +40,11 @@ describe("a session's services request schema", () => {
     expect(issuesOf(["github", bearer("one", { name: "github" })])[0].path).toEqual([1, "name"]);
   });
 
-  test("caps the project services a session names at 50", () => {
+  test("caps the services a session lists by name at 50", () => {
     const names = Array.from({ length: 51 }, (_, index) => `service-${index}`);
     expect(issuesOf(names)[0]).toMatchObject({
       code: "custom",
-      message: "A session can name at most 50 of the project's services."
+      message: "A session can have at most 50 of the project's services."
     });
     expect(issuesOf(names.slice(0, 50))).toEqual([]);
   });
@@ -118,7 +118,8 @@ describe("inline services request schema", () => {
     );
     expect(issuesOf(services)[0]).toMatchObject({
       code: "custom",
-      message: "A session can carry at most 20 inline services. Add the others to the project and name them instead."
+      message:
+        "A session can carry at most 20 inline services. Add the others to the project and list them by name instead."
     });
   });
 
