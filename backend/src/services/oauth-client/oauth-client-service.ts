@@ -947,9 +947,9 @@ export const oauthClientServiceFactory = ({
       scopes: grantedScopes
     };
 
-    if (!isGraceHit) {
-      const { updatedSession } = await tokenService.rotateRefreshToken(decodedToken, tokenVersion);
-      refreshVersion = updatedSession.refreshVersion;
+    const rotation = isGraceHit ? undefined : await tokenService.rotateRefreshToken(decodedToken, tokenVersion);
+    if (rotation && !rotation.isGraceHit) {
+      refreshVersion = rotation.updatedSession.refreshVersion;
 
       refreshToken = signOauthToken(
         {

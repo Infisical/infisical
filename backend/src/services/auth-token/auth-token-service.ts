@@ -284,7 +284,11 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
       });
     }
 
-    const tokenVersion = await getUserTokenSessionById(decodedToken.tokenVersionId, decodedToken.userId);
+    const tokenVersion = await tokenDAL.findOneTokenSession(
+      { id: decodedToken.tokenVersionId, userId: decodedToken.userId },
+      undefined,
+      { readFromPrimary: true }
+    );
 
     if (!tokenVersion) {
       throw new UnauthorizedError({
@@ -294,18 +298,17 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     }
 
     if (decodedToken.refreshVersion !== tokenVersion.refreshVersion) {
-      // Check grace period for multi-tab scenarios
-      const graceKey = KeyStorePrefixes.RefreshTokenGrace(tokenVersion.id);
-      const graceValue = await keyStore.getItem(graceKey);
-
-      if (graceValue && Number(graceValue) === decodedToken.refreshVersion) {
-        // Grace hit: old token used within grace window (e.g. another browser tab)
+      // Every version rotated away within the grace window keeps its own entry, so several tabs (or a slow
+      // request more than one rotation behind) still present an accepted token.
+      const graceValue = await keyStore.getItem(
+        KeyStorePrefixes.RefreshTokenGrace(tokenVersion.id, decodedToken.refreshVersion)
+      );
+      if (graceValue) {
         return { decodedToken, tokenVersion, isGraceHit: true };
       }
 
-      // Reuse detection: old token used outside grace window — potential theft
+      // An old token used outside the grace window is treated as stolen.
       await tokenDAL.deleteTokenSession({ id: tokenVersion.id, userId: decodedToken.userId });
-      await keyStore.deleteItem(graceKey);
 
       throw new UnauthorizedError({
         message: "Refresh token reuse detected. Session has been revoked for security.",
@@ -316,18 +319,46 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     return { decodedToken, tokenVersion, isGraceHit: false };
   };
 
-  const rotateRefreshToken = async (decodedToken: AuthModeRefreshJwtTokenPayload, tokenVersion: TAuthTokenSessions) => {
+  const sessionNoLongerValid = () =>
+    new UnauthorizedError({
+      name: "InvalidToken",
+      message: "Your session is no longer valid, please re-authenticate"
+    });
+
+  const rotateRefreshToken = async (
+    decodedToken: AuthModeRefreshJwtTokenPayload,
+    tokenVersion: TAuthTokenSessions
+  ): Promise<
+    | { isGraceHit: true }
+    | { isGraceHit: false; newRefreshToken: string; updatedSession: { refreshVersion: number; id: string } }
+  > => {
     const appCfg = getConfig();
     const oldRefreshVersion = tokenVersion.refreshVersion;
 
-    // Store grace entry in Redis so the old token is still accepted briefly
-    const graceKey = KeyStorePrefixes.RefreshTokenGrace(tokenVersion.id);
-    await keyStore.setItemWithExpiry(graceKey, KeyStoreTtls.RefreshTokenGraceInSeconds, String(oldRefreshVersion));
+    // Written before the increment: a concurrent request holding the old token that reads the new version
+    // in between must find the grace entry, or it would revoke the session as reuse.
+    const graceKey = KeyStorePrefixes.RefreshTokenGrace(tokenVersion.id, oldRefreshVersion);
+    await keyStore.setItemWithExpiry(graceKey, KeyStoreTtls.RefreshTokenGraceInSeconds, "1");
 
-    // Increment refreshVersion in DB
-    const updatedSession = await tokenDAL.incrementRefreshVersion(tokenVersion.id, decodedToken.userId);
-    if (!updatedSession)
-      throw new UnauthorizedError({ message: "Failed to rotate refresh token", name: "RotationFailed" });
+    const updatedSession = await tokenDAL.incrementRefreshVersion(
+      tokenVersion.id,
+      decodedToken.userId,
+      oldRefreshVersion
+    );
+    if (!updatedSession) {
+      // Either a concurrent request with the same token rotated it first (a grace hit), or the session was
+      // revoked or signed out meanwhile, which also bumps accessVersion.
+      const current = await tokenDAL.findOneTokenSession(
+        { id: tokenVersion.id, userId: decodedToken.userId },
+        undefined,
+        { readFromPrimary: true }
+      );
+      if (!current || current.accessVersion !== tokenVersion.accessVersion) {
+        await keyStore.deleteItem(graceKey);
+        throw sessionNoLongerValid();
+      }
+      return { isGraceHit: true };
+    }
 
     // Determine refresh token expiry
     let refreshTokenExpiresIn: string | number = appCfg.JWT_REFRESH_LIFETIME;
@@ -357,14 +388,8 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
       { expiresIn: refreshTokenExpiresIn }
     );
 
-    return { newRefreshToken, updatedSession };
+    return { isGraceHit: false, newRefreshToken, updatedSession };
   };
-
-  const sessionNoLongerValid = () =>
-    new UnauthorizedError({
-      name: "InvalidToken",
-      message: "Your session is no longer valid, please re-authenticate"
-    });
 
   const validateUserSessionFreshness = async ({
     userId,

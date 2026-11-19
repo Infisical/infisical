@@ -230,7 +230,7 @@ describe("Org scope of user tokens after root membership deactivation", () => {
     expectRefused(await refresh(refreshToken(member, subScope(member))));
     expectRefused(await refresh(refreshToken(member, { organizationId: ROOT_ORG_ID })));
     expect(await refreshVersionOf(member.sessionId)).toBe(1);
-    expect(await testKeyStore.getItem(KeyStorePrefixes.RefreshTokenGrace(member.sessionId))).toBeNull();
+    expect(await testKeyStore.getItem(KeyStorePrefixes.RefreshTokenGrace(member.sessionId, 1))).toBeNull();
   });
 
   test("a grace-window refresh by a deprovisioned member is refused", async () => {
@@ -242,7 +242,7 @@ describe("Org scope of user tokens after root membership deactivation", () => {
 
     // The rotation parked the old refreshVersion as a grace entry, so replaying the original token now
     // takes the grace-hit branch rather than reuse detection.
-    expect(await testKeyStore.getItem(KeyStorePrefixes.RefreshTokenGrace(member.sessionId))).toBe("1");
+    expect(await testKeyStore.getItem(KeyStorePrefixes.RefreshTokenGrace(member.sessionId, 1))).not.toBeNull();
 
     const res = await refresh(original);
     expect(res.statusCode).toBe(403);

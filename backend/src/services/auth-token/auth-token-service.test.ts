@@ -6,6 +6,7 @@ import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/
 import { crypto } from "@app/lib/crypto/cryptography";
 import { ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 
+import { AuthTokenType } from "../auth/auth-type";
 import { tokenServiceFactory } from "./auth-token-service";
 import { TEmailSignupOtpPayload } from "./auth-token-types";
 
@@ -14,7 +15,7 @@ const NOW_MS = 1_700_000_000_000;
 const TEST_EMAIL = "otp-test@example.com";
 
 vi.mock("@app/lib/config/env", () => ({
-  getConfig: () => ({ AUTH_SECRET })
+  getConfig: () => ({ AUTH_SECRET, JWT_REFRESH_LIFETIME: "90d" })
 }));
 
 vi.mock("@app/lib/logger", () => ({
@@ -485,5 +486,149 @@ describe("tokenServiceFactory — org scope of user tokens", () => {
         UnauthorizedError
       );
     });
+  });
+});
+
+describe("tokenServiceFactory — refresh token rotation", () => {
+  const USER_ID = "user-1";
+  const SESSION_ID = "session-1";
+
+  beforeAll(async () => {
+    process.env.FIPS_ENABLED = "false";
+    await crypto.initialize({} as never);
+  });
+
+  afterAll(() => {
+    delete process.env.FIPS_ENABLED;
+  });
+
+  const build = () => {
+    let row: { id: string; userId: string; accessVersion: number; refreshVersion: number } | undefined = {
+      id: SESSION_ID,
+      userId: USER_ID,
+      accessVersion: 1,
+      refreshVersion: 1
+    };
+    const tokenDAL = {
+      findOneTokenSession: vi.fn(async () => (row ? { ...row } : undefined)),
+      incrementRefreshVersion: vi.fn(async (_id: string, _userId: string, expected: number) => {
+        if (!row || row.refreshVersion !== expected) return undefined;
+        row.refreshVersion += 1;
+        return { id: row.id, refreshVersion: row.refreshVersion };
+      }),
+      deleteTokenSession: vi.fn(async () => {
+        row = undefined;
+        return [];
+      })
+    };
+    const store = new Map<string, string>();
+    const keyStore = makeKeyStore({
+      getItem: vi.fn(async (key: string) => store.get(key) ?? null),
+      setItemWithExpiry: vi.fn(async (key: string, _ttl: string | number, value: string | number | Buffer) => {
+        store.set(key, String(value));
+        return "OK";
+      }),
+      deleteItem: vi.fn(async (key: string) => Number(store.delete(key)))
+    });
+    const service = tokenServiceFactory({
+      tokenDAL: tokenDAL as never,
+      userDAL: {} as never,
+      orgDAL: {} as never,
+      membershipUserDAL: {} as never,
+      keyStore: keyStore as never
+    });
+
+    const tokenAt = (refreshVersion: number) =>
+      crypto
+        .jwt()
+        .sign(
+          { authTokenType: AuthTokenType.REFRESH_TOKEN, userId: USER_ID, tokenVersionId: SESSION_ID, refreshVersion },
+          AUTH_SECRET
+        );
+
+    // Mirrors the refresh route: returns the rotated token, or undefined on a grace hit.
+    const refresh = async (token: string) => {
+      const { decodedToken, tokenVersion, isGraceHit } = await service.validateRefreshToken(token);
+      if (isGraceHit) return undefined;
+      const rotation = await service.rotateRefreshToken(decodedToken, tokenVersion);
+      return rotation.isGraceHit ? undefined : rotation.newRefreshToken;
+    };
+
+    return {
+      service,
+      tokenDAL,
+      store,
+      tokenAt,
+      refresh,
+      row: () => row,
+      signOut: () => {
+        if (row) {
+          row.accessVersion += 1;
+          row.refreshVersion += 1;
+        }
+      }
+    };
+  };
+
+  test("reads the session from the primary, not the replica", async () => {
+    const { service, tokenDAL, tokenAt } = build();
+
+    await service.validateRefreshToken(tokenAt(1));
+
+    expect(tokenDAL.findOneTokenSession).toHaveBeenCalledWith({ id: SESSION_ID, userId: USER_ID }, undefined, {
+      readFromPrimary: true
+    });
+  });
+
+  test("two requests holding the same token rotate it once; the loser is a grace hit", async () => {
+    const { service, tokenAt, row } = build();
+    const token = tokenAt(1);
+
+    const first = await service.validateRefreshToken(token);
+    const second = await service.validateRefreshToken(token);
+    expect(first.isGraceHit).toBe(false);
+    expect(second.isGraceHit).toBe(false);
+
+    const won = await service.rotateRefreshToken(first.decodedToken, first.tokenVersion);
+    const lost = await service.rotateRefreshToken(second.decodedToken, second.tokenVersion);
+
+    expect(won.isGraceHit).toBe(false);
+    expect(lost.isGraceHit).toBe(true);
+    expect(row()?.refreshVersion).toBe(2);
+  });
+
+  test("a request two rotations behind is still accepted within the grace window", async () => {
+    const { refresh, tokenAt, row } = build();
+    const original = tokenAt(1);
+
+    const v2 = await refresh(original);
+    expect(v2).toBeDefined();
+    expect(await refresh(v2!)).toBeDefined();
+    expect(row()?.refreshVersion).toBe(3);
+
+    expect(await refresh(original)).toBeUndefined();
+    expect(row()).toBeDefined();
+  });
+
+  test("a token with no grace entry revokes the session as reuse", async () => {
+    const { refresh, tokenAt, row, store } = build();
+    const original = tokenAt(1);
+
+    expect(await refresh(original)).toBeDefined();
+    store.clear();
+
+    const err = await expectRejected(refresh(original), UnauthorizedError);
+    expect(err.name).toBe("TokenReuse");
+    expect(row()).toBeUndefined();
+  });
+
+  test("losing the rotation race to a sign-out is refused and drops the grace entry", async () => {
+    const { service, tokenAt, signOut, store } = build();
+
+    const validated = await service.validateRefreshToken(tokenAt(1));
+    signOut();
+
+    await expectRejected(service.rotateRefreshToken(validated.decodedToken, validated.tokenVersion), UnauthorizedError);
+    expect(store.has(KeyStorePrefixes.RefreshTokenGrace(SESSION_ID, 1))).toBe(false);
   });
 });

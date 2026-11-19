@@ -217,7 +217,8 @@ export const KeyStorePrefixes = {
   CertPqcTrend: (projectId: string, range: string) => `cert-pqc-trend:${projectId}:${range}` as const,
   SigningActivityTrend: (projectId: string, range: string, signerId?: string) =>
     `signing-activity-trend:${projectId}:${range}:${signerId ?? "all"}` as const,
-  RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
+  RefreshTokenGrace: (sessionId: string, refreshVersion: number) =>
+    `refresh-token-grace:${sessionId}:${refreshVersion}` as const,
   EmailSignupOtpHash: (hash: string) => `email-signup-otp:${hash}:hash` as const,
   EmailSignupOtpLock: (hash: string) => `email-signup-otp:${hash}:lock` as const,
   EmailDispatchCooldown: (purpose: string, mailboxHash: string) =>
