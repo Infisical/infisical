@@ -72,12 +72,17 @@ jobs:
             git fetch -q --depth 1 --filter=blob:none origin "$1"
             git show "$1:frontend/package.json" | node -e '
               const spec = JSON.parse(require("fs").readFileSync(0, "utf8")).dependencies["@infisical/cipher"];
-              process.stdout.write(spec.includes("#") ? spec.split("#").pop() : "v" + spec.replace(/^[~^]/, ""));
+              if (spec) process.stdout.write(spec.includes("#") ? spec.split("#").pop() : "v" + spec.replace(/^[~^]/, ""));
             '
           }
           if [ -z "$BASE" ] && [ -n "$PR_BASE_SHA" ]; then BASE=$(pin "$PR_BASE_SHA"); fi
           if [ -z "$CANDIDATE" ] && [ -n "$PR_MERGE_SHA" ]; then CANDIDATE=$(pin "$PR_MERGE_SHA"); fi
           echo "Base $BASE, candidate $CANDIDATE"
+          if [ -z "$BASE" ] || [ -z "$CANDIDATE" ]; then
+            echo "::notice title=Cipher visual check skipped::One side of this comparison has no @infisical/cipher dependency in frontend/package.json, so there is nothing to compare."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [ -z "$EXPLICIT" ] && [ "$BASE" = "$CANDIDATE" ]; then
             echo "The Cipher pin did not change; nothing to compare."
             echo "skip=true" >> "$GITHUB_OUTPUT"
