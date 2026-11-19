@@ -196,6 +196,20 @@ const addListIssues = (
 const toolError = (tool: string, existing: string[]) =>
   toolNameError(tool) ?? (existing.includes(tool) ? `"${tool}" is listed twice.` : null);
 
+// The form rebuilds lists in its own order, so lists compare as sets or an untouched rule would read as an edit.
+const asSet = (values?: string[]) => (values ? [...values].sort() : null);
+
+const canonicalRule = (rule: TAgentVaultHookRule | TAgentVaultHookRuleInput) => ({
+  serviceId: rule.serviceId ?? null,
+  service: rule.serviceId ? null : rule.service,
+  methods: asSet(rule.methods),
+  paths: asSet(rule.paths),
+  tools: asSet(rule.tools)
+});
+
+const sameRules = (left: TAgentVaultHookRuleInput[], right: TAgentVaultHookRule[]) =>
+  JSON.stringify(left.map(canonicalRule)) === JSON.stringify(right.map(canonicalRule));
+
 export const hookFormSchema = (savedRules?: TAgentVaultHookRule[]) =>
   z
     .object({
@@ -223,12 +237,14 @@ export const hookFormSchema = (savedRules?: TAgentVaultHookRule[]) =>
       }
 
       // Unchanged rules aren't sent, so a rule on a deleted service only blocks a save that sends the rules.
-      const rulesUnchanged = Boolean(savedRules) && sameRules(data.rules.map(buildHookRule), savedRules ?? []);
+      const rulesUnchanged =
+        Boolean(savedRules) && sameRules(data.rules.map(buildHookRule), savedRules ?? []);
       data.rules.forEach((rule, index) => {
         // A deleted service's ID can't be saved again, so the rule has to move to another service or go.
-        const serviceIssue = isDeletedServiceRule(rule) && !rulesUnchanged
-          ? "This service was deleted. Pick another service or remove the rule."
-          : !rule.serviceId && hookRuleServiceError(rule.service);
+        const serviceIssue =
+          isDeletedServiceRule(rule) && !rulesUnchanged
+            ? "This service was deleted. Pick another service or remove the rule."
+            : !rule.serviceId && hookRuleServiceError(rule.service);
         if (serviceIssue) issue(["rules", index, "service"], serviceIssue);
         if (rule.serviceType === AgentVaultServiceType.Http) {
           if (!rule.methods.length) {
@@ -280,20 +296,6 @@ export const buildCreateHookRequest = (data: THookForm): TCreateAgentVaultHookDT
   secret: data.secret,
   rules: data.rules.map(buildHookRule)
 });
-
-// The form rebuilds lists in its own order, so lists compare as sets or an untouched rule would read as an edit.
-const asSet = (values?: string[]) => (values ? [...values].sort() : null);
-
-const canonicalRule = (rule: TAgentVaultHookRule | TAgentVaultHookRuleInput) => ({
-  serviceId: rule.serviceId ?? null,
-  service: rule.serviceId ? null : rule.service,
-  methods: asSet(rule.methods),
-  paths: asSet(rule.paths),
-  tools: asSet(rule.tools)
-});
-
-const sameRules = (left: TAgentVaultHookRuleInput[], right: TAgentVaultHookRule[]) =>
-  JSON.stringify(left.map(canonicalRule)) === JSON.stringify(right.map(canonicalRule));
 
 /**
  * Only what changed is sent. URL, secret and rules changes need the plan's hooks feature, so a rename must not carry
