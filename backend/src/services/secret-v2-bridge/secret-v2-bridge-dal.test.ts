@@ -168,7 +168,7 @@ describe("invalidateSecretCacheByProjectId", () => {
     const { keyStore, pgIncrementByCalls, deleteItemCalls } = createMockKeyStore();
 
     const dal = secretV2BridgeDALFactory({ db, keyStore });
-    await dal.invalidateSecretCacheByProjectId("project-A");
+    await expect(dal.invalidateSecretCacheByProjectId("project-A")).rejects.toThrow("Read replica timeout");
 
     expect(pgIncrementByCalls.map((c) => c.key)).toEqual([
       KeyStorePrefixes.SecretDalVersion("project-A")

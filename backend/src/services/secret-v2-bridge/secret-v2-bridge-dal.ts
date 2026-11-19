@@ -47,6 +47,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     // via cross-project grants must also be invalidated so they don't serve
     // stale source values from cache.
     let targetProjectIds: string[] = [];
+    let lookupError: unknown;
     try {
       const targetGrants = await (tx || db.replicaNode())(TableName.ProjectFolderGrant)
         .where("sourceProjectId", projectId)
@@ -55,6 +56,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       targetProjectIds = targetGrants.map(({ targetProjectId }) => targetProjectId);
     } catch (err) {
       if (tx) throw err;
+      lookupError = err;
     }
 
     // Acquire cache-version locks in deterministic order across all affected
@@ -78,6 +80,10 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       if (updatedProjectIds.length > 0) {
         await Promise.all(updatedProjectIds.map((id) => keyStore.deleteItem(KeyStorePrefixes.SecretEtag(id, stamp))));
       }
+    }
+
+    if (lookupError) {
+      throw lookupError;
     }
   };
 
