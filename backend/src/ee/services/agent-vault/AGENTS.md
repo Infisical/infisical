@@ -656,9 +656,12 @@ resolve.
 - **Deleting a saved hook is never blocked.** Sessions using it lose it through `hookId ON DELETE SET NULL` and resolve
   as if no hook was given; nothing tracks usage. The FK update moves those sessions' `updatedAt`, which for a session
   that already lost its owner reopens its 24 hour late-log window; accepted.
-- **The plan flag gates writes only** (`agentVaultHooks`, `assertAgentVaultHooksOnPlan`): saved hook create, an edit of
-  URL, secret or rules, and an inline hook at mint. Rename, delete, reads and resolve never check it, so a downgrade
-  keeps hooks running.
+- **The plan flag gates writes and resolve** (`agentVaultHooks`). Writes go through `assertAgentVaultHooksOnPlan`:
+  saved hook create, an edit of URL, secret or rules, and an inline hook at mint. Rename, delete, reads and a mint
+  with a saved `hookId` never check it. Off-plan, resolve sends `hook: null` without reading the hook
+  (`isAgentVaultHooksOnPlanForResolve`), and the hook comes back when the plan has hooks again. Only a plan known to
+  lack hooks drops it: a fallback plan defers to the last known plan, and with none, or when `getPlan` throws, the
+  hook stays, so a License Server outage never turns hooks off.
 - **Resolve sends one top-level `hook: { id, name, url, secret, rules } | null`** as stored (`findSessionHook`,
   kept to the session's project and, for an inline hook, the session). It also sends each service's `accessBundleId`
   (null when not from a bundle) and a top-level `session` (`label`, `metadata`, `actor` with the `actorType` fallback,

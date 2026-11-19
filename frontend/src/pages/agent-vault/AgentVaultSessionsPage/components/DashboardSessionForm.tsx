@@ -218,7 +218,7 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
     { search: debouncedHookSearch.trim() || undefined, limit: HOOK_PICKER_LIMIT },
     { enabled: canPickHook }
   );
-  const hookCreation = useHookCreation((hook) =>
+  const { creation: hookCreation, upgradeGate: hookUpgradeGate } = useHookCreation((hook) =>
     formMethods.setValue("hook", hook, { shouldDirty: true })
   );
 
@@ -577,6 +577,7 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
           if (!open) setServiceToSetUp(null);
         }}
       />
+      {hookUpgradeGate}
     </form>
   );
 };

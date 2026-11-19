@@ -328,37 +328,39 @@ export const HookRulesField = ({
   return (
     <Field>
       <FieldLabel>Rules</FieldLabel>
-      <FieldContent className="gap-3">
+      <FieldContent>
         <FieldDescription>
           {rules.fields.length
             ? "Only requests that match a rule go to the hook."
             : "All traffic: every request of a session using this hook goes to it. Add a rule to send only some."}
         </FieldDescription>
-        {rules.fields.map((rule, index) => (
-          <RuleRow
-            key={rule.id}
-            index={index}
-            services={options}
-            isDisabled={isDisabled}
-            onRemove={() => rules.remove(index)}
-          />
-        ))}
-        <FieldError>
-          {formState.errors.rules?.message ?? formState.errors.rules?.root?.message}
-        </FieldError>
-        {!isDisabled && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="w-fit"
-            isDisabled={rules.fields.length >= MAX_HOOK_RULES}
-            onClick={() => rules.append(blankHookRule())}
-          >
-            <PlusIcon />
-            Add Rule
-          </Button>
-        )}
+        <div className="mt-2 flex flex-col gap-3">
+          {rules.fields.map((rule, index) => (
+            <RuleRow
+              key={rule.id}
+              index={index}
+              services={options}
+              isDisabled={isDisabled}
+              onRemove={() => rules.remove(index)}
+            />
+          ))}
+          <FieldError>
+            {formState.errors.rules?.message ?? formState.errors.rules?.root?.message}
+          </FieldError>
+          {!isDisabled && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-fit"
+              isDisabled={rules.fields.length >= MAX_HOOK_RULES}
+              onClick={() => rules.append(blankHookRule())}
+            >
+              <PlusIcon />
+              Add Rule
+            </Button>
+          )}
+        </div>
       </FieldContent>
     </Field>
   );

@@ -260,11 +260,14 @@ export const buildCreateHookRequest = (data: THookForm): TCreateAgentVaultHookDT
   rules: data.rules.map(buildHookRule)
 });
 
+// The form rebuilds lists in its own order, so lists compare as sets or an untouched rule would read as an edit.
+const asSet = (values?: string[]) => (values ? [...values].sort() : null);
+
 const canonicalRule = (rule: TAgentVaultHookRule) => ({
   service: rule.service,
-  methods: rule.methods ?? null,
-  paths: rule.paths ?? null,
-  tools: rule.tools ?? null
+  methods: asSet(rule.methods),
+  paths: asSet(rule.paths),
+  tools: asSet(rule.tools)
 });
 
 const sameRules = (left: TAgentVaultHookRule[], right: TAgentVaultHookRule[]) =>

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 
 import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
@@ -163,4 +164,21 @@ export const assertAgentVaultHooksOnPlan = async (licenseService: Pick<TLicenseS
   const plan = await licenseService.getPlan(orgId);
   if (!plan.has(PlanFeature.AgentVaultHooks))
     throw new BadRequestError({ message: AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE });
+};
+
+// Whether resolve sends the session's hook. Only a plan known to leave hooks out drops it: a hook only adds checks,
+// so a License Server outage (a fallback plan with no last known one, or getPlan throwing) keeps it running.
+export const isAgentVaultHooksOnPlanForResolve = async (
+  licenseService: Pick<TLicenseService, "getPlan" | "getLastKnownPlan">,
+  orgId: string
+): Promise<boolean> => {
+  try {
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.isFallback) return plan.has(PlanFeature.AgentVaultHooks);
+    const lastKnown = await licenseService.getLastKnownPlan(orgId);
+    return lastKnown ? lastKnown.plan.has(PlanFeature.AgentVaultHooks) : true;
+  } catch (error) {
+    logger.warn(error, `agentVaultResolve: could not read the plan, keeping the session's hook [orgId=${orgId}]`);
+    return true;
+  }
 };

@@ -1,6 +1,11 @@
-import { useRef, useState } from "react";
+import { ReactNode, useRef, useState } from "react";
 
-import { ComboboxSheetCreationConfig, DiscardChangesAlertDialog } from "@app/components/v3";
+import { AgentVaultHooksUpgradeIntent, useUpgradeGate } from "@app/components/license/UpgradeGate";
+import {
+  ComboboxActionCreationConfig,
+  ComboboxSheetCreationConfig,
+  DiscardChangesAlertDialog
+} from "@app/components/v3";
 import {
   ProjectPermissionAgentVaultHookActions,
   ProjectPermissionSub,
@@ -12,12 +17,22 @@ import { TAgentVaultHook } from "@app/hooks/api/agentVault/types";
 
 import { HookForm } from "./HookForm";
 
-/** The "Create new hook" row of a hook picker, for whoever can create hooks on a plan that has them. */
+/**
+ * The "Create new hook" row of a hook picker, for whoever can create hooks. Off-plan the row opens the upgrade dialog,
+ * which the caller renders from `upgradeGate`.
+ */
 export const useHookCreation = (
   onCreated: (hook: TAgentVaultHook) => void
-): ComboboxSheetCreationConfig<TAgentVaultHook> | undefined => {
+): {
+  creation:
+    | ComboboxSheetCreationConfig<TAgentVaultHook>
+    | ComboboxActionCreationConfig<TAgentVaultHook>
+    | undefined;
+  upgradeGate: ReactNode;
+} => {
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const [isDirty, setIsDirty] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const cancelRef = useRef<VoidFunction>(() => {});
@@ -43,11 +58,23 @@ export const useHookCreation = (
     ProjectPermissionAgentVaultHookActions.Create,
     ProjectPermissionSub.AgentVaultHooks
   );
-  if (!canCreate || !subscription.agentVaultHooks) return undefined;
+  if (!canCreate) return { creation: undefined, upgradeGate };
+  if (!subscription.agentVaultHooks) {
+    return {
+      creation: {
+        mode: "action",
+        emptyLabel: "Create New Hook",
+        formatLabel: () => "Create New Hook",
+        onAction: () =>
+          openUpgradeGate({ intent: AgentVaultHooksUpgradeIntent, paywallKey: "agent-vault.hooks" })
+      },
+      upgradeGate
+    };
+  }
 
   const attempt = attemptRef.current;
 
-  return {
+  const creation: ComboboxSheetCreationConfig<TAgentVaultHook> = {
     mode: "sheet",
     showHeader: false,
     size: "form",
@@ -80,4 +107,5 @@ export const useHookCreation = (
       </>
     )
   };
+  return { creation, upgradeGate };
 };

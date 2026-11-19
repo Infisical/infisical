@@ -29,7 +29,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
 import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
-import { toHookRules } from "../agent-vault-hook/agent-vault-hook-fns";
+import { isAgentVaultHooksOnPlanForResolve, toHookRules } from "../agent-vault-hook/agent-vault-hook-fns";
 import { TResolvedSessionHook } from "../agent-vault-hook/agent-vault-hook-types";
 import {
   AGENT_VAULT_SERVICE_MOVED_MESSAGE,
@@ -1240,18 +1240,21 @@ export const agentVaultProxyServiceFactory = ({
       }
     }
 
+    // Off-plan, the session resolves as if it had no hook, and gets it back when the plan has hooks again.
+    const $findSessionHook = async (hookId: string) => {
+      if (!(await isAgentVaultHooksOnPlanForResolve(licenseService, proxy.orgId))) return undefined;
+      const scope = { hookId, sessionId: session.id, projectId: session.projectId };
+      const row = await agentVaultResolveDAL.findSessionHook({ ...scope, onPrimary });
+      if (row || onPrimary) return row;
+      // The session and its hook can come from different replicas, so a hook missing here may just not have arrived.
+      return agentVaultResolveDAL.findSessionHook({ ...scope, onPrimary: true });
+    };
+
     const serviceIds = rows.map((row) => row.id);
     const [customHeaderRows, substitutionRows, hookRow, sessionMetadata] = await Promise.all([
       agentVaultServiceCustomHeaderDAL.findByServiceIds(serviceIds),
       agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds),
-      session.hookId
-        ? agentVaultResolveDAL.findSessionHook({
-            hookId: session.hookId,
-            sessionId: session.id,
-            projectId: session.projectId,
-            onPrimary
-          })
-        : undefined,
+      session.hookId ? $findSessionHook(session.hookId) : undefined,
       agentVaultResolveDAL.findSessionMetadata({ sessionId: session.id, onPrimary })
     ]);
 

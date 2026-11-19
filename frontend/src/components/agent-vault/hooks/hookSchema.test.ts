@@ -238,6 +238,16 @@ describe("hook requests", () => {
     expect(buildUpdateHookRequest(storedHook, untouched)).toEqual({});
   });
 
+  it("doesn't count a rule the form reorders as changed", () => {
+    const reordered: TAgentVaultHook = {
+      ...storedHook,
+      rules: [{ service: "github", methods: [AgentVaultHttpMethod.Post, AgentVaultHttpMethod.Get] }]
+    };
+    expect(buildUpdateHookRequest(reordered, { ...hookFormOf(reordered), name: "gate" })).toEqual({
+      name: "gate"
+    });
+  });
+
   it("prefills the name of a new hook", () => {
     expect(hookFormOf(null, new Map(), "release-guard").name).toBe("release-guard");
   });

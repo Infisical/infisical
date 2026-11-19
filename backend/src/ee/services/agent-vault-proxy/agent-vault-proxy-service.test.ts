@@ -87,6 +87,8 @@ const setup = (
     personalRows = [],
     session = {},
     hookRow,
+    hookOnlyOnPrimary = false,
+    licenseService = new FakeLicenseService(),
     metadata = {},
     freeLimitReached = false,
     proxy = {
@@ -109,6 +111,9 @@ const setup = (
     personalRows?: { serviceId: string; field: string; encryptedValue: Buffer; oauthConfig: unknown }[];
     session?: Record<string, unknown>;
     hookRow?: Record<string, unknown>;
+    // The hook was written a moment ago and hasn't reached the replica the resolve read from.
+    hookOnlyOnPrimary?: boolean;
+    licenseService?: FakeLicenseService;
     metadata?: Record<string, string>;
     proxy?: {
       projectId: string;
@@ -133,7 +138,9 @@ const setup = (
   );
   const findResolvableServices = vi.fn(async () => rows);
   const findReachableBundles = vi.fn(async () => [{ id: "bundle-1", name: "bundle" }]);
-  const findSessionHook = vi.fn(async () => hookRow);
+  const findSessionHook = vi.fn(async ({ onPrimary }: { onPrimary?: boolean }) =>
+    hookOnlyOnPrimary && !onPrimary ? undefined : hookRow
+  );
   const findSessionMetadata = vi.fn(async () => metadata);
   const sessionRow = {
     id: "session-1",
@@ -199,7 +206,7 @@ const setup = (
         }) as never
     },
     kmsDataKeyService: { createCipherPairWithDataKey } as never,
-    licenseService: new FakeLicenseService(),
+    licenseService,
     agentVaultAccessService,
     resourceAuthMethodService: {} as never,
     agentVaultOauthService: {
@@ -940,6 +947,68 @@ describe("hooks on resolve", () => {
 
     const deleted = setup(noRefresh, [hookedRow], [], { session: { hookId: savedHook.id }, hookRow: undefined });
     expect((await resolve(deleted.service)).hook).toBeNull();
+  });
+
+  test("a hook not yet on the replica is read again from the primary", async () => {
+    const { service, findSessionHook } = setup(noRefresh, [hookedRow], [], {
+      session: { hookId: savedHook.id },
+      hookRow: savedHook,
+      hookOnlyOnPrimary: true
+    });
+    expect((await resolve(service)).hook).toMatchObject({ id: savedHook.id });
+    expect(findSessionHook).toHaveBeenCalledTimes(2);
+    expect(findSessionHook).toHaveBeenLastCalledWith(expect.objectContaining({ onPrimary: true }));
+  });
+
+  test("a deleted hook on a session read from the primary is not read twice", async () => {
+    const { service, findSessionHook } = setup(noRefresh, [hookedRow], [], {
+      session: { hookId: savedHook.id },
+      hookRow: undefined,
+      onlyOnPrimary: true
+    });
+    expect((await resolve(service)).hook).toBeNull();
+    expect(findSessionHook).toHaveBeenCalledTimes(1);
+  });
+
+  test("off-plan, the session resolves with no hook and no hook read", async () => {
+    const { service, findSessionHook } = setup(noRefresh, [hookedRow], [], {
+      session: { hookId: savedHook.id },
+      hookRow: savedHook,
+      licenseService: new FakeLicenseService().setPlan("org-1", { agentVaultHooks: false })
+    });
+    expect((await resolve(service)).hook).toBeNull();
+    expect(findSessionHook).not.toHaveBeenCalled();
+  });
+
+  test("on-plan, the session's hook goes out", async () => {
+    const { service } = setup(noRefresh, [hookedRow], [], {
+      session: { hookId: savedHook.id },
+      hookRow: savedHook,
+      licenseService: new FakeLicenseService().setPlan("org-1", { agentVaultHooks: true })
+    });
+    expect((await resolve(service)).hook).toMatchObject({ id: savedHook.id });
+  });
+
+  test("while the plan can't be read, the hook keeps going out", async () => {
+    const outage = new FakeLicenseService().setPlan("org-1", { agentVaultHooks: false });
+    outage.fallbackOrgs.add("org-1");
+    const fallback = setup(noRefresh, [hookedRow], [], {
+      session: { hookId: savedHook.id },
+      hookRow: savedHook,
+      licenseService: outage
+    });
+    expect((await resolve(fallback.service)).hook).toMatchObject({ id: savedHook.id });
+
+    const throwing = new FakeLicenseService();
+    throwing.getPlan = async () => {
+      throw new Error("license server down");
+    };
+    const failed = setup(noRefresh, [hookedRow], [], {
+      session: { hookId: savedHook.id },
+      hookRow: savedHook,
+      licenseService: throwing
+    });
+    expect((await resolve(failed.service)).hook).toMatchObject({ id: savedHook.id });
   });
 
   test("a hook that lost its secret fails the resolve rather than go out as no hook", async () => {

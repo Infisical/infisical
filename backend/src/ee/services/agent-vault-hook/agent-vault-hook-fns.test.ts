@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { Plan } from "@app/domains/platform/license/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 
 import { AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE } from "../agent-vault/agent-vault-credential-schemas";
@@ -11,8 +12,13 @@ import {
   AgentVaultHookSecretSchema,
   AgentVaultHookUrlSchema,
   assertAgentVaultHooksOnPlan,
+  isAgentVaultHooksOnPlanForResolve,
   toHookRules
 } from "./agent-vault-hook-fns";
+
+vi.mock("@app/lib/logger", () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
+}));
 
 const issuesOf = (result: { success: boolean; error?: { issues: { message: string }[] } }) =>
   result.success ? [] : result.error!.issues.map((issue) => issue.message);
@@ -215,5 +221,34 @@ describe("assertAgentVaultHooksOnPlan", () => {
       getPlan: vi.fn().mockResolvedValue(Plan.restore({ ...testFeatures(), agentVaultHooks: true }))
     };
     await expect(assertAgentVaultHooksOnPlan(licenseService as never, "org-1")).resolves.toBeUndefined();
+  });
+});
+
+describe("isAgentVaultHooksOnPlanForResolve", () => {
+  test("follows the org's plan", async () => {
+    const on = new FakeLicenseService().setPlan("org-1", { agentVaultHooks: true });
+    const off = new FakeLicenseService().setPlan("org-1", { agentVaultHooks: false });
+    expect(await isAgentVaultHooksOnPlanForResolve(on, "org-1")).toBe(true);
+    expect(await isAgentVaultHooksOnPlanForResolve(off, "org-1")).toBe(false);
+  });
+
+  test("on a fallback plan, the last known plan decides, and with none the hook stays", async () => {
+    const licenseService = new FakeLicenseService().setPlan("org-1", { agentVaultHooks: false });
+    licenseService.fallbackOrgs.add("org-1");
+    expect(await isAgentVaultHooksOnPlanForResolve(licenseService, "org-1")).toBe(true);
+
+    licenseService.lastKnown.set("org-1", {
+      plan: { ...testFeatures(), agentVaultHooks: false },
+      fetchedAt: Date.now()
+    });
+    expect(await isAgentVaultHooksOnPlanForResolve(licenseService, "org-1")).toBe(false);
+  });
+
+  test("keeps the hook when the plan can't be read", async () => {
+    const licenseService = {
+      getPlan: vi.fn().mockRejectedValue(new Error("license server down")),
+      getLastKnownPlan: vi.fn()
+    };
+    expect(await isAgentVaultHooksOnPlanForResolve(licenseService as never, "org-1")).toBe(true);
   });
 });

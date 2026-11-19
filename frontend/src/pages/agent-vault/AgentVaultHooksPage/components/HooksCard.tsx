@@ -4,6 +4,7 @@ import { MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, TrashIcon } from 
 import { DeleteHookDialog } from "@app/components/agent-vault/hooks/DeleteHookDialog";
 import { describeHookRule } from "@app/components/agent-vault/hooks/hookSchema";
 import { HookSheet } from "@app/components/agent-vault/hooks/HookSheet";
+import { AgentVaultHooksUpgradeIntent, useUpgradeGate } from "@app/components/license/UpgradeGate";
 import {
   Button,
   Card,
@@ -94,6 +95,7 @@ export const HooksCard = () => {
     closeSheet
   } = useAgentVaultSheetState("hookId");
   const { permission } = useProjectPermission();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const isOnPlan = Boolean(subscription.agentVaultHooks);
   const canCreate = permission.can(
     ProjectPermissionAgentVaultHookActions.Create,
@@ -138,13 +140,6 @@ export const HooksCard = () => {
     openHookId ?? ""
   );
 
-  const createButton = (
-    <Button variant="av" isDisabled={!isOnPlan} onClick={() => setIsCreateOpen(true)}>
-      <PlusIcon />
-      Create Hook
-    </Button>
-  );
-
   return (
     <Card>
       <CardHeader>
@@ -158,16 +153,20 @@ export const HooksCard = () => {
         </CardDescription>
         {canCreate && (
           <CardAction>
-            {isOnPlan ? (
-              createButton
-            ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>{createButton}</span>
-                </TooltipTrigger>
-                <TooltipContent>Hooks aren&apos;t included in your plan.</TooltipContent>
-              </Tooltip>
-            )}
+            <Button
+              variant="av"
+              onClick={() =>
+                isOnPlan
+                  ? setIsCreateOpen(true)
+                  : openUpgradeGate({
+                      intent: AgentVaultHooksUpgradeIntent,
+                      paywallKey: "agent-vault.hooks"
+                    })
+              }
+            >
+              <PlusIcon />
+              Create Hook
+            </Button>
           </CardAction>
         )}
       </CardHeader>
@@ -318,6 +317,8 @@ export const HooksCard = () => {
         isLoading={isOpenHookPending}
         isReadOnly={!canEdit || !openHook}
       />
+
+      {upgradeGate}
 
       <DeleteHookDialog
         hook={hookToDelete}
