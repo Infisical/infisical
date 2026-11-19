@@ -279,8 +279,33 @@ export const certificatePolicyDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findMicrosoftAutoenrollmentProfiles = async (policyId: string, tx?: Knex) => {
+    try {
+      return (await (tx || db)(TableName.PkiCertificateProfile)
+        .join(
+          TableName.PkiApplicationProfile,
+          `${TableName.PkiApplicationProfile}.profileId`,
+          `${TableName.PkiCertificateProfile}.id`
+        )
+        .join(
+          TableName.PkiApplication,
+          `${TableName.PkiApplication}.id`,
+          `${TableName.PkiApplicationProfile}.applicationId`
+        )
+        .where(`${TableName.PkiCertificateProfile}.certificatePolicyId`, policyId)
+        .whereNotNull(`${TableName.PkiApplicationProfile}.microsoftAutoenrollmentConfigId`)
+        .select(
+          db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"),
+          db.ref("name").withSchema(TableName.PkiApplication).as("applicationName")
+        )) as { profileName: string; applicationName: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find Microsoft Autoenrollment profiles using a certificate policy" });
+    }
+  };
+
   return {
     ...certificatePolicyOrm,
+    findMicrosoftAutoenrollmentProfiles,
     create,
     updateById,
     deleteById,

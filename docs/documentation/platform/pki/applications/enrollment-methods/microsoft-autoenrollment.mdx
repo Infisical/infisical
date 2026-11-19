@@ -14,31 +14,37 @@ Each computer signs in with its Kerberos ticket on every request. Its certificat
 
 ## Prerequisites
 
-- The Enterprise plan
-- A profile attached to your Application that issues from an internal certificate authority (external certificate authorities aren't supported), with a CA key type that matches the profile's default key algorithm (RSA 2048 when it has none)
-- An [LDAP connection](/integrations/app-connections/ldap) that uses the Active Directory provider, for the domain your computers belong to (use an LDAPS URL on port 636 if your domain controllers require LDAP signing), whose account can read `userAccountControl` and `tokenGroups` on computer objects
+- The [Enterprise plan](https://infisical.com/pricing)
+- A profile attached to your Application that issues from an internal certificate authority (external certificate authorities aren't supported)
+- A CA key that matches the profile's default key algorithm: an RSA CA for RSA keys or no default, an EC CA for ECDSA keys
+- If the profile's certificate policy restricts custom extensions, rules that allow the **AD SID security extension** (`1.3.6.1.4.1.311.25.2`) and **Certificate template information** (`1.3.6.1.4.1.311.21.7`)
+- An [LDAP connection](/integrations/app-connections/ldap) that uses the Active Directory provider, for your computers' domain (use an LDAPS URL on port 636 if your domain controllers require LDAP signing)
+- Read access to `userAccountControl` and `tokenGroups` on computer objects for the LDAP connection's account
 - The `Connect` action on `App Connections` for that LDAP connection
-- A domain account to map the Kerberos service principal to, and permission to run `ktpass` on a domain controller
+- A dedicated domain user account to map the Kerberos service principal to (`ktpass` resets its password, so don't use an account anything else signs in with)
+- Permission to run `ktpass` on a domain controller
 - Windows computers that reach your Infisical instance over HTTPS
 - A TLS certificate on that address that the computers trust
 - Your instance sees the same TLS certificate the computers see at its host name, so it resolves that name the way they do and no proxy inspects HTTPS in between (if that can't hold, see **Accept any TLS channel binding** in [Step 2](#step-2-configure-the-enrollment-method))
 - If you self-host Infisical, `SITE_URL` set to the HTTPS address computers use (the enrollment URLs and the Kerberos service principal are built from it)
 
-If a reverse proxy in front of your instance routes requests by path, route `/cep/` and `/ces/` to Infisical as well as `/api/`.
+If you self-host Infisical behind a reverse proxy that routes requests by path, route `/cep/` and `/ces/` to Infisical as well as `/api/`.
 
 ## Step 1: Create a keytab
 
-Windows computers sign in with Kerberos, so the profile needs a keytab for the service principal of your Infisical instance's host name.
+Windows computers sign in with Kerberos, so the profile needs a keytab, a file that holds the Kerberos key for your instance's service principal.
+
+If another profile in this Application already has a keytab for your instance's host name, the panel you open below offers that profile's keytab. Select **Use This Keytab** to copy that profile's keytab and LDAP connection, and skip the rest of this step.
 
 <Steps>
   <Step>
-    In your Application, go to the **Settings** tab and select **Configure** on the profile.
+    In your Application, go to the **Settings** tab. On the profile, select **Configure**, or one of its enrollment method badges if it already has a method.
   </Step>
   <Step>
     Select **Add enrollment method**, then select **Microsoft Autoenrollment**.
   </Step>
   <Step>
-    Under **Kerberos Keytab**, copy the `ktpass` command. Replace `<REALM>` with your Kerberos realm, which is your domain name in upper case (such as `CORP.EXAMPLE.COM`), and replace `<DOMAIN>\<service-account>` with the account to map the service principal to.
+    Under **Kerberos Keytab**, copy the `ktpass` command. Replace `<REALM>` with your Kerberos realm, which is your domain name in upper case (such as `CORP.EXAMPLE.COM`), and replace `<DOMAIN>\<service-account>` with the dedicated account's NetBIOS domain and user name (such as `CORP\svc-infisical`).
   </Step>
   <Step>
     On a domain controller, turn on AES for the account from an elevated PowerShell prompt. The keytab only holds an AES key, so if the account doesn't support AES, the domain controller can encrypt tickets with RC4 and the keytab can't read them.
@@ -48,7 +54,7 @@ Windows computers sign in with Kerberos, so the profile needs a keytab for the s
     ```
   </Step>
   <Step>
-    Run the `ktpass` command on the domain controller and enter the account's password when `ktpass` asks for it.
+    Run the `ktpass` command on the domain controller and enter the account's password when `ktpass` asks for it. `ktpass` also sets the account's user principal name and prints the key, so don't share its output.
   </Step>
   <Step>
     Upload the `infisical.keytab` file that the command creates.
@@ -56,8 +62,6 @@ Windows computers sign in with Kerberos, so the profile needs a keytab for the s
 </Steps>
 
 If your instance's host name is a CNAME, the command names the host that the CNAME points to, because Windows asks for a ticket for that host.
-
-If another profile in the same Application already has a keytab, the panel offers to reuse it. Select **Use This Keytab** to copy that profile's keytab and LDAP connection instead of creating a new keytab.
 
 <Warning>
   Running `ktpass` again for an account resets its password and raises its key version, even if you type the same password, so keytabs made earlier for that account stop working. If other profiles already have a keytab for your instance's host name, upload the new keytab to each of them, or upload the keytab file they already use instead of running `ktpass` again.
@@ -68,9 +72,13 @@ If another profile in the same Application already has a keytab, the panel offer
 Fill in the rest of the panel, then select **Enable**:
 
 - **LDAP connection**: the Active Directory connection used to look up each computer's DNS name
-- **AD groups (optional)**: the groups whose computers can enroll (leave it empty to let every computer in the domain enroll)
-- **Accept any TLS channel binding**: accept a request bound to any TLS certificate, which lets a site that gets a computer to sign in to it enroll as that computer (off by default, and only for computers that reach your instance through a proxy that inspects HTTPS, or an instance that can't read its own certificate, such as in FIPS mode)
+- **AD groups (optional)**: the Active Directory security groups whose computers can enroll (leave it empty to let every computer in the domain enroll)
+- **Accept any TLS channel binding**: accept a request bound to any TLS certificate (off by default)
 - **Renew before (days)**: the number of days before expiry that Windows renews a certificate (defaults to 42)
+
+<Warning>
+  Turn on **Accept any TLS channel binding** only if computers reach your instance through a proxy that inspects HTTPS, or, if you self-host Infisical, your instance can't check bindings (such as in FIPS mode). While it's on, a site that gets a computer to sign in to it can enroll as that computer.
+</Warning>
 
 Windows renews a certificate only when the renewal period is more than 8 hours and less than 20% of the certificate's validity. A value outside that range is moved into it, and the panel shows the value Windows uses when it differs. A certificate valid for 40 hours or less is never renewed, so computers request a new one instead.
 
@@ -88,7 +96,7 @@ Add the profile's URL to a Group Policy Object (GPO) that applies to the compute
 
         ![Editing the GPO linked to the OU](/images/platform/pki/enrollment-methods/microsoft-autoenrollment/gpmc-edit.png)
 
-        To use a new GPO, right-click the OU that holds your computers (or the domain, to cover every computer) and select **Create a GPO in this domain, and Link it here**. Name the GPO, expand the OU, then right-click the new GPO and select **Edit**.
+        To use a new GPO, right-click the OU that holds your computers (or the domain, to cover every computer) and select **Create a GPO in this domain, and Link it here**. Name the GPO, expand the OU, then right-click the new GPO and select **Edit**. Windows links a new GPO last, so if another GPO already sets enrollment policy servers, select the OU, open **Linked Group Policy Objects**, select the new GPO and select **Move link to top**.
 
         ![Creating a GPO linked to the OU](/images/platform/pki/enrollment-methods/microsoft-autoenrollment/gpmc-create.png)
       </Step>
@@ -98,7 +106,7 @@ Add the profile's URL to a Group Policy Object (GPO) that applies to the compute
         ![Public Key Policies in the Group Policy Management Editor](/images/platform/pki/enrollment-methods/microsoft-autoenrollment/gpme-public-key-policies.png)
       </Step>
       <Step>
-        Double-click **Certificate Services Client - Certificate Enrollment Policy**. Set **Configuration Model** to **Enabled**, then select **Add**.
+        Double-click **Certificate Services Client - Certificate Enrollment Policy**. Set **Configuration Model** to **Enabled**, leave the **Active Directory Enrollment Policy** entry as it is, then select **Add**.
 
         ![Certificate Enrollment Policy properties](/images/platform/pki/enrollment-methods/microsoft-autoenrollment/gpo-enrollment-policy.png)
       </Step>
@@ -107,14 +115,14 @@ Add the profile's URL to a Group Policy Object (GPO) that applies to the compute
 
         ![Adding the enrollment policy URL](/images/platform/pki/enrollment-methods/microsoft-autoenrollment/gpo-add-policy-server.png)
 
-        **Validate Server** signs in with the computer's account and should report that the URL was validated. If it fails, check the URL and that the method is on for the profile, then see [Troubleshooting](#troubleshooting).
+        **Validate Server** signs in with the account of the computer you're running Group Policy Management on and should report that the URL was validated. If you set allowed groups, the audit log also records a refusal for that computer, which you can ignore. If validation fails, check the URL and that the method is on for the profile, then see [Troubleshooting](#troubleshooting).
 
         ![The enrollment policy URL validated](/images/platform/pki/enrollment-methods/microsoft-autoenrollment/gpo-add-validated.png)
 
         Select **Add**, then select **OK** in the policy dialog.
       </Step>
       <Step>
-        Double-click **Certificate Services Client - Auto-Enrollment**. Set **Configuration Model** to **Enabled**, select both checkboxes below it, then select **OK**.
+        Double-click **Certificate Services Client - Auto-Enrollment**. Set **Configuration Model** to **Enabled**, select **Renew expired certificates, update pending certificates, and remove revoked certificates** and **Update certificates that use certificate templates**, then select **OK**.
 
         ![Auto-Enrollment properties](/images/platform/pki/enrollment-methods/microsoft-autoenrollment/gpo-autoenrollment.png)
       </Step>
@@ -154,18 +162,18 @@ Add the profile's URL to a Group Policy Object (GPO) that applies to the compute
 
 ## Step 4: Trust your CA's root certificate
 
-Computers need to trust your CA's root certificate to use the certificates they get. Autoenrollment still installs a certificate whose root isn't trusted, but its chain then fails validation, and `certreq` refuses to enroll at all. Add the root to the same GPO:
+Computers need to trust your CA's root certificate to use the certificates they get. Autoenrollment still installs a certificate whose root isn't trusted, but the certificate's chain fails validation. Add the root to the same GPO:
 
 <Steps>
   <Step>
-    In Infisical, go to **Certificate Authorities**, open the menu on the CA, and select **View Certificate**. Download the CA's certificate. If the profile issues from an intermediate CA, download the root CA's certificate instead.
+    In Infisical, go to **Certificate Authorities**, open the menu on the CA, and select **View Certificate**. In the **CA Certificate** dialog, select the download icon next to **Certificate Body**. If the profile issues from an intermediate CA, download the root CA's certificate instead.
   </Step>
   <Step>
     In the GPO editor, go to **Public Key Policies**, right-click **Trusted Root Certification Authorities**, and select **Import**. Follow the wizard to import the certificate you downloaded. The file downloads as `cert.pem`, which the wizard doesn't list by default, so rename it to `root.cer` first or set the wizard's file type to **All Files**.
   </Step>
 </Steps>
 
-## Enroll computers
+## Step 5: Enroll computers
 
 Computers enroll the next time they apply Group Policy. To enroll a computer right away, run the following commands on it from an elevated prompt:
 
@@ -182,20 +190,29 @@ Windows keeps the enrollment policy for up to 8 hours, so a change to the enroll
 
 Each certificate is built from the profile, whatever the computer puts in its request:
 
-- **Validity**: the profile's default TTL (requests are refused while it exceeds the policy's maximum validity), or one year if the profile has none (the same as the AD CS computer templates), capped at the policy's maximum validity
-- **Key usages**: the key usages and extended key usages set on the profile, such as **Digital Signature** and **Key Encipherment** with **Client Authentication** and **Server Authentication** (if the profile has none, the certificate only gets **Key Encipherment** and no extended key usages)
-- **Security identifier**: the computer's SID in the Active Directory security extension (OID `1.3.6.1.4.1.311.25.2`), which domain controllers use for [strong certificate mapping](https://support.microsoft.com/en-us/topic/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers-ad2c23b0-15d8-4340-a468-4d4f3b188f16) (if the certificate policy has a rule for that OID, the SID must meet it)
+- **Validity**: the profile's default TTL, or, if the profile has none, one year (the same as the AD CS computer templates) or the policy's maximum validity, whichever is shorter
+- **Key usages**: the key usages and extended key usages set on the profile, such as **Digital Signature** and **Key Encipherment** with **Client Authentication** and **Server Authentication** (if the profile has none, the certificate gets the key usages Windows asks for in its request, and no extended key usages)
+- **Security identifier**: the computer's SID in the Active Directory security extension (OID `1.3.6.1.4.1.311.25.2`), which domain controllers use for [strong certificate mapping](https://support.microsoft.com/en-us/topic/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers-ad2c23b0-15d8-4340-a468-4d4f3b188f16) (if the certificate policy restricts custom extensions, it must allow this OID and the SID must meet its rule)
 - **Key type**: the profile's default key algorithm, RSA (2048, 3072 or 4096 bits) or ECDSA (P-256, P-384 or P-521), or RSA 2048 if the profile has none
+
+If the profile's default TTL is longer than the policy's maximum validity, every request is refused until you change the profile.
 
 While the method is on, a change to the profile is refused if it moves the profile off an internal CA, or leaves the CA's key type mismatched with the default key algorithm.
 
 ## Re-enroll computers
 
-Changing the enrollment method doesn't replace the certificates computers already hold. They get the new settings when they renew. To make every computer request a new certificate the next time it fetches the enrollment policy (the same as re-enrolling all certificate holders of a template in AD CS), go to the **Renewal** section of the panel and select **Re-enroll All Computers**.
+Changing the enrollment method doesn't replace the certificates computers already hold. They get the new settings when they renew. To make every computer request a new certificate the next time it fetches the enrollment policy (the same as re-enrolling all certificate holders of a template in AD CS), go to the **Renewal** section of the panel, select **Re-enroll All Computers**, then select **Re-enroll**. Computers pick up the change within 8 hours. If an approval policy covers the profile, each new request waits for approval. The certificates they replace stay valid until they expire.
 
 ## Approvals
 
 If an [approval policy](/documentation/platform/pki/applications/approvals) covers the profile, the computer's request waits for approval. Windows checks the request again on each autoenrollment run, installs the certificate after the request is approved, and drops the request if it's rejected. Windows only checks requests made through an enrollment policy URL that's in Group Policy.
+
+Approvers find the request in your Application's **Certificate Requests** tab. To approve it, select its **Pending Approval** status, then select **Approve Request**. When a request is approved, the computer is checked in Active Directory again. The certificate isn't issued if any of these is true:
+
+- Microsoft Autoenrollment was turned off for the profile
+- The computer was deleted or disabled in Active Directory
+- The computer is no longer in an allowed group
+- The certificate the request renews was deleted or revoked
 
 To install an approved certificate without waiting, run `certutil -pulse` on the computer from an elevated prompt.
 
@@ -205,14 +222,50 @@ To stop a profile from issuing certificates to computers, turn the method off an
 
 <Steps>
   <Step>
-    In your Application, go to the **Settings** tab and select **Configure** on the profile. On the **Microsoft Autoenrollment** tab, select **Disable**, then select **Disable Enrollment**.
+    In your Application, go to the **Settings** tab and select the **Microsoft Autoenrollment** badge on the profile. Select **Disable**, then select **Disable Enrollment**.
   </Step>
   <Step>
-    In the GPO editor, double-click **Certificate Services Client - Certificate Enrollment Policy**, select the profile's **Enrollment policy URL**, and select **Remove**. Until you remove the URL, computers keep asking the profile for certificates.
+    In the GPO editor, double-click **Certificate Services Client - Certificate Enrollment Policy**, select the profile's enrollment policy URL, select **Remove**, confirm, then select **OK**. Until you remove the URL, computers keep asking the profile for certificates.
   </Step>
 </Steps>
 
-Computers keep the certificates they already hold. Approved requests that computers haven't picked up yet can no longer be collected. Turning the method off also deletes the keytab, allowed groups and renewal setting, so turning it back on needs a keytab again.
+If you added the URL with the PowerShell script, remove it with the same GPO name and URL:
+
+```powershell
+$gpoName = "Infisical autoenrollment"
+$url = "<enrollment-policy-url>"
+
+$id = -join ([Security.Cryptography.SHA1]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($url.ToLower())) | ForEach-Object { $_.ToString("x2") })
+Remove-GPRegistryValue -Name $gpoName -Key "HKLM\Software\Policies\Microsoft\Cryptography\PolicyServers\$id" | Out-Null
+```
+
+Turning the method off:
+
+- Keeps the certificates computers already hold
+- Stops computers from collecting approved requests they haven't picked up yet (those certificates were already issued and stay in **Certificate Inventory**, so revoke them if you need to)
+- Deletes all of the method's settings, including the keytab, so turning it back on needs a keytab again
+
+## Network requirements for TLS channel binding
+
+If you self-host Infisical, your instance checks each request's TLS channel binding against the certificate it serves at `SITE_URL`. It reads that certificate from itself at the first enrollment request, then again every hour while requests come in:
+
+- It resolves `SITE_URL`'s host name with the system DNS of the backend's container or pod, and sends the name to no other resolver
+- It opens a TLS connection to each address it gets, on `SITE_URL`'s port, directly, without `HTTP_PROXY` or `HTTPS_PROXY`
+- The panel shows whether the check works only after the first enrollment request
+
+Hairpin NAT, cluster DNS that returns an internal address with a different certificate, and egress policies can all stop the backend from seeing the certificate computers see. To check, print the certificate's SHA-256 fingerprint from inside the backend's container or pod, with `<host>` and `<port>` from `SITE_URL` (`443` when it has no port):
+
+```bash
+node -e 'const s=require("tls").connect({host:"<host>",port:<port>,servername:"<host>",rejectUnauthorized:false},()=>{console.log(s.getPeerCertificate().fingerprint256);s.end()})'
+```
+
+Then print it on a computer, from PowerShell:
+
+```powershell
+$c = [Net.Sockets.TcpClient]::new("<host>", <port>); $s = [Net.Security.SslStream]::new($c.GetStream(), $false, { $true }); $s.AuthenticateAsClient("<host>", $null, [Security.Authentication.SslProtocols]::Tls12, $false); ([Security.Cryptography.SHA256]::Create().ComputeHash($s.RemoteCertificate.GetRawCertData()) | ForEach-Object { $_.ToString("X2") }) -join ":"
+```
+
+The two fingerprints must match. If they don't, see [Requests are refused with a channel binding mismatch](#troubleshooting).
 
 ## Troubleshooting
 
@@ -263,13 +316,13 @@ Computers keep the certificates they already hold. Approved requests that comput
   <Card title="Approvals" icon="check-check" href="/documentation/platform/pki/applications/approvals">
     Require approval before computers get certificates.
   </Card>
-  <Card title="Managing Certificates" icon="list" href="/documentation/platform/pki/applications/certificates">
+  <Card title="Issue and manage certificates" icon="list" href="/documentation/platform/pki/applications/certificates">
     View and manage certificates in your Application.
   </Card>
-  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+  <Card title="Alerts" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
     Get notified when certificates are about to expire.
   </Card>
-  <Card title="Audit Logs" icon="scroll-text" href="/documentation/platform/audit-logs">
+  <Card title="Audit logs" icon="scroll-text" href="/documentation/platform/audit-logs">
     Review enrollment requests and the reasons they were refused.
   </Card>
 </CardGroup>

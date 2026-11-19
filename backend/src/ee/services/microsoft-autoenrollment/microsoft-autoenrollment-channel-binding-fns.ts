@@ -4,7 +4,7 @@ import * as x509 from "@peculiar/x509";
 import dns from "node:dns/promises";
 import { z } from "zod";
 
-import { resolveDomain, scanEndpoint } from "@app/ee/services/pki-discovery/pki-discovery-fns";
+import { scanEndpoint } from "@app/ee/services/pki-discovery/pki-discovery-fns";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
@@ -98,11 +98,7 @@ const lookUpSystemAddresses = (host: string) =>
 
 const resolveInstanceAddresses = async (host: string) => {
   if (net.isIP(host)) return [host];
-  const [publicAddresses, systemAddresses] = await Promise.all([
-    resolveDomain(host).catch(() => []),
-    lookUpSystemAddresses(host)
-  ]);
-  const addresses = [...new Set([...systemAddresses, ...publicAddresses])];
+  const addresses = [...new Set(await lookUpSystemAddresses(host))];
   if (addresses.length > MAX_SCANNED_ADDRESSES) {
     logger.warn(
       { host, addressCount: addresses.length },

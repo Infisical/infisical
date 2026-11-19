@@ -494,6 +494,17 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
       expect(result.microsoftAutoenrollment.effectiveRenewBeforeSeconds).toBe(180 * 86400 * 0.2 - 1);
     });
 
+    test("refuses turning the method on when the policy restricts custom extensions without allowing the Windows extensions", async () => {
+      deps.certificatePolicyDAL.findById.mockResolvedValue({
+        customExtensions: [{ oid: "1.3.6.1.4.1.311.25.2", allowed: ["*"] }]
+      });
+
+      await expect(set({ connectionId: CONNECTION_ID, keytab: encodeKeytab([3]) })).rejects.toThrow(
+        "Allow 1.3.6.1.4.1.311.21.7 in the policy's custom extension rules"
+      );
+      expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.create).not.toHaveBeenCalled();
+    });
+
     test("refuses a save before writing anything when the profile's TTL exceeds its policy's maximum", async () => {
       withExistingConfig();
       deps.certificateProfileDAL.findById.mockResolvedValue({

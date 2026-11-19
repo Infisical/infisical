@@ -484,15 +484,23 @@ export const findCustomExtensionRuleValueError = (
   return null;
 };
 
-const POLICY_EXEMPT_ISSUER_ADDED_OIDS: string[] = [CUSTOM_EXTENSION_PRESET_OIDS.MS_CERTIFICATE_TEMPLATE_INFORMATION];
+export const findOidsNotAllowedByPolicy = (rules: TCustomExtensionRule[] | null | undefined, oids: string[]) => {
+  const rulesByOid = buildRuleLookup(rules);
+  return rulesByOid ? oids.filter((oid) => !rulesByOid.has(oid)) : [];
+};
 
 const findIssuerAddedExtensionErrors = (
   issuerAddedExtensions: TResolvedCustomExtension[],
   rulesByOid: Map<string, TCustomExtensionRule> | null
 ) =>
   issuerAddedExtensions.flatMap((extension) => {
-    const rule = rulesByOid?.get(extension.oid);
-    if (!rule || POLICY_EXEMPT_ISSUER_ADDED_OIDS.includes(extension.oid)) return [];
+    if (!rulesByOid) return [];
+    const rule = rulesByOid.get(extension.oid);
+    if (!rule) {
+      return [
+        `Custom extension '${extension.oid}' is always added to these certificates, but this policy's custom extension rules don't allow it. Add a rule for '${extension.oid}' to the policy.`
+      ];
+    }
     const displayValue = describeCustomExtensionValue(extension.oid, extension.value);
     if (displayValue === null) {
       return [`Custom extension '${extension.oid}' added by the issuer cannot be checked against this policy.`];

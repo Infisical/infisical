@@ -11,6 +11,7 @@ import {
   describeCustomExtensionValue,
   encodeCustomExtensionValue,
   findCsrCustomExtensionMismatch,
+  findOidsNotAllowedByPolicy,
   findUnsatisfiedCustomExtensionOids,
   isReservedExtensionOid,
   parseCustomExtensionsFromCertificate,
@@ -186,25 +187,45 @@ describe("resolveCustomExtensions with extensions the issuer adds", () => {
     expect(errors).toEqual([expect.stringMatching(/is denied by this policy/)]);
   });
 
-  it("adds the extensions when the policy has no rule for them", () => {
-    expect(
-      resolveCustomExtensions({ rules: [{ oid: "1.2.3.4", allowed: ["*"] }], issuerAddedExtensions: [sidExtension] })
-    ).toEqual({ errors: [], extensions: [sidExtension] });
+  it("adds the extensions when the policy does not restrict custom extensions", () => {
     expect(resolveCustomExtensions({ rules: undefined, issuerAddedExtensions: [sidExtension] })).toEqual({
       errors: [],
       extensions: [sidExtension]
     });
   });
 
-  it("does not hold the template information Windows needs to policy values", () => {
+  it("refuses an extension the issuer adds when the policy restricts custom extensions without allowing it", () => {
+    const { errors } = resolveCustomExtensions({
+      rules: [{ oid: "1.2.3.4", allowed: ["*"] }],
+      issuerAddedExtensions: [sidExtension]
+    });
+
+    expect(errors).toEqual([expect.stringContaining(`Add a rule for '${SID_OID}' to the policy.`)]);
+  });
+
+  it("holds the template information to the policy's rule like any other extension", () => {
     const templateInfo = issuerAdded(TEMPLATE_INFO_OID, "1.3.6.1.4.1.99999.1.2.3:100.0");
 
     expect(
       resolveCustomExtensions({
         rules: [{ oid: TEMPLATE_INFO_OID, required: ["Machine"] }],
         issuerAddedExtensions: [templateInfo]
+      }).errors
+    ).toEqual([expect.stringMatching(/does not match any value required by this policy/)]);
+    expect(
+      resolveCustomExtensions({
+        rules: [{ oid: TEMPLATE_INFO_OID, allowed: ["*"] }],
+        issuerAddedExtensions: [templateInfo]
       })
     ).toEqual({ errors: [], extensions: [templateInfo] });
+  });
+
+  it("names the Windows extensions a restricting policy does not allow", () => {
+    expect(findOidsNotAllowedByPolicy(null, [SID_OID, TEMPLATE_INFO_OID])).toEqual([]);
+    expect(findOidsNotAllowedByPolicy([{ oid: SID_OID, allowed: ["*"] }], [SID_OID, TEMPLATE_INFO_OID])).toEqual([
+      TEMPLATE_INFO_OID
+    ]);
+    expect(findOidsNotAllowedByPolicy([], [SID_OID])).toEqual([SID_OID]);
   });
 
   it("signs the issuer's copy once when the profile declares the same extension", () => {

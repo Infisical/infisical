@@ -21,11 +21,13 @@ import {
   CertPolicyState,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
-  MAX_CUSTOM_EXTENSION_RULES_PER_POLICY
+  MAX_CUSTOM_EXTENSION_RULES_PER_POLICY,
+  MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS
 } from "../certificate-common/certificate-constants";
 import {
   CUSTOM_EXTENSION_PRESETS_BY_OID,
   describeReservedExtensionOid,
+  findOidsNotAllowedByPolicy,
   isReservedExtensionOid,
   resolveCustomExtensions,
   TCustomExtensionRule,
@@ -857,6 +859,19 @@ export const certificatePolicyServiceFactory = ({
               message: `Certificate profile '${boundProfile.slug}' uses this policy and would no longer be valid. ${errors.join(" ")}`
             });
           }
+        }
+      }
+
+      const missingWindowsOids = findOidsNotAllowedByPolicy(
+        consolidatedData.customExtensions,
+        MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS
+      );
+      if (missingWindowsOids.length) {
+        const [windowsProfile] = await certificatePolicyDAL.findMicrosoftAutoenrollmentProfiles(policyId);
+        if (windowsProfile) {
+          throw new BadRequestError({
+            message: `Certificate profile '${windowsProfile.profileName}' uses this policy with Microsoft Autoenrollment in Application '${windowsProfile.applicationName}', which adds custom extensions ${missingWindowsOids.join(" and ")} to every certificate. Allow ${missingWindowsOids.join(" and ")} in the policy's custom extension rules, or turn off Microsoft Autoenrollment for that profile.`
+          });
         }
       }
     }

@@ -20,6 +20,13 @@ vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ SITE_URL: siteUrl.va
 
 vi.mock("@app/lib/logger", () => ({ logger: { warn: vi.fn() } }));
 
+const { resolveDomain } = vi.hoisted(() => ({ resolveDomain: vi.fn() }));
+
+vi.mock("@app/ee/services/pki-discovery/pki-discovery-fns", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/ee/services/pki-discovery/pki-discovery-fns")>()),
+  resolveDomain
+}));
+
 const ECDSA_SHA256_CERTIFICATE = `-----BEGIN CERTIFICATE-----
 MIIBijCCAS+gAwIBAgIUQ3VOx0CWF3m50Hn19gw7IZrd3N0wCgYIKoZIzj0EAwIw
 GjEYMBYGA1UEAwwPYXBwLmV4YW1wbGUuY29tMB4XDTI2MTExNzIxNDM1NFoXDTM2
@@ -152,6 +159,14 @@ describe("Microsoft Autoenrollment channel binding", () => {
       await new Promise((resolve) => {
         server.close(resolve);
       });
+    });
+
+    test("resolves the host name with the system resolver only, never public DNS", async () => {
+      const { port } = server.address() as AddressInfo;
+
+      await learnServerChannelBindings({ host: "localhost", port });
+
+      expect(resolveDomain).not.toHaveBeenCalled();
     });
 
     test("reads both the ECDSA and the RSA certificate a server holds", async () => {

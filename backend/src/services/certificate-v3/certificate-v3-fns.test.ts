@@ -236,6 +236,22 @@ describe("applyIssuerNameOverride", () => {
     expect(result.commonName).toBe("laptop01.corp.example.com");
   });
 
+  it("never takes the subject from the request, so a domain computer cannot pick its own organization or unit", () => {
+    const result = applyProfileDefaults(
+      applyIssuerNameOverride(
+        { ...csrRequest, organization: "Attacker Inc", organizationalUnit: "Domain Admins", country: "XX" },
+        issuerNameOverride,
+        {}
+      ),
+      { organization: "Example Corp" }
+    );
+
+    expect(result.commonName).toBe("laptop01.corp.example.com");
+    expect(result.organization).toBe("Example Corp");
+    expect(result.organizationalUnit).toBeUndefined();
+    expect(result.country).toBeUndefined();
+  });
+
   it("keeps the request's key usages when the profile sets none", () => {
     const result = applyProfileDefaults(applyIssuerNameOverride(csrRequest, issuerNameOverride, {}), {});
 

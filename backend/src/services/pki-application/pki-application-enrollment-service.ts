@@ -58,6 +58,8 @@ import { TCertificateAuthorityDALFactory } from "@app/services/certificate-autho
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
+import { MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS } from "@app/services/certificate-common/certificate-constants";
+import { findOidsNotAllowedByPolicy } from "@app/services/certificate-common/certificate-extension-fns";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -1077,6 +1079,15 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     });
   };
 
+  const $assertPolicyAllowsWindowsExtensions = async (profile: { slug: string; certificatePolicyId: string }) => {
+    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
+    const missingOids = findOidsNotAllowedByPolicy(policy?.customExtensions, MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS);
+    if (!missingOids.length) return;
+    throw new BadRequestError({
+      message: `Profile '${profile.slug}' has a certificate policy that restricts custom extensions, and Microsoft Autoenrollment adds ${missingOids.join(" and ")} to every certificate. Allow ${missingOids.join(" and ")} in the policy's custom extension rules, or turn off the policy's custom extension restriction.`
+    });
+  };
+
   const setMicrosoftAutoenrollmentEnrollment = async ({
     applicationId,
     profileId,
@@ -1132,6 +1143,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       certificateAuthorityDAL
     );
     await $assertPolicyAllowsTemplateKey(profile);
+    await $assertPolicyAllowsWindowsExtensions(profile);
     const microsoftAutoenrollmentTtl = await resolveMicrosoftAutoenrollmentTtl(
       {
         certificatePolicyId: profile.certificatePolicyId,

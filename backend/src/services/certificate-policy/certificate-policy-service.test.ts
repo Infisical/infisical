@@ -45,6 +45,7 @@ describe("CertificatePolicyService", () => {
     countByProjectId: vi.fn(),
     isPolicyInUse: vi.fn(),
     getProfilesUsingPolicy: vi.fn(),
+    findMicrosoftAutoenrollmentProfiles: vi.fn(),
     findByNameAndProjectId: vi.fn(),
     transaction: vi.fn(),
     find: vi.fn(),
@@ -290,6 +291,38 @@ describe("CertificatePolicyService", () => {
         name: expect.any(String)
       });
       expect(result).toEqual(updatedTemplate);
+    });
+
+    it("refuses custom extension rules that leave out the extensions a Microsoft Autoenrollment profile on the policy adds", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue([]);
+      mockCertificatePolicyDAL.findMicrosoftAutoenrollmentProfiles.mockResolvedValue([
+        { profileName: "windows-computers", applicationName: "fleet" }
+      ]);
+
+      await expect(
+        service.updatePolicy({
+          ...mockActor,
+          policyId: "policy-123",
+          data: { customExtensions: [{ oid: "1.3.6.1.4.1.311.25.2", allowed: ["*"] }] }
+        })
+      ).rejects.toThrow("Allow 1.3.6.1.4.1.311.21.7 in the policy's custom extension rules");
+      expect(mockCertificatePolicyDAL.updateById).not.toHaveBeenCalled();
+    });
+
+    it("lets a policy restrict custom extensions when no Microsoft Autoenrollment profile uses it", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue([]);
+      mockCertificatePolicyDAL.findMicrosoftAutoenrollmentProfiles.mockResolvedValue([]);
+      mockCertificatePolicyDAL.updateById.mockResolvedValue(sampleTemplate);
+
+      await service.updatePolicy({
+        ...mockActor,
+        policyId: "policy-123",
+        data: { customExtensions: [{ oid: "1.2.3.4", allowed: ["*"] }] }
+      });
+
+      expect(mockCertificatePolicyDAL.updateById).toHaveBeenCalled();
     });
 
     it("should throw NotFoundError when template does not exist", async () => {

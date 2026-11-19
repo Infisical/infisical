@@ -376,7 +376,7 @@ Every filter is an exact match, so wildcards like `*` aren't supported.
 </Tabs>
 
 <Note>
-Actor ID filtering is only supported for actor types that carry an ID: `user`, `identity`, `service`, `kmipClient`, `kmipServer`, `gateway`, `relay`, `agentVaultProxy`, `acmeProfile`, `acmeAccount`, `estAccount`, and `scepAccount`.
+Actor ID filtering is only supported for actor types that carry an ID: `user`, `identity`, `service`, `kmipClient`, `kmipServer`, `gateway`, `relay`, `agentVaultProxy`, `acmeProfile`, `acmeAccount`, `estAccount`, `scepAccount`, and `microsoftAutoenrollmentAccount`.
 
 `platform`, `scimClient`, and `unknownUser` don't have an ID field and can only be filtered by type.
 </Note>
@@ -629,7 +629,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
     The `event.metadata` of each result records which certificate failed and why:
 
     - `operation`: what was requested (`issue`, `sign`, `order`, or `renew`)
-    - `enrollmentType`: how the certificate was requested (`api`, `acme`, `est`, or `scep`)
+    - `enrollmentType`: how the certificate was requested (`api`, `acme`, `est`, `scep`, or `microsoft-autoenrollment`)
     - `error` and `errorName`: why issuance failed, such as a TTL longer than the certificate policy allows or an error from the CA
     - `certificateProfileId`, `profileName`, `caId`, `caName`, `commonName`, `applicationId`, and `applicationName`: the certificate the request was for, where Infisical knows them
     - `certificateRequestId`: the certificate request that failed, if Infisical had already created one
