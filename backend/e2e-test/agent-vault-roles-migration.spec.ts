@@ -67,15 +67,6 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
       TRoleRow[]
     >;
 
-  const grantIds = async () =>
-    (
-      (await testDb(TableName.Membership).where({ scope: "resource", scopeProjectId: projectId }).select("id")) as {
-        id: string;
-      }[]
-    )
-      .map((row) => row.id)
-      .sort();
-
   const grantRoleIdOf = async (accessBundleId: string) =>
     ((await testDb(TableName.AgentVaultAccessBundle).where({ id: accessBundleId }).first()) as { grantRoleId: string })
       .grantRoleId;
@@ -140,7 +131,6 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
     await grant(granted, { actorIdentityId: member.identityId });
     await grant(granted, { actorGroupId: group.id });
     await grant(onlyInactive, { actorIdentityId: viewer.identityId }, false);
-    const seededGrants = await grantIds();
 
     await up(testDb);
 
@@ -193,10 +183,11 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
     };
     expect(inactiveBundle.grantRoleId).toBeTruthy();
     expect(await testDb(TableName.MembershipRole).where({ customRoleId: inactiveBundle.grantRoleId })).toHaveLength(0);
-    // The grants stay as they were, for API instances still on the previous release during a rolling deploy.
-    expect(await grantIds()).toEqual(seededGrants);
+    expect(
+      await testDb(TableName.Membership).where({ scope: "resource", scopeProjectId: projectId })
+    ).toHaveLength(0);
 
-    // Running it again finds nothing left to convert, though the grants it converted are still there.
+    // Running it again finds nothing left to convert.
     const rowCount = async () =>
       (
         await testDb(TableName.MembershipRole).whereIn(
@@ -227,7 +218,7 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
     await up(testDb);
     const grantRoleId = await grantRoleIdOf(bundle);
 
-    // Revoked after the upgrade, which leaves its old grant behind.
+    // Revoked after the upgrade.
     await testDb(TableName.MembershipRole).where({ membershipId: revoked.membershipId, customRoleId: grantRoleId }).delete();
     // Given for a time through the generic routes: one over, one still running.
     const makeTemporary = (membershipId: string, endsAt: Date) =>

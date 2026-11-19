@@ -9,11 +9,11 @@ import { AccessScope, ProjectMembershipRole, ProjectType, TableName } from "../s
 // 1. each project with Member or Viewer rows, or members holding a custom role, gets a custom role holding what Member
 //    held; those rows move onto it, and anyone holding a custom role gets it as well, since Member's rules applied to
 //    them and their own role's didn't;
-// 2. each bundle with grants gets a custom role that can use it, given to everyone the bundle was granted to.
+// 2. each bundle with grants gets a custom role that can use it, given to everyone the bundle was granted to;
+// 3. the grants, now carried by those roles, are deleted.
 // The bundle's role is recorded on the bundle (grantRoleId), so the deprecated grant endpoints can keep working on it.
-// The grants stay: API instances still on the previous release read bundle access from them until a rolling deploy
-// replaces them, and read every role but admin as Member, as before. Nothing reads or updates them after this, and a
-// later migration deletes them.
+// A rolling deploy isn't bridged: until instances still on the previous release are replaced, they find no grants, so
+// their non-admin sessions get no bundle, and a grant or revoke made through one of them isn't carried over.
 //
 // Everything is inlined, so later changes to the app's rule builders and constants can't change what this writes.
 
@@ -178,8 +178,6 @@ const grantsToRoles = async (knex: Knex) => {
     })
     .where(`${TableName.Membership}.scope`, RESOURCE_SCOPE)
     .where(`${TableName.Membership}.scopeResourceType`, GRANT_RESOURCE_TYPE)
-    // The grants outlive the run that converts them, so a bundle that already has its role would get a second one.
-    .whereNull(`${TableName.AgentVaultAccessBundle}.grantRoleId`)
     .select(
       `${TableName.Membership}.actorUserId`,
       `${TableName.Membership}.actorIdentityId`,
@@ -242,6 +240,11 @@ const grantsToRoles = async (knex: Knex) => {
       }
     }
   }
+
+  await knex(TableName.Membership)
+    .where(`${TableName.Membership}.scope`, RESOURCE_SCOPE)
+    .where(`${TableName.Membership}.scopeResourceType`, GRANT_RESOURCE_TYPE)
+    .delete();
 };
 
 export async function up(knex: Knex): Promise<void> {
@@ -261,8 +264,8 @@ export async function up(knex: Knex): Promise<void> {
 // Anything else given to those roles since is lost with them.
 export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasColumn(TableName.AgentVaultAccessBundle, "grantRoleId")) {
-    // The grants up() left were never updated after it, so they would bring back access revoked since. They go, and come
-    // back from whoever holds each bundle's role now.
+    // Any grant here was written after up() by an instance on the previous release. The roles say who has access now, so
+    // the grants are made from them instead.
     await knex(TableName.Membership)
       .where(`${TableName.Membership}.scope`, RESOURCE_SCOPE)
       .where(`${TableName.Membership}.scopeResourceType`, GRANT_RESOURCE_TYPE)

@@ -173,10 +173,6 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   They need bundle `edit` plus `edit` on each kind of member named, and member `read` to list. Each locks the bundle
   row first, so two calls can't make two roles and the dedupe read inside it is authoritative. They are hidden from the
   API reference and go after 2027-01-04 with the role helpers.
-- **Never read the resource-scoped `agent-vault-access-bundle` memberships.** They are the grants as the roles migration
-  (`20261118120000_agent-vault-roles-replace-bundle-grants.ts`) found them, kept for API instances still on the previous
-  release during a rolling deploy. Nothing updates them, so they no longer say who can use a bundle, and a later
-  migration deletes them.
 - **The bundle's creator gets its role when their own roles can't use it** (`createAccessBundle`), so whoever built a
   bundle can try it. Only a creator with a direct project membership gets one: the role on a group's membership would
   reach the whole group.
