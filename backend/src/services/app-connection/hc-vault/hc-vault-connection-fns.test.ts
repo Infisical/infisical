@@ -25,6 +25,14 @@ describe("resolveKvMount", () => {
     expect(resolveKvMount("kv", [kvMount({ version: null })]).kvVersion).toBe("1");
   });
 
+  test("accepts a legacy 'generic' engine as kv version 1", () => {
+    expect(resolveKvMount("legacy", [kvMount({ path: "legacy/", type: "generic", version: null })])).toEqual({
+      mountSegments: ["legacy"],
+      mountUrlPath: "legacy",
+      kvVersion: "1"
+    });
+  });
+
   test("resolves a nested engine without matching its parent segment", () => {
     const appsKvMount = kvMount({ path: "apps/kv/" });
     const result = resolveKvMount("apps/kv", [kvMount({ path: "apps/" }), appsKvMount]);
@@ -55,6 +63,11 @@ describe("resolveKvMount", () => {
 
     expect(result.mountUrlPath).toBe("team%231/kv");
   });
+
+  test.each(["kv/..", "../kv", "kv/.", "%2e%2e", "kv/%2E%2e"])("refuses the dot segment in mount '%s'", (mountPath) => {
+    expect(() => resolveKvMount(mountPath, [kvMount()])).toThrowError(BadRequestError);
+    expect(() => resolveKvMount(mountPath, [kvMount()])).toThrowError(/cannot contain '\.' or '\.\.' path segments/);
+  });
 });
 
 describe("resolveVaultSecretPathWithinMount", () => {
@@ -71,6 +84,26 @@ describe("resolveVaultSecretPathWithinMount", () => {
     expect(() => resolveVaultSecretPathWithinMount("other/app/db", ["kv"])).toThrowError(
       /Vault path 'other\/app\/db' is not inside the 'kv' secrets engine/
     );
+  });
+
+  test.each([
+    "kv/../other",
+    "kv/app/../../b",
+    "kv/app/./db",
+    "kv/app/..",
+    "kv/%2e%2e/%2e%2e/other",
+    "kv/.%2e/.%2E/other",
+    "kv/app%2f..%2f..%2fother",
+    "kv\\..\\..\\other"
+  ])("refuses the dot segment in '%s'", (secretPath) => {
+    expect(() => resolveVaultSecretPathWithinMount(secretPath, ["kv"])).toThrowError(BadRequestError);
+    expect(() => resolveVaultSecretPathWithinMount(secretPath, ["kv"])).toThrowError(
+      /cannot contain '\.' or '\.\.' path segments/
+    );
+  });
+
+  test("keeps dots that are part of a segment name", () => {
+    expect(resolveVaultSecretPathWithinMount("kv/app.v1/.env", ["kv"])).toBe("app.v1/.env");
   });
 
   test("throws when the path points at the engine itself", () => {

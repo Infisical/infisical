@@ -37,6 +37,7 @@ import {
   THCVaultMountResponse,
   TResolvedKvMount
 } from "./hc-vault-connection-types";
+import { hasHCVaultDotSegment } from "./hc-vault-path-fns";
 
 // HashiCorp Vault stores JSON data, so values can be any valid JSON type
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
@@ -659,7 +660,9 @@ class NamespaceHeaderNotSupportedError extends Error {
 const isRootNamespace = (namespace: string) => namespace === "/" || namespace === "root" || !namespace;
 
 const isWildcardPath = (path: string) => path.split("/").includes("+");
-const isKvMount = (mount: THCVaultMount) => mount.type === "kv" || mount.type.startsWith("kv");
+// Mounts created before Vault renamed its KV v1 engine from "generic" to "kv" still report the old type.
+export const isKvMount = (mount: THCVaultMount) =>
+  mount.type === "kv" || mount.type.startsWith("kv") || mount.type === "generic";
 const ACL_ALLOWED_CAPABILITIES = ["read", "list"];
 
 // Fallback for restricted Vault tokens that lack permission to list a mount from its root.
@@ -953,6 +956,12 @@ export const listHCVaultSecretPaths = async (
 // the caller declares which secrets engine it is reading from, so the engine is resolved once rather
 // than guessed per path. This allow secrets engine that are defined as paths
 export const resolveKvMount = (mountPath: string, mounts: THCVaultMount[]): TResolvedKvMount => {
+  if (hasHCVaultDotSegment(mountPath)) {
+    throw new BadRequestError({
+      message: `Secrets engine '${mountPath}' cannot contain '.' or '..' path segments`
+    });
+  }
+
   const mountSegments = mountPath.split("/").filter(Boolean);
   const normalizedMountPath = mountSegments.join("/");
 
@@ -978,6 +987,12 @@ export const resolveKvMount = (mountPath: string, mounts: THCVaultMount[]): TRes
 };
 
 export const resolveVaultSecretPathWithinMount = (secretPath: string, mountSegments: string[]): string => {
+  if (hasHCVaultDotSegment(secretPath)) {
+    throw new BadRequestError({
+      message: `Vault path '${secretPath}' cannot contain '.' or '..' path segments`
+    });
+  }
+
   const pathSegments = secretPath.split("/").filter(Boolean);
 
   if (!mountSegments.every((segment, idx) => pathSegments[idx] === segment)) {

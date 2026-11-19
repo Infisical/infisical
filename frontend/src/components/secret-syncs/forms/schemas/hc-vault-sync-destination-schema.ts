@@ -17,6 +17,9 @@ export const HCVaultSyncDestinationSchema = BaseSecretSyncSchema().merge(
           message:
             "Invalid Vault path format. Use alphanumerics, dots, dashes, underscores, and single slashes between segments."
         })
+        .refine((val) => !val.split("/").some((segment) => segment === "." || segment === ".."), {
+          message: "Path cannot contain '.' or '..' segments."
+        })
     })
   })
 );
