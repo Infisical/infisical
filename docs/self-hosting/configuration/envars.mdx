@@ -187,6 +187,16 @@ Example values:
   </Warning>
 </ParamField>
 
+<ParamField query="SECRET_READ_LIMIT_ENABLED" type="bool" default="false" optional>
+  Limits how many secrets one API request to list secrets can return, such as a request to the Secrets [List](/api-reference/endpoints/secrets/list) endpoint. Imported secrets and secrets in subfolders count toward the limit. If a request would return more secrets than `MAX_SECRETS_PER_READ_REQUEST`, it fails with a `400` response.
+</ParamField>
+
+<ParamField query="MAX_SECRETS_PER_READ_REQUEST" type="int" default="1000" optional>
+  Maximum number of secrets that one API request to list secrets can return. Only used when `SECRET_READ_LIMIT_ENABLED` is `true`.
+
+  If your applications read more than 1000 secrets from one secret path, raise the limit.
+</ParamField>
+
 ## CORS
 
 Cross-Origin Resource Sharing (CORS) is a security feature that allows web applications running on one domain to access resources from another domain.

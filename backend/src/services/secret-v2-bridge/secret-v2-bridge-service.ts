@@ -70,6 +70,7 @@ import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/s
 import { TValidateSecretsDTO } from "../secret-validation-rule/secret-validation-rule-types";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
+import { createSecretReadLimit } from "../secret/secret-read-limit";
 import {
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
@@ -1402,8 +1403,11 @@ export const secretV2BridgeServiceFactory = ({
       ifNoneMatch,
       abortSignal,
       onSecretReferenced,
+      enforceSecretReadLimit,
       ...params
     } = dto;
+
+    const readLimit = createSecretReadLimit({ enforceSecretReadLimit, environment, secretPath: path });
 
     const permissionFingerprint = await getSecretEtagPermissionFingerprint({
       keyStore,
@@ -1584,10 +1588,8 @@ export const secretV2BridgeServiceFactory = ({
       secrets = Array.from(secretMap.values());
     }
 
-    secretDecryptReservations.reserveDecrypts(secrets.length);
-
     // scott: if any of this changes it also needs to be mirrored in secret rotation for getting dashboard secrets
-    const decryptedSecrets: ReturnType<typeof reshapeBridgeSecret>[] = [];
+    const readableSecrets: { secret: (typeof secrets)[number]; secretPath: string; isValueMasked: boolean }[] = [];
     for (const secret of secrets) {
       const secretPath = groupedPaths[secret.folderId][0].path;
       const secretSubjectFields = {
@@ -1627,8 +1629,14 @@ export const secretV2BridgeServiceFactory = ({
       }
 
       const isPersonalSecret = secret.userId === actorId && secret.type === SecretType.Personal;
-      const isValueMasked = !canReadValue && !isPersonalSecret;
+      readableSecrets.push({ secret, secretPath, isValueMasked: !canReadValue && !isPersonalSecret });
+    }
 
+    readLimit?.count(readableSecrets.length);
+    secretDecryptReservations.reserveDecrypts(readableSecrets.length);
+
+    const decryptedSecrets: ReturnType<typeof reshapeBridgeSecret>[] = [];
+    for (const { secret, secretPath, isValueMasked } of readableSecrets) {
       decryptedSecrets.push(
         reshapeBridgeSecret(
           projectId,
@@ -1800,6 +1808,7 @@ export const secretV2BridgeServiceFactory = ({
           : expandSecretReferences,
       decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
       reserveDecrypts: secretDecryptReservations.reserveDecrypts,
+      countReturnedSecrets: readLimit?.count,
       importAccessScopeByFolderId: new Map(
         paths.map((folderPath) => [
           folderPath.folderId,

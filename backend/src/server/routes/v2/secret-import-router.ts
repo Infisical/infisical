@@ -3,6 +3,7 @@ import { z } from "zod";
 import { SecretImportsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SECRET_IMPORTS } from "@app/lib/api-docs";
+import { getConfig } from "@app/lib/config/env";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -468,6 +469,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       hide: false,
       operationId: "getRawSecretsFromImports",
       tags: [ApiDocsTags.SecretImports],
+      description: SECRET_IMPORTS.LIST_SECRETS.description,
       querystring: z.object({
         projectId: z.string().trim(),
         environment: z.string().trim(),
@@ -506,7 +508,8 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.query,
-        ifNoneMatch: req.headers["if-none-match"]
+        ifNoneMatch: req.headers["if-none-match"],
+        enforceSecretReadLimit: getConfig().SECRET_READ_LIMIT_ENABLED
       });
 
       if (etag) {

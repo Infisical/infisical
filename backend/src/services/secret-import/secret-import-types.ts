@@ -49,6 +49,7 @@ export type TGetSecretsFromImportDTO = {
 
 export type TGetRawSecretsFromImportDTO = TGetSecretsFromImportDTO & {
   ifNoneMatch?: string;
+  enforceSecretReadLimit?: boolean;
 };
 
 export type FolderResult = {

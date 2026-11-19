@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { ClientClosedRequestError } from "@app/lib/errors";
+import { BadRequestError, ClientClosedRequestError } from "@app/lib/errors";
 
 import { fnSecretsFromImports, fnSecretsV2FromImports } from "./secret-import-fns";
 
@@ -122,6 +122,32 @@ describe("fnSecretsV2FromImports", () => {
     const imports = await fnSecretsV2FromImports(args);
 
     expect(imports[0].secrets.map((s) => s.secretValue)).toEqual(["expanded-A", `\${B_REF}`]);
+  });
+
+  it("counts only the imported secrets the caller can access", async () => {
+    const countReturnedSecrets = vi.fn();
+    const { args } = makeArgs({
+      countReturnedSecrets,
+      hasSecretAccess: (_environment, _secretPath, secretName) => secretName === "A"
+    });
+
+    await fnSecretsV2FromImports(args);
+
+    expect(countReturnedSecrets).toHaveBeenCalledTimes(1);
+    expect(countReturnedSecrets).toHaveBeenCalledWith(1);
+  });
+
+  it("decrypts nothing from an import whose secrets the count refuses", async () => {
+    const decryptor = vi.fn((value?: Buffer | null) => value?.toString() ?? "");
+    const { args } = makeArgs({
+      decryptor,
+      countReturnedSecrets: () => {
+        throw new BadRequestError({ message: "too many secrets" });
+      }
+    });
+
+    await expect(fnSecretsV2FromImports(args)).rejects.toThrow("too many secrets");
+    expect(decryptor).not.toHaveBeenCalled();
   });
 });
 

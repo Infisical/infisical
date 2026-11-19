@@ -1063,6 +1063,17 @@ only at some later merge, so read with `FINAL` when an exact count matters.
 rules for code elsewhere: a secret read route calls `recordRead` / `recordBulkRead` with `void` (it never
 throws and must not slow the read), and the table is pruned by dropping partitions, never with `DELETE`.
 
+### Secret Read Limit
+
+A public API route that lists secrets passes `enforceSecretReadLimit: getConfig().SECRET_READ_LIMIT_ENABLED` to
+`getSecretsRaw` or `getRawSecretsFromImports` (the switch is off by default; `tests/suitesisolated/secretreadlimit`
+turns it on). When
+the flag is `true`, the service refuses with a 400 (`createSecretReadLimit`, `services/secret/secret-read-limit.ts`)
+any read that would return more than `MAX_SECRETS_PER_READ_REQUEST` secrets, imported secrets and subfolders included. Count
+only in a per-secret permission pass, before decrypting, where refusing saves work; a cache hit or a path that has
+already loaded everything returns what it has. Dashboard routes leave the flag unset on purpose, so a new dashboard
+read must not set it.
+
 ### Free Text in Audit Events
 
 A name, reason, comment or justification can carry ANSI escapes, bidi overrides or zero-width

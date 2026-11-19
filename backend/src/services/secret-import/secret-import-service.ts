@@ -54,6 +54,7 @@ import {
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { decryptSecretRaw } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
+import { createSecretReadLimit } from "../secret/secret-read-limit";
 import { TSecretImportDALFactory } from "./secret-import-dal";
 import { SecretImportModifiedEventV1 } from "./secret-import-events";
 import { fnSecretsFromImports, fnSecretsV2FromImports } from "./secret-import-fns";
@@ -943,12 +944,14 @@ export const secretImportServiceFactory = ({
     actorAuthMethod,
     actorId,
     actorOrgId,
-    ifNoneMatch
+    ifNoneMatch,
+    enforceSecretReadLimit
   }: TGetRawSecretsFromImportDTO): Promise<{
     secrets: TRawSecretsV2FromImports;
     etag?: string;
     notModified?: boolean;
   }> => {
+    const readLimit = createSecretReadLimit({ enforceSecretReadLimit, environment, secretPath });
     const permissionFingerprint = await getSecretEtagPermissionFingerprint({
       keyStore,
       permissionService,
@@ -1052,6 +1055,7 @@ export const secretImportServiceFactory = ({
       secretImportDAL,
       decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
       reserveDecrypts: secretDecryptReservations.reserveDecrypts,
+      countReturnedSecrets: readLimit?.count,
       importAccessScopeByFolderId: new Map([[folder.id, { environment, secretPath }]]),
       hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
         hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {

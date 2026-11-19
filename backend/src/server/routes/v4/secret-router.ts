@@ -5,6 +5,7 @@ import { SecretApprovalRequestsSchema, SecretType, ServiceTokenScopes } from "@a
 import { EventType, SecretApprovalEvent, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, RAW_SECRETS } from "@app/lib/api-docs";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { secretsLimit } from "@app/server/config/rateLimiter";
@@ -75,7 +76,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       hide: false,
       operationId: "listSecretsV4",
       tags: [ApiDocsTags.Secrets],
-      description: "List secrets",
+      description: RAW_SECRETS.LIST.description,
       security: [
         {
           bearerAuth: []
@@ -226,7 +227,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         recursive: req.query.recursive,
         tagSlugs: req.query.tagSlugs,
         ifNoneMatch: req.headers["if-none-match"],
-        abortSignal: getClientDisconnectSignal(reply)
+        abortSignal: getClientDisconnectSignal(reply),
+        enforceSecretReadLimit: getConfig().SECRET_READ_LIMIT_ENABLED
       });
 
       const { secrets, imports, etag, notModified } = result;
