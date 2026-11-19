@@ -400,6 +400,64 @@ const seedVariables: TAgentVaultVariable[] = [
   updatedAt: at(-(index as number) * DAY)
 }));
 
+const oauthVariable = (
+  index: number,
+  key: string,
+  serverUrl: string,
+  scopes: string[],
+  status: AgentVaultOauthStatus
+): TAgentVaultVariable => ({
+  id: uuid("e1", index),
+  key,
+  scope: AgentVaultVariableScope.Global,
+  type: AgentVaultVariableType.OAuth,
+  oauth: {
+    status,
+    serverUrl,
+    issuer: new URL(serverUrl).origin,
+    authorizationEndpoint: null,
+    tokenEndpoint: null,
+    clientId: null,
+    registration: "dynamic",
+    tokenEndpointAuthMethod: null,
+    scopes,
+    resource: null,
+    clientName: null,
+    redirectUri: null,
+    connection: {
+      issuer: new URL(serverUrl).origin,
+      grantedScopes: scopes,
+      requiredScopes: scopes,
+      expiresAt: status === AgentVaultOauthStatus.Connected ? at(14 * DAY) : at(-2 * DAY),
+      authorizedAt: at(-(index * 2) * DAY),
+      lastError:
+        status === AgentVaultOauthStatus.Connected
+          ? null
+          : "The refresh token was revoked. Authorize again."
+    }
+  },
+  usedByServices: [],
+  createdAt: at(-(index * 3) * DAY),
+  updatedAt: at(-index * DAY)
+});
+
+seedVariables.push(
+  oauthVariable(
+    9,
+    "GOOGLE_DRIVE",
+    "https://www.googleapis.com/drive/v3",
+    ["https://www.googleapis.com/auth/drive.readonly"],
+    AgentVaultOauthStatus.Connected
+  ),
+  oauthVariable(
+    10,
+    "ATLASSIAN_CLOUD",
+    "https://mcp.atlassian.com/v1/sse",
+    ["read:jira-work", "write:jira-work"],
+    AgentVaultOauthStatus.NeedsReauthorization
+  )
+);
+
 const text = (value: string) => btoa(unescape(encodeURIComponent(value)));
 
 const skillFiles = (name: string, description: string, extra: TAgentVaultSkillFile[] = []) => [
@@ -1347,6 +1405,7 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
     const keys = params.keys && new Set(params.keys);
     const rows = state.variables
       .filter((variable) => (params.scope ?? AgentVaultVariableScope.Global) === variable.scope)
+      .filter((variable) => !params.type || params.type === variable.type)
       .filter((variable) => matches(params.search, variable.key))
       .filter((variable) => !keys || keys.has(variable.key))
       .map((variable) => withUsedBy(state, variable));

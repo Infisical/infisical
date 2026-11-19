@@ -40,6 +40,7 @@ import {
   isAllMethods,
   isCredentialMemberProvided,
   isOAuthAuthorizationMissing,
+  isOAuthVariableCredential,
   isPlainHttpUrl,
   MCP_SERVICE_STEP_FIELDS,
   McpToolScope,
@@ -52,6 +53,7 @@ import {
   serviceKindOf,
   ServiceStep,
   storedMemberFields,
+  storedOAuthVariableKey,
   type TServiceForm,
   TRANSPORT_LABELS,
   UNCHANGED_SECRET
@@ -66,6 +68,7 @@ import {
   AgentVaultMcpTransport,
   AgentVaultServiceType,
   AgentVaultVariableReferenceField,
+  AgentVaultVariableType,
   isNativeServiceType
 } from "@app/hooks/api/agentVault/enums";
 import type {
@@ -89,6 +92,7 @@ import {
 } from "./service-form";
 import { CustomHeaderFields, SubstitutionFields } from "./service-headers";
 import { OAuthAuthorizeCard } from "./service-oauth";
+import { OAuthVariableField } from "./service-oauth-variable";
 import { ServiceTemplatePicker } from "./service-templates";
 import { McpToolsFields, type TLoadedMcpTools } from "./service-tools";
 import { VariableSecretInput } from "./variable-input";
@@ -100,6 +104,16 @@ const STEP_FIELDS = {
 };
 
 const NO_KEYS: ReadonlySet<string> = new Set();
+
+enum OAuthSource {
+  ConnectHere = "connect-here",
+  Variable = "variable"
+}
+
+const OAUTH_SOURCE_OPTIONS = [
+  { value: OAuthSource.ConnectHere, label: "Connect here" },
+  { value: OAuthSource.Variable, label: "Use an OAuth variable" }
+];
 
 const MEMBER_FIELDS_OF_TYPE: Record<AgentVaultCredentialType, TAgentVaultMemberProvidedField[]> = {
   [AgentVaultCredentialType.Bearer]: [AgentVaultVariableReferenceField.CredentialValue],
@@ -240,13 +254,19 @@ export const ServiceSheet = ({
     return [...new Set(keys.filter((key) => VARIABLE_KEY_RE.test(key)))].sort().join(",");
   }, [form.secret, form.username, form.customHeaders, form.substitutions]);
   const [debouncedKeys] = useDebounce(referencedKeys, 300);
-  const { missing } = resources.useVariableKeyStatus(
+  const { missing, ofOtherType: oauthKeys } = resources.useVariableKeyStatus(
     projectId,
-    debouncedKeys ? debouncedKeys.split(",") : []
+    debouncedKeys ? debouncedKeys.split(",") : [],
+    { type: AgentVaultVariableType.Text }
   );
   const schema = useMemo(
-    () => buildServiceSchema(service, () => missing ?? NO_KEYS),
-    [service, missing]
+    () =>
+      buildServiceSchema(
+        service,
+        () => missing ?? NO_KEYS,
+        () => oauthKeys ?? NO_KEYS
+      ),
+    [service, missing, oauthKeys]
   );
 
   const dirty = (hasTemplateStep && picked) || JSON.stringify(form) !== JSON.stringify(initial);
@@ -321,13 +341,24 @@ export const ServiceSheet = ({
       credentialType: type,
       secret: stored ? stored.secret : "",
       username: stored ? stored.username : "",
-      memberProvidedFields:
-        stored && service
-          ? storedMemberFields(service)
-          : current.memberProvidedFields.filter((field) =>
-              MEMBER_FIELDS_OF_TYPE[type].includes(field)
-            )
+      memberProvidedFields: (() => {
+        if (isOAuthVariableCredential({ ...current, credentialType: type })) return [];
+        if (stored && service) return storedMemberFields(service);
+        return current.memberProvidedFields.filter((field) =>
+          MEMBER_FIELDS_OF_TYPE[type].includes(field)
+        );
+      })()
     }));
+    setErrors({});
+  };
+
+  const selectOAuthSource = (source: OAuthSource) => {
+    const usesVariable = source === OAuthSource.Variable;
+    if (usesVariable === form.oauthUsesVariable) return;
+    patch({
+      oauthUsesVariable: usesVariable,
+      ...(usesVariable && { memberProvidedFields: [] })
+    });
     setErrors({});
   };
 
@@ -398,8 +429,18 @@ export const ServiceSheet = ({
       return false;
     }
 
+    if (
+      isOAuthVariableCredential(form) &&
+      isBadRequest &&
+      (response.details as { field?: string } | undefined)?.field === "credential.variable"
+    ) {
+      setErrors({ oauthVariableKey: message });
+      goTo(ServiceStep.Credential);
+      return false;
+    }
+
     const rejection =
-      isMcp && form.credentialType === AgentVaultCredentialType.OAuth
+      isMcp && form.credentialType === AgentVaultCredentialType.OAuth && !form.oauthUsesVariable
         ? rejectedAuthorizationMessage(error)
         : null;
     if (rejection) {
@@ -692,14 +733,29 @@ export const ServiceSheet = ({
           />
         </Field>
       )}
-      {isMcp && form.credentialType === AgentVaultCredentialType.OAuth && (
-        <OAuthAuthorizeCard
-          projectId={projectId}
-          service={service}
-          api={api}
-          onWaitingChange={setSigningIn}
-        />
+      {isMcp && form.credentialType === AgentVaultCredentialType.OAuth && !isMemberProvided && (
+        <Field label="Sign-in">
+          <Select
+            label="Sign-in"
+            value={form.oauthUsesVariable ? OAuthSource.Variable : OAuthSource.ConnectHere}
+            options={OAUTH_SOURCE_OPTIONS}
+            onChange={(next) => selectOAuthSource(next as OAuthSource)}
+          />
+        </Field>
       )}
+      {isOAuthVariableCredential(form) && (
+        <OAuthVariableField projectId={projectId} service={service} api={api} />
+      )}
+      {isMcp &&
+        form.credentialType === AgentVaultCredentialType.OAuth &&
+        !form.oauthUsesVariable && (
+          <OAuthAuthorizeCard
+            projectId={projectId}
+            service={service}
+            api={api}
+            onWaitingChange={setSigningIn}
+          />
+        )}
       {form.credentialType === AgentVaultCredentialType.Passthrough && (
         <Field label="Pass-through">
           <span>The proxy sends requests as the agent made them, with no credential added.</span>
@@ -868,6 +924,10 @@ export const ServiceSheet = ({
     return form.hosts.join(", ");
   })();
   const credentialSummary = (() => {
+    if (isOAuthVariableCredential(form)) {
+      const key = form.oauthVariableKey || storedOAuthVariableKey(service);
+      return key ? `OAuth, uses the ${key} variable` : "OAuth, uses an OAuth variable";
+    }
     if (isMcp && form.credentialType === AgentVaultCredentialType.OAuth)
       return `OAuth, ${oauthStatusLabel(form, service).toLowerCase()}`;
     const label = credentialLabel(form.serviceType, form.credentialType);
@@ -914,6 +974,7 @@ export const ServiceSheet = ({
   const isAuthorizationRejected =
     isMcp &&
     form.credentialType === AgentVaultCredentialType.OAuth &&
+    !form.oauthUsesVariable &&
     !isMemberProvided &&
     Boolean(form.oauthAuthorizationRejection);
   const signingInReason = signingIn ? "Finish or cancel signing in first." : undefined;
