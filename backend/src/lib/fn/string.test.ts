@@ -1,4 +1,9 @@
-import { canonicalizeSecretPath, canonicalizeSecretPathPattern, sanitizeSqlLikeString } from "./string";
+import {
+  canonicalizeSecretPath,
+  canonicalizeSecretPathPattern,
+  hasDotPathSegment,
+  sanitizeSqlLikeString
+} from "./string";
 
 describe("canonicalizeSecretPathPattern", () => {
   test.each([
@@ -13,9 +18,33 @@ describe("canonicalizeSecretPathPattern", () => {
     ["*", "*"],
     ["**", "**"],
     ["{/a,/b}", "{/a,/b}"],
-    ["/app/{api,web}/**", "/app/{api,web}/**"]
+    ["/app/{api,web}/**", "/app/{api,web}/**"],
+    ["{/staging,/prod}/api", "{/staging,/prod}/api"],
+    ["//{/staging,/prod}//api/", "/{/staging,/prod}/api"],
+    ["**/prod", "**/prod"],
+    ["**//prod/", "**/prod"],
+    ["/app/*.env", "/app/*.env"],
+    ["/app/[ab]*", "/app/[ab]*"],
+    ["/app/!(tmp)/**", "/app/!(tmp)/**"]
   ])("canonicalizes %p to %p", (input, expected) => {
     expect(canonicalizeSecretPathPattern(input)).toBe(expected);
+  });
+});
+
+describe("hasDotPathSegment", () => {
+  test.each([
+    ["/prod", false],
+    ["/prod/**", false],
+    ["/app/*.env", false],
+    ["/prod.v2", false],
+    ["/.", true],
+    ["/prod/.", true],
+    ["/prod/..", true],
+    ["/a/../b", true],
+    ["./prod", true],
+    ["..", true]
+  ])("reports %p as %p", (input, expected) => {
+    expect(hasDotPathSegment(input)).toBe(expected);
   });
 });
 

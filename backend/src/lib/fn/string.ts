@@ -22,9 +22,12 @@ export const canonicalizeSecretPath = (secretPath: string) => `/${secretPath.spl
 // A glob can hold slashes inside a group ("{/a,/b}") and can start with a glob character ("*"), so a pattern only gets
 // its repeated and trailing slashes removed, and a leading slash only when it starts with a folder name.
 export const canonicalizeSecretPathPattern = (pattern: string) => {
-  const collapsed = removeTrailingSlash(pattern.replace(/\/{2,}/g, "/"));
-  return /^[\w-]/.test(collapsed) ? `/${collapsed}` : collapsed;
+  const normalized = removeTrailingSlash(path.posix.normalize(pattern));
+  return /^[\w-]/.test(normalized) ? `/${normalized}` : normalized;
 };
+
+export const hasDotPathSegment = (secretPath: string) =>
+  secretPath.split("/").some((segment) => segment === "." || segment === "..");
 
 const vowelRegex = new RE2(/^[aeiou]/i);
 

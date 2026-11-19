@@ -2,7 +2,7 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import { ApproverType, BypasserType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
-import { canonicalizeSecretPathPattern, removeTrailingSlash } from "@app/lib/fn";
+import { canonicalizeSecretPathPattern, hasDotPathSegment, removeTrailingSlash } from "@app/lib/fn";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -11,6 +11,8 @@ import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { DelegatedApprovalSchema } from "@app/services/delegated-approval/delegated-approval-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+const SECRET_PATH_DOT_SEGMENT_ERR_MSG = "Secret path cannot contain '.' or '..' as a folder name";
 
 export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -31,6 +33,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
             .string()
             .min(1, { message: "Secret path cannot be empty" })
             .max(1000)
+            .refine((val) => !hasDotPathSegment(val), SECRET_PATH_DOT_SEGMENT_ERR_MSG)
             .transform(canonicalizeSecretPathPattern),
           approvers: z
             .discriminatedUnion("type", [
@@ -139,6 +142,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           .trim()
           .min(1, { message: "Secret path cannot be empty" })
           .max(1000)
+          .refine((val) => !hasDotPathSegment(val), SECRET_PATH_DOT_SEGMENT_ERR_MSG)
           .optional()
           .transform((val) => (val ? canonicalizeSecretPathPattern(val) : undefined)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),

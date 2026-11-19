@@ -349,6 +349,40 @@ func TestSecretApprovalPolicy_Create(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
+	t.Run("should refuse a policy path with a dot folder name on create and update", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		policyID := newPolicy(t, proj, []policyMember{userMember(reviewer)}, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.SecretPath = "/prod"
+		})
+
+		for _, secretPath := range []string{"/prod/..", "/a/../prod", "/./prod"} {
+			// Action
+			created, err := tn.Admin.API.CreateSecretApprovalPolicyWithResponse(t.Context(), api.CreateSecretApprovalPolicyJSONRequestBody{
+				ProjectId:   proj.ID,
+				Environment: new("staging"),
+				SecretPath:  secretPath,
+				Approvals:   new(float32(1)),
+				Approvers:   approverItems(t, []policyMember{userMember(reviewer)}),
+			})
+			require.NoError(t, err)
+			updated, err := tn.Admin.API.UpdateSecretApprovalPolicyWithResponse(t.Context(), policyID.String(),
+				api.UpdateSecretApprovalPolicyJSONRequestBody{SecretPath: new(secretPath)})
+			require.NoError(t, err)
+
+			// Assert
+			require.Equalf(t, http.StatusUnprocessableEntity, created.StatusCode(), "create with %s returned %s", secretPath, apierr.Body(created.Body))
+			require.Equalf(t, http.StatusUnprocessableEntity, updated.StatusCode(), "update with %s returned %s", secretPath, apierr.Body(updated.Body))
+		}
+		require.Nil(t, policyAt(t, proj, "staging", "/"))
+		require.Nil(t, policyAt(t, proj, "staging", "/prod"))
+		require.Equal(t, &policyID, policyAt(t, proj, "dev", "/prod"))
+	})
+
 	t.Run("should refuse more required approvals than approvers and create no policy", func(t *testing.T) {
 		t.Parallel()
 
