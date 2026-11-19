@@ -466,6 +466,38 @@ describe("ProjectPermissionService.getProjectPermissionByRoles", () => {
     expect(result.map(({ role }) => role.slug)).toEqual(["release-manager"]);
   });
 
+  test("should return nothing when told to drop slugs and none resolves", async () => {
+    // Setup
+    const { service, projectId } = arrange();
+
+    // Action
+    const result = await service.getProjectPermissionByRoles({
+      projectId,
+      roles: ["ssh-host-bootstrapper"],
+      ignoreUnresolvedRoles: true
+    });
+
+    // Assert
+    expect(result).toEqual([]);
+  });
+
+  test("should look up no custom role for a built-in slug", async () => {
+    // Setup
+    const { service, roleService, projectId } = arrange();
+    const findRolesBySlugs = vi.spyOn(roleService, "findRolesBySlugs");
+
+    // Action
+    const result = await service.getProjectPermissionByRoles({
+      projectId,
+      roles: [ProjectMembershipRole.Admin],
+      ignoreUnresolvedRoles: true
+    });
+
+    // Assert
+    expect(result).toHaveLength(1);
+    expect(findRolesBySlugs).toHaveBeenCalledWith({ owner: { projectId }, slugs: [] });
+  });
+
   test("should resolve a built-in slug as the project's product defines it", async () => {
     // Setup
     const { service, projectId } = arrange({ type: ProjectType.PAM, projectRoles: [pamRoles()] });
@@ -531,6 +563,37 @@ describe("ProjectPermissionService.getGrantPermissions", () => {
     expect(permission.rules.map((rule) => rule.conditions)).toEqual([
       { secretPath: { $glob: "/backend/**" }, environment: "target-identity" },
       { secretPath: "/{{identity.auth.kubernetes.namespace}}/{{identity.metadata.region}}" }
+    ]);
+  });
+
+  test("should fill the target's name and metadata into a project-wide privilege's placeholders", async () => {
+    // Setup
+    const { service, seed, addRole, orgId, projectId } = arrange();
+    const identityId = randomUUID();
+    await addRole(ProjectMembershipRole.NoAccess, { who: { identityId } });
+    await seed.privilege({
+      actor: { identityId },
+      projectId,
+      permissions: packRules([
+        {
+          action: ProjectPermissionSecretActions.ReadValue,
+          subject: ProjectPermissionSub.Secrets,
+          conditions: { secretPath: { $glob: "/{{identity.metadata.team}}/**" }, environment: "{{identity.username}}" }
+        } as TProjectRule
+      ])
+    });
+    await seed.attribute({ orgId, actor: { identityId }, key: "team", value: "backend" });
+
+    // Action
+    const permissions = await service.getGrantPermissions({
+      actor: { type: ActorType.IDENTITY, id: identityId, name: "target-identity" },
+      orgId,
+      projectId
+    });
+
+    // Assert
+    expect(permissions.map((permission) => permission.rules.map((rule) => rule.conditions))).toEqual([
+      [{ secretPath: { $glob: "/backend/**" }, environment: "target-identity" }]
     ]);
   });
 

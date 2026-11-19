@@ -14,6 +14,7 @@ import { ProjectAccess } from "./project-access";
 import {
   ProjectPermissionActions,
   ProjectPermissionGroupActions,
+  ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
@@ -121,6 +122,110 @@ describe("ProjectAccess.rulesOf", () => {
       [ProjectPermissionGroupActions.AssignRole, ProjectPermissionGroupActions.GrantPrivileges],
       [ProjectPermissionGroupActions.AssignRole]
     ]);
+  });
+
+  test.each([
+    [
+      ProjectPermissionSub.Secrets,
+      ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionSecretActions.DescribeAndReadValue
+    ],
+    [
+      ProjectPermissionSub.Identity,
+      ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
+      ProjectPermissionIdentityActions.GrantPrivileges
+    ],
+    [
+      ProjectPermissionSub.Groups,
+      ProjectPermissionGroupActions.AssignRole,
+      ProjectPermissionGroupActions.GrantPrivileges
+    ]
+  ])("should widen a forbid on %s %s to also forbid the legacy action %s", (subject, action, legacyAction) => {
+    // Setup
+    const forbid = { action: [action], subject, inverted: true } as unknown as TProjectRule;
+
+    // Action
+    const { rules } = ProjectAccess.rulesOf([custom([forbid])], roles);
+
+    // Assert
+    expect(rules.map((rule) => rule.action)).toEqual([[action, legacyAction]]);
+  });
+
+  test("should keep the conditions of a forbid it widens", () => {
+    // Setup
+    const forbid = {
+      action: [ProjectPermissionSecretActions.ReadValue],
+      subject: ProjectPermissionSub.Secrets,
+      conditions: { environment: "dev" },
+      inverted: true
+    } as TProjectRule;
+
+    // Action
+    const { rules } = ProjectAccess.rulesOf([custom([forbid])], roles);
+
+    // Assert
+    expect(rules.map((rule) => rule.action)).toEqual([
+      [ProjectPermissionSecretActions.ReadValue, ProjectPermissionSecretActions.DescribeAndReadValue]
+    ]);
+    expect(rules[0].conditions).toEqual({ environment: "dev" });
+  });
+
+  test.each([
+    [
+      "a forbid that already names the legacy action",
+      ProjectPermissionSub.Secrets,
+      [ProjectPermissionSecretActions.ReadValue, ProjectPermissionSecretActions.DescribeAndReadValue]
+    ],
+    [
+      "a forbid on secret actions that have no legacy action",
+      ProjectPermissionSub.Secrets,
+      [ProjectPermissionSecretActions.Create, ProjectPermissionSecretActions.Edit]
+    ],
+    ["a forbid on a subject with no legacy action", ProjectPermissionSub.Webhooks, [ProjectPermissionActions.Read]]
+  ])("should leave alone %s", (_name, subject, action) => {
+    // Setup
+    const forbid = { action, subject, inverted: true } as unknown as TProjectRule;
+
+    // Action
+    const { rules } = ProjectAccess.rulesOf([custom([forbid])], roles);
+
+    // Assert
+    expect(rules.map((rule) => rule.action)).toEqual([action]);
+  });
+
+  test("should deny the legacy read action where a widened forbid matches and allow it elsewhere", () => {
+    // Setup
+    const grant = custom([
+      {
+        action: [
+          ProjectPermissionSecretActions.DescribeAndReadValue,
+          ProjectPermissionSecretActions.ReadValue,
+          ProjectPermissionSecretActions.DescribeSecret
+        ],
+        subject: ProjectPermissionSub.Secrets
+      },
+      {
+        action: [ProjectPermissionSecretActions.ReadValue, ProjectPermissionSecretActions.DescribeSecret],
+        subject: ProjectPermissionSub.Secrets,
+        conditions: { environment: "dev" },
+        inverted: true
+      }
+    ] as TProjectRule[]);
+    const permission = permissionOf(ProjectAccess.rulesOf([grant], roles));
+
+    // Action
+    const inDev = [
+      ProjectPermissionSecretActions.ReadValue,
+      ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionSecretActions.DescribeAndReadValue
+    ].map((action) => permission.can(secrets(action, { environment: "dev", secretPath: "/" })));
+    const inProd = [ProjectPermissionSecretActions.ReadValue, ProjectPermissionSecretActions.DescribeAndReadValue].map(
+      (action) => permission.can(secrets(action))
+    );
+
+    // Assert
+    expect(inDev).toEqual([false, false, false]);
+    expect(inProd).toEqual([true, true]);
   });
 
   test("should put every cannot rule after the allow rules, so one role's deny is not undone by another's allow", () => {

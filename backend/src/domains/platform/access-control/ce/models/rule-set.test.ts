@@ -114,6 +114,32 @@ describe("RuleSet.interpolate", () => {
     // Assert
     expect(set.rules).toEqual([allow("read", "secrets", { owner: "{{identity.username}}" })]);
   });
+
+  test("should share the rule objects of a set without mustaches rather than copy them", () => {
+    // Setup
+    const rules = [allow("read", "secrets", { environment: "prod" }), allow("edit", "secrets", { environment: "dev" })];
+
+    // Action
+    const result = RuleSet.of(rules).interpolate(context);
+
+    // Assert
+    expect(result.rules[0]).toBe(rules[0]);
+    expect(result.rules[1]).toBe(rules[1]);
+  });
+
+  test("should render block helpers, which are not bare expressions", () => {
+    // Setup
+    const template = "{{#if identity.metadata.env}}{{ identity.metadata.env }}{{else}}dev{{/if}}";
+    const set = RuleSet.of([allow("read", "secrets", { environment: template })]);
+
+    // Action
+    const withoutEnv = set.interpolate({ identity: { metadata: {} } });
+    const withEnv = set.interpolate({ identity: { metadata: { env: "prod" } } });
+
+    // Assert
+    expect(withoutEnv.rules[0].conditions).toEqual({ environment: "dev" });
+    expect(withEnv.rules[0].conditions).toEqual({ environment: "prod" });
+  });
 });
 
 describe("RuleSet.interpolate trimSuffix", () => {
