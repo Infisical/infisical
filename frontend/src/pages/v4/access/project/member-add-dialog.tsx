@@ -166,6 +166,7 @@ export const AddMemberDialog = ({
               options={options}
               value={users}
               onChange={setUsers}
+              createLabel={(query) => `Invite ${query}`}
               onCreate={
                 canInvite
                   ? (query) => {
