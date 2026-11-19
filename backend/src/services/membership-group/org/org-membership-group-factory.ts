@@ -14,7 +14,6 @@ import {
   resolveMembershipRoleSlugs,
   toBoundsTargets
 } from "@app/services/membership/membership-fns";
-import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
 import { TMembershipGroupDALFactory } from "../membership-group-dal";
@@ -100,7 +99,7 @@ export const newOrgMembershipGroupFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = dto.actor.org;
     for (const permissionRole of permissionRoles) {
-      assertPermissionBounds(permission, {
+      permission.assertBounds({
         usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionGroupActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Groups,
@@ -139,7 +138,7 @@ export const newOrgMembershipGroupFactory = ({
       ignoreUnresolvedRoles: true
     });
 
-    assertPermissionBounds(permission, {
+    permission.assertBounds({
       usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionGroupActions.GrantPrivileges,
       subject: OrgPermissionSubjects.Groups,
@@ -148,7 +147,7 @@ export const newOrgMembershipGroupFactory = ({
     });
 
     for (const permissionRole of permissionRoles) {
-      assertPermissionBounds(permission, {
+      permission.assertBounds({
         usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionGroupActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Groups,
@@ -187,7 +186,7 @@ export const newOrgMembershipGroupFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
-    assertPermissionBounds(permission, {
+    permission.assertBounds({
       usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionGroupActions.Delete,
       subject: OrgPermissionSubjects.Groups,

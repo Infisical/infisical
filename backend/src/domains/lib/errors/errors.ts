@@ -53,6 +53,10 @@ export type TPermissionDenial = {
 // The actor may not do this. A refused permission check carries `denial` (what was refused and the rules that matched),
 // which the 403 response and the permission-denied audit log report; a refusal with no check behind it (not a
 // member, another org's project) carries only its message.
+// A refused change to what another actor holds (their roles or privileges), from Permission.assertBounds. The HTTP
+// layer answers it as PermissionBoundaryError.
+export const PERMISSION_BOUNDARY_ERROR_NAME = "PermissionBoundaryError";
+
 export class PermissionDeniedError extends DomainError {
   readonly denial?: TPermissionDenial;
 
@@ -69,5 +73,9 @@ export class PermissionDeniedError extends DomainError {
     } else {
       super(props);
     }
+  }
+
+  get isBoundaryRefusal(): boolean {
+    return this.name === PERMISSION_BOUNDARY_ERROR_NAME;
   }
 }

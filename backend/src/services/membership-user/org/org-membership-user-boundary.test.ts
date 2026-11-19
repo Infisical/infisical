@@ -2,6 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { AccessScope } from "@app/db/schemas";
+import { PERMISSION_BOUNDARY_ERROR_NAME } from "@app/domains/lib/errors";
 import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
@@ -12,7 +13,6 @@ import {
   OrgPermissionMemberActions,
   OrgPermissionSubjects
 } from "@app/domains/platform/organizations/ce/module";
-import { PermissionBoundaryError } from "@app/lib/errors";
 
 import { newOrgMembershipUserFactory } from "./org-membership-user-factory";
 
@@ -132,13 +132,13 @@ describe("onUpdateMembershipUserGuard privilege boundary", () => {
   test("on the legacy system, a weaker actor cannot downgrade an Admin member", async () => {
     const guard = createGuard({ actorPermission: memberEditorOnly, shouldUseNewPrivilegeSystem: false });
 
-    await expect(guard()).rejects.toThrow(PermissionBoundaryError);
+    await expect(guard()).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
   });
 
   test("on the new privilege system, the same actor and target are rejected too", async () => {
     const guard = createGuard({ actorPermission: memberEditorOnly, shouldUseNewPrivilegeSystem: true });
 
-    await expect(guard()).rejects.toThrow(PermissionBoundaryError);
+    await expect(guard()).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
   });
 
   test("granting a role above the actor is rejected on both systems", async () => {
@@ -149,7 +149,7 @@ describe("onUpdateMembershipUserGuard privilege boundary", () => {
         targetRole: "no-access",
         incomingRole: "admin"
       })()
-    ).rejects.toThrow(PermissionBoundaryError);
+    ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
 
     await expect(
       createGuard({
@@ -158,7 +158,7 @@ describe("onUpdateMembershipUserGuard privilege boundary", () => {
         targetRole: "no-access",
         incomingRole: "admin"
       })()
-    ).rejects.toThrow(PermissionBoundaryError);
+    ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
   });
 
   test("an admin actor is unaffected on either system", async () => {
@@ -177,7 +177,7 @@ describe("onUpdateMembershipUserGuard privilege boundary", () => {
 
     await expect(
       createGuard({ actorPermission: memberPrivilegeGranter, shouldUseNewPrivilegeSystem: false })()
-    ).rejects.toThrow(PermissionBoundaryError);
+    ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
   });
 
   test("it is the target's privileges that reject, not the actor being weak", async () => {
@@ -205,11 +205,11 @@ describe("onUpdateMembershipUserGuard privilege boundary", () => {
 
       await expect(
         createGuard({ actorPermission: memberEditorOnly, shouldUseNewPrivilegeSystem: false, data: metadataOnly })()
-      ).rejects.toThrow(PermissionBoundaryError);
+      ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
 
       await expect(
         createGuard({ actorPermission: memberEditorOnly, shouldUseNewPrivilegeSystem: true, data: metadataOnly })()
-      ).rejects.toThrow(PermissionBoundaryError);
+      ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
 
       // grant-privileges is the action that reaches it, and only on the new system.
       await expect(
@@ -242,7 +242,7 @@ describe("onUpdateMembershipUserGuard privilege boundary", () => {
       // The same actor still cannot touch the target's roles.
       await expect(
         createGuard({ actorPermission: memberEditorOnly, shouldUseNewPrivilegeSystem: true })()
-      ).rejects.toThrow(PermissionBoundaryError);
+      ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
     });
 
     test("the legacy system still compares privilege levels, whatever the operation", async () => {
@@ -254,7 +254,7 @@ describe("onUpdateMembershipUserGuard privilege boundary", () => {
           shouldUseNewPrivilegeSystem: false,
           data: { roles: [], isActive: false }
         })()
-      ).rejects.toThrow(PermissionBoundaryError);
+      ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
     });
 
     test("a target holding no roles is still bounded on the new system", async () => {
@@ -269,7 +269,7 @@ describe("onUpdateMembershipUserGuard privilege boundary", () => {
           targetRoles: [],
           data: roleChange
         })()
-      ).rejects.toThrow(PermissionBoundaryError);
+      ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
 
       await expect(
         createGuard({
@@ -288,7 +288,7 @@ describe("onUpdateMembershipUserGuard privilege boundary", () => {
       // as a whole rather than partly applied.
       await expect(
         createGuard({ actorPermission: memberEditorOnly, shouldUseNewPrivilegeSystem: true, data: both })()
-      ).rejects.toThrow(PermissionBoundaryError);
+      ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
 
       await expect(
         createGuard({ actorPermission: memberPrivilegeGranter, shouldUseNewPrivilegeSystem: true, data: both })()
@@ -361,7 +361,7 @@ describe("onCreateMembershipUserGuard privilege boundary", () => {
   test("member:create alone cannot invite with a real role on the new system", async () => {
     await expect(
       createInviteGuard({ actorPermission: memberCreatorOnly, shouldUseNewPrivilegeSystem: true })()
-    ).rejects.toThrow(PermissionBoundaryError);
+    ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
 
     await expect(
       createInviteGuard({ actorPermission: memberCreatorGranter, shouldUseNewPrivilegeSystem: true })()
@@ -396,7 +396,7 @@ describe("onCreateMembershipUserGuard privilege boundary", () => {
         shouldUseNewPrivilegeSystem: true,
         incomingRoles: ["no-access", "admin"]
       })()
-    ).rejects.toThrow(PermissionBoundaryError);
+    ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
 
     await expect(
       createInviteGuard({
@@ -404,6 +404,6 @@ describe("onCreateMembershipUserGuard privilege boundary", () => {
         shouldUseNewPrivilegeSystem: false,
         incomingRoles: ["no-access", "admin"]
       })()
-    ).rejects.toThrow(PermissionBoundaryError);
+    ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
   });
 });

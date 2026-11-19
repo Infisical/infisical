@@ -2,6 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { OrgMembershipRole } from "@app/db/schemas";
+import { PERMISSION_BOUNDARY_ERROR_NAME } from "@app/domains/lib/errors";
 import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
@@ -12,7 +13,6 @@ import {
   OrgPermissionSubjects
 } from "@app/domains/platform/organizations/ce/module";
 import { FakeOrganizationsService } from "@app/domains/platform/organizations/ce/testing/fake-organizations-service";
-import { PermissionBoundaryError } from "@app/lib/errors";
 
 import { identityServiceFactory } from "./identity-service";
 
@@ -123,7 +123,7 @@ describe("identity service privilege boundary", () => {
       shouldUseNewPrivilegeSystem: false
     });
 
-    await expect(update(OrgMembershipRole.NoAccess)).rejects.toThrow(PermissionBoundaryError);
+    await expect(update(OrgMembershipRole.NoAccess)).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
     expect(membershipRoleDAL.create).not.toHaveBeenCalled();
   });
 
@@ -133,7 +133,7 @@ describe("identity service privilege boundary", () => {
       shouldUseNewPrivilegeSystem: false
     });
 
-    await expect(update(OrgMembershipRole.Member)).rejects.toThrow(PermissionBoundaryError);
+    await expect(update(OrgMembershipRole.Member)).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
   });
 
   test("on the legacy system, a weaker actor cannot delete an Admin identity", async () => {
@@ -142,7 +142,7 @@ describe("identity service privilege boundary", () => {
       shouldUseNewPrivilegeSystem: false
     });
 
-    await expect(remove()).rejects.toThrow(PermissionBoundaryError);
+    await expect(remove()).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
     expect(identityDAL.deleteById).not.toHaveBeenCalled();
   });
 

@@ -57,7 +57,6 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { getDefaultOrgMembershipRoleForUpdateOrg } from "@app/services/org/org-role-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -961,7 +960,7 @@ export const orgServiceFactory = ({
       );
 
       for (const { opAction, baseMessage } of targetOps) {
-        assertPermissionBounds(permission, {
+        permission.assertBounds({
           usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
           actions: opAction,
           subject: OrgPermissionSubjects.Member,
@@ -992,7 +991,7 @@ export const orgServiceFactory = ({
       const permissionRoles = toBoundsTargets(
         await orgPermissionService.getOrgPermissionByRoles({ orgId, roles: [role] })
       );
-      assertPermissionBounds(permission, {
+      permission.assertBounds({
         usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionMemberActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Member,
@@ -1134,7 +1133,7 @@ export const orgServiceFactory = ({
       orgId
     });
     if (inviteePermissions.length) {
-      assertPermissionBounds(permission, {
+      permission.assertBounds({
         usesNewPrivilegeSystem: actor.org.shouldUseNewPrivilegeSystem,
         actions: OrgPermissionMemberActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Member,
@@ -1355,7 +1354,7 @@ export const orgServiceFactory = ({
       await orgPermissionService.getOrgPermissionByRoles({ orgId, roles: targetRoles, ignoreUnresolvedRoles: true })
     );
 
-    assertPermissionBounds(permission, {
+    permission.assertBounds({
       usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionMemberActions.Delete,
       subject: OrgPermissionSubjects.Member,

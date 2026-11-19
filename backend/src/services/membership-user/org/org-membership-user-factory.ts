@@ -24,7 +24,6 @@ import {
   resolveMembershipRoleSlugs,
   toBoundsTargets
 } from "@app/services/membership/membership-fns";
-import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { MAX_NEW_MEMBERS_PER_INVITE, TOrgInviteQuota } from "@app/services/org/org-invite-quota";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
@@ -115,7 +114,7 @@ export const newOrgMembershipUserFactory = ({
       });
       const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
-      assertPermissionBounds(permission, {
+      permission.assertBounds({
         usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionMemberActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Member,
@@ -375,7 +374,7 @@ export const newOrgMembershipUserFactory = ({
       });
 
       for (const { opAction, baseMessage } of targetOps) {
-        assertPermissionBounds(permission, {
+        permission.assertBounds({
           usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
           actions: opAction,
           subject: OrgPermissionSubjects.Member,
@@ -392,7 +391,7 @@ export const newOrgMembershipUserFactory = ({
         roles: rolesToBound.map((el) => el.role)
       });
 
-      assertPermissionBounds(permission, {
+      permission.assertBounds({
         usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
         actions: OrgPermissionMemberActions.GrantPrivileges,
         subject: OrgPermissionSubjects.Member,
@@ -418,7 +417,7 @@ export const newOrgMembershipUserFactory = ({
     });
     const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
-    assertPermissionBounds(permission, {
+    permission.assertBounds({
       usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: OrgPermissionMemberActions.Delete,
       subject: OrgPermissionSubjects.Member,

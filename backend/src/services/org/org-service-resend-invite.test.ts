@@ -2,6 +2,7 @@ import { MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { OrgMembershipStatus } from "@app/db/schemas";
+import { PERMISSION_BOUNDARY_ERROR_NAME } from "@app/domains/lib/errors";
 import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import {
@@ -15,7 +16,7 @@ import {
   actorOrg,
   userPrincipal
 } from "@app/domains/platform/organizations/ce/testing/actor-context-fixture";
-import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { orgServiceFactory } from "./org-service";
 
@@ -131,7 +132,7 @@ describe("resendOrgMemberInvitation privilege boundary", () => {
     async (shouldUseNewPrivilegeSystem) => {
       const { resend, createTokenForUser } = setup({ actorPermission: memberCreatorOnly, shouldUseNewPrivilegeSystem });
 
-      await expect(resend()).rejects.toThrow(PermissionBoundaryError);
+      await expect(resend()).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
       expect(createTokenForUser).not.toHaveBeenCalled();
     }
   );
@@ -171,7 +172,7 @@ describe("resendOrgMemberInvitation privilege boundary", () => {
         inviteeGroupRole: "admin"
       });
 
-      await expect(resend()).rejects.toThrow(PermissionBoundaryError);
+      await expect(resend()).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
       expect(createTokenForUser).not.toHaveBeenCalled();
     }
   );

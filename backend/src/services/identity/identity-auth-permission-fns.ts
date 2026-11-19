@@ -13,7 +13,6 @@ import {
 } from "@app/domains/platform/projects/ce/module";
 import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
-import { assertPermissionBounds } from "@app/services/membership/permission-bounds";
 
 const PROJECT_ACTION_BY_ORG_ACTION = {
   [OrgPermissionIdentityActions.EditAuth]: ProjectPermissionIdentityActions.EditAuth,
@@ -72,7 +71,7 @@ export const assertIdentityAuthAccessAllowed = async (
     ]);
     const folderGrants = await secretsPermissionService.getFolderGrantPermissions({ target, projectId, grants });
 
-    assertPermissionBounds(permission, {
+    permission.assertBounds({
       usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
       actions: PROJECT_ACTION_BY_ORG_ACTION[action],
       subject: ProjectPermissionSub.Identity,
@@ -92,7 +91,7 @@ export const assertIdentityAuthAccessAllowed = async (
     actor: { ...target, name: identityName },
     orgId
   });
-  assertPermissionBounds(permission, {
+  permission.assertBounds({
     usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
     actions: action,
     subject: OrgPermissionSubjects.Identity,
