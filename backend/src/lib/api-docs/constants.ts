@@ -5743,8 +5743,7 @@ export const SECRET_CHANGE_POLICIES = {
     secretPath: "The path of the folder the import is in.",
     sourceEnvironment: "The environment the import reads its secrets from.",
     sourceSecretPath: "The path of the folder the import reads its secrets from.",
-    isReplication:
-      "True when the import respects approval policies, false when it reads its source directly."
+    isReplication: "True when the import respects approval policies, false when it reads its source directly."
   }
 };
 

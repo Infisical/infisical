@@ -121,10 +121,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           .transform((val) => (val ? removeTrailingSlash(val) : undefined)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
         allowedSelfApprovals: z.boolean().default(true),
-        enforceImportReplication: z
-          .boolean()
-          .optional()
-          .describe(SECRET_CHANGE_POLICIES.enforceImportReplication),
+        enforceImportReplication: z.boolean().optional().describe(SECRET_CHANGE_POLICIES.enforceImportReplication),
         bypassForMachineIdentities: z.boolean().optional(),
         environments: z.array(z.string()).optional()
       }),
