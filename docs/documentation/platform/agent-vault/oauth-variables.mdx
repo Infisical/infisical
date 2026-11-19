@@ -26,6 +26,10 @@ Use an OAuth variable when several services need the same sign-in, or when an HT
     Enter the **Server URL**: an MCP server's URL, such as `https://mcp.linear.app/mcp`, or the provider's sign-in URL, such as `https://accounts.google.com`. Infisical looks up the provider's OAuth endpoints from this URL.
 
     If Infisical can't find the endpoints, the form asks you to enter the **Authorization URL**, the **Token URL**, and at least one scope yourself. Infisical fills in any endpoints it found, so check them against the provider's OAuth documentation.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/oauth-variable-create.png" alt="The Add Global Variable sheet with Type set to OAuth, NOTION as the key, https://mcp.notion.com/mcp as the Server URL, Automatic Setup as the OAuth App, and Authorize in the footer" />
+    </Frame>
   </Step>
   <Step>
     If the provider doesn't let Infisical register itself as an OAuth client, or you entered the endpoints yourself, use an OAuth app of your own:
@@ -33,6 +37,10 @@ Use an OAuth variable when several services need the same sign-in, or when an HT
     1. Under **OAuth App**, select **Custom** to show the **Redirect URI**, **Client ID**, and **Client Secret** fields
     2. Create an OAuth app with the provider, and set its redirect URI to the **Redirect URI** that Infisical shows
     3. Enter the app's **Client ID** and **Client Secret** (leave **Client Secret** empty if the app has no secret)
+
+    <Frame>
+      <img src="/images/platform/agent-vault/oauth-variable-custom-app.png" alt="The Add Global Variable sheet for GDRIVE_SUPPORT with https://accounts.google.com as the Server URL, a Google Drive scope, Custom as the OAuth App, and the Redirect URI, Client ID, and hidden Client Secret fields" />
+    </Frame>
   </Step>
   <Step>
     Under **Scopes**, add the scopes your agents need. Leave **Scopes** empty to use the server's or provider's default scopes.
@@ -59,6 +67,22 @@ To make a service send the variable's access token:
   </Step>
   <Step>
     Pick the variable from the list. To create one without leaving the service, select **Create OAuth Variable** at the end of the list.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/oauth-variable-picker.png" alt="The Credential step of a github service with the OAuth Variable list open, showing GDRIVE_TEAM, GITHUB_TEAM and LINEAR (the last two marked Not Connected), and Create OAuth Variable at the end" />
+    </Frame>
+
+    If the variable isn't authorized yet, the step says that agents can't use the service until you authorize the variable on the **Variables** page.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/oauth-variable-service.png" alt="The Credential step of a github service with GITHUB_TEAM as the OAuth Variable, the note that agents can't use the service until GITHUB_TEAM is authorized on the Variables page, and the Sends preview showing Authorization: Bearer with the GITHUB_TEAM access token" />
+    </Frame>
+
+    **Create OAuth Variable** opens the same form as the **Variables** page, on top of the service. When you create the variable and close the form, the service selects the variable.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/oauth-variable-create-from-service.png" alt="The Create OAuth Variable sheet open on top of the github service's Credential step, with GITHUB_ORG as the key and https://api.githubcopilot.com/mcp/ as the Server URL" />
+    </Frame>
   </Step>
   <Step>
     Continue to the **Review** step, and select **Add Service**, or **Save** if you're editing the service.
@@ -77,6 +101,10 @@ The **Value** column on the **Variables** page shows the status of each OAuth va
 - **Authorized:** Services can use the sign-in
 - **Needs Reauthorization:** The provider no longer accepts the sign-in
 - **Missing Scopes:** A service needs scopes that the sign-in didn't grant
+
+<Frame>
+  <img src="/images/platform/agent-vault/variables-oauth.png" alt="The Global Variables tab listing the OAuth variables GDRIVE_TEAM as Authorized and GITHUB_TEAM and LINEAR as Not Connected, the text variables SLACK_BOT_TOKEN and STRIPE_API_KEY with hidden values, and the service that uses each one" />
+</Frame>
 
 Infisical never shows an OAuth variable's tokens, and you can't copy them.
 
