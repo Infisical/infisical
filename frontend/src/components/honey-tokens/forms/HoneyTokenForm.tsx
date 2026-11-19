@@ -4,21 +4,43 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, SheetFooter, Stepper, StepperList, StepperStep } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import {
+  Button,
+  SheetFooter,
+  Spinner,
+  Stepper,
+  StepperList,
+  StepperStep
+} from "@app/components/v3";
+import { useOrganization, useProject, useProjectPermission } from "@app/context";
 import { HONEY_TOKEN_DEFAULT_SECRET_NAMES, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import {
+  AlertChannelType,
+  AlertEventType,
+  AlertPrincipalType,
+  AlertResourceType,
+  TAlert,
+  TChannelForm,
+  toChannelForm,
+  toChannelInput,
+  useCreateAlert,
+  useListAlerts,
+  useUpdateAlert
+} from "@app/hooks/api/alerts";
 import { useListAwsHoneyTokenDeploymentOptions } from "@app/hooks/api/honeyToken";
 import { useCreateHoneyToken, useUpdateHoneyToken } from "@app/hooks/api/honeyTokens";
 import { HoneyTokenManagedBy, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
+import { buildNextChannel, DEFAULT_ALERT_NAMES } from "@app/views/Alerts";
 
+import { canManageTriggerAlert, HoneyTokenAlertsFields } from "./HoneyTokenAlertsFields";
 import { HoneyTokenConfigurationFields } from "./HoneyTokenConfigurationFields";
 import { HoneyTokenDetailsFields } from "./HoneyTokenDetailsFields";
 import { HoneyTokenMappingFields } from "./HoneyTokenMappingFields/HoneyTokenMappingFields";
-import { HoneyTokenFormSchema, THoneyTokenForm } from "./schemas";
+import { HoneyTokenFormSchema, serializeTriggerAlertChannels, THoneyTokenForm } from "./schemas";
 
 type Props = {
   onComplete: () => void;
@@ -28,6 +50,11 @@ type Props = {
   environment?: string;
   environments?: ProjectEnv[];
   honeyToken?: TDashboardHoneyToken;
+};
+
+type ContentProps = Props & {
+  triggerAlert?: TAlert;
+  isTriggerAlertUnavailable: boolean;
 };
 
 type FormTab = {
@@ -64,22 +91,41 @@ const FORM_TABS: FormTab[] = [
     title: "Add honey token details",
     subtitle: "Give this honey token a clear name and an optional description.",
     fields: ["name", "description"]
+  },
+  {
+    name: "Alerts",
+    key: "alerts",
+    shortDescription: "Trigger notifications",
+    title: "Set up trigger alerts",
+    subtitle:
+      "Choose where Infisical sends a notice when someone uses this honey token. You can skip this step.",
+    fields: ["isTriggerAlertEnabled", "channels"]
   }
 ];
 
-export const HoneyTokenForm = ({
+const buildProjectAdminsChannel = (projectId: string): TChannelForm => ({
+  ...buildNextChannel([], AlertChannelType.Email),
+  recipients: [{ principalType: AlertPrincipalType.ProjectAdmins, principalId: projectId }]
+});
+
+const HoneyTokenFormContent = ({
   type,
   onComplete,
   onCancel,
   environment: envSlug,
   secretPath,
   environments,
-  honeyToken
-}: Props) => {
+  honeyToken,
+  triggerAlert,
+  isTriggerAlertUnavailable
+}: ContentProps) => {
   const createHoneyToken = useCreateHoneyToken();
   const updateHoneyToken = useUpdateHoneyToken();
+  const createAlert = useCreateAlert();
+  const updateAlert = useUpdateAlert();
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
+  const { permission } = useProjectPermission();
   const { name: tokenTypeName } = HONEY_TOKEN_MAP[type];
 
   const isUpdate = Boolean(honeyToken);
@@ -102,9 +148,19 @@ export const HoneyTokenForm = ({
   const formTabs = isUpdate ? FORM_TABS.filter((tab) => tab.key !== "configuration") : FORM_TABS;
 
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
+  // Fixed at open: a later refetch must not change what a save compares against, or saving an
+  // unrelated change could write over alert changes made elsewhere.
+  const [savedTriggerAlert] = useState(
+    () =>
+      triggerAlert && {
+        id: triggerAlert.id,
+        enabled: triggerAlert.enabled,
+        channels: triggerAlert.channels.map(toChannelForm)
+      }
+  );
 
   const formMethods = useForm<THoneyTokenForm>({
-    resolver: zodResolver(HoneyTokenFormSchema),
+    resolver: zodResolver(HoneyTokenFormSchema(savedTriggerAlert)),
     defaultValues: honeyToken
       ? {
           ...honeyToken,
@@ -112,13 +168,17 @@ export const HoneyTokenForm = ({
           environment: currentProject?.environments.find(
             (env) => env.slug === honeyToken.environment.slug
           ),
-          secretPath
+          secretPath,
+          isTriggerAlertEnabled: savedTriggerAlert?.enabled ?? false,
+          channels: savedTriggerAlert?.channels ?? [buildProjectAdminsChannel(currentProject.id)]
         }
       : {
           type,
           environment: currentProject?.environments.find((env) => env.slug === envSlug),
           secretPath,
-          secretsMapping: HONEY_TOKEN_DEFAULT_SECRET_NAMES[type]
+          secretsMapping: HONEY_TOKEN_DEFAULT_SECRET_NAMES[type],
+          isTriggerAlertEnabled: true,
+          channels: [buildProjectAdminsChannel(currentProject.id)]
         },
     reValidateMode: "onChange"
   });
@@ -137,7 +197,59 @@ export const HoneyTokenForm = ({
     }
   }, [deploymentOptions]);
 
-  const onSubmit = async ({ environment, managedBy, ...formData }: THoneyTokenForm) => {
+  const saveTriggerAlert = async (
+    { honeyTokenId, projectId }: { honeyTokenId: string; projectId: string },
+    isTriggerAlertEnabled: boolean,
+    channels: TChannelForm[],
+    canManage: boolean
+  ) => {
+    if (isTriggerAlertUnavailable || !canManage) return;
+
+    if (savedTriggerAlert) {
+      if (isTriggerAlertEnabled) {
+        const hasChannelChanges =
+          serializeTriggerAlertChannels(channels) !==
+          serializeTriggerAlertChannels(savedTriggerAlert.channels);
+        if (savedTriggerAlert.enabled && !hasChannelChanges) return;
+        await updateAlert.mutateAsync({
+          alertId: savedTriggerAlert.id,
+          enabled: true,
+          channels: channels.map(toChannelInput)
+        });
+      } else if (savedTriggerAlert.enabled) {
+        await updateAlert.mutateAsync({ alertId: savedTriggerAlert.id, enabled: false });
+      }
+      return;
+    }
+
+    if (!isTriggerAlertEnabled) return;
+    await createAlert.mutateAsync({
+      name: DEFAULT_ALERT_NAMES[AlertEventType.HoneyTokenTriggered],
+      resourceType: AlertResourceType.HoneyToken,
+      resourceId: honeyTokenId,
+      eventType: AlertEventType.HoneyTokenTriggered,
+      projectId,
+      enabled: true,
+      condition: null,
+      channels: channels.map(toChannelInput)
+    });
+  };
+
+  const onSubmit = async ({
+    environment,
+    managedBy,
+    isTriggerAlertEnabled,
+    channels,
+    ...formData
+  }: THoneyTokenForm) => {
+    const canManageAlert = canManageTriggerAlert(permission, {
+      environment: environment?.slug,
+      secretPath: formData.secretPath
+    });
+    // The honey token is saved either way, and MutationCache reports why an alert request failed.
+    const saveAlertQuietly = (target: { honeyTokenId: string; projectId: string }) =>
+      saveTriggerAlert(target, isTriggerAlertEnabled, channels, canManageAlert).catch(() => {});
+
     if (honeyToken) {
       await updateHoneyToken.mutateAsync({
         honeyTokenId: honeyToken.id,
@@ -146,18 +258,22 @@ export const HoneyTokenForm = ({
         description: formData.description,
         secretsMapping: formData.secretsMapping
       });
+      await saveAlertQuietly({ honeyTokenId: honeyToken.id, projectId: honeyToken.projectId });
 
       createNotification({
         text: `Successfully updated ${tokenTypeName} Honey Token`,
         type: "success"
       });
     } else {
-      const { stackDeployment } = await createHoneyToken.mutateAsync({
-        ...formData,
-        config: { managedBy },
-        environment: environment.slug,
-        projectId: currentProject.id
-      });
+      const { honeyToken: createdHoneyToken, stackDeployment } = await createHoneyToken.mutateAsync(
+        {
+          ...formData,
+          config: { managedBy },
+          environment: environment.slug,
+          projectId: currentProject.id
+        }
+      );
+      await saveAlertQuietly({ honeyTokenId: createdHoneyToken.id, projectId: currentProject.id });
 
       if (stackDeployment && !stackDeployment.deployed) {
         const isDeploying = stackDeployment.status?.endsWith("_IN_PROGRESS");
@@ -331,6 +447,13 @@ export const HoneyTokenForm = ({
       )}
       {currentStep.key === "mapping" && <HoneyTokenMappingFields />}
       {currentStep.key === "details" && <HoneyTokenDetailsFields isUpdate={isUpdate} />}
+      {currentStep.key === "alerts" && (
+        <HoneyTokenAlertsFields
+          projectId={currentProject.id}
+          honeyTokenId={honeyToken?.id}
+          isAlertUnavailable={isTriggerAlertUnavailable}
+        />
+      )}
     </>
   );
 
@@ -401,5 +524,42 @@ export const HoneyTokenForm = ({
         </div>
       </SheetFooter>
     </FormProvider>
+  );
+};
+
+export const HoneyTokenForm = (props: Props) => {
+  const { honeyToken } = props;
+  const isEditMode = Boolean(honeyToken);
+
+  const {
+    data: alerts,
+    isFetchedAfterMount,
+    isError
+  } = useListAlerts(
+    {
+      resourceType: AlertResourceType.HoneyToken,
+      resourceId: honeyToken?.id,
+      projectId: honeyToken?.projectId
+    },
+    // A cached list can predate a change made elsewhere, and the form starts from this read.
+    { enabled: isEditMode, refetchOnMount: "always" }
+  );
+
+  // The alert goes into the default values rather than a later resetField, which ignores fields
+  // that aren't registered yet, and the Alerts step mounts last.
+  if (isEditMode && !isFetchedAfterMount) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Spinner size="lg" label="Loading honey token" />
+      </div>
+    );
+  }
+
+  return (
+    <HoneyTokenFormContent
+      {...props}
+      triggerAlert={alerts?.find((alert) => alert.eventType === AlertEventType.HoneyTokenTriggered)}
+      isTriggerAlertUnavailable={isEditMode && isError}
+    />
   );
 };

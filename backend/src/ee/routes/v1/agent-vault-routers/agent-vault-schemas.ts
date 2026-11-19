@@ -11,14 +11,30 @@ import {
   OAUTH_CLIENT_ID_OR_DYNAMIC_MESSAGE,
   OAUTH_CLIENT_SECRET_NEEDS_ID_MESSAGE
 } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-client-fns";
-import { OAUTH_VSCHAR_PATTERN } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-token-fns";
-import { AgentVaultOauthRegistration } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-types";
+import {
+  isHttpsUrl,
+  isOauthScopeToken,
+  MAX_OAUTH_SCOPE_LENGTH,
+  MAX_OAUTH_SCOPES
+} from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-discovery-fns";
+import { MAX_TOKEN_LENGTH, OAUTH_VSCHAR_PATTERN } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-token-fns";
+import {
+  AgentVaultOauthClientAuthMethod,
+  AgentVaultOauthRegistration
+} from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-types";
 import { AGENT_VAULT_MAX_SESSION_INLINE_SERVICES } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-service-fns";
+import { AGENT_VAULT_MAX_SESSION_INLINE_SKILLS } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-skill-fns";
 import {
   AGENT_VAULT_SKILL_MAX_PATH_LENGTH,
-  AGENT_VAULT_SKILL_UPLOAD_BODY_LIMIT
+  AGENT_VAULT_SKILL_NAME_MAX_LENGTH,
+  AGENT_VAULT_SKILL_UPLOAD_BODY_LIMIT,
+  skillNameOf
 } from "@app/ee/services/agent-vault-skill/agent-vault-skill-fns";
 import { AgentVaultSkillFileMode } from "@app/ee/services/agent-vault-skill/agent-vault-skill-types";
+import {
+  describeOauthVariableSettingsProblem,
+  toOauthVariableSettings
+} from "@app/ee/services/agent-vault-variable/agent-vault-oauth-variable-fns";
 import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE,
@@ -35,6 +51,7 @@ import {
   AgentVaultSubstitutionSurface,
   AgentVaultVariableReferenceField,
   AgentVaultVariableScope,
+  AgentVaultVariableType,
   TAgentVaultMemberProvidedField
 } from "@app/ee/services/agent-vault/agent-vault-enums";
 import {
@@ -122,6 +139,7 @@ type TCredentialShape = {
   password?: string;
   memberProvidedFields?: TAgentVaultMemberProvidedField[];
   authorizationId?: string;
+  variable?: string;
   clientId?: string;
   clientSecret?: string;
   registration?: AgentVaultOauthRegistration.Dynamic;
@@ -139,11 +157,26 @@ const printableOauthText = (max: number) =>
 export const AgentVaultOauthClientIdSchema = z.string().trim().min(1).pipe(printableOauthText(MAX_CLIENT_ID_LENGTH));
 export const AgentVaultOauthClientSecretSchema = z.string().min(1).pipe(printableOauthText(MAX_CLIENT_SECRET_LENGTH));
 
-// An OAuth credential is either the admin's own sign-in (an authorization) or left to each member, who signs in for
-// themselves; the client every member signs in with is set only in the second case.
+// An OAuth credential is the admin's own sign-in (an authorization), an OAuth variable's, or left to each member, who
+// signs in for themselves; the client every member signs in with is set only in the last case.
 const checkOauthCredentialFields = (requireValues: boolean, data: TCredentialShape, ctx: z.RefinementCtx) => {
   const memberProvided = Boolean(data.memberProvidedFields?.length);
   const issue = (path: string, message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
+
+  if (data.variable !== undefined) {
+    if (memberProvided) {
+      issue("variable", "Send either 'variable' or memberProvidedFields: an OAuth variable's sign-in is shared.");
+    }
+    if (data.authorizationId) {
+      issue("authorizationId", "Send either 'variable' or 'authorizationId', not both.");
+    }
+    (["clientId", "clientSecret", "registration"] as const).forEach((field) => {
+      if (data[field] !== undefined) {
+        issue(field, `Leave '${field}' out: the OAuth variable holds its own client.`);
+      }
+    });
+    return;
+  }
 
   if (data.clientId && data.registration) {
     issue("registration", OAUTH_CLIENT_ID_OR_DYNAMIC_MESSAGE);
@@ -294,34 +327,94 @@ const sshKeyCredentialInput = z.object({
   certificate: sshCertificateSchema.optional().describe(AGENT_VAULT.SERVICE.sshCertificate),
   memberProvidedFields: z.enum(AGENT_VAULT_MEMBER_PROVIDED_FIELDS).array().max(2).optional().describe(openApiHidden())
 });
-const oauthCredentialFields = {
+// The same rule discovery applies to what a server publishes (isHttpsUrl), so a URL typed here never fails later in the
+// OAuth library as an unreachable server.
+const oauthVariableUrlSchema = (field: string) =>
+  z
+    .string()
+    .trim()
+    .min(1)
+    .max(2048)
+    .refine(
+      isHttpsUrl,
+      `'${field}' must be an https:// URL without a username, password or fragment, using only printable ASCII characters.`
+    );
+
+const oauthVariableScopesSchema = z
+  .string()
+  .refine(
+    isOauthScopeToken,
+    `A scope is at most ${MAX_OAUTH_SCOPE_LENGTH} characters and can't contain spaces, quotes, backslashes or control characters.`
+  )
+  .array()
+  .max(MAX_OAUTH_SCOPES)
+  .transform((scopes) => [...new Set(scopes)]);
+
+const oauthVariableClientNameSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(128)
+  .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE);
+
+const oauthVariableServerUrlSchema = oauthVariableUrlSchema("serverUrl");
+const oauthVariableIssuerSchema = oauthVariableUrlSchema("issuer");
+const oauthVariableAuthorizationEndpointSchema = oauthVariableUrlSchema("authorizationEndpoint");
+const oauthVariableTokenEndpointSchema = oauthVariableUrlSchema("tokenEndpoint");
+const oauthVariableResourceSchema = oauthVariableUrlSchema("resource");
+const oauthVariableRedirectUriSchema = oauthVariableUrlSchema("redirectUri");
+const oauthVariableAuthMethodSchema = z.nativeEnum(AgentVaultOauthClientAuthMethod);
+
+const oauthTokenSchema = z
+  .string()
+  .min(1)
+  .max(MAX_TOKEN_LENGTH)
+  .regex(OAUTH_VSCHAR_PATTERN, "Use printable ASCII characters without line breaks or accents");
+
+// The same rule as a variable's key, repeated here since the key schema is declared further down.
+const oauthVariableKeyReferenceSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(AGENT_VAULT_VARIABLE_KEY_MAX_LENGTH)
+  .regex(AGENT_VAULT_VARIABLE_KEY_RE, AGENT_VAULT_VARIABLE_KEY_MESSAGE);
+
+// Only an MCP service signs in itself; any other service's OAuth credential names a variable. The sign-in fields stay
+// accepted there, hidden from the docs, so the service refuses them by name.
+const mcpOnlyDocs = (mcp: boolean, description: string) => (mcp ? description : openApiHidden());
+
+const oauthCredentialFields = ({ mcp }: { mcp: boolean }) => ({
   type: z.literal(AgentVaultCredentialType.OAuth),
+  variable: oauthVariableKeyReferenceSchema.optional().describe(AGENT_VAULT.SERVICE.oauthVariable),
   memberProvidedFields: bearerMemberProvidedFieldsSchema
     .optional()
-    .describe(AGENT_VAULT.SERVICE.oauthMemberProvidedFields),
-  clientId: AgentVaultOauthClientIdSchema.optional().describe(AGENT_VAULT.SERVICE.oauthClientId),
-  clientSecret: AgentVaultOauthClientSecretSchema.optional().describe(AGENT_VAULT.SERVICE.oauthClientSecret),
+    .describe(mcpOnlyDocs(mcp, AGENT_VAULT.SERVICE.oauthMemberProvidedFields)),
+  clientId: AgentVaultOauthClientIdSchema.optional().describe(mcpOnlyDocs(mcp, AGENT_VAULT.SERVICE.oauthClientId)),
+  clientSecret: AgentVaultOauthClientSecretSchema.optional().describe(
+    mcpOnlyDocs(mcp, AGENT_VAULT.SERVICE.oauthClientSecret)
+  ),
   registration: z
     .literal(AgentVaultOauthRegistration.Dynamic)
     .optional()
-    .describe(AGENT_VAULT.SERVICE.oauthRegistration)
-};
-const oauthCredentialInput = z.object({
-  ...oauthCredentialFields,
-  authorizationId: z.string().uuid().optional().describe(AGENT_VAULT.SERVICE.authorizationId)
+    .describe(mcpOnlyDocs(mcp, AGENT_VAULT.SERVICE.oauthRegistration))
 });
+const oauthCredentialInput = ({ mcp }: { mcp: boolean }) =>
+  z.object({
+    ...oauthCredentialFields({ mcp }),
+    authorizationId: z.string().uuid().optional().describe(mcpOnlyDocs(mcp, AGENT_VAULT.SERVICE.authorizationId))
+  });
 
 const docsTitle = (title: string, hidden = false) => JSON.stringify({ title, ...(hidden ? { "x-hidden": true } : {}) });
 
-// Only a user in the UI can complete an authorization, so the API docs never offer OAuth. The MCP schema also
-// hides the types an MCP service can't use, but still accepts them so the service refuses them by name.
+// The API docs offer OAuth for its OAuth variable form; an authorization only comes from a sign-in in the UI. The MCP
+// schema also hides the types an MCP service can't use, but still accepts them so the service refuses them by name.
 const credentialInputSchema = ({ mcp }: { mcp: boolean }) =>
   z
     .discriminatedUnion("type", [
       bearerCredentialInput.describe(docsTitle("Bearer")),
       basicCredentialInput.describe(docsTitle("Basic Auth", mcp)),
       passthroughCredentialInput.describe(docsTitle("Pass-through", mcp)),
-      oauthCredentialInput.describe(docsTitle("OAuth", true)),
+      oauthCredentialInput({ mcp }).describe(docsTitle("OAuth")),
       sshKeyCredentialInput.describe(docsTitle("SSH Key", true))
     ])
     .superRefine(checkCredentialFields({ requireValues: true }));
@@ -337,7 +430,7 @@ const nativeCredentialInputSchema = ({ ssh }: { ssh: boolean }) =>
       sshKeyCredentialInput.describe(docsTitle("SSH Key", !ssh)),
       bearerCredentialInput.describe(docsTitle("Bearer", true)),
       passthroughCredentialInput.describe(docsTitle("Pass-through", true)),
-      oauthCredentialInput.describe(docsTitle("OAuth", true))
+      oauthCredentialInput({ mcp: false }).describe(docsTitle("OAuth", true))
     ])
     .superRefine(checkCredentialFields({ requireValues: true }))
     .describe(ssh ? AGENT_VAULT.SERVICE.sshCredential : AGENT_VAULT.SERVICE.databaseCredential);
@@ -388,10 +481,14 @@ const credentialUpdateSchema = ({
         .describe(docsTitle("Pass-through", mcp || native)),
       z
         .object({
-          ...oauthCredentialFields,
-          authorizationId: z.string().uuid().optional().describe(AGENT_VAULT.SERVICE.updateAuthorizationId)
+          ...oauthCredentialFields({ mcp }),
+          authorizationId: z
+            .string()
+            .uuid()
+            .optional()
+            .describe(mcpOnlyDocs(mcp, AGENT_VAULT.SERVICE.updateAuthorizationId))
         })
-        .describe(docsTitle("OAuth", true)),
+        .describe(docsTitle("OAuth", native)),
       z
         .object({
           type: z.literal(AgentVaultCredentialType.SshKey),
@@ -476,12 +573,20 @@ const sshKeyCredentialSummarySchema = z
 const oauthCredentialSummarySchema = z
   .object({
     type: z.literal(AgentVaultCredentialType.OAuth),
+    source: z.enum(["service", "member", "variable"]).describe(AGENT_VAULT.SERVICE.oauthSource),
     memberProvidedFields: z
       .enum([AgentVaultVariableReferenceField.CredentialValue])
       .array()
       .describe(AGENT_VAULT.SERVICE.oauthMemberProvidedFieldsRead),
+    variable: z
+      .object({
+        id: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
+        key: z.string().describe(AGENT_VAULT.VARIABLE.key)
+      })
+      .optional()
+      .describe(AGENT_VAULT.SERVICE.oauthVariableRead),
     status: z.nativeEnum(AgentVaultOauthStatus).optional().describe(AGENT_VAULT.SERVICE.oauthSummaryStatus),
-    issuer: z.string().describe(AGENT_VAULT.SERVICE.oauthIssuer),
+    issuer: z.string().optional().describe(AGENT_VAULT.SERVICE.oauthIssuer),
     registration: z
       .nativeEnum(AgentVaultOauthRegistration)
       .optional()
@@ -500,7 +605,8 @@ const credentialSummarySchemas = {
   [AgentVaultServiceType.Http]: z.discriminatedUnion("type", [
     bearerCredentialSummarySchema,
     basicCredentialSummarySchema("Basic Auth"),
-    passthroughCredentialSummarySchema
+    passthroughCredentialSummarySchema,
+    oauthCredentialSummarySchema
   ]),
   [AgentVaultServiceType.Mcp]: z.discriminatedUnion("type", [
     bearerCredentialSummarySchema,
@@ -821,9 +927,9 @@ export const AgentVaultUpdateServiceBodySchema = z
     "Provide at least one field besides 'type' to update"
   );
 
-// A service sent with a session takes no member-provided field and no OAuth: whoever starts the session sends every
-// value, and an OAuth service is connected by signing in from the UI. Both are still accepted, hidden, so the session
-// service refuses them by name rather than zod dropping a field silently.
+// A service sent with a session takes no member-provided field and no OAuth sign-in: whoever starts the session sends
+// every value, and a sign-in happens in the UI. Both are still accepted, hidden, so the session service refuses them by
+// name rather than zod dropping a field silently. OAuth comes from an OAuth variable or as tokens sent with the session.
 const inlineMemberProvidedFieldsSchema = z.string().max(64).array().max(2).optional().describe(openApiHidden());
 
 const inlineCredentialInputSchema = ({
@@ -868,9 +974,30 @@ const inlineCredentialInputSchema = ({
       z
         .object({
           type: z.literal(AgentVaultCredentialType.OAuth),
-          authorizationId: z.string().uuid().optional()
+          variable: oauthVariableKeyReferenceSchema.optional().describe(AGENT_VAULT.SESSION.inlineOauthVariable),
+          accessToken: oauthTokenSchema.optional().describe(AGENT_VAULT.SESSION.inlineOauthAccessToken),
+          refreshToken: oauthTokenSchema.optional().describe(AGENT_VAULT.SESSION.inlineOauthRefreshToken),
+          expiresAt: z
+            .string()
+            .datetime({ offset: true })
+            .optional()
+            .describe(AGENT_VAULT.SESSION.inlineOauthExpiresAt),
+          authorizationEndpoint: oauthVariableAuthorizationEndpointSchema
+            .optional()
+            .describe(AGENT_VAULT.VARIABLE.oauthAuthorizationEndpoint),
+          tokenEndpoint: oauthVariableTokenEndpointSchema.optional().describe(AGENT_VAULT.VARIABLE.oauthTokenEndpoint),
+          issuer: oauthVariableIssuerSchema.optional().describe(AGENT_VAULT.VARIABLE.oauthIssuer),
+          clientId: AgentVaultOauthClientIdSchema.optional().describe(AGENT_VAULT.VARIABLE.oauthClientId),
+          clientSecret: AgentVaultOauthClientSecretSchema.optional().describe(AGENT_VAULT.VARIABLE.oauthClientSecret),
+          tokenEndpointAuthMethod: oauthVariableAuthMethodSchema
+            .optional()
+            .describe(AGENT_VAULT.VARIABLE.oauthTokenEndpointAuthMethod),
+          scopes: oauthVariableScopesSchema.optional().describe(AGENT_VAULT.VARIABLE.oauthScopes),
+          resource: oauthVariableResourceSchema.optional().describe(AGENT_VAULT.VARIABLE.oauthResource),
+          authorizationId: z.string().uuid().optional().describe(openApiHidden()),
+          memberProvidedFields: inlineMemberProvidedFieldsSchema
         })
-        .describe(docsTitle("OAuth", true)),
+        .describe(docsTitle("OAuth", native)),
       z
         .object({
           type: z.literal(AgentVaultCredentialType.SshKey),
@@ -982,26 +1109,91 @@ const AgentVaultInlineServiceInputSchema = z.discriminatedUnion("type", [
   nativeInlineArm(AgentVaultServiceType.Ssh)
 ]);
 
-export const AgentVaultInlineServicesInputSchema = AgentVaultInlineServiceInputSchema.array()
-  .max(
-    AGENT_VAULT_MAX_SESSION_INLINE_SERVICES,
-    `A session can have at most ${AGENT_VAULT_MAX_SESSION_INLINE_SERVICES} services. Add the others to an access bundle and name it in accessBundles.`
-  )
-  .superRefine((services, ctx) => {
+export const AGENT_VAULT_MAX_SESSION_SERVICES = 50;
+
+const AgentVaultSessionServiceNameSchema = slugSchema({ max: 64, field: "Service" }).describe(
+  JSON.stringify({ title: "Project service", description: AGENT_VAULT.SESSION.serviceName })
+);
+
+const AgentVaultSessionInlineServiceSchema = AgentVaultInlineServiceInputSchema.describe(
+  JSON.stringify({ title: "Inline service", description: AGENT_VAULT.SESSION.inlineServices })
+);
+
+// A session's services or skills: each entry names one of the project's or defines one inline. It is checked against the
+// schema its kind calls for before the union parses it, so a mistake in an inline entry is reported field by field
+// rather than as a union nothing matched.
+const sessionEntriesSchema = <TName extends z.ZodTypeAny, TInline extends z.ZodTypeAny>({
+  nameSchema,
+  inlineSchema,
+  maxEntries,
+  tooManyMessage
+}: {
+  nameSchema: TName;
+  inlineSchema: TInline;
+  maxEntries: number;
+  tooManyMessage: string;
+}) =>
+  z.preprocess(
+    (input, ctx) => {
+      if (!Array.isArray(input)) return input;
+      const entries: unknown[] = input;
+      // Checked before any entry is parsed, so an oversized list is refused without parsing every entry in it.
+      if (entries.length > maxEntries) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: tooManyMessage, fatal: true });
+        return entries;
+      }
+      entries.forEach((entry, index) => {
+        let schema: z.ZodTypeAny | null = null;
+        if (typeof entry === "string") schema = nameSchema;
+        else if (entry !== null && typeof entry === "object") schema = inlineSchema;
+        if (!schema) return;
+        const result = schema.safeParse(entry);
+        if (result.success) return;
+        result.error.issues.forEach((issue) => ctx.addIssue({ ...issue, path: [index, ...issue.path], fatal: true }));
+      });
+      return entries;
+    },
+    z.union([nameSchema, inlineSchema]).array()
+  );
+
+export const AgentVaultSessionServicesInputSchema = sessionEntriesSchema({
+  nameSchema: AgentVaultSessionServiceNameSchema,
+  inlineSchema: AgentVaultSessionInlineServiceSchema,
+  maxEntries: AGENT_VAULT_MAX_SESSION_SERVICES + AGENT_VAULT_MAX_SESSION_INLINE_SERVICES,
+  tooManyMessage: `A session can carry at most ${AGENT_VAULT_MAX_SESSION_SERVICES} of the project's services and ${AGENT_VAULT_MAX_SESSION_INLINE_SERVICES} inline services.`
+})
+  .superRefine((entries, ctx) => {
+    const listedCount = entries.filter((entry) => typeof entry === "string").length;
+    if (listedCount > AGENT_VAULT_MAX_SESSION_SERVICES) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `A session can have at most ${AGENT_VAULT_MAX_SESSION_SERVICES} of the project's services.`
+      });
+    }
+    if (entries.length - listedCount > AGENT_VAULT_MAX_SESSION_INLINE_SERVICES) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `A session can carry at most ${AGENT_VAULT_MAX_SESSION_INLINE_SERVICES} inline services. Add the others to the project and list them by name instead.`
+      });
+    }
+    // The agent, the proxy and the session logs tell a session's services apart by name. One sent inline without a name
+    // goes by its first host, which this check skips: a one-word host such as `localhost` is also a valid service name,
+    // so the mint checks it against the services the session lists by name (`assertNoServiceConflicts`).
     const seen = new Set<string>();
-    services.forEach((service, index) => {
-      if (!service.name) return;
-      if (seen.has(service.name)) {
+    entries.forEach((entry, index) => {
+      const name = typeof entry === "string" ? entry : entry.name;
+      if (!name) return;
+      if (seen.has(name)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: [index, "name"],
-          message: `More than one inline service is named "${service.name}". Give each a different name.`
+          path: typeof entry === "string" ? [index] : [index, "name"],
+          message: `More than one service in this session is named "${name}". Give each a different name, or leave one out.`
         });
       }
-      seen.add(service.name);
+      seen.add(name);
     });
   })
-  .describe(AGENT_VAULT.SESSION.inlineServices);
+  .describe(AGENT_VAULT.SESSION.services);
 
 // Each type returns only its own fields, read the same way by bundle services and a session's own services.
 const serviceResponseTlsSchema = z
@@ -1073,13 +1265,31 @@ const inlineCustomHeadersResponseSchema = z
   .array()
   .describe(AGENT_VAULT.SESSION.inlineCustomHeadersRead);
 
-// Inline services take a type's credentials except OAuth, which needs a sign-in from the UI.
+// The tokens are never returned: only where they come from, and for tokens sent with the session, their issuer.
+const inlineOauthCredentialSummarySchema = z
+  .object({
+    type: z.literal(AgentVaultCredentialType.OAuth),
+    source: z.enum(["variable", "inline"]).describe(AGENT_VAULT.SESSION.inlineOauthSource),
+    variable: z
+      .object({
+        id: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
+        key: z.string().describe(AGENT_VAULT.VARIABLE.key)
+      })
+      .optional()
+      .describe(AGENT_VAULT.SESSION.inlineOauthVariableRead),
+    issuer: z.string().optional().describe(AGENT_VAULT.SERVICE.oauthIssuer),
+    grantedScopes: z.string().array().optional().describe(AGENT_VAULT.SERVICE.oauthGrantedScopes)
+  })
+  .describe(JSON.stringify({ title: "OAuth" }));
+
+// Inline services take a type's credentials. OAuth comes from an OAuth variable or as tokens sent with the session.
 const inlineServiceResponseTypeExtras = {
   [AgentVaultServiceType.Http]: {
     credential: z.discriminatedUnion("type", [
       inlineBearerCredentialSummarySchema,
       inlineBasicCredentialSummarySchema("Basic Auth"),
-      passthroughCredentialSummarySchema
+      passthroughCredentialSummarySchema,
+      inlineOauthCredentialSummarySchema
     ]),
     customHeaders: inlineCustomHeadersResponseSchema,
     substitutions: z
@@ -1091,7 +1301,7 @@ const inlineServiceResponseTypeExtras = {
       .describe(AGENT_VAULT.SESSION.inlineSubstitutionsRead)
   },
   [AgentVaultServiceType.Mcp]: {
-    credential: inlineBearerCredentialSummarySchema,
+    credential: z.discriminatedUnion("type", [inlineBearerCredentialSummarySchema, inlineOauthCredentialSummarySchema]),
     customHeaders: inlineCustomHeadersResponseSchema
   },
   [AgentVaultServiceType.Postgres]: { credential: inlineBasicCredentialSummarySchema("Username and Password") },
@@ -1155,6 +1365,26 @@ export const AgentVaultInlineServiceSchema = serviceResponseUnion(
   inlineServiceResponseBase,
   inlineServiceResponseTypeExtras
 );
+
+// A session's services as read back. One it lists by name carries only what identifies it; an inline one carries
+// its settings without their secrets, as it was sent. isInline tells the two apart, which is also how the response
+// serializer picks the right shape for each.
+export const AgentVaultSessionServiceSchema = z.union([
+  z
+    .object({
+      id: z.string().uuid().describe(AGENT_VAULT.SESSION.serviceIdRead),
+      name: z.string().describe(AGENT_VAULT.SESSION.serviceNameRead),
+      type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SESSION.serviceTypeRead),
+      description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead),
+      hostPattern: z.string().nullable().describe(AGENT_VAULT.SESSION.serviceHostPatternRead),
+      isInline: z.literal(false).describe(AGENT_VAULT.SESSION.serviceIsInline)
+    })
+    .describe(JSON.stringify({ title: "Project service" })),
+  serviceResponseUnion(
+    { ...inlineServiceResponseBase, isInline: z.literal(true).describe(AGENT_VAULT.SESSION.serviceIsInline) },
+    inlineServiceResponseTypeExtras
+  )
+]);
 
 // The service sheet's unsaved values, so the tools are listed with the credential a save would store. `serviceId`
 // names the saved service whose stored values fill in what is left out.
@@ -1312,10 +1542,141 @@ export const AgentVaultVariableValueSchema = z
   .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
   .refine((value) => value.trim().length > 0, "A value can't be only spaces.");
 
+export const AgentVaultOauthVariableSettingsSchema = z
+  .object({
+    serverUrl: oauthVariableServerUrlSchema.optional().describe(AGENT_VAULT.VARIABLE.oauthServerUrl),
+    issuer: oauthVariableIssuerSchema.optional().describe(AGENT_VAULT.VARIABLE.oauthIssuer),
+    authorizationEndpoint: oauthVariableAuthorizationEndpointSchema
+      .optional()
+      .describe(AGENT_VAULT.VARIABLE.oauthAuthorizationEndpoint),
+    tokenEndpoint: oauthVariableTokenEndpointSchema.optional().describe(AGENT_VAULT.VARIABLE.oauthTokenEndpoint),
+    clientId: AgentVaultOauthClientIdSchema.optional().describe(AGENT_VAULT.VARIABLE.oauthClientId),
+    tokenEndpointAuthMethod: oauthVariableAuthMethodSchema
+      .optional()
+      .describe(AGENT_VAULT.VARIABLE.oauthTokenEndpointAuthMethod),
+    scopes: oauthVariableScopesSchema.optional().describe(AGENT_VAULT.VARIABLE.oauthScopes),
+    resource: oauthVariableResourceSchema.optional().describe(AGENT_VAULT.VARIABLE.oauthResource),
+    clientName: oauthVariableClientNameSchema.optional().describe(AGENT_VAULT.VARIABLE.oauthClientName),
+    redirectUri: oauthVariableRedirectUriSchema.optional().describe(AGENT_VAULT.VARIABLE.oauthRedirectUri)
+  })
+  .superRefine((settings, ctx) => {
+    const problem = describeOauthVariableSettingsProblem(toOauthVariableSettings(settings));
+    if (problem) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [problem.field], message: problem.message });
+  })
+  .describe(AGENT_VAULT.VARIABLE.oauthSettings);
+
+// Whether the merged settings still hold together depends on the stored ones, so the service checks that.
+export const AgentVaultOauthVariableSettingsUpdateSchema = z
+  .object({
+    serverUrl: oauthVariableServerUrlSchema.nullable().optional().describe(AGENT_VAULT.VARIABLE.oauthServerUrl),
+    issuer: oauthVariableIssuerSchema.nullable().optional().describe(AGENT_VAULT.VARIABLE.oauthIssuer),
+    authorizationEndpoint: oauthVariableAuthorizationEndpointSchema
+      .nullable()
+      .optional()
+      .describe(AGENT_VAULT.VARIABLE.oauthAuthorizationEndpoint),
+    tokenEndpoint: oauthVariableTokenEndpointSchema
+      .nullable()
+      .optional()
+      .describe(AGENT_VAULT.VARIABLE.oauthTokenEndpoint),
+    clientId: AgentVaultOauthClientIdSchema.nullable().optional().describe(AGENT_VAULT.VARIABLE.oauthClientId),
+    tokenEndpointAuthMethod: oauthVariableAuthMethodSchema
+      .nullable()
+      .optional()
+      .describe(AGENT_VAULT.VARIABLE.oauthTokenEndpointAuthMethod),
+    scopes: oauthVariableScopesSchema.optional().describe(AGENT_VAULT.VARIABLE.oauthScopes),
+    resource: oauthVariableResourceSchema.nullable().optional().describe(AGENT_VAULT.VARIABLE.oauthResource),
+    clientName: oauthVariableClientNameSchema.nullable().optional().describe(AGENT_VAULT.VARIABLE.oauthClientName),
+    redirectUri: oauthVariableRedirectUriSchema.nullable().optional().describe(AGENT_VAULT.VARIABLE.oauthRedirectUri)
+  })
+  .refine((settings) => Object.values(settings).some((value) => value !== undefined), "Send at least one OAuth setting")
+  .describe(AGENT_VAULT.VARIABLE.oauthSettingsUpdate);
+
+// Tokens an API caller already holds, stored as sent.
+export const AgentVaultOauthVariableTokensSchema = z.object({
+  accessToken: oauthTokenSchema.describe(AGENT_VAULT.VARIABLE.oauthAccessToken),
+  refreshToken: oauthTokenSchema.optional().describe(AGENT_VAULT.VARIABLE.oauthRefreshToken),
+  expiresAt: z.string().datetime({ offset: true }).optional().describe(AGENT_VAULT.VARIABLE.oauthTokenExpiresAt),
+  clientSecret: AgentVaultOauthClientSecretSchema.optional().describe(AGENT_VAULT.VARIABLE.oauthClientSecret)
+});
+
+// What the caller's callback forwards from the provider's redirect: a code, or the error the provider sent instead.
+export const AgentVaultOauthVariableCompleteSchema = z
+  .object({
+    state: z.string().min(1).max(256).describe(AGENT_VAULT.VARIABLE.completeState),
+    code: z.string().min(1).max(4096).optional().describe(AGENT_VAULT.OAUTH.code),
+    iss: z.string().max(2048).optional().describe(AGENT_VAULT.OAUTH.iss),
+    // Provider text, accepted as sent so a long or multi-line reason still fails the sign-in; the service normalizes it.
+    error: z.string().max(1024).optional().describe(AGENT_VAULT.OAUTH.callbackError),
+    errorDescription: z.string().max(4096).optional().describe(AGENT_VAULT.OAUTH.callbackErrorDescription)
+  })
+  .refine(
+    (body) => (body.code === undefined) !== (body.error === undefined),
+    "Send either the 'code' or the 'error' the provider's redirect carried."
+  );
+
+export const AgentVaultOauthVariableSignInBodySchema = z.object({
+  clientSecret: AgentVaultOauthClientSecretSchema.optional().describe(AGENT_VAULT.VARIABLE.signInClientSecret)
+});
+
+// The answer to starting a sign-in: the link, or what the variable needs before there can be one.
+export const AgentVaultOauthVariableSignInStartSchema = z.object({
+  authorization: z
+    .object({
+      id: z.string().uuid().describe(AGENT_VAULT.VARIABLE.signInAuthorizationId),
+      authorizeUrl: z.string().describe(AGENT_VAULT.VARIABLE.signInAuthorizeUrl),
+      expiresAt: z.string().datetime().describe(AGENT_VAULT.VARIABLE.signInExpiresAt)
+    })
+    .nullable()
+    .describe(AGENT_VAULT.VARIABLE.signInAuthorization),
+  registrationRequired: z.boolean().describe(AGENT_VAULT.VARIABLE.signInRegistrationRequired),
+  manualSetupRequired: z.boolean().describe(AGENT_VAULT.VARIABLE.signInManualSetupRequired),
+  prefill: z
+    .object({
+      authorizationEndpoint: z.string().describe(AGENT_VAULT.VARIABLE.oauthAuthorizationEndpoint),
+      tokenEndpoint: z.string().describe(AGENT_VAULT.VARIABLE.oauthTokenEndpoint),
+      issuer: z.string().nullable().describe(AGENT_VAULT.VARIABLE.signInPrefillIssuer),
+      scopes: z.string().array().describe(AGENT_VAULT.VARIABLE.signInPrefillScopes)
+    })
+    .nullable()
+    .describe(AGENT_VAULT.VARIABLE.signInPrefill),
+  redirectUri: z.string().describe(AGENT_VAULT.VARIABLE.signInRedirectUri)
+});
+
+const AgentVaultOauthVariableViewSchema = z.object({
+  status: z.nativeEnum(AgentVaultOauthStatus).describe(AGENT_VAULT.VARIABLE.oauthStatus),
+  serverUrl: z.string().nullable().describe(AGENT_VAULT.VARIABLE.oauthServerUrl),
+  issuer: z.string().nullable().describe(AGENT_VAULT.VARIABLE.oauthIssuer),
+  authorizationEndpoint: z.string().nullable().describe(AGENT_VAULT.VARIABLE.oauthAuthorizationEndpoint),
+  tokenEndpoint: z.string().nullable().describe(AGENT_VAULT.VARIABLE.oauthTokenEndpoint),
+  clientId: z.string().nullable().describe(AGENT_VAULT.VARIABLE.oauthClientId),
+  registration: z.nativeEnum(AgentVaultOauthRegistration).describe(AGENT_VAULT.VARIABLE.oauthRegistration),
+  tokenEndpointAuthMethod: z
+    .nativeEnum(AgentVaultOauthClientAuthMethod)
+    .nullable()
+    .describe(AGENT_VAULT.VARIABLE.oauthTokenEndpointAuthMethod),
+  scopes: z.string().array().describe(AGENT_VAULT.VARIABLE.oauthScopes),
+  resource: z.string().nullable().describe(AGENT_VAULT.VARIABLE.oauthResource),
+  clientName: z.string().nullable().describe(AGENT_VAULT.VARIABLE.oauthClientName),
+  redirectUri: z.string().nullable().describe(AGENT_VAULT.VARIABLE.oauthRedirectUri),
+  connection: z
+    .object({
+      issuer: z.string().describe(AGENT_VAULT.VARIABLE.oauthConnectionIssuer),
+      grantedScopes: z.string().array().describe(AGENT_VAULT.VARIABLE.oauthGrantedScopes),
+      requiredScopes: z.string().array().describe(AGENT_VAULT.VARIABLE.oauthRequiredScopes),
+      expiresAt: z.string().nullable().describe(AGENT_VAULT.VARIABLE.oauthExpiresAt),
+      authorizedAt: z.string().nullable().describe(AGENT_VAULT.VARIABLE.oauthAuthorizedAt),
+      lastError: z.string().nullable().describe(AGENT_VAULT.VARIABLE.oauthLastError)
+    })
+    .nullable()
+    .describe(AGENT_VAULT.VARIABLE.oauthConnection)
+});
+
 export const AgentVaultVariableSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
   key: z.string().describe(AGENT_VAULT.VARIABLE.key),
   scope: z.nativeEnum(AgentVaultVariableScope).describe(AGENT_VAULT.VARIABLE.scope),
+  type: z.nativeEnum(AgentVaultVariableType).describe(AGENT_VAULT.VARIABLE.type),
+  oauth: AgentVaultOauthVariableViewSchema.nullable().describe(AGENT_VAULT.VARIABLE.oauth),
   usedByServices: z
     .object({
       id: z.string().uuid().describe(AGENT_VAULT.VARIABLE.usedByServiceId),
@@ -1338,53 +1699,79 @@ export const AgentVaultVariableSchema = z.object({
 
 const personalValueFieldSchema = z.enum(AGENT_VAULT_MEMBER_PROVIDED_FIELDS).describe(AGENT_VAULT.PERSONAL_VALUE.field);
 
+const personalValueVariableReferencesSchema = z
+  .object({
+    variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
+    key: z.string().describe(AGENT_VAULT.VARIABLE.key)
+  })
+  .array();
+
+const personalValueOauthSchema = z
+  .object({
+    status: z.nativeEnum(AgentVaultOauthStatus).describe(AGENT_VAULT.PERSONAL_VALUE.oauthStatus),
+    issuer: z.string().describe(AGENT_VAULT.SERVICE.oauthIssuer),
+    grantedScopes: z.string().array().describe(AGENT_VAULT.SERVICE.oauthGrantedScopes),
+    requiredScopes: z.string().array().describe(AGENT_VAULT.PERSONAL_VALUE.oauthRequiredScopes),
+    expiresAt: z.string().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.oauthExpiresAt),
+    authorizedAt: z.string().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.oauthAuthorizedAt),
+    lastError: z.string().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.oauthLastError)
+  })
+  .nullable();
+
+const personalValueFieldStatusSchema = z.object({
+  field: personalValueFieldSchema,
+  isSet: z.boolean().describe(AGENT_VAULT.PERSONAL_VALUE.isSet),
+  updatedAt: z.date().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.updatedAt),
+  variableReferences: personalValueVariableReferencesSchema.describe(AGENT_VAULT.PERSONAL_VALUE.variableReferences),
+  oauth: personalValueOauthSchema.describe(AGENT_VAULT.PERSONAL_VALUE.oauth)
+});
+
 // The caller's own values for one service. Fields are listed as descriptors, so a custom header or substitution left
 // to members can join them with its id and no change to this shape.
 export const AgentVaultPersonalValuesSchema = z
   .object({
     isConfigured: z.boolean().describe(AGENT_VAULT.PERSONAL_VALUE.isConfigured),
-    fields: z
-      .object({
-        field: personalValueFieldSchema,
-        isSet: z.boolean().describe(AGENT_VAULT.PERSONAL_VALUE.isSet),
-        updatedAt: z.date().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.updatedAt),
-        variableReferences: z
-          .object({
-            variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
-            key: z.string().describe(AGENT_VAULT.VARIABLE.key)
-          })
-          .array()
-          .describe(AGENT_VAULT.PERSONAL_VALUE.variableReferences),
-        oauth: z
-          .object({
-            status: z.nativeEnum(AgentVaultOauthStatus).describe(AGENT_VAULT.PERSONAL_VALUE.oauthStatus),
-            issuer: z.string().describe(AGENT_VAULT.SERVICE.oauthIssuer),
-            grantedScopes: z.string().array().describe(AGENT_VAULT.SERVICE.oauthGrantedScopes),
-            requiredScopes: z.string().array().describe(AGENT_VAULT.PERSONAL_VALUE.oauthRequiredScopes),
-            expiresAt: z.string().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.oauthExpiresAt),
-            authorizedAt: z.string().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.oauthAuthorizedAt),
-            lastError: z.string().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.oauthLastError)
-          })
-          .nullable()
-          .describe(AGENT_VAULT.PERSONAL_VALUE.oauth)
-      })
-      .array()
-      .describe(AGENT_VAULT.PERSONAL_VALUE.fields)
+    fields: personalValueFieldStatusSchema.array().describe(AGENT_VAULT.PERSONAL_VALUE.fields)
   })
   .describe(AGENT_VAULT.PERSONAL_VALUE.personalValues);
+
+// On a user's behalf, the services list says which of the user's values are set, and leaves out the variables those
+// values use and the user's OAuth connection.
+const AgentVaultListedPersonalValuesSchema = AgentVaultPersonalValuesSchema.extend({
+  fields: personalValueFieldStatusSchema
+    .extend({
+      variableReferences: personalValueVariableReferencesSchema
+        .optional()
+        .describe(AGENT_VAULT.PERSONAL_VALUE.serviceVariableReferences),
+      oauth: personalValueOauthSchema.optional().describe(AGENT_VAULT.PERSONAL_VALUE.serviceOauth)
+    })
+    .array()
+    .describe(AGENT_VAULT.PERSONAL_VALUE.fields)
+});
+
+const projectServiceAccessBundlesSchema = z
+  .object({
+    id: z.string().uuid().describe(AGENT_VAULT.SERVICE.accessBundleId),
+    name: z.string().describe(AGENT_VAULT.SERVICE.accessBundleName)
+  })
+  .array()
+  .describe(AGENT_VAULT.SERVICE.accessBundles);
 
 // A service in the project, with the access bundles it is in. Only reads carry the caller's own setup status, and only
 // an admin's carry variableReferences.
 export const AgentVaultProjectServiceSchema = agentVaultServiceResponseSchema(
   {
-    accessBundles: z
-      .object({
-        id: z.string().uuid().describe(AGENT_VAULT.SERVICE.accessBundleId),
-        name: z.string().describe(AGENT_VAULT.SERVICE.accessBundleName)
-      })
-      .array()
-      .describe(AGENT_VAULT.SERVICE.accessBundles),
+    accessBundles: projectServiceAccessBundlesSchema,
     personalValues: AgentVaultPersonalValuesSchema.nullable().optional()
+  },
+  { optionalVariableReferences: true }
+);
+
+// The services list alone can answer on a user's behalf, so only it may leave fields out of personalValues.
+export const AgentVaultListedProjectServiceSchema = agentVaultServiceResponseSchema(
+  {
+    accessBundles: projectServiceAccessBundlesSchema,
+    personalValues: AgentVaultListedPersonalValuesSchema.nullable().optional()
   },
   { optionalVariableReferences: true }
 );
@@ -1720,6 +2107,85 @@ export const AgentVaultSkillUploadSchema = z.object({
     .describe(AGENT_VAULT.SKILL.files)
 });
 
+// A skill can hold 1 MB, and an agent gets every skill of its session in one response, which released CLIs and proxies
+// read up to 64 MB of. Its bundle's 25 skills, 20 more it lists by name and the 2 MB request its inline skills share stay under
+// that however large each skill is.
+export const AGENT_VAULT_MAX_SESSION_SKILLS = 20;
+
+const AgentVaultSessionSkillNameSchema = slugSchema({
+  max: AGENT_VAULT_SKILL_NAME_MAX_LENGTH,
+  field: "Skill"
+}).describe(JSON.stringify({ title: "Project skill", description: AGENT_VAULT.SESSION.skillName }));
+
+const AgentVaultSessionInlineSkillSchema = AgentVaultSkillUploadSchema.describe(
+  JSON.stringify({ title: "Inline skill", description: AGENT_VAULT.SESSION.inlineSkills })
+);
+
+export const AgentVaultSessionSkillsInputSchema = sessionEntriesSchema({
+  nameSchema: AgentVaultSessionSkillNameSchema,
+  inlineSchema: AgentVaultSessionInlineSkillSchema,
+  maxEntries: AGENT_VAULT_MAX_SESSION_SKILLS + AGENT_VAULT_MAX_SESSION_INLINE_SKILLS,
+  tooManyMessage: `A session can carry at most ${AGENT_VAULT_MAX_SESSION_SKILLS} of the project's skills and ${AGENT_VAULT_MAX_SESSION_INLINE_SKILLS} inline skills.`
+})
+  .superRefine((entries, ctx) => {
+    const listedSkillCount = entries.filter((entry) => typeof entry === "string").length;
+    if (listedSkillCount > AGENT_VAULT_MAX_SESSION_SKILLS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `A session can have at most ${AGENT_VAULT_MAX_SESSION_SKILLS} of the project's skills.`
+      });
+    }
+    if (entries.length - listedSkillCount > AGENT_VAULT_MAX_SESSION_INLINE_SKILLS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `A session can carry at most ${AGENT_VAULT_MAX_SESSION_INLINE_SKILLS} inline skills. Add the others to the project and list them by name instead.`
+      });
+    }
+    // Each skill installs as a folder of its name, so two by one name would overwrite each other. An inline skill's name
+    // is in its SKILL.md; one that doesn't parse is refused with the reason when the session validates its files.
+    const seen = new Set<string>();
+    entries.forEach((entry, index) => {
+      const name = typeof entry === "string" ? entry : skillNameOf(entry.files);
+      if (!name) return;
+      if (seen.has(name)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [index],
+          message: `More than one skill in this session is named "${name}". Give each a different name, or leave one out.`
+        });
+      }
+      seen.add(name);
+    });
+  })
+  .describe(AGENT_VAULT.SESSION.skills);
+
+const sessionSkillResponseBase = {
+  id: z.string().uuid().describe(AGENT_VAULT.SESSION.skillId),
+  name: z.string().describe(AGENT_VAULT.SESSION.skillNameRead),
+  description: z.string().describe(AGENT_VAULT.SESSION.skillDescription)
+};
+
+// A session's skills as read back. One it lists by name carries only what identifies it; an inline one also the
+// hash and size of the files it was sent with, never the files. isInline tells the two apart, which is also how the
+// response serializer picks the right shape for each.
+export const AgentVaultSessionSkillSchema = z.union([
+  z
+    .object({
+      ...sessionSkillResponseBase,
+      isInline: z.literal(false).describe(AGENT_VAULT.SESSION.skillIsInline)
+    })
+    .describe(JSON.stringify({ title: "Project skill" })),
+  z
+    .object({
+      ...sessionSkillResponseBase,
+      sha256: z.string().describe(AGENT_VAULT.SESSION.inlineSkillSha256),
+      sizeBytes: z.number().describe(AGENT_VAULT.SESSION.inlineSkillSizeBytes),
+      fileCount: z.number().describe(AGENT_VAULT.SESSION.inlineSkillFileCount),
+      isInline: z.literal(true).describe(AGENT_VAULT.SESSION.skillIsInline)
+    })
+    .describe(JSON.stringify({ title: "Inline skill" }))
+]);
+
 export const AgentVaultSkillUpdateSchema = AgentVaultSkillUploadSchema.extend({
   baseVersion: z.number().int().positive().optional().describe(AGENT_VAULT.SKILL.baseVersion)
 });
@@ -1787,3 +2253,66 @@ export const AgentVaultProjectIdSchema = z
   .max(36)
   .optional()
   .describe(AGENT_VAULT.projectId);
+
+type TVariableCreateShape = {
+  scope: AgentVaultVariableScope;
+  type: AgentVaultVariableType;
+  value?: string;
+  oauth?: unknown;
+  tokens?: unknown;
+  signIn?: unknown;
+};
+
+// The fields each type takes on create, checked together since `type` defaults to text and can't discriminate a union.
+const checkVariableCreateFields = (body: TVariableCreateShape, ctx: z.RefinementCtx) => {
+  const issue = (path: string, message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
+  if (body.type === AgentVaultVariableType.Text) {
+    if (body.value === undefined) issue("value", "A text variable needs a value.");
+    if (body.oauth !== undefined) issue("oauth", "Leave 'oauth' out of a text variable, or send type 'oauth'.");
+    if (body.tokens !== undefined) issue("tokens", "Only an OAuth variable takes tokens. Send type 'oauth'.");
+    if (body.signIn !== undefined) issue("signIn", "Only an OAuth variable can be signed in to. Send type 'oauth'.");
+    return;
+  }
+  if (body.tokens !== undefined && body.signIn !== undefined) {
+    issue("signIn", "Send either 'tokens' to import or 'signIn' to start a sign-in, not both.");
+  }
+  if (body.scope !== AgentVaultVariableScope.Global) {
+    issue("scope", "OAuth variables can only be global. Create it with scope 'global'.");
+  }
+  if (body.value !== undefined) {
+    issue("value", "Leave 'value' out of an OAuth variable. It gets its tokens from a sign-in or a token import.");
+  }
+  if (body.oauth === undefined) issue("oauth", "An OAuth variable needs its provider settings in 'oauth'.");
+};
+
+export const AgentVaultCreateVariableBodySchema = z
+  .object({
+    projectId: AgentVaultProjectIdSchema,
+    scope: z.nativeEnum(AgentVaultVariableScope).describe(AGENT_VAULT.VARIABLE.createScope),
+    key: AgentVaultVariableKeySchema.describe(AGENT_VAULT.VARIABLE.key),
+    type: z
+      .nativeEnum(AgentVaultVariableType)
+      .default(AgentVaultVariableType.Text)
+      .describe(AGENT_VAULT.VARIABLE.createType),
+    value: AgentVaultVariableValueSchema.optional().describe(AGENT_VAULT.VARIABLE.createValue),
+    oauth: AgentVaultOauthVariableSettingsSchema.optional(),
+    tokens: AgentVaultOauthVariableTokensSchema.optional().describe(AGENT_VAULT.VARIABLE.tokens),
+    signIn: AgentVaultOauthVariableSignInBodySchema.optional().describe(AGENT_VAULT.VARIABLE.signIn)
+  })
+  .superRefine(checkVariableCreateFields);
+
+export const AgentVaultUpdateVariableBodySchema = z
+  .object({
+    key: AgentVaultVariableKeySchema.optional().describe(AGENT_VAULT.VARIABLE.key),
+    value: AgentVaultVariableValueSchema.nullable().optional().describe(AGENT_VAULT.VARIABLE.updateValue),
+    oauth: AgentVaultOauthVariableSettingsUpdateSchema.optional(),
+    tokens: AgentVaultOauthVariableTokensSchema.optional().describe(AGENT_VAULT.VARIABLE.tokens)
+  })
+  .refine(
+    (body) => Object.values(body).some((value) => value !== undefined),
+    "Provide 'key', 'value', 'oauth' or 'tokens' to update"
+  )
+  .refine((body) => !(body.tokens && body.value === null), {
+    message: "Send either 'tokens' to replace the variable's tokens or 'value' as null to disconnect it, not both.",
+    path: ["tokens"]
+  });

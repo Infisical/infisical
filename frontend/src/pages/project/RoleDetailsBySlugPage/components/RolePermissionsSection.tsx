@@ -287,6 +287,11 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                     .filter(
                       (subject) => ProjectTypePermissionSubjects[currentProject.type][subject]
                     )
+                    .sort((a, b) =>
+                      PROJECT_PERMISSION_OBJECT[a].title.localeCompare(
+                        PROJECT_PERMISSION_OBJECT[b].title
+                      )
+                    )
                     .map((subject) => (
                       <GeneralPermissionPolicies
                         subject={subject}

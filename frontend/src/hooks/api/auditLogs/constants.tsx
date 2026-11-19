@@ -290,6 +290,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.LIST_PKI_SUBSCRIBER_CERTS]: "List PKI subscriber certificates",
 
   [EventType.UPDATE_ORG]: "Update Organization",
+  [EventType.UPDATE_ORG_AI_CONFIG]: "Update Organization AI Features",
   [EventType.ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING]: "Enable Org-Wide Secret Value Tracking",
   [EventType.CREATE_PROJECT]: "Create Project",
   [EventType.UPDATE_PROJECT]: "Update Project",
@@ -495,6 +496,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.AGENT_VAULT_VARIABLE_UPDATE]: "Update variable",
   [EventType.AGENT_VAULT_VARIABLE_DELETE]: "Delete variable",
   [EventType.AGENT_VAULT_VARIABLE_VALUE_VIEW]: "View variable value",
+  [EventType.AGENT_VAULT_OAUTH_VARIABLE_CONNECT]: "Connect OAuth variable",
   [EventType.AGENT_VAULT_PERSONAL_VALUES_SET]: "Set personal values",
   [EventType.AGENT_VAULT_PERSONAL_VALUES_DELETE]: "Remove personal values",
   [EventType.AGENT_VAULT_SKILL_CREATE]: "Create skill",
@@ -594,6 +596,7 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.AGENT_VAULT_VARIABLE_UPDATE,
     EventType.AGENT_VAULT_VARIABLE_DELETE,
     EventType.AGENT_VAULT_VARIABLE_VALUE_VIEW,
+    EventType.AGENT_VAULT_OAUTH_VARIABLE_CONNECT,
     EventType.AGENT_VAULT_PERSONAL_VALUES_SET,
     EventType.AGENT_VAULT_PERSONAL_VALUES_DELETE,
     EventType.AGENT_VAULT_SKILL_CREATE,

@@ -111,7 +111,7 @@ const expectRejected = async <T, E extends Error>(
 describe("tokenServiceFactory — email signup OTP", () => {
   beforeAll(async () => {
     process.env.FIPS_ENABLED = "false";
-    await crypto.initialize({} as never, {} as never, {} as never);
+    await crypto.initialize({} as never);
   });
 
   afterAll(() => {

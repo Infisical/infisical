@@ -284,6 +284,7 @@ export enum EventType {
   AUTOMATED_RENEW_SUBSCRIBER_CERT = "automated-renew-subscriber-cert",
   LIST_PKI_SUBSCRIBER_CERTS = "list-pki-subscriber-certs",
   UPDATE_ORG = "update-org",
+  UPDATE_ORG_AI_CONFIG = "update-org-ai-config",
   ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING = "enable-org-wide-secret-value-tracking",
 
   CREATE_PROJECT = "create-project",
@@ -492,6 +493,7 @@ export enum EventType {
   AGENT_VAULT_VARIABLE_UPDATE = "agent-vault-variable-update",
   AGENT_VAULT_VARIABLE_DELETE = "agent-vault-variable-delete",
   AGENT_VAULT_VARIABLE_VALUE_VIEW = "agent-vault-variable-value-view",
+  AGENT_VAULT_OAUTH_VARIABLE_CONNECT = "agent-vault-oauth-variable-connect",
   AGENT_VAULT_PERSONAL_VALUES_SET = "agent-vault-personal-values-set",
   AGENT_VAULT_PERSONAL_VALUES_DELETE = "agent-vault-personal-values-delete",
   AGENT_VAULT_SKILL_CREATE = "agent-vault-skill-create",

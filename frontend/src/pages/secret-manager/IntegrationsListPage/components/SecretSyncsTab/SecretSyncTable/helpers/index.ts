@@ -185,7 +185,13 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       break;
     case SecretSync.CloudflareWorkers:
       primaryText = destinationConfig.scriptId;
-      secondaryText = "Script ID";
+      secondaryText = destinationConfig.previewName
+        ? `Preview: ${destinationConfig.previewName}`
+        : "Script ID";
+      break;
+    case SecretSync.Convex:
+      primaryText = destinationConfig.deploymentName;
+      secondaryText = "Convex Deployment";
       break;
     case SecretSync.CloudflareSecretsStore:
       primaryText = destinationConfig.storeName || destinationConfig.storeId;

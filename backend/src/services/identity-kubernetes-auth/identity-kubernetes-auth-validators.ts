@@ -1,6 +1,7 @@
 import { AxiosError, AxiosResponse } from "axios";
 import { z } from "zod";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { TEMPLATE_VALIDATION_MESSAGES } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -175,7 +176,7 @@ export const validateKubernetesHostConnectivity = async ({
 
     logger.info(logContext, "Kubernetes host connectivity validated successfully");
   } catch (err) {
-    if (err instanceof BadRequestError) {
+    if (err instanceof BadRequestError || err instanceof RuleViolationError) {
       throw err;
     }
 
@@ -312,7 +313,7 @@ export const validateTokenReviewerPermissions = async ({
       message: `Unexpected response from Kubernetes API: ${response.status} - ${errorMessage}`
     });
   } catch (err) {
-    if (err instanceof BadRequestError) {
+    if (err instanceof BadRequestError || err instanceof RuleViolationError) {
       throw err;
     }
 

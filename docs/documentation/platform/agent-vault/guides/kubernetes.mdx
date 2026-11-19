@@ -44,7 +44,7 @@ You need an orchestrator: a program that starts each agent run. It can be a scri
 
 For each agent run, your orchestrator does the following:
 
-1. Creates a session for the run with the [Infisical API](/documentation/platform/agent-vault/sessions-api)
+1. Creates a session for the run with the [Infisical API](/documentation/platform/agent-vault/create-a-session#create-a-session-with-the-api)
 2. Starts the agent's pod with the session token
 3. Revokes the session and deletes the pod when the agent finishes
 
@@ -100,7 +100,7 @@ An isolation level limits what a process can reach after it escapes its containe
   <Card title="Set up on Kubernetes" icon="ship" href="/documentation/platform/agent-vault/guides/kubernetes-setup">
     Deploy the proxy, lock agent pods to it, and start an agent with its own session.
   </Card>
-  <Card title="Create sessions with the API" icon="code" href="/documentation/platform/agent-vault/sessions-api">
+  <Card title="Create a session" icon="plus" href="/documentation/platform/agent-vault/create-a-session">
     Create and revoke a session for each agent run from your orchestrator.
   </Card>
 </CardGroup>

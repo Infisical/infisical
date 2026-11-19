@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { TAgentVaultCredentialSummary } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-types";
 import {
   AgentVaultCredentialType,
   AgentVaultVariableReferenceField
@@ -28,6 +29,7 @@ import {
   agentVaultListQuery,
   AgentVaultPersonalValueInputSchema,
   AgentVaultPersonalValuesSchema,
+  AgentVaultListedProjectServiceSchema,
   AgentVaultProjectIdSchema,
   AgentVaultProjectServiceSchema,
   AgentVaultUpdateServiceBodySchema
@@ -48,6 +50,16 @@ const variableKeysOf = (service: { variableReferences?: { key: string }[] }) => 
   ...new Set((service.variableReferences ?? []).map((reference) => reference.key))
 ];
 
+// What an audit event says about an OAuth credential: the variable whose sign-in it sends, or the issuer and scopes of
+// the service's own. An OAuth variable's issuer and scopes are recorded on the variable's events instead.
+const oauthAuditFieldsOf = (credential: TAgentVaultCredentialSummary) => {
+  if (credential.type !== AgentVaultCredentialType.OAuth) return {};
+  if (credential.source === "variable") {
+    return credential.variable ? { oauthVariable: { id: credential.variable.id, key: credential.variable.key } } : {};
+  }
+  return { oauthIssuer: credential.issuer, oauthScopes: credential.grantedScopes };
+};
+
 // A project's services, which access bundles hold through links, like skills. Personal values hang off the service,
 // since a member sets them once however many bundles give them the service.
 export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider) => {
@@ -61,35 +73,60 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
       description:
         "List the services in an Agent Vault project and the access bundles each is in. A member sees only the services in access bundles they have been granted.",
       tags: [ApiDocsTags.AgentVaultServices],
-      querystring: z.object({
-        projectId: AgentVaultProjectIdSchema,
-        requiresSetup: z
-          .enum(["true", "false"])
-          .transform((value) => value === "true")
-          .optional()
-          .describe(AGENT_VAULT.SERVICE.requiresSetup),
-        // Only true: false would read like "only the ones I reach as an admin", which the list doesn't do.
-        granted: z
-          .literal("true")
-          .transform(() => true)
-          .optional()
-          .describe(AGENT_VAULT.SERVICE.granted),
-        orderBy: z.enum(["name", "type", "createdAt"]).default("name").describe(AGENT_VAULT.SERVICE.orderBy),
-        orderDirection: z.enum(["asc", "desc"]).default("asc").describe(AGENT_VAULT.SERVICE.orderDirection),
-        ...agentVaultListQuery(AGENT_VAULT.SERVICE)
-      }),
+      querystring: z
+        .object({
+          projectId: AgentVaultProjectIdSchema,
+          requiresSetup: z
+            .enum(["true", "false"])
+            .transform((value) => value === "true")
+            .optional()
+            .describe(AGENT_VAULT.SERVICE.requiresSetup),
+          // Only true: false would read like "only the ones I reach as an admin", which the list doesn't do.
+          granted: z
+            .literal("true")
+            .transform(() => true)
+            .optional()
+            .describe(AGENT_VAULT.SERVICE.granted),
+          onBehalfOfUserId: z.string().uuid().optional().describe(AGENT_VAULT.SERVICE.onBehalfOfUserId),
+          onBehalfOfUserEmail: z
+            .string()
+            .trim()
+            .toLowerCase()
+            .email()
+            .max(255)
+            .optional()
+            .describe(AGENT_VAULT.SERVICE.onBehalfOfUserEmail),
+          orderBy: z.enum(["name", "type", "createdAt"]).default("name").describe(AGENT_VAULT.SERVICE.orderBy),
+          orderDirection: z.enum(["asc", "desc"]).default("asc").describe(AGENT_VAULT.SERVICE.orderDirection),
+          ...agentVaultListQuery(AGENT_VAULT.SERVICE)
+        })
+        .refine((query) => !(query.onBehalfOfUserId && query.onBehalfOfUserEmail), {
+          message: "Name the user by onBehalfOfUserId or by onBehalfOfUserEmail, not both"
+        })
+        .refine((query) => query.granted === undefined || !(query.onBehalfOfUserId || query.onBehalfOfUserEmail), {
+          message:
+            "granted filters your own services, so it can't be combined with onBehalfOfUserId or onBehalfOfUserEmail"
+        }),
       response: {
         200: z.object({
-          services: AgentVaultProjectServiceSchema.array(),
+          services: AgentVaultListedProjectServiceSchema.array(),
           totalCount: z.number().describe(AGENT_VAULT.SERVICE.totalCount)
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { projectId: requestedProjectId, ...query } = req.query;
+      const { projectId: requestedProjectId, onBehalfOfUserId, onBehalfOfUserEmail, ...query } = req.query;
       const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
-      return server.services.agentVaultAccessBundle.listServices({ projectId, ctx: actorContext(req), ...query });
+      return server.services.agentVaultAccessBundle.listServices({
+        projectId,
+        ctx: actorContext(req),
+        ...query,
+        onBehalfOf:
+          onBehalfOfUserId || onBehalfOfUserEmail
+            ? { userId: onBehalfOfUserId, userEmail: onBehalfOfUserEmail }
+            : undefined
+      });
     }
   });
 
@@ -176,10 +213,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
               service.credential.type === AgentVaultCredentialType.Bearer ? service.credential.headerName : undefined,
             headerPrefix:
               service.credential.type === AgentVaultCredentialType.Bearer ? service.credential.headerPrefix : undefined,
-            oauthIssuer:
-              service.credential.type === AgentVaultCredentialType.OAuth ? service.credential.issuer : undefined,
-            oauthScopes:
-              service.credential.type === AgentVaultCredentialType.OAuth ? service.credential.grantedScopes : undefined,
+            ...oauthAuditFieldsOf(service.credential),
             memberProvidedFields:
               service.credential.type === AgentVaultCredentialType.Passthrough ||
               service.credential.type === AgentVaultCredentialType.SshKey
@@ -244,8 +278,9 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
           serviceId: req.params.serviceId,
           ...req.body
         });
-      const isOauthAuthorized =
-        req.body.credential?.type === AgentVaultCredentialType.OAuth && Boolean(req.body.credential.authorizationId);
+      const isOauthConnected =
+        req.body.credential?.type === AgentVaultCredentialType.OAuth &&
+        Boolean(req.body.credential.authorizationId || req.body.credential.variable);
       const serviceTypeFields = serviceTypeReportFieldsOf(service);
       const transformationNames = serviceTransformationNamesOf(service);
 
@@ -284,14 +319,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
               req.body.credential?.type === AgentVaultCredentialType.Bearer
                 ? req.body.credential.headerPrefix
                 : undefined,
-            oauthIssuer:
-              isOauthAuthorized && service.credential.type === AgentVaultCredentialType.OAuth
-                ? service.credential.issuer
-                : undefined,
-            oauthScopes:
-              isOauthAuthorized && service.credential.type === AgentVaultCredentialType.OAuth
-                ? service.credential.grantedScopes
-                : undefined,
+            ...(isOauthConnected ? oauthAuditFieldsOf(service.credential) : {}),
             ...pick(update, SERVICE_RULE_AUDIT_FIELDS),
             // The setting after the update, present whenever the update touched the credential.
             memberProvidedFields:

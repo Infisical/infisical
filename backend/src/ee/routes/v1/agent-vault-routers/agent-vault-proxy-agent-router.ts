@@ -26,7 +26,8 @@ import {
   agentVaultCredentialRefreshLimit,
   agentVaultHeartbeatLimit,
   agentVaultResolveLimit,
-  agentVaultSessionLogChunkLimit
+  agentVaultSessionLogChunkLimit,
+  agentVaultUsageLimit
 } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -126,6 +127,37 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
 
   server.route({
     method: "POST",
+    url: "/usage",
+    config: { rateLimit: agentVaultUsageLimit },
+    schema: {
+      hide: true,
+      operationId: "reportAgentVaultProxyUsage",
+      description: "Report how many requests a proxy brokered since its last report",
+      tags: [ApiDocsTags.AgentVaultProxies],
+      body: z.object({
+        reportId: z.string().uuid().describe(AGENT_VAULT.USAGE.reportId),
+        endedAt: z.coerce.date().describe(AGENT_VAULT.USAGE.endedAt),
+        brokered: z.number().int().min(0).max(1_000_000).describe(AGENT_VAULT.USAGE.brokered)
+      }),
+      response: { 204: z.string().length(0) }
+    },
+    onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
+    handler: async (req, res) => {
+      if (req.auth.authMode !== AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN) {
+        throw new UnauthorizedError({ message: "A proxy token is required" });
+      }
+      const crossings = await server.services.agentVaultUsageService.recordProxyUsage({
+        orgId: req.permission.orgId,
+        ...req.body
+      });
+      // Not awaited: the proxy's report is recorded either way, and a notice must never slow or fail it.
+      void server.services.agentVaultFreeUsageNotice.notify(crossings);
+      return res.status(204).send("");
+    }
+  });
+
+  server.route({
+    method: "POST",
     url: "/heartbeat",
     config: { rateLimit: agentVaultHeartbeatLimit },
     schema: {
@@ -214,6 +246,12 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
                 .object({ placeholder: z.string(), surfaces: z.string().array(), value: z.string() })
                 .array(),
               personalValuesMissing: z.boolean(),
+              // The OAuth variable a session's own service used was deleted. Always with personalValuesMissing, which
+              // older proxies refuse on.
+              credentialRemoved: z.boolean().optional(),
+              // The OAuth variable the service sends isn't signed in. Always with personalValuesMissing, like
+              // credentialRemoved.
+              credentialNotConnected: z.boolean().optional(),
               // Proxies use it to tell the agent that a rejected credential is the member's own to fix.
               memberProvided: z.boolean(),
               // The bundle the service came from. Null for a service sent with the session.

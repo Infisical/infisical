@@ -1,4 +1,5 @@
 import { TDbClient } from "@app/db";
+import { poolStoreConnection } from "@app/domains/lib/data-access";
 import { Meter, TUsageCounter } from "@app/domains/platform/license/ce/module";
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 
@@ -20,7 +21,7 @@ export class CertManagerModule {
   readonly usageCounters: TUsageCounter[];
 
   constructor({ db, organizationsProjectsService }: TCertManagerDeps) {
-    const certificateUsageStore = new CertificateUsageStore(db);
+    const certificateUsageStore = new CertificateUsageStore(poolStoreConnection(db));
     this.certManagerService = new CertManagerService(certificateUsageStore, organizationsProjectsService);
 
     this.usageCounters = [
