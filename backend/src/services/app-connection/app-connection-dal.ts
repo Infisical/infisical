@@ -18,8 +18,8 @@ export type TAppConnectionDALFactory = ReturnType<typeof appConnectionDALFactory
 
 type AppConnectionFindFilter = Parameters<typeof buildFindFilter<TAppConnections>>[0];
 
-// Every query on app_connections goes through these, so the rest of the code only sees AppConnection values (see
-// app-connection-stored-app.ts)
+// Every query on app_connections goes through these, so the rest of the code only sees AppConnection values. Temporary:
+// they go away with app-connection-stored-app.ts, which says when it can be removed
 const withStoredAppFilter = <T extends AppConnectionFindFilter>(filter: T): T => {
   const { app, $in, ...rest } = filter;
   const apps = [...(app ? [app] : []), ...($in?.app ?? [])];

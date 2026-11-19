@@ -275,7 +275,7 @@ insertMany([{ name, role: "member", orgId }]); // TS2353
 
 See `src/services/secret/secret-dal.ts` for a DAL that overrides the base `update` to auto-increment version and adds complex join queries.
 
-**`app_connections.app` can hold a legacy value.** Redfish connections are stored as `hpe-ilo` (or `redfish` after a later migration) so a rollback can still read them. Query the table through `appConnectionDAL`, which converts both ways; a query in another DAL that selects `app` from a join must pass it through `fromStoredAppConnectionApp` (`src/services/app-connection/app-connection-stored-app.ts`), or that connection fails response validation.
+**`app_connections.app` can hold a legacy value (temporary, Redfish rename only).** Redfish connections are stored as `hpe-ilo` (or `redfish` after a later migration) so a rollback can still read them. Query the table through `appConnectionDAL`, which converts both ways; a query in another DAL that selects `app` from a join must pass it through `fromStoredAppConnectionApp` (`src/services/app-connection/app-connection-stored-app.ts`), or that connection fails response validation.
 
 ### Service Module Structure
 
