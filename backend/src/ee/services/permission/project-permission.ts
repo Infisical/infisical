@@ -317,7 +317,8 @@ export enum ProjectPermissionAgentVaultSessionActions {
   ReadAny = "read-any",
   EditAny = "edit-any",
   RevokeAny = "revoke-any",
-  CreateWithInlineServices = "create-with-inline-services"
+  CreateWithInlineServices = "create-with-inline-services",
+  CreateWithInlineHook = "create-with-inline-hook"
 }
 
 // Global variables only. A personal variable belongs to the actor who saved it, and no permission reaches another's.
@@ -340,6 +341,13 @@ export enum ProjectPermissionAgentVaultProxyActions {
 }
 
 export enum ProjectPermissionAgentVaultSkillActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
+export enum ProjectPermissionAgentVaultHookActions {
   Read = "read",
   Create = "create",
   Edit = "edit",
@@ -427,6 +435,7 @@ export enum ProjectPermissionSub {
   AgentVaultProxies = "agent-vault-proxies",
   AgentVaultSkills = "agent-vault-skills",
   AgentVaultVariables = "agent-vault-variables",
+  AgentVaultHooks = "agent-vault-hooks",
   Insights = "insights"
 }
 
@@ -751,6 +760,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionAgentVaultProxyActions, ProjectPermissionSub.AgentVaultProxies]
   | [ProjectPermissionAgentVaultSkillActions, ProjectPermissionSub.AgentVaultSkills]
   | [ProjectPermissionAgentVaultVariableActions, ProjectPermissionSub.AgentVaultVariables]
+  | [ProjectPermissionAgentVaultHookActions, ProjectPermissionSub.AgentVaultHooks]
   | [
       ProjectPermissionCertificateProfileActions,
       (
@@ -1716,6 +1726,13 @@ const GeneralPermissionSchema = [
     subject: z.literal(ProjectPermissionSub.AgentVaultVariables).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAgentVaultVariableActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.AgentVaultHooks).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAgentVaultHookActions).describe(
       "Describe what action an entity can take."
     )
   }),

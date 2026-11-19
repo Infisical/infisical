@@ -17,6 +17,7 @@ import { buildProjectPermissionRules, resolveResourceRoleRules } from "./permiss
 import {
   ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultHookActions,
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultSkillActions,
@@ -45,12 +46,18 @@ const replacedRoleChecks = (ability: ReturnType<typeof abilityFor>) =>
       ProjectPermissionAgentVaultSessionActions.ReadAny,
       ProjectPermissionAgentVaultSessionActions.EditAny,
       ProjectPermissionAgentVaultSessionActions.RevokeAny,
-      ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices
+      ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
+      ProjectPermissionAgentVaultSessionActions.CreateWithInlineHook
     ].map((action) => [`sessions ${action}`, ability.can(action, ProjectPermissionSub.AgentVaultSessions)]),
     ...Object.values(ProjectPermissionAgentVaultVariableActions).map((action) => [
       `variables ${action}`,
       ability.can(action, ProjectPermissionSub.AgentVaultVariables)
     ]),
+    ...[
+      ProjectPermissionAgentVaultHookActions.Create,
+      ProjectPermissionAgentVaultHookActions.Edit,
+      ProjectPermissionAgentVaultHookActions.Delete
+    ].map((action) => [`hooks ${action}`, ability.can(action, ProjectPermissionSub.AgentVaultHooks)]),
     ["settings read", ability.can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings)],
     ["settings edit", ability.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings)],
     ["proxies edit", ability.can(ProjectPermissionAgentVaultProxyActions.Edit, ProjectPermissionSub.AgentVaultProxies)],
@@ -150,6 +157,7 @@ describe("agent vault project roles", () => {
     expect(member.can(ProjectPermissionAgentVaultSkillActions.Delete, ProjectPermissionSub.AgentVaultSkills)).toBe(
       false
     );
+    expect(member.can(ProjectPermissionAgentVaultHookActions.Read, ProjectPermissionSub.AgentVaultHooks)).toBe(true);
 
     expect(member.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member)).toBe(false);
     expect(member.can(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups)).toBe(false);

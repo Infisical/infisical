@@ -3,6 +3,7 @@ import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability"
 import {
   ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultHookActions,
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultSkillActions,
@@ -823,7 +824,8 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
       ProjectPermissionAgentVaultSessionActions.ReadAny,
       ProjectPermissionAgentVaultSessionActions.EditAny,
       ProjectPermissionAgentVaultSessionActions.RevokeAny,
-      ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices
+      ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
+      ProjectPermissionAgentVaultSessionActions.CreateWithInlineHook
     ],
     ProjectPermissionSub.AgentVaultSessions
   );
@@ -859,6 +861,16 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
       ProjectPermissionAgentVaultVariableActions.ReadValue
     ],
     ProjectPermissionSub.AgentVaultVariables
+  );
+
+  can(
+    [
+      ProjectPermissionAgentVaultHookActions.Read,
+      ProjectPermissionAgentVaultHookActions.Create,
+      ProjectPermissionAgentVaultHookActions.Edit,
+      ProjectPermissionAgentVaultHookActions.Delete
+    ],
+    ProjectPermissionSub.AgentVaultHooks
   );
 
   can(
@@ -953,6 +965,7 @@ const buildAgentVaultProjectMemberPermissionRules = () => {
   );
   can([ProjectPermissionAgentVaultProxyActions.Read], ProjectPermissionSub.AgentVaultProxies);
   can([ProjectPermissionAgentVaultSkillActions.Read], ProjectPermissionSub.AgentVaultSkills);
+  can([ProjectPermissionAgentVaultHookActions.Read], ProjectPermissionSub.AgentVaultHooks);
 
   return rules;
 };

@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { BanIcon, BotIcon, PackageIcon, PencilIcon, UserIcon } from "lucide-react";
+import { BanIcon, BotIcon, PackageIcon, PencilIcon, UserIcon, WebhookIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { describeHookRule } from "@app/components/agent-vault/hooks/hookSchema";
 import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
 import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
@@ -29,7 +30,7 @@ import {
 import { useOrganization, useProject, useProjectPermission, useUser } from "@app/context";
 import { canActOnAgentVaultSession } from "@app/helpers/agentVaultPermissions";
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
-import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultSession, TAgentVaultSessionHook } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
 import {
@@ -60,6 +61,38 @@ const moreButton = (count: number) => (
     <span className="underline decoration-dotted underline-offset-2">{`+${count} more`}</span>
   </button>
 );
+
+// URL and rules come back only for a caller who can read hooks, so the tooltip shows only what was returned.
+const SessionHookValue = ({ hook }: { hook: TAgentVaultSessionHook }) => {
+  const label = (
+    <span className="flex min-w-0 items-center gap-2">
+      <WebhookIcon className="size-4 shrink-0 text-muted" />
+      <span className="truncate">{hook.name ?? "Inline hook"}</span>
+    </span>
+  );
+  if (!hook.url) return label;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{label}</TooltipTrigger>
+      <TooltipContent className="max-w-sm">
+        <span className="block break-all">{hook.url}</span>
+        {hook.rules && (
+          <ul className="mt-1 flex flex-col gap-0.5 text-muted">
+            {hook.rules.length ? (
+              hook.rules.map((rule) => (
+                <li key={describeHookRule(rule)} className="break-all">
+                  {describeHookRule(rule)}
+                </li>
+              ))
+            ) : (
+              <li>All traffic</li>
+            )}
+          </ul>
+        )}
+      </TooltipContent>
+    </Tooltip>
+  );
+};
 
 type Props = {
   session: TAgentVaultSession | undefined;
@@ -261,11 +294,6 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                               <TooltipContent className="max-w-sm">
                                 Sent with this session when it was created, for{" "}
                                 {inlineServiceTarget(service)}
-                                {service.hook && (
-                                  <span className="block break-all">
-                                    Calls the hook at {service.hook.url} first.
-                                  </span>
-                                )}
                               </TooltipContent>
                             </Tooltip>
                           ))}
@@ -276,6 +304,14 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                               {moreButton(moreServices.length)}
                             </ServicesHoverCard>
                           )}
+                        </DetailValue>
+                      </Detail>
+                    )}
+                    {session.hook && (
+                      <Detail className="min-w-0">
+                        <DetailLabel>Hook</DetailLabel>
+                        <DetailValue className="flex min-w-0">
+                          <SessionHookValue hook={session.hook} />
                         </DetailValue>
                       </Detail>
                     )}

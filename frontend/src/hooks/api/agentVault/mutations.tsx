@@ -26,6 +26,7 @@ import {
   TAgentVaultProjectService,
   TAgentVaultSession,
   TAgentVaultSessionLogSettingsState,
+  TAgentVaultHook,
   TAgentVaultSkillSummary,
   TAgentVaultSkillVersion,
   TAgentVaultSkippedBundleItem,
@@ -40,6 +41,7 @@ import {
   TCreateAgentVaultProxyDTO,
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
+  TCreateAgentVaultHookDTO,
   TCreateAgentVaultSkillDTO,
   TCreateAgentVaultVariableDTO,
   TDeleteAgentVaultPersonalValuesDTO,
@@ -52,6 +54,7 @@ import {
   TUpdateAgentVaultServiceDTO,
   TUpdateAgentVaultSessionDTO,
   TUpdateAgentVaultSessionLogSettingsDTO,
+  TUpdateAgentVaultHookDTO,
   TUpdateAgentVaultSkillDTO,
   TUpdateAgentVaultVariableDTO
 } from "./types";
@@ -974,5 +977,68 @@ export const useRemoveAgentVaultAccessBundleSkill = (projectId: string) => {
         accessBundleId,
         skillIds: [skillId]
       })
+  });
+};
+
+// Sessions are refetched too: they show the hook they run with, and an edit or delete reaches them live.
+const invalidateHookChange = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string,
+  projectId: string
+) =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.hooks(orgId, projectId) }),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(orgId, projectId) })
+  ]);
+
+export const useCreateAgentVaultHook = (projectId: string) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: TCreateAgentVaultHookDTO) => {
+      const { data } = await apiRequest.post<{ hook: TAgentVaultHook }>(
+        "/api/v1/agent-vault/hooks",
+        { ...params, projectId }
+      );
+      return data.hook;
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.hooks(currentOrg.id, projectId) })
+  });
+};
+
+export const useUpdateAgentVaultHook = (projectId: string) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ hookId, ...params }: TUpdateAgentVaultHookDTO) => {
+      const { data } = await apiRequest.patch<{ hook: TAgentVaultHook }>(
+        `/api/v1/agent-vault/hooks/${hookId}`,
+        params
+      );
+      return data.hook;
+    },
+    onSuccess: () => invalidateHookChange(queryClient, currentOrg.id, projectId)
+  });
+};
+
+export const useDeleteAgentVaultHook = (projectId: string) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (hookId: string) => {
+      const { data } = await apiRequest.delete<{ hook: TAgentVaultHook }>(
+        `/api/v1/agent-vault/hooks/${hookId}`
+      );
+      return data.hook;
+    },
+    // Dropped rather than invalidated, which would refetch it only to get a 404.
+    onSuccess: (_, hookId) => {
+      queryClient.removeQueries({
+        queryKey: agentVaultKeys.hook(currentOrg.id, projectId, hookId),
+        type: "inactive"
+      });
+      return invalidateHookChange(queryClient, currentOrg.id, projectId);
+    }
   });
 };

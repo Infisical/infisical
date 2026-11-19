@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
-import { TriangleAlertIcon } from "lucide-react";
+import { TriangleAlertIcon, WebhookIcon } from "lucide-react";
 import ms from "ms";
 import { z } from "zod";
 
+import { useHookCreation } from "@app/components/agent-vault/hooks/useHookCreation";
 import { PersonalValuesDialog } from "@app/components/agent-vault/PersonalValuesDialog";
 import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
@@ -27,15 +28,23 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import {
+  ProjectPermissionAgentVaultHookActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
   useGetAgentVaultAccessBundle,
+  useListAgentVaultHooks,
   useListAgentVaultServices,
   useListAllAgentVaultServicesRequiringSetup
 } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultAccessBundleListItem,
+  TAgentVaultHook,
   TAgentVaultProjectService,
   TAgentVaultService
 } from "@app/hooks/api/agentVault/types";
@@ -60,6 +69,7 @@ const DEFAULT_TTL_PRESET = "7d";
 // The most of the project's services the API takes on one session.
 const MAX_NAMED_SERVICES = 50;
 const SERVICE_PICKER_LIMIT = 50;
+const HOOK_PICKER_LIMIT = 50;
 
 const MIN_TTL_MS = 60 * 1000;
 // Mirrors the API's ceiling: past it the expiry overflows and the request fails with a 500.
@@ -82,6 +92,7 @@ const getCustomTtlError = (value: string) => {
 const schema = z
   .object({
     services: z.custom<TAgentVaultProjectService[]>(),
+    hook: z.custom<TAgentVaultHook | null>(),
     label: sessionLabelSchema,
     metadata: sessionMetadataRowsSchema,
     ttlPreset: z.string(),
@@ -110,6 +121,7 @@ export type TDashboardSessionInput = {
   metadata?: Record<string, string>;
   ttl: string;
   services: string[];
+  hookId?: string;
 };
 
 // The API's refusals of a service the session names: one that shares a host with another service in the session, or
@@ -133,6 +145,7 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
     resolver: zodResolver(schema),
     defaultValues: {
       services: [],
+      hook: null,
       label: "",
       metadata: [],
       ttlPreset: DEFAULT_TTL_PRESET,
@@ -162,6 +175,23 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
       orderDirection: "asc",
       limit: SERVICE_PICKER_LIMIT
     }
+  );
+
+  // Starting a session with a saved hook takes Read on hooks.
+  const { permission } = useProjectPermission();
+  const canPickHook = permission.can(
+    ProjectPermissionAgentVaultHookActions.Read,
+    ProjectPermissionSub.AgentVaultHooks
+  );
+  const [hookSearch, setHookSearch] = useState("");
+  const [debouncedHookSearch] = useDebounce(hookSearch);
+  const { data: hookPage, isFetching: isSearchingHooks } = useListAgentVaultHooks(
+    projectId,
+    { search: debouncedHookSearch.trim() || undefined, limit: HOOK_PICKER_LIMIT },
+    { enabled: canPickHook }
+  );
+  const hookCreation = useHookCreation((hook) =>
+    formMethods.setValue("hook", hook, { shouldDirty: true })
   );
 
   const { data: bundleDetails } = useGetAgentVaultAccessBundle(projectId, accessBundle?.id ?? "");
@@ -194,7 +224,7 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
     <form
       id={formId}
       onSubmit={handleSubmit(
-        async ({ services, label, metadata, ttlPreset: preset, customTtl }) => {
+        async ({ services, hook, label, metadata, ttlPreset: preset, customTtl }) => {
           // The bundle is picked outside this form, so this check can't live in the schema.
           if (!accessBundle && !services.length) {
             setError("services", {
@@ -206,6 +236,7 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
           const metadataRecord = metadataRowsToRecord(metadata);
           const result = await onSubmit({
             services: services.map((service) => service.name),
+            hookId: hook?.id,
             label: label || undefined,
             metadata: Object.keys(metadataRecord).length > 0 ? metadataRecord : undefined,
             ttl: preset === CUSTOM_TTL ? customTtl.trim() : preset
@@ -263,6 +294,57 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
           </Field>
         )}
       />
+      {canPickHook && (
+        <Controller
+          control={control}
+          name="hook"
+          render={({ field }) => (
+            <Field>
+              <FieldLabel htmlFor="agent-vault-session-hook">
+                Hook <span className="text-muted">(optional)</span>
+              </FieldLabel>
+              <FieldContent>
+                <Combobox<TAgentVaultHook>
+                  id="agent-vault-session-hook"
+                  options={hookPage?.hooks ?? []}
+                  value={field.value}
+                  shouldFilter={false}
+                  isLoading={isSearchingHooks}
+                  includeMissingSelectedOptions
+                  onInputValueChange={setHookSearch}
+                  getOptionValue={(hook) => hook.id}
+                  getOptionLabel={(hook) => hook.name}
+                  renderOption={(hook) => (
+                    <span className="flex min-w-0 items-center gap-2">
+                      <WebhookIcon className="size-4 shrink-0 text-muted" />
+                      <span className="flex min-w-0 flex-col">
+                        <span className="truncate text-sm">{hook.name}</span>
+                        <span className="truncate text-xs text-muted">{hook.url}</span>
+                      </span>
+                    </span>
+                  )}
+                  renderValue={(hook) => (
+                    <span className="flex min-w-0 items-center gap-2">
+                      <WebhookIcon className="size-4 shrink-0 text-muted" />
+                      <span className="truncate">{hook.name}</span>
+                    </span>
+                  )}
+                  placeholder="No hook"
+                  searchAriaLabel="Search hooks"
+                  emptyMessage={hookSearch ? "No hooks match your search" : "No hooks yet"}
+                  modal
+                  creation={hookCreation}
+                  onValueChange={field.onChange}
+                  onClear={() => field.onChange(null)}
+                />
+                <FieldDescription>
+                  A server of yours that allows or refuses this session&apos;s requests.
+                </FieldDescription>
+              </FieldContent>
+            </Field>
+          )}
+        />
+      )}
       <Controller
         control={control}
         name="label"

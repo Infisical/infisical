@@ -12,7 +12,6 @@ import {
   TMemberships
 } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -81,12 +80,6 @@ import {
   AgentVaultVariableReferenceField,
   TAgentVaultMemberProvidedField
 } from "../agent-vault/agent-vault-enums";
-import {
-  AGENT_VAULT_HOOK_CHANGED_DURING_SAVE_MESSAGE,
-  assertAgentVaultHooksOnPlan,
-  classifyHookUpdate,
-  describeHookChange
-} from "../agent-vault/agent-vault-hook-fns";
 import {
   describeNativeTlsCaChange,
   isNativeServiceType,
@@ -193,7 +186,6 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
   agentVaultPersonalValueService: Pick<TAgentVaultPersonalValueServiceFactory, "findStatusesForOwner">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsDataKeyService: TKmsDataKeyService;
-  licenseService: Pick<TLicenseService, "getPlan">;
   membershipDAL: Pick<
     TMembershipDALFactory,
     "findOne" | "find" | "insertMany" | "delete" | "deleteById" | "transaction" | "findResourceMembershipsForActor"
@@ -241,7 +233,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     agentVaultPersonalValueService,
     permissionService,
     kmsDataKeyService,
-    licenseService,
     membershipDAL,
     membershipRoleDAL,
     agentVaultMemberDAL,
@@ -517,8 +508,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       name: service.name,
       description: service.description ?? null,
       createdAt: service.createdAt,
-      updatedAt: service.updatedAt,
-      hook: service.hookUrl ? { url: service.hookUrl } : null
+      updatedAt: service.updatedAt
     };
     const references = variableReferences.map(summarizeVariableReference);
     const credential = summarizeCredential(service);
@@ -598,8 +588,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   });
 
   // A service as the caller may see it. Without Read on variables, variableReferences is left out: an empty list would
-  // claim the service uses none. The OAuth sign-in state is the account of whoever set up the service, and the hook is
-  // part of that setup, so only those who can edit services get them.
+  // claim the service uses none. The OAuth sign-in state is the account of whoever set up the service, so only those who
+  // can edit services get it.
   const viewService = (
     service: TAgentVaultCatalogService,
     transformations: Awaited<ReturnType<typeof loadTransformations>>,
@@ -623,14 +613,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return {
       ...projected,
       ...(canReadVariables ? {} : { variableReferences: undefined }),
-      ...(canSeeSetup
+      ...(canSeeSetup || credential.type !== AgentVaultCredentialType.OAuth
         ? {}
-        : {
-            hook: undefined,
-            ...(credential.type === AgentVaultCredentialType.OAuth
-              ? { credential: { ...credential, expiresAt: undefined, authorizedAt: undefined, lastError: undefined } }
-              : {})
-          }),
+        : { credential: { ...credential, expiresAt: undefined, authorizedAt: undefined, lastError: undefined } }),
       // The caller's own values, null when the admin sets the whole credential.
       personalValues: status ? { isConfigured: status.isConfigured, fields: status.fields } : null
     };
@@ -1201,12 +1186,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     credential,
     customHeaders,
     substitutions,
-    hook,
     ...rest
   }: TCreateServiceDTO) => {
     const permission = await requireServiceWrite(rest);
     assertOauthConnectedByUser(rest.ctx, credential);
-    if (hook) await assertAgentVaultHooksOnPlan(licenseService, rest.ctx.actorOrgId);
     const bundles = await findBundlesInProject(rest.projectId, accessBundleIds);
 
     const serviceType = getAgentVaultServiceType(type);
@@ -1277,7 +1260,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       position,
       encryptedValue: seal(storedSubstitutionValues[position])
     }));
-    const encryptedHookSecret = hook ? seal(hook.signingSecret) : null;
 
     const memberOauth =
       credential.type === AgentVaultCredentialType.OAuth && memberFieldsOf(credential)
@@ -1341,9 +1323,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             credentialType: credential.type,
             credentialConfig,
             encryptedCredential,
-            memberProvidedFields,
-            hookUrl: hook?.url ?? null,
-            encryptedHookSecret
+            memberProvidedFields
           },
           tx
         );
@@ -1443,7 +1423,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     allowedPathPrefixes: sentAllowedPathPrefixes,
     allowedTools: sentAllowedTools,
     substitutions: sentSubstitutions,
-    hook,
     ...rest
   }: TUpdateServiceDTO) => {
     const permission = await requireServiceWrite(rest);
@@ -1478,17 +1457,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       },
       service.hostPattern ?? null
     );
-    // Read back like the type's other fields: the URL it already has with no new secret, or null with none stored.
-    const hookChange = classifyHookUpdate(hook, service.hookUrl);
     // The schema's check sees the read-back fields too, so a request holding only those reaches here with nothing to
     // change.
-    if (
-      [name, description, credential, hookChange, ...Object.values(sentFields)].every((value) => value === undefined)
-    ) {
+    if ([name, description, credential, ...Object.values(sentFields)].every((value) => value === undefined)) {
       throw new BadRequestError({ message: "Provide at least one field besides 'type' to update" });
-    }
-    if (hookChange && hookChange.kind !== "removed") {
-      await assertAgentVaultHooksOnPlan(licenseService, rest.ctx.actorOrgId);
     }
     const requestedHostPattern = sentFields.hostPattern ?? undefined;
     const { allowedMethods, allowedPathPrefixes, allowedTools, customHeaders, substitutions } = sentFields;
@@ -1684,11 +1656,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         encryptedCredential !== undefined && (Boolean(service.encryptedCredential) || encryptedCredential !== null);
     }
 
-    const newHookSigningSecret = hookChange && hookChange.kind !== "removed" ? hookChange.signingSecret : undefined;
     const cipherForTransformations =
-      customHeaders?.length || substitutions?.length || newHookSigningSecret !== undefined
-        ? await getProjectCipher(rest.projectId)
-        : null;
+      customHeaders?.length || substitutions?.length ? await getProjectCipher(rest.projectId) : null;
     const seal = (storedValue: string | undefined) =>
       storedValue === undefined
         ? undefined
@@ -1724,8 +1693,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       columns: { placeholder: substitution.placeholder, surfaces: substitution.surfaces },
       encryptedValue: seal(storedSubstitutionValues[index])
     }));
-
-    const encryptedHookSecret = seal(newHookSigningSecret);
 
     const oauth = oauthAuthorizationId
       ? await claimOauthCredential({
@@ -1856,12 +1823,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         }
       }
 
-      // Setting a hook means there was none, and changing or removing one means there was one; a save in between
-      // decides what this request means.
-      if (hookChange && (hookChange.kind === "set") === Boolean(locked.hookUrl)) {
-        throw new ConflictError({ message: AGENT_VAULT_HOOK_CHANGED_DURING_SAVE_MESSAGE });
-      }
-
       return {
         serviceConfig: lockedServiceConfig,
         hostPattern: lockedHostPattern,
@@ -1887,12 +1848,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         const tlsCaChanged = reconciled.serviceConfig
           ? describeNativeTlsCaChange(locked.config, reconciled.serviceConfig)
           : undefined;
-        let hookColumns: { hookUrl: string | null; encryptedHookSecret?: Buffer | null } | undefined;
-        if (hookChange?.kind === "removed") hookColumns = { hookUrl: null, encryptedHookSecret: null };
-        else if (hookChange) {
-          hookColumns = { hookUrl: hookChange.url, ...(encryptedHookSecret ? { encryptedHookSecret } : {}) };
-        }
-        const hookAudit = hookChange ? describeHookChange(hookChange, locked.hookUrl) : undefined;
 
         // Only when the pattern actually changes, against the siblings read under the lock.
         if (reconciled.hostPattern && reconciled.hostPattern !== locked.hostPattern) {
@@ -1919,8 +1874,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           allowedMethods !== undefined ||
           allowedPathPrefixes !== undefined ||
           allowedTools !== undefined ||
-          Object.keys(reconciled.credentialUpdate).length > 0 ||
-          hookColumns !== undefined;
+          Object.keys(reconciled.credentialUpdate).length > 0;
 
         const updatedService = hasColumnUpdate
           ? await agentVaultServiceDAL.updateById(
@@ -1934,8 +1888,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
                 ...(allowedMethods === undefined ? {} : { allowedMethods }),
                 ...(allowedPathPrefixes === undefined ? {} : { allowedPathPrefixes }),
                 ...(allowedTools === undefined ? {} : { allowedTools }),
-                ...reconciled.credentialUpdate,
-                ...(hookColumns ?? {})
+                ...reconciled.credentialUpdate
               },
               tx
             )
@@ -2081,8 +2034,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           updatedSubstitutions,
           variableReferences,
           personalValuesCleared,
-          tlsCaChanged,
-          hookAudit
+          tlsCaChanged
         };
       });
 
@@ -2133,8 +2085,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         allowedPathPrefixes,
         allowedTools,
         customHeaders,
-        substitutions,
-        ...result.hookAudit
+        substitutions
       },
       credentialReplaced,
       personalValuesCleared: result.personalValuesCleared

@@ -1,6 +1,7 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { AgentVaultHookModeSchema } from "@app/ee/services/agent-vault-hook/agent-vault-hook-fns";
 import {
   MAX_OAUTH_SCOPE_LENGTH,
   OAUTH_SCOPE_TOKEN_PATTERN
@@ -249,17 +250,36 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
               // Proxies use it to tell the agent that a rejected credential is the member's own to fix.
               memberProvided: z.boolean(),
               // The bundle the service came from. Null for a service sent with the session.
-              accessBundleId: z.string().uuid().nullable(),
-              // Proxies from before hooks ignore it and send the request without asking.
-              hook: z.object({ url: z.string(), secret: z.string() }).nullable()
+              accessBundleId: z.string().uuid().nullable()
             })
             .array(),
+          // Asked before the requests its rules pick: each HTTP or MCP request, or each database or SSH connection.
+          // Proxies from before session hooks ignore it and send every request without asking.
+          hook: z
+            .object({
+              id: z.string().uuid(),
+              // Null for a hook sent with the session.
+              name: z.string().nullable(),
+              url: z.string(),
+              secret: z.string(),
+              mode: AgentVaultHookModeSchema,
+              rules: z
+                .object({
+                  service: z.string(),
+                  methods: z.string().array().optional(),
+                  paths: z.string().array().optional(),
+                  tools: z.string().array().optional()
+                })
+                .array()
+            })
+            .nullable(),
           sessionLogs: z.object({
             enabled: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.enabled),
             sessionKey: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.proxySessionKey)
           }),
           session: z.object({
             label: z.string().nullable(),
+            metadata: z.record(z.string(), z.string()),
             actor: z.object({
               type: z.enum([AgentVaultMemberType.User, AgentVaultMemberType.MachineIdentity]),
               id: z.string().uuid(),

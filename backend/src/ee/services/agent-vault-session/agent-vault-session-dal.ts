@@ -34,6 +34,15 @@ export type TAgentVaultSessionListRow = {
   accessBundle: { id: string | null; name: string } | null;
   // Null until the proxy uploads the session's first log chunk.
   stats: { requests: number; brokered: number | null } | null;
+  // Null for a session started without a hook, or whose saved hook was deleted.
+  hook: {
+    id: string;
+    name: string | null;
+    isInline: boolean;
+    url: string;
+    mode: string;
+    rules: unknown;
+  } | null;
 };
 
 // The on-behalf-of user's own alias, since the actor's user is joined under the table's name.
@@ -322,6 +331,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           `${TableName.AgentVaultSessionStats}.sessionId`,
           `${TableName.AgentVaultSession}.id`
         )
+        .leftJoin(TableName.AgentVaultHook, `${TableName.AgentVaultHook}.id`, `${TableName.AgentVaultSession}.hookId`)
         .select(
           db.ref("id").withSchema(TableName.AgentVaultSession),
           db.ref("userId").withSchema(TableName.AgentVaultSession),
@@ -349,7 +359,13 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           db.ref("accessBundleName").withSchema(TableName.AgentVaultSessionAccessBundle),
           db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("liveAccessBundleName"),
           db.ref("requests").withSchema(TableName.AgentVaultSessionStats).as("statsRequests"),
-          db.ref("brokered").withSchema(TableName.AgentVaultSessionStats).as("statsBrokered")
+          db.ref("brokered").withSchema(TableName.AgentVaultSessionStats).as("statsBrokered"),
+          db.ref("id").withSchema(TableName.AgentVaultHook).as("hookId"),
+          db.ref("name").withSchema(TableName.AgentVaultHook).as("hookName"),
+          db.ref("sessionId").withSchema(TableName.AgentVaultHook).as("hookSessionId"),
+          db.ref("url").withSchema(TableName.AgentVaultHook).as("hookUrl"),
+          db.ref("mode").withSchema(TableName.AgentVaultHook).as("hookMode"),
+          db.ref("rules").withSchema(TableName.AgentVaultHook).as("hookRules")
         )
         .orderBy(`${TableName.AgentVaultSession}.createdAt`, "desc")) as {
         id: string;
@@ -380,6 +396,12 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         // bigint columns, which pg returns as strings
         statsRequests: string | null;
         statsBrokered: string | null;
+        hookId: string | null;
+        hookName: string | null;
+        hookSessionId: string | null;
+        hookUrl: string | null;
+        hookMode: string | null;
+        hookRules: unknown;
       }[];
 
       const sessions: TAgentVaultSessionListRow[] = rows.map((row) => {
@@ -417,6 +439,17 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
               : {
                   requests: Number(row.statsRequests),
                   brokered: row.statsBrokered === null ? null : Number(row.statsBrokered)
+                },
+          hook:
+            row.hookId === null
+              ? null
+              : {
+                  id: row.hookId,
+                  name: row.hookName,
+                  isInline: row.hookSessionId !== null,
+                  url: row.hookUrl!,
+                  mode: row.hookMode!,
+                  rules: row.hookRules
                 }
         };
       });

@@ -1,12 +1,13 @@
-import { createMongoAbility } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { Plan } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
+import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
+import { AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE } from "../agent-vault-hook/agent-vault-hook-fns";
 import { AgentVaultCredentialType, AgentVaultServiceType } from "../agent-vault/agent-vault-enums";
-import { AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE } from "../agent-vault/agent-vault-hook-fns";
 import { TAgentVaultInlineServiceInsert } from "./agent-vault-session-inline-service-dal";
 import { agentVaultSessionServiceFactory } from "./agent-vault-session-service";
 import { TMintSessionDTO } from "./agent-vault-session-types";
@@ -14,6 +15,7 @@ import { TMintSessionDTO } from "./agent-vault-session-types";
 const PROJECT_ID = "project-1";
 const HOOK_URL = "https://hooks.example.com/agent-vault";
 const SECRET = "s".repeat(32);
+const SAVED_HOOK_ID = "00000000-0000-4000-8000-0000000000aa";
 
 const ctx = {
   actor: ActorType.USER,
@@ -22,7 +24,16 @@ const ctx = {
   actorAuthMethod: null
 } as unknown as TMintSessionDTO["ctx"];
 
-const buildService = ({ hooksOnPlan }: { hooksOnPlan: boolean }) => {
+const buildService = ({
+  hooksOnPlan = true,
+  rules = [{ action: "manage", subject: "all" }],
+  savedHook = { id: SAVED_HOOK_ID, name: "approvals", sessionId: null, url: HOOK_URL, mode: "gate", rules: [] }
+}: {
+  hooksOnPlan?: boolean;
+  rules?: RawRuleOf<MongoAbility>[];
+  // null for a hook that isn't the project's.
+  savedHook?: Record<string, unknown> | null;
+} = {}) => {
   const insertForSession = vi.fn(async ({ services }: { services: TAgentVaultInlineServiceInsert[] }) =>
     services.map((row) => ({
       ...row,
@@ -46,11 +57,21 @@ const buildService = ({ hooksOnPlan }: { hooksOnPlan: boolean }) => {
     })
   };
   const resourceMetadataDAL = { insertMany: vi.fn(), find: vi.fn().mockResolvedValue([]), delete: vi.fn() };
+  const createWithId = vi.fn(async (row: Record<string, unknown>) => ({ ...row, createdAt: new Date() }));
+  const updateById = vi.fn();
+  const agentVaultHookDAL = {
+    findSavedForMint: vi.fn().mockResolvedValue(savedHook ?? undefined),
+    insertInlineForSession: vi.fn(async (row: Record<string, unknown>) => ({
+      id: "inline-hook-1",
+      name: null,
+      ...row,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }))
+  };
   const service = agentVaultSessionServiceFactory({
-    agentVaultSessionDAL: {
-      transaction,
-      createWithId: vi.fn(async (row: Record<string, unknown>) => ({ ...row, createdAt: new Date() }))
-    },
+    agentVaultSessionDAL: { transaction, createWithId, updateById },
+    agentVaultHookDAL,
     resourceMetadataDAL,
     agentVaultSessionAccessBundleDAL: { insertMany: vi.fn() },
     agentVaultSessionInlineServiceDAL: { insertForSession },
@@ -59,7 +80,7 @@ const buildService = ({ hooksOnPlan }: { hooksOnPlan: boolean }) => {
     membershipDAL: { findResourceMembershipsForActor: vi.fn().mockResolvedValue([]) },
     permissionService: {
       getProjectPermission: vi.fn().mockResolvedValue({
-        permission: createMongoAbility([{ action: "manage", subject: "all" }]),
+        permission: createMongoAbility(rules),
         hasRole: () => true,
         memberships: []
       })
@@ -67,67 +88,161 @@ const buildService = ({ hooksOnPlan }: { hooksOnPlan: boolean }) => {
     kmsDataKeyService,
     licenseService
   } as unknown as Parameters<typeof agentVaultSessionServiceFactory>[0]);
-  return { service, transaction, insertForSession, licenseService, resourceMetadataDAL };
+  return {
+    service,
+    transaction,
+    insertForSession,
+    licenseService,
+    resourceMetadataDAL,
+    createWithId,
+    updateById,
+    agentVaultHookDAL
+  };
 };
 
-const mint = (service: ReturnType<typeof buildService>["service"]) =>
+const PASSTHROUGH_SERVICE = {
+  type: AgentVaultServiceType.Http,
+  hostPattern: "api.example.com",
+  credential: { type: AgentVaultCredentialType.Passthrough as const }
+};
+
+const mintWithHook = (
+  service: ReturnType<typeof buildService>["service"],
+  hook: Pick<TMintSessionDTO, "hookId" | "hook">
+) =>
   service.mintSession({
     projectId: PROJECT_ID,
     ctx,
-    services: [
-      {
-        type: AgentVaultServiceType.Http,
-        hostPattern: "api.example.com",
-        credential: { type: AgentVaultCredentialType.Passthrough },
-        hook: { url: HOOK_URL, signingSecret: SECRET }
-      }
-    ],
+    services: [PASSTHROUGH_SERVICE],
     actorName: "Ana Silva",
     actorEmail: "ana@acme.com",
-    label: null
+    label: null,
+    ...hook
   });
 
-describe("mintSession, inline services with a hook", () => {
+// A member's sessions rules, plus whatever a custom role adds.
+const memberRules = (...extra: RawRuleOf<MongoAbility>[]): RawRuleOf<MongoAbility>[] => [
+  { action: ["read", "create", "edit", "revoke", "create-with-inline-services"], subject: "agent-vault-sessions" },
+  ...extra
+];
+
+describe("mintSession, a saved hook", () => {
+  test("is stored on the session, needs no plan, and reads back with its rules", async () => {
+    const { service, createWithId, agentVaultHookDAL, licenseService } = buildService();
+
+    const result = await mintWithHook(service, { hookId: SAVED_HOOK_ID });
+
+    expect(agentVaultHookDAL.findSavedForMint).toHaveBeenCalledWith(
+      { id: SAVED_HOOK_ID, projectId: PROJECT_ID },
+      expect.anything()
+    );
+    expect(createWithId.mock.calls[0][0]).toMatchObject({ hookId: SAVED_HOOK_ID });
+    expect(licenseService.getPlan).not.toHaveBeenCalled();
+    expect(result.session.hook).toEqual({
+      id: SAVED_HOOK_ID,
+      name: "approvals",
+      isInline: false,
+      url: HOOK_URL,
+      mode: "gate",
+      rules: []
+    });
+    expect(result.hookAudit).toEqual({ hookId: SAVED_HOOK_ID, hookName: "approvals" });
+  });
+
+  test("a hook that isn't the project's is a 404 that echoes the id", async () => {
+    const { service, createWithId } = buildService({ savedHook: null });
+
+    await expect(mintWithHook(service, { hookId: SAVED_HOOK_ID })).rejects.toThrow(
+      `Hook with ID '${SAVED_HOOK_ID}' not found`
+    );
+    expect(createWithId).not.toHaveBeenCalled();
+  });
+
+  test("needs read on hooks", async () => {
+    const { service, transaction } = buildService({ rules: memberRules() });
+
+    await expect(mintWithHook(service, { hookId: SAVED_HOOK_ID })).rejects.toBeInstanceOf(ForbiddenError);
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  test("a member who can read hooks attaches one and sees its settings", async () => {
+    const { service } = buildService({ rules: memberRules({ action: "read", subject: "agent-vault-hooks" }) });
+
+    const result = await mintWithHook(service, { hookId: SAVED_HOOK_ID });
+    expect(result.session.hook).toMatchObject({ id: SAVED_HOOK_ID, url: HOOK_URL });
+  });
+});
+
+describe("mintSession, an inline hook", () => {
+  const inlineHook = { url: HOOK_URL, secret: SECRET, rules: [{ service: "api.example.com" }] };
+
+  test("is inserted with its sealed secret and set on the session, and never returns the secret", async () => {
+    const { service, agentVaultHookDAL, updateById } = buildService();
+
+    const result = await mintWithHook(service, { hook: inlineHook });
+
+    expect(agentVaultHookDAL.insertInlineForSession).toHaveBeenCalledWith(
+      {
+        projectId: PROJECT_ID,
+        sessionId: result.session.id,
+        url: HOOK_URL,
+        encryptedSecret: Buffer.concat([Buffer.from("sealed:"), Buffer.from(JSON.stringify({ value: SECRET }))]),
+        mode: "gate",
+        rules: inlineHook.rules
+      },
+      expect.anything()
+    );
+    expect(updateById).toHaveBeenCalledWith(result.session.id, { hookId: "inline-hook-1" }, expect.anything());
+    expect(result.session.hook).toMatchObject({ id: "inline-hook-1", name: null, isInline: true, url: HOOK_URL });
+    expect(result.hookAudit).toEqual({ inlineHook: { hookId: "inline-hook-1", url: HOOK_URL, ruleCount: 1 } });
+    expect(JSON.stringify(result)).not.toContain(SECRET);
+  });
+
   test("is refused before any transaction with hooks off the plan", async () => {
     const { service, transaction, licenseService } = buildService({ hooksOnPlan: false });
 
-    await expect(mint(service)).rejects.toThrow(AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE);
+    await expect(mintWithHook(service, { hook: inlineHook })).rejects.toThrow(AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE);
     expect(licenseService.getPlan).toHaveBeenCalledWith("org-1");
     expect(transaction).not.toHaveBeenCalled();
   });
 
-  test("stores the URL and the sealed secret, and returns only the URL", async () => {
-    const { service, insertForSession } = buildService({ hooksOnPlan: true });
+  test("takes create-with-inline-hook, which create-with-inline-services doesn't give", async () => {
+    const refused = buildService({ rules: memberRules() });
+    await expect(mintWithHook(refused.service, { hook: inlineHook })).rejects.toBeInstanceOf(ForbiddenError);
+    expect(refused.transaction).not.toHaveBeenCalled();
 
-    const result = await mint(service);
+    const allowed = buildService({
+      rules: memberRules({ action: "create-with-inline-hook", subject: "agent-vault-sessions" })
+    });
+    const result = await mintWithHook(allowed.service, { hook: inlineHook });
+    // Without read on hooks the session shows that it has a hook, not its settings.
+    expect(result.session.hook).toEqual({ id: "inline-hook-1", name: null, isInline: true });
+  });
+});
 
-    const [row] = insertForSession.mock.calls[0][0].services;
-    expect(row.hookUrl).toBe(HOOK_URL);
-    expect(row.encryptedHookSecret).toEqual(
-      Buffer.concat([Buffer.from("sealed:"), Buffer.from(JSON.stringify({ value: SECRET }))])
+describe("mintSession, hook choices", () => {
+  test("a saved and an inline hook together are a 400", async () => {
+    const { service, transaction } = buildService();
+
+    const error = await mintWithHook(service, {
+      hookId: SAVED_HOOK_ID,
+      hook: { url: HOOK_URL, secret: SECRET }
+    }).catch((err: unknown) => err);
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect((error as Error).message).toBe(
+      "Send 'hookId' to attach a saved hook or 'hook' to send one with the session, not both."
     );
-    expect(result.session.services[0]).toMatchObject({ isInline: true, hook: { url: HOOK_URL } });
-    expect(JSON.stringify(result.session)).not.toContain(SECRET);
+    expect(transaction).not.toHaveBeenCalled();
   });
 
-  test("checks no plan when no service has a hook", async () => {
-    const { service, licenseService } = buildService({ hooksOnPlan: false });
+  test("no hook checks no plan and stores none", async () => {
+    const { service, licenseService, createWithId, agentVaultHookDAL } = buildService({ hooksOnPlan: false });
 
-    await service.mintSession({
-      projectId: PROJECT_ID,
-      ctx,
-      services: [
-        {
-          type: AgentVaultServiceType.Http,
-          hostPattern: "api.example.com",
-          credential: { type: AgentVaultCredentialType.Passthrough }
-        }
-      ],
-      actorName: "Ana Silva",
-      actorEmail: "ana@acme.com",
-      label: null
-    });
+    const result = await mintWithHook(service, {});
     expect(licenseService.getPlan).not.toHaveBeenCalled();
+    expect(createWithId.mock.calls[0][0]).toMatchObject({ hookId: null });
+    expect(agentVaultHookDAL.insertInlineForSession).not.toHaveBeenCalled();
+    expect(result.session.hook).toBeNull();
   });
 });
 
@@ -363,7 +478,7 @@ describe("mintSession, project services named in services", () => {
 
 describe("mintSession, metadata", () => {
   test("writes one row per entry in the mint transaction, in the order sent, and returns the metadata", async () => {
-    const { service, resourceMetadataDAL } = buildService({ hooksOnPlan: true });
+    const { service, resourceMetadataDAL } = buildService();
     const metadata = { runId: "8812", slackChannel: "#deploys" };
 
     const result = await service.mintSession({
@@ -410,10 +525,22 @@ describe("updateSession", () => {
     revokedAt: null,
     createdAt: new Date(),
     accessBundle: null,
-    stats: null
+    stats: null,
+    hook: {
+      id: SAVED_HOOK_ID,
+      name: "approvals",
+      isInline: false,
+      url: HOOK_URL,
+      mode: "gate",
+      rules: [{ service: "github", methods: ["PUT"], extra: true }]
+    }
   };
 
-  const buildUpdateService = ({ storedMetadata = [] as { key: string; value: string }[], isEditable = true } = {}) => {
+  const buildUpdateService = ({
+    storedMetadata = [] as { key: string; value: string }[],
+    isEditable = true,
+    rules = [{ action: "manage", subject: "all" }] as RawRuleOf<MongoAbility>[]
+  } = {}) => {
     const tx = { marker: "tx" };
     const agentVaultSessionDAL = {
       transaction: vi.fn(async (fn: (t: unknown) => Promise<unknown>) => fn(tx)),
@@ -435,9 +562,11 @@ describe("updateSession", () => {
       resourceMetadataDAL,
       agentVaultSessionInlineServiceDAL: { findSummariesBySessionIds: vi.fn().mockResolvedValue([]) },
       agentVaultSessionServiceDAL: { findSummariesBySessionIds: vi.fn().mockResolvedValue([]) },
+      agentVaultServiceDAL: { findIdsInBundles: vi.fn().mockResolvedValue([]) },
+      membershipDAL: { findResourceMembershipsForActor: vi.fn().mockResolvedValue([]) },
       permissionService: {
         getProjectPermission: vi.fn().mockResolvedValue({
-          permission: createMongoAbility([{ action: "manage", subject: "all" }]),
+          permission: createMongoAbility(rules),
           hasRole: () => true,
           memberships: []
         })
@@ -448,6 +577,25 @@ describe("updateSession", () => {
 
   const update = (service: ReturnType<typeof buildUpdateService>["service"], fields: object) =>
     service.updateSession({ projectId: PROJECT_ID, ctx, sessionId: SESSION_ID, ...fields });
+
+  test("the session's hook shows its settings only to someone who can read hooks", async () => {
+    const admin = buildUpdateService();
+    expect((await update(admin.service, { label: "new" })).session.hook).toEqual({
+      id: SAVED_HOOK_ID,
+      name: "approvals",
+      isInline: false,
+      url: HOOK_URL,
+      mode: "gate",
+      rules: [{ service: "github", methods: ["PUT"] }]
+    });
+
+    const member = buildUpdateService({ rules: [{ action: ["read", "edit"], subject: "agent-vault-sessions" }] });
+    expect((await update(member.service, { label: "new" })).session.hook).toEqual({
+      id: SAVED_HOOK_ID,
+      name: "approvals",
+      isInline: false
+    });
+  });
 
   test("replaces the whole metadata set in the label's transaction and leaves the label alone", async () => {
     const { service, agentVaultSessionDAL, resourceMetadataDAL, tx } = buildUpdateService({

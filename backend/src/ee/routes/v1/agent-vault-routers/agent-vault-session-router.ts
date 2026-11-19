@@ -40,8 +40,10 @@ import {
   serviceTypeReportFieldsOf
 } from "./agent-vault-router-fns";
 import {
+  AgentVaultInlineHookInputSchema,
   AgentVaultProjectIdSchema,
   AgentVaultSessionActorSchema,
+  AgentVaultSessionHookSchema,
   AgentVaultSessionOnBehalfOfSchema,
   AgentVaultSessionServiceSchema,
   AgentVaultSessionServicesInputSchema
@@ -63,7 +65,8 @@ const SessionSchema = z.object({
   status: z.nativeEnum(AgentVaultSessionStatus),
   expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
   revokedAt: z.date().nullable(),
-  createdAt: z.date()
+  createdAt: z.date(),
+  hook: AgentVaultSessionHookSchema
 });
 
 const SessionServicesSchema = AgentVaultSessionServiceSchema.array().describe(AGENT_VAULT.SESSION.servicesRead);
@@ -111,7 +114,8 @@ const EXAMPLE_SESSION = {
   createdAt: "2026-10-31T18:00:00.000Z",
   accessBundle: EXAMPLE_ACCESS_BUNDLE,
   services: [],
-  stats: { requests: 1284, brokered: 1102 }
+  stats: { requests: 1284, brokered: 1102 },
+  hook: null
 };
 
 // What a session that names project services reads back, matching the create example's request.
@@ -294,7 +298,9 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                 })
               ),
             label: agentVaultSessionLabelSchema.describe(AGENT_VAULT.SESSION.label),
-            metadata: agentVaultSessionMetadataSchema.optional().describe(AGENT_VAULT.SESSION.metadata)
+            metadata: agentVaultSessionMetadataSchema.optional().describe(AGENT_VAULT.SESSION.metadata),
+            hookId: z.string().uuid().optional().describe(AGENT_VAULT.SESSION.hookId),
+            hook: AgentVaultInlineHookInputSchema.optional()
           })
           .describe(
             docsExample({
@@ -318,7 +324,8 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
               expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
               createdAt: z.date(),
               accessBundle: SessionAccessBundleSchema.nullable().describe(AGENT_VAULT.SESSION.accessBundleRead),
-              services: SessionServicesSchema
+              services: SessionServicesSchema,
+              hook: AgentVaultSessionHookSchema
             })
           })
           .describe(
@@ -332,7 +339,8 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                 expiresAt: EXAMPLE_SESSION.expiresAt,
                 createdAt: EXAMPLE_SESSION.createdAt,
                 accessBundle: null,
-                services: EXAMPLE_NAMED_SERVICES
+                services: EXAMPLE_NAMED_SERVICES,
+                hook: null
               }
             })
           )
@@ -353,13 +361,15 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
         actorName = req.auth.identityName;
       }
 
-      const { session, token, ttlSeconds, onBehalfOf } = await server.services.agentVaultSession.mintSession({
-        actorName,
-        actorEmail,
-        projectId,
-        ctx: actorContext(req),
-        ...body
-      });
+      const { session, token, ttlSeconds, onBehalfOf, hookAudit } = await server.services.agentVaultSession.mintSession(
+        {
+          actorName,
+          actorEmail,
+          projectId,
+          ctx: actorContext(req),
+          ...body
+        }
+      );
       const namedServices = session.services.filter((service) => !service.isInline);
       const inlineServices = session.services.flatMap((service) => (service.isInline ? [service] : []));
 
@@ -396,11 +406,11 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                   // Present on every service, null outside HTTP, as this event has always sent them.
                   allowedMethods: allowedMethods ?? null,
                   allowedPathPrefixes: allowedPathPrefixes ?? null,
-                  hookUrl: service.hook?.url,
                   ...serviceTransformationNamesOf(service)
                 };
               })
             }),
+            ...hookAudit,
             ...(onBehalfOf && {
               onBehalfOfUserId: onBehalfOf.userId,
               onBehalfOfUserName: onBehalfOf.username,

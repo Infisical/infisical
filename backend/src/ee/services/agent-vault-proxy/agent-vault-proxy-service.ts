@@ -29,6 +29,8 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
 import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
+import { AgentVaultHookMode, toHookRules } from "../agent-vault-hook/agent-vault-hook-fns";
+import { TResolvedSessionHook } from "../agent-vault-hook/agent-vault-hook-types";
 import {
   AGENT_VAULT_SERVICE_MOVED_MESSAGE,
   TAgentVaultOauthServiceFactory
@@ -124,7 +126,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultProxyDAL: TAgentVaultProxyDALFactory;
   agentVaultResolveDAL: Pick<
     TAgentVaultResolveDALFactory,
-    "findResolvableServices" | "findSessionSkills" | "findReachableBundles"
+    "findResolvableServices" | "findSessionSkills" | "findReachableBundles" | "findSessionHook" | "findSessionMetadata"
   >;
   agentVaultServiceCustomHeaderDAL: Pick<TAgentVaultServiceCustomHeaderDALFactory, "findByServiceIds">;
   agentVaultServiceSubstitutionDAL: Pick<TAgentVaultServiceSubstitutionDALFactory, "findByServiceIds">;
@@ -1117,9 +1119,18 @@ export const agentVaultProxyServiceFactory = ({
     }
 
     const serviceIds = rows.map((row) => row.id);
-    const [customHeaderRows, substitutionRows] = await Promise.all([
+    const [customHeaderRows, substitutionRows, hookRow, sessionMetadata] = await Promise.all([
       agentVaultServiceCustomHeaderDAL.findByServiceIds(serviceIds),
-      agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds)
+      agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds),
+      session.hookId
+        ? agentVaultResolveDAL.findSessionHook({
+            hookId: session.hookId,
+            sessionId: session.id,
+            projectId: session.projectId,
+            onPrimary
+          })
+        : undefined,
+      agentVaultResolveDAL.findSessionMetadata({ sessionId: session.id, onPrimary })
     ]);
 
     const sessionLogConfig = await getEffectiveSessionLogConfig({ agentVaultSessionLogConfigDAL }, session.projectId, {
@@ -1136,11 +1147,11 @@ export const agentVaultProxyServiceFactory = ({
     // A bundle of pass-through services has nothing sealed, so deriving the project data key would be
     // a kms_keys read (or an external KMS round trip) per resolve for nothing.
     const hasSealedValue =
-      rows.some((row) => row.encryptedCredential || row.encryptedHookSecret || row.memberProvidedFields?.length) ||
+      Boolean(hookRow) ||
+      rows.some((row) => row.encryptedCredential || row.memberProvidedFields?.length) ||
       inlineServiceRows.some(
         (row) =>
-          !row.secretsDeletedAt &&
-          (row.encryptedCredential || row.encryptedHookSecret || row.customHeaders.length || row.substitutions.length)
+          !row.secretsDeletedAt && (row.encryptedCredential || row.customHeaders.length || row.substitutions.length)
       ) ||
       customHeaderRows.length > 0 ||
       substitutionRows.length > 0 ||
@@ -1189,8 +1200,7 @@ export const agentVaultProxyServiceFactory = ({
           value: $decryptValue(substitution.encryptedValue)
         })),
       personalValuesMissing: false,
-      memberProvided: Boolean(row.memberProvidedFields?.length),
-      hook: row.hookUrl ? { url: row.hookUrl, secret: $decryptValue(row.encryptedHookSecret) } : null
+      memberProvided: Boolean(row.memberProvidedFields?.length)
     }));
 
     const bundleServices = await $applyPersonalValues({
@@ -1252,6 +1262,19 @@ export const agentVaultProxyServiceFactory = ({
     };
     const sessionLogs = $sessionLogs();
 
+    // Sent as stored: rules naming a service the session doesn't have simply match nothing. The secret is never
+    // expanded, and a hook without one (its session ended) fails the resolve rather than going out as no hook.
+    const hook: TResolvedSessionHook | null = hookRow
+      ? {
+          id: hookRow.id,
+          name: hookRow.name ?? null,
+          url: hookRow.url,
+          secret: $decryptValue(hookRow.encryptedSecret),
+          mode: hookRow.mode as AgentVaultHookMode,
+          rules: toHookRules(hookRow.rules)
+        }
+      : null;
+
     logger.info(
       `agentVaultResolve: resolved [sessionId=${session.id}] [proxyId=${proxyId}] [services=${services.length}] [inlineServices=${inlineServices.length}] [personalValuesMissing=${services.filter((service) => service.personalValuesMissing).length}]`
     );
@@ -1261,8 +1284,10 @@ export const agentVaultProxyServiceFactory = ({
       expiresAt: session.expiresAt ?? null,
       services,
       sessionLogs,
+      hook,
       session: {
         label: session.label ?? null,
+        metadata: sessionMetadata,
         actor: {
           // Null only on rows a pod on the previous release wrote. Resolve refused a session with neither id above.
           type:

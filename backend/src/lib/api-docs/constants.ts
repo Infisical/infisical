@@ -108,6 +108,7 @@ export enum ApiDocsTags {
   AgentVaultServices = "Agent Vault Services",
   AgentVaultVariables = "Agent Vault Variables",
   AgentVaultSkills = "Agent Vault Skills",
+  AgentVaultHooks = "Agent Vault Hooks",
   AgentVaultSessions = "Agent Vault Sessions",
   AgentVaultProxies = "Agent Vault Proxies",
   AgentVaultMembers = "Agent Vault Members",
@@ -4880,18 +4881,6 @@ export const AGENT_VAULT = {
       "PEM certificate(s) of the authority that signed the database's certificate, used only while `verify` is on. Send null to remove a stored one.",
     tlsCaRead:
       "PEM certificate(s) of the authority that signed the database's certificate, used only while `verify` is on. Null when none is stored.",
-    hook: "A server of yours that the proxy asks before it sends each request to this service, or opens each connection for a database or SSH service. The proxy sends the request on only if your server allows it. `url` is where the proxy sends each check, and `signingSecret` is the key it signs them with.",
-    updateHook:
-      "The hook to set or change. Send `url` alone to change only the URL and keep the saved signing secret, or `url` and `signingSecret` to replace both. Send null to remove the hook and its signing secret.",
-    hookUrl:
-      "Where the proxy sends each check: an `https://` or `http://` URL of at most 2048 characters, without a username, password, query string or fragment. Over `http://`, checks and answers are sent unencrypted.",
-    hookSigningSecret:
-      "The key the proxy signs each check with, so your server can tell the check came from the proxy. 32 to 512 printable ASCII characters with no spaces, used exactly as given. Never returned once saved.",
-    updateHookSigningSecret:
-      "The key the proxy signs each check with. 32 to 512 printable ASCII characters with no spaces, used exactly as given. Leave it out to keep the saved one; required when the service has no hook yet. Never returned once saved.",
-    hookRead:
-      "The service's hook, or null when it has none. Its signing secret is never returned. Left out for members.",
-    hookUrlRead: "Where the proxy sends each check.",
     databaseCredential: "The account the proxy logs in to the database as, a username and password.",
     sshCredential: "The account the proxy logs in to the SSH server as, a username with a password or an SSH key.",
     nativeUsername: `The user the proxy logs in as. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
@@ -5159,6 +5148,37 @@ export const AGENT_VAULT = {
     builtinName: "The name of the built-in skill, `infisical-agent-vault`. A skill in the library can't use this name.",
     builtinDescription: "What the built-in skill is for, taken from the `description` in its SKILL.md."
   },
+  HOOK: {
+    hookId: "The ID of the hook.",
+    name: "The name of the hook, unique in the project. Lowercase letters, numbers and hyphens.",
+    description: "What the hook is for.",
+    updateDescription: "What the hook is for. Send null to remove it.",
+    descriptionRead: "What the hook is for, or null when it has no description.",
+    url: "Where the proxy sends each check: an `https://` or `http://` URL of at most 2048 characters, without a username, password, query string or fragment. Over `http://`, checks and answers are sent unencrypted.",
+    secret:
+      "The key the proxy signs each check with, so your server can tell the check came from the proxy. 32 to 512 printable ASCII characters with no spaces, used exactly as given. Never returned once saved.",
+    updateSecret:
+      "A new key for the proxy to sign each check with. 32 to 512 printable ASCII characters with no spaces, used exactly as given. Leave it out to keep the saved one. Never returned once saved.",
+    mode: "What the hook does with each request it is asked about. `gate`, the only mode, means the proxy sends the request on only if the hook allows it.",
+    rules:
+      "Which of a session's requests the proxy asks the hook about. Leave it empty to ask about every request. A request is asked about when any rule matches it.",
+    updateRules:
+      "Which of a session's requests the proxy asks the hook about. Replaces every rule. Send an empty list to ask about every request.",
+    ruleService:
+      "The name of the service the rule applies to: a project service, or a service sent with the session (by its name, or its first host when it was sent without one). A name that isn't in the session matches nothing.",
+    ruleMethods:
+      "HTTP services only: match only these methods. With `paths`, a request must match both. A service of another type ignores it and the rule matches every request to it.",
+    rulePaths:
+      "HTTP services only: match only paths that start with one of these prefixes, compared by whole segment like a service's allowed path prefixes. A service of another type ignores it and the rule matches every request to it.",
+    ruleTools:
+      "MCP services only: match only calls to these tools. Can't be sent with `methods` or `paths`. A service of another type ignores it and the rule matches every request to it.",
+    createdAt: "When the hook was created.",
+    updatedAt: "When the hook was last changed.",
+    search: "Match hooks whose name or URL contains this text.",
+    limit: "The maximum number of hooks to return. Defaults to 20.",
+    offset: "How many hooks to skip.",
+    totalCount: "How many hooks match the filters, across every page."
+  },
   MEMBER: {
     grantedAt: "When the access bundle was granted.",
     userId: "The ID of the user whose Agent Vault membership this is.",
@@ -5367,9 +5387,14 @@ export const AGENT_VAULT = {
     inlineServiceId: "The ID of the service sent with this session.",
     inlineServiceNameRead:
       "The name the service was sent with, or its first host if it was sent without one. Shown in session logs and in the proxy's error messages.",
+    hookId:
+      "The ID of a saved hook to attach to the session. The proxy asks it before it sends the requests the hook's rules pick. Can't be sent with `hook`. Edits to the saved hook reach the session on the proxy's next poll, and deleting it leaves the session without a hook.",
     inlineHook:
-      "A server of yours that the proxy asks before it sends each request to this service, or opens each connection for a database or SSH service. Its signing secret is deleted when the session ends.",
-    inlineHookRead: "The service's hook, or null when it was sent without one. Its signing secret is never returned.",
+      "A hook of the session's own, for this session only. The proxy asks it before it sends the requests its rules pick. Can't be sent with `hookId`. Its secret is deleted when the session ends.",
+    hookRead:
+      "The hook the session was started with, or null when it has none or its saved hook was deleted. `url`, `mode` and `rules` are left out for anyone who can't read hooks.",
+    hookIsInline: "True when the hook was sent with the session rather than attached from the project's saved hooks.",
+    hookNameRead: "The saved hook's name. Null for a hook sent with the session.",
     ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d, or to 1h for a session started on behalf of a user.",
     label:
       "A short description of what the session is for, such as `nightly deploy` or `support ticket triage`. Up to 128 characters, without line breaks, tabs, or invisible characters. Shown wherever the session is listed.",

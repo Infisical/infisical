@@ -357,8 +357,6 @@ describe("a bundle service's facts", () => {
     allowedPathPrefixes: null,
     allowedTools: null,
     memberProvidedFields: null,
-    hookUrl: null,
-    encryptedHookSecret: null,
     position: 0,
     ...overrides
   });

@@ -222,14 +222,21 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
     store(TAB_STORAGE_KEY, value);
   };
 
-  const onCreateNowSubmit = async ({ label, metadata, ttl, services }: TDashboardSessionInput) => {
+  const onCreateNowSubmit = async ({
+    label,
+    metadata,
+    ttl,
+    services,
+    hookId
+  }: TDashboardSessionInput) => {
     try {
       const session = await createSession.mutateAsync({
         accessBundle: accessBundle?.name,
         services: services.length ? services : undefined,
         ttl,
         label,
-        metadata
+        metadata,
+        hookId
       });
       createNotification({ text: "Session created", type: "success" });
       setCreatedSession(session);

@@ -2,17 +2,16 @@ import { describe, expect, test, vi } from "vitest";
 
 import { Plan } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
-import { BadRequestError } from "@app/lib/errors";
 
-import { AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE } from "./agent-vault-credential-schemas";
+import { AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE } from "../agent-vault/agent-vault-credential-schemas";
 import {
-  AGENT_VAULT_HOOK_SIGNING_SECRET_REQUIRED_MESSAGE,
   AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE,
-  AgentVaultHookSigningSecretSchema,
+  AgentVaultHookRuleSchema,
+  AgentVaultHookRulesSchema,
+  AgentVaultHookSecretSchema,
   AgentVaultHookUrlSchema,
   assertAgentVaultHooksOnPlan,
-  classifyHookUpdate,
-  describeHookChange
+  toHookRules
 } from "./agent-vault-hook-fns";
 
 const issuesOf = (result: { success: boolean; error?: { issues: { message: string }[] } }) =>
@@ -71,129 +70,132 @@ describe("hook URL", () => {
   });
 });
 
-describe("hook signing secret", () => {
+describe("hook secret", () => {
   test.each([
     { why: "32 characters", value: "a".repeat(32) },
     { why: "512 characters", value: "b".repeat(512) },
     { why: "braces", value: `{{${"c".repeat(30)}}}` },
     { why: "every printable symbol", value: `!"#$%&'()*+,-./:;<=>?@[\\]^_\`{|}~0123456789` }
   ])("accepts $why", ({ value }) => {
-    expect(AgentVaultHookSigningSecretSchema.parse(value)).toBe(value);
+    expect(AgentVaultHookSecretSchema.parse(value)).toBe(value);
   });
 
   test.each([
-    { why: "empty", value: "", message: AGENT_VAULT_HOOK_SIGNING_SECRET_REQUIRED_MESSAGE },
-    { why: "31 characters", value: "a".repeat(31), message: "The signing secret must be at least 32 characters." },
-    { why: "513 characters", value: "a".repeat(513), message: "The signing secret can be at most 512 characters." },
+    { why: "empty", value: "", message: "Enter a secret for the hook." },
+    { why: "31 characters", value: "a".repeat(31), message: "The hook secret must be at least 32 characters." },
+    { why: "513 characters", value: "a".repeat(513), message: "The hook secret can be at most 512 characters." },
     {
       why: "a space",
       value: `${"a".repeat(20)} ${"a".repeat(20)}`,
-      message: "The signing secret can only use letters, numbers and symbols, with no spaces."
+      message: "The hook secret can only use letters, numbers and symbols, with no spaces."
     },
     {
       why: "a tab",
       value: `${"a".repeat(20)}\t${"a".repeat(20)}`,
-      message: "The signing secret can only use letters, numbers and symbols, with no spaces."
+      message: "The hook secret can only use letters, numbers and symbols, with no spaces."
     },
     {
       why: "a non-ASCII letter",
       value: `${"a".repeat(40)}é`,
-      message: "The signing secret can only use letters, numbers and symbols, with no spaces."
+      message: "The hook secret can only use letters, numbers and symbols, with no spaces."
     },
     {
       why: "a lone surrogate",
       value: `${"a".repeat(40)}\uD800`,
-      message: "The signing secret can only use letters, numbers and symbols, with no spaces."
+      message: "The hook secret can only use letters, numbers and symbols, with no spaces."
     },
     {
       why: "a short value with a space reports only the characters",
       value: "a b",
-      message: "The signing secret can only use letters, numbers and symbols, with no spaces."
+      message: "The hook secret can only use letters, numbers and symbols, with no spaces."
     }
   ])("refuses $why with one issue", ({ value, message }) => {
-    expect(issuesOf(AgentVaultHookSigningSecretSchema.safeParse(value))).toEqual([message]);
+    expect(issuesOf(AgentVaultHookSecretSchema.safeParse(value))).toEqual([message]);
   });
 
   test("is never trimmed", () => {
-    expect(AgentVaultHookSigningSecretSchema.safeParse(` ${"a".repeat(40)} `).success).toBe(false);
+    expect(AgentVaultHookSecretSchema.safeParse(` ${"a".repeat(40)} `).success).toBe(false);
   });
 });
 
-describe("classifyHookUpdate", () => {
-  const stored = "https://hooks.example.com/a";
-  const secret = "s".repeat(32);
-
-  test("undefined leaves the hook alone", () => {
-    expect(classifyHookUpdate(undefined, stored)).toBeUndefined();
-    expect(classifyHookUpdate(undefined, null)).toBeUndefined();
+describe("hook rules", () => {
+  test.each([
+    { why: "a whole service", rule: { service: "github" } },
+    { why: "methods and paths", rule: { service: "github", methods: ["PUT"], paths: ["/repos"] } },
+    { why: "tools", rule: { service: "linear", tools: ["delete_issue"] } },
+    { why: "an unnamed inline service by its host", rule: { service: "api.example.com" } }
+  ])("accepts $why", ({ rule }) => {
+    expect(AgentVaultHookRuleSchema.safeParse(rule).success).toBe(true);
   });
 
-  test("null removes a stored hook and echoes when there is none", () => {
-    expect(classifyHookUpdate(null, stored)).toEqual({ kind: "removed" });
-    expect(classifyHookUpdate(null, null)).toBeUndefined();
-  });
-
-  test("a hook on a service with none is set", () => {
-    expect(classifyHookUpdate({ url: stored, signingSecret: secret }, null)).toEqual({
-      kind: "set",
-      url: stored,
-      signingSecret: secret
-    });
-  });
-
-  test("setting a hook without a secret is refused", () => {
-    expect(() => classifyHookUpdate({ url: stored }, null)).toThrow(BadRequestError);
-    expect(() => classifyHookUpdate({ url: stored }, undefined)).toThrow(
-      AGENT_VAULT_HOOK_SIGNING_SECRET_REQUIRED_MESSAGE
-    );
-  });
-
-  test("the stored URL with no secret is an echo", () => {
-    expect(classifyHookUpdate({ url: stored }, stored)).toBeUndefined();
+  test("dedupes methods and normalises path prefixes", () => {
+    expect(
+      AgentVaultHookRuleSchema.parse({ service: " github ", methods: ["PUT", "PUT"], paths: ["/repos/"] })
+    ).toEqual({ service: "github", methods: ["PUT"], paths: ["/repos"] });
   });
 
   test.each([
-    { why: "same URL, new secret", sent: { url: stored, signingSecret: secret } },
-    { why: "new URL, no secret", sent: { url: "https://hooks.example.com/b" } },
-    { why: "new URL, new secret", sent: { url: "https://hooks.example.com/b", signingSecret: secret } }
-  ])("$why is an update", ({ sent }) => {
-    expect(classifyHookUpdate(sent, stored)).toEqual({ kind: "updated", ...sent });
+    {
+      why: "tools with methods",
+      rule: { service: "x", methods: ["GET"], tools: ["a"] },
+      message:
+        "A rule narrows an HTTP service by 'methods' and 'paths' or an MCP service by 'tools', not both. Split it into two rules."
+    },
+    {
+      why: "tools with paths",
+      rule: { service: "x", paths: ["/a"], tools: ["a"] },
+      message:
+        "A rule narrows an HTTP service by 'methods' and 'paths' or an MCP service by 'tools', not both. Split it into two rules."
+    },
+    {
+      why: "an empty service",
+      rule: { service: "  " },
+      message: "Enter the name of the service this rule applies to."
+    },
+    {
+      why: "an empty method list",
+      rule: { service: "x", methods: [] },
+      message: "List at least one method, or leave 'methods' out to match every method."
+    },
+    {
+      why: "an empty tool list",
+      rule: { service: "x", tools: [] },
+      message: "List at least one tool, or leave 'tools' out to match every tool."
+    },
+    {
+      why: "too many tools",
+      rule: { service: "x", tools: Array.from({ length: 101 }, (_, index) => `t${index}`) },
+      message: "A rule can list at most 100 tools."
+    },
+    {
+      why: "a duplicate tool",
+      rule: { service: "x", tools: ["a", "a"] },
+      message: '"a" is listed twice.'
+    },
+    {
+      why: "a relative path",
+      rule: { service: "x", paths: ["repos"] },
+      message: '"repos" must start with a /.'
+    }
+  ])("refuses $why", ({ rule, message }) => {
+    expect(issuesOf(AgentVaultHookRuleSchema.safeParse(rule))).toEqual([message]);
   });
-});
 
-describe("describeHookChange", () => {
-  const locked = "https://hooks.example.com/a";
-
-  test("set names the URL and a new secret", () => {
-    expect(describeHookChange({ kind: "set", url: locked, signingSecret: "x" }, null)).toEqual({
-      hookChanged: "set",
-      hookUrl: locked,
-      hookSecretReplaced: true
-    });
+  test("an empty rule list is allowed and means every request", () => {
+    expect(AgentVaultHookRulesSchema.parse([])).toEqual([]);
   });
 
-  test("removed names the URL it removed", () => {
-    expect(describeHookChange({ kind: "removed" }, locked)).toEqual({
-      hookChanged: "removed",
-      hookUrl: locked,
-      hookSecretReplaced: false
-    });
+  test("at most 50 rules", () => {
+    const rules = Array.from({ length: 51 }, (_, index) => ({ service: `s${index}` }));
+    expect(issuesOf(AgentVaultHookRulesSchema.safeParse(rules))).toEqual(["A hook can have at most 50 rules."]);
   });
 
-  test("a secret-only update has no URL", () => {
-    expect(describeHookChange({ kind: "updated", url: locked, signingSecret: "x" }, locked)).toEqual({
-      hookChanged: "updated",
-      hookUrl: undefined,
-      hookSecretReplaced: true
-    });
-  });
-
-  test("a URL-only update names the new URL and keeps the secret", () => {
-    expect(describeHookChange({ kind: "updated", url: "https://hooks.example.com/b" }, locked)).toEqual({
-      hookChanged: "updated",
-      hookUrl: "https://hooks.example.com/b",
-      hookSecretReplaced: false
-    });
+  test("toHookRules keeps only the rule fields", () => {
+    expect(toHookRules([{ service: "a", tools: ["t"], extra: true }, { service: "b" }])).toEqual([
+      { service: "a", tools: ["t"] },
+      { service: "b" }
+    ]);
+    expect(toHookRules(null)).toEqual([]);
   });
 });
 

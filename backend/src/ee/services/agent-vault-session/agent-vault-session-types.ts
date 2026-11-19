@@ -1,5 +1,6 @@
 import { TGenericPermission } from "@app/lib/types";
 
+import { AgentVaultHookMode, TAgentVaultHookRule } from "../agent-vault-hook/agent-vault-hook-fns";
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
@@ -10,7 +11,6 @@ import {
   AgentVaultSessionStatus,
   AgentVaultSubstitutionSurface
 } from "../agent-vault/agent-vault-enums";
-import { TAgentVaultHookInput } from "../agent-vault/agent-vault-hook-fns";
 import { TAgentVaultServiceTypeFields } from "../agent-vault/agent-vault-service-type-fns";
 
 /** Exactly one of the two names the user. */
@@ -51,7 +51,14 @@ export type TAgentVaultInlineServiceInput = {
     | { type: AgentVaultCredentialType.SshKey; username: string; privateKey: string; certificate?: string };
   customHeaders?: { name: string; prefix?: string; value: string }[];
   substitutions?: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[]; value: string }[];
-  hook?: TAgentVaultHookInput;
+};
+
+/** A hook sent with a session, for that session alone. */
+export type TAgentVaultInlineHookInput = {
+  url: string;
+  secret: string;
+  mode?: AgentVaultHookMode;
+  rules?: TAgentVaultHookRule[];
 };
 
 export type TAgentVaultInlineBearerCredentialSummary = {
@@ -76,7 +83,6 @@ export type TAgentVaultInlineServiceSummary = {
   // The name it was sent with, or its first host when it was sent without one.
   name: string;
   description: string | null;
-  hook: { url: string } | null;
 } & (
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Http }> & {
       credential: Exclude<TAgentVaultInlineCredentialSummary, { type: AgentVaultCredentialType.SshKey }>;
@@ -128,6 +134,9 @@ export type TMintSessionDTO = {
   onBehalfOf?: TOnBehalfOfUser;
   label: string | null;
   metadata?: Record<string, string>;
+  // At most one of the two: a saved hook of the project, or one of the session's own.
+  hookId?: string;
+  hook?: TAgentVaultInlineHookInput;
 };
 
 export type TAgentVaultSessionMetadataFilter = Array<{ key: string; value: string }>;

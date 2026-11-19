@@ -11643,17 +11643,20 @@ describe("Agent Vault V1 Router", async () => {
   });
 
   describe("hooks", async () => {
+    const hooksUrl = "/api/v1/agent-vault/hooks";
     const servicesUrl = "/api/v1/agent-vault/services";
     const sessionsUrl = "/api/v1/agent-vault/sessions";
     const hookUrl = "https://hooks.example.com/agent-vault";
-    const signingSecret = `whsec_${"a".repeat(40)}`;
+    const secret = `whsec_${"a".repeat(40)}`;
 
-    type TResolvedHookService = {
+    type TResolvedHook = {
       id: string;
-      name: string;
-      accessBundleId: string | null;
-      hook: { url: string; secret: string } | null;
-    };
+      name: string | null;
+      url: string;
+      secret: string;
+      mode: string;
+      rules: { service: string; methods?: string[]; paths?: string[]; tools?: string[] }[];
+    } | null;
 
     const createProxyToken = async (name: string) => {
       const proxy = await inject("POST", "/api/v1/agent-vault/proxies", { name });
@@ -11668,187 +11671,192 @@ describe("Agent Vault V1 Router", async () => {
         headers: { authorization: `Bearer ${proxyToken}`, "x-infisical-agent-session": sessionToken }
       });
 
-    const createHookedService = async (bundleName: string) => {
-      const bundle = await createAccessBundle(bundleName);
+    const createService = async (name: string) => {
       const created = await inject("POST", servicesUrl, {
-        accessBundleIds: [bundle.id],
         type: "http",
-        name: "stripe",
-        hostPattern: "api.stripe.com",
-        credential: { type: "bearer", value: "sk_hooked" },
-        hook: { url: hookUrl, signingSecret }
+        name,
+        hostPattern: `${name}.example.com`,
+        credential: { type: "bearer", value: "sk_hooked" }
       });
       expect(created.statusCode, created.payload).toBe(200);
-      return { bundle, created, service: created.json().service as { id: string; hook?: { url: string } | null } };
+      return created.json().service as { id: string; name: string };
     };
 
-    const mintAndResolve = async (bundle: { name: string }, proxyName: string) => {
-      const mint = await inject("POST", sessionsUrl, { accessBundle: bundle.name, ttl: "1h" });
-      expect(mint.statusCode).toBe(200);
+    const createHook = async (name: string, rules: unknown[] = []) => {
+      const created = await inject("POST", hooksUrl, { name, url: hookUrl, secret, rules });
+      expect(created.statusCode, created.payload).toBe(200);
+      return created.json().hook as { id: string; name: string };
+    };
+
+    const mintAndResolve = async (body: Record<string, unknown>, proxyName: string) => {
+      const mint = await inject("POST", sessionsUrl, { ttl: "1h", ...body });
+      expect(mint.statusCode, mint.payload).toBe(200);
       const proxyToken = await createProxyToken(proxyName);
-      return async () => {
-        const resolved = await resolveWith(proxyToken, mint.json().session.token as string);
-        expect(resolved.statusCode, resolved.payload).toBe(200);
-        return resolved.json() as {
-          services: TResolvedHookService[];
-          session: { label: string | null; actor: { type: string; id: string }; onBehalfOf: unknown };
-        };
+      const { session } = mint.json() as { session: { id: string; token: string; hook: unknown } };
+      return {
+        session,
+        resolve: async () => {
+          const resolved = await resolveWith(proxyToken, session.token);
+          expect(resolved.statusCode, resolved.payload).toBe(200);
+          return resolved.json() as {
+            services: Record<string, unknown>[];
+            hook: TResolvedHook;
+            session: { metadata: Record<string, string> };
+          };
+        }
       };
     };
 
-    test("an admin sets a hook, and every read shows its URL without the signing secret", async () => {
-      const { bundle, created, service } = await createHookedService("hooks-create");
-      expect(service.hook).toEqual({ url: hookUrl });
+    test("a saved hook is created, read without its secret, updated and deleted", async () => {
+      const created = await inject("POST", hooksUrl, {
+        name: "approvals",
+        description: "Asks the approvals service",
+        url: hookUrl,
+        secret,
+        rules: [{ service: "github", methods: ["PUT"], paths: ["/repos/"] }, { service: "linear", tools: ["delete_issue"] }]
+      });
+      expect(created.statusCode, created.payload).toBe(200);
+      const hook = created.json().hook as { id: string };
+      expect(created.json().hook).toMatchObject({
+        name: "approvals",
+        url: hookUrl,
+        mode: "gate",
+        rules: [
+          { service: "github", methods: ["PUT"], paths: ["/repos"] },
+          { service: "linear", tools: ["delete_issue"] }
+        ]
+      });
+      expect(created.payload).not.toContain(secret);
 
-      const byId = await inject("GET", `${servicesUrl}/${service.id}`);
-      expect(byId.json().service.hook).toEqual({ url: hookUrl });
-      const list = await inject("GET", servicesUrl);
-      const bundleRead = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
-      expect(bundleRead.json().accessBundle.services[0].hook).toEqual({ url: hookUrl });
+      const duplicate = await inject("POST", hooksUrl, { name: "approvals", url: hookUrl, secret });
+      expect(duplicate.statusCode).toBe(409);
 
-      [created.payload, byId.payload, list.payload, bundleRead.payload].forEach((text) =>
-        expect(text).not.toContain(signingSecret)
-      );
-      const [row] = await servicesInBundle(bundle.id);
-      expect(row.hookUrl).toBe(hookUrl);
-      expect(row.encryptedHookSecret).not.toBeNull();
-      expect(JSON.stringify(row)).not.toContain(signingSecret);
+      const list = await inject("GET", hooksUrl);
+      expect(list.statusCode, list.payload).toBe(200);
+      expect((list.json().hooks as { id: string }[]).map(({ id }) => id)).toContain(hook.id);
+      expect(list.payload).not.toContain(secret);
+
+      const movedUrl = "https://hooks2.example.com/agent-vault";
+      const moved = await inject("PATCH", `${hooksUrl}/${hook.id}`, { url: movedUrl, rules: [] });
+      expect(moved.statusCode, moved.payload).toBe(200);
+      expect(moved.json().hook).toMatchObject({ url: movedUrl, rules: [] });
+      const [row] = await testDb("agent_vault_hooks").where({ id: hook.id });
+      expect(row.encryptedSecret).not.toBeNull();
+
+      const empty = await inject("PATCH", `${hooksUrl}/${hook.id}`, {});
+      expect(empty.statusCode).toBe(422);
+
+      const deleted = await inject("DELETE", `${hooksUrl}/${hook.id}`);
+      expect(deleted.statusCode, deleted.payload).toBe(200);
+      expect((await inject("GET", `${hooksUrl}/${hook.id}`)).statusCode).toBe(404);
     });
 
-    test("a member's reads of a hooked service leave the hook out", async () => {
-      const { bundle, service } = await createHookedService("hooks-member");
-      const bundleUrl = `/api/v1/agent-vault/access-bundles/${bundle.id}`;
+    test("a session started with a saved hook resolves it, follows its edits and loses it when it is deleted", async () => {
+      const service = await createService("hooked-api");
+      const hook = await createHook("resolve-hook", [{ service: service.name, methods: ["POST"] }]);
+      const { session, resolve } = await mintAndResolve(
+        { services: [service.name], hookId: hook.id, metadata: { userRef: "u-42" } },
+        "hooks-saved"
+      );
+      expect(session.hook).toMatchObject({ id: hook.id, name: "resolve-hook", isInline: false, url: hookUrl });
+
+      const resolved = await resolve();
+      expect(resolved.hook).toEqual({
+        id: hook.id,
+        name: "resolve-hook",
+        url: hookUrl,
+        secret,
+        mode: "gate",
+        rules: [{ service: service.name, methods: ["POST"] }]
+      });
+      expect(resolved.services[0]).not.toHaveProperty("hook");
+      expect(resolved.session.metadata).toEqual({ userRef: "u-42" });
+
+      const newSecret = `whsec_${"b".repeat(40)}`;
+      expect((await inject("PATCH", `${hooksUrl}/${hook.id}`, { secret: newSecret })).statusCode).toBe(200);
+      expect((await resolve()).hook).toMatchObject({ secret: newSecret });
+
+      expect((await inject("DELETE", `${hooksUrl}/${hook.id}`)).statusCode).toBe(200);
+      expect((await resolve()).hook).toBeNull();
+      const read = await inject("GET", `${sessionsUrl}/${session.id}`);
+      expect(read.json().session.hook).toBeNull();
+    });
+
+    test("a mint refuses a hook id from nowhere and a saved and an inline hook together", async () => {
+      const service = await createService("hooks-refused");
+      const missing = "00000000-0000-4000-8000-000000000000";
+      const unknown = await inject("POST", sessionsUrl, { services: [service.name], hookId: missing });
+      expect(unknown.statusCode).toBe(404);
+      expect(unknown.json().message).toBe(`Hook with ID '${missing}' not found`);
+
+      const hook = await createHook("both-hook");
+      const both = await inject("POST", sessionsUrl, {
+        services: [service.name],
+        hookId: hook.id,
+        hook: { url: hookUrl, secret }
+      });
+      expect(both.statusCode).toBe(400);
+      expect(both.json().message).toBe(
+        "Send 'hookId' to attach a saved hook or 'hook' to send one with the session, not both."
+      );
+    });
+
+    test("an inline hook resolves until the session is revoked, and its URL stays readable", async () => {
+      const service = await createService("inline-hooked");
+      const { session, resolve } = await mintAndResolve(
+        { services: [service.name], hook: { url: hookUrl, secret, rules: [{ service: service.name }] } },
+        "hooks-inline"
+      );
+      expect(session.hook).toMatchObject({ name: null, isInline: true, url: hookUrl });
+
+      const resolved = await resolve();
+      expect(resolved.hook).toMatchObject({ name: null, url: hookUrl, secret, rules: [{ service: service.name }] });
+
+      expect((await inject("POST", `${sessionsUrl}/${session.id}/revoke`)).statusCode).toBe(200);
+      const [row] = await testDb("agent_vault_hooks").where({ sessionId: session.id });
+      expect(row).toMatchObject({ url: hookUrl, encryptedSecret: null });
+      expect(row.secretsDeletedAt).not.toBeNull();
+
+      const read = await inject("GET", `${sessionsUrl}/${session.id}`);
+      expect(read.json().session).toMatchObject({ status: "revoked", hook: { isInline: true, url: hookUrl } });
+      expect(read.payload).not.toContain(secret);
+
+      expect((await inject("GET", `${hooksUrl}/${row.id}`)).statusCode).toBe(404);
+    });
+
+    test("a member can read hooks and attach a saved one, but can't create one or send one inline", async () => {
+      const service = await createService("member-hooked");
+      const hook = await createHook("member-hook");
+      const bundle = await createAccessBundle("hooks-member");
+      expect((await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, { serviceIds: [service.id] })).statusCode).toBe(200);
       const member = await createMemberIdentity(`hooks-member-${Date.now()}`);
       try {
-        expect((await inject("POST", `${bundleUrl}/members`, { machineIdentityIds: [member.id] })).statusCode).toBe(
-          200
-        );
+        expect(
+          (
+            await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
+              machineIdentityIds: [member.id]
+            })
+          ).statusCode
+        ).toBe(200);
 
-        const byId = await member.as("GET", `${servicesUrl}/${service.id}`);
-        expect(byId.statusCode, byId.payload).toBe(200);
-        expect(byId.json().service).not.toHaveProperty("hook");
-
-        const list = await member.as("GET", servicesUrl);
+        const list = await member.as("GET", hooksUrl);
         expect(list.statusCode, list.payload).toBe(200);
-        const listed = (list.json().services as { id: string }[]).find((row) => row.id === service.id);
-        expect(listed).toBeDefined();
-        expect(listed).not.toHaveProperty("hook");
+        expect(list.payload).not.toContain(secret);
 
-        const bundleRead = await member.as("GET", bundleUrl);
-        expect(bundleRead.statusCode, bundleRead.payload).toBe(200);
-        expect(bundleRead.json().accessBundle.services[0]).not.toHaveProperty("hook");
+        expect((await member.as("POST", hooksUrl, { name: "mine", url: hookUrl, secret })).statusCode).toBe(403);
 
-        [byId.payload, list.payload, bundleRead.payload].forEach((text) => {
-          expect(text).not.toContain(hookUrl);
-          expect(text).not.toContain(signingSecret);
+        const inline = await member.as("POST", sessionsUrl, {
+          accessBundle: bundle.name,
+          hook: { url: hookUrl, secret }
         });
+        expect(inline.statusCode).toBe(403);
+
+        const attached = await member.as("POST", sessionsUrl, { accessBundle: bundle.name, hookId: hook.id });
+        expect(attached.statusCode, attached.payload).toBe(200);
+        expect(attached.json().session.hook).toMatchObject({ id: hook.id, isInline: false });
       } finally {
         await member.cleanup();
       }
-    });
-
-    test("an update keeps, moves, replaces and removes the hook, and refuses one it can't use", async () => {
-      const { bundle, service } = await createHookedService("hooks-update");
-      const url = `${servicesUrl}/${service.id}`;
-      const resolve = await mintAndResolve(bundle, "hooks-update");
-      const resolvedHook = async () => (await resolve()).services[0].hook;
-
-      // The URL it already has, with no secret, changes nothing, so on its own it is an empty update.
-      const unchanged = await inject("PATCH", url, { type: "http", hook: { url: hookUrl } });
-      expect(unchanged.statusCode).toBe(400);
-      expect(unchanged.json().message).toBe("Provide at least one field besides 'type' to update");
-      const renamed = await inject("PATCH", url, { type: "http", name: "stripe-live", hook: { url: hookUrl } });
-      expect(renamed.statusCode, renamed.payload).toBe(200);
-      expect(renamed.json().service).toMatchObject({ name: "stripe-live", hook: { url: hookUrl } });
-      expect(await resolvedHook()).toEqual({ url: hookUrl, secret: signingSecret });
-
-      const movedUrl = "https://hooks2.example.com/agent-vault";
-      const moved = await inject("PATCH", url, { type: "http", hook: { url: movedUrl } });
-      expect(moved.statusCode, moved.payload).toBe(200);
-      expect(moved.json().service.hook).toEqual({ url: movedUrl });
-      expect(await resolvedHook()).toEqual({ url: movedUrl, secret: signingSecret });
-
-      const newSecret = `whsec_${"b".repeat(40)}`;
-      const replaced = await inject("PATCH", url, { type: "http", hook: { url: movedUrl, signingSecret: newSecret } });
-      expect(replaced.statusCode, replaced.payload).toBe(200);
-      expect(replaced.payload).not.toContain(newSecret);
-      expect(await resolvedHook()).toEqual({ url: movedUrl, secret: newSecret });
-
-      const invalid = async (hook: Record<string, string>, message: string) => {
-        const res = await inject("PATCH", url, { type: "http", hook });
-        expect(res.statusCode, res.payload).toBe(422);
-        expect(res.payload).toContain(message);
-      };
-      await invalid({ url: `${movedUrl}?token=1` }, "Hook URLs can't include a query string.");
-      await invalid(
-        { url: movedUrl, signingSecret: `whsec ${"c".repeat(40)}` },
-        "The signing secret can only use letters, numbers and symbols, with no spaces."
-      );
-
-      const removed = await inject("PATCH", url, { type: "http", hook: null });
-      expect(removed.statusCode, removed.payload).toBe(200);
-      expect(removed.json().service.hook).toBeNull();
-      const [row] = await servicesInBundle(bundle.id);
-      expect(row).toMatchObject({ hookUrl: null, encryptedHookSecret: null });
-      expect(await resolvedHook()).toBeNull();
-
-      const noSecret = await inject("PATCH", url, { type: "http", hook: { url: hookUrl } });
-      expect(noSecret.statusCode, noSecret.payload).toBe(400);
-      expect(noSecret.json().message).toBe("Enter a signing secret for the hook.");
-    });
-
-    test("resolve sends the hook with its secret, the bundle and the session's actor", async () => {
-      const { bundle, service } = await createHookedService("hooks-resolve");
-      const resolve = await mintAndResolve(bundle, "hooks-resolve");
-
-      const resolved = await resolve();
-      expect(resolved.services).toEqual([
-        expect.objectContaining({
-          id: service.id,
-          accessBundleId: bundle.id,
-          hook: { url: hookUrl, secret: signingSecret }
-        })
-      ]);
-      expect(resolved.session).toMatchObject({ actor: { type: "user", id: seedData1.id }, onBehalfOf: null });
-    });
-
-    test("an inline service's hook resolves until the session is revoked, and the URL stays readable", async () => {
-      const mint = await inject("POST", sessionsUrl, {
-        ttl: "1h",
-        services: [
-          {
-            type: "http",
-            name: "openai",
-            hostPattern: "api.openai.com",
-            credential: { type: "bearer", value: "sk-inline-hooked" },
-            hook: { url: hookUrl, signingSecret }
-          }
-        ]
-      });
-      expect(mint.statusCode, mint.payload).toBe(200);
-      const { session } = mint.json() as {
-        session: { id: string; token: string; services: { hook: { url: string } | null }[] };
-      };
-      expect(session.services[0].hook).toEqual({ url: hookUrl });
-      expect(mint.payload).not.toContain(signingSecret);
-
-      const proxyToken = await createProxyToken("hooks-inline");
-      const live = await resolveWith(proxyToken, session.token);
-      expect(live.statusCode, live.payload).toBe(200);
-      expect((live.json().services as TResolvedHookService[])[0]).toMatchObject({
-        accessBundleId: null,
-        hook: { url: hookUrl, secret: signingSecret }
-      });
-
-      expect((await inject("POST", `${sessionsUrl}/${session.id}/revoke`)).statusCode).toBe(200);
-
-      const [row] = await testDb("agent_vault_services").where({ sessionId: session.id });
-      expect(row).toMatchObject({ hookUrl, encryptedHookSecret: null });
-      expect((await resolveWith(proxyToken, session.token)).statusCode).not.toBe(200);
-
-      const read = await inject("GET", `${sessionsUrl}/${session.id}`);
-      expect(read.json().session).toMatchObject({ status: "revoked", services: [{ hook: { url: hookUrl } }] });
-      expect(read.payload).not.toContain(signingSecret);
     });
   });
 });

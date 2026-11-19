@@ -15,6 +15,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultProxyActions,
+  ProjectPermissionAgentVaultHookActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionAgentVaultVariableActions,
@@ -309,7 +310,8 @@ const AgentVaultSessionPolicyActionSchema = z.object({
   [ProjectPermissionAgentVaultSessionActions.ReadAny]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.EditAny]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.RevokeAny]: z.boolean().optional(),
-  [ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices]: z.boolean().optional()
+  [ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSessionActions.CreateWithInlineHook]: z.boolean().optional()
 });
 
 const AgentVaultProxyPolicyActionSchema = z.object({
@@ -326,6 +328,13 @@ const AgentVaultSkillPolicyActionSchema = z.object({
   [ProjectPermissionAgentVaultSkillActions.Create]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSkillActions.Edit]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSkillActions.Delete]: z.boolean().optional()
+});
+
+const AgentVaultHookPolicyActionSchema = z.object({
+  [ProjectPermissionAgentVaultHookActions.Read]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultHookActions.Create]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultHookActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultHookActions.Delete]: z.boolean().optional()
 });
 
 const AgentVaultVariablePolicyActionSchema = z.object({
@@ -886,6 +895,7 @@ export const projectRoleFormSchema = z.object({
       ),
       [ProjectPermissionSub.AgentVaultVariables]:
         AgentVaultVariablePolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.AgentVaultHooks]: AgentVaultHookPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.ProjectFolderGrant]: ProjectFolderGrantPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
@@ -2610,6 +2620,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Create With Inline Services",
         value: ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
         description: "Send services with a session instead of only naming an access bundle"
+      },
+      {
+        label: "Create With Inline Hook",
+        value: ProjectPermissionAgentVaultSessionActions.CreateWithInlineHook,
+        description: "Send a hook URL and secret with a session instead of naming a saved hook"
       }
     ]
   },
@@ -2703,6 +2718,32 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Read Value",
         value: ProjectPermissionAgentVaultVariableActions.ReadValue,
         description: "Reveal a global variable's value"
+      }
+    ]
+  },
+  [ProjectPermissionSub.AgentVaultHooks]: {
+    title: "Hooks",
+    description: "Manage the hooks that check a session's requests before they are sent",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionAgentVaultHookActions.Read,
+        description: "View hooks and start sessions with them"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionAgentVaultHookActions.Create,
+        description: "Add hooks"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionAgentVaultHookActions.Edit,
+        description: "Change a hook's URL, secret or rules"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionAgentVaultHookActions.Delete,
+        description: "Delete hooks"
       }
     ]
   },
@@ -3632,7 +3673,8 @@ const AgentVaultPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.AgentVaultSessions]: enabled,
   [ProjectPermissionSub.AgentVaultProxies]: enabled,
   [ProjectPermissionSub.AgentVaultSkills]: enabled,
-  [ProjectPermissionSub.AgentVaultVariables]: enabled
+  [ProjectPermissionSub.AgentVaultVariables]: enabled,
+  [ProjectPermissionSub.AgentVaultHooks]: enabled
 });
 
 // scott: this structure ensures we don't forget to add project permissions to their relevant project type

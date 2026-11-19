@@ -1,6 +1,7 @@
 import {
   AgentVaultCredentialType,
   AgentVaultDelegationScope,
+  AgentVaultHookMode,
   AgentVaultHttpMethod,
   AgentVaultMcpTransport,
   AgentVaultMemberType,
@@ -141,13 +142,6 @@ export type TAgentVaultSubstitutionInput = {
   value?: string;
 };
 
-export type TAgentVaultServiceHook = { url: string };
-
-export type TAgentVaultServiceHookInput = { url: string; signingSecret: string };
-
-// signingSecret left out keeps the saved one.
-export type TAgentVaultServiceHookUpdate = { url: string; signingSecret?: string };
-
 export type TAgentVaultVariableReference = {
   variableId: string;
   key: string;
@@ -235,8 +229,6 @@ export type TAgentVaultService = (
   variableReferences?: TAgentVaultVariableReference[];
   // The caller's own values, on reads only. null when the admin sets the whole credential.
   personalValues?: TAgentVaultPersonalValues | null;
-  // Left out for a member. null when the service has no hook.
-  hook?: TAgentVaultServiceHook | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -416,7 +408,6 @@ export type TAgentVaultSessionInlineService = (
   // The name it was sent with, or its first host when it was sent without one.
   name: string;
   description: string | null;
-  hook?: TAgentVaultServiceHook | null;
 };
 
 /** A project service a session names. Only what identifies it is returned. */
@@ -464,6 +455,7 @@ export type TAgentVaultSession = {
   services: TAgentVaultSessionService[];
   /** Null until the proxy uploads the session's first log chunk. */
   stats: TAgentVaultSessionStats | null;
+  hook: TAgentVaultSessionHook | null;
 };
 
 export type TAgentVaultSessionStats = {
@@ -522,6 +514,7 @@ export type TAgentVaultMintedSession = {
   projectId: string;
   accessBundle: TAgentVaultSessionAccessBundle | null;
   services: TAgentVaultSessionService[];
+  hook: TAgentVaultSessionHook | null;
 };
 
 export type TAgentVaultProxy = {
@@ -575,7 +568,6 @@ export type TUpdateAgentVaultAccessBundleDTO = {
 export type TCreateAgentVaultServiceDTO = {
   // Access bundles to add the new service to in the same request.
   accessBundleIds?: string[];
-  hook?: TAgentVaultServiceHookInput;
 } & (
   | {
       type: AgentVaultServiceType.Http;
@@ -639,8 +631,6 @@ export type TUpdateAgentVaultServiceDTO = {
   credential?: TAgentVaultCredentialUpdate | TAgentVaultSshKeyCredentialUpdate;
   customHeaders?: TAgentVaultCustomHeaderInput[];
   substitutions?: TAgentVaultSubstitutionInput[];
-  // null removes the hook and its signing secret.
-  hook?: TAgentVaultServiceHookUpdate | null;
 };
 
 /** Credential and header values left out fall back to what the saved service stores, as on update. */
@@ -701,13 +691,14 @@ export type TAddAgentVaultMembersDTO = TAgentVaultActorIdsDTO & {
 };
 
 // Needs an access bundle, at least one service, or both. Each is named rather than referenced by ID. The API also takes
-// services defined inline, which this UI doesn't send.
+// services and a hook defined inline, which this UI doesn't send.
 export type TCreateAgentVaultSessionDTO = {
   accessBundle?: string;
   services?: string[];
   ttl: string;
   label?: string;
   metadata?: Record<string, string>;
+  hookId?: string;
 };
 
 export type TUpdateAgentVaultSessionDTO = {
@@ -1070,4 +1061,68 @@ export type TAgentVaultAccess = {
   freeUsage: TAgentVaultFreeUsage | null;
   /** True from 80% of the free requests. */
   warn: boolean;
+};
+
+/**
+ * Picks the requests of one service, by name, that go to the hook. Methods and paths narrow an HTTP service, tools an
+ * MCP service. A list is left out rather than sent empty, and tools never combine with methods or paths.
+ */
+export type TAgentVaultHookRule = {
+  service: string;
+  methods?: AgentVaultHttpMethod[];
+  paths?: string[];
+  tools?: string[];
+};
+
+/** A saved hook. Its secret is write-only and never returned. */
+export type TAgentVaultHook = {
+  id: string;
+  name: string;
+  description: string | null;
+  url: string;
+  mode: AgentVaultHookMode;
+  /** Empty sends every request of the session to the hook. */
+  rules: TAgentVaultHookRule[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** The hook a session was started with. URL, mode and rules only for callers who can read hooks. */
+export type TAgentVaultSessionHook = {
+  id: string;
+  /** Null for a hook sent inline with the session. */
+  name: string | null;
+  isInline: boolean;
+  url?: string;
+  mode?: AgentVaultHookMode;
+  rules?: TAgentVaultHookRule[];
+};
+
+export type TListAgentVaultHooksDTO = {
+  search?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export type TAgentVaultHookPage = {
+  hooks: TAgentVaultHook[];
+  totalCount: number;
+};
+
+export type TCreateAgentVaultHookDTO = {
+  name: string;
+  description?: string;
+  url: string;
+  secret: string;
+  rules?: TAgentVaultHookRule[];
+};
+
+/** Fields left out keep their values; `secret` left out keeps the saved one and `description: null` removes it. */
+export type TUpdateAgentVaultHookDTO = {
+  hookId: string;
+  name?: string;
+  description?: string | null;
+  url?: string;
+  secret?: string;
+  rules?: TAgentVaultHookRule[];
 };

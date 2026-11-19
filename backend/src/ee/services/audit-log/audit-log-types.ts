@@ -847,6 +847,9 @@ export enum EventType {
   AGENT_VAULT_SKILL_VERSION_RESTORE = "agent-vault-skill-version-restore",
   AGENT_VAULT_SKILL_VERSION_VIEW = "agent-vault-skill-version-view",
   AGENT_VAULT_SKILL_DELETE = "agent-vault-skill-delete",
+  AGENT_VAULT_HOOK_CREATE = "agent-vault-hook-create",
+  AGENT_VAULT_HOOK_UPDATE = "agent-vault-hook-update",
+  AGENT_VAULT_HOOK_DELETE = "agent-vault-hook-delete",
   AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD = "agent-vault-access-bundle-skill-add",
   AGENT_VAULT_ACCESS_BUNDLE_SKILL_REMOVE = "agent-vault-access-bundle-skill-remove",
   AGENT_VAULT_ACCESS_BUNDLE_SERVICE_ADD = "agent-vault-access-bundle-service-add",
@@ -6785,7 +6788,7 @@ interface AgentVaultServiceCreateEvent {
     customHeaderNames?: string[];
     substitutionPlaceholders?: string[];
     variableKeys?: string[];
-    // The hook's URL when the service was created with one. Its signing secret is never recorded.
+    // Present only on events recorded before hooks moved off services to their own resource.
     hookUrl?: string;
   };
 }
@@ -6815,8 +6818,7 @@ interface AgentVaultServiceUpdateEvent {
     tlsVerify?: boolean;
     // Present only when the update changed the stored CA the proxy checks the server's certificate against.
     tlsCaChanged?: "set" | "removed" | "replaced";
-    // Present only when the update changed the hook. hookUrl is set when it set the hook, changed its URL or
-    // removed it, and hookSecretReplaced when a new signing secret was saved. The secret itself is never recorded.
+    // Present only on events recorded before hooks moved off services to their own resource.
     hookChanged?: "set" | "removed" | "updated";
     hookUrl?: string;
     hookSecretReplaced?: boolean;
@@ -7004,6 +7006,45 @@ interface AgentVaultSkillDeleteEvent {
   };
 }
 
+interface AgentVaultHookCreateEvent {
+  type: EventType.AGENT_VAULT_HOOK_CREATE;
+  metadata: {
+    hookId: string;
+    hookName: string;
+    url: string;
+    mode: string;
+    // An empty rule list sends every request of a session using the hook to it.
+    ruleCount: number;
+  };
+}
+
+interface AgentVaultHookUpdateEvent {
+  type: EventType.AGENT_VAULT_HOOK_UPDATE;
+  metadata: {
+    hookId: string;
+    // The hook's name after the update; `name` is set only by a rename.
+    hookName: string;
+    name?: string;
+    // Null when the update removed it.
+    description?: string | null;
+    url?: string;
+    mode?: string;
+    // Set when the update replaced the rules, with the new count.
+    ruleCount?: number;
+    // Whether a new secret was saved. The secret itself is never recorded.
+    secretReplaced: boolean;
+  };
+}
+
+interface AgentVaultHookDeleteEvent {
+  type: EventType.AGENT_VAULT_HOOK_DELETE;
+  metadata: {
+    hookId: string;
+    hookName: string;
+    url: string;
+  };
+}
+
 interface AgentVaultAccessBundleSkillAddEvent {
   type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD;
   metadata: {
@@ -7170,8 +7211,14 @@ interface AgentVaultSessionMintEvent {
       allowedTools?: string[] | null;
       customHeaderNames: string[];
       substitutionPlaceholders: string[];
+      // Present only on events recorded before hooks moved off services to their own resource.
       hookUrl?: string;
     }[];
+    // Set when the session was started with a saved hook.
+    hookId?: string;
+    hookName?: string;
+    // Set when the session was started with a hook of its own. Never its secret.
+    inlineHook?: { hookId: string; url: string; ruleCount: number };
     // Set when a machine identity started the session on this user's behalf.
     onBehalfOfUserId?: string;
     onBehalfOfUserName?: string;
@@ -9250,6 +9297,9 @@ export type Event =
   | AgentVaultVariableValueViewEvent
   | AgentVaultPersonalValuesSetEvent
   | AgentVaultPersonalValuesDeleteEvent
+  | AgentVaultHookCreateEvent
+  | AgentVaultHookUpdateEvent
+  | AgentVaultHookDeleteEvent
   | AgentVaultSkillCreateEvent
   | AgentVaultSkillVersionCreateEvent
   | AgentVaultSkillVersionRestoreEvent

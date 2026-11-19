@@ -143,6 +143,4 @@ export type TResolvedService = {
   memberProvided: boolean;
   // The bundle the service came from. Null for a service sent inline with the session and for one it names.
   accessBundleId: string | null;
-  // Asked before each request (each connection for a database or SSH service). Null when the service has none.
-  hook: { url: string; secret: string } | null;
 };

@@ -26,7 +26,8 @@ export const AgentVaultSessionsSchema = z.object({
   onBehalfOfUserId: z.string().uuid().nullable().optional(),
   onBehalfOfUserName: z.string().nullable().optional(),
   onBehalfOfUserEmail: z.string().nullable().optional(),
-  label: z.string().nullable().optional()
+  label: z.string().nullable().optional(),
+  hookId: z.string().uuid().nullable().optional()
 });
 
 export type TAgentVaultSessions = z.infer<typeof AgentVaultSessionsSchema>;

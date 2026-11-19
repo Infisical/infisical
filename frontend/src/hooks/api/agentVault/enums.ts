@@ -134,3 +134,7 @@ export enum AgentVaultSessionLogStorageType {
   Default = "default",
   External = "external"
 }
+
+export enum AgentVaultHookMode {
+  Gate = "gate"
+}
