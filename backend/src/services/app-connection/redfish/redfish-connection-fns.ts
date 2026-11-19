@@ -10,53 +10,53 @@ import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
-import { HpeIloConnectionMethod } from "./hpe-ilo-connection-enums";
-import { THpeIloConnectionConfig } from "./hpe-ilo-connection-types";
+import { RedfishConnectionMethod } from "./redfish-connection-enums";
+import { TRedfishConnectionConfig } from "./redfish-connection-types";
 
-export const HPE_ILO_DEFAULT_PORT = 443;
-const HPE_ILO_REQUEST_TIMEOUT_MS = 30_000;
-const HPE_ILO_ACCOUNTS_PATH = "/redfish/v1/AccountService/Accounts/";
+export const REDFISH_DEFAULT_PORT = 443;
+const REDFISH_REQUEST_TIMEOUT_MS = 30_000;
+const REDFISH_ACCOUNTS_PATH = "/redfish/v1/AccountService/Accounts/";
 
-export const getHpeIloConnectionListItem = () => {
+export const getRedfishConnectionListItem = () => {
   return {
-    name: "HPE iLO" as const,
-    app: AppConnection.HpeIloRedFish as const,
-    methods: Object.values(HpeIloConnectionMethod) as [HpeIloConnectionMethod.BasicAuth]
+    name: "Redfish" as const,
+    app: AppConnection.Redfish as const,
+    methods: Object.values(RedfishConnectionMethod) as [RedfishConnectionMethod.BasicAuth]
   };
 };
 
 // IPv6 literals must be bracketed in URLs and Host headers
 export const toUrlHost = (hostname: string) => (net.isIPv6(hostname) ? `[${hostname}]` : hostname);
 
-const getHpeIloBaseUrl = (credentials: THpeIloConnectionConfig["credentials"]) =>
-  `https://${toUrlHost(credentials.hostname)}:${credentials.port ?? HPE_ILO_DEFAULT_PORT}`;
+const getRedfishBaseUrl = (credentials: TRedfishConnectionConfig["credentials"]) =>
+  `https://${toUrlHost(credentials.hostname)}:${credentials.port ?? REDFISH_DEFAULT_PORT}`;
 
-const getHpeIloAuthHeaders = ({ username, password }: THpeIloConnectionConfig["credentials"]) => ({
+const getRedfishAuthHeaders = ({ username, password }: TRedfishConnectionConfig["credentials"]) => ({
   Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
   Accept: "application/json",
   "OData-Version": "4.0"
 });
 
-// OpenSSL's FIPS provider refuses TLS 1.2 handshakes without Extended Master Secret (RFC 7627), which older iLO
+// OpenSSL's FIPS provider refuses TLS 1.2 handshakes without Extended Master Secret (RFC 7627), which older BMC
 // firmware does not negotiate. The raw error is an OpenSSL stack string, and it survives gateway error wrapping
 // only as message text
-const getHpeIloTlsErrorMessage = (error: unknown, hostname: string) => {
+const getRedfishTlsErrorMessage = (error: unknown, hostname: string) => {
   if (!(error instanceof Error) || !error.message.includes("ems not enabled")) return undefined;
 
-  return `HPE iLO at '${hostname}' negotiated TLS 1.2 without Extended Master Secret, which FIPS mode does not allow. Enable TLS 1.3 on the iLO or update its firmware.`;
+  return `Redfish service at '${hostname}' negotiated TLS 1.2 without Extended Master Secret, which FIPS mode does not allow. Enable TLS 1.3 on the server's management controller or update its firmware.`;
 };
 
-// requestCfg.url is a path relative to the iLO root (e.g. "/redfish/v1/Systems/1")
-export const executeHpeIloRequest = async <T>(
-  config: Pick<THpeIloConnectionConfig, "gatewayId" | "credentials">,
+// requestCfg.url is a path relative to the Redfish service root (e.g. "/redfish/v1/Systems/1")
+export const executeRedfishRequest = async <T>(
+  config: Pick<TRedfishConnectionConfig, "gatewayId" | "credentials">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId"> | undefined,
   requestCfg: AxiosRequestConfig
 ): Promise<T> => {
   const { gatewayId, credentials } = config;
   const { hostname } = credentials;
-  const port = credentials.port ?? HPE_ILO_DEFAULT_PORT;
+  const port = credentials.port ?? REDFISH_DEFAULT_PORT;
 
-  const headers = { ...getHpeIloAuthHeaders(credentials), ...requestCfg.headers };
+  const headers = { ...getRedfishAuthHeaders(credentials), ...requestCfg.headers };
   const tlsOptions = {
     ca: credentials.sslCertificate,
     rejectUnauthorized: credentials.sslRejectUnauthorized,
@@ -82,13 +82,13 @@ export const executeHpeIloRequest = async <T>(
     return withGatewayV2Proxy(
       async (proxyPort) => {
         const resp = await safeRequest.request<T>({
-          timeout: HPE_ILO_REQUEST_TIMEOUT_MS,
+          timeout: REDFISH_REQUEST_TIMEOUT_MS,
           ...requestCfg,
           ...tlsOptions,
           url: `https://localhost:${proxyPort}${requestCfg.url ?? ""}`,
           // safeRequest's cached agent keeps sockets alive, which would hold the tunnel open after the proxy closes
           headers: { ...headers, Host: toUrlHost(hostname), Connection: "close" },
-          // the hop is the local gateway proxy, and the iLO it reaches sits in the gateway's network
+          // the hop is the local gateway proxy, and the Redfish service it reaches sits in the gateway's network
           allowPrivateIps: true
         });
         return resp.data;
@@ -101,34 +101,34 @@ export const executeHpeIloRequest = async <T>(
   }
 
   const resp = await safeRequest.request<T>({
-    timeout: HPE_ILO_REQUEST_TIMEOUT_MS,
+    timeout: REDFISH_REQUEST_TIMEOUT_MS,
     ...requestCfg,
     ...tlsOptions,
-    url: `${getHpeIloBaseUrl(credentials)}${requestCfg.url ?? ""}`,
+    url: `${getRedfishBaseUrl(credentials)}${requestCfg.url ?? ""}`,
     headers
   });
   return resp.data;
 };
 
-type THpeIloAccountCollection = {
+type TRedfishAccountCollection = {
   "@odata.id"?: string;
   Members?: { "@odata.id": string }[];
 };
 
-export const validateHpeIloConnectionCredentials = async (
-  config: THpeIloConnectionConfig,
+export const validateRedfishConnectionCredentials = async (
+  config: TRedfishConnectionConfig,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   const { hostname } = config.credentials;
 
-  let accounts: THpeIloAccountCollection;
+  let accounts: TRedfishAccountCollection;
   try {
-    accounts = await executeHpeIloRequest<THpeIloAccountCollection>(config, gatewayV2Service, {
+    accounts = await executeRedfishRequest<TRedfishAccountCollection>(config, gatewayV2Service, {
       method: "GET",
-      url: HPE_ILO_ACCOUNTS_PATH
+      url: REDFISH_ACCOUNTS_PATH
     });
   } catch (error: unknown) {
-    const tlsErrorMessage = getHpeIloTlsErrorMessage(error, hostname);
+    const tlsErrorMessage = getRedfishTlsErrorMessage(error, hostname);
     if (tlsErrorMessage) throw new BadRequestError({ message: `Unable to validate connection: ${tlsErrorMessage}` });
 
     if (error instanceof BadRequestError || error instanceof RuleViolationError) throw error;
@@ -136,39 +136,39 @@ export const validateHpeIloConnectionCredentials = async (
     if (isAxiosError(error)) {
       if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {
         throw new BadRequestError({
-          message: `Unable to validate connection: HPE iLO at '${hostname}' did not respond within ${HPE_ILO_REQUEST_TIMEOUT_MS / 1000} seconds.`
+          message: `Unable to validate connection: Redfish service at '${hostname}' did not respond within ${REDFISH_REQUEST_TIMEOUT_MS / 1000} seconds.`
         });
       }
       if (error.response?.status === HttpStatusCode.Unauthorized) {
         throw new BadRequestError({
-          message: `Unable to validate connection: HPE iLO at '${hostname}' rejected the username or password.`
+          message: `Unable to validate connection: Redfish service at '${hostname}' rejected the username or password.`
         });
       }
       if (error.response?.status === HttpStatusCode.Forbidden) {
         throw new BadRequestError({
-          message: `Unable to validate connection: the iLO account is not permitted to read accounts on '${hostname}'. Check the account's privileges.`
+          message: `Unable to validate connection: the account is not permitted to read accounts on '${hostname}'. Check the account's privileges.`
         });
       }
       if (error.response?.status === HttpStatusCode.NotFound) {
         throw new BadRequestError({
-          message: `Unable to validate connection: '${hostname}' does not expose the Redfish account service. Verify the hostname points to an HPE iLO interface with Redfish enabled.`
+          message: `Unable to validate connection: '${hostname}' does not expose the Redfish account service. Verify the hostname points to a server management controller with Redfish enabled.`
         });
       }
       if (error.response) {
         throw new BadRequestError({
-          message: `Unable to validate connection: HPE iLO at '${hostname}' responded with status ${error.response.status}.`
+          message: `Unable to validate connection: Redfish service at '${hostname}' responded with status ${error.response.status}.`
         });
       }
     }
 
     throw new BadRequestError({
-      message: `Unable to validate connection: ${error instanceof Error ? error.message : `verify that HPE iLO at '${hostname}' is reachable`}`
+      message: `Unable to validate connection: ${error instanceof Error ? error.message : `verify that Redfish service at '${hostname}' is reachable`}`
     });
   }
 
   if (!accounts || typeof accounts !== "object" || !Array.isArray(accounts.Members)) {
     throw new BadRequestError({
-      message: `Unable to validate connection: '${hostname}' did not return a valid Redfish response. Verify the hostname points to an HPE iLO interface.`
+      message: `Unable to validate connection: '${hostname}' did not return a valid Redfish response. Verify the hostname points to a server management controller with Redfish enabled.`
     });
   }
 

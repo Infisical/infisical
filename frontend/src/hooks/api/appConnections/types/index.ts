@@ -42,7 +42,6 @@ import { TGoDaddyConnection } from "./godaddy-connection";
 import { THasuraCloudConnection } from "./hasura-cloud-connection";
 import { THCVaultConnection } from "./hc-vault-connection";
 import { THerokuConnection } from "./heroku-connection";
-import { THpeIloConnection } from "./hpe-ilo-connection";
 import { THumanitecConnection } from "./humanitec-connection";
 import { TImpervaConnection } from "./imperva-connection";
 import { TIncidentIoConnection } from "./incident-io-connection";
@@ -75,6 +74,7 @@ import { TPostgresConnection } from "./postgres-connection";
 import { TPowerDnsConnection } from "./powerdns-connection";
 import { TQoveryConnection } from "./qovery-connection";
 import { TRailwayConnection } from "./railway-connection";
+import { TRedfishConnection } from "./redfish-connection";
 import { TRedisConnection } from "./redis-connection";
 import { TRenderConnection } from "./render-connection";
 import { TRundeckConnection } from "./rundeck-connection";
@@ -138,7 +138,7 @@ export * from "./gitlab-connection";
 export * from "./hasura-cloud-connection";
 export * from "./hc-vault-connection";
 export * from "./heroku-connection";
-export * from "./hpe-ilo-connection";
+export * from "./redfish-connection";
 export * from "./humanitec-connection";
 export * from "./imperva-connection";
 export * from "./incident-io-connection";
@@ -287,7 +287,7 @@ export type TAppConnection =
   | TDaytonaConnection
   | TStripeConnection
   | TKeeperConnection
-  | THpeIloConnection
+  | TRedfishConnection
   | TServiceNowConnection
   | TS3CompatibleConnection
   | TJiraConnection

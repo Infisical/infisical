@@ -4,6 +4,8 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
+import { fromStoredAppConnectionApp } from "../app-connection-stored-app";
+
 export type TAppConnectionCredentialRotationDALFactory = ReturnType<typeof appConnectionCredentialRotationDALFactory>;
 
 export const appConnectionCredentialRotationDALFactory = (db: TDbClient) => {
@@ -51,7 +53,7 @@ export const appConnectionCredentialRotationDALFactory = (db: TDbClient) => {
       )
       .first();
 
-    return result || null;
+    return result ? { ...result, connectionApp: fromStoredAppConnectionApp(result.connectionApp) } : null;
   };
 
   return {

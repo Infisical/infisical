@@ -140,7 +140,6 @@ import { ValidateHCVaultConnectionCredentialsSchema } from "./hc-vault";
 import { hcVaultConnectionService } from "./hc-vault/hc-vault-connection-service";
 import { ValidateHerokuConnectionCredentialsSchema } from "./heroku";
 import { herokuConnectionService } from "./heroku/heroku-connection-service";
-import { ValidateHpeIloConnectionCredentialsSchema } from "./hpe-ilo";
 import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
 import { ValidateImpervaConnectionCredentialsSchema } from "./imperva";
@@ -195,6 +194,7 @@ import { ValidateQoveryConnectionCredentialsSchema } from "./qovery";
 import { qoveryConnectionService } from "./qovery/qovery-connection-service";
 import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
 import { railwayConnectionService } from "./railway/railway-connection-service";
+import { ValidateRedfishConnectionCredentialsSchema } from "./redfish";
 import { ValidateRedisConnectionCredentialsSchema } from "./redis";
 import { ValidateRenderConnectionCredentialsSchema } from "./render/render-connection-schema";
 import { renderConnectionService } from "./render/render-connection-service";
@@ -352,7 +352,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Daytona]: ValidateDaytonaConnectionCredentialsSchema,
   [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema,
   [AppConnection.Keeper]: ValidateKeeperConnectionCredentialsSchema,
-  [AppConnection.HpeIloRedFish]: ValidateHpeIloConnectionCredentialsSchema,
+  [AppConnection.Redfish]: ValidateRedfishConnectionCredentialsSchema,
   [AppConnection.ServiceNow]: ValidateServiceNowConnectionCredentialsSchema,
   [AppConnection.S3Compatible]: ValidateS3CompatibleConnectionCredentialsSchema,
   [AppConnection.Jira]: ValidateJiraConnectionCredentialsSchema,

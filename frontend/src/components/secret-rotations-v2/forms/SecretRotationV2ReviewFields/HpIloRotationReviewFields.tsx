@@ -16,7 +16,7 @@ export const HpIloRotationReviewFields = () => {
 
   const parameters = watch("parameters");
   const secretsMapping = watch("secretsMapping");
-  const isSshConnection = watch("connection.app") !== AppConnection.HpeIloRedFish;
+  const isSshConnection = watch("connection.app") !== AppConnection.Redfish;
 
   return (
     <>

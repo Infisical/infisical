@@ -26,6 +26,7 @@ import {
   TFindOpt
 } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
+import { fromStoredAppConnectionApp } from "@app/services/app-connection/app-connection-stored-app";
 
 export type TSecretScanningV2DALFactory = ReturnType<typeof secretScanningV2DALFactory>;
 
@@ -132,7 +133,7 @@ const expandSecretScanningDataSource = <
     connectionId,
     connection: connectionId
       ? {
-          app: connectionApp,
+          app: fromStoredAppConnectionApp(connectionApp),
           id: connectionId,
           name: connectionName,
           orgId: connectionOrgId,

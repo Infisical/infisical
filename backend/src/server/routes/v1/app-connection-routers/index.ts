@@ -44,7 +44,6 @@ import { registerGoDaddyConnectionRouter } from "./godaddy-connection-router";
 import { registerHasuraCloudConnectionRouter } from "./hasura-cloud-connection-router";
 import { registerHCVaultConnectionRouter } from "./hc-vault-connection-router";
 import { registerHerokuConnectionRouter } from "./heroku-connection-router";
-import { registerHpeIloConnectionRouter } from "./hpe-ilo-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
 import { registerImpervaConnectionRouter } from "./imperva-connection-router";
 import { registerIncidentIoConnectionRouter } from "./incident-io-connection-router";
@@ -75,6 +74,7 @@ import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerPowerDnsConnectionRouter } from "./powerdns-connection-router";
 import { registerQoveryConnectionRouter } from "./qovery-connection-router";
 import { registerRailwayConnectionRouter } from "./railway-connection-router";
+import { registerRedfishConnectionRouter } from "./redfish-connection-router";
 import { registerRedisConnectionRouter } from "./redis-connection-router";
 import { registerRenderConnectionRouter } from "./render-connection-router";
 import { registerRundeckConnectionRouter } from "./rundeck-connection-router";
@@ -195,7 +195,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Daytona]: registerDaytonaConnectionRouter,
     [AppConnection.Stripe]: registerStripeConnectionRouter,
     [AppConnection.Keeper]: registerKeeperConnectionRouter,
-    [AppConnection.HpeIloRedFish]: registerHpeIloConnectionRouter,
+    [AppConnection.Redfish]: registerRedfishConnectionRouter,
     [AppConnection.ServiceNow]: registerServiceNowConnectionRouter,
     [AppConnection.S3Compatible]: registerS3CompatibleConnectionRouter,
     [AppConnection.Jira]: registerJiraConnectionRouter,

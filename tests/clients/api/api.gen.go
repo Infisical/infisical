@@ -27308,14 +27308,14 @@ func (e DeepSearchSecrets200JSONResponseBodySecretRotations17Type) Valid() bool 
 
 // Defines values for DeepSearchSecrets200JSONResponseBodySecretRotations18ConnectionApp.
 const (
-	DeepSearchSecrets200JSONResponseBodySecretRotations18ConnectionAppHpeIlo DeepSearchSecrets200JSONResponseBodySecretRotations18ConnectionApp = "hpe-ilo"
-	DeepSearchSecrets200JSONResponseBodySecretRotations18ConnectionAppSsh    DeepSearchSecrets200JSONResponseBodySecretRotations18ConnectionApp = "ssh"
+	DeepSearchSecrets200JSONResponseBodySecretRotations18ConnectionAppRedfish DeepSearchSecrets200JSONResponseBodySecretRotations18ConnectionApp = "redfish"
+	DeepSearchSecrets200JSONResponseBodySecretRotations18ConnectionAppSsh     DeepSearchSecrets200JSONResponseBodySecretRotations18ConnectionApp = "ssh"
 )
 
 // Valid indicates whether the value is a known member of the DeepSearchSecrets200JSONResponseBodySecretRotations18ConnectionApp enum.
 func (e DeepSearchSecrets200JSONResponseBodySecretRotations18ConnectionApp) Valid() bool {
 	switch e {
-	case DeepSearchSecrets200JSONResponseBodySecretRotations18ConnectionAppHpeIlo:
+	case DeepSearchSecrets200JSONResponseBodySecretRotations18ConnectionAppRedfish:
 		return true
 	case DeepSearchSecrets200JSONResponseBodySecretRotations18ConnectionAppSsh:
 		return true
@@ -29285,14 +29285,14 @@ func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations17Type) Valid
 
 // Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionApp.
 const (
-	ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionAppHpeIlo ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionApp = "hpe-ilo"
-	ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionAppSsh    ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionApp = "ssh"
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionAppRedfish ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionApp = "redfish"
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionAppSsh     ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionApp = "ssh"
 )
 
 // Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionApp enum.
 func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionApp) Valid() bool {
 	switch e {
-	case ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionAppHpeIlo:
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionAppRedfish:
 		return true
 	case ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionAppSsh:
 		return true
@@ -31268,14 +31268,14 @@ func (e ListProjectSecretsOverview200JSONResponseBodySecretRotations17Type) Vali
 
 // Defines values for ListProjectSecretsOverview200JSONResponseBodySecretRotations18ConnectionApp.
 const (
-	ListProjectSecretsOverview200JSONResponseBodySecretRotations18ConnectionAppHpeIlo ListProjectSecretsOverview200JSONResponseBodySecretRotations18ConnectionApp = "hpe-ilo"
-	ListProjectSecretsOverview200JSONResponseBodySecretRotations18ConnectionAppSsh    ListProjectSecretsOverview200JSONResponseBodySecretRotations18ConnectionApp = "ssh"
+	ListProjectSecretsOverview200JSONResponseBodySecretRotations18ConnectionAppRedfish ListProjectSecretsOverview200JSONResponseBodySecretRotations18ConnectionApp = "redfish"
+	ListProjectSecretsOverview200JSONResponseBodySecretRotations18ConnectionAppSsh     ListProjectSecretsOverview200JSONResponseBodySecretRotations18ConnectionApp = "ssh"
 )
 
 // Valid indicates whether the value is a known member of the ListProjectSecretsOverview200JSONResponseBodySecretRotations18ConnectionApp enum.
 func (e ListProjectSecretsOverview200JSONResponseBodySecretRotations18ConnectionApp) Valid() bool {
 	switch e {
-	case ListProjectSecretsOverview200JSONResponseBodySecretRotations18ConnectionAppHpeIlo:
+	case ListProjectSecretsOverview200JSONResponseBodySecretRotations18ConnectionAppRedfish:
 		return true
 	case ListProjectSecretsOverview200JSONResponseBodySecretRotations18ConnectionAppSsh:
 		return true

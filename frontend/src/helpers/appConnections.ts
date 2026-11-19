@@ -74,7 +74,6 @@ import { FireworksConnectionMethod } from "@app/hooks/api/appConnections/types/f
 import { GoDaddyConnectionMethod } from "@app/hooks/api/appConnections/types/godaddy-connection";
 import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
-import { HpeIloConnectionMethod } from "@app/hooks/api/appConnections/types/hpe-ilo-connection";
 import { ImpervaConnectionMethod } from "@app/hooks/api/appConnections/types/imperva-connection";
 import { IncidentIoConnectionMethod } from "@app/hooks/api/appConnections/types/incident-io-connection";
 import { JenkinsConnectionMethod } from "@app/hooks/api/appConnections/types/jenkins-connection";
@@ -97,6 +96,7 @@ import { PaloAltoNetworksConnectionMethod } from "@app/hooks/api/appConnections/
 import { PortainerConnectionMethod } from "@app/hooks/api/appConnections/types/portainer-connection";
 import { PowerDnsConnectionMethod } from "@app/hooks/api/appConnections/types/powerdns-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
+import { RedfishConnectionMethod } from "@app/hooks/api/appConnections/types/redfish-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 import { RundeckConnectionMethod } from "@app/hooks/api/appConnections/types/rundeck-connection";
 import { S3CompatibleConnectionMethod } from "@app/hooks/api/appConnections/types/s3-compatible-connection";
@@ -646,11 +646,11 @@ export const APP_CONNECTION_MAP: Record<
     category: "NETWORKING",
     description: "Manage an F5 BIG-IP appliance."
   },
-  [AppConnection.HpeIloRedFish]: {
-    name: "HPE iLO",
-    image: "HPE iLO.png",
+  [AppConnection.Redfish]: {
+    name: "Redfish",
+    image: "Redfish.png",
     category: "INFRASTRUCTURE",
-    description: "Manage an HPE iLO server through the Redfish API."
+    description: "Manage a server through its Redfish API, such as HPE iLO."
   },
   [AppConnection.Convex]: {
     name: "Convex",
@@ -943,7 +943,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case KempLoadMasterConnectionMethod.BasicAuth:
     case NutanixPrismCentralConnectionMethod.BasicAuth:
     case F5BigIpConnectionMethod.BasicAuth:
-    case HpeIloConnectionMethod.BasicAuth:
+    case RedfishConnectionMethod.BasicAuth:
     case ServiceNowConnectionMethod.BasicAuth:
       return { name: "Basic Auth", icon: LockIcon };
     case NutanixPrismCentralConnectionMethod.ApiKey:

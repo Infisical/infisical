@@ -1,0 +1,84 @@
+---
+title: "Redfish connection"
+sidebarTitle: "Redfish"
+description: "Learn how to configure a Redfish connection for Infisical."
+---
+
+import ConnectionFormFields from "/snippets/app-connections/redfish/form-fields.mdx";
+
+A Redfish connection authenticates Infisical to a server's management controller, such as HPE iLO, with the username and password of a local account on the controller. Infisical uses the connection to manage the controller's local accounts through the [Redfish API](https://www.dmtf.org/standards/redfish).
+
+<Note>
+    This guide only authenticates Infisical with the Redfish service. Once the app connection is ready, you can [use it to set up integrations](#step-2-configure-integrations).
+</Note>
+
+## Prerequisites
+
+- A server management controller with Redfish enabled that Infisical can reach over HTTPS, either directly or through a [Gateway](/documentation/platform/gateways/overview)
+- A local account on the controller with at least the **Login** privilege, for Infisical to sign in with
+
+## Step 1: Create the app connection
+
+<Tip>
+    To create the connection using the API, use the [Create Redfish Connection](/api-reference/endpoints/app-connections/redfish/create) endpoint.
+</Tip>
+
+<View title="Organization-level">
+    <Steps>
+        <Step>
+            In the sidebar, select **Integrations**, then open the **App Connections** tab.
+
+            ![App Connections Tab](/images/app-connections/general/add-connection.png)
+        </Step>
+        <Step>
+            Select **Add Connection** and choose **Redfish**.
+
+            ![Select Redfish Connection](/images/app-connections/redfish/select-connection.png)
+        </Step>
+        <Step>
+            Fill out the form's fields:
+
+            <ConnectionFormFields />
+
+            Then, select **Connect to Redfish**.
+
+            ![Redfish Connection Form](/images/app-connections/redfish/connection-form.png)
+        </Step>
+    </Steps>
+</View>
+
+<View title="Project-level">
+    <Steps>
+        <Step>
+            In your Secrets Management project, select **Integrations** from the sidebar, then open the **App Connections** tab.
+        </Step>
+        <Step>
+            Select **Add Connection** and choose **Redfish**.
+
+            ![Select Redfish Connection](/images/app-connections/redfish/select-connection.png)
+        </Step>
+        <Step>
+            Fill out the form's fields:
+
+            <ConnectionFormFields />
+
+            Then, select **Connect to Redfish**.
+
+            ![Redfish Connection Form](/images/app-connections/redfish/connection-form.png)
+        </Step>
+    </Steps>
+</View>
+
+When you select **Connect to Redfish**, Infisical signs in to the Redfish service with the account's username and password and reads the list of accounts. If the Redfish service rejects the username or password, or the account can't read the account list, Infisical shows an error and doesn't save the connection.
+
+<Check>
+    Your Redfish app connection is ready to use.
+</Check>
+
+## Step 2: Configure integrations
+
+Now that your Redfish app connection is configured, you can use it to set up the following integration, which supports HPE iLO only:
+
+<Card title="HP iLO local account rotation" icon="rotate-cw" href="/documentation/platform/secret-rotation/hp-ilo-local-account">
+    Rotate the password of an iLO local account on a schedule.
+</Card>
