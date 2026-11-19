@@ -384,7 +384,8 @@ keyed by the service, so a member sets them once however many bundles give them 
   `updateService` before the write and again under the lock): the credential, each custom header value and each
   substitution value. Otherwise a role that can edit and use a service could point it at a host of its own and receive
   the credential, and a typed reference still takes `read-value`. The move deletes every member's personal values for
-  the service. A members' OAuth sign-in seals only the admin's client secret, which goes to the issuer, so it needn't
+  the service, and a personal values save that waited on it is refused, since the personal-values lock re-reads where
+  the service connects. A members' OAuth sign-in seals only the admin's client secret, which goes to the issuer, so it needn't
   be sent. Host patterns compare as parsed host and port pairs, so `api.example.com:443` is the same destination as
   `api.example.com`. Loading an MCP service's tools follows the same rule (`listMcpTools`): from any server URL but the
   saved one, it uses no saved value. Any new path that sends a saved value somewhere a request names needs it too.

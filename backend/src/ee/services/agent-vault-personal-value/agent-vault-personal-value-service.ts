@@ -28,7 +28,7 @@ import {
 import { ownerColumns, ownerOf, TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
 import { getAgentVaultReachability, usableServiceIdsOf } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultReachDALFactory } from "../agent-vault/agent-vault-reach-dal";
-import { getServiceServerUrl } from "../agent-vault/agent-vault-service-type-fns";
+import { getServiceServerUrl, serviceDestinationOf } from "../agent-vault/agent-vault-service-type-fns";
 import {
   findStoredVariableIds,
   findVariableKeys,
@@ -84,6 +84,9 @@ type TPersonalValueCredentialType =
 
 const SERVICE_CHANGED_DURING_SAVE_MESSAGE =
   "An admin changed this service's credential while you were setting up your values. Reload the service and save again.";
+
+const SERVICE_MOVED_DURING_SAVE_MESSAGE =
+  "An admin changed where this service connects while you were setting up your values. Reload the service and save again.";
 
 const VARIABLE_DELETED_DURING_SAVE_MESSAGE =
   "A variable one of your values uses was deleted while it was being saved. Check its variable references and save again.";
@@ -390,6 +393,11 @@ export const agentVaultPersonalValueServiceFactory = ({
           !sameMemberProvidedFields(current.memberProvidedFields, service.memberProvidedFields)
         ) {
           throw new ConflictError({ message: SERVICE_CHANGED_DURING_SAVE_MESSAGE });
+        }
+        // A move deletes every member's values, so values typed for where the service connected before must not
+        // land after it.
+        if (serviceDestinationOf(current) !== serviceDestinationOf(service)) {
+          throw new ConflictError({ message: SERVICE_MOVED_DURING_SAVE_MESSAGE });
         }
         await lockMembership({ projectId: dto.projectId, owner }, tx);
 

@@ -369,6 +369,17 @@ export const needsStoredSecretFor = (credential: TAgentVaultCredentialUpdate, se
   );
 };
 
+// Whether an update's write keeps part of the sealed secret that the request didn't send, which a save that moves the
+// service can't do. A certificate the stored key never had isn't kept.
+export const keepsStoredSecretPart = (credential: TAgentVaultCredentialUpdate, service: TAgentVaultServices) => {
+  if (!needsStoredSecretFor(credential, service)) return false;
+  if (credential.type !== AgentVaultCredentialType.SshKey) return true;
+  return SSH_KEY_PARTS.some(
+    (part) =>
+      sentSshKeyPart(credential, part) === undefined && (part !== "certificate" || storedHasCertificate(service))
+  );
+};
+
 // Each member's sign-in is bound to the service's server, issuer and client, so a change to any of them, or a new
 // client secret, ends every member's connection: their tokens can't be refreshed through anything else.
 export const memberOauthChangeOf = ({

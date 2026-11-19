@@ -908,6 +908,12 @@ const invalidateBundleSkillChange = (
         exact: true
       })
     ),
+    // A role that uses the bundle can now use the skill, or no longer can.
+    ...skillIds.map((skillId) =>
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.skillRoles(orgId, projectId, skillId)
+      })
+    ),
     queryClient.invalidateQueries({ queryKey: agentVaultKeys.skillLists(orgId, projectId) })
   ]);
 

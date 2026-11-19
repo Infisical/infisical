@@ -14369,6 +14369,78 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
+    test("a save that another save moved while it waited can't keep a saved header value", async () => {
+      const name = `move-race-${unique()}`;
+      const serviceId = await createHttpService(name, {
+        credential: { type: "passthrough" },
+        customHeaders: [{ name: "X-Org-Id", value: "org_saved" }]
+      });
+      const read = await inject("GET", `${servicesUrl}/${serviceId}`);
+      const headerId = (read.json().service as { customHeaders: { id: string }[] }).customHeaders[0].id;
+      const [before] = await testDb("agent_vault_service_custom_headers").where({ serviceId });
+
+      // Another save holds the row and points the service elsewhere while this one, which keeps the first host and
+      // the header's value, waits for it.
+      const trx = await testDb.transaction();
+      try {
+        const { rows } = await trx.raw("select pg_backend_pid() as pid");
+        await trx("agent_vault_services").where({ id: serviceId }).forUpdate().first();
+        const pending = inject("PATCH", `${servicesUrl}/${serviceId}`, {
+          type: "http",
+          hostPattern: `${name}.example.com`,
+          customHeaders: [{ id: headerId, name: "X-Org-Id" }]
+        });
+        await waitUntilBlockedBy(rows[0].pid);
+        await trx("agent_vault_services").where({ id: serviceId }).update({ hostPattern: `elsewhere.${name}.example.com` });
+        await trx.commit();
+
+        const refused = await pending;
+        expect(refused.statusCode).toBe(400);
+        expect(refused.json().message).toBe(
+          `Changing where the service '${name}' connects needs the value of the custom header 'X-Org-Id' sent again in the same change, since the new destination would receive it.`
+        );
+      } catch (err) {
+        if (!trx.isCompleted()) await trx.rollback();
+        throw err;
+      } finally {
+        const [after] = await testDb("agent_vault_services").where({ id: serviceId });
+        expect(after.hostPattern).toBe(`elsewhere.${name}.example.com`);
+        const [header] = await testDb("agent_vault_service_custom_headers").where({ serviceId });
+        expect(header.encryptedValue).toEqual(before.encryptedValue);
+        await inject("DELETE", `${servicesUrl}/${serviceId}`);
+      }
+    });
+
+    test("a personal values save that waited on a move is refused", async () => {
+      const name = `move-values-${unique()}`;
+      const serviceId = await createHttpService(name, {
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+      });
+      const trx = await testDb.transaction();
+      try {
+        const { rows } = await trx.raw("select pg_backend_pid() as pid");
+        await trx("agent_vault_services").where({ id: serviceId }).forUpdate().first();
+        const pending = inject("PATCH", `${servicesUrl}/${serviceId}/personal-values`, {
+          values: [{ field: "credential-value", value: "member_token" }]
+        });
+        await waitUntilBlockedBy(rows[0].pid);
+        await trx("agent_vault_services").where({ id: serviceId }).update({ hostPattern: `elsewhere.${name}.example.com` });
+        await trx.commit();
+
+        const refused = await pending;
+        expect(refused.statusCode).toBe(409);
+        expect(refused.json().message).toBe(
+          "An admin changed where this service connects while you were setting up your values. Reload the service and save again."
+        );
+        expect(await testDb("agent_vault_personal_values").where({ serviceId })).toHaveLength(0);
+      } catch (err) {
+        if (!trx.isCompleted()) await trx.rollback();
+        throw err;
+      } finally {
+        await inject("DELETE", `${servicesUrl}/${serviceId}`);
+      }
+    });
+
     test("changing a delegation takes Manage Delegations as well as editing the machine identity", async () => {
       const projectId = await getProjectId();
       const bot = await createOrgIdentity(`av-delegate-bot-${unique()}`);

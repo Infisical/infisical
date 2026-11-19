@@ -195,6 +195,7 @@ import {
   memberFieldsOf,
   memberOauthChangeOf,
   mergeCredential,
+  keepsStoredSecretPart,
   needsStoredSecretFor,
   nextMemberFieldsOf,
   personalValuesToClearOf,
@@ -1781,21 +1782,23 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const destinationOfUpdate = (row: TAgentVaultServices, next: { hostPattern?: string | null; config?: unknown }) =>
       serviceDestinationOf({ hostPattern: next.hostPattern ?? row.hostPattern, config: next.config ?? row.config }) !==
       serviceDestinationOf(row);
-    const destinationChanged = destinationOfUpdate(service, { hostPattern, config: serviceConfig });
-    if (destinationChanged) {
+    // An entry sent without a value keeps the one sealed on the row it matches, so a move can't take one.
+    const assertTransformationValuesSent = (serviceName: string) => {
       const keptHeader = customHeaders?.find((header) => header.value === undefined);
       if (keptHeader) {
         throw new BadRequestError({
-          message: `Changing where the service '${service.name}' connects needs the value of the custom header '${keptHeader.name}' sent again in the same change, since the new destination would receive it.`
+          message: `Changing where the service '${serviceName}' connects needs the value of the custom header '${keptHeader.name}' sent again in the same change, since the new destination would receive it.`
         });
       }
       const keptSubstitution = substitutions?.find((substitution) => substitution.value === undefined);
       if (keptSubstitution) {
         throw new BadRequestError({
-          message: `Changing where the service '${service.name}' connects needs the value of the substitution for '${keptSubstitution.placeholder}' sent again in the same change, since the new destination would receive it.`
+          message: `Changing where the service '${serviceName}' connects needs the value of the substitution for '${keptSubstitution.placeholder}' sent again in the same change, since the new destination would receive it.`
         });
       }
-    }
+    };
+    const destinationChanged = destinationOfUpdate(service, { hostPattern, config: serviceConfig });
+    if (destinationChanged) assertTransformationValuesSent(service.name);
 
     const storedSecretCipher = needsStoredSecret ? await getProjectCipher(rest.projectId) : null;
     const storedSecret = storedSecretCipher
@@ -1934,7 +1937,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       (credential !== undefined &&
         credential.type !== AgentVaultCredentialType.OAuth &&
         "encryptedCredential" in credentialUpdate &&
-        !needsStoredSecret);
+        !keepsStoredSecretPart(credential, service));
     const assertCredentialSentForMove = (row: TAgentVaultServices) => {
       if (replacesSealedCredential || isMemberProvidedOauth(row)) return;
       if (isVariableOauth(row)) {
@@ -2181,6 +2184,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         });
         if (movesDestination) {
           assertCredentialSentForMove(locked);
+          // A save that keeps the first read's destination skipped the check above, and still moves a row that
+          // another save pointed elsewhere since, so entries that keep a value are refused here too.
+          assertTransformationValuesSent(locked.name);
           if (!customHeaders && (await agentVaultServiceCustomHeaderDAL.findByServiceIds([service.id], tx)).length) {
             throw new BadRequestError({
               message: `Changing where the service '${locked.name}' connects needs its custom headers sent again with their values in the same change, since the new destination would receive them.`

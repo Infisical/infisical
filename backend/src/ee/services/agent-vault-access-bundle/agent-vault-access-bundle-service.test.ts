@@ -335,6 +335,37 @@ describe("updateService, a save that moves the service", () => {
     expect(agentVaultServiceDAL.updateById).not.toHaveBeenCalled();
   });
 
+  test("moves an SSH key stored without a certificate once its username and key are sent", async () => {
+    const stored = sshService({
+      hasCertificate: false,
+      secret: `sealed:${JSON.stringify({ username: "agent", privateKey: "old-key" })}`
+    });
+    const { service, agentVaultServiceDAL } = buildService({ firstRead: stored, locked: stored });
+
+    await updateSsh(service, {
+      port: 2222,
+      credential: { type: AgentVaultCredentialType.SshKey, username: "agent", privateKey: "new-key" }
+    });
+
+    expect(writtenColumns(agentVaultServiceDAL).config).toEqual({ host: "bastion.internal", port: 2222 });
+  });
+
+  test("keeps refusing a move that would keep a stored certificate", async () => {
+    const stored = sshService({
+      hasCertificate: true,
+      secret: `sealed:${JSON.stringify({ username: "agent", privateKey: "old-key", certificate: "old-cert" })}`
+    });
+    const { service, agentVaultServiceDAL } = buildService({ firstRead: stored, locked: stored });
+
+    await expect(
+      updateSsh(service, {
+        port: 2222,
+        credential: { type: AgentVaultCredentialType.SshKey, username: "agent", privateKey: "new-key" }
+      })
+    ).rejects.toBeInstanceOf(BadRequestError);
+    expect(agentVaultServiceDAL.updateById).not.toHaveBeenCalled();
+  });
+
   test("keeps its destination when the port it sends is the one stored", async () => {
     const stored = sshService({ hasCertificate: false, secret: "key" });
     const { service, agentVaultServiceDAL } = buildService({ firstRead: stored, locked: stored });
