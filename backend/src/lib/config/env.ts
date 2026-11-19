@@ -1,3 +1,5 @@
+import os from "node:os";
+
 import RE2 from "re2";
 import { z } from "zod";
 
@@ -321,8 +323,10 @@ const envSchema = z
       .number()
       .int()
       .min(1)
-      .default(1)
-      .describe("Most requests to list secrets one organization may have running at once on an instance"),
+      .default(os.availableParallelism())
+      .describe(
+        "Most requests to list secrets one organization may have running at once on an instance. Defaults to the number of CPUs available to the process"
+      ),
     SECRET_READ_MAX_IN_FLIGHT: z.coerce
       .number()
       .int()
