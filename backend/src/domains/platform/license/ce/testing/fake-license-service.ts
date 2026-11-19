@@ -41,6 +41,8 @@ export class FakeLicenseService implements TLicenseService {
 
   invalidatePlan = async () => undefined;
 
+  refreshWorkspacesUsed = async () => undefined;
+
   getLastKnownPlan = async (orgId: string) => {
     const lastKnown = this.lastKnown.get(orgId);
     return lastKnown ? { plan: Plan.restore(lastKnown.plan), fetchedAt: lastKnown.fetchedAt } : null;

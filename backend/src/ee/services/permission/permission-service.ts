@@ -42,7 +42,7 @@ import {
 } from "@app/ee/services/permission/default-roles";
 import { ResourcePermissionSet } from "@app/ee/services/permission/resource-permission";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
-import { withCacheFingerprint } from "@app/lib/cache/with-cache";
+import { readCacheFingerprint, withCacheFingerprint } from "@app/lib/cache/with-cache";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { objectify } from "@app/lib/fn";
@@ -529,7 +529,7 @@ export const permissionServiceFactory = ({
       return {
         permission,
         memberships: permissionData,
-        hasRole
+        hasRole: oauthScopes ? () => false : hasRole
       };
     });
   };
@@ -640,8 +640,37 @@ export const permissionServiceFactory = ({
       }
     };
 
+  const $resolveProjectActor = (actor: ActorType, actorId: string, projectId: string) => {
+    const assumedPrivilegeDetailsCtx = requestContext.get(RequestContextKey.AssumedPrivilegeDetails);
+    if (
+      assumedPrivilegeDetailsCtx &&
+      actor === ActorType.USER &&
+      actorId === assumedPrivilegeDetailsCtx.requesterId &&
+      projectId === assumedPrivilegeDetailsCtx.projectId
+    ) {
+      return { actor: assumedPrivilegeDetailsCtx.actorType, actorId: assumedPrivilegeDetailsCtx.actorId };
+    }
+    return { actor, actorId };
+  };
+
   const getProjectPermissionFingerprintForActor: TPermissionServiceFactory["getProjectPermissionFingerprint"] = (dto) =>
     getProjectPermissionFingerprint(dto, { permissionDAL, keyStore });
+
+  const getProjectPermissionCacheFingerprint: TPermissionServiceFactory["getProjectPermissionCacheFingerprint"] =
+    async ({ actor: inputActor, actorId: inputActorId, projectId, actorOrgId, actionProjectType }) => {
+      const { actor, actorId } = $resolveProjectActor(inputActor, inputActorId, projectId);
+      if (actor !== ActorType.USER && actor !== ActorType.IDENTITY) {
+        throw new BadRequestError({ message: "Invalid actor provided", name: "Get project permission fingerprint" });
+      }
+      return readCacheFingerprint({
+        keyStore,
+        dataKey: KeyStorePrefixes.ProjectPermissionData(projectId, actor, actorId, actionProjectType),
+        markerKey: KeyStorePrefixes.ProjectPermissionMarker(projectId, actor, actorId, actionProjectType),
+        markerTtlSeconds: KeyStoreTtls.ProjectPermissionMarkerTtlSeconds,
+        fingerprintFetcher: () =>
+          getProjectPermissionFingerprintForActor({ projectId, orgId: actorOrgId, actorId, actorType: actor })
+      });
+    };
 
   const $fetchProjectPermissionData = async (
     projectId: string,
@@ -713,32 +742,20 @@ export const permissionServiceFactory = ({
     actorOrgId,
     actionProjectType
   }) => {
-    let actor = inputActor;
-    let actorId = inputActorId;
-
     if (!actorOrgId) {
       throw new BadRequestError({ message: "Organization context is required for project permission checks" });
     }
 
-    if (actor === ActorType.SERVICE) {
+    if (inputActor === ActorType.SERVICE) {
       return getServiceTokenProjectPermission({
-        serviceTokenId: actorId,
+        serviceTokenId: inputActorId,
         projectId,
         actorOrgId,
         actionProjectType
       });
     }
 
-    const assumedPrivilegeDetailsCtx = requestContext.get(RequestContextKey.AssumedPrivilegeDetails);
-    if (
-      assumedPrivilegeDetailsCtx &&
-      actor === ActorType.USER &&
-      actorId === assumedPrivilegeDetailsCtx.requesterId &&
-      projectId === assumedPrivilegeDetailsCtx.projectId
-    ) {
-      actor = assumedPrivilegeDetailsCtx.actorType;
-      actorId = assumedPrivilegeDetailsCtx.actorId;
-    }
+    const { actor, actorId } = $resolveProjectActor(inputActor, inputActorId, projectId);
 
     if (ActorType.USER !== actor && ActorType.IDENTITY !== actor) {
       throw new BadRequestError({
@@ -891,7 +908,8 @@ export const permissionServiceFactory = ({
       permission: createMongoAbility<ProjectPermissionSet>(
         applyOauthScopeToProjectRules(payload.result.permission.rules, oauthScopes),
         { conditionsMatcher }
-      )
+      ),
+      hasRole: () => false
     };
   };
 
@@ -1778,6 +1796,7 @@ export const permissionServiceFactory = ({
     getMembershipPermissionAudit,
     getIdentityPermissionAudit,
     invalidateProjectFolderPermissionCache,
-    getProjectPermissionFingerprint: getProjectPermissionFingerprintForActor
+    getProjectPermissionFingerprint: getProjectPermissionFingerprintForActor,
+    getProjectPermissionCacheFingerprint
   };
 };

@@ -126,4 +126,5 @@ export const integrations = [
   { name: "Devin", path: "/integrations/secret-syncs/devin", description: "Learn how to sync secrets from Infisical to Devin.", type: "Secret Sync", tag: "DevOps Tools" },
   { name: "Keeper Password Manager", path: "/integrations/secret-syncs/keeper-password-manager", description: "Learn how to sync secrets from Infisical to a Keeper shared folder.", type: "Secret Sync", tag: "Security" },
   { name: "Jenkins", path: "/integrations/secret-syncs/jenkins", description: "Learn how to sync secrets from Infisical to Jenkins credentials.", type: "Secret Sync", tag: "CI/CD" },
+  { name: "Coolify", path: "/integrations/secret-syncs/coolify", description: "Learn how to sync secrets from Infisical to Coolify environment variables.", type: "Secret Sync", tag: "Hosting" },
 ];

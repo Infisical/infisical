@@ -11,6 +11,7 @@ import {
   AGENT_VAULT_SESSION_MAX_TTL_MS,
   AGENT_VAULT_SESSION_TTL_NEVER
 } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
+import { AGENT_VAULT_SKILL_UPLOAD_BODY_LIMIT } from "@app/ee/services/agent-vault-skill/agent-vault-skill-fns";
 import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
@@ -40,11 +41,13 @@ import {
   serviceTypeReportFieldsOf
 } from "./agent-vault-router-fns";
 import {
-  AgentVaultInlineServiceSchema,
-  AgentVaultInlineServicesInputSchema,
   AgentVaultProjectIdSchema,
   AgentVaultSessionActorSchema,
-  AgentVaultSessionOnBehalfOfSchema
+  AgentVaultSessionOnBehalfOfSchema,
+  AgentVaultSessionServiceSchema,
+  AgentVaultSessionServicesInputSchema,
+  AgentVaultSessionSkillSchema,
+  AgentVaultSessionSkillsInputSchema
 } from "./agent-vault-schemas";
 
 const SessionAccessBundleSchema = z.object({
@@ -66,9 +69,9 @@ const SessionSchema = z.object({
   createdAt: z.date()
 });
 
-const SessionInlineServicesSchema = AgentVaultInlineServiceSchema.array().describe(
-  AGENT_VAULT.SESSION.inlineServicesRead
-);
+const SessionServicesSchema = AgentVaultSessionServiceSchema.array().describe(AGENT_VAULT.SESSION.servicesRead);
+
+const SessionSkillsSchema = AgentVaultSessionSkillSchema.array().describe(AGENT_VAULT.SESSION.skillsRead);
 
 const SessionStatsSchema = z.object({
   requests: z.number().describe(AGENT_VAULT.SESSION.statsRequests),
@@ -77,7 +80,8 @@ const SessionStatsSchema = z.object({
 
 const SessionWithAccessBundleSchema = SessionSchema.extend({
   accessBundle: SessionAccessBundleSchema.nullable().describe(AGENT_VAULT.SESSION.accessBundleRead),
-  services: SessionInlineServicesSchema,
+  services: SessionServicesSchema,
+  skills: SessionSkillsSchema,
   stats: SessionStatsSchema.nullable().describe(AGENT_VAULT.SESSION.stats)
 });
 
@@ -95,8 +99,9 @@ const mapLegacyAccessBundles = (body: unknown) => {
   return accessBundles.length ? { ...rest, accessBundle: accessBundles[0] as unknown } : rest;
 };
 
-// Whole-body examples, so the docs show the usual session, one access bundle and no services of its own, rather
-// than one generated from every optional field. Responses always carry services, so the examples show it empty.
+// Whole-body examples, so the docs show a usual session rather than one generated from every optional field. The create
+// example lists two services and a skill by name with no access bundle; the read examples carry an access bundle and no
+// services or skills of their own, which responses always carry, so they show them empty.
 const EXAMPLE_PROJECT_ID = "5f2c8a7e-1b3d-4e6f-9a0c-8d7b6e5f4a3c";
 
 const EXAMPLE_ACCESS_BUNDLE = { id: "3c90c3cc-0d44-4b50-8888-8dd25736052a", name: "prod-deploy" };
@@ -113,8 +118,39 @@ const EXAMPLE_SESSION = {
   createdAt: "2026-10-31T18:00:00.000Z",
   accessBundle: EXAMPLE_ACCESS_BUNDLE,
   services: [],
+  skills: [],
   stats: { requests: 1284, brokered: 1102 }
 };
+
+// What a session that lists services by name reads back, matching the create example's request.
+const EXAMPLE_SERVICES = [
+  {
+    id: "8a6d2f4e-3b1c-4d5e-9f7a-0b2c4d6e8f1a",
+    name: "github",
+    type: "http",
+    description: "GitHub REST API",
+    hostPattern: "api.github.com",
+    isInline: false
+  },
+  {
+    id: "4e2b7c9d-1a3f-4b6e-8d0c-5f7a9b1c3e2d",
+    name: "linear",
+    type: "mcp",
+    description: "Linear MCP server",
+    hostPattern: "mcp.linear.app",
+    isInline: false
+  }
+];
+
+// What a session that lists a skill by name reads back, matching the create example's request.
+const EXAMPLE_SKILLS = [
+  {
+    id: "6f1c3a9e-2d4b-4c7a-8e1f-9b3d5a7c0e24",
+    name: "code-review",
+    description: "Review a pull request against the team's checklist.",
+    isInline: false
+  }
+];
 
 const docsExample = (example: unknown) => JSON.stringify({ example });
 
@@ -207,12 +243,14 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
   server.route({
     method: "POST",
     url: "/",
+    // Skills sent with the session carry their files, so the body may be as large as a skill upload's.
     config: { rateLimit: writeLimit },
+    bodyLimit: AGENT_VAULT_SKILL_UPLOAD_BODY_LIMIT,
     schema: {
       hide: false,
       operationId: "createAgentVaultSession",
       description:
-        "Create an Agent Vault session with an access bundle you can reach, services of its own (Agent Vault admins), or both, for yourself or, as a machine identity with a delegation, on behalf of a user",
+        "Create an Agent Vault session with an access bundle you can reach, the project's services and skills you can reach, listed one by one, services (Agent Vault admins) and skills of its own, or any mix of them, for yourself or, as a machine identity with a delegation, on behalf of a user",
       tags: [ApiDocsTags.AgentVaultSessions],
       body: z.preprocess(
         mapLegacyAccessBundles,
@@ -222,8 +260,9 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
             accessBundle: slugSchema({ max: 64, field: "Access bundle" })
               .optional()
               .describe(AGENT_VAULT.SESSION.accessBundle),
-            // Optional rather than defaulted, so the docs' request example leaves it out instead of showing an empty list.
-            services: AgentVaultInlineServicesInputSchema.optional(),
+            // Optional rather than defaulted, so the docs' request example leaves them out instead of showing empty lists.
+            services: AgentVaultSessionServicesInputSchema.optional(),
+            skills: AgentVaultSessionSkillsInputSchema.optional(),
             // Optional rather than defaulted: the default depends on whether the session is on a user's behalf.
             ttl: z
               .string()
@@ -281,7 +320,8 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           .describe(
             docsExample({
               projectId: EXAMPLE_PROJECT_ID,
-              accessBundle: EXAMPLE_ACCESS_BUNDLE.name,
+              services: ["github", "linear"],
+              skills: ["code-review"],
               ttl: "8h",
               label: EXAMPLE_SESSION.label,
               metadata: EXAMPLE_SESSION.metadata
@@ -300,7 +340,8 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
               expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
               createdAt: z.date(),
               accessBundle: SessionAccessBundleSchema.nullable().describe(AGENT_VAULT.SESSION.accessBundleRead),
-              services: SessionInlineServicesSchema
+              services: SessionServicesSchema,
+              skills: SessionSkillsSchema
             })
           })
           .describe(
@@ -313,8 +354,9 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                 token: "agv_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
                 expiresAt: EXAMPLE_SESSION.expiresAt,
                 createdAt: EXAMPLE_SESSION.createdAt,
-                accessBundle: EXAMPLE_ACCESS_BUNDLE,
-                services: []
+                accessBundle: null,
+                services: EXAMPLE_SERVICES,
+                skills: EXAMPLE_SKILLS
               }
             })
           )
@@ -342,6 +384,8 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
         ctx: actorContext(req),
         ...body
       });
+      const inlineServiceCount = session.services.filter((service) => service.isInline).length;
+      const inlineSkillCount = session.skills.filter((skill) => skill.isInline).length;
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -358,10 +402,12 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
             expiresAt: session.expiresAt?.toISOString() ?? null,
             ...(session.services.length > 0 && {
               services: session.services.map((service) => {
+                if (!service.isInline) return { serviceId: service.id, name: service.name, isInline: false as const };
                 const { allowedMethods, allowedPathPrefixes, ...typeFields } = serviceTypeReportFieldsOf(service);
                 return {
                   serviceId: service.id,
                   name: service.name,
+                  isInline: true as const,
                   description: service.description,
                   serviceType: service.type,
                   ...typeFields,
@@ -370,6 +416,10 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                     service.credential.type === AgentVaultCredentialType.Bearer
                       ? service.credential.headerName
                       : undefined,
+                  ...(service.credential.type === AgentVaultCredentialType.OAuth &&
+                    service.credential.variable && { oauthVariable: service.credential.variable }),
+                  ...(service.credential.type === AgentVaultCredentialType.OAuth &&
+                    service.credential.issuer && { oauthIssuer: service.credential.issuer }),
                   // Present on every service, null outside HTTP, as this event has always sent them.
                   allowedMethods: allowedMethods ?? null,
                   allowedPathPrefixes: allowedPathPrefixes ?? null,
@@ -377,6 +427,21 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                   ...serviceTransformationNamesOf(service)
                 };
               })
+            }),
+            ...(session.skills.length > 0 && {
+              skills: session.skills.map((skill) =>
+                skill.isInline
+                  ? {
+                      skillId: skill.id,
+                      name: skill.name,
+                      isInline: true as const,
+                      description: skill.description,
+                      sha256: skill.sha256,
+                      sizeBytes: skill.sizeBytes,
+                      fileCount: skill.fileCount
+                    }
+                  : { skillId: skill.id, name: skill.name, isInline: false as const }
+              )
             }),
             ...(onBehalfOf && {
               onBehalfOfUserId: onBehalfOf.userId,
@@ -392,7 +457,10 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
         properties: {
           sessionId: session.id,
           accessBundleId: session.accessBundle?.id ?? null,
-          inlineServiceCount: session.services.length,
+          inlineServiceCount,
+          namedServiceCount: session.services.length - inlineServiceCount,
+          inlineSkillCount,
+          namedSkillCount: session.skills.length - inlineSkillCount,
           metadataCount: Object.keys(session.metadata).length,
           ttlSeconds,
           isOnBehalfOfUser: Boolean(onBehalfOf)
