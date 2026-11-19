@@ -68,7 +68,7 @@ describe("secretReadConcurrencyLimit", () => {
 
     expect(second.statusCode).toBe(429);
     expect(second.headers["retry-after"]).toBe("1");
-    expect(second.json<{ message: string }>().message).toMatch(/too many secret list requests in progress/);
+    expect(second.json<{ message: string }>().message).toContain("too many secret list requests in progress");
 
     held[0].finish();
     expect((await first).statusCode).toBe(200);
