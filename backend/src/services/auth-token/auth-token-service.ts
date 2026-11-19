@@ -259,6 +259,12 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
   const revokeSessionsByUserAgent = async (userAgent: string, tx?: Knex) =>
     tokenDAL.deleteTokenSession({ userAgent }, tx);
 
+  const sessionNoLongerValid = () =>
+    new UnauthorizedError({
+      name: "InvalidToken",
+      message: "Your session is no longer valid, please re-authenticate"
+    });
+
   const validateRefreshToken = async (refreshToken?: string, opts?: { allowOauthClientToken?: boolean }) => {
     const appCfg = getConfig();
     if (!refreshToken) {
@@ -303,7 +309,8 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
       const graceValue = await keyStore.getItem(
         KeyStorePrefixes.RefreshTokenGrace(tokenVersion.id, decodedToken.refreshVersion)
       );
-      if (graceValue) {
+      if (graceValue !== null) {
+        if (Number(graceValue) !== tokenVersion.accessVersion) throw sessionNoLongerValid();
         return { decodedToken, tokenVersion, isGraceHit: true };
       }
 
@@ -319,12 +326,6 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     return { decodedToken, tokenVersion, isGraceHit: false };
   };
 
-  const sessionNoLongerValid = () =>
-    new UnauthorizedError({
-      name: "InvalidToken",
-      message: "Your session is no longer valid, please re-authenticate"
-    });
-
   const rotateRefreshToken = async (
     decodedToken: AuthModeRefreshJwtTokenPayload,
     tokenVersion: TAuthTokenSessions
@@ -335,10 +336,13 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     const appCfg = getConfig();
     const oldRefreshVersion = tokenVersion.refreshVersion;
 
+    const graceKey = KeyStorePrefixes.RefreshTokenGrace(tokenVersion.id, oldRefreshVersion);
+    const writeGraceEntry = () =>
+      keyStore.setItemWithExpiry(graceKey, KeyStoreTtls.RefreshTokenGraceInSeconds, String(tokenVersion.accessVersion));
+
     // Written before the increment: a concurrent request holding the old token that reads the new version
     // in between must find the grace entry, or it would revoke the session as reuse.
-    const graceKey = KeyStorePrefixes.RefreshTokenGrace(tokenVersion.id, oldRefreshVersion);
-    await keyStore.setItemWithExpiry(graceKey, KeyStoreTtls.RefreshTokenGraceInSeconds, "1");
+    await writeGraceEntry();
 
     const updatedSession = await tokenDAL.incrementRefreshVersion(
       tokenVersion.id,
@@ -353,12 +357,13 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
         undefined,
         { readFromPrimary: true }
       );
-      if (!current || current.accessVersion !== tokenVersion.accessVersion) {
-        await keyStore.deleteItem(graceKey);
-        throw sessionNoLongerValid();
-      }
+      if (!current || current.accessVersion !== tokenVersion.accessVersion) throw sessionNoLongerValid();
       return { isGraceHit: true };
     }
+
+    // Written again so the grace window runs from the commit; an update that waited on a row lock could
+    // otherwise land after the first entry expired.
+    await writeGraceEntry();
 
     // Determine refresh token expiry
     let refreshTokenExpiresIn: string | number = appCfg.JWT_REFRESH_LIFETIME;

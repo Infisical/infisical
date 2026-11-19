@@ -622,13 +622,53 @@ describe("tokenServiceFactory — refresh token rotation", () => {
     expect(row()).toBeUndefined();
   });
 
-  test("losing the rotation race to a sign-out is refused and drops the grace entry", async () => {
-    const { service, tokenAt, signOut, store } = build();
+  test("losing the rotation race to a sign-out is refused, and its grace entry cannot revive the session", async () => {
+    const { service, tokenAt, signOut, row } = build();
 
     const validated = await service.validateRefreshToken(tokenAt(1));
     signOut();
 
-    await expectRejected(service.rotateRefreshToken(validated.decodedToken, validated.tokenVersion), UnauthorizedError);
-    expect(store.has(KeyStorePrefixes.RefreshTokenGrace(SESSION_ID, 1))).toBe(false);
+    const lost = await expectRejected(
+      service.rotateRefreshToken(validated.decodedToken, validated.tokenVersion),
+      UnauthorizedError
+    );
+    expect(lost.name).toBe("InvalidToken");
+
+    const replay = await expectRejected(service.validateRefreshToken(tokenAt(1)), UnauthorizedError);
+    expect(replay.name).toBe("InvalidToken");
+    expect(row()).toBeDefined();
+  });
+
+  test("grace entries written before a sign-out are refused", async () => {
+    const { service, refresh, tokenAt, signOut, store, row } = build();
+    const original = tokenAt(1);
+
+    const v2 = await refresh(original);
+    await refresh(v2!);
+    signOut();
+
+    expect(store.has(KeyStorePrefixes.RefreshTokenGrace(SESSION_ID, 1))).toBe(true);
+    expect(store.has(KeyStorePrefixes.RefreshTokenGrace(SESSION_ID, 2))).toBe(true);
+    const errors = await Promise.all(
+      [original, v2!].map((stale) => expectRejected(service.validateRefreshToken(stale), UnauthorizedError))
+    );
+    expect(errors.map((e) => e.name)).toEqual(["InvalidToken", "InvalidToken"]);
+    expect(row()).toBeDefined();
+  });
+
+  test("the grace window runs from the commit, not from before the increment", async () => {
+    const { refresh, tokenDAL, tokenAt, store, row } = build();
+    const original = tokenAt(1);
+
+    // Simulates the update waiting on a row lock past the first entry's TTL.
+    const increment = tokenDAL.incrementRefreshVersion.getMockImplementation()!;
+    tokenDAL.incrementRefreshVersion.mockImplementationOnce(async (...args) => {
+      store.clear();
+      return increment(...args);
+    });
+
+    expect(await refresh(original)).toBeDefined();
+    expect(await refresh(original)).toBeUndefined();
+    expect(row()?.refreshVersion).toBe(2);
   });
 });

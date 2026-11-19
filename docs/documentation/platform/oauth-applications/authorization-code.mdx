@@ -140,7 +140,12 @@ The response contains:
 
 [Access token lifetime](/documentation/platform/oauth-applications/overview#managing-applications) defaults to 1 day. Refresh tokens follow the organization's session length instead, so shortening the application's lifetime shortens each access token, not how long the client can keep refreshing. Refresh tokens rotate on use, and a refresh never broadens the scopes originally granted.
 
-`refresh_token` is present only when the application holds the `refresh_token` grant, which applications created in the UI always do. If you registered one through the API with `grantTypes` limited to `authorization_code`, the field is omitted and the client exchanges a new authorization code when the access token expires.
+The response omits `refresh_token` in two cases:
+
+- The application doesn't hold the `refresh_token` grant, which happens only if you registered the application through the API with `grantTypes` limited to `authorization_code`
+- Another refresh request used the same refresh token in the last 10 seconds, such as two requests your client sent at the same time
+
+Without the grant, the client exchanges a new authorization code when the access token expires. If a refresh returns no `refresh_token`, keep the refresh token the client already holds.
 
 ### Validation endpoint
 
