@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import { ApproverType, BypasserType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
+import { SECRET_CHANGE_POLICIES } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -57,9 +58,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           enforceImportReplication: z
             .boolean()
             .default(false)
-            .describe(
-              "When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected."
-            ),
+            .describe(SECRET_CHANGE_POLICIES.enforceImportReplication),
           bypassForMachineIdentities: z.boolean().default(false)
         })
         .refine((data) => data.environment || data.environments, "At least one environment should be provided"),
@@ -125,9 +124,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
         enforceImportReplication: z
           .boolean()
           .optional()
-          .describe(
-            "When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected."
-          ),
+          .describe(SECRET_CHANGE_POLICIES.enforceImportReplication),
         bypassForMachineIdentities: z.boolean().optional(),
         environments: z.array(z.string()).optional()
       }),

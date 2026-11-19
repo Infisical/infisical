@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import { ApproverType, BypasserType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
+import { SECRET_CHANGE_POLICIES } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -61,9 +62,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           enforceImportReplication: z
             .boolean()
             .default(false)
-            .describe(
-              "When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected."
-            ),
+            .describe(SECRET_CHANGE_POLICIES.enforceImportReplication),
           bypassForMachineIdentities: z.boolean().default(false),
           delegatedApproval: DelegatedApprovalSchema.optional().describe(
             "Not supported on secret change policies. Only secret access policies can be handled by a delegated approval system, so sending this returns an error."
@@ -151,9 +150,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         enforceImportReplication: z
           .boolean()
           .optional()
-          .describe(
-            "When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected."
-          ),
+          .describe(SECRET_CHANGE_POLICIES.enforceImportReplication),
         bypassForMachineIdentities: z.boolean().optional(),
         environments: z.array(z.string()).optional(),
         delegatedApproval: DelegatedApprovalSchema.optional().describe(
@@ -332,33 +329,42 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       rateLimit: readLimit
     },
     schema: {
+      hide: true,
       operationId: "listSecretApprovalPolicyImports",
-      description:
-        "List the imports from the same project in the folders a secret change policy governs. With 'Require approval for imported secrets' on, each import that does not respect approval policies (isReplication=false) has to be recreated as one that does.",
+      description: SECRET_CHANGE_POLICIES.LIST_IMPORTS.description,
       params: z.object({
-        sapId: z.string().uuid()
+        sapId: z.string().uuid().describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.sapId)
       }),
       querystring: z.object({
         isReplication: z
           .enum(["true", "false"])
           .transform((value) => value === "true")
           .optional()
-          .describe(
-            "When set, list only imports that respect approval policies (true) or only imports that read their source directly (false)"
-          )
+          .describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.isReplicationFilter)
       }),
       response: {
         200: z.object({
           imports: z
             .object({
-              id: z.string(),
-              environment: z.object({ slug: z.string(), name: z.string() }),
-              secretPath: z.string(),
-              sourceEnvironment: z.object({ slug: z.string(), name: z.string() }),
-              sourceSecretPath: z.string(),
-              isReplication: z.boolean()
+              id: z.string().describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.id),
+              environment: z
+                .object({
+                  slug: z.string().describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.environmentSlug),
+                  name: z.string().describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.environmentName)
+                })
+                .describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.environment),
+              secretPath: z.string().describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.secretPath),
+              sourceEnvironment: z
+                .object({
+                  slug: z.string().describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.environmentSlug),
+                  name: z.string().describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.environmentName)
+                })
+                .describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.sourceEnvironment),
+              sourceSecretPath: z.string().describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.sourceSecretPath),
+              isReplication: z.boolean().describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.isReplication)
             })
             .array()
+            .describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.imports)
         })
       }
     },

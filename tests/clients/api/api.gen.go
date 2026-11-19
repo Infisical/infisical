@@ -137065,7 +137065,7 @@ type UpdateSecretApprovalPolicy500JSONResponseBodyStatusCode float32
 
 // ListSecretApprovalPolicyImportsParams defines parameters for ListSecretApprovalPolicyImports.
 type ListSecretApprovalPolicyImportsParams struct {
-	// IsReplication When set, list only imports that respect approval policies (true) or only imports that read their source directly (false)
+	// IsReplication When set, list only imports that respect approval policies (true) or only imports that read their source directly (false). Omit it to list both.
 	IsReplication *ListSecretApprovalPolicyImportsParamsIsReplication `form:"isReplication,omitempty" json:"isReplication,omitempty"`
 }
 
@@ -359595,18 +359595,36 @@ type ListSecretApprovalPolicyImportsResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
+		// Imports The imports in folders this policy governs, leaving out folders a more specific policy governs.
 		Imports []struct {
+			// Environment The environment the import is in, which is where the imported secrets are read.
 			Environment struct {
+				// Name The name of the environment.
 				Name string `json:"name"`
+
+				// Slug The slug of the environment.
 				Slug string `json:"slug"`
 			} `json:"environment"`
-			Id                string `json:"id"`
-			IsReplication     bool   `json:"isReplication"`
-			SecretPath        string `json:"secretPath"`
+
+			// Id The ID of the secret import.
+			Id string `json:"id"`
+
+			// IsReplication True when the import respects approval policies, false when it reads its source directly.
+			IsReplication bool `json:"isReplication"`
+
+			// SecretPath The path of the folder the import is in.
+			SecretPath string `json:"secretPath"`
+
+			// SourceEnvironment The environment the import reads its secrets from.
 			SourceEnvironment struct {
+				// Name The name of the environment.
 				Name string `json:"name"`
+
+				// Slug The slug of the environment.
 				Slug string `json:"slug"`
 			} `json:"sourceEnvironment"`
+
+			// SourceSecretPath The path of the folder the import reads its secrets from.
 			SourceSecretPath string `json:"sourceSecretPath"`
 		} `json:"imports"`
 	}
@@ -359658,18 +359676,36 @@ type ListSecretApprovalPolicyImportsResponse struct {
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r ListSecretApprovalPolicyImportsResponse) GetJSON200() *struct {
+	// Imports The imports in folders this policy governs, leaving out folders a more specific policy governs.
 	Imports []struct {
+		// Environment The environment the import is in, which is where the imported secrets are read.
 		Environment struct {
+			// Name The name of the environment.
 			Name string `json:"name"`
+
+			// Slug The slug of the environment.
 			Slug string `json:"slug"`
 		} `json:"environment"`
-		Id                string `json:"id"`
-		IsReplication     bool   `json:"isReplication"`
-		SecretPath        string `json:"secretPath"`
+
+		// Id The ID of the secret import.
+		Id string `json:"id"`
+
+		// IsReplication True when the import respects approval policies, false when it reads its source directly.
+		IsReplication bool `json:"isReplication"`
+
+		// SecretPath The path of the folder the import is in.
+		SecretPath string `json:"secretPath"`
+
+		// SourceEnvironment The environment the import reads its secrets from.
 		SourceEnvironment struct {
+			// Name The name of the environment.
 			Name string `json:"name"`
+
+			// Slug The slug of the environment.
 			Slug string `json:"slug"`
 		} `json:"sourceEnvironment"`
+
+		// SourceSecretPath The path of the folder the import reads its secrets from.
 		SourceSecretPath string `json:"sourceSecretPath"`
 	} `json:"imports"`
 } {
@@ -468716,18 +468752,36 @@ func ParseListSecretApprovalPolicyImportsResponse(rsp *http.Response) (*ListSecr
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
+			// Imports The imports in folders this policy governs, leaving out folders a more specific policy governs.
 			Imports []struct {
+				// Environment The environment the import is in, which is where the imported secrets are read.
 				Environment struct {
+					// Name The name of the environment.
 					Name string `json:"name"`
+
+					// Slug The slug of the environment.
 					Slug string `json:"slug"`
 				} `json:"environment"`
-				Id                string `json:"id"`
-				IsReplication     bool   `json:"isReplication"`
-				SecretPath        string `json:"secretPath"`
+
+				// Id The ID of the secret import.
+				Id string `json:"id"`
+
+				// IsReplication True when the import respects approval policies, false when it reads its source directly.
+				IsReplication bool `json:"isReplication"`
+
+				// SecretPath The path of the folder the import is in.
+				SecretPath string `json:"secretPath"`
+
+				// SourceEnvironment The environment the import reads its secrets from.
 				SourceEnvironment struct {
+					// Name The name of the environment.
 					Name string `json:"name"`
+
+					// Slug The slug of the environment.
 					Slug string `json:"slug"`
 				} `json:"sourceEnvironment"`
+
+				// SourceSecretPath The path of the folder the import reads its secrets from.
 				SourceSecretPath string `json:"sourceSecretPath"`
 			} `json:"imports"`
 		}
