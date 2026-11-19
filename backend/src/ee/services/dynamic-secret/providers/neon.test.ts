@@ -2,6 +2,7 @@ import { AxiosError, AxiosHeaders } from "axios";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { TDynamicSecrets } from "@app/db/schemas";
+import { delay } from "@app/lib/delay";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator";
@@ -136,6 +137,7 @@ beforeEach(() => {
   appConfig.DYNAMIC_SECRET_ALLOW_INTERNAL_IP = false;
   vi.mocked(logger.error).mockReset();
   vi.mocked(logger.warn).mockReset();
+  vi.mocked(delay).mockResolvedValue(undefined);
   vi.mocked(safeRequest.get).mockImplementation(dispatch("GET") as never);
   vi.mocked(safeRequest.post).mockImplementation(dispatch("POST") as never);
   vi.mocked(safeRequest.patch).mockImplementation(dispatch("PATCH") as never);
@@ -350,6 +352,12 @@ describe("NeonProvider role leases", () => {
   });
 
   test("gives up when operations never finish", async () => {
+    // each poll waits on a clock that only the mocked delay moves
+    let now = Date.now();
+    const nowSpy = vi.spyOn(Date, "now").mockImplementation(() => now);
+    vi.mocked(delay).mockImplementation(async (ms) => {
+      now += ms;
+    });
     routes[`POST ${API}/branches/br-main-123456/roles`] = () => ({
       role: { name: "r", password: "pw" },
       operations: [{ id: "op-1", status: "running", action: "apply_config" }]
@@ -360,6 +368,8 @@ describe("NeonProvider role leases", () => {
     await expect(provider().create(createArgs(roleInputs))).rejects.toThrow(
       "Timed out waiting for Neon operations to finish: apply_config"
     );
+    nowSpy.mockRestore();
+    expect(calls.filter((c) => c.url === `${API}/operations/op-1`)).toHaveLength(60);
   });
 
   test("revokes by deleting the role and treats a missing role as revoked", async () => {

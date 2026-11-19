@@ -19,7 +19,7 @@ import { generateUsername } from "./templateUtils";
 const NEON_API_BASE_URL = "https://console.neon.tech/api/v2";
 const REQUEST_TIMEOUT_MS = 30_000;
 const POLL_INTERVAL_MS = 1000;
-const MAX_OPERATION_POLLS = 60;
+const OPERATION_TIMEOUT_MS = 60_000;
 const MAX_LOCKED_RETRIES = 5;
 const BRANCH_PAGE_SIZE = 100;
 const BRANCH_MAX_PAGES = 100;
@@ -139,14 +139,15 @@ export const NeonProvider = (): TDynamicProviderFns => {
   // to the caller work immediately, and so the next request on the branch isn't rejected as locked.
   const $waitForOperations = async (providerInputs: TNeonProviderInputs, operations: TNeonOperation[] = []) => {
     let pending = operations.filter((op) => !NEON_OPERATION_DONE_STATUSES.has(op.status));
-    for (let poll = 0; pending.length; poll += 1) {
+    const deadline = Date.now() + OPERATION_TIMEOUT_MS;
+    while (pending.length) {
       const failed = pending.find((op) => NEON_OPERATION_FAILED_STATUSES.has(op.status));
       if (failed) {
         throw new BadRequestError({
           message: `Neon operation ${failed.action ?? failed.id} ${failed.status}${failed.error ? `: ${failed.error}` : ""}`
         });
       }
-      if (poll >= MAX_OPERATION_POLLS) {
+      if (Date.now() >= deadline) {
         throw new BadRequestError({
           message: `Timed out waiting for Neon operations to finish: ${pending.map((op) => op.action ?? op.id).join(", ")}`
         });

@@ -27,14 +27,8 @@ type TNeonInputs = Extract<TDynamicSecretProvider, { type: DynamicSecretProvider
 
 const NEON_RESOURCE_ID_REGEX = /^[a-z0-9-]{1,60}$/;
 
-const optionalBranchId = z
-  .string()
-  .trim()
-  .refine((value) => !value || NEON_RESOURCE_ID_REGEX.test(value), "Must be a valid Neon branch ID")
-  .optional();
-
 // The form keeps the fields of both lease types, so switching back and forth keeps what was typed;
-// buildInputs sends only the fields of the selected one.
+// buildInputs sends only the fields of the selected one, and refineNeonInputs checks only those.
 const neonInputFields = {
   baseUrl: z
     .string()
@@ -47,33 +41,38 @@ const neonInputFields = {
     .min(1, "Project ID is required")
     .regex(NEON_RESOURCE_ID_REGEX, "Must be a valid Neon project ID"),
   leaseType: z.nativeEnum(NeonLeaseType),
-  branchId: optionalBranchId,
-  parentBranchId: optionalBranchId,
+  branchId: z.string().trim().optional(),
+  parentBranchId: z.string().trim().optional(),
   databaseName: z.string().trim().min(1, "Database is required").max(63),
-  roleName: z.string().trim().max(63).optional(),
+  roleName: z.string().trim().optional(),
   pooled: z.boolean(),
   resetRolePassword: z.boolean(),
   setBranchExpiration: z.boolean()
 };
 
 const refineNeonInputs = (
-  inputs: { leaseType: NeonLeaseType; branchId?: string; roleName?: string },
+  inputs: {
+    leaseType: NeonLeaseType;
+    branchId?: string;
+    parentBranchId?: string;
+    roleName?: string;
+  },
   context: z.RefinementCtx
 ) => {
-  if (inputs.leaseType === NeonLeaseType.Role && !inputs.branchId) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["branchId"],
-      message: "Branch ID is required when each lease creates a role"
-    });
+  const addIssue = (field: string, message: string) =>
+    context.addIssue({ code: z.ZodIssueCode.custom, path: [field], message });
+
+  if (inputs.leaseType === NeonLeaseType.Role) {
+    if (!inputs.branchId)
+      addIssue("branchId", "Branch ID is required when each lease creates a role");
+    else if (!NEON_RESOURCE_ID_REGEX.test(inputs.branchId))
+      addIssue("branchId", "Must be a valid Neon branch ID");
+    return;
   }
-  if (inputs.leaseType === NeonLeaseType.Branch && !inputs.roleName) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["roleName"],
-      message: "Role is required when each lease creates a branch"
-    });
-  }
+  if (inputs.parentBranchId && !NEON_RESOURCE_ID_REGEX.test(inputs.parentBranchId))
+    addIssue("parentBranchId", "Must be a valid Neon branch ID");
+  if (!inputs.roleName) addIssue("roleName", "Role is required when each lease creates a branch");
+  else if (inputs.roleName.length > 63) addIssue("roleName", "Role must be at most 63 characters");
 };
 
 const neonCreateInputsSchema = z

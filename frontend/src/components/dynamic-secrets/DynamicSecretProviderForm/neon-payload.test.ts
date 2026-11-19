@@ -76,20 +76,36 @@ describe("Neon dynamic secret form", () => {
     assert.deepEqual(result.error?.issues[0].path, ["inputs", field]);
   });
 
-  it("rejects a malformed API base URL and malformed project and branch IDs", () => {
+  it.each([
+    [NeonLeaseType.Role, "inputs.branchId"],
+    [NeonLeaseType.Branch, "inputs.parentBranchId"]
+  ])("rejects a malformed API base URL, project ID and %s branch ID", (leaseType, branchField) => {
     const result = neonCreateFormSchema.safeParse(
       formValues({
+        leaseType,
         baseUrl: "neon.example.com",
         projectId: "Not A Project",
         branchId: "br/../x",
-        parentBranchId: "br/../y"
+        parentBranchId: "br/../y",
+        roleName: "neondb_owner"
       })
     );
     assert.equal(result.success, false);
     assert.deepEqual(
       result.error?.issues.map((issue) => issue.path.join(".")),
-      ["inputs.baseUrl", "inputs.projectId", "inputs.branchId", "inputs.parentBranchId"]
+      ["inputs.baseUrl", "inputs.projectId", branchField]
     );
+  });
+
+  it("ignores a hidden field of the other lease type", () => {
+    const result = neonCreateFormSchema.safeParse(
+      formValues({
+        leaseType: NeonLeaseType.Branch,
+        branchId: "br/../x",
+        roleName: "neondb_owner"
+      })
+    );
+    assert.equal(result.success, true);
   });
 
   it("sends only the role lease fields for role leases", () => {
