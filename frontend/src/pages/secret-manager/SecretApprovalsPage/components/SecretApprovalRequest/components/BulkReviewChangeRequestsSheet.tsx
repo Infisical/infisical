@@ -244,10 +244,6 @@ const BulkReviewChangeRequestsSheetContent = ({
             : [];
       } catch {
         onOutcomeUnknown();
-        createNotification({
-          type: "error",
-          text: "The connection closed before Infisical confirmed which change requests were updated. The list now shows their current state."
-        });
         return;
       }
 
