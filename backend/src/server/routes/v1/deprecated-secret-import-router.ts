@@ -416,7 +416,8 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
     url: "/secrets",
     method: "GET",
     config: {
-      rateLimit: secretsLimit
+      rateLimit: secretsLimit,
+      limitSecretReadConcurrency: true
     },
     schema: {
       querystring: z.object({
@@ -466,7 +467,8 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
     url: "/secrets/raw",
     method: "GET",
     config: {
-      rateLimit: secretsLimit
+      rateLimit: secretsLimit,
+      limitSecretReadConcurrency: true
     },
     serializerCompiler: fastJsonSerializerCompiler,
     schema: {

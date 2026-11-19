@@ -4,11 +4,7 @@ import { Cluster, Redis } from "ioredis";
 
 import { TUsers } from "@app/db/schemas";
 import { TAgentVaultAccessService, TAgentVaultUsageService } from "@app/domains/agent-vault/agent-vault/ce/module";
-import {
-  TKmsDataKeyService,
-  TKmsRootKeyService,
-  TSecretDecryptLease
-} from "@app/domains/platform/kms-core/ce/module";
+import { TKmsDataKeyService, TKmsRootKeyService, TSecretDecryptLease } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TSecretAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
 import { TSecretAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
@@ -263,6 +259,11 @@ declare module "@fastify/request-context" {
 }
 
 declare module "fastify" {
+  interface FastifyContextConfig {
+    // Set on routes that list secrets, so secret-read-concurrency-limit.ts limits how many run at once.
+    limitSecretReadConcurrency?: boolean;
+  }
+
   interface Session {
     callbackPort: string;
     isAdminLogin: boolean;

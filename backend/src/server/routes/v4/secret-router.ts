@@ -69,7 +69,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/",
     config: {
-      rateLimit: secretsLimit
+      rateLimit: secretsLimit,
+      limitSecretReadConcurrency: true
     },
     serializerCompiler: fastJsonSerializerCompiler,
     schema: {

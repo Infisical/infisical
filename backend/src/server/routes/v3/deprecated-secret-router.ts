@@ -183,7 +183,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     method: "GET",
     url: "/raw",
     config: {
-      rateLimit: secretsLimit
+      rateLimit: secretsLimit,
+      limitSecretReadConcurrency: true
     },
     serializerCompiler: fastJsonSerializerCompiler,
     schema: {
@@ -1068,7 +1069,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     method: "GET",
     url: "/",
     config: {
-      rateLimit: secretsLimit
+      rateLimit: secretsLimit,
+      limitSecretReadConcurrency: true
     },
     schema: {
       deprecated: true,

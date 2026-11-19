@@ -338,6 +338,37 @@ const envSchema = z
       .min(0)
       .default(10_000)
       .describe("How often, in milliseconds, to log that the secret decrypt limit is shedding requests"),
+    SECRET_READ_CONCURRENCY_LIMIT_ENABLED: zodStrBool
+      .default("false")
+      .describe(
+        "Limit how many API requests to list secrets run at once, per organization and per instance, and refuse those that wait longer than SECRET_READ_MAX_QUEUE_WAIT_MS"
+      ),
+    SECRET_READ_MAX_IN_FLIGHT_PER_ORG: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(1)
+      .describe("Most requests to list secrets one organization may have running at once on an instance"),
+    SECRET_READ_MAX_IN_FLIGHT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(8)
+      .describe("Most requests to list secrets that may run at once on an instance, across all organizations"),
+    SECRET_READ_MAX_QUEUE_WAIT_MS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(5000)
+      .describe("How long, in milliseconds, a request to list secrets may wait for its turn before it is refused"),
+    SECRET_READ_MAX_QUEUE_DEPTH: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(20)
+      .describe(
+        "Most requests to list secrets that may wait for their turn per organization, and most organizations that may wait for a free slot on an instance"
+      ),
     SECRETS_RATE_LIMIT_ENABLED: zodStrBool
       .default("false")
       .describe(
