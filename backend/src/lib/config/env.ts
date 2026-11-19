@@ -312,15 +312,6 @@ const envSchema = z
       z.string().describe("PostgreSQL role to grant read access to the sanitized schema").optional()
     ),
     MAX_LEASE_LIMIT: z.coerce.number().default(10000),
-    SECRET_READ_LIMIT_ENABLED: zodStrBool
-      .default("false")
-      .describe("Refuse API requests to list secrets that would return more than MAX_SECRETS_PER_READ_REQUEST secrets"),
-    MAX_SECRETS_PER_READ_REQUEST: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .default(1000)
-      .describe("Most secrets one API request to list secrets can return, imported secrets and subfolders included"),
     SECRET_DECRYPT_LIMIT_ENABLED: zodStrBool
       .default("false")
       .describe(

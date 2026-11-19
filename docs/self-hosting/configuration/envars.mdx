@@ -187,16 +187,6 @@ Example values:
   </Warning>
 </ParamField>
 
-<ParamField query="SECRET_READ_LIMIT_ENABLED" type="bool" default="false" optional>
-  Limits how many secrets one API request to list secrets can return, such as a request to the Secrets [List](/api-reference/endpoints/secrets/list) endpoint. Imported secrets and secrets in subfolders count toward the limit. If a request would return more secrets than `MAX_SECRETS_PER_READ_REQUEST`, it fails with a `400` response.
-</ParamField>
-
-<ParamField query="MAX_SECRETS_PER_READ_REQUEST" type="int" default="1000" optional>
-  Maximum number of secrets that one API request to list secrets can return. Only used when `SECRET_READ_LIMIT_ENABLED` is `true`.
-
-  If your applications read more than 1000 secrets from one secret path, raise the limit.
-</ParamField>
-
 <ParamField query="SECRET_DECRYPT_LIMIT_ENABLED" type="bool" default="false" optional>
   Infisical refuses a request to decrypt secrets when other requests for the same organization are already decrypting at least `SECRET_DECRYPT_MAX_IN_FLIGHT_PER_ORG` secrets. The request fails with a `429` response. Retry the request a few seconds later. Leave this unset, and Infisical doesn't apply the limit.
 </ParamField>

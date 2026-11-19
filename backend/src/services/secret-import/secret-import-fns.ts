@@ -251,7 +251,6 @@ export const fnSecretsV2FromImports = async ({
   secretImportDAL,
   decryptor,
   reserveDecrypts,
-  countSecretsToLoad,
   expandSecretReferences,
   hasSecretAccess,
   importAccessScopeByFolderId,
@@ -275,7 +274,6 @@ export const fnSecretsV2FromImports = async ({
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   decryptor: (value?: Buffer | null) => string;
   reserveDecrypts?: (count: number) => void;
-  countSecretsToLoad?: (folderIds: string[]) => Promise<void>;
   expandSecretReferences?: (inputSecret: {
     value?: string;
     skipMultilineEncoding?: boolean | null;
@@ -357,8 +355,6 @@ export const fnSecretsV2FromImports = async ({
       userId &&
       (personalOverridesBehavior === PersonalOverridesBehavior.Priority ||
         personalOverridesBehavior === PersonalOverridesBehavior.IncludeAll);
-
-    await countSecretsToLoad?.(importedFolderIds);
 
     let importedSecrets: TImportedSecret[];
 

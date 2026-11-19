@@ -1537,8 +1537,6 @@ export const SECRETS = {
 
 export const RAW_SECRETS = {
   LIST: {
-    description:
-      "List secrets. If the instance limits secret reads (SECRET_READ_LIMIT_ENABLED), a request that would return more than MAX_SECRETS_PER_READ_REQUEST secrets (1000 by default), counting imported secrets and subfolders, is refused with a 400 error.",
     expand: "Whether or not to expand secret references.",
     recursive:
       "Whether or not to fetch all secrets from the specified base path, and all of its subdirectories. Note, the max depth is 20 deep.",
@@ -1641,10 +1639,6 @@ export const SECRET_IMPORTS = {
     projectId: "The ID of the project to list secret imports from.",
     environment: "The slug of the environment to list secret imports from.",
     path: "The path to list secret imports from."
-  },
-  LIST_SECRETS: {
-    description:
-      "List the secrets imported into a secret path. If the instance limits secret reads (SECRET_READ_LIMIT_ENABLED), a request that would return more than MAX_SECRETS_PER_READ_REQUEST secrets (1000 by default) is refused with a 400 error."
   },
   GET: {
     secretImportId: "The ID of the secret import to fetch."

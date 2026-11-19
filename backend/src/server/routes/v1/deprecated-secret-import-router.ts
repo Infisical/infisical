@@ -3,7 +3,6 @@ import { z } from "zod";
 import { SecretImportsSchema, SecretsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SECRET_IMPORTS } from "@app/lib/api-docs";
-import { getConfig } from "@app/lib/config/env";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -513,8 +512,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
         actorOrgId: req.permission.orgId,
         ...req.query,
         projectId: req.query.workspaceId,
-        ifNoneMatch: req.headers["if-none-match"],
-        enforceSecretReadLimit: getConfig().SECRET_READ_LIMIT_ENABLED
+        ifNoneMatch: req.headers["if-none-match"]
       });
 
       if (etag) {

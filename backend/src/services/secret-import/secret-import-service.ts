@@ -54,7 +54,6 @@ import {
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { decryptSecretRaw } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
-import { createSecretReadLimit } from "../secret/secret-read-limit";
 import { TSecretImportDALFactory } from "./secret-import-dal";
 import { SecretImportModifiedEventV1 } from "./secret-import-events";
 import { fnSecretsFromImports, fnSecretsV2FromImports } from "./secret-import-fns";
@@ -74,10 +73,7 @@ type TSecretImportServiceFactoryDep = {
   folderDAL: TSecretFolderDALFactory;
   eventEmitter: TEventEmitter;
   secretDAL: Pick<TSecretDALFactory, "find">;
-  secretV2BridgeDAL: Pick<
-    TSecretV2BridgeDALFactory,
-    "find" | "findByFolderIds" | "countSharedByFolderIds" | "invalidateSecretCacheByProjectId"
-  >;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "invalidateSecretCacheByProjectId">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findById">;
   projectEnvDAL: TProjectEnvDALFactory;
@@ -947,14 +943,28 @@ export const secretImportServiceFactory = ({
     actorAuthMethod,
     actorId,
     actorOrgId,
-    ifNoneMatch,
-    enforceSecretReadLimit
+    ifNoneMatch
   }: TGetRawSecretsFromImportDTO): Promise<{
     secrets: TRawSecretsV2FromImports;
     etag?: string;
     notModified?: boolean;
   }> => {
-    const readLimit = createSecretReadLimit({ enforceSecretReadLimit, environment, secretPath });
+    // Checked before the ETag so a credential with narrower scopes, such as an OAuth token, never gets a 304
+    // for a response it could not read.
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
+    );
+
+    const permissionHash = generateCacheKeyFromData(permission.rules);
     const permissionFingerprint = await getSecretEtagPermissionFingerprint({
       keyStore,
       permissionService,
@@ -970,7 +980,7 @@ export const secretImportServiceFactory = ({
       environment,
       secretPath
     });
-    const etagField = `${actorId}:${permissionFingerprint}:${requestParamsHash}`;
+    const etagField = `${actorId}:${permissionFingerprint}:${permissionHash}:${requestParamsHash}`;
 
     const hasIfNoneMatch = ifNoneMatch !== undefined;
     let etagMissReason: SecretEtagMissReason | undefined;
@@ -984,26 +994,13 @@ export const secretImportServiceFactory = ({
       etagMissReason = storedEtag ? SecretEtagMissReason.VALUE_DIFFERS : SecretEtagMissReason.FIELD_ABSENT;
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
-    );
-
     const cachedSecretDalVersion = await keyStore.pgGetIntItem(KeyStorePrefixes.SecretDalVersion(projectId));
     const cacheKey = KeyStorePrefixes.SecretsServiceLayerCache({
       projectId,
       version: Number(cachedSecretDalVersion || 0),
       actorId,
       permissionFingerprint,
-      permissionHash: generateCacheKeyFromData(permission.rules),
+      permissionHash,
       requestParamsHash
     });
 
@@ -1058,8 +1055,6 @@ export const secretImportServiceFactory = ({
       secretImportDAL,
       decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
       reserveDecrypts: secretDecryptReservations.reserveDecrypts,
-      countSecretsToLoad:
-        readLimit && (async (folderIds) => readLimit.count(await secretV2BridgeDAL.countSharedByFolderIds(folderIds))),
       importAccessScopeByFolderId: new Map([[folder.id, { environment, secretPath }]]),
       hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
         hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {

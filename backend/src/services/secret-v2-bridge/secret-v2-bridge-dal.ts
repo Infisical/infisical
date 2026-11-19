@@ -630,18 +630,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
-  const countSharedByFolderIds = async (folderIds: string[], tx?: Knex) => {
-    try {
-      const [result] = await (tx || db.replicaNode())(TableName.SecretV2)
-        .whereIn("folderId", folderIds)
-        .where("type", SecretType.Shared)
-        .count("*", { as: "count" });
-      return Number(result?.count ?? 0);
-    } catch (error) {
-      throw new DatabaseError({ error, name: `${TableName.SecretV2}: Count shared by folder ids` });
-    }
-  };
-
   const findMetadataByFolderIds = async ({
     folderIds,
     afterId,
@@ -1903,7 +1891,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findSecretsInFolderAfter,
     batchSetBlindIndexes,
     countByFolderIds,
-    countSharedByFolderIds,
     findStaleByProject,
     countStaleByProject,
     countByProject,

@@ -70,7 +70,6 @@ import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/s
 import { TValidateSecretsDTO } from "../secret-validation-rule/secret-validation-rule-types";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
-import { createSecretReadLimit } from "../secret/secret-read-limit";
 import {
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
@@ -1403,11 +1402,8 @@ export const secretV2BridgeServiceFactory = ({
       ifNoneMatch,
       abortSignal,
       onSecretReferenced,
-      enforceSecretReadLimit,
       ...params
     } = dto;
-
-    const readLimit = createSecretReadLimit({ enforceSecretReadLimit, environment, secretPath: path });
 
     const permissionFingerprint = await getSecretEtagPermissionFingerprint({
       keyStore,
@@ -1549,8 +1545,6 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     const groupedPaths = groupBy(paths, (p) => p.folderId);
-
-    readLimit?.count(await secretDAL.countSharedByFolderIds(paths.map((p) => p.folderId)));
 
     const unfilteredSecrets = await secretDAL.findByFolderIds({
       folderIds: paths.map((p) => p.folderId),
@@ -1809,8 +1803,6 @@ export const secretV2BridgeServiceFactory = ({
           : expandSecretReferences,
       decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
       reserveDecrypts: secretDecryptReservations.reserveDecrypts,
-      countSecretsToLoad:
-        readLimit && (async (folderIds) => readLimit.count(await secretDAL.countSharedByFolderIds(folderIds))),
       importAccessScopeByFolderId: new Map(
         paths.map((folderPath) => [
           folderPath.folderId,
