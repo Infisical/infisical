@@ -142,9 +142,9 @@ export class InstanceConfigService implements TInstanceConfigService {
     const updated = await this.change((config) => {
       config.changeSignUpPolicy({
         allowSignUp: patch.allowSignUp,
-        allowedSignUpDomain: patch.allowedSignUpDomain,
-        trustLdapEmails: patch.trustLdapEmails
+        allowedSignUpDomain: patch.allowedSignUpDomain
       });
+      if (patch.trustLdapEmails !== undefined) config.changeTrustLdapEmails(patch.trustLdapEmails);
       if (patch.enabledLoginMethods !== undefined) config.changeLoginMethods(patch.enabledLoginMethods);
       if (patch.defaultAuthOrgId !== undefined) config.changeDefaultAuthOrg(patch.defaultAuthOrgId);
       config.changeBranding({ authConsentContent: patch.authConsentContent, pageFrameContent: patch.pageFrameContent });

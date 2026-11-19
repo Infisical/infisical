@@ -7,8 +7,10 @@ env overrides) shared by every pod through Redis, and every env value an instanc
 
 | Piece | Holds |
 | --- | --- |
-| `models/instance-config.ts` | `InstanceConfig`, the row: intent methods (`changeSignUpPolicy`, `completeSetup`, `revokeAdminIdentity`, `changeSlackCredentials`, `replaceEnvOverrides`, ...), `toSettings()` (an allowlist) and the decrypting reads, each given the root key's `encrypt` / `decrypt` |
-| `models/*-credentials.ts` | Value objects for decrypted credentials |
+| `models/instance-config.ts` | `InstanceConfig`, the row: intent methods (`changeSignUpPolicy`, `completeSetup`, `revokeAdminIdentity`, `changeSlackCredentials`, `replaceEnvOverrides`, ...) that replace the value object they touch, `toSettings()` (an allowlist, field by field) and the decrypting reads, each given the root key's `encrypt` / `decrypt` |
+| `models/instance-setup.ts`, `sign-up-policy.ts`, `login-policy.ts`, `default-auth-org.ts` | Value objects for each group of columns with rules of its own. Their record types use the column names, so `restore(row)` takes the row as it is |
+| `models/encrypted-credentials.ts` and `encrypted-*-credentials.ts` | The stored app credentials: the base holds the rules every integration shares (encrypt what is given, Slack and Teams values cannot be cleared, decrypt each column on its own); each subclass maps its columns and decrypts to its value object |
+| `models/*-app-credentials.ts` | Value objects for decrypted credentials |
 | `models/env-overrides.ts` | `EnvOverrides`: the overridable keys, their groups and schema, and `resolve(processEnv)`, the stored overrides on top of the process env |
 | `data-access/instance-config-store.ts` | `super_admin`, with the default auth org joined in; static `readFipsSetting` / `readInitialized` for boot |
 | `data-access/instance-config-cache.ts` | The shared Redis copy (frozen, see below) |

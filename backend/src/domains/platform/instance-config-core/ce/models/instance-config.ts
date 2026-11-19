@@ -1,11 +1,17 @@
 import { randomUUID } from "node:crypto";
 
 import { TSuperAdmin } from "@app/db/schemas";
-import { RuleViolationError, StateConflictError } from "@app/domains/lib/errors";
 
+import { TDecrypt, TEncrypt } from "./encrypted-credentials";
+import { EncryptedGitHubAppCredentials } from "./encrypted-github-app-credentials";
+import { EncryptedMicrosoftTeamsCredentials } from "./encrypted-microsoft-teams-credentials";
+import { EncryptedSlackCredentials } from "./encrypted-slack-credentials";
 import { EnvOverrides } from "./env-overrides";
 import { GitHubAppCredentials } from "./github-app-credentials";
+import { InstanceSetup } from "./instance-setup";
+import { LoginPolicy } from "./login-policy";
 import { MicrosoftTeamsAppCredentials } from "./microsoft-teams-app-credentials";
+import { SignUpPolicy } from "./sign-up-policy";
 import { SlackAppCredentials } from "./slack-app-credentials";
 
 // The id of the one super_admin row. Pods of the previous release look the row up by it.
@@ -42,52 +48,25 @@ export type TInstanceConfigSettings = {
   defaultAuthOrgAuthMethod: string | null;
 };
 
-// Encrypts and decrypts with the instance root key. The service hands them in from KMS Core.
-export type TEncrypt = (plainText: Buffer) => Buffer;
-export type TDecrypt = (cipherText: Buffer) => Buffer;
-
-// A change of a Slack or Teams credential cannot clear it: an empty value is refused by name.
-const assertNotCleared = (label: string, value: string | undefined) => {
-  if (value === "") {
-    throw new RuleViolationError({
-      message: `${label} cannot be empty. Slack and Microsoft Teams credentials can be changed but not cleared.`
-    });
-  }
-};
-
-// The instance's configuration: the single super_admin row.
+// The instance's configuration: the single super_admin row. Each group of columns with rules of its own is a value
+// object; this class applies a change to the groups it touches and maps them back to the row.
 export class InstanceConfig {
   private constructor(
     readonly id: string,
     private readonly instanceId: string,
-    private initialized: boolean | null,
-    private allowSignUp: boolean | null,
-    private allowedSignUpDomain: string | null,
-    private trustLdapEmails: boolean | null,
-    private defaultAuthOrgId: string | null,
-    private enabledLoginMethods: string[] | null,
+    private setup: InstanceSetup,
+    private signUp: SignUpPolicy,
+    private login: LoginPolicy,
     private authConsentContent: string | null,
     private pageFrameContent: string | null,
-    private adminIdentityIds: string[] | null,
-    private readonly fipsEnabled: boolean,
-    private onboardingCompleted: boolean,
     private allowedStorageHostnames: string[] | null,
-    private encryptedSlackClientId: Buffer | null,
-    private encryptedSlackClientSecret: Buffer | null,
-    private encryptedMicrosoftTeamsAppId: Buffer | null,
-    private encryptedMicrosoftTeamsClientSecret: Buffer | null,
-    private encryptedMicrosoftTeamsBotId: Buffer | null,
-    private encryptedGitHubAppConnectionClientId: Buffer | null,
-    private encryptedGitHubAppConnectionClientSecret: Buffer | null,
-    private encryptedGitHubAppConnectionSlug: Buffer | null,
-    private encryptedGitHubAppConnectionId: Buffer | null,
-    private encryptedGitHubAppConnectionPrivateKey: Buffer | null,
+    private slack: EncryptedSlackCredentials,
+    private microsoftTeams: EncryptedMicrosoftTeamsCredentials,
+    private gitHubApp: EncryptedGitHubAppCredentials,
+    private readonly fipsEnabled: boolean,
     private encryptedEnvOverrides: Buffer | null,
     private readonly createdAt: Date,
-    readonly updatedAt: Date,
-    private readonly defaultAuthOrgSlug: string | null,
-    private readonly defaultAuthOrgAuthEnforced: boolean | null,
-    private readonly defaultAuthOrgAuthMethod: string | null
+    readonly updatedAt: Date
   ) {}
 
   // The row a new instance starts with: sign-up open, setup not done.
@@ -110,65 +89,44 @@ export class InstanceConfig {
     return new InstanceConfig(
       record.id,
       record.instanceId,
-      record.initialized ?? null,
-      record.allowSignUp ?? null,
-      record.allowedSignUpDomain ?? null,
-      record.trustLdapEmails ?? null,
-      record.defaultAuthOrgId ?? null,
-      record.enabledLoginMethods ?? null,
+      InstanceSetup.restore(record),
+      SignUpPolicy.restore(record),
+      LoginPolicy.restore(record),
       record.authConsentContent ?? null,
       record.pageFrameContent ?? null,
-      record.adminIdentityIds ?? null,
-      record.fipsEnabled,
-      record.onboardingCompleted,
       record.allowedStorageHostnames ?? null,
-      record.encryptedSlackClientId ?? null,
-      record.encryptedSlackClientSecret ?? null,
-      record.encryptedMicrosoftTeamsAppId ?? null,
-      record.encryptedMicrosoftTeamsClientSecret ?? null,
-      record.encryptedMicrosoftTeamsBotId ?? null,
-      record.encryptedGitHubAppConnectionClientId ?? null,
-      record.encryptedGitHubAppConnectionClientSecret ?? null,
-      record.encryptedGitHubAppConnectionSlug ?? null,
-      record.encryptedGitHubAppConnectionId ?? null,
-      record.encryptedGitHubAppConnectionPrivateKey ?? null,
+      EncryptedSlackCredentials.restore(record),
+      EncryptedMicrosoftTeamsCredentials.restore(record),
+      EncryptedGitHubAppCredentials.restore(record),
+      record.fipsEnabled,
       record.encryptedEnvOverrides ?? null,
       record.createdAt,
-      record.updatedAt,
-      record.defaultAuthOrgSlug || null,
-      record.defaultAuthOrgAuthEnforced ?? null,
-      record.defaultAuthOrgAuthMethod ?? null
+      record.updatedAt
     );
   }
 
   get isSetUp(): boolean {
-    return Boolean(this.initialized);
+    return this.setup.isSetUp;
   }
 
   isAdminIdentity(identityId: string): boolean {
-    return (this.adminIdentityIds ?? []).includes(identityId);
+    return this.setup.isAdminIdentity(identityId);
   }
 
-  changeSignUpPolicy(policy: {
-    allowSignUp?: boolean;
-    allowedSignUpDomain?: string | null;
-    trustLdapEmails?: boolean;
-  }): void {
-    if (policy.allowSignUp !== undefined) this.allowSignUp = policy.allowSignUp;
-    if (policy.allowedSignUpDomain !== undefined) this.allowedSignUpDomain = policy.allowedSignUpDomain;
-    if (policy.trustLdapEmails !== undefined) this.trustLdapEmails = policy.trustLdapEmails;
+  changeSignUpPolicy(policy: { allowSignUp?: boolean; allowedSignUpDomain?: string | null }): void {
+    this.signUp = this.signUp.change(policy);
   }
 
   changeLoginMethods(methods: string[]): void {
-    if (methods.length === 0) {
-      throw new RuleViolationError({ message: "At least one login method should be enabled." });
-    }
-    this.enabledLoginMethods = [...methods];
+    this.login = this.login.changeLoginMethods(methods);
   }
 
-  // The joined slug and SSO fields describe the previous org until the row is read again.
+  changeTrustLdapEmails(trust: boolean): void {
+    this.login = this.login.changeTrustLdapEmails(trust);
+  }
+
   changeDefaultAuthOrg(orgId: string | null): void {
-    this.defaultAuthOrgId = orgId;
+    this.login = this.login.changeDefaultAuthOrg(orgId);
   }
 
   changeBranding(branding: { authConsentContent?: string; pageFrameContent?: string }): void {
@@ -181,105 +139,60 @@ export class InstanceConfig {
   }
 
   changeOnboardingStatus(completed: boolean): void {
-    this.onboardingCompleted = completed;
+    this.setup = this.setup.changeOnboardingStatus(completed);
+  }
+
+  assertNotSetUp(): void {
+    this.setup.assertNotSetUp();
   }
 
   // The first admin finished setting the instance up. Self-hosted instances close sign-up from then on.
-  assertNotSetUp(): void {
-    if (this.initialized) throw new StateConflictError({ message: "Instance has already been set up" });
-  }
-
   completeSetup({ closeSignUp }: { closeSignUp: boolean }): void {
-    this.assertNotSetUp();
-    this.initialized = true;
-    if (closeSignUp) this.allowSignUp = false;
+    this.setup = this.setup.complete();
+    if (closeSignUp) this.signUp = this.signUp.close();
   }
 
   grantAdminIdentity(identityId: string): void {
-    if (this.isAdminIdentity(identityId)) return;
-    this.adminIdentityIds = [...(this.adminIdentityIds ?? []), identityId];
+    this.setup = this.setup.grantAdminIdentity(identityId);
   }
 
   revokeAdminIdentity(identityId: string): void {
-    if (!this.isAdminIdentity(identityId)) {
-      throw new RuleViolationError({ name: "Identity", message: "Identity does not have super admin access" });
-    }
-    this.adminIdentityIds = (this.adminIdentityIds ?? []).filter((id) => id !== identityId);
+    this.setup = this.setup.revokeAdminIdentity(identityId);
   }
 
   // Values left undefined stay as they are.
   changeSlackCredentials(input: { clientId?: string; clientSecret?: string }, encrypt: TEncrypt): void {
-    assertNotCleared("Slack client ID", input.clientId);
-    assertNotCleared("Slack client secret", input.clientSecret);
-    if (input.clientId !== undefined) this.encryptedSlackClientId = encrypt(Buffer.from(input.clientId));
-    if (input.clientSecret !== undefined) this.encryptedSlackClientSecret = encrypt(Buffer.from(input.clientSecret));
+    this.slack = this.slack.change(input, encrypt);
   }
 
   changeMicrosoftTeamsCredentials(
     input: { appId?: string; clientSecret?: string; botId?: string },
     encrypt: TEncrypt
   ): void {
-    assertNotCleared("Microsoft Teams app ID", input.appId);
-    assertNotCleared("Microsoft Teams client secret", input.clientSecret);
-    assertNotCleared("Microsoft Teams bot ID", input.botId);
-    if (input.appId !== undefined) this.encryptedMicrosoftTeamsAppId = encrypt(Buffer.from(input.appId));
-    if (input.clientSecret !== undefined) {
-      this.encryptedMicrosoftTeamsClientSecret = encrypt(Buffer.from(input.clientSecret));
-    }
-    if (input.botId !== undefined) this.encryptedMicrosoftTeamsBotId = encrypt(Buffer.from(input.botId));
+    this.microsoftTeams = this.microsoftTeams.change(input, encrypt);
   }
 
-  // Unlike Slack and Teams, "" is stored: it clears the value.
   changeGitHubAppCredentials(
     input: { clientId?: string; clientSecret?: string; appSlug?: string; appId?: string; privateKey?: string },
     encrypt: TEncrypt
   ): void {
-    const encryptIfGiven = (value: string | undefined, current: Buffer | null) =>
-      value !== undefined ? encrypt(Buffer.from(value)) : current;
-    this.encryptedGitHubAppConnectionClientId = encryptIfGiven(
-      input.clientId,
-      this.encryptedGitHubAppConnectionClientId
-    );
-    this.encryptedGitHubAppConnectionClientSecret = encryptIfGiven(
-      input.clientSecret,
-      this.encryptedGitHubAppConnectionClientSecret
-    );
-    this.encryptedGitHubAppConnectionSlug = encryptIfGiven(input.appSlug, this.encryptedGitHubAppConnectionSlug);
-    this.encryptedGitHubAppConnectionId = encryptIfGiven(input.appId, this.encryptedGitHubAppConnectionId);
-    this.encryptedGitHubAppConnectionPrivateKey = encryptIfGiven(
-      input.privateKey,
-      this.encryptedGitHubAppConnectionPrivateKey
-    );
+    this.gitHubApp = this.gitHubApp.change(input, encrypt);
   }
 
   replaceEnvOverrides(overrides: EnvOverrides, encrypt: TEncrypt): void {
     this.encryptedEnvOverrides = encrypt(overrides.toBytes());
   }
 
-  // Each integration decrypts only its own columns, so a column that cannot be decrypted breaks only its integration.
   slackCredentials(decrypt: TDecrypt): SlackAppCredentials {
-    return SlackAppCredentials.restore({
-      clientId: InstanceConfig.decryptText(this.encryptedSlackClientId, decrypt),
-      clientSecret: InstanceConfig.decryptText(this.encryptedSlackClientSecret, decrypt)
-    });
+    return this.slack.decrypt(decrypt);
   }
 
   microsoftTeamsCredentials(decrypt: TDecrypt): MicrosoftTeamsAppCredentials {
-    return MicrosoftTeamsAppCredentials.restore({
-      appId: InstanceConfig.decryptText(this.encryptedMicrosoftTeamsAppId, decrypt),
-      clientSecret: InstanceConfig.decryptText(this.encryptedMicrosoftTeamsClientSecret, decrypt),
-      botId: InstanceConfig.decryptText(this.encryptedMicrosoftTeamsBotId, decrypt)
-    });
+    return this.microsoftTeams.decrypt(decrypt);
   }
 
   gitHubAppCredentials(decrypt: TDecrypt): GitHubAppCredentials {
-    return GitHubAppCredentials.restore({
-      clientId: InstanceConfig.decryptText(this.encryptedGitHubAppConnectionClientId, decrypt),
-      clientSecret: InstanceConfig.decryptText(this.encryptedGitHubAppConnectionClientSecret, decrypt),
-      appSlug: InstanceConfig.decryptText(this.encryptedGitHubAppConnectionSlug, decrypt),
-      appId: InstanceConfig.decryptText(this.encryptedGitHubAppConnectionId, decrypt),
-      privateKey: InstanceConfig.decryptText(this.encryptedGitHubAppConnectionPrivateKey, decrypt)
-    });
+    return this.gitHubApp.decrypt(decrypt);
   }
 
   envOverrides(decrypt: TDecrypt): EnvOverrides {
@@ -293,28 +206,32 @@ export class InstanceConfig {
     return this.encryptedEnvOverrides ? this.encryptedEnvOverrides.toString("base64") : "";
   }
 
-  // An allowlist: a column added later stays out of every response until it is listed here.
+  // An allowlist, field by field: a column added later, to this class or to a group, stays out of every response
+  // until it is listed here.
   toSettings(): TInstanceConfigSettings {
+    const setup = this.setup.toJSON();
+    const signUp = this.signUp.toJSON();
+    const login = this.login.toJSON();
     return {
       id: this.id,
       instanceId: this.instanceId,
-      initialized: this.initialized,
-      allowSignUp: this.allowSignUp,
-      allowedSignUpDomain: this.allowedSignUpDomain,
-      trustLdapEmails: this.trustLdapEmails,
-      defaultAuthOrgId: this.defaultAuthOrgId,
-      enabledLoginMethods: this.enabledLoginMethods,
+      initialized: setup.initialized,
+      allowSignUp: signUp.allowSignUp,
+      allowedSignUpDomain: signUp.allowedSignUpDomain,
+      trustLdapEmails: login.trustLdapEmails,
+      defaultAuthOrgId: login.defaultAuthOrgId,
+      enabledLoginMethods: login.enabledLoginMethods,
       authConsentContent: this.authConsentContent,
       pageFrameContent: this.pageFrameContent,
-      adminIdentityIds: this.adminIdentityIds,
+      adminIdentityIds: setup.adminIdentityIds,
       fipsEnabled: this.fipsEnabled,
-      onboardingCompleted: this.onboardingCompleted,
+      onboardingCompleted: setup.onboardingCompleted,
       allowedStorageHostnames: this.allowedStorageHostnames,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      defaultAuthOrgSlug: this.defaultAuthOrgSlug,
-      defaultAuthOrgAuthEnforced: this.defaultAuthOrgAuthEnforced,
-      defaultAuthOrgAuthMethod: this.defaultAuthOrgAuthMethod
+      defaultAuthOrgSlug: login.defaultAuthOrgSlug,
+      defaultAuthOrgAuthEnforced: login.defaultAuthOrgAuthEnforced,
+      defaultAuthOrgAuthMethod: login.defaultAuthOrgAuthMethod
     };
   }
 
@@ -323,21 +240,10 @@ export class InstanceConfig {
   toJSON(): TInstanceConfigRecord {
     return {
       ...this.toSettings(),
-      encryptedSlackClientId: this.encryptedSlackClientId,
-      encryptedSlackClientSecret: this.encryptedSlackClientSecret,
-      encryptedMicrosoftTeamsAppId: this.encryptedMicrosoftTeamsAppId,
-      encryptedMicrosoftTeamsClientSecret: this.encryptedMicrosoftTeamsClientSecret,
-      encryptedMicrosoftTeamsBotId: this.encryptedMicrosoftTeamsBotId,
-      encryptedGitHubAppConnectionClientId: this.encryptedGitHubAppConnectionClientId,
-      encryptedGitHubAppConnectionClientSecret: this.encryptedGitHubAppConnectionClientSecret,
-      encryptedGitHubAppConnectionSlug: this.encryptedGitHubAppConnectionSlug,
-      encryptedGitHubAppConnectionId: this.encryptedGitHubAppConnectionId,
-      encryptedGitHubAppConnectionPrivateKey: this.encryptedGitHubAppConnectionPrivateKey,
+      ...this.slack.toJSON(),
+      ...this.microsoftTeams.toJSON(),
+      ...this.gitHubApp.toJSON(),
       encryptedEnvOverrides: this.encryptedEnvOverrides
     } satisfies Record<keyof TInstanceConfigRecord, unknown>;
-  }
-
-  private static decryptText(cipherText: Buffer | null, decrypt: TDecrypt): string {
-    return cipherText ? decrypt(cipherText).toString() : "";
   }
 }

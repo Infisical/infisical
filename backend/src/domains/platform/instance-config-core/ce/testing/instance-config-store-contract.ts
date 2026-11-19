@@ -78,7 +78,8 @@ export const describeInstanceConfigStoreContract = (name: string, setup: TSetup)
       await store.createIfMissing(newConfig());
       const config = await store.findForUpdate();
       if (!config) throw new Error("row missing");
-      config.changeSignUpPolicy({ allowSignUp: false, allowedSignUpDomain: "example.com", trustLdapEmails: true });
+      config.changeSignUpPolicy({ allowSignUp: false, allowedSignUpDomain: "example.com" });
+      config.changeTrustLdapEmails(true);
       config.changeLoginMethods(["email", "github"]);
       config.changeDefaultAuthOrg(org.id);
       config.changeBranding({ authConsentContent: "consent", pageFrameContent: "frame" });
