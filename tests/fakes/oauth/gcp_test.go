@@ -154,6 +154,26 @@ func TestGCPFake_Certificates(t *testing.T) {
 		require.Contains(t, cp.CertificateManager.State(t).Certificates, "projects/p1/locations/global/certificates/web")
 	})
 
+	t.Run("should refuse a private key that does not belong to the certificate", func(t *testing.T) {
+		// Setup
+		fakes, cp := newGCP(t)
+		token := impersonate(t, fakes)
+		var body, other map[string]map[string]string
+		require.NoError(t, json.Unmarshal([]byte(selfManagedBody(t)), &body))
+		require.NoError(t, json.Unmarshal([]byte(selfManagedBody(t)), &other))
+		body["selfManaged"]["pemPrivateKey"] = other["selfManaged"]["pemPrivateKey"]
+		raw, err := json.Marshal(body)
+		require.NoError(t, err)
+
+		// Action
+		code, out := gcpCall(t, fakes, GCPCertificateManager.Host(), "POST", certificates+"?certificateId=web", token, strings.NewReader(string(raw)), "application/json")
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, code)
+		require.Equal(t, "The private key does not match the certificate", out["error"].(map[string]any)["message"])
+		require.Empty(t, cp.CertificateManager.State(t).Certificates)
+	})
+
 	t.Run("should refuse a second certificate under the same id", func(t *testing.T) {
 		// Setup
 		fakes, _ := newGCP(t)

@@ -5,9 +5,12 @@ package panos
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -22,6 +25,7 @@ import (
 
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/id"
+	"github.com/youmark/pkcs8"
 )
 
 // Service answers as one firewall's management interface.
@@ -385,7 +389,7 @@ func (f *Firewall) importFile(w http.ResponseWriter, params url.Values, file str
 	switch category {
 	case "certificate":
 	case "keypair":
-		if params.Get("passphrase") == "" || !strings.Contains(rest, "-----BEGIN ENCRYPTED PRIVATE KEY-----") {
+		if !keyPairMatches(c.PublicKey, rest, params.Get("passphrase")) {
 			writeError(w, http.StatusBadRequest, "18", "Import of "+name+" failed. Wrong passphrase or private key")
 			return
 		}
@@ -399,6 +403,27 @@ func (f *Firewall) importFile(w http.ResponseWriter, params url.Values, file str
 	f.mu.Unlock()
 	f.events.Publish(CertificateImported{Name: name, Category: category})
 	writeSuccess(w, "<msg><line>Successfully imported "+escape(name)+" into candidate configuration</line></msg>")
+}
+
+// keyPairMatches reports whether keyPEM is an encrypted PKCS#8 key that opens with the
+// passphrase and belongs to the certificate, as a real firewall refuses any other pair.
+func keyPairMatches(certPEM, keyPEM, passphrase string) bool {
+	cb, _ := pem.Decode([]byte(certPEM))
+	kb, _ := pem.Decode([]byte(keyPEM))
+	if cb == nil || kb == nil || kb.Type != "ENCRYPTED PRIVATE KEY" || passphrase == "" {
+		return false
+	}
+	cert, err := x509.ParseCertificate(cb.Bytes)
+	if err != nil {
+		return false
+	}
+	key, err := pkcs8.ParsePKCS8PrivateKey(kb.Bytes, []byte(passphrase))
+	if err != nil {
+		return false
+	}
+	signer, ok := key.(crypto.Signer)
+	pub, ok2 := cert.PublicKey.(interface{ Equal(crypto.PublicKey) bool })
+	return ok && ok2 && pub.Equal(signer.Public())
 }
 
 func (f *Firewall) commit(w http.ResponseWriter, params url.Values) {

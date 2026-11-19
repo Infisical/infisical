@@ -86,5 +86,13 @@ func TestCertificate_Import(t *testing.T) {
 		require.Equal(t, new("imported"), got.Source)
 		require.Equal(t, name, got.CommonName)
 		require.True(t, got.HasPrivateKey)
+		bundle, err := g.Operator.API.GetCertificateBundleWithResponse(t.Context(), res.JSON200.CertificateId)
+		require.NoError(t, err)
+		require.NotNilf(t, bundle.JSON200, "reading the bundle returned %d: %s", bundle.StatusCode(), apierr.Body(bundle.Body))
+		require.Equal(t, pki.ParseLeaf(t, leaf).Raw, pki.ParseLeaf(t, bundle.JSON200.Certificate).Raw)
+		require.NotNil(t, bundle.JSON200.CertificateChain)
+		require.Equal(t, pki.ParseLeaf(t, chain).Raw, pki.ParseLeaf(t, *bundle.JSON200.CertificateChain).Raw)
+		require.NotNil(t, bundle.JSON200.PrivateKey)
+		require.True(t, publicKeyOf(t, key).Equal(publicKeyOf(t, *bundle.JSON200.PrivateKey)), "the bundle's private key is not the imported one")
 	})
 }

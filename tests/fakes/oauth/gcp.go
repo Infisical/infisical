@@ -719,8 +719,28 @@ func parseSelfManaged(certPEM, keyPEM string) ([]string, string, string) {
 	if err != nil {
 		return nil, "", "The certificate is not a valid PEM-encoded X.509 certificate"
 	}
-	if k, _ := pem.Decode([]byte(keyPEM)); k == nil || !strings.HasSuffix(k.Type, "PRIVATE KEY") {
+	k, _ := pem.Decode([]byte(keyPEM))
+	if k == nil {
 		return nil, "", "The private key is not a valid PEM-encoded private key"
+	}
+	var key any
+	switch k.Type {
+	case "PRIVATE KEY":
+		key, err = x509.ParsePKCS8PrivateKey(k.Bytes)
+	case "RSA PRIVATE KEY":
+		key, err = x509.ParsePKCS1PrivateKey(k.Bytes)
+	case "EC PRIVATE KEY":
+		key, err = x509.ParseECPrivateKey(k.Bytes)
+	default:
+		return nil, "", "The private key is not a valid PEM-encoded private key"
+	}
+	if err != nil {
+		return nil, "", "The private key is not a valid PEM-encoded private key"
+	}
+	signer, ok := key.(crypto.Signer)
+	pub, ok2 := leaf.PublicKey.(interface{ Equal(crypto.PublicKey) bool })
+	if !ok || !ok2 || !pub.Equal(signer.Public()) {
+		return nil, "", "The private key does not match the certificate"
 	}
 	return leaf.DNSNames, leaf.NotAfter.UTC().Format(time.RFC3339), ""
 }

@@ -2,17 +2,26 @@ package panos_test
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"io"
+	"math/big"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Infisical/infisical/tests/fakes/panos"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/stretchr/testify/require"
+	"github.com/youmark/pkcs8"
 )
 
 func newFirewall(t *testing.T, user string) (*httptest.Server, *panos.ControlPlane) {
@@ -65,13 +74,28 @@ func importFile(t *testing.T, fakes *httptest.Server, key string, params url.Val
 
 const certPEM = "-----BEGIN CERTIFICATE-----\nx\n-----END CERTIFICATE-----"
 
+// keyPair is a self-signed certificate and its key, encrypted the way Infisical uploads it.
+func keyPair(t *testing.T, passphrase string) (string, string) {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	tmpl := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "web.test"}, NotBefore: time.Now(), NotAfter: time.Now().Add(time.Hour)}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	require.NoError(t, err)
+	kder, err := pkcs8.MarshalPrivateKey(key, []byte(passphrase), nil)
+	require.NoError(t, err)
+	return strings.TrimSpace(string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))),
+		string(pem.EncodeToMemory(&pem.Block{Type: "ENCRYPTED PRIVATE KEY", Bytes: kder}))
+}
+
 func TestPanosFake_Certificates(t *testing.T) {
 	t.Run("should import a key pair and make it running on commit", func(t *testing.T) {
 		// Setup
 		fakes, fw := newFirewall(t, "u-a")
 		key := keygen(t, fakes, "u-a")
+		leaf, encrypted := keyPair(t, "p")
 		code, _ := importFile(t, fakes, key, url.Values{"type": {"import"}, "category": {"keypair"}, "certificate-name": {"web"}, "format": {"pem"}, "passphrase": {"p"}},
-			certPEM+"\n-----BEGIN ENCRYPTED PRIVATE KEY-----\ny\n-----END ENCRYPTED PRIVATE KEY-----")
+			leaf+"\n"+encrypted)
 		require.Equal(t, http.StatusOK, code)
 
 		// Action
@@ -81,9 +105,36 @@ func TestPanosFake_Certificates(t *testing.T) {
 		require.Equal(t, http.StatusOK, code)
 		require.Contains(t, body, "<job>1</job>")
 		state := fw.State(t)
-		require.Equal(t, certPEM, state.Certificates["web"].PublicKey)
+		require.Equal(t, leaf, state.Certificates["web"].PublicKey)
 		require.Equal(t, []string{"web"}, state.Committed.Certificates)
 	})
+
+	for _, tc := range []struct {
+		name, user, passphrase string
+		otherKey               bool
+	}{
+		{name: "should refuse a key pair whose key does not open with the passphrase", user: "u-g", passphrase: "wrong"},
+		{name: "should refuse a key pair whose key belongs to another certificate", user: "u-h", passphrase: "p", otherKey: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			fakes, fw := newFirewall(t, tc.user)
+			key := keygen(t, fakes, tc.user)
+			leaf, encrypted := keyPair(t, "p")
+			if tc.otherKey {
+				_, encrypted = keyPair(t, "p")
+			}
+
+			// Action
+			code, body := importFile(t, fakes, key, url.Values{"type": {"import"}, "category": {"keypair"}, "certificate-name": {"web"}, "format": {"pem"}, "passphrase": {tc.passphrase}},
+				leaf+"\n"+encrypted)
+
+			// Assert
+			require.Equal(t, http.StatusBadRequest, code)
+			require.Contains(t, body, "Wrong passphrase or private key")
+			require.Empty(t, fw.State(t).Certificates)
+		})
+	}
 
 	t.Run("should refuse pointing a profile at a certificate that does not exist", func(t *testing.T) {
 		// Setup
