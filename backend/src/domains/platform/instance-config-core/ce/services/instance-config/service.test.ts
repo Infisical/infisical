@@ -4,6 +4,7 @@ import { ReadFrom, TReadOptions } from "@app/domains/lib/data-access";
 
 import { InstanceConfigCache } from "../../data-access/instance-config-cache";
 import { ResolvedEnvCache } from "../../data-access/resolved-env-cache";
+import { EnvOverrides } from "../../models/env-overrides";
 import { InstanceConfig } from "../../models/instance-config";
 import { buildInstanceConfigCore } from "../../testing/build-instance-config-core";
 import { InMemoryInstanceConfigStore } from "../../testing/in-memory-instance-config-store";
@@ -397,5 +398,184 @@ describe("InstanceConfigService.getEnvOverridesOrganized", () => {
       value: "",
       hasEnvEntry: true
     });
+  });
+});
+
+// Two pods on one database and one Redis, each with its own process memo. Both are built before anything is read,
+// because building a module drops the shared copy.
+const buildTwoPods = async (processEnv: Record<string, string> = {}) => {
+  const podA = await buildInstanceConfigCore({ processEnv });
+  const podB = await buildInstanceConfigCore({
+    memory: podA.memory,
+    keyStore: podA.keyStore,
+    kmsCore: podA.kmsCore,
+    processEnv
+  });
+  return { podA, podB };
+};
+
+describe("InstanceConfigService.getInstanceConfig", () => {
+  test("should show overrides another pod changed once the shared copy changes", async () => {
+    // Setup
+    const { podA, podB } = await buildTwoPods({ CLIENT_ID_GITHUB_LOGIN: "from-env" });
+    const before = await podB.module.instanceConfigService.getInstanceConfig();
+
+    // Action
+    await podA.module.instanceConfigService.updateConfig({ envOverrides: { CLIENT_ID_GITHUB_LOGIN: "first" } });
+    const afterFirst = await podB.module.instanceConfigService.getInstanceConfig();
+    await podA.module.instanceConfigService.updateConfig({ envOverrides: { CLIENT_ID_GITHUB_LOGIN: "second" } });
+    const afterSecond = await podB.module.instanceConfigService.getInstanceConfig();
+    await podA.module.instanceConfigService.updateConfig({ envOverrides: {} });
+    const afterClear = await podB.module.instanceConfigService.getInstanceConfig();
+
+    // Assert
+    expect(before.CLIENT_ID_GITHUB_LOGIN).toBe("from-env");
+    expect(afterFirst.CLIENT_ID_GITHUB_LOGIN).toBe("first");
+    expect(afterSecond.CLIENT_ID_GITHUB_LOGIN).toBe("second");
+    expect(afterClear.CLIENT_ID_GITHUB_LOGIN).toBe("from-env");
+  });
+
+  test("should show overrides a previous release pod wrote to the shared copy", async () => {
+    // Setup
+    const { podA, podB } = await buildTwoPods();
+    await podB.module.instanceConfigService.getInstanceConfig();
+    const row = await podA.memory.instanceConfigStore.find();
+    if (!row) throw new Error("row missing");
+    const encrypt = podA.kmsCore.kmsRootKeyService.encryptWithRootKey();
+    const previousReleaseEntry = JSON.stringify({
+      ...row.toJSON(),
+      encryptedEnvOverrides: encrypt(Buffer.from(JSON.stringify({ DISABLE_PUBLIC_SECRET_SHARING: "true" })))
+    });
+
+    // Action
+    await podA.keyStore.setItemWithExpiry(CACHE_KEY, 60, previousReleaseEntry);
+    const config = await podB.module.instanceConfigService.getInstanceConfig();
+
+    // Assert
+    expect(config.DISABLE_PUBLIC_SECRET_SHARING).toBe(true);
+  });
+
+  test("should show overrides changed in the row once the shared copy expires", async () => {
+    // Setup
+    const { podA, podB } = await buildTwoPods();
+    await podB.module.instanceConfigService.getInstanceConfig();
+    const row = await podA.memory.instanceConfigStore.find();
+    if (!row) throw new Error("row missing");
+    row.replaceEnvOverrides(
+      EnvOverrides.create({ CLIENT_ID_GOOGLE_LOGIN: "written-elsewhere" }),
+      podA.kmsCore.kmsRootKeyService.encryptWithRootKey()
+    );
+    await podA.memory.instanceConfigStore.save(row);
+    const stale = await podB.module.instanceConfigService.getInstanceConfig();
+
+    // Action
+    await podA.keyStore.deleteItem(CACHE_KEY);
+    const fresh = await podB.module.instanceConfigService.getInstanceConfig();
+
+    // Assert
+    expect(stale.CLIENT_ID_GOOGLE_LOGIN).toBeUndefined();
+    expect(fresh.CLIENT_ID_GOOGLE_LOGIN).toBe("written-elsewhere");
+  });
+});
+
+describe("InstanceConfigService.updateConfig", () => {
+  test("should clear every stored env override when given an empty object", async () => {
+    // Setup
+    const { module, memory, kmsCore } = await buildInstanceConfigCore();
+    const service = module.instanceConfigService;
+    await service.updateConfig({
+      envOverrides: { CLIENT_ID_GITHUB_LOGIN: "a", DISABLE_PUBLIC_SECRET_SHARING: "true" }
+    });
+
+    // Action
+    await service.updateConfig({ envOverrides: {} });
+
+    // Assert
+    const row = await memory.instanceConfigStore.find();
+    expect(row?.envOverrides(kmsCore.kmsRootKeyService.decryptWithRootKey()).toJSON()).toEqual({});
+    const config = await service.getInstanceConfig();
+    expect(config.CLIENT_ID_GITHUB_LOGIN).toBeUndefined();
+    expect(config.DISABLE_PUBLIC_SECRET_SHARING).toBe(false);
+  });
+
+  test("should store nothing for an env override key an admin cannot override", async () => {
+    // Setup
+    const { module, memory, kmsCore } = await buildInstanceConfigCore({ processEnv: { SALT_ROUNDS: "12" } });
+    const service = module.instanceConfigService;
+
+    // Action
+    await service.updateConfig({ envOverrides: { NOT_OVERRIDABLE: "x", SALT_ROUNDS: "4" } });
+
+    // Assert
+    const row = await memory.instanceConfigStore.find();
+    expect(row?.envOverrides(kmsCore.kmsRootKeyService.decryptWithRootKey()).toJSON()).toEqual({});
+    expect(await service.getEnvOverridesOrganized()).not.toHaveProperty("NOT_OVERRIDABLE");
+  });
+
+  test("should refuse a patch whose only field is undefined env overrides", async () => {
+    // Setup
+    const { module } = await buildInstanceConfigCore();
+
+    // Action
+    const result = module.instanceConfigService.updateConfig({ envOverrides: undefined });
+
+    // Assert
+    await expect(result).rejects.toThrow(EMPTY_PATCH_MESSAGE);
+  });
+
+  test("should leave the row and the shared copy unchanged when part of the patch is refused", async () => {
+    // Setup
+    const { module, memory, keyStore } = await buildInstanceConfigCore();
+    const service = module.instanceConfigService;
+    await service.updateConfig({ slackClientId: "id", envOverrides: { CLIENT_ID_GITHUB_LOGIN: "kept" } });
+    const rowBefore = (await memory.instanceConfigStore.find())?.toJSON();
+    const cachedBefore = await keyStore.getItem(CACHE_KEY);
+
+    // Action
+    const result = service.updateConfig({
+      envOverrides: { CLIENT_ID_GITHUB_LOGIN: "replaced" },
+      pageFrameContent: "frame",
+      slackClientId: ""
+    });
+
+    // Assert
+    await expect(result).rejects.toThrow("Slack client ID cannot be empty");
+    expect((await memory.instanceConfigStore.find())?.toJSON()).toEqual(rowBefore);
+    expect(await keyStore.getItem(CACHE_KEY)).toBe(cachedBefore);
+    const config = await service.getInstanceConfig();
+    expect(config.CLIENT_ID_GITHUB_LOGIN).toBe("kept");
+    expect(config.pageFrameContent).toBeNull();
+  });
+});
+
+describe("InstanceConfigService.isInstanceAdminIdentity", () => {
+  test("should be false on another pod once the identity is revoked", async () => {
+    // Setup
+    const { podA, podB } = await buildTwoPods();
+    await podA.module.instanceConfigService.completeSetup({ closeSignUp: false, adminIdentityId: "identity-1" });
+    const before = await podB.module.instanceConfigService.isInstanceAdminIdentity("identity-1");
+
+    // Action
+    await podA.module.instanceConfigService.revokeAdminIdentity("identity-1");
+
+    // Assert
+    expect(before).toBe(true);
+    expect(await podB.module.instanceConfigService.isInstanceAdminIdentity("identity-1")).toBe(false);
+  });
+
+  test("should refuse a second revoke on another pod even while its copy is stale", async () => {
+    // Setup
+    const { podA, podB } = await buildTwoPods();
+    await podA.module.instanceConfigService.completeSetup({ closeSignUp: false, adminIdentityId: "identity-1" });
+    await podB.module.instanceConfigService.isInstanceAdminIdentity("identity-1");
+    const staleEntry = await podA.keyStore.getItem(CACHE_KEY);
+    await podA.module.instanceConfigService.revokeAdminIdentity("identity-1");
+    if (staleEntry) await podA.keyStore.setItemWithExpiry(CACHE_KEY, 60, staleEntry);
+
+    // Action
+    const result = podB.module.instanceConfigService.revokeAdminIdentity("identity-1");
+
+    // Assert
+    await expect(result).rejects.toThrow("Identity does not have super admin access");
   });
 });

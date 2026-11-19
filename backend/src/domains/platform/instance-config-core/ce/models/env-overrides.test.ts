@@ -324,3 +324,261 @@ describe("EnvOverrides.resolve", () => {
     expect(config.isGithubRadarConfigured).toBe(true);
   });
 });
+
+// The keys the previous release's overwriteSchema (lib/config/env.ts) let an admin override.
+const PREVIOUS_RELEASE_KEYS = [
+  "DISABLE_POSTGRES_AUDIT_LOG_STORAGE",
+  "DISABLE_AUDIT_LOG_STORAGE",
+  "INF_APP_CONNECTION_AWS_ACCESS_KEY_ID",
+  "INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY",
+  "INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID",
+  "INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET",
+  "INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID",
+  "INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET",
+  "INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID",
+  "INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET",
+  "INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID",
+  "INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET",
+  "INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL",
+  "INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID",
+  "INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET",
+  "INF_APP_CONNECTION_GITHUB_APP_SLUG",
+  "INF_APP_CONNECTION_GITHUB_APP_ID",
+  "INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY",
+  "INF_APP_CONNECTION_GITHUB_APP_HOST",
+  "INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID",
+  "INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET",
+  "INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID",
+  "INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET",
+  "INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG",
+  "INF_APP_CONNECTION_GITHUB_RADAR_APP_ID",
+  "INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY",
+  "INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET",
+  "CLIENT_ID_GITHUB_LOGIN",
+  "CLIENT_SECRET_GITHUB_LOGIN",
+  "INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID",
+  "INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_SECRET",
+  "CLIENT_ID_GITLAB_LOGIN",
+  "CLIENT_SECRET_GITLAB_LOGIN",
+  "CLIENT_GITLAB_LOGIN_URL",
+  "CLIENT_ID_GOOGLE_LOGIN",
+  "CLIENT_SECRET_GOOGLE_LOGIN",
+  "INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID",
+  "INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET",
+  "INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID",
+  "INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL",
+  "INF_APP_CONNECTION_STRIPE_SECRET_KEY",
+  "DISABLE_PUBLIC_SECRET_SHARING"
+];
+
+const AZURE_KEYS: Record<string, string> = {
+  INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID: "INF_APP_CONNECTION_AZURE_CLIENT_ID",
+  INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET: "INF_APP_CONNECTION_AZURE_CLIENT_SECRET",
+  INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID: "INF_APP_CONNECTION_AZURE_CLIENT_ID",
+  INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET: "INF_APP_CONNECTION_AZURE_CLIENT_SECRET",
+  INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID: "INF_APP_CONNECTION_AZURE_CLIENT_ID",
+  INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET: "INF_APP_CONNECTION_AZURE_CLIENT_SECRET",
+  INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID: "INF_APP_CONNECTION_AZURE_CLIENT_ID",
+  INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET: "INF_APP_CONNECTION_AZURE_CLIENT_SECRET",
+  INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID: "CLIENT_ID_HEROKU",
+  INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET: "CLIENT_SECRET_HEROKU"
+};
+
+const BOOLEAN_KEYS = [
+  "DISABLE_POSTGRES_AUDIT_LOG_STORAGE",
+  "DISABLE_AUDIT_LOG_STORAGE",
+  "DISABLE_PUBLIC_SECRET_SHARING"
+];
+
+const PLAIN_STRING_KEYS = PREVIOUS_RELEASE_KEYS.filter(
+  (key) => !BOOLEAN_KEYS.includes(key) && !(key in AZURE_KEYS) && key !== "CLIENT_GITLAB_LOGIN_URL"
+);
+
+const INPUTS: (string | undefined)[] = [undefined, "", "  padded  ", "true", "false", "TRUE", "1", " true "];
+
+// The previous release parsed every plain key with zpStr(z.string().optional()): trimmed, "" read as unset.
+const previousPlainString = (value: string | undefined) => value?.trim() || undefined;
+// zodStrBool: z.string().optional().transform((val) => val === "true"), no trimming.
+const previousStrBool = (value: string | undefined) => value === "true";
+
+const asEnv = (entries: Record<string, string | undefined>) => {
+  const env: Record<string, string> = {};
+  for (const [key, value] of Object.entries(entries)) if (value !== undefined) env[key] = value;
+  return env;
+};
+
+// Each case resolves the value once from the process env and once as a stored override over an empty env, as the
+// previous release's overrideEnvConfig merged overrides onto process.env before parsing.
+const resolveBoth = (key: string, value: string | undefined, processEnv: Record<string, string> = {}) => {
+  const fromEnv: Record<string, unknown> = EnvOverrides.none().resolve({ ...processEnv, ...asEnv({ [key]: value }) });
+  const fromOverride: Record<string, unknown> =
+    value === undefined ? fromEnv : EnvOverrides.restore({ [key]: value }).resolve(processEnv);
+  return [fromEnv, fromOverride];
+};
+
+describe("EnvOverrides.KEYS", () => {
+  test("should be exactly the keys the previous release let an admin override", () => {
+    // Setup
+    const expected = [...PREVIOUS_RELEASE_KEYS].sort();
+
+    // Action
+    const keys = [...EnvOverrides.KEYS].sort();
+
+    // Assert
+    expect(keys).toHaveLength(42);
+    expect(keys).toEqual(expected);
+  });
+});
+
+describe("EnvOverrides.resolve", () => {
+  const plainCases = PLAIN_STRING_KEYS.flatMap((key) => INPUTS.map((value) => [key, value] as const));
+
+  test.each(plainCases)("should resolve the plain key %s from %j as the previous release did", (key, value) => {
+    // Setup
+    const expected = previousPlainString(value);
+
+    // Action
+    const results = resolveBoth(key, value);
+
+    // Assert
+    for (const result of results) expect(result[key]).toBe(expected);
+  });
+
+  const fallbackCases = Object.keys(AZURE_KEYS).flatMap((key) =>
+    INPUTS.flatMap((value) => [undefined, "", "  shared  "].map((fallback) => [key, value, fallback] as const))
+  );
+
+  test.each(fallbackCases)(
+    "should resolve %s from %j over the shared value %j as the previous release did",
+    (key, value, fallback) => {
+      // Setup
+      const processEnv = asEnv({ [AZURE_KEYS[key]]: fallback });
+      const expected = previousPlainString(value) || previousPlainString(fallback);
+
+      // Action
+      const results = resolveBoth(key, value, processEnv);
+
+      // Assert
+      for (const result of results) expect(result[key]).toBe(expected);
+    }
+  );
+
+  test.each(INPUTS)("should resolve DISABLE_PUBLIC_SECRET_SHARING from %j as the previous release did", (value) => {
+    // Setup
+    const expected = previousStrBool(value);
+
+    // Action
+    const results = resolveBoth("DISABLE_PUBLIC_SECRET_SHARING", value);
+
+    // Assert
+    for (const result of results) expect(result.DISABLE_PUBLIC_SECRET_SHARING).toBe(expected);
+  });
+
+  test.each(INPUTS)("should resolve DISABLE_AUDIT_LOG_STORAGE from %j as the previous release did", (value) => {
+    // Setup
+    const expected = value === undefined ? undefined : previousStrBool(value);
+
+    // Action
+    const results = resolveBoth("DISABLE_AUDIT_LOG_STORAGE", value);
+
+    // Assert
+    for (const result of results) {
+      expect(result.DISABLE_AUDIT_LOG_STORAGE).toBe(expected);
+      expect(result.DISABLE_POSTGRES_AUDIT_LOG_STORAGE).toBe(expected ?? false);
+    }
+  });
+
+  const auditCases = INPUTS.flatMap((value) => INPUTS.map((legacy) => [value, legacy] as const));
+
+  test.each(auditCases)(
+    "should resolve DISABLE_POSTGRES_AUDIT_LOG_STORAGE %j with the legacy alias %j as the previous release did",
+    (value, legacy) => {
+      // Setup
+      const processEnv = asEnv({ DISABLE_AUDIT_LOG_STORAGE: legacy });
+      const own = value === undefined ? undefined : previousStrBool(value);
+      const alias = legacy === undefined ? undefined : previousStrBool(legacy);
+
+      // Action
+      const results = resolveBoth("DISABLE_POSTGRES_AUDIT_LOG_STORAGE", value, processEnv);
+
+      // Assert
+      for (const result of results) expect(result.DISABLE_POSTGRES_AUDIT_LOG_STORAGE).toBe(own ?? alias ?? false);
+    }
+  );
+
+  // The previous default was process.env.URL_GITLAB_LOGIN ?? GITLAB_URL, taken raw (untrimmed), used when the trimmed
+  // CLIENT_GITLAB_LOGIN_URL was empty.
+  const gitlabCases = INPUTS.flatMap((value) =>
+    [undefined, "", "  https://legacy.example.com  "].map((legacy) => [value, legacy] as const)
+  );
+
+  test.each(gitlabCases)(
+    "should resolve CLIENT_GITLAB_LOGIN_URL %j with URL_GITLAB_LOGIN %j as the previous release did",
+    (value, legacy) => {
+      // Setup
+      const processEnv = asEnv({ URL_GITLAB_LOGIN: legacy });
+      const expected = previousPlainString(value) ?? legacy ?? "https://gitlab.com";
+
+      // Action
+      const results = resolveBoth("CLIENT_GITLAB_LOGIN_URL", value, processEnv);
+
+      // Assert
+      for (const result of results) expect(result.CLIENT_GITLAB_LOGIN_URL).toBe(expected);
+    }
+  );
+
+  test.each(INPUTS)("should accept the override %j for every key, as the previous validation did", (value) => {
+    // Setup
+    const raw = Object.fromEntries(PREVIOUS_RELEASE_KEYS.map((key) => [key, value ?? "x"]));
+
+    // Action
+    const overrides = EnvOverrides.create(raw);
+
+    // Assert
+    expect(Object.keys(overrides.toJSON()).sort()).toEqual([...PREVIOUS_RELEASE_KEYS].sort());
+  });
+
+  test("should let an empty override hide the process env value, as the previous merge did", () => {
+    // Setup
+    const processEnv = { CLIENT_ID_GITHUB_LOGIN: "from-env", DISABLE_PUBLIC_SECRET_SHARING: "true" };
+
+    // Action
+    const resolved = EnvOverrides.restore({ CLIENT_ID_GITHUB_LOGIN: "", DISABLE_PUBLIC_SECRET_SHARING: "" }).resolve(
+      processEnv
+    );
+
+    // Assert
+    expect(resolved.CLIENT_ID_GITHUB_LOGIN).toBeUndefined();
+    expect(resolved.DISABLE_PUBLIC_SECRET_SHARING).toBe(false);
+  });
+
+  test("should show an empty override that hides the process env value as no override", () => {
+    // Setup
+    const processEnv = { DISABLE_PUBLIC_SECRET_SHARING: "true" };
+    const overrides = EnvOverrides.restore({ DISABLE_PUBLIC_SECRET_SHARING: "" });
+
+    // Action
+    const field = overrides
+      .organize(processEnv)
+      .secretSharing.fields.find(({ key }) => key === "DISABLE_PUBLIC_SECRET_SHARING");
+
+    // Assert
+    expect(overrides.resolve(processEnv).DISABLE_PUBLIC_SECRET_SHARING).toBe(false);
+    expect(field).toMatchObject({ value: "", hasEnvEntry: true });
+  });
+
+  test.each([
+    [RADAR_ENV, true],
+    [{ ...RADAR_ENV, INF_APP_CONNECTION_GITHUB_RADAR_APP_ID: "  " }, false],
+    [{ ...RADAR_ENV, INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET: "" }, false]
+  ])("should derive isGithubRadarConfigured from %j as the previous release did", (processEnv, expected) => {
+    // Setup
+    const overrides = EnvOverrides.none();
+
+    // Action
+    const resolved = overrides.resolve(processEnv);
+
+    // Assert
+    expect(resolved.isGithubRadarConfigured).toBe(expected);
+  });
+});

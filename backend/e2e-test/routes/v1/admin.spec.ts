@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { TableName } from "@app/db/schemas";
+import { seedData1 } from "@app/db/seed-data";
 import {
   OVERRIDABLE_ENV_KEYS,
   type TInstanceConfigService
@@ -194,6 +195,114 @@ describe("Admin V1 Router", () => {
 
       expect(response.statusCode).toBe(200);
       expectNoOverridableValues(response.body);
+    });
+  });
+  describe("env overrides take effect on the next request", () => {
+    let storedOverrides: Buffer | null | undefined;
+    let createdShareIds: string[] = [];
+
+    beforeEach(async () => {
+      createdShareIds = [];
+      storedOverrides = (
+        await testDb(TableName.SuperAdmin).first<{ encryptedEnvOverrides: Buffer | null }>("encryptedEnvOverrides")
+      )?.encryptedEnvOverrides;
+    });
+
+    afterEach(async () => {
+      // The public share id is the row's hex identifier, base64url encoded.
+      const identifiers = createdShareIds.map((id) => Buffer.from(id, "base64url").toString("hex"));
+      if (identifiers.length) await testDb(TableName.SecretSharing).whereIn("identifier", identifiers).delete();
+      await testDb(TableName.SuperAdmin).update({ encryptedEnvOverrides: storedOverrides ?? null });
+      await testRedis.del("infisical-admin-cfg");
+    });
+
+    const createPublicShare = () =>
+      testServer.inject({
+        method: "POST",
+        url: "/api/v1/shared-secrets/public",
+        body: { secretValue: "e2e-public-share", expiresIn: "1h" }
+      });
+
+    test("disabling public secret sharing refuses the next public share and re-enabling allows it", async () => {
+      const disable = await updateServerConfig({ envOverrides: { DISABLE_PUBLIC_SECRET_SHARING: "true" } });
+      expect(disable.statusCode).toBe(200);
+
+      const refused = await createPublicShare();
+      expect(refused.statusCode).toBe(400);
+      expect(refused.json().message).toContain("Public secret sharing is disabled");
+
+      const enable = await updateServerConfig({ envOverrides: { DISABLE_PUBLIC_SECRET_SHARING: "" } });
+      expect(enable.statusCode).toBe(200);
+
+      const allowed = await createPublicShare();
+      expect(allowed.statusCode).toBe(200);
+      createdShareIds.push(allowed.json().id);
+      expect(allowed.json().id).toEqual(expect.any(String));
+    });
+
+    test("an env override key an admin cannot override is rejected by the request schema", async () => {
+      const response = await updateServerConfig({ envOverrides: { SALT_ROUNDS: "4" } });
+
+      expect(response.statusCode).toBe(422);
+      expect(response.body).toContain("envOverrides");
+    });
+
+    test("an empty body is refused with the no recognized fields message", async () => {
+      const response = await updateServerConfig({});
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().message).toContain("No recognized instance configuration fields were provided");
+    });
+  });
+
+  describe("slack credentials cannot be cleared", () => {
+    let storedSlack: { encryptedSlackClientId: Buffer | null; encryptedSlackClientSecret: Buffer | null } | undefined;
+
+    beforeEach(async () => {
+      storedSlack = await testDb(TableName.SuperAdmin).first<{
+        encryptedSlackClientId: Buffer | null;
+        encryptedSlackClientSecret: Buffer | null;
+      }>("encryptedSlackClientId", "encryptedSlackClientSecret");
+    });
+
+    afterEach(async () => {
+      await testDb(TableName.SuperAdmin).update({
+        encryptedSlackClientId: storedSlack?.encryptedSlackClientId ?? null,
+        encryptedSlackClientSecret: storedSlack?.encryptedSlackClientSecret ?? null
+      });
+      await testRedis.del("infisical-admin-cfg");
+    });
+
+    test("an empty slack client id is refused by name and the stored value is kept", async () => {
+      const set = await updateServerConfig({ slackClientId: "e2e-slack-id" });
+      expect(set.statusCode).toBe(200);
+
+      const cleared = await updateServerConfig({ slackClientId: "" });
+      expect(cleared.statusCode).toBe(400);
+      expect(cleared.json().message).toContain("Slack client ID cannot be empty");
+
+      const integrations = await testServer.inject({
+        method: "GET",
+        url: "/api/v1/admin/integrations",
+        headers: { authorization: `Bearer ${jwtAuthToken}` }
+      });
+      expect(integrations.statusCode).toBe(200);
+      expect(integrations.json().slack.clientId).toBe("e2e-slack-id");
+    });
+  });
+
+  describe("identity super admin access", () => {
+    test("revoking an identity that is not a super admin is refused", async () => {
+      expect(await instanceConfig().isInstanceAdminIdentity(seedData1.machineIdentity.id)).toBe(false);
+
+      const response = await testServer.inject({
+        method: "DELETE",
+        url: `/api/v1/admin/identity-management/identities/${seedData1.machineIdentity.id}/super-admin-access`,
+        headers: { authorization: `Bearer ${jwtAuthToken}` }
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().message).toBe("Identity does not have super admin access");
     });
   });
 });

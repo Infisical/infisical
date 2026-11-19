@@ -1,4 +1,5 @@
 import { InMemoryKeyStore } from "@app/domains/lib/key-store/testing/in-memory-key-store";
+import { FakeKmsCore } from "@app/domains/platform/kms-core/ce/testing/fake-kms-core";
 
 import { InstanceConfig } from "../models/instance-config";
 import { InstanceConfigCache } from "./instance-config-cache";
@@ -124,6 +125,181 @@ describe("InstanceConfigCache.get", () => {
 
     // Assert
     expect(config).toBeNull();
+  });
+});
+
+// The row as the previous release's superAdminDAL.findById returned it from Postgres: every column present (null when
+// unset) plus the default auth org fields its join added. withCache and updateServerCfg cached JSON.stringify of it.
+const previousReleaseDalRow = (kmsCore: FakeKmsCore) => {
+  const encrypt = kmsCore.kmsRootKeyService.encryptWithRootKey();
+  return {
+    id: "00000000-0000-0000-0000-000000000000",
+    initialized: true,
+    allowSignUp: false,
+    createdAt: new Date("2029-01-01T00:00:00.000Z"),
+    updatedAt: new Date("2029-02-02T00:00:00.000Z"),
+    allowedSignUpDomain: null,
+    instanceId: "11111111-1111-4111-8111-111111111111",
+    trustLdapEmails: false,
+    defaultAuthOrgId: "22222222-2222-4222-8222-222222222222",
+    enabledLoginMethods: ["email", "saml"],
+    encryptedSlackClientId: encrypt(Buffer.from("old-slack-id")),
+    encryptedSlackClientSecret: encrypt(Buffer.from("old-slack-secret")),
+    authConsentContent: null,
+    pageFrameContent: null,
+    adminIdentityIds: ["identity-1"],
+    encryptedMicrosoftTeamsAppId: encrypt(Buffer.from("old-teams-app")),
+    encryptedMicrosoftTeamsClientSecret: encrypt(Buffer.from("old-teams-secret")),
+    encryptedMicrosoftTeamsBotId: encrypt(Buffer.from("old-teams-bot")),
+    encryptedGitHubAppConnectionClientId: encrypt(Buffer.from("old-gh-client")),
+    encryptedGitHubAppConnectionClientSecret: encrypt(Buffer.from("old-gh-secret")),
+    encryptedGitHubAppConnectionSlug: encrypt(Buffer.from("old-gh-slug")),
+    encryptedGitHubAppConnectionId: encrypt(Buffer.from("old-gh-id")),
+    encryptedGitHubAppConnectionPrivateKey: encrypt(Buffer.from("old-gh-key")),
+    encryptedEnvOverrides: encrypt(Buffer.from(JSON.stringify({ CLIENT_ID_GITHUB_LOGIN: "old-override" }))),
+    fipsEnabled: false,
+    onboardingCompleted: true,
+    allowedStorageHostnames: null,
+    defaultAuthOrgSlug: "acme",
+    defaultAuthOrgAuthEnforced: true,
+    defaultAuthOrgAuthMethod: "saml"
+  };
+};
+
+// The narrowest entry an older release could have left: no joined fields, and the columns it did not know omitted.
+const previousReleaseNarrowRow = (kmsCore: FakeKmsCore) => {
+  const {
+    defaultAuthOrgSlug,
+    defaultAuthOrgAuthEnforced,
+    defaultAuthOrgAuthMethod,
+    allowedStorageHostnames,
+    encryptedGitHubAppConnectionClientId,
+    encryptedGitHubAppConnectionClientSecret,
+    encryptedGitHubAppConnectionSlug,
+    encryptedGitHubAppConnectionId,
+    encryptedGitHubAppConnectionPrivateKey,
+    allowedSignUpDomain,
+    authConsentContent,
+    pageFrameContent,
+    ...row
+  } = previousReleaseDalRow(kmsCore);
+  return row;
+};
+
+describe("InstanceConfigCache.get", () => {
+  test.each([
+    ["the full findById row with the joined org", previousReleaseDalRow, "acme"],
+    ["a row without joined fields or newer columns", previousReleaseNarrowRow, null]
+  ])(
+    "should read a previous release entry holding %s and decrypt its credentials",
+    async (_name, buildRow, expectedSlug) => {
+      // Setup
+      const kmsCore = new FakeKmsCore();
+      const keyStore = new InMemoryKeyStore();
+      await keyStore.setItemWithExpiry(CACHE_KEY, 60, JSON.stringify(buildRow(kmsCore)));
+      const cache = new InstanceConfigCache(keyStore);
+      const decrypt = kmsCore.kmsRootKeyService.decryptWithRootKey();
+
+      // Action
+      const found = await cache.get();
+
+      // Assert
+      if (!found) throw new Error("cache miss");
+      expect(found.slackCredentials(decrypt).toJSON()).toEqual({
+        clientId: "old-slack-id",
+        clientSecret: "old-slack-secret"
+      });
+      expect(found.microsoftTeamsCredentials(decrypt).toJSON()).toEqual({
+        appId: "old-teams-app",
+        clientSecret: "old-teams-secret",
+        botId: "old-teams-bot"
+      });
+      expect(found.envOverrides(decrypt).toJSON()).toEqual({ CLIENT_ID_GITHUB_LOGIN: "old-override" });
+      expect(found.isAdminIdentity("identity-1")).toBe(true);
+      expect(found.toSettings()).toMatchObject({
+        initialized: true,
+        allowSignUp: false,
+        enabledLoginMethods: ["email", "saml"],
+        createdAt: new Date("2029-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2029-02-02T00:00:00.000Z"),
+        defaultAuthOrgSlug: expectedSlug
+      });
+    }
+  );
+
+  test("should read the GitHub app credentials of the full previous release row", async () => {
+    // Setup
+    const kmsCore = new FakeKmsCore();
+    const keyStore = new InMemoryKeyStore();
+    await keyStore.setItemWithExpiry(CACHE_KEY, 60, JSON.stringify(previousReleaseDalRow(kmsCore)));
+    const cache = new InstanceConfigCache(keyStore);
+
+    // Action
+    const found = await cache.get();
+
+    // Assert
+    expect(found?.gitHubAppCredentials(kmsCore.kmsRootKeyService.decryptWithRootKey()).toJSON()).toEqual({
+      clientId: "old-gh-client",
+      clientSecret: "old-gh-secret",
+      appSlug: "old-gh-slug",
+      appId: "old-gh-id",
+      privateKey: "old-gh-key"
+    });
+  });
+});
+
+describe("InstanceConfigCache.set", () => {
+  test("should write an entry the previous release's getServerCfg and Slack code can use", async () => {
+    // Setup
+    const kmsCore = new FakeKmsCore();
+    const keyStore = new InMemoryKeyStore();
+    const cache = new InstanceConfigCache(keyStore);
+    const dalRow = previousReleaseDalRow(kmsCore);
+    await cache.set(InstanceConfig.restore(dalRow));
+    const decrypt = kmsCore.kmsRootKeyService.decryptWithRootKey();
+
+    // Action
+    const raw = await keyStore.getItem(CACHE_KEY);
+    if (!raw) throw new Error("nothing cached");
+    const parsed = JSON.parse(raw) as Record<string, unknown> & {
+      createdAt: string;
+      updatedAt: string;
+      encryptedSlackClientId: { type: string; data: number[] };
+      encryptedSlackClientSecret: { type: string; data: number[] };
+    };
+    const serverCfg = { ...parsed, createdAt: new Date(parsed.createdAt), updatedAt: new Date(parsed.updatedAt) };
+
+    // Assert
+    expect(Object.keys(parsed).sort()).toEqual(Object.keys(dalRow).sort());
+    expect(JSON.parse(raw)).toEqual(JSON.parse(JSON.stringify(dalRow)));
+    expect(decrypt(Buffer.from(serverCfg.encryptedSlackClientId.data)).toString()).toBe("old-slack-id");
+    expect(decrypt(Buffer.from(parsed.encryptedSlackClientSecret.data)).toString()).toBe("old-slack-secret");
+    expect(serverCfg.createdAt.toISOString()).toBe("2029-01-01T00:00:00.000Z");
+    expect(serverCfg).toMatchObject({
+      adminIdentityIds: ["identity-1"],
+      enabledLoginMethods: ["email", "saml"],
+      defaultAuthOrgSlug: "acme",
+      defaultAuthOrgAuthMethod: "saml"
+    });
+  });
+
+  test("should write ciphertext columns as the Buffer JSON that Buffer.from accepts", async () => {
+    // Setup
+    const kmsCore = new FakeKmsCore();
+    const keyStore = new InMemoryKeyStore();
+    const cache = new InstanceConfigCache(keyStore);
+    await cache.set(InstanceConfig.restore(previousReleaseDalRow(kmsCore)));
+
+    // Action
+    const raw = await keyStore.getItem(CACHE_KEY);
+    // Typed as the previous release believed (TSuperAdmin), though at runtime the column is { type, data }.
+    const parsed = JSON.parse(raw ?? "{}") as { encryptedSlackClientId: Buffer };
+
+    // Assert
+    expect(parsed.encryptedSlackClientId).toMatchObject({ type: "Buffer" });
+    expect(kmsCore.kmsRootKeyService.decryptWithRootKey()(Buffer.from(parsed.encryptedSlackClientId)).toString()).toBe(
+      "old-slack-id"
+    );
   });
 });
 

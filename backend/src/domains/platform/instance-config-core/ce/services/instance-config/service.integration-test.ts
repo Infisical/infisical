@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { TableName } from "@app/db/schemas";
+import { TableName, TSuperAdminInsert } from "@app/db/schemas";
 import { InMemoryKeyStore } from "@app/domains/lib/key-store/testing/in-memory-key-store";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { FakeKmsCore } from "@app/domains/platform/kms-core/ce/testing/fake-kms-core";
@@ -109,5 +109,73 @@ describe("InstanceConfigCoreModule.create", () => {
 
     // Assert
     expect(await h.db(TableName.SuperAdmin)).toHaveLength(1);
+  });
+});
+
+describe("InstanceConfigCoreModule.create", () => {
+  test("should serve an upgraded instance's old row settings and credentials unchanged", async () => {
+    // Setup
+    await h.db(TableName.SuperAdmin).delete();
+    const kmsCore = new FakeKmsCore();
+    const encrypt = kmsCore.kmsRootKeyService.encryptWithRootKey();
+    const oldRow: TSuperAdminInsert & { id: string } = {
+      id: "00000000-0000-0000-0000-000000000000",
+      instanceId: "11111111-1111-4111-8111-111111111111",
+      initialized: true,
+      allowSignUp: false,
+      adminIdentityIds: ["identity-1"],
+      encryptedSlackClientId: encrypt(Buffer.from("old-slack-id")),
+      encryptedSlackClientSecret: encrypt(Buffer.from("old-slack-secret")),
+      encryptedEnvOverrides: encrypt(Buffer.from(JSON.stringify({ CLIENT_ID_GITHUB_LOGIN: "old-override" })))
+    };
+    await h.db(TableName.SuperAdmin).insert(oldRow);
+
+    // Action
+    const { instanceConfigService } = await InstanceConfigCoreModule.create({
+      db: h.db,
+      keyStore: new InMemoryKeyStore(),
+      kmsRootKeyService: kmsCore.kmsRootKeyService,
+      processEnv: {},
+      isFipsEnabled: () => false
+    });
+
+    // Assert
+    expect(await h.db(TableName.SuperAdmin)).toHaveLength(1);
+    expect(await instanceConfigService.getInstanceConfig()).toMatchObject({
+      instanceId: "11111111-1111-4111-8111-111111111111",
+      initialized: true,
+      allowSignUp: false,
+      CLIENT_ID_GITHUB_LOGIN: "old-override"
+    });
+    expect((await instanceConfigService.getSlackCredentials()).toJSON()).toEqual({
+      clientId: "old-slack-id",
+      clientSecret: "old-slack-secret"
+    });
+    expect(await instanceConfigService.isInstanceAdminIdentity("identity-1")).toBe(true);
+  });
+});
+
+describe("InstanceConfigCoreModule.create", () => {
+  test("should leave one row that every pod serves when five pods boot at once", async () => {
+    // Setup
+    await h.db(TableName.SuperAdmin).delete();
+    const keyStore = new InMemoryKeyStore();
+    const kmsCore = new FakeKmsCore();
+    const deps = () => ({
+      db: h.db,
+      keyStore,
+      kmsRootKeyService: kmsCore.kmsRootKeyService,
+      processEnv: {},
+      isFipsEnabled: () => false
+    });
+
+    // Action
+    const modules = await Promise.all(Array.from({ length: 5 }, () => InstanceConfigCoreModule.create(deps())));
+
+    // Assert
+    const rows = await h.db(TableName.SuperAdmin);
+    expect(rows).toHaveLength(1);
+    const served = await Promise.all(modules.map((m) => m.instanceConfigService.getInstanceConfig()));
+    expect(new Set(served.map((config) => config.instanceId))).toEqual(new Set([rows[0].instanceId]));
   });
 });
