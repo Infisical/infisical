@@ -124,29 +124,27 @@ describe("fnSecretsV2FromImports", () => {
     expect(imports[0].secrets.map((s) => s.secretValue)).toEqual(["expanded-A", `\${B_REF}`]);
   });
 
-  it("counts only the imported secrets the caller can access", async () => {
-    const countReturnedSecrets = vi.fn();
-    const { args } = makeArgs({
-      countReturnedSecrets,
-      hasSecretAccess: (_environment, _secretPath, secretName) => secretName === "A"
-    });
+  it("counts an import's folders before loading their secrets", async () => {
+    const countSecretsToLoad = vi.fn().mockResolvedValue(undefined);
+    const { args } = makeArgs({ countSecretsToLoad });
 
     await fnSecretsV2FromImports(args);
 
-    expect(countReturnedSecrets).toHaveBeenCalledTimes(1);
-    expect(countReturnedSecrets).toHaveBeenCalledWith(1);
+    expect(countSecretsToLoad).toHaveBeenCalledTimes(1);
+    expect(countSecretsToLoad).toHaveBeenCalledWith(["shared-folder"]);
   });
 
-  it("decrypts nothing from an import whose secrets the count refuses", async () => {
+  it("loads and decrypts nothing from an import whose folders the count refuses", async () => {
     const decryptor = vi.fn((value?: Buffer | null) => value?.toString() ?? "");
-    const { args } = makeArgs({
+    const { args, find } = makeArgs({
       decryptor,
-      countReturnedSecrets: () => {
+      countSecretsToLoad: async () => {
         throw new BadRequestError({ message: "too many secrets" });
       }
     });
 
     await expect(fnSecretsV2FromImports(args)).rejects.toThrow("too many secrets");
+    expect(find).not.toHaveBeenCalled();
     expect(decryptor).not.toHaveBeenCalled();
   });
 });

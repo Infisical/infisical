@@ -74,7 +74,10 @@ type TSecretImportServiceFactoryDep = {
   folderDAL: TSecretFolderDALFactory;
   eventEmitter: TEventEmitter;
   secretDAL: Pick<TSecretDALFactory, "find">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "invalidateSecretCacheByProjectId">;
+  secretV2BridgeDAL: Pick<
+    TSecretV2BridgeDALFactory,
+    "find" | "findByFolderIds" | "countSharedByFolderIds" | "invalidateSecretCacheByProjectId"
+  >;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findById">;
   projectEnvDAL: TProjectEnvDALFactory;
@@ -1055,7 +1058,8 @@ export const secretImportServiceFactory = ({
       secretImportDAL,
       decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
       reserveDecrypts: secretDecryptReservations.reserveDecrypts,
-      countReturnedSecrets: readLimit?.count,
+      countSecretsToLoad:
+        readLimit && (async (folderIds) => readLimit.count(await secretV2BridgeDAL.countSharedByFolderIds(folderIds))),
       importAccessScopeByFolderId: new Map([[folder.id, { environment, secretPath }]]),
       hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
         hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {

@@ -1550,6 +1550,8 @@ export const secretV2BridgeServiceFactory = ({
 
     const groupedPaths = groupBy(paths, (p) => p.folderId);
 
+    readLimit?.count(await secretDAL.countSharedByFolderIds(paths.map((p) => p.folderId)));
+
     const unfilteredSecrets = await secretDAL.findByFolderIds({
       folderIds: paths.map((p) => p.folderId),
       userId: actorId,
@@ -1632,7 +1634,6 @@ export const secretV2BridgeServiceFactory = ({
       readableSecrets.push({ secret, secretPath, isValueMasked: !canReadValue && !isPersonalSecret });
     }
 
-    readLimit?.count(readableSecrets.length);
     secretDecryptReservations.reserveDecrypts(readableSecrets.length);
 
     const decryptedSecrets: ReturnType<typeof reshapeBridgeSecret>[] = [];
@@ -1808,7 +1809,8 @@ export const secretV2BridgeServiceFactory = ({
           : expandSecretReferences,
       decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
       reserveDecrypts: secretDecryptReservations.reserveDecrypts,
-      countReturnedSecrets: readLimit?.count,
+      countSecretsToLoad:
+        readLimit && (async (folderIds) => readLimit.count(await secretDAL.countSharedByFolderIds(folderIds))),
       importAccessScopeByFolderId: new Map(
         paths.map((folderPath) => [
           folderPath.folderId,
