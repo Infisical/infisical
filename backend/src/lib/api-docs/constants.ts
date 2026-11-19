@@ -2497,7 +2497,9 @@ export const CERTIFICATES = {
     includeDeleted: "Return the certificate even if it was deleted. Without it, a deleted certificate returns 404.",
     hasPrivateKey: "Whether Infisical holds the private key for this certificate.",
     enrollmentType:
-      "How the certificate was enrolled (for example 'api', 'acme', 'est', 'scep' or 'microsoft-autoenrollment'). Only 'api' certificates can be renewed from Infisical; the others are renewed by the client that requested them. Null for imported or discovered certificates without a CA.",
+      "How the certificate was enrolled (for example 'api', 'acme', 'est', 'scep' or 'microsoft-autoenrollment'), falling back to its profile's enrollment method when no request is recorded. Null for imported or discovered certificates without a CA.",
+    isClientRenewed:
+      "Whether the client that requested this certificate renews it (it was requested through ACME, EST, SCEP or Microsoft Autoenrollment), so it can't be renewed from Infisical. False for certificates enrolled through the API and for imported certificates.",
     canRenewFromCsr:
       "Whether Infisical can renew this certificate on its existing key pair from a CSR it holds, without its private key: a CSR the request that produced it carried or one supplied at import, a certificate enrolled through the API, and a profile whose certificate authority issues from a CSR. When true, renewing with renewalKeySource 'reuse' renews from that CSR, and auto-renewal can be turned on.",
     externalMetadata:

@@ -96,6 +96,15 @@ const toLegacyExtendedKeyUsageForQuery = (usage: string): string => {
   }
 };
 
+const IS_CLIENT_RENEWED_SELECT = `COALESCE(
+  (
+    SELECT originating."enrollmentType" FROM certificate_requests originating
+    WHERE originating."certificateId" = certificates.id
+    ORDER BY originating."createdAt" ASC LIMIT 1
+  ),
+  '${EnrollmentType.API}'
+) <> '${EnrollmentType.API}' as "isClientRenewed"`;
+
 const ENROLLMENT_TYPE_SELECT = `COALESCE(
   (
     SELECT certificate_requests."enrollmentType"
@@ -970,6 +979,7 @@ export const certificateDALFactory = (db: TDbClient) => {
   type TCertificateWithInventoryFields = TCertificates & {
     hasPrivateKey: boolean;
     canRenewFromCsr: boolean;
+    isClientRenewed: boolean;
     caName?: string | null;
     profileName?: string | null;
     enrollmentType?: string | null;
@@ -1002,6 +1012,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         .select(db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
         .select(db.raw(ENROLLMENT_TYPE_SELECT))
+        .select(db.raw(IS_CLIENT_RENEWED_SELECT))
         .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"));
 
       const {
@@ -1083,7 +1094,8 @@ export const certificateDALFactory = (db: TDbClient) => {
       return results.map((row) => ({
         ...row,
         hasPrivateKey: row.privateKeyRef !== null,
-        canRenewFromCsr: Boolean((row as { canRenewFromCsr?: boolean }).canRenewFromCsr)
+        canRenewFromCsr: Boolean((row as { canRenewFromCsr?: boolean }).canRenewFromCsr),
+        isClientRenewed: Boolean((row as { isClientRenewed?: boolean }).isClientRenewed)
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificates with private key info" });
@@ -1098,6 +1110,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     hasPrivateKey: boolean;
     canRenewFromCsr: boolean;
     enrollmentType?: string | null;
+    isClientRenewed: boolean;
   };
 
   type TCertificateLookupFilter = { id: string; serialNumber?: never } | { id?: never; serialNumber: string };
@@ -1164,7 +1177,8 @@ export const certificateDALFactory = (db: TDbClient) => {
         .select(db.ref("id").withSchema(TableName.InternalCertificateAuthority).as("internalCaId"))
         .select(db.ref("certId").withSchema(TableName.CertificateSecret).as("privateKeyRef"))
         .select(db.raw(CAN_RENEW_FROM_CSR_SELECT))
-        .select(db.raw(ENROLLMENT_TYPE_SELECT));
+        .select(db.raw(ENROLLMENT_TYPE_SELECT))
+        .select(db.raw(IS_CLIENT_RENEWED_SELECT));
 
       if (filter.id) {
         query = query.where(`${TableName.Certificate}.id`, filter.id);
@@ -1191,7 +1205,8 @@ export const certificateDALFactory = (db: TDbClient) => {
         ...rest,
         caType,
         hasPrivateKey: Boolean(privateKeyRef),
-        canRenewFromCsr: Boolean(rest.canRenewFromCsr)
+        canRenewFromCsr: Boolean(rest.canRenewFromCsr),
+        isClientRenewed: Boolean(rest.isClientRenewed)
       } as TCertificateWithRequestDetails;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificate with full details" });

@@ -1307,7 +1307,7 @@ export const CertificatesTable = ({
                                   return null;
 
                                 const enrollmentRenewalBlockedReason =
-                                  getEnrollmentRenewalBlockedReason(certificate.enrollmentType);
+                                  getEnrollmentRenewalBlockedReason(certificate);
                                 let renewBlockedReason = rowApplicationAccess?.renewBlockedReason;
                                 if (profileMissing)
                                   renewBlockedReason = RENEWAL_UNAVAILABLE_NO_PROFILE;

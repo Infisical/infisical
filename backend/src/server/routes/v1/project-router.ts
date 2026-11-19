@@ -21,7 +21,7 @@ import {
 } from "@app/ee/services/audit-log/audit-log-settings-schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
-import { ApiDocsTags, AUDIT_LOG_SETTINGS, FOLDERS, PROJECTS } from "@app/lib/api-docs";
+import { ApiDocsTags, AUDIT_LOG_SETTINGS, CERTIFICATES, FOLDERS, PROJECTS } from "@app/lib/api-docs";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { re2Validator } from "@app/lib/zod";
 import { JobState } from "@app/queue/queue-service";
@@ -1687,6 +1687,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
               caName: z.string().nullable().optional(),
               profileName: z.string().nullable().optional(),
               enrollmentType: z.string().nullable().optional(),
+              isClientRenewed: z.boolean().optional().describe(CERTIFICATES.GET.isClientRenewed),
               applicationName: z.string().nullable().optional()
             })
           ),

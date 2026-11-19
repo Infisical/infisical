@@ -3,7 +3,6 @@ import ms from "ms";
 
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { CaType } from "@app/hooks/api/ca/enums";
-import { EnrollmentType } from "@app/hooks/api/certificateProfiles/types";
 import { getEnrollmentTypeName } from "@app/hooks/api/certificates/constants";
 import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
 import { TCertificateSource } from "@app/hooks/api/certificates/types";
@@ -29,9 +28,12 @@ export const DELETED_CERTIFICATE_NO_ACTIONS = "No actions are available for a de
 export const RENEWAL_UNAVAILABLE_NO_PROFILE =
   "Renewal is unavailable because the certificate profile this certificate was issued from no longer exists.";
 
-export const getEnrollmentRenewalBlockedReason = (enrollmentType?: string | null) =>
-  enrollmentType && enrollmentType !== EnrollmentType.API
-    ? `${getEnrollmentTypeName(enrollmentType)} certificates can't be renewed here. The client that requested the certificate renews it.`
+export const getEnrollmentRenewalBlockedReason = (certificate: {
+  isClientRenewed?: boolean;
+  enrollmentType?: string | null;
+}) =>
+  certificate.isClientRenewed && certificate.enrollmentType
+    ? `${getEnrollmentTypeName(certificate.enrollmentType)} certificates can't be renewed here. The client that requested the certificate renews it.`
     : undefined;
 
 type TApplicationAbility = {

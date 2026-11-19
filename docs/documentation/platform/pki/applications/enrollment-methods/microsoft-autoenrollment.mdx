@@ -68,7 +68,9 @@ Fill in the rest of the panel, then select **Enable**:
 - **LDAP connection**: the Active Directory connection used to look up each computer's DNS name
 - **AD groups (optional)**: the groups whose computers can enroll (leave it empty to let every computer in the domain enroll)
 - **Accept any TLS channel binding**: accept a request bound to any TLS certificate, including a Kerberos ticket relayed through another HTTPS site (off by default, and only for computers that reach your instance through a proxy that inspects HTTPS, or an instance that can't read its own certificate, such as in FIPS mode)
-- **Renew before (days)**: the number of days before expiry that Windows renews a certificate (defaults to 42). Windows renews a certificate only when this is more than 8 hours and less than 20% of its validity, so a value outside that range is moved into it, and the panel shows the value Windows uses when it differs. A certificate valid for 40 hours or less can't be renewed, and computers request a new one instead.
+- **Renew before (days)**: the number of days before expiry that Windows renews a certificate (defaults to 42)
+
+Windows renews a certificate only when the renewal period is more than 8 hours and less than 20% of the certificate's validity. A value outside that range is moved into it, and the panel shows the value Windows uses when it differs. A certificate valid for 40 hours or less can't be renewed, so computers request a new one instead.
 
 Once the method is on, the **Endpoint** section shows the **Enrollment policy URL** for the profile. Each profile has its own URL, so add one URL to Group Policy for each profile you want computers to enroll in.
 

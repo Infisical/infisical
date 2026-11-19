@@ -439,9 +439,8 @@ const Page = () => {
                   const profileMissing = !certificate.profileId;
                   if (profileMissing && !isManagedCertificate(certificate)) return null;
 
-                  const enrollmentRenewalBlockedReason = getEnrollmentRenewalBlockedReason(
-                    certificate.enrollmentType
-                  );
+                  const enrollmentRenewalBlockedReason =
+                    getEnrollmentRenewalBlockedReason(certificate);
                   const renewBlockedReason = profileMissing
                     ? RENEWAL_UNAVAILABLE_NO_PROFILE
                     : (enrollmentRenewalBlockedReason ?? applicationAccess?.renewBlockedReason);

@@ -72,6 +72,7 @@ export type TCertificate = {
   caName?: string | null;
   profileName?: string | null;
   enrollmentType?: string | null;
+  isClientRenewed?: boolean;
   caType?: CertificateIssuerKind | null;
   externalMetadata?: TCertificateExternalMetadata | null;
   applicationId?: string | null;
