@@ -371,12 +371,17 @@ func TestSecretApprovalPolicy_Create(t *testing.T) {
 			})
 			require.NoError(t, err)
 			updated, err := tn.Admin.API.UpdateSecretApprovalPolicyWithResponse(t.Context(), policyID.String(),
-				api.UpdateSecretApprovalPolicyJSONRequestBody{SecretPath: new(secretPath)})
+				api.UpdateSecretApprovalPolicyJSONRequestBody{
+					Approvers:  updateApproverItems(t, []policyMember{userMember(reviewer)}),
+					SecretPath: new(secretPath),
+				})
 			require.NoError(t, err)
 
 			// Assert
 			require.Equalf(t, http.StatusUnprocessableEntity, created.StatusCode(), "create with %s returned %s", secretPath, apierr.Body(created.Body))
 			require.Equalf(t, http.StatusUnprocessableEntity, updated.StatusCode(), "update with %s returned %s", secretPath, apierr.Body(updated.Body))
+			require.Contains(t, string(created.Body), "Secret path cannot contain '.' or '..'")
+			require.Contains(t, string(updated.Body), "Secret path cannot contain '.' or '..'")
 		}
 		require.Nil(t, policyAt(t, proj, "staging", "/"))
 		require.Nil(t, policyAt(t, proj, "staging", "/prod"))
