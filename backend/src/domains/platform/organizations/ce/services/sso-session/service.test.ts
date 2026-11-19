@@ -75,6 +75,22 @@ describe("SsoSessionService.findSsoSessionRefusal", () => {
     expect(refusal?.name).toBe(FOREIGN_SSO_SESSION_ERROR_NAME);
   });
 
+  test("should let a user who may bypass through with a session another org's IdP issued", async () => {
+    // Setup
+    const { service, orgPermissionService, subOrg, rootOrgId } = arrange({ canBypass: true });
+    const principal = userPrincipal({ authMethod: AuthMethod.OKTA_SAML, sessionRootOrgId: randomUUID() });
+
+    // Action
+    const refusal = await service.findSsoSessionRefusal({
+      principal,
+      org: subOrg({ authEnforced: true, bypassOrgAuthEnabled: true })
+    });
+
+    // Assert
+    expect(refusal).toBeNull();
+    expect(orgPermissionService.bypassLookups).toEqual([{ userId: principal.id, rootOrgId }]);
+  });
+
   test("should not look up the bypass for a session the policy allows", async () => {
     // Setup
     const { service, orgPermissionService, subOrg } = arrange({ canBypass: true });

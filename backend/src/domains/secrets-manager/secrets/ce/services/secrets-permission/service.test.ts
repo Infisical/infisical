@@ -280,6 +280,25 @@ describe("SecretsPermissionService.getPermissionFingerprint", () => {
   });
 });
 
+describe("SecretsPermissionService.getPermissionFingerprint folder version", () => {
+  test("should read a project whose folder grants were never invalidated as version zero", async () => {
+    // Setup
+    const t = buildSecretsPermission();
+    const user = t.addUser();
+    await t.addProjectRole(user, ProjectMembershipRole.Viewer);
+
+    // Action
+    const fingerprint = await t.service.getPermissionFingerprint({
+      actor: { type: ActorType.USER, id: user.id },
+      orgId: t.orgId,
+      projectId: t.projectId
+    });
+
+    // Assert
+    expect(fingerprint.endsWith(":0")).toBe(true);
+  });
+});
+
 describe("SecretsPermissionService.getPermissionCacheFingerprint", () => {
   test("should change when the actor's roles change or the project's folder grants are invalidated", async () => {
     // Setup
@@ -562,5 +581,60 @@ describe("SecretsPermissionService.getFolderGrantPermissions", () => {
     expect(permissions).toHaveLength(1);
     expect(permissions[0].can(editSecretAt("/app"))).toBe(true);
     expect(permissions[0].rules.some((rule) => rule.inverted)).toBe(false);
+  });
+
+  const permissionsOf = async (t: ReturnType<typeof buildSecretsPermission>, userId: string) => {
+    const grants = await t.accessControl.actorGrantsService.getActorGrants({
+      actor: { type: ActorType.USER, id: userId },
+      scope: { scope: AccessScope.Project, orgId: t.orgId, projectId: t.projectId }
+    });
+    return t.service.getFolderGrantPermissions({
+      target: { type: ActorType.USER, id: userId },
+      projectId: t.projectId,
+      grants
+    });
+  };
+
+  test("should leave out a folder grant that has ended", async () => {
+    // Setup
+    const t = buildSecretsPermission();
+    const user = t.addUser();
+    await t.addProjectRole(user, ProjectMembershipRole.NoAccess);
+    await t.addFolderGrant(user, "/ended", SecretFolderRole.Edit, { ended: true });
+
+    // Action
+    const permissions = await permissionsOf(t, user.id);
+
+    // Assert
+    expect(permissions).toEqual([]);
+  });
+
+  test("should give a built-in admin none", async () => {
+    // Setup
+    const t = buildSecretsPermission();
+    const user = t.addUser();
+    await t.addProjectRole(user, ProjectMembershipRole.Admin);
+    await t.addFolderGrant(user, "/app", SecretFolderRole.Edit);
+
+    // Action
+    const permissions = await permissionsOf(t, user.id);
+
+    // Assert
+    expect(permissions).toEqual([]);
+  });
+
+  test("should give none outside a Secret Manager project", async () => {
+    // Setup
+    const t = buildSecretsPermission();
+    const user = t.addUser();
+    await t.addProjectRole(user, ProjectMembershipRole.NoAccess);
+    await t.addFolderGrant(user, "/app", SecretFolderRole.Edit);
+    t.projectStore.rows.set(t.projectId, { ...t.projectStore.rows.get(t.projectId)!, type: ProjectType.KMS });
+
+    // Action
+    const permissions = await permissionsOf(t, user.id);
+
+    // Assert
+    expect(permissions).toEqual([]);
   });
 });
