@@ -265,13 +265,13 @@ jobs:
           env:
             GH_TOKEN: ${{ secrets.OMNIBUS_RELEASE_TOKEN }}
 
-    generate-upgrade-impact:
-        name: Generate upgrade impact PR
+    release-pr:
+        name: Open upgrade impact and Helm chart PR
         needs: [infisical-standalone, infisical-fips-standalone, trigger-binary-release]
         permissions:
             contents: write
             pull-requests: write
-        uses: ./.github/workflows/generate-upgrade-impact.yml
+        uses: ./.github/workflows/bump-helm-infisical-core-app-version.yml
         with:
             tag: ${{ github.ref_name }}
         secrets: inherit

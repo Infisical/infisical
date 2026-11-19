@@ -14,7 +14,7 @@ import { TKeyValueStoreDALFactory } from "./key-value-store-dal";
 export const PgSqlLock = {
   BootUpMigration: 2023,
   SuperAdminInit: 2024,
-  KmsRootKeyInit: 2025,
+  // 2025 is taken by KMS Core's root key lock (KMS_LOCK_IDS in kms-core-locks.ts).
   SanitizedSchemaGeneration: 2026,
   EmailDomainCreationLock: () => pgAdvisoryLockHashText(`org-email-domain-creation`),
   SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
@@ -40,11 +40,9 @@ export const PgSqlLock = {
   ClearAgentVaultPersonalValues: (projectId: string) =>
     pgAdvisoryLockHashText(`clear-agent-vault-personal-values:${projectId}`),
   AccessSharedSecret: (sharedSecretId: string) => pgAdvisoryLockHashText(`access-shared-secret:${sharedSecretId}`),
-  KmsOrgKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-key:${orgId}`),
-  KmsOrgDataKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-data-key:${orgId}`),
-  KmsProjectKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-key:${projectId}`),
-  KmsProjectDataKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-data-key:${projectId}`),
   ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
+  SecretScanningFindingLocations: (resourceId: string) =>
+    pgAdvisoryLockHashText(`secret-scanning-finding-locations:${resourceId}`),
   OrgAccessReconcile: (actorId: string) => pgAdvisoryLockHashText(`org-access-reconcile:${actorId}`),
   OrgAccessReconcileScope: (rootOrgId: string) => pgAdvisoryLockHashText(`org-access-reconcile-scope:${rootOrgId}`),
   LastAdminGuard: (scope: "org" | "project", scopeId: string) =>
@@ -146,8 +144,6 @@ export const KeyStorePrefixes = {
   ProjectFolderAccessData: (projectId: string, folderId: string, actorType: string, page: string) =>
     `project-folder-access-data:${projectId}:${folderId}:${actorType}:${page}` as const,
 
-  KmsProjectSecretManagerMaterial: (projectId: string) => `kms-project-sm-material:${projectId}` as const,
-
   PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
   ScepIntuneAccess: (connectionId: string, connectionUpdatedAt: Date) =>
     `scep-intune-access:${connectionId}:${connectionUpdatedAt.getTime()}` as const,
@@ -194,8 +190,6 @@ export const KeyStorePrefixes = {
   }) =>
     `${SECRET_MANAGER_CACHE_PREFIX}:${arg.projectId}:secrets_v2-dal:v${arg.version}:get-secrets-service-layer-zstd:${arg.actorId}-${arg.permissionFingerprint}-${arg.permissionHash}-${arg.requestParamsHash}` as const,
   SecretEtag: (projectId: string, dayStamp: string) => `secret-etag:${projectId}:${dayStamp}` as const,
-  SecretPermissionFingerprint: (projectId: string, actorType: string, actorId: string) =>
-    `secret-perm-fingerprint:${projectId}:${actorType}:${actorId}` as const,
 
   PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
   PamDefaultProject: (orgId: string) => `pam-default-project:${orgId}` as const,
@@ -209,6 +203,9 @@ export const KeyStorePrefixes = {
   // By service and owner, not row id: a reconnect replaces the member's row.
   AgentVaultOauthPersonalRefreshLock: (serviceId: string, ownerId: string) =>
     `agent-vault-oauth-refresh-lock:${serviceId}:${ownerId}` as const,
+  // By variable, not service: every service using an OAuth variable refreshes the same tokens.
+  AgentVaultOauthVariableRefreshLock: (variableId: string) =>
+    `agent-vault-oauth-refresh-lock:variable:${variableId}` as const,
   // Bytes an org has been allowed to upload to object storage on one UTC day (YYYY-MM-DD).
   ObjectStorageDailyBytes: (orgId: string, day: string) => `object-storage:daily-bytes:${orgId}:${day}` as const,
   // Org invitation emails an org has been allowed to send on one UTC day (YYYY-MM-DD).
@@ -218,6 +215,8 @@ export const KeyStorePrefixes = {
   OrgSecretScanningFindingsCount: (orgId: string) => `org-secret-scanning-findings-count:${orgId}` as const,
   CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
   CertPqcTrend: (projectId: string, range: string) => `cert-pqc-trend:${projectId}:${range}` as const,
+  SigningActivityTrend: (projectId: string, range: string, signerId?: string) =>
+    `signing-activity-trend:${projectId}:${range}:${signerId ?? "all"}` as const,
   RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
   EmailSignupOtpHash: (hash: string) => `email-signup-otp:${hash}:hash` as const,
   EmailSignupOtpLock: (hash: string) => `email-signup-otp:${hash}:lock` as const,
@@ -328,6 +327,7 @@ export const KeyStoreTtls = {
   PkiCertificateQuotaCountInSeconds: 60,
   OauthAuthorizationCodeInSeconds: 600, // 10 minutes
   DashboardCacheInSeconds: 600, // 10 minutes
+  SigningActivityTrendInSeconds: 60,
   ProjectEnvironmentOperationMarkerInSeconds: 10,
   UserMfaUnlockEmailSentInSeconds: 300, // 5 minutes
   StepUpMfaAttemptWindowInSeconds: 300, // 5 minutes - rolling window for counting failed step-up attempts
@@ -382,6 +382,8 @@ export type TKeyStoreFactory = {
     prefix?: string
   ) => Promise<"OK" | null>;
   deleteItem: (key: string) => Promise<number>;
+  // Deletes the key only while it still holds value, so a lock holder never removes a lock taken after its own expired.
+  deleteItemIfValue: (key: string, value: string) => Promise<boolean>;
   deleteItemsByKeyIn: (keys: string[]) => Promise<number>;
   deleteItems: (arg: TDeleteItems) => Promise<number>;
   incrementBy: (key: string, value: number) => Promise<number>;
@@ -520,6 +522,16 @@ export const keyStoreFactory = (
   ) => primaryRedis.set(prefix ? `${prefix}:${key}` : key, value, "EX", expiryInSeconds, "NX");
 
   const deleteItem = async (key: string) => primaryRedis.del(key);
+
+  const DELETE_IF_VALUE_SCRIPT = `
+    if redis.call("GET", KEYS[1]) == ARGV[1] then
+      return redis.call("DEL", KEYS[1])
+    end
+    return 0
+  `;
+
+  const deleteItemIfValue = async (key: string, value: string) =>
+    Number(await primaryRedis.eval(DELETE_IF_VALUE_SCRIPT, 1, key, value)) === 1;
 
   const deleteItemsByKeyIn = async (keys: string[]) => {
     if (keys.length === 0) return 0;
@@ -971,6 +983,7 @@ export const keyStoreFactory = (
     incrementByIfUnderLimitWithFixedExpiry,
     decrementByOrDelete,
     decrementIfExists,
+    deleteItemIfValue,
     claimLeastLoaded,
     incrementByWithExpiry,
     probeDistinctMember,

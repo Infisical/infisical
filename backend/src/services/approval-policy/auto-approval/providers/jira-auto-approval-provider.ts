@@ -1,3 +1,4 @@
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -164,7 +165,8 @@ const readLatestApproval = async (
         reason: `${key} isn't a Jira Service Management request, or the Jira connection can't see its approvals`
       };
     }
-    if (error instanceof BadRequestError) return { approved: false, reason: error.message };
+    if (error instanceof BadRequestError || error instanceof RuleViolationError)
+      return { approved: false, reason: error.message };
     logger.warn({ err: error }, `Couldn't read Jira approvals [issueKey=${key}]`);
     return { approved: false, reason: `Couldn't read Jira approvals on ${key}` };
   }
@@ -196,7 +198,7 @@ export const JIRA_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TJiraConnection>
               message: `Jira ticket ${id} doesn't exist, or the Jira connection can't see it`
             });
           }
-          if (error instanceof BadRequestError) throw error;
+          if (error instanceof BadRequestError || error instanceof RuleViolationError) throw error;
           logger.warn({ err: error }, `Couldn't read Jira ticket [issueKey=${id}]`);
           throw new BadRequestError({ message: `Couldn't read Jira ticket ${id}` });
         }

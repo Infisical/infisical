@@ -15,7 +15,8 @@ import { VARIABLE_KEY_MAX_LENGTH, VARIABLE_KEY_RE } from "@app/helpers/agentVaul
 import {
   AgentVaultMemberType,
   AgentVaultOauthAuthorizationStatus,
-  AgentVaultVariableScope
+  AgentVaultVariableScope,
+  AgentVaultVariableType
 } from "./enums";
 import {
   createSessionLogChunkCache,
@@ -160,6 +161,8 @@ export const agentVaultKeys = {
     [...agentVaultKeys.all(orgId, projectId), "services"] as const,
   serviceList: (orgId: string, projectId: string, params: TListAgentVaultServicesDTO) =>
     [...agentVaultKeys.services(orgId, projectId), "list", params] as const,
+  allServicesRequiringSetup: (orgId: string, projectId: string) =>
+    [...agentVaultKeys.services(orgId, projectId), "all-requiring-setup"] as const,
   service: (orgId: string, projectId: string, serviceId: string) =>
     [...agentVaultKeys.services(orgId, projectId), "detail", serviceId] as const,
   skills: (orgId: string, projectId: string) =>
@@ -912,8 +915,15 @@ export const useAgentVaultVariableKeyStatus = (
   {
     enabled = true,
     isCached = true,
-    scope = AgentVaultVariableScope.Global
-  }: { enabled?: boolean; isCached?: boolean; scope?: AgentVaultVariableScope } = {}
+    scope = AgentVaultVariableScope.Global,
+    type
+  }: {
+    enabled?: boolean;
+    isCached?: boolean;
+    scope?: AgentVaultVariableScope;
+    /** Only variables of this type count as existing. A key held by another type is neither existing nor missing. */
+    type?: AgentVaultVariableType;
+  } = {}
 ) => {
   const { currentOrg } = useOrganization();
   const possibleKeys = [...new Set(keys.filter(isPossibleVariableKey))].sort();
@@ -921,14 +931,19 @@ export const useAgentVaultVariableKeyStatus = (
   const { data } = useQuery({
     queryKey: agentVaultKeys.variableKeyStatus(currentOrg.id, projectId, scope, possibleKeys),
     queryFn: async () => {
-      const found: string[] = [];
+      const found: [string, AgentVaultVariableType][] = [];
       for (let i = 0; i < possibleKeys.length; i += KEY_LOOKUP_BATCH_SIZE) {
         // eslint-disable-next-line no-await-in-loop
         const page = await fetchAgentVaultVariables(projectId, {
           scope,
           keys: possibleKeys.slice(i, i + KEY_LOOKUP_BATCH_SIZE)
         });
-        found.push(...page.variables.map((variable) => variable.key));
+        found.push(
+          ...page.variables.map((variable): [string, AgentVaultVariableType] => [
+            variable.key,
+            variable.type
+          ])
+        );
       }
       return { asked: possibleKeys, found };
     },
@@ -942,15 +957,22 @@ export const useAgentVaultVariableKeyStatus = (
   const keySignature = keys.join(",");
   return useMemo(() => {
     const asked = new Set(data?.asked);
-    const found = new Set(data?.found);
+    const typeOf = new Map(data?.found);
     const current = keySignature ? keySignature.split(",") : [];
+    const isOfType = (key: string) => !type || typeOf.get(key) === type;
     return {
-      existing: new Set(current.filter((key) => found.has(key))) as ReadonlySet<string>,
+      existing: new Set(
+        current.filter((key) => typeOf.has(key) && isOfType(key))
+      ) as ReadonlySet<string>,
+      /** Keys a variable of another type holds, which can't be used here or taken by a new one. */
+      ofOtherType: new Set(
+        current.filter((key) => typeOf.has(key) && !isOfType(key))
+      ) as ReadonlySet<string>,
       missing: new Set(
-        current.filter((key) => !isPossibleVariableKey(key) || (asked.has(key) && !found.has(key)))
+        current.filter((key) => !isPossibleVariableKey(key) || (asked.has(key) && !typeOf.has(key)))
       ) as ReadonlySet<string>
     };
-  }, [data, keySignature]);
+  }, [data, keySignature, type]);
 };
 
 export const useListAgentVaultServices = (
@@ -968,6 +990,44 @@ export const useListAgentVaultServices = (
         totalCount: number;
       }>("/api/v1/agent-vault/services", { params: { ...params, projectId } });
       return data;
+    },
+    placeholderData: keepPreviousInProject(projectId),
+    enabled
+  });
+};
+
+const SERVICES_REQUIRING_SETUP_PAGE_SIZE = 100;
+
+// Every service that still needs the caller's personal values, a page at a time, for a form that can pick any of the
+// project's services rather than only those on the first page.
+export const useListAllAgentVaultServicesRequiringSetup = (
+  projectId: string,
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.allServicesRequiringSetup(currentOrg.id, projectId),
+    queryFn: async () => {
+      const services: TAgentVaultProjectService[] = [];
+      let totalCount = Infinity;
+      while (services.length < totalCount) {
+        // eslint-disable-next-line no-await-in-loop
+        const { data } = await apiRequest.get<{
+          services: TAgentVaultProjectService[];
+          totalCount: number;
+        }>("/api/v1/agent-vault/services", {
+          params: {
+            projectId,
+            requiresSetup: true,
+            limit: SERVICES_REQUIRING_SETUP_PAGE_SIZE,
+            offset: services.length
+          }
+        });
+        services.push(...data.services);
+        totalCount = data.services.length ? data.totalCount : services.length;
+      }
+      return services;
     },
     placeholderData: keepPreviousInProject(projectId),
     enabled

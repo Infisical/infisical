@@ -8,6 +8,7 @@ import {
   OrgMembershipsSchema,
   OrgMembershipStatus
 } from "@app/db/schemas";
+import { RootKeyEncryptionStrategy } from "@app/domains/platform/kms-core/ce/module";
 import { CRON_JOB_TRIGGER, ENCRYPTION_KEY_ROTATION } from "@app/lib/api-docs";
 import { getConfig, overridableKeys } from "@app/lib/config/env";
 import { CronJobName } from "@app/lib/cron/cron-job";
@@ -28,7 +29,6 @@ import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { StorageHostnameSchema } from "@app/services/app-connection/s3-compatible";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { CacheType, LoginMethod } from "@app/services/super-admin/super-admin-types";
@@ -615,7 +615,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
 
     handler: async () => {
-      const encryptionDetails = await server.services.superAdmin.getConfiguredEncryptionStrategies();
+      const encryptionDetails = await server.services.kmsRootKeyService.listEncryptionStrategies();
       return encryptionDetails;
     }
   });
@@ -685,7 +685,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async () => {
-      const rootKey = await server.services.encryptionKeyRotation.getRootKey();
+      const rootKey = await server.services.kmsRootKeyService.getRootKey();
 
       return { rootKey };
     }
@@ -724,7 +724,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      return server.services.encryptionKeyRotation.listRotations({
+      return server.services.kmsRootKeyService.listRotations({
         offset: req.query.offset,
         limit: req.query.limit
       });
@@ -762,7 +762,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req, res) => {
-      const rotation = await server.services.encryptionKeyRotation.createRotation({
+      const rotation = await server.services.kmsRootKeyService.createRotation({
         replaceStaged: req.body.replaceStaged
       });
 
@@ -792,7 +792,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req, res) => {
-      await server.services.encryptionKeyRotation.deleteStagedKey({ label: req.body.label });
+      await server.services.kmsRootKeyService.deleteStagedKey({ label: req.body.label });
 
       void res.status(204);
     }
@@ -818,7 +818,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req, res) => {
-      await server.services.encryptionKeyRotation.deleteExpiringKey({
+      await server.services.kmsRootKeyService.deleteExpiringKey({
         label: req.body.label,
         force: req.body.force
       });

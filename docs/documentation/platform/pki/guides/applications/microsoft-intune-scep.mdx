@@ -323,6 +323,12 @@ When a certificate crosses the **Renewal threshold**, Intune re-enrolls that dev
 
 Infisical's **Allow cert-based renewal** option stays off for Intune validation, and Infisical rejects an enrollment that tries to enable it. Renewing against an existing certificate would skip the challenge and bypass Intune's per-request validation.
 
+## How revocation works
+
+If you wipe, retire, or unenroll a device, or remove the device from the SCEP profile's assignments, Intune queues a revocation for the device's certificate. Revocation requests are checked every 15 minutes, and the matching certificate is revoked in Infisical. Intune can take a while to queue the request after the device action.
+
+This covers certificates issued while the application uses this profile and the profile's SCEP enrollment uses Intune validation. If you detach the profile or turn off Intune validation, Intune no longer revokes its certificates. Certificates issued before Intune revocation support was added aren't covered either. Revoke those from the certificate's details.
+
 ## Troubleshooting
 
 <AccordionGroup>
@@ -370,7 +376,7 @@ Infisical's **Allow cert-based renewal** option stays off for Intune validation,
     No. The challenge type belongs to the SCEP enrollment, so a profile set to Microsoft Intune validation only accepts challenges that Intune issued. Attach a second certificate profile to the application with a static or dynamic challenge to serve clients that Intune doesn't manage.
   </Accordion>
   <Accordion title="What happens if I move off Intune later?">
-    You rebuild the profiles on the new MDM tool and add a new enrollment in Infisical. The CA stays as it is, certificates already issued stay valid, and anything configured to trust your CA keeps working.
+    You rebuild the profiles on the new MDM tool and add a new enrollment in Infisical. The CA stays as it is, certificates already issued stay valid, and anything configured to trust your CA keeps working. Device actions in Intune stop revoking those certificates, so revoke them from the certificate's details when you retire a device.
   </Accordion>
   <Accordion title="Can I use this CA for things other than devices?">
     Yes. SCEP is one of four ways to enroll against a profile, alongside [ACME](/documentation/platform/pki/applications/enrollment-methods/acme), [EST](/documentation/platform/pki/applications/enrollment-methods/est), and the API. The same CA, with the same root your devices now trust, can issue certificates to your servers, internal services, and Kubernetes workloads.

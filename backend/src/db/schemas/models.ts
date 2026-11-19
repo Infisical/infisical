@@ -226,6 +226,7 @@ export enum TableName {
   SecretScanningResource = "secret_scanning_resources",
   SecretScanningScan = "secret_scanning_scans",
   SecretScanningFinding = "secret_scanning_findings",
+  SecretScanningFindingLocation = "secret_scanning_finding_locations",
   SecretScanningConfig = "secret_scanning_configs",
 
   Membership = "memberships",
@@ -287,6 +288,8 @@ export enum TableName {
   AgentVaultSession = "agent_vault_sessions",
   AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
   AgentVaultSessionInlineService = "agent_vault_session_inline_services",
+  AgentVaultSessionService = "agent_vault_session_services",
+  AgentVaultSessionSkill = "agent_vault_session_skills",
   AgentVaultSessionStats = "agent_vault_session_stats",
   AgentVaultDelegation = "agent_vault_delegations",
   AgentVaultDelegationSubject = "agent_vault_delegation_subjects",

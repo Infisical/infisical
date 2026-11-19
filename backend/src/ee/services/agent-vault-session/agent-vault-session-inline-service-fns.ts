@@ -3,14 +3,30 @@ import { z } from "zod";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 
 import { assertCustomHeadersDoNotShadowCredential } from "../agent-vault-access-bundle/agent-vault-transformation-fns";
+import {
+  isVariableOauth,
+  oauthVariableIdOf,
+  toResolvedOauthCredential
+} from "../agent-vault-oauth/agent-vault-oauth-token-fns";
+import {
+  AgentVaultOauthClientAuthMethod,
+  TAgentVaultOauthConfig,
+  TAgentVaultOauthVariableCredentialConfig
+} from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TResolvedService } from "../agent-vault-proxy/agent-vault-proxy-types";
 import { TSessionServiceCredential, TSessionServiceFacts } from "../agent-vault-proxy/agent-vault-session-services-fns";
+import {
+  toImportedOauthVariableConnection,
+  toOauthVariableSettings
+} from "../agent-vault-variable/agent-vault-oauth-variable-fns";
+import { TAgentVaultOauthVariableConnection } from "../agent-vault-variable/agent-vault-variable-types";
 import { findHostPatternConflicts, TConflictCandidate } from "../agent-vault/agent-vault-conflict-fns";
 import { AgentVaultBearerConfigSchema } from "../agent-vault/agent-vault-credential-schemas";
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
-  AgentVaultServiceType
+  AgentVaultServiceType,
+  AgentVaultVariableType
 } from "../agent-vault/agent-vault-enums";
 import {
   isNativeServiceType,
@@ -37,6 +53,7 @@ import {
 import {
   TAgentVaultInlineCredentialSummary,
   TAgentVaultInlineCustomHeaderSummary,
+  TAgentVaultInlineOauthCredentialSummary,
   TAgentVaultInlineServiceInput,
   TAgentVaultInlineServiceSummary,
   TAgentVaultInlineSubstitutionSummary
@@ -44,7 +61,12 @@ import {
 
 export const AGENT_VAULT_MAX_SESSION_INLINE_SERVICES = 20;
 
-type TInlineCredentialConfig = TAgentVaultInlineCredentialSummary;
+// An OAuth credential is stored as an OAuth variable's id (no sealed value), or as the connection of the tokens sent
+// with the session, whose tokens are sealed like any other credential.
+type TInlineCredentialConfig =
+  | Exclude<TAgentVaultInlineCredentialSummary, { type: AgentVaultCredentialType.OAuth }>
+  | TAgentVaultOauthVariableCredentialConfig
+  | TAgentVaultOauthVariableConnection;
 type TInlineCustomHeader = TAgentVaultInlineCustomHeaderSummary;
 type TInlineSubstitution = TAgentVaultInlineSubstitutionSummary;
 
@@ -55,7 +77,10 @@ const InlineServiceSecretsSchema = z.object({
       z.object({ value: z.string() }),
       z.object({ username: z.string(), password: z.string() }),
       // Strict, so a basic secret is never read as an SSH key or the other way round.
-      z.object({ username: z.string(), privateKey: z.string(), certificate: z.string().optional() }).strict()
+      z.object({ username: z.string(), privateKey: z.string(), certificate: z.string().optional() }).strict(),
+      z
+        .object({ accessToken: z.string(), refreshToken: z.string().optional(), clientSecret: z.string().optional() })
+        .strict()
     ])
     .nullable(),
   customHeaders: z.string().array(),
@@ -79,8 +104,11 @@ export type TPreparedInlineService = {
   customHeaders: TInlineCustomHeader[];
   substitutions: TInlineSubstitution[];
   hookUrl: string | null;
-  // Null when there is nothing to seal: a pass-through service with no custom headers, substitutions or hook.
+  // Null when there is nothing to seal: a pass-through service, or one using an OAuth variable, with no custom headers,
+  // substitutions or hook.
   secrets: TInlineServiceSecrets | null;
+  // The OAuth variable a credential names, by key until bindInlineOauthVariables puts its id in credentialConfig.
+  oauthVariableKey: string | null;
 };
 
 // What an inline service is called wherever a name is shown: its own, or its first host when it was sent without one,
@@ -98,14 +126,117 @@ export const inlineServiceDisplayName = ({
  * A session's own service wins over a bundle service of the same name: the bundle's is left out of that session, so
  * the agent, the proxy and its logs each see one service per name. Admins can add or rename bundle services freely
  * while sessions are live, and only the sessions that sent a service by that name keep their own.
+ *
+ * An override is the exception, and wins over a session's own service of its name instead: it only ever narrows what a
+ * listed service allows on its hosts, so a service sent with the session must never switch it off by taking its name.
  */
-export const withoutShadowedBundleServices = <T extends { name: string }>(
+export const withoutShadowedServices = <
+  T extends { name: string; isOverride?: boolean },
+  I extends { name?: string | null; hostPattern?: string | null }
+>(
   bundleServices: T[],
-  inlineServices: { name?: string | null; hostPattern?: string | null }[]
+  inlineServices: I[]
 ) => {
-  if (!inlineServices.length) return bundleServices;
-  const inlineNames = new Set(inlineServices.map(inlineServiceDisplayName));
-  return bundleServices.filter((service) => !inlineNames.has(service.name));
+  if (!inlineServices.length) return { bundleServices, inlineServices };
+  const overrideNames = new Set(bundleServices.filter((service) => service.isOverride).map(({ name }) => name));
+  const keptInline = inlineServices.filter((service) => !overrideNames.has(inlineServiceDisplayName(service)));
+  const inlineNames = new Set(keptInline.map(inlineServiceDisplayName));
+  return {
+    bundleServices: bundleServices.filter((service) => service.isOverride || !inlineNames.has(service.name)),
+    inlineServices: keptInline
+  };
+};
+
+type TInlineOauthInput = Extract<TAgentVaultInlineServiceInput["credential"], { type: AgentVaultCredentialType.OAuth }>;
+
+// Everything an OAuth credential takes besides `variable`, which it takes instead.
+const INLINE_OAUTH_TOKEN_FIELDS = [
+  "accessToken",
+  "refreshToken",
+  "expiresAt",
+  "authorizationEndpoint",
+  "tokenEndpoint",
+  "issuer",
+  "clientId",
+  "clientSecret",
+  "tokenEndpointAuthMethod",
+  "scopes",
+  "resource"
+] as const satisfies readonly (keyof TInlineOauthInput)[];
+
+const INLINE_OAUTH_NEEDS_SOURCE_MESSAGE =
+  "An OAuth credential sent with a session needs 'variable' with the key of a global OAuth variable, or 'accessToken' with the provider's 'authorizationEndpoint', 'tokenEndpoint', 'clientId' and 'scopes'.";
+
+/**
+ * An OAuth variable is stored by id once the session service has looked its key up. Tokens are checked like an OAuth
+ * variable's import, with the same defaults, and stored as sent: refreshing them here would rotate the caller's own
+ * copy.
+ */
+const toInlineOauthCredential = (
+  credential: TInlineOauthInput,
+  now: Date
+): { config: TInlineCredentialConfig; secret: TInlineServiceSecrets["credential"]; variableKey: string | null } => {
+  if (credential.authorizationId) {
+    throw new BadRequestError({
+      message: `Services sent with a session can't use an OAuth sign-in, which happens in the Infisical UI. ${INLINE_OAUTH_NEEDS_SOURCE_MESSAGE}`
+    });
+  }
+  const sentTokenField = INLINE_OAUTH_TOKEN_FIELDS.find((field) => credential[field] !== undefined);
+  if (credential.variable) {
+    if (sentTokenField) {
+      throw new BadRequestError({
+        message: `Send either 'variable' or the tokens and the provider's details, not both. Leave out '${sentTokenField}'.`
+      });
+    }
+    return {
+      config: { type: AgentVaultCredentialType.OAuth, source: "variable", variableId: "" },
+      secret: null,
+      variableKey: credential.variable
+    };
+  }
+  if (!credential.accessToken) throw new BadRequestError({ message: INLINE_OAUTH_NEEDS_SOURCE_MESSAGE });
+
+  const settings = toOauthVariableSettings({
+    authorizationEndpoint: credential.authorizationEndpoint,
+    tokenEndpoint: credential.tokenEndpoint,
+    issuer: credential.issuer,
+    clientId: credential.clientId,
+    tokenEndpointAuthMethod: credential.tokenEndpointAuthMethod,
+    scopes: credential.scopes,
+    resource: credential.resource
+  });
+  const missing = (["authorizationEndpoint", "tokenEndpoint", "clientId"] as const).find((field) => !settings[field]);
+  if (missing) {
+    throw new BadRequestError({
+      message: `Tokens sent with a session need the provider's '${missing}', so Infisical can refresh them. Send 'authorizationEndpoint', 'tokenEndpoint', 'clientId' and 'scopes' with 'accessToken'.`
+    });
+  }
+  if (!settings.scopes.length) {
+    throw new BadRequestError({ message: "Tokens sent with a session need the scopes they were granted in 'scopes'." });
+  }
+  const method = settings.tokenEndpointAuthMethod;
+  if (method && method !== AgentVaultOauthClientAuthMethod.None && !credential.clientSecret) {
+    throw new BadRequestError({
+      message: `'tokenEndpointAuthMethod' is '${method}', which needs your OAuth app's client secret. Send 'clientSecret' with the tokens.`
+    });
+  }
+  if (method === AgentVaultOauthClientAuthMethod.None && credential.clientSecret) {
+    throw new BadRequestError({
+      message:
+        "'tokenEndpointAuthMethod' is 'none', so your OAuth app has no client secret. Leave 'clientSecret' out, or change the method."
+    });
+  }
+  const { connection, secret } = toImportedOauthVariableConnection(
+    settings,
+    {
+      accessToken: credential.accessToken,
+      refreshToken: credential.refreshToken,
+      expiresAt: credential.expiresAt,
+      clientSecret: credential.clientSecret
+    },
+    now
+  );
+  return { config: connection, secret, variableKey: null };
 };
 
 const toInlineCredential = (
@@ -166,23 +297,13 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
   });
 
   const { credential } = input;
-  if (credential.type === AgentVaultCredentialType.OAuth) {
-    throw new BadRequestError({
-      message:
-        "Services sent with a session can't use OAuth, since an OAuth service is connected by signing in from the Infisical UI. Add it to an access bundle instead."
-    });
-  }
   if ("memberProvidedFields" in credential && credential.memberProvidedFields?.length) {
     throw new BadRequestError({
       message:
         "Services sent with a session can't leave a field to members, so send every value and leave out memberProvidedFields."
     });
   }
-  assertCredentialTypeSupported(
-    definition,
-    credential.type,
-    definition.allowedCredentialTypes.filter((type) => type !== AgentVaultCredentialType.OAuth)
-  );
+  assertCredentialTypeSupported(definition, credential.type);
 
   const config = buildServiceConfig(definition, {
     serverUrl: input.serverUrl,
@@ -194,7 +315,13 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
   });
   const hostPattern = resolveServiceHostPattern(definition, config, input.hostPattern);
 
-  const { config: credentialConfig, secret } = toInlineCredential(credential);
+  const {
+    config: credentialConfig,
+    secret,
+    variableKey
+  } = credential.type === AgentVaultCredentialType.OAuth
+    ? toInlineOauthCredential(credential, new Date())
+    : { ...toInlineCredential(credential), variableKey: null };
   if (
     isNativeServiceType(definition.type) &&
     credentialConfig.type === AgentVaultCredentialType.Basic &&
@@ -225,6 +352,7 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
       surfaces: substitution.surfaces
     })),
     hookUrl: input.hook?.url ?? null,
+    oauthVariableKey: variableKey,
     secrets:
       secret || customHeaders.length || substitutions.length || input.hook
         ? {
@@ -252,8 +380,14 @@ const toConflictCandidate = (service: TPreparedInlineService): TConflictCandidat
  * same host rule as one bundle's services: an exact host may sit beside a wildcard that contains it, but two services
  * covering the same pattern would leave the proxy's choice to the order they were sent in.
  */
-export const prepareInlineServices = (inputs: TAgentVaultInlineServiceInput[]): TPreparedInlineService[] => {
-  const prepared = inputs.map((input, position) => {
+// `positions` places each service in the session's list of services, which an error also names it by. Its index among
+// the inline services otherwise.
+export const prepareInlineServices = (
+  inputs: TAgentVaultInlineServiceInput[],
+  positions?: number[]
+): TPreparedInlineService[] => {
+  const prepared = inputs.map((input, index) => {
+    const position = positions?.[index] ?? index;
     try {
       return prepareInlineService(input, position);
     } catch (error) {
@@ -269,6 +403,7 @@ export const prepareInlineServices = (inputs: TAgentVaultInlineServiceInput[]): 
     const [conflict] = findHostPatternConflicts(service.hostPattern, prepared.slice(0, index).map(toConflictCandidate));
     if (conflict) {
       throw new BadRequestError({
+        name: "ServiceHostConflict",
         message: `The service ${conflict.serviceName} and the service ${inlineServiceLabel(service)} both cover ${conflict.patterns.join(", ")}. Remove it from one of them.`
       });
     }
@@ -288,6 +423,37 @@ export const prepareInlineServices = (inputs: TAgentVaultInlineServiceInput[]): 
   });
 
   return prepared;
+};
+
+/**
+ * Puts the id of the global OAuth variable each OAuth credential names in its config. No reference row holds the
+ * variable: deleting it while the session is live is allowed, and resolve then refuses the service.
+ */
+export const bindInlineOauthVariables = (
+  prepared: TPreparedInlineService[],
+  variables: { id: string; key: string; type: string }[]
+): TPreparedInlineService[] => {
+  const byKey = new Map(variables.map((variable) => [variable.key, variable]));
+  return prepared.map((service) => {
+    const key = service.oauthVariableKey;
+    if (!key) return service;
+    const label = `Service ${inlineServiceLabel(service)}`;
+    const variable = byKey.get(key);
+    if (!variable) {
+      throw new BadRequestError({
+        message: `${label}: There's no global variable named '${key}'. Add it under Variables as an OAuth variable, or correct the name.`
+      });
+    }
+    if (variable.type !== AgentVaultVariableType.OAuth) {
+      throw new BadRequestError({
+        message: `${label}: '${key}' is a text variable, and an OAuth credential takes an OAuth variable.`
+      });
+    }
+    return {
+      ...service,
+      credentialConfig: { type: AgentVaultCredentialType.OAuth, source: "variable", variableId: variable.id }
+    };
+  });
 };
 
 /**
@@ -319,14 +485,88 @@ export const assertNoAccessBundleConflicts = (
   });
 };
 
+// A service sent inline can't cover a host a service the session lists covers, or go by that service's name.
+// One with a name of its own was already checked against the names the session sends, so only a service that goes by
+// its first host can match here.
+export const assertNoServiceConflicts = (prepared: TPreparedInlineService[], listedServices: TConflictCandidate[]) => {
+  prepared.forEach((service) => {
+    const label = inlineServiceLabel(service);
+    const [conflict] = findHostPatternConflicts(service.hostPattern, listedServices);
+    if (conflict) {
+      throw new BadRequestError({
+        message: `The service ${label} covers ${conflict.patterns.join(", ")}, which '${conflict.serviceName}', a project service in this session, already covers. Remove it from the service ${label}, or leave '${conflict.serviceName}' out.`
+      });
+    }
+    const displayName = inlineServiceDisplayName(service);
+    if (listedServices.some((candidate) => candidate.name === displayName)) {
+      throw new BadRequestError({
+        message: `The service ${label} goes by its first host, '${displayName}', which is the name of a project service in this session. Give it a name.`
+      });
+    }
+  });
+};
+
+// Resolve lets an override win over an inline service of its name, so a mint refuses the name rather than send a
+// service the session would never carry.
+export const assertNoOverrideConflicts = (prepared: TPreparedInlineService[], overrides: { name: string }[]) => {
+  if (!overrides.length) return;
+  const overrideNames = new Set(overrides.map(({ name }) => name));
+  prepared.forEach((service) => {
+    const displayName = inlineServiceDisplayName(service);
+    if (overrideNames.has(displayName)) {
+      throw new BadRequestError({
+        message: service.name
+          ? `The service ${inlineServiceLabel(service)} has the same name as '${displayName}', a service this session gets from an access bundle alongside one of its project services. Give it a different name.`
+          : `The service ${inlineServiceLabel(service)} goes by its first host, '${displayName}', which is the name of a service this session gets from an access bundle alongside one of its project services. Give it a name.`
+      });
+    }
+  });
+};
+
 export type TAgentVaultSessionInlineServiceSummaryRow = TAgentVaultInlineServiceRow;
 
-const toInlineCredentialSummary = (config: TInlineCredentialConfig): TInlineCredentialConfig => {
+export type TInlineOauthVariableKeys = ReadonlyMap<string, { id: string; key: string }>;
+
+export const inlineOauthVariableIdsOf = (rows: { credentialType: string; credentialConfig?: unknown }[]) => [
+  ...new Set(
+    rows.flatMap((row) =>
+      isVariableOauth(row) ? [(row.credentialConfig as TAgentVaultOauthVariableCredentialConfig).variableId] : []
+    )
+  )
+];
+
+const toInlineOauthCredentialSummary = (
+  config: TAgentVaultOauthVariableCredentialConfig | TAgentVaultOauthVariableConnection,
+  oauthVariables: TInlineOauthVariableKeys
+): TAgentVaultInlineOauthCredentialSummary => {
+  if ("source" in config && config.source === "variable") {
+    const variable = oauthVariables.get(config.variableId);
+    return {
+      type: AgentVaultCredentialType.OAuth,
+      source: "variable",
+      ...(variable ? { variable: { id: variable.id, key: variable.key } } : {})
+    };
+  }
+  const connection = config as TAgentVaultOauthVariableConnection;
+  return {
+    type: AgentVaultCredentialType.OAuth,
+    source: "inline",
+    issuer: connection.issuer,
+    grantedScopes: connection.grantedScopes ?? []
+  };
+};
+
+const toInlineCredentialSummary = (
+  config: TInlineCredentialConfig,
+  oauthVariables: TInlineOauthVariableKeys
+): TAgentVaultInlineCredentialSummary => {
   switch (config.type) {
     case AgentVaultCredentialType.Bearer:
       return { type: config.type, headerName: config.headerName, headerPrefix: config.headerPrefix };
     case AgentVaultCredentialType.SshKey:
       return { type: config.type, hasCertificate: Boolean(config.hasCertificate) };
+    case AgentVaultCredentialType.OAuth:
+      return toInlineOauthCredentialSummary(config, oauthVariables);
     default:
       return { type: config.type };
   }
@@ -334,7 +574,8 @@ const toInlineCredentialSummary = (config: TInlineCredentialConfig): TInlineCred
 
 // Built by hand rather than spread, so the sealed column stays off the wire even if a response schema is loosened.
 export const toInlineServiceSummary = (
-  row: TAgentVaultSessionInlineServiceSummaryRow
+  row: TAgentVaultSessionInlineServiceSummaryRow,
+  oauthVariables: TInlineOauthVariableKeys = new Map()
 ): TAgentVaultInlineServiceSummary => {
   const base = {
     id: row.id,
@@ -342,7 +583,7 @@ export const toInlineServiceSummary = (
     description: row.description ?? null,
     hook: row.hookUrl ? { url: row.hookUrl } : null
   };
-  const credential = toInlineCredentialSummary(row.credentialConfig as TInlineCredentialConfig);
+  const credential = toInlineCredentialSummary(row.credentialConfig as TInlineCredentialConfig, oauthVariables);
   // Every mint checks the credential against the type, so this means a row written some other way.
   const unsupportedCredential = () =>
     new InternalServerError({
@@ -355,7 +596,8 @@ export const toInlineServiceSummary = (
         !isCredentialOfType(credential, [
           AgentVaultCredentialType.Bearer,
           AgentVaultCredentialType.Basic,
-          AgentVaultCredentialType.Passthrough
+          AgentVaultCredentialType.Passthrough,
+          AgentVaultCredentialType.OAuth
         ])
       ) {
         throw unsupportedCredential();
@@ -368,7 +610,9 @@ export const toInlineServiceSummary = (
         substitutions: row.substitutions as TInlineSubstitution[]
       };
     case AgentVaultServiceType.Mcp:
-      if (!isCredentialOfType(credential, [AgentVaultCredentialType.Bearer])) throw unsupportedCredential();
+      if (!isCredentialOfType(credential, [AgentVaultCredentialType.Bearer, AgentVaultCredentialType.OAuth])) {
+        throw unsupportedCredential();
+      }
       return { ...base, ...typeFields, credential, customHeaders: row.customHeaders as TInlineCustomHeader[] };
     case AgentVaultServiceType.Ssh:
       if (!isCredentialOfType(credential, [AgentVaultCredentialType.Basic, AgentVaultCredentialType.SshKey])) {
@@ -381,13 +625,15 @@ export const toInlineServiceSummary = (
   }
 };
 
+// A pass-through credential seals nothing, and an OAuth variable's tokens live on the variable.
+const sealsCredential = (row: Pick<TAgentVaultInlineServiceRow, "credentialType" | "credentialConfig">) =>
+  (row.credentialConfig as TInlineCredentialConfig).type !== AgentVaultCredentialType.Passthrough &&
+  !isVariableOauth(row);
+
 // Whether the service needs a sealed value to go out, its hook's signing secret included. One that does and has none
 // had its session end.
 const needsSecrets = (row: TAgentVaultInlineServiceRow) =>
-  (row.credentialConfig as TInlineCredentialConfig).type !== AgentVaultCredentialType.Passthrough ||
-  row.customHeaders.length > 0 ||
-  row.substitutions.length > 0 ||
-  Boolean(row.hookUrl);
+  sealsCredential(row) || row.customHeaders.length > 0 || row.substitutions.length > 0 || Boolean(row.hookUrl);
 
 /**
  * The service's sealed values, opened, in the order of the names and placeholders beside them. Null once its session
@@ -398,8 +644,7 @@ export const openInlineServiceSecrets = (
   decryptJson: (encrypted: Buffer) => unknown
 ): TInlineServiceSecrets | null => {
   if (row.secretsDeletedAt || !needsSecrets(row)) return null;
-  const isPassthrough = (row.credentialConfig as TInlineCredentialConfig).type === AgentVaultCredentialType.Passthrough;
-  if (!isPassthrough && !row.encryptedCredential) return null;
+  if (sealsCredential(row) && !row.encryptedCredential) return null;
   if (row.hookUrl && !row.encryptedHookSecret) return null;
   const values = [...row.customHeaders, ...row.substitutions].map((entry) => entry.encryptedValue);
   if (values.some((value) => !value)) return null;
@@ -421,16 +666,23 @@ export const openInlineServiceSecrets = (
  * An inline service as the list an agent reads describes it, built without decrypting anything. Left out when resolve
  * would leave it out: a service whose credential, custom headers or substitutions have no stored secrets to send.
  */
-export const toInlineServiceFacts = (row: TAgentVaultInlineServiceSecretsRow): TSessionServiceFacts | null => {
+export const toInlineServiceFacts = (
+  row: TAgentVaultInlineServiceSecretsRow,
+  isOauthVariableSignedIn: (variableId: string) => boolean
+): TSessionServiceFacts | null => {
   const credentialConfig = row.credentialConfig as TInlineCredentialConfig;
   const { customHeaders, substitutions } = row;
   if (needsSecrets(row) && row.secretsDeletedAt) return null;
+  const variableId = oauthVariableIdOf(row);
+  const credentialNotConnected = Boolean(variableId && !isOauthVariableSignedIn(variableId));
 
   let credential: TSessionServiceCredential = { type: "none" };
   if (credentialConfig.type === AgentVaultCredentialType.Bearer) {
     credential = { type: "bearer", headerName: credentialConfig.headerName ?? null };
   } else if (credentialConfig.type === AgentVaultCredentialType.Basic) {
     credential = { type: "basic" };
+  } else if (credentialConfig.type === AgentVaultCredentialType.OAuth && !credentialNotConnected) {
+    credential = { type: "oauth" };
   }
 
   return {
@@ -446,22 +698,53 @@ export const toInlineServiceFacts = (row: TAgentVaultInlineServiceSecretsRow): T
     credential,
     customHeaderNames: customHeaders.map((header) => header.name),
     substitutions: substitutions.map(({ placeholder, surfaces }) => ({ placeholder, surfaces })),
-    personalValuesMissing: false,
+    personalValuesMissing: credentialNotConnected,
+    ...(credentialNotConnected ? { credentialNotConnected } : {}),
     memberProvided: false,
     memberSignsIn: false
   };
 };
 
+/**
+ * What resolve worked out for an OAuth credential before building the service: the token it refreshed, or for an OAuth
+ * variable, its token (none while it isn't connected) or that it was deleted.
+ */
+export type TInlineOauthResolution = {
+  credential?: TResolvedService["credential"];
+  removed?: boolean;
+  notConnected?: boolean;
+};
+
 export const toResolvedInlineService = (
   row: TAgentVaultInlineServiceRow,
-  secrets: TInlineServiceSecrets | null
+  secrets: TInlineServiceSecrets | null,
+  oauth: TInlineOauthResolution = {}
 ): TResolvedService | null => {
   const credentialConfig = row.credentialConfig as TInlineCredentialConfig;
   const { customHeaders, substitutions } = row;
 
   let credential: TResolvedService["credential"];
+  // The variable was deleted, or isn't connected, while the session was live. The service still goes out so the proxy
+  // can say why it refuses it; personalValuesMissing makes a proxy that predates credentialRemoved and
+  // credentialNotConnected refuse it too, rather than send it with no credential.
+  let credentialRemoved = false;
+  let credentialNotConnected = false;
+  let variableCredentialMissing = false;
   if (credentialConfig.type === AgentVaultCredentialType.Passthrough) {
     credential = { type: AgentVaultCredentialType.Passthrough };
+  } else if (isVariableOauth(row)) {
+    credentialRemoved = Boolean(oauth.removed);
+    credentialNotConnected = !credentialRemoved && Boolean(oauth.notConnected);
+    variableCredentialMissing = credentialRemoved || !oauth.credential;
+    credential = (!credentialRemoved && oauth.credential) || { type: AgentVaultCredentialType.Passthrough };
+  } else if (
+    credentialConfig.type === AgentVaultCredentialType.OAuth &&
+    secrets?.credential &&
+    "accessToken" in secrets.credential
+  ) {
+    credential =
+      oauth.credential ??
+      toResolvedOauthCredential(credentialConfig as TAgentVaultOauthConfig, secrets.credential.accessToken);
   } else if (
     credentialConfig.type === AgentVaultCredentialType.Bearer &&
     secrets?.credential &&
@@ -523,7 +806,9 @@ export const toResolvedInlineService = (
       ...substitution,
       value: secrets!.substitutions[index]
     })),
-    personalValuesMissing: false,
+    personalValuesMissing: variableCredentialMissing,
+    ...(credentialRemoved ? { credentialRemoved } : {}),
+    ...(credentialNotConnected ? { credentialNotConnected } : {}),
     memberProvided: false,
     hook: row.hookUrl ? { url: row.hookUrl, secret: secrets!.hookSecret! } : null
   };

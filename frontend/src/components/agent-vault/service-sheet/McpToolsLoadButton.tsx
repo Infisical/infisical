@@ -170,8 +170,9 @@ export const McpToolsLoadButton = ({
     <>
       <Button
         type="button"
-        variant="outline"
+        variant="text"
         size="xs"
+        className="text-muted"
         isDisabled={!trimmedUrl}
         onClick={() => changeOpen(true)}
       >

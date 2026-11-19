@@ -81,6 +81,7 @@ const setup = (
   variables: { id: string; encryptedValue: Buffer }[] = [],
   {
     inlineRows = [],
+    oauthVariables = [],
     isOwnerAdmin = true,
     revokedAt = null,
     label = null,
@@ -97,6 +98,8 @@ const setup = (
     }
   }: {
     inlineRows?: TAgentVaultInlineServiceSecretsRow[];
+    // The project's global OAuth variables.
+    oauthVariables?: { id: string; key: string; encryptedValue: Buffer | null; oauthConfig: unknown }[];
     isOwnerAdmin?: boolean;
     revokedAt?: Date | null;
     label?: string | null;
@@ -123,6 +126,9 @@ const setup = (
   const refreshServiceToken = vi.fn(refresh);
   const reportMissingScopes = vi.fn(async () => {});
   const findInlineServices = vi.fn(async () => inlineRows);
+  const findOauthForResolve = vi.fn(async ({ variableIds }: { variableIds: string[] }) =>
+    oauthVariables.filter((variable) => variableIds.includes(variable.id))
+  );
   const findResolvableServices = vi.fn(async () => rows);
   const findReachableBundles = vi.fn(async () => [{ id: "bundle-1", name: "bundle" }]);
   const sessionRow = {
@@ -149,7 +155,7 @@ const setup = (
     agentVaultResolveDAL: { findResolvableServices, findSessionSkills: async () => [], findReachableBundles },
     agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
     agentVaultServiceSubstitutionDAL: { findByServiceIds: async () => [] },
-    agentVaultVariableDAL: { findValuesForResolve: async () => variables },
+    agentVaultVariableDAL: { findValuesForResolve: async () => variables, findOauthForResolve },
     agentVaultPersonalValueDAL: { findForResolve: async () => personalRows },
     agentVaultSessionDAL: {
       findByTokenHash: findSession,
@@ -158,6 +164,10 @@ const setup = (
     agentVaultSessionInlineServiceDAL: {
       findBySessionId: findInlineServices,
       deleteSecretsBySessionId: async () => {}
+    },
+    agentVaultSessionInlineSkillDAL: {
+      findWithFilesBySessionId: async () => [],
+      deleteFilesBySessionId: async () => {}
     },
     agentVaultDelegationDAL: { identityCoversUser: async () => false },
     agentVaultSessionLogConfigDAL: {
@@ -178,7 +188,7 @@ const setup = (
           memberships: []
         }) as never
     },
-    kmsService: { createCipherPairWithDataKey },
+    kmsDataKeyService: { createCipherPairWithDataKey } as never,
     licenseService: new FakeLicenseService(),
     agentVaultAccessService,
     resourceAuthMethodService: {} as never,
@@ -194,6 +204,7 @@ const setup = (
     refreshServiceToken,
     reportMissingScopes,
     findInlineServices,
+    findOauthForResolve,
     findResolvableServices,
     findReachableBundles,
     createCipherPairWithDataKey,
@@ -580,7 +591,7 @@ describe("resolve for a session on a user's behalf", () => {
       },
       agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
       agentVaultServiceSubstitutionDAL: { findByServiceIds: async () => [] },
-      agentVaultVariableDAL: { findValuesForResolve: async () => [] },
+      agentVaultVariableDAL: { findValuesForResolve: async () => [], findOauthForResolve: async () => [] },
       agentVaultPersonalValueDAL: { findForResolve: findPersonalValues },
       agentVaultSessionDAL: {
         findByTokenHash: async () =>
@@ -596,6 +607,10 @@ describe("resolve for a session on a user's behalf", () => {
           }) as never
       } as never,
       agentVaultSessionInlineServiceDAL: { findBySessionId: async () => [], deleteSecretsBySessionId: async () => {} },
+      agentVaultSessionInlineSkillDAL: {
+        findWithFilesBySessionId: async () => [],
+        deleteFilesBySessionId: async () => {}
+      },
       agentVaultDelegationDAL: { identityCoversUser: async () => delegationCoversUser },
       agentVaultSessionLogConfigDAL: {
         findOne: async () => sessionLogConfig,
@@ -631,10 +646,10 @@ describe("resolve for a session on a user's behalf", () => {
           } as never;
         }
       },
-      kmsService: {
+      kmsDataKeyService: {
         createCipherPairWithDataKey: async () =>
           ({ decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob }) as never
-      },
+      } as never,
       licenseService: new FakeLicenseService(),
       agentVaultAccessService: agentVaultAccess(),
       resourceAuthMethodService: {} as never,
@@ -1142,5 +1157,271 @@ describe("resolve for a service whose members sign in", () => {
     const { service, refreshServiceToken } = setup(async () => refreshed, [memberRow]);
     await service.refreshCredential({ ...refreshArgs, hostPattern: "mcp.linear.app" });
     expect(refreshServiceToken.mock.calls[0][0].owner).toEqual({ userId: "user-1" });
+  });
+});
+
+describe("OAuth variables on resolve", () => {
+  const VARIABLE_ID = "77777777-7777-4777-8777-777777777777";
+  const resolve = (service: ReturnType<typeof setup>["service"]) =>
+    service.resolveSession({ proxyId: "proxy-1", orgId: "org-1", sessionToken: "token", hasSessionLogKey: false });
+  const noRefresh = async () => {
+    throw new Error("nothing here needs a refresh");
+  };
+  const variableConfig = { type: AgentVaultCredentialType.OAuth, source: "variable", variableId: VARIABLE_ID };
+
+  const oauthVariable = ({ expiresAt = null as string | null, connected = true } = {}) => ({
+    id: VARIABLE_ID,
+    key: "GDRIVE_U123",
+    // The test's decryptor hands the sealed bytes back as they are.
+    encryptedValue: connected ? Buffer.from(JSON.stringify({ accessToken: "variable-access" })) : null,
+    oauthConfig: {
+      settings: {},
+      connection: connected ? { status: AgentVaultOauthStatus.Connected, expiresAt } : null
+    }
+  });
+
+  const variableService = (overrides: Partial<TResolveServiceRow> = {}) =>
+    serviceRow({
+      name: "gdrive",
+      type: AgentVaultServiceType.Http,
+      hostPattern: "www.googleapis.com",
+      config: {},
+      credentialConfig: variableConfig,
+      encryptedCredential: null,
+      ...overrides
+    });
+
+  const inlineOauthRow = (
+    overrides: Partial<TAgentVaultInlineServiceSecretsRow> = {}
+  ): TAgentVaultInlineServiceSecretsRow => ({
+    id: "inline-1",
+    projectId: PROJECT_ID,
+    sessionId: "session-1",
+    position: 0,
+    name: "inline-gdrive",
+    description: null,
+    type: AgentVaultServiceType.Http,
+    config: {},
+    hostPattern: "www.googleapis.com",
+    allowedMethods: null,
+    allowedPathPrefixes: null,
+    credentialType: AgentVaultCredentialType.OAuth,
+    credentialConfig: variableConfig,
+    allowedTools: null,
+    memberProvidedFields: null,
+    customHeaders: [],
+    substitutions: [],
+    encryptedCredential: null,
+    secretsDeletedAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides
+  });
+
+  test("a session whose only service uses an OAuth variable sends the variable's token", async () => {
+    const { service, createCipherPairWithDataKey } = setup(noRefresh, [variableService()], [], {
+      oauthVariables: [oauthVariable()]
+    });
+
+    const { services } = await resolve(service);
+
+    expect(services[0]).toMatchObject({
+      credential: { type: AgentVaultCredentialType.Bearer, value: "variable-access", source: "oauth" },
+      personalValuesMissing: false
+    });
+    expect(services[0].credentialRemoved).toBeUndefined();
+    expect(createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
+  });
+
+  test("two services on one variable refresh it once, and both send the new token", async () => {
+    const { service, refreshServiceToken } = setup(
+      async () => refreshed,
+      [variableService(), variableService({ id: "service-2", name: "gmail", hostPattern: "gmail.googleapis.com" })],
+      [],
+      { oauthVariables: [oauthVariable({ expiresAt: new Date(Date.now() + 10_000).toISOString() })] }
+    );
+
+    const { services } = await resolve(service);
+
+    expect(refreshServiceToken).toHaveBeenCalledTimes(1);
+    expect(refreshServiceToken.mock.calls[0][0]).toMatchObject({
+      serviceId: SERVICE_ID,
+      variableId: VARIABLE_ID,
+      destination: { hostPattern: "www.googleapis.com", serverUrl: null }
+    });
+    expect(services.map((resolved) => (resolved.credential as { value: string }).value)).toEqual([
+      "refreshed-access",
+      "refreshed-access"
+    ]);
+  });
+
+  test("a refresh through a service that moved meanwhile goes through the next service using the variable", async () => {
+    let calls = 0;
+    const { service, refreshServiceToken } = setup(
+      async () => {
+        calls += 1;
+        if (calls === 1) throw new ConflictError({ message: AGENT_VAULT_SERVICE_MOVED_MESSAGE });
+        return refreshed;
+      },
+      [variableService(), variableService({ id: "service-2", name: "gmail", hostPattern: "gmail.googleapis.com" })],
+      [],
+      { oauthVariables: [oauthVariable({ expiresAt: new Date(Date.now() + 10_000).toISOString() })] }
+    );
+
+    const { services } = await resolve(service);
+
+    expect(refreshServiceToken.mock.calls.map(([dto]) => dto.serviceId)).toEqual([SERVICE_ID, "service-2"]);
+    expect((services[1].credential as { value: string }).value).toBe("refreshed-access");
+    // The moved service's snapshot still names its old host, so it keeps the token it had until the next poll.
+    const moved = services[0].credential as { value?: string };
+    expect(moved.value).toBeDefined();
+    expect(moved.value).not.toBe("refreshed-access");
+  });
+
+  test("a variable that isn't connected is flagged by name, and as missing values for older proxies", async () => {
+    const { service } = setup(noRefresh, [variableService()], [], {
+      oauthVariables: [oauthVariable({ connected: false })]
+    });
+
+    const { services } = await resolve(service);
+
+    expect(services[0]).toMatchObject({
+      credential: { type: AgentVaultCredentialType.Passthrough },
+      personalValuesMissing: true,
+      credentialNotConnected: true
+    });
+    expect(services[0].credentialRemoved).toBeUndefined();
+  });
+
+  test("a session's own service whose variable isn't connected is flagged, but not as removed", async () => {
+    const { service } = setup(noRefresh, [], [], {
+      inlineRows: [inlineOauthRow()],
+      oauthVariables: [oauthVariable({ connected: false })]
+    });
+
+    const { services } = await resolve(service);
+
+    expect(services[0]).toMatchObject({
+      credential: { type: AgentVaultCredentialType.Passthrough },
+      personalValuesMissing: true,
+      credentialNotConnected: true
+    });
+    expect(services[0].credentialRemoved).toBeUndefined();
+  });
+
+  test("the services list says a service whose variable isn't connected is not ready, bundle and session alike", async () => {
+    const { service } = setup(noRefresh, [variableService()], [], {
+      inlineRows: [inlineOauthRow()],
+      oauthVariables: [oauthVariable({ connected: false })]
+    });
+
+    const listed = await service.getSessionServices({ sessionToken: "token" });
+
+    expect(listed.services.map(({ name, status }) => ({ name, status }))).toEqual([
+      { name: "gdrive", status: "needs-personal-values" },
+      { name: "inline-gdrive", status: "needs-personal-values" }
+    ]);
+    expect(listed.services[0].howToUse).toMatch(/isn't connected in Agent Vault/);
+  });
+
+  test("the services list says a service whose variable is signed in is ready", async () => {
+    const { service } = setup(noRefresh, [variableService()], [], { oauthVariables: [oauthVariable()] });
+
+    const listed = await service.getSessionServices({ sessionToken: "token" });
+
+    expect(listed.services[0]).toMatchObject({ status: "ready", credential: { type: "oauth" } });
+  });
+
+  test("a session's own service sends the variable's token", async () => {
+    const { service } = setup(noRefresh, [], [], {
+      inlineRows: [inlineOauthRow()],
+      oauthVariables: [oauthVariable()]
+    });
+
+    const { services } = await resolve(service);
+
+    expect(services[0]).toMatchObject({
+      name: "inline-gdrive",
+      credential: { type: AgentVaultCredentialType.Bearer, value: "variable-access", source: "oauth" },
+      personalValuesMissing: false
+    });
+  });
+
+  test("a session's own service whose variable was deleted is flagged, so every proxy refuses it", async () => {
+    const { service } = setup(noRefresh, [], [], { inlineRows: [inlineOauthRow()] });
+
+    const { services } = await resolve(service);
+
+    expect(services[0]).toMatchObject({
+      credential: { type: AgentVaultCredentialType.Passthrough },
+      personalValuesMissing: true,
+      credentialRemoved: true
+    });
+    expect(services[0].credentialNotConnected).toBeUndefined();
+  });
+
+  test("tokens sent with the session go out, refreshed in place when they are about to expire", async () => {
+    const tokens = inlineOauthRow({
+      credentialConfig: {
+        type: AgentVaultCredentialType.OAuth,
+        status: AgentVaultOauthStatus.Connected,
+        expiresAt: new Date(Date.now() + 10_000).toISOString()
+      },
+      encryptedCredential: Buffer.from(JSON.stringify({ accessToken: "inline-access", refreshToken: "inline-refresh" }))
+    });
+    const { service, refreshServiceToken } = setup(async () => refreshed, [], [], { inlineRows: [tokens] });
+
+    const { services } = await resolve(service);
+
+    expect(refreshServiceToken.mock.calls[0][0]).toMatchObject({ serviceId: "inline-1", inline: true });
+    expect((services[0].credential as { value: string }).value).toBe("refreshed-access");
+  });
+
+  test("tokens sent with the session go out as they are when they aren't about to expire", async () => {
+    const tokens = inlineOauthRow({
+      credentialConfig: { type: AgentVaultCredentialType.OAuth, status: AgentVaultOauthStatus.Connected },
+      encryptedCredential: Buffer.from(JSON.stringify({ accessToken: "inline-access" }))
+    });
+    const { service } = setup(noRefresh, [], [], { inlineRows: [tokens] });
+
+    const { services } = await resolve(service);
+
+    expect(services[0].credential).toMatchObject({ value: "inline-access", source: "oauth" });
+  });
+
+  test("a refresh after a rejection reaches the variable, or the tokens sent with the session", async () => {
+    const bundle = setup(async () => refreshed, [variableService()]);
+    await bundle.service.refreshCredential({ ...refreshArgs, hostPattern: "www.googleapis.com" });
+    expect(bundle.refreshServiceToken.mock.calls[0][0]).toMatchObject({ variableId: VARIABLE_ID });
+
+    const tokens = inlineOauthRow({
+      credentialConfig: { type: AgentVaultCredentialType.OAuth, status: AgentVaultOauthStatus.Connected },
+      encryptedCredential: Buffer.from(JSON.stringify({ accessToken: "inline-access" }))
+    });
+    const inline = setup(async () => refreshed, [], [], { inlineRows: [tokens] });
+    await inline.service.refreshCredential({
+      ...refreshArgs,
+      serviceId: "inline-1",
+      hostPattern: "www.googleapis.com"
+    });
+    expect(inline.refreshServiceToken.mock.calls[0][0]).toMatchObject({ serviceId: "inline-1", inline: true });
+
+    await inline.service.reportMissingScopes({
+      ...refreshArgs,
+      serviceId: "inline-1",
+      hostPattern: "www.googleapis.com",
+      requiredScopes: ["drive"]
+    });
+    expect(inline.reportMissingScopes).toHaveBeenCalledWith(expect.objectContaining({ inline: true }));
+  });
+
+  test("a session's own service is not found for a refresh once its owner can't send them", async () => {
+    const { service } = setup(async () => refreshed, [], [], {
+      inlineRows: [inlineOauthRow()],
+      isOwnerAdmin: false
+    });
+    await expect(
+      service.refreshCredential({ ...refreshArgs, serviceId: "inline-1", hostPattern: "www.googleapis.com" })
+    ).rejects.toThrow(NotFoundError);
   });
 });

@@ -62,6 +62,12 @@ import {
   TAgentVaultSessionInlineServices,
   TAgentVaultSessionInlineServicesInsert,
   TAgentVaultSessionInlineServicesUpdate,
+  TAgentVaultSessionServices,
+  TAgentVaultSessionServicesInsert,
+  TAgentVaultSessionServicesUpdate,
+  TAgentVaultSessionSkills,
+  TAgentVaultSessionSkillsInsert,
+  TAgentVaultSessionSkillsUpdate,
   TAgentVaultSessionLogConfigs,
   TAgentVaultSessionLogConfigsInsert,
   TAgentVaultSessionLogConfigsUpdate,
@@ -681,6 +687,9 @@ import {
   TSecretScanningDataSources,
   TSecretScanningDataSourcesInsert,
   TSecretScanningDataSourcesUpdate,
+  TSecretScanningFindingLocations,
+  TSecretScanningFindingLocationsInsert,
+  TSecretScanningFindingLocationsUpdate,
   TSecretScanningFindings,
   TSecretScanningFindingsInsert,
   TSecretScanningFindingsUpdate,
@@ -1800,6 +1809,11 @@ declare module "knex/types/tables" {
       TSecretScanningFindingsInsert,
       TSecretScanningFindingsUpdate
     >;
+    [TableName.SecretScanningFindingLocation]: KnexOriginal.CompositeTableType<
+      TSecretScanningFindingLocations,
+      TSecretScanningFindingLocationsInsert,
+      TSecretScanningFindingLocationsUpdate
+    >;
     [TableName.SecretScanningConfig]: KnexOriginal.CompositeTableType<
       TSecretScanningConfigs,
       TSecretScanningConfigsInsert,
@@ -1931,6 +1945,16 @@ declare module "knex/types/tables" {
       TAgentVaultSessionInlineServices,
       TAgentVaultSessionInlineServicesInsert,
       TAgentVaultSessionInlineServicesUpdate
+    >;
+    [TableName.AgentVaultSessionService]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessionServices,
+      TAgentVaultSessionServicesInsert,
+      TAgentVaultSessionServicesUpdate
+    >;
+    [TableName.AgentVaultSessionSkill]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessionSkills,
+      TAgentVaultSessionSkillsInsert,
+      TAgentVaultSessionSkillsUpdate
     >;
     [TableName.AgentVaultDelegation]: KnexOriginal.CompositeTableType<
       TAgentVaultDelegations,

@@ -1,6 +1,7 @@
 import { ReactNode, useMemo, useState } from "react";
 import { SiPython, SiTypescript } from "react-icons/si";
 import { Link } from "@tanstack/react-router";
+import axios from "axios";
 import {
   BoxIcon,
   ExternalLinkIcon,
@@ -46,6 +47,7 @@ import {
 } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
+  CREATE_SESSION_HANDLED_ERROR_CODES,
   useCreateAgentVaultSession,
   useListAgentVaultAccessBundles,
   useListAgentVaultProxies
@@ -66,6 +68,7 @@ import {
 } from "./SandboxPlatformPanel";
 import { hasScriptLanguages, ScriptLanguage } from "./sandboxSnippets";
 import { formatSessionExpiry } from "./SessionExpiry";
+import { sessionFieldErrorOf } from "./sessionFormErrors";
 import {
   SessionMachineIdentityField,
   TSnippetIdentity,
@@ -216,19 +219,44 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
     store(TAB_STORAGE_KEY, value);
   };
 
-  const onCreateNowSubmit = async ({ label, metadata, ttl }: TDashboardSessionInput) => {
-    if (!accessBundle) return;
+  const onCreateNowSubmit = async ({
+    label,
+    metadata,
+    ttl,
+    services,
+    skills
+  }: TDashboardSessionInput) => {
     try {
       const session = await createSession.mutateAsync({
-        accessBundle: accessBundle.name,
+        accessBundle: accessBundle?.name,
+        services: services.length ? services : undefined,
+        skills: skills.length ? skills : undefined,
         ttl,
         label,
         metadata
       });
       createNotification({ text: "Session created", type: "success" });
       setCreatedSession(session);
-    } catch {
-      // A failed request returns a 4xx that the global request handler surfaces as a toast
+      return undefined;
+    } catch (error) {
+      // The global request handler toasts every failure but these, which this dialog reports itself.
+      const serverResponse = axios.isAxiosError(error)
+        ? (error.response?.data as { error?: unknown; message?: unknown } | undefined)
+        : undefined;
+      if (
+        typeof serverResponse?.error !== "string" ||
+        !CREATE_SESSION_HANDLED_ERROR_CODES.includes(serverResponse.error)
+      ) {
+        return undefined;
+      }
+      const fieldErrors = sessionFieldErrorOf(serverResponse, { services, skills });
+      if (fieldErrors) return fieldErrors;
+      createNotification({
+        title: "Bad Request",
+        text: String(serverResponse.message),
+        type: "error"
+      });
+      return undefined;
     }
   };
 
@@ -283,7 +311,11 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
           // The created session keeps the bundle it was made with.
           isDisabled={isLocked}
         />
-        <FieldDescription>The services an agent can reach with this session.</FieldDescription>
+        <FieldDescription>
+          {isCreateNow
+            ? "Optional when you pick services or skills below."
+            : "The services an agent can reach with this session."}
+        </FieldDescription>
       </FieldContent>
     </Field>
   );
@@ -448,8 +480,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
           <DialogHeader>
             <DialogTitle>Create Session</DialogTitle>
             <DialogDescription>
-              An agent running with this session can only reach the hosts in the session&apos;s
-              associated access bundle.
+              An agent running with this session can only reach the services it was created with.
             </DialogDescription>
           </DialogHeader>
           <DialogBody className="grid grid-cols-2 gap-3 md:grid-cols-3">
@@ -559,7 +590,6 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
                 type="submit"
                 form={CREATE_NOW_FORM_ID}
                 variant="av"
-                isDisabled={!accessBundle}
                 isPending={createSession.isPending}
               >
                 Create Session

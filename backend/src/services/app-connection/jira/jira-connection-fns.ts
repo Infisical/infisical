@@ -1,6 +1,7 @@
 import { AxiosError, AxiosRequestConfig, isAxiosError } from "axios";
 import RE2 from "re2";
 
+import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -179,7 +180,13 @@ export const jiraRequest = async <T>(
 export const isJiraNotFoundError = (error: unknown) => isAxiosError(error) && error.response?.status === 404;
 
 export const getJiraErrorMessage = (error: unknown) => {
-  if (error instanceof BadRequestError || error instanceof NotFoundError) return error.message;
+  if (
+    error instanceof BadRequestError ||
+    error instanceof RuleViolationError ||
+    error instanceof NotFoundError ||
+    error instanceof EntityNotFoundError
+  )
+    return error.message;
 
   if (isAxiosError(error)) {
     if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {
@@ -231,12 +238,12 @@ export const validateJiraConnectionCredentials = async (
       { gatewayV2Service }
     );
   } catch (error) {
-    if (error instanceof NotFoundError) throw error;
+    if (error instanceof NotFoundError || error instanceof EntityNotFoundError) throw error;
 
     logJiraError(error, "validate-credentials");
 
     // A failure past the gateway arrives as a bare message, such as "socket hang up"
-    if (error instanceof BadRequestError) {
+    if (error instanceof BadRequestError || error instanceof RuleViolationError) {
       throw new BadRequestError({
         message: `Unable to validate connection: ${config.gatewayId ? "couldn't reach Jira through the gateway: " : ""}${error.message}`
       });

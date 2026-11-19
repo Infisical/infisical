@@ -1300,7 +1300,8 @@ export const PROJECTS = {
     notBeforeFrom: "Filter certificates issued on or after this date.",
     notBeforeTo: "Filter certificates issued on or before this date.",
     sortBy: "Column to sort by (e.g. 'notAfter', 'notBefore', 'commonName').",
-    sortOrder: "Sort direction: 'asc' or 'desc'."
+    sortOrder: "Sort direction: 'asc' or 'desc'.",
+    applicationIds: "Filter to certificates issued through any of the supplied Applications."
   },
   LIST_PKI_SUBSCRIBERS: {
     projectId: "The ID of the project to list PKI subscribers for."
@@ -2508,6 +2509,20 @@ export const CERTIFICATES = {
     deletedByActorId: "The ID of the user or machine identity that deleted this certificate.",
     deletedByActorName: "The name of the user or machine identity that deleted this certificate, if it still exists."
   },
+  SEARCH: {
+    search: "Search by common name, SAN, serial number, or certificate ID.",
+    createdAtFrom: "Filter certificates created on or after this date.",
+    createdAtTo: "Filter certificates created on or before this date.",
+    status:
+      "List of statuses to filter by, for example ['active', 'expired']. Allowed values: active, renewed, expired, revoked, deleted. Returns exactly the certificates whose status in the response is one of these values. If you leave it out, every certificate except deleted ones is returned.",
+    keyAlgorithm: "List of key algorithms to filter by, for example ['RSA_2048', 'EC_prime256v1'].",
+    source:
+      "List of certificate sources to filter by, for example ['issued']. Allowed values: issued, discovered, imported.",
+    sortBy:
+      "Field to sort by: 'notAfter', 'notBefore', 'createdAt', 'commonName', 'keyAlgorithm' or 'status'. Sorting by status orders the statuses returned in the response alphabetically: active, deleted, expired, renewed, revoked in ascending order.",
+    statusRes:
+      "The certificate's current state, worked out once when the search starts, so every certificate in the response is evaluated at the same moment. 'deleted' if the certificate was deleted, otherwise 'revoked' if it was revoked, 'expired' if its validity period has ended, 'renewed' if a newer certificate has replaced it, and 'active' otherwise. Getting a certificate by ID returns its stored status instead, which stays 'active' after the certificate expires or is renewed."
+  },
   RENEW: {
     id: "The ID of the certificate to renew.",
     renewalKeySource:
@@ -2657,7 +2672,8 @@ export const ALERTING = {
       "The settings of the alert's event, for example `alertBefore` on an expiry event. The accepted fields depend on `eventType`.",
     enabled: "Whether the alert is enabled. Defaults to true.",
     projectId: "The ID of the project to create the alert in. Optional when the resource belongs to a project.",
-    channels: "The channels the alert notifies. Each is email, Slack, webhook, or PagerDuty."
+    channels:
+      "The channels the alert notifies. `channelType` is `email`, `slack-app` (posts through a Slack integration; set `config.workflowIntegrationId` and `config.channels`, 1 to 20 `{ id, name }` Slack channels), `slack` (incoming webhook), `webhook`, or `pagerduty`."
   },
   TEST_CHANNEL: {
     resourceType: "The type of resource the alert watches.",
@@ -3384,6 +3400,11 @@ export const AppConnections = {
       username: "The username of the Jenkins user that owns the API token.",
       apiToken: "The Jenkins API token used to authenticate."
     },
+    COOLIFY: {
+      instanceUrl:
+        "The Coolify instance URL to connect to: 'https://app.coolify.io' for Coolify Cloud, or the URL of a self-hosted instance (e.g., 'https://coolify.example.com').",
+      apiToken: "The Coolify API token used to authenticate."
+    },
     QOVERY: {
       accessToken: "The project access token used to authenticate with Qovery."
     },
@@ -3649,7 +3670,7 @@ export const SecretSyncs = {
     },
     AZURE_APP_CONFIGURATION: {
       configurationUrl:
-        "The URL of the Azure App Configuration to sync secrets to. Example: https://example.azconfig.io/",
+        "The URL of the Azure App Configuration to sync secrets to. Example: https://example.azconfig.io",
       label: "An optional label to assign to secrets created in Azure App Configuration.",
       tenantId: "The Tenant ID to use to connect with Azure Client Secrets.",
       clientId: "The Client ID to use to connect with Azure Client Secrets.",
@@ -3803,13 +3824,18 @@ export const SecretSyncs = {
     CLOUDFLARE_WORKERS: {
       scriptId: "The ID of the Cloudflare Workers script to sync secrets to.",
       variableType:
-        "The type of variable to sync secrets as: secret_text (default), plain_text or json. If a secret already exists on the Worker as a different type, the sync fails and nothing is changed, except that with syncNonSecretBindings on, a secret_text sync updates existing plaintext and JSON variables as they are. Syncs created before this option existed have no type and skip those secrets instead. Infisical only deletes variables of this type."
+        "The type of variable to sync secrets as: secret_text (default), plain_text or json. If a secret already exists on the Worker as a different type, the sync fails and nothing is changed, except that with syncNonSecretBindings on, a secret_text sync updates existing plaintext and JSON variables as they are. Syncs created before this option existed have no type and skip those secrets instead. Infisical only deletes variables of this type.",
+      previewName:
+        "The name of a Preview on the Worker to sync secrets to. Omit it to sync to production. The Preview must already have a deployment, and each sync creates a new deployment of it."
     },
     CLOUDFLARE_SECRETS_STORE: {
       storeId: "The ID of the Cloudflare Secrets Store to sync secrets to.",
       storeName: "An optional display name for the Cloudflare Secrets Store.",
       scopes:
         "The Cloudflare services allowed to use the synced secrets. Applied every time a secret is written, so it replaces scopes set in Cloudflare."
+    },
+    CONVEX: {
+      deploymentName: "The name of the Convex deployment to sync secrets to, such as happy-otter-123."
     },
     ZABBIX: {
       scope: "The Zabbix scope that secrets should be synced to.",
@@ -3902,6 +3928,13 @@ export const SecretSyncs = {
       scope:
         "The Jenkins credential store to sync secrets to. Either 'global' for the system store or 'folder' for a folder's store.",
       folderPath: "The full name of the Jenkins folder to sync secrets to (e.g., 'team/app')."
+    },
+    COOLIFY: {
+      resourceType: "The type of Coolify resource to sync secrets to. Either 'application', 'service' or 'database'.",
+      resourceId: "The UUID of the Coolify resource to sync secrets to.",
+      resourceName: "The name of the Coolify resource to sync secrets to.",
+      scope:
+        "The application variables to sync secrets to: 'production', or 'preview' for the variables Coolify gives preview deployments. Services and databases only have 'production'. Defaults to 'production'."
     }
   }
 };
@@ -4328,10 +4361,18 @@ export const SecretScanningFindings = {
     status: "Only return findings with this status.",
     dataSourceId: "Only return findings detected in this Data Source.",
     resourceId: "Only return findings detected in this resource, such as a repository or project.",
-    orderBy: "The field to sort findings by.",
+    scanId: "Only return findings this scan found in a new location.",
+    orderBy: "The field to sort findings by. Sorting by `author` is deprecated and uses the first location's author.",
     orderDirection: "The direction to sort findings in.",
     offset: "The number of findings to skip, for pagination.",
     limit: "The maximum number of findings to return, from 1 to 100."
+  },
+  DEPRECATED_FIRST_LOCATION:
+    "Deprecated: describes only the first place the secret was found. Use the finding's locations instead.",
+  LIST_LOCATIONS: {
+    findingId: "The ID of the Secret Scanning Finding to list the locations of.",
+    offset: "The number of locations to skip, for pagination.",
+    limit: "The maximum number of locations to return, from 1 to 100."
   },
   UPDATE: {
     findingId: "The ID of the Secret Scanning Finding to update.",
@@ -4817,8 +4858,7 @@ export const AGENT_VAULT = {
     addServiceIds:
       "The IDs of the services to add, all in the same Agent Vault project. If any is missing or conflicts with a service in the bundle, none are added.",
     addedServices: "The services the request added to the access bundle.",
-    addSkippedServices:
-      "The services the request named that were already in the access bundle. They're left as they are.",
+    addSkippedServices: "The services in the request that were already in the access bundle. They're left as they are.",
     name: "The name of the service, unique in the Agent Vault project.",
     accessBundles: "The access bundles the service is in, by name. A member sees only the ones they have been granted.",
     accessBundleId: "The ID of the access bundle.",
@@ -4833,6 +4873,10 @@ export const AGENT_VAULT = {
       "true lists only the services that still need your personal values; false leaves them out. Leave it out to list both.",
     granted:
       "true lists only services in access bundles granted to you, leaving out ones an admin reaches only through their role.",
+    onBehalfOfUserId:
+      "List the services a session on behalf of this user could use: those in an access bundle granted to both the user and your machine identity. accessBundles then lists those shared bundles, and requiresSetup and personalValues refer to the user's personal values, which say only whether each value is set. Only a machine identity whose delegation covers the user can do this, and granted can't be combined with it. Set this or onBehalfOfUserEmail, not both.",
+    onBehalfOfUserEmail:
+      "Like onBehalfOfUserId, naming the user by email address instead. Set this or onBehalfOfUserId, not both.",
     orderBy: "What to sort services by: name, type, or createdAt.",
     orderDirection: "The sort direction, asc or desc.",
     description:
@@ -4900,18 +4944,18 @@ export const AGENT_VAULT = {
       "The MCP server's URL, such as `https://mcp.example.com/mcp`. Must use `https`, with no username, password, query string or fragment.",
     transport: "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport.",
     mcpCredential:
-      "The credential the proxy attaches to requests to the MCP server, a bearer token. To use OAuth instead, connect the service in the Infisical UI.",
+      "The credential the proxy attaches to requests to the MCP server: a bearer token, or OAuth through an OAuth variable (`variable`). To use the service's own OAuth sign-in instead, connect the service in the Infisical UI.",
     authorizationId:
       "The ID of a completed OAuth authorization for this service's server URL, started by the same user. Each authorization can be used once.",
     updateAuthorizationId:
       "The ID of a completed OAuth authorization, to reauthorize the service or switch it to OAuth. To keep the stored tokens, leave `credential` out.",
     oauthStatus:
-      "Whether the OAuth connection works: `connected`, `needs-reauthorization` (the tokens can no longer be refreshed), or `needs-additional-scopes` (the MCP server asked for scopes the connection lacks).",
+      "Whether the OAuth connection works: `connected`, `needs-reauthorization` (the tokens can no longer be refreshed), or `needs-additional-scopes` (the server asked for scopes the connection lacks).",
     oauthSummaryStatus:
-      "Whether the OAuth connection works: `connected`, `needs-reauthorization` (the tokens can no longer be refreshed), or `needs-additional-scopes` (the MCP server asked for scopes the connection lacks). Absent when each member signs in for themselves.",
+      "Whether the OAuth connection works: `connected`, `needs-reauthorization` (the tokens can no longer be refreshed), or `needs-additional-scopes` (the server asked for scopes the connection lacks). Absent when each member signs in for themselves.",
     oauthIssuer: "The OAuth authorization server that issued the tokens.",
     oauthGrantedScopes: "The scopes the authorization server granted.",
-    oauthRequiredScopes: "Scopes the MCP server asked for that the connection lacks. Reauthorize to request them.",
+    oauthRequiredScopes: "Scopes the server asked for that the connection lacks. Reauthorize to request them.",
     oauthExpiresAt:
       "When the current access token expires, or null if the server didn't say. Not returned to Agent Vault members.",
     oauthAuthorizedAt: "When the connection was last authorized. Not returned to Agent Vault members.",
@@ -4997,7 +5041,13 @@ export const AGENT_VAULT = {
       "With the sign-in left to members: send `dynamic` to stop using your own OAuth app and have each member's sign-in register its own client. Removes every member's connection.",
     oauthRegistrationMode:
       "With the sign-in left to members: `manual` when every member signs in with your own OAuth app, `dynamic` when each sign-in registers its own client.",
-    oauthSummaryClientId: "With the sign-in left to members and your own OAuth app: its client ID."
+    oauthSummaryClientId: "With the sign-in left to members and your own OAuth app: its client ID.",
+    oauthVariable:
+      "The key of a global OAuth variable whose sign-in the service sends, such as `GDRIVE_U123`. Takes `read-value` on variables. Works for HTTP and MCP services, and can't be combined with `authorizationId` or `memberProvidedFields`. Every service using the variable shares its tokens, so a refresh or a revoked sign-in affects them all.",
+    oauthSource:
+      "Where the tokens come from: `service` (the service's own sign-in), `member` (each member's) or `variable` (an OAuth variable's).",
+    oauthVariableRead:
+      "The OAuth variable whose sign-in the service sends. Present only when `source` is `variable` and you can read variables."
   },
   PERSONAL_VALUE: {
     credentialType:
@@ -5012,11 +5062,15 @@ export const AGENT_VAULT = {
     isSet: "Whether you have set this value.",
     updatedAt: "When this value last changed, or null if you haven't set it.",
     variableReferences: "Your personal variables that this value uses.",
+    serviceVariableReferences:
+      "Your personal variables that this value uses. Left out when a machine identity lists services on a user's behalf.",
     values:
       "The values to set, at most one per field the service leaves to its members. A field you leave out keeps its saved value, so after a field becomes member provided you only need to send that one.",
     value: `The value. Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to your personal variables, written as \`{{KEY}}\`. Never returned once saved.`,
     oauth:
       "For the credential-value field of a service that leaves its OAuth sign-in to members: your connection's status, or null if you haven't connected. Null for every other field.",
+    serviceOauth:
+      "For the credential-value field of a service that leaves its OAuth sign-in to members: your connection's status, or null if you haven't connected. Null for every other field, and left out when a machine identity lists services on a user's behalf.",
     oauthStatus:
       "`connected`, `needs-reauthorization` (your login is no longer accepted, so connect again; until then your sessions can't use the service), or `needs-additional-scopes` (the MCP server asked for scopes your connection lacks; connect again to grant them).",
     oauthRequiredScopes: "Scopes the MCP server asked for that your connection lacks. Connect again to grant them.",
@@ -5072,7 +5126,80 @@ export const AGENT_VAULT = {
       "global creates a variable services can use, which needs the admin role. personal creates one of your own, which only your personal values can use.",
     key: "The name values use to refer to the variable, as `{{KEY}}`. Starts with a letter and uses only upper case letters, numbers and underscores.",
     value: "The value the proxy puts in place of each `{{KEY}}`.",
-    updateValue: "The value the proxy puts in place of each `{{KEY}}`. Omit to keep the stored value.",
+    updateValue:
+      "The value the proxy puts in place of each `{{KEY}}`. Omit to keep the stored value. On an OAuth variable only `null` is accepted, which disconnects it: its tokens and client secret are deleted until the next sign-in or import.",
+    type: "`text` for a value services put in place of `{{KEY}}`, or `oauth` for a sign-in whose access token a service sends as its credential. Fixed when the variable is created.",
+    createType:
+      "`text` (the default) for a value services put in place of `{{KEY}}`. `oauth` for a sign-in with an OAuth provider, which needs `oauth`. OAuth variables are always global and count toward the project's limit of 500 global variables.",
+    typeFilter: "Return only the variables of this type.",
+    createValue:
+      "The value the proxy puts in place of each `{{KEY}}`. Required for a `text` variable; leave it out for an `oauth` one.",
+    oauthSettings:
+      "The OAuth provider. Send `serverUrl` for Infisical to discover its endpoints at each sign-in, or `authorizationEndpoint`, `tokenEndpoint`, `clientId` and `scopes` to set it up by hand.",
+    oauthSettingsUpdate:
+      "The OAuth settings to change. Send `null` to clear a setting. Changing any setting but `scopes`, `clientName` or `redirectUri` disconnects the variable, since its tokens belong to the old provider or client.",
+    oauth: "The variable's OAuth provider and connection. Null for a text variable. Tokens are never returned.",
+    oauthStatus:
+      "`not-connected` until a sign-in or token import, or after an edit disconnected it. Then `connected`, `needs-reauthorization` once the provider stopped accepting the sign-in, or `needs-additional-scopes` when a service needs scopes the sign-in didn't grant.",
+    oauthServerUrl:
+      "An https URL Infisical discovers the provider's endpoints from at each sign-in, such as an MCP server's URL or the provider's issuer URL.",
+    oauthIssuer:
+      "The provider's issuer, checked against the `iss` of each sign-in. Only with endpoints set up by hand; defaults to the origin of `authorizationEndpoint`.",
+    oauthAuthorizationEndpoint: "The provider's authorization endpoint, an https URL. Send it with `tokenEndpoint`.",
+    oauthTokenEndpoint: "The provider's token endpoint, an https URL. Send it with `authorizationEndpoint`.",
+    oauthClientId:
+      "The client ID of your own OAuth app. Required with endpoints set up by hand. Leave it out to register a new client at each sign-in, for a provider that supports dynamic client registration.",
+    oauthRegistration:
+      "`manual` when the variable uses your own OAuth app, `dynamic` when each sign-in registers a client.",
+    oauthTokenEndpointAuthMethod:
+      "How your OAuth app authenticates at the token endpoint: `client_secret_basic`, `client_secret_post` or `none`. Leave it out to pick one at sign-in.",
+    oauthScopes: "The scopes each sign-in asks for. At least one is required with endpoints set up by hand.",
+    oauthResource:
+      "The resource indicator (RFC 8707) to send with each request, an https URL. Only with endpoints set up by hand.",
+    oauthClientName:
+      "The name a registered client shows on the provider's consent screen. Defaults to the project's name. Not used with your own OAuth app.",
+    oauthRedirectUri:
+      "Your own callback for sign-in links made through the API, an https URL. Register it with your OAuth app. Leave it out to use Infisical's callback page.",
+    oauthConnection: "What the last sign-in or token import got. Null while the variable is not connected.",
+    oauthConnectionIssuer: "The issuer the tokens came from.",
+    oauthGrantedScopes: "The scopes the provider granted.",
+    oauthRequiredScopes: "Scopes a service reported it needs that the sign-in didn't grant.",
+    oauthExpiresAt: "When the access token expires, if the provider said. Infisical refreshes it before then.",
+    oauthAuthorizedAt: "When the variable was last signed in or given tokens.",
+    oauthLastError: "Why the last refresh failed, when it did.",
+    oauthAccessToken: "The access token to store. It is stored as sent, and first checked when a service uses it.",
+    oauthRefreshToken:
+      "The refresh token Infisical uses to get new access tokens. Without one, the variable stops working when the access token expires.",
+    oauthTokenExpiresAt: "When the access token expires, as an ISO 8601 date and time.",
+    oauthClientSecret:
+      "The client secret of your own OAuth app, if it has one. Stored with the tokens and never returned.",
+    tokens:
+      "Tokens you already hold, for an OAuth variable set up by hand. They are stored as sent, replacing any the variable held, and first checked when a service uses them.",
+    signIn:
+      "Start a sign-in as the variable is created. The response then carries `signIn`, with the link to send the user to. Leave it out to start one later.",
+    signInClientSecret:
+      "The client secret of your own OAuth app, for a variable with a `clientId`. Leave it out on a reconnect to keep the stored one, or for an app with no secret.",
+    signInStart:
+      "The sign-in started with the variable, or null when none was asked for. Its `authorization` is null when the variable needs more settings first.",
+    signInError:
+      "Present only when `signIn` was sent and the variable was created but its sign-in couldn't be started. `signIn` is then null: start a new sign-in for the variable.",
+    signInAuthorization:
+      "The sign-in, or null when the variable needs `clientId` (`registrationRequired`) or endpoints set by hand (`manualSetupRequired`) first.",
+    signInAuthorizationId: "The ID of the sign-in.",
+    signInAuthorizeUrl:
+      "Send the user to this URL to sign in with the provider. The provider then redirects to `redirectUri` with `state` and `code`, for your callback to send to the complete endpoint.",
+    signInExpiresAt: "When the sign-in link stops working, 10 minutes after it was made.",
+    signInRegistrationRequired:
+      "True when the provider can't register a client by itself, or refused to. Set `clientId` on the variable to your own OAuth app, then start the sign-in again.",
+    signInManualSetupRequired:
+      "True when discovery found no endpoints Infisical can trust: it only guessed them, or the provider's metadata names another issuer. Nothing was sent to them. Check `prefill`, set the endpoints on the variable by hand, then start the sign-in again.",
+    signInPrefill: "What discovery found, as a starting point for the endpoints to set by hand. Null otherwise.",
+    signInPrefillIssuer: "The issuer the provider's metadata names, if any.",
+    signInPrefillScopes: "Scopes the provider lists.",
+    signInRedirectUri:
+      "Where the provider sends the user back after signing in: the variable's `redirectUri`, or Infisical's callback page. Register it with your OAuth app.",
+    completeState:
+      "The `state` value from the provider's redirect. It names the sign-in, which must have been started for this variable by you.",
     revealedValue: "The variable's value.",
     orderBy: "What to sort variables by: key, or serviceCount for how many services use each one.",
     orderDirection: "Which way to sort: asc or desc.",
@@ -5127,14 +5254,18 @@ export const AGENT_VAULT = {
     addSkillIds:
       "The IDs of the skills to add to the access bundle. If any is missing, or the bundle would hold more than 25 skills, none are added.",
     addedSkills: "The skills the request added to the access bundle.",
-    addSkippedSkills: "The skills the request named that were already in the access bundle. They're left as they are.",
+    addSkippedSkills: "The skills in the request that were already in the access bundle. They're left as they are.",
     search: "Match skills whose name or description contains this text.",
     nameFilter: "Return only the skill with exactly this name.",
     limit: "The maximum number of skills to return. Defaults to 20.",
     offset: "How many skills to skip.",
     totalCount: "How many skills match the filters, across every page.",
     sessionSkills:
-      "The latest version of each skill on the session's access bundles that the session's owner can still reach, plus the built-in infisical-agent-vault skill unless includeBuiltin is false, ordered by name.",
+      "The latest version of each skill on the session's access bundle and of each project skill the session was created with, while the session's owner can still reach them, every skill sent with the session, and the built-in infisical-agent-vault skill unless includeBuiltin is false, ordered by name. When a skill sent with the session has the same name as a skill from the project, the project's skill is returned and the sent one is left out.",
+    onBehalfOfUserId:
+      "List the skills a session on behalf of this user could use: those in an access bundle granted to both the user and your machine identity. accessBundles then lists those shared bundles. Only a machine identity whose delegation covers the user can do this. Set this or onBehalfOfUserEmail, not both.",
+    onBehalfOfUserEmail:
+      "Like onBehalfOfUserId, naming the user by email address instead. Set this or onBehalfOfUserId, not both.",
     includeBuiltin:
       "Whether to include infisical-agent-vault, the built-in skill that tells an agent how to work behind the Agent Vault proxy. Defaults to true.",
     isBuiltin:
@@ -5298,15 +5429,42 @@ export const AGENT_VAULT = {
     sessionId: "The ID of the session.",
     revokedAt: "When the session was revoked.",
     accessBundle:
-      "The name of the access bundle this session carries. Leave it out to start a session with services of its own only.",
-    accessBundleRead: "The access bundle this session carries. Null for a session with services of its own only.",
+      "The name of the access bundle this session carries. Leave it out to start a session that has only services and skills, from the project or sent with it.",
+    accessBundleRead: "The access bundle this session carries. Null for a session without an access bundle.",
+    services:
+      "The services this session reaches besides its access bundle's. Each entry is either the name of a service in the project, up to 50, or a service sent inline, up to 20. Names must be unique across the list. If a name repeats, the request fails with a 422 error that says which one.",
+    serviceName:
+      "The name of a service in this project. An Agent Vault admin can use any of them, and a member only a service in an access bundle granted to them. A session on behalf of a user can use only a service in an access bundle granted to both the user and the machine identity. On every request, the session reaches the service only while its owner still does.",
+    servicesRead:
+      "The services from the project and the services sent with this session, in the order they were sent. Inline services are listed without their secrets. Its access bundle's services aren't listed here. Empty when the session carries only an access bundle.",
+    serviceIdRead: "The ID of the project service.",
+    serviceNameRead: "The name of the project service.",
+    serviceTypeRead: "The type of the project service.",
+    serviceHostPatternRead:
+      "The host the project service matches, for an HTTP or MCP service. Null for a database or SSH service, which has no host pattern.",
+    serviceIsInline: "Whether the service was sent with this session (true) or is a service from the project (false).",
+    skills:
+      "The skills an agent gets in this session besides its access bundle's. Each entry is either the name of a skill in the project, up to 20, or a skill sent inline, up to 5. Names must be unique across the list. If a name repeats, the request fails with a 422 error that says which one.",
+    skillName:
+      "The name of a skill in this project. An Agent Vault admin can use any of them, and a member only a skill in an access bundle granted to them. A session on behalf of a user can use only a skill in an access bundle granted to both the user and the machine identity. Each time an agent asks for the session's skills, it gets the skill's latest version, and only while the session's owner can still use it.",
+    inlineSkills:
+      "A skill sent with this session, alongside its access bundle's skills and the skills from the project. Up to 5. Each takes the same files as a skill added to the project, with its name and description read from SKILL.md, and the files of every skill sent with the session share the 2 MB request limit. It belongs to this session only and can't be edited. If its name matches a skill in the access bundle, the request fails with a 400 error. If a skill from the project takes its name later, for example by joining the access bundle, the agent gets that skill instead. Its files are deleted when the session is revoked, or within an hour after it expires.",
+    skillsRead:
+      "The skills from the project and the skills sent with this session, in the order they were sent. Its access bundle's skills aren't listed here. Empty when the session has no skills besides its access bundle's.",
+    skillId: "The ID of the skill in the project, or of the skill sent with this session.",
+    skillNameRead: "The name of the skill.",
+    skillDescription: "What the skill is for, from the `description` in its SKILL.md.",
+    skillIsInline: "Whether the skill was sent with this session (true) or is a skill from the project (false).",
+    inlineSkillSha256: "The SHA-256 digest of the skill's files, as hex. An agent gets the files with the same digest.",
+    inlineSkillSizeBytes: "The total size of the skill's files in bytes.",
+    inlineSkillFileCount: "How many files the skill has.",
     stats:
       "How many requests went through this session, as counted by the proxy when it uploads session logs. Null when no logs were uploaded for the session, for example while session logs are off.",
     statsRequests: "Every request the proxy recorded for this session, whatever its decision.",
     statsBrokered:
       "The requests the proxy sent with a credential attached. Null when a proxy didn't report it for any of the session's logs.",
     inlineServices:
-      "Services this session carries itself, alongside its access bundle's or without one. Agent Vault admins only, up to 20. Each takes the same fields as a service in an access bundle, with three differences: the name is optional, every value is sent exactly as given because variables aren't available, and no field can be left to members. They belong to this session only and can't be edited. Their credentials, custom header values and substitution values are deleted when the session is revoked, or within an hour after it expires.",
+      "A service sent with this session, alongside its access bundle's services and the services from the project. Agent Vault admins only, up to 20. Each takes the same fields as a service in an access bundle, with three differences: the name is optional, every value is sent exactly as given because variables aren't available, and no field can be left to members. They belong to this session only and can't be edited. Their credentials, custom header values and substitution values are deleted when the session is revoked, or within an hour after it expires.",
     inlineServiceName:
       "A name for the service, shown in session logs and in the proxy's error messages. Lowercase letters, numbers and hyphens. Leave it out and the service goes by its first host. Either way, it can't match the name of another service in the session or in its access bundle.",
     inlineServiceValue:
@@ -5319,7 +5477,20 @@ export const AGENT_VAULT = {
       "The user the proxy logs in as, sent exactly as given. Services sent with a session can't use variables, so it can't wrap text in double braces. Never returned.",
     inlineNativePassword:
       "The password the proxy logs in with, sent exactly as given. Services sent with a session can't use variables, so it can't wrap text in double braces. Never returned.",
-    inlineMcpCredential: "The credential the proxy attaches to requests to the MCP server, a bearer token.",
+    inlineMcpCredential:
+      "The credential the proxy attaches to requests to the MCP server: a bearer token, or OAuth from an OAuth variable or tokens you send.",
+    inlineOauthVariable:
+      "The key of a global OAuth variable whose sign-in the service sends. Takes `read-value` on variables. Leave out the token and provider fields when you send it. If the variable is deleted while the session is live, the proxy refuses requests to the service.",
+    inlineOauthAccessToken:
+      "An OAuth access token you already hold, sent with the provider's `authorizationEndpoint`, `tokenEndpoint`, `clientId` and `scopes` instead of `variable`. Infisical refreshes it in place while the session lasts and deletes it with the session's other secrets. Never returned.",
+    inlineOauthRefreshToken:
+      "The refresh token for `accessToken`, if you have one. Without it, the token can't be refreshed. Never returned.",
+    inlineOauthExpiresAt:
+      "When `accessToken` expires, as an ISO 8601 date. Without it, the token is refreshed only after the server rejects it.",
+    inlineOauthSource:
+      "Where the tokens come from: `variable` (an OAuth variable's sign-in) or `inline` (sent with the session).",
+    inlineOauthVariableRead:
+      "The OAuth variable whose sign-in the service sends. Absent once the variable is deleted, and for callers without `read` on variables.",
     inlineCustomHeaders:
       "Additional headers the proxy attaches to every request to this service, on top of the credential. Up to 20.",
     inlineSubstitutions: "Placeholders the proxy swaps for a real secret before forwarding. Up to 20.",

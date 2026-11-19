@@ -317,7 +317,8 @@ export enum ProjectPermissionAgentVaultSessionActions {
   ReadAny = "read-any",
   EditAny = "edit-any",
   RevokeAny = "revoke-any",
-  CreateWithInlineServices = "create-with-inline-services"
+  CreateWithInlineServices = "create-with-inline-services",
+  CreateWithInlineSkills = "create-with-inline-skills"
 }
 
 // Global variables only. A personal variable belongs to the actor who saved it, and no permission reaches another's.

@@ -5,7 +5,7 @@ on:
     paths:
       - "upgrade-impact/**"
       - ".github/workflows/validate-upgrade-impact.yml"
-      - ".github/workflows/generate-upgrade-impact.yml"
+      - ".github/workflows/bump-helm-infisical-core-app-version.yml"
 
 jobs:
   validate:
