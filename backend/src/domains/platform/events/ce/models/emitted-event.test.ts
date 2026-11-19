@@ -1,8 +1,7 @@
 import crypto from "node:crypto";
 
-import { RuleViolationError } from "@app/domains/lib/errors";
-
-import { EmittedEvent, EventRejectionReason, MAX_OUTBOX_PAYLOAD_BYTES, TEventInput } from "./emitted-event";
+import { EmittedEvent, MAX_OUTBOX_PAYLOAD_BYTES, TEventInput } from "./emitted-event";
+import { EventRejectedError, EventRejectionReason } from "./event-rejection";
 
 const makeInput = (overrides?: Partial<TEventInput>): TEventInput => ({
   id: crypto.randomUUID(),
@@ -52,11 +51,8 @@ describe("EmittedEvent.create", () => {
     const error = rejection(makeInput(override));
 
     // Assert
-    expect(error).toBeInstanceOf(RuleViolationError);
-    expect((error as RuleViolationError).details).toEqual({
-      reason: EventRejectionReason.InvalidEvent,
-      type: reportedType
-    });
+    expect(error).toBeInstanceOf(EventRejectedError);
+    expect(error).toMatchObject({ reason: EventRejectionReason.InvalidEvent, eventType: reportedType });
   });
 
   test("should refuse data over the size limit", () => {
@@ -67,9 +63,6 @@ describe("EmittedEvent.create", () => {
     const error = rejection(input);
 
     // Assert
-    expect((error as RuleViolationError).details).toEqual({
-      reason: EventRejectionReason.DataTooLarge,
-      type: input.type
-    });
+    expect(error).toMatchObject({ reason: EventRejectionReason.DataTooLarge, eventType: input.type });
   });
 });

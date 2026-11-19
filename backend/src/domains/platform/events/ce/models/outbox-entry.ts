@@ -1,5 +1,3 @@
-import { RetryBackoff } from "./retry-backoff";
-
 export enum EventOutboxStatus {
   Pending = "pending",
   Processing = "processing",
@@ -15,6 +13,8 @@ export enum EventResultStatus {
 }
 
 export const MAX_OUTBOX_ATTEMPTS = 8;
+
+export const OUTBOX_BACKOFF_BASE_MS = 30_000;
 
 const NO_RESULT_ERROR = "Consumer returned no result for this event";
 const STALE_CLAIM_ERROR = "Worker did not report a result before the claim went stale";
@@ -33,8 +33,6 @@ export type TOutboxEntryRecord = {
 
 // One consumer's delivery of one event. No create(): the store inserts rows and a claim restores them.
 export class OutboxEntry {
-  private delayMs: number | null = null;
-
   private constructor(
     readonly id: string,
     readonly consumer: string,
@@ -73,18 +71,13 @@ export class OutboxEntry {
     return this.error;
   }
 
-  // Only set when the outcome is a retry.
-  get retryDelayMs(): number | null {
-    return this.delayMs;
-  }
-
   // After this attempt the entry fails no matter what the consumer returns.
   isFinalAttempt(): boolean {
     return this.attemptsMade + 1 >= MAX_OUTBOX_ATTEMPTS;
   }
 
   // No result means retry, not delivered.
-  settle(result: { status: EventResultStatus; error?: string } | undefined, backoff: RetryBackoff): void {
+  settle(result: { status: EventResultStatus; error?: string } | undefined): void {
     const outcome = result ?? {
       status: EventResultStatus.Retry,
       error: NO_RESULT_ERROR
@@ -93,15 +86,24 @@ export class OutboxEntry {
     if (outcome.status === EventResultStatus.Delivered) {
       this.currentStatus = EventOutboxStatus.Delivered;
       this.error = null;
-      this.delayMs = null;
       return;
     }
-    this.recordFailedAttempt(outcome.status === EventResultStatus.Failed, outcome.error ?? null, backoff);
+    this.recordFailedAttempt(outcome.status === EventResultStatus.Failed, outcome.error ?? null);
   }
 
   // The worker holding the claim never reported back.
-  expireClaim(backoff: RetryBackoff): void {
-    this.recordFailedAttempt(false, STALE_CLAIM_ERROR, backoff);
+  expireClaim(): void {
+    this.recordFailedAttempt(false, STALE_CLAIM_ERROR);
+  }
+
+  // How long to wait before the next attempt, null unless the entry is waiting on a retry. Exponential with
+  // jitter, so every call gives a different delay.
+  drawRetryDelayMs(): number | null {
+    if (this.currentStatus !== EventOutboxStatus.Retry) return null;
+    const exponent = Math.min(this.attemptsMade - 1, 10);
+    const base = OUTBOX_BACKOFF_BASE_MS * 2 ** exponent;
+    const jitter = Math.floor(Math.random() * Math.min(base / 2, 30_000));
+    return base + jitter;
   }
 
   toJSON(): TOutboxEntryRecord {
@@ -118,11 +120,10 @@ export class OutboxEntry {
     };
   }
 
-  private recordFailedAttempt(terminal: boolean, error: string | null, backoff: RetryBackoff): void {
+  private recordFailedAttempt(terminal: boolean, error: string | null): void {
     const giveUp = terminal || this.isFinalAttempt();
     this.attemptsMade += 1;
     this.error = error;
     this.currentStatus = giveUp ? EventOutboxStatus.Failed : EventOutboxStatus.Retry;
-    this.delayMs = giveUp ? null : backoff.delayAfter(this.attemptsMade);
   }
 }

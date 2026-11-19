@@ -232,11 +232,12 @@ export class OutboxEntryStore implements TOutboxEntryStore {
     }
   }
 
-  // One UPDATE per distinct outcome. The retry clock and `attempts` are computed in the database.
+  // One UPDATE per distinct outcome, so entries on the same attempt share one retry delay. The retry clock runs
+  // in the database.
   private async saveOutcomes(entries: OutboxEntry[], holding: (query: Knex.QueryBuilder) => void): Promise<number> {
     const groups = new Map<string, OutboxEntry[]>();
     for (const entry of entries) {
-      const key = JSON.stringify([entry.status, entry.retryDelayMs, entry.lastError]);
+      const key = JSON.stringify([entry.status, entry.attempts, entry.lastError]);
       const group = groups.get(key);
       if (group) group.push(entry);
       else groups.set(key, [entry]);
@@ -245,7 +246,8 @@ export class OutboxEntryStore implements TOutboxEntryStore {
     const writer = this.connection.writer();
     let saved = 0;
     for (const group of groups.values()) {
-      const [{ status, retryDelayMs, lastError }] = group;
+      const [first] = group;
+      const retryDelayMs = first.drawRetryDelayMs();
       const query = writer(TableName.EventOutbox).whereIn(
         "id",
         group.map((entry) => entry.id)
@@ -253,11 +255,11 @@ export class OutboxEntryStore implements TOutboxEntryStore {
       holding(query);
       // eslint-disable-next-line no-await-in-loop -- one shared connection; writes are serial
       saved += await query.update({
-        status,
-        lastError,
+        status: first.status,
+        lastError: first.lastError,
+        attempts: first.attempts,
         lockedAt: null,
         lockToken: null,
-        ...(status === EventOutboxStatus.Delivered ? {} : { attempts: writer.raw('"attempts" + 1') }),
         ...(retryDelayMs === null
           ? {}
           : {

@@ -1,12 +1,8 @@
-import { ExternalSystemError, RuleViolationError } from "@app/domains/lib/errors";
+import { ExternalSystemError } from "@app/domains/lib/errors";
 import { logger } from "@app/lib/logger";
 
-import {
-  EmittedEvent,
-  EventRejectionReason,
-  TEmittedEventRejectionDetails,
-  TEventInput
-} from "../../models/emitted-event";
+import { EmittedEvent, TEventInput } from "../../models/emitted-event";
+import { EventRejectedError, EventRejectionReason } from "../../models/event-rejection";
 import { TEventsMetrics, TOutboxDelivery } from "../dependencies";
 import { ConsumerRegistry } from "./consumer-registry";
 
@@ -31,9 +27,8 @@ const createEvent = (metrics: TEventsMetrics, input: TEventInput): EmittedEvent 
   try {
     return EmittedEvent.create(input);
   } catch (error) {
-    if (!(error instanceof RuleViolationError)) throw error;
-    const { reason, type } = error.details as TEmittedEventRejectionDetails;
-    return reject(metrics, { type, reason, detail: error.message });
+    if (!(error instanceof EventRejectedError)) throw error;
+    return reject(metrics, { type: error.eventType, reason: error.reason, detail: error.message });
   }
 };
 

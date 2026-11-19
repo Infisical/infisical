@@ -1,5 +1,4 @@
 import { EventResultStatus, OutboxEntry } from "./outbox-entry";
-import { RetryBackoff } from "./retry-backoff";
 
 export type TOutboxClaimRecord = {
   lockToken: string;
@@ -26,8 +25,8 @@ export class OutboxClaim {
   }
 
   // `id` is the event id. An entry without a result gets retried.
-  settle(results: { id: string; status: EventResultStatus; error?: string }[], backoff: RetryBackoff): void {
+  settle(results: { id: string; status: EventResultStatus; error?: string }[]): void {
     const byEventId = new Map(results.map((result) => [result.id, result]));
-    this.entries.forEach((entry) => entry.settle(byEventId.get(entry.eventId), backoff));
+    this.entries.forEach((entry) => entry.settle(byEventId.get(entry.eventId)));
   }
 }

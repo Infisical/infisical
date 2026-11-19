@@ -3,7 +3,6 @@ import { randomUUID } from "node:crypto";
 import { EmittedEvent } from "../models/emitted-event";
 import { OutboxClaim } from "../models/outbox-claim";
 import { EventOutboxStatus, EventResultStatus, MAX_OUTBOX_ATTEMPTS } from "../models/outbox-entry";
-import { RetryBackoff } from "../models/retry-backoff";
 import { TOutboxDelivery, TOutboxEntryStore } from "../services/dependencies";
 
 export type TStoredOutboxRow = {
@@ -48,8 +47,7 @@ const deliveries = (consumer: string, count: number) => Array.from({ length: cou
 const expireStaleClaims = (harness: TOutboxEntryStoreHarness) =>
   harness.transaction(async (store) => {
     const stale = await store.lockStaleClaims({ thresholdMs: STALE_AFTER_MS, limit: 100 });
-    const backoff = RetryBackoff.forBatch();
-    stale.forEach((entry) => entry.expireClaim(backoff));
+    stale.forEach((entry) => entry.expireClaim());
     await store.saveExpired(stale);
     return stale;
   });
@@ -139,10 +137,9 @@ export const describeOutboxEntryStoreContract = (name: string, setup: TSetup) =>
       await harness.store.insert(deliveries(consumer, 3));
       const claim = await harness.store.claimBatch(consumer, 10);
       const { entries } = claim;
-      const backoff = RetryBackoff.forBatch();
-      entries[0].settle({ status: EventResultStatus.Delivered }, backoff);
-      entries[1].settle({ status: EventResultStatus.Retry, error: "slack 502" }, backoff);
-      entries[2].settle({ status: EventResultStatus.Failed, error: "bad payload" }, backoff);
+      entries[0].settle({ status: EventResultStatus.Delivered });
+      entries[1].settle({ status: EventResultStatus.Retry, error: "slack 502" });
+      entries[2].settle({ status: EventResultStatus.Failed, error: "bad payload" });
 
       // Action
       const saved = await harness.transaction((store) => store.saveSettled(claim));
@@ -204,7 +201,7 @@ export const describeOutboxEntryStoreContract = (name: string, setup: TSetup) =>
       const claim = await harness.store.claimBatch(consumer, 10);
       await harness.patch(claim.entries[0].id, { lockedAt: new Date(Date.now() - HOUR_MS) });
       await expireStaleClaims(harness);
-      claim.entries[0].settle({ status: EventResultStatus.Delivered }, RetryBackoff.forBatch());
+      claim.entries[0].settle({ status: EventResultStatus.Delivered });
 
       // Action
       const saved = await harness.transaction((store) => store.saveSettled(claim));
@@ -227,9 +224,8 @@ export const describeOutboxEntryStoreContract = (name: string, setup: TSetup) =>
       await expireStaleClaims(harness);
       await harness.patch(first.entries[0].id, { nextRetryAt: new Date(Date.now() - 1_000) });
       const second = await harness.store.claimBatch(consumer, 10);
-      const backoff = RetryBackoff.forBatch();
-      first.entries[0].settle({ status: EventResultStatus.Delivered }, backoff);
-      second.entries[0].settle({ status: EventResultStatus.Delivered }, backoff);
+      first.entries[0].settle({ status: EventResultStatus.Delivered });
+      second.entries[0].settle({ status: EventResultStatus.Delivered });
 
       // Action
       const late = await harness.transaction((store) => store.saveSettled(first));
@@ -253,7 +249,7 @@ export const describeOutboxEntryStoreContract = (name: string, setup: TSetup) =>
       const longAgo = new Date(Date.now() - HOUR_MS);
       await harness.patch(held.id, { lockedAt: longAgo });
       await harness.patch(released.id, { lockedAt: longAgo });
-      released.settle({ status: EventResultStatus.Delivered }, RetryBackoff.forBatch());
+      released.settle({ status: EventResultStatus.Delivered });
       await harness.transaction((store) =>
         store.saveSettled(OutboxClaim.restore({ lockToken: claim.lockToken, entries: [released] }))
       );

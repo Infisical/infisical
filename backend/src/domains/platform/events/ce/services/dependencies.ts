@@ -3,7 +3,8 @@ import { z } from "zod";
 import { TReadOptions } from "@app/domains/lib/data-access";
 import { TStoreLocks } from "@app/domains/lib/transactions";
 
-import { EmittedEvent, EventRejectionReason } from "../models/emitted-event";
+import { EmittedEvent } from "../models/emitted-event";
+import { EventRejectionReason } from "../models/event-rejection";
 import { OutboxClaim } from "../models/outbox-claim";
 import { EventOutboxStatus, EventResultStatus, OutboxEntry } from "../models/outbox-entry";
 

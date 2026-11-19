@@ -2,7 +2,6 @@ import crypto from "node:crypto";
 
 import { OutboxClaim } from "./outbox-claim";
 import { EventOutboxStatus, EventResultStatus, OutboxEntry } from "./outbox-entry";
-import { RetryBackoff } from "./retry-backoff";
 
 const makeEntry = () =>
   OutboxEntry.restore({
@@ -24,13 +23,10 @@ describe("OutboxClaim.settle", () => {
     const claim = OutboxClaim.restore({ lockToken: "token", entries: [delivered, failed] });
 
     // Action
-    claim.settle(
-      [
-        { id: failed.eventId, status: EventResultStatus.Failed, error: "bad payload" },
-        { id: delivered.eventId, status: EventResultStatus.Delivered }
-      ],
-      RetryBackoff.forBatch()
-    );
+    claim.settle([
+      { id: failed.eventId, status: EventResultStatus.Failed, error: "bad payload" },
+      { id: delivered.eventId, status: EventResultStatus.Delivered }
+    ]);
 
     // Assert
     expect(delivered.status).toBe(EventOutboxStatus.Delivered);
@@ -43,7 +39,7 @@ describe("OutboxClaim.settle", () => {
     const claim = OutboxClaim.restore({ lockToken: "token", entries: [reported, missing] });
 
     // Action
-    claim.settle([{ id: reported.eventId, status: EventResultStatus.Delivered }], RetryBackoff.forBatch());
+    claim.settle([{ id: reported.eventId, status: EventResultStatus.Delivered }]);
 
     // Assert
     expect(missing).toMatchObject({ status: EventOutboxStatus.Retry, attempts: 1 });

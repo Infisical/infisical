@@ -20,7 +20,7 @@ Owns the `event_outbox` table (`OutboxEntryStore`). Depends on no other domain.
 
 | Layer | Holds |
 | --- | --- |
-| `ce/models/` | `EventDefinition` (an event's name and data schema), `EmittedEvent` (a validated event about to be written), `OutboxEntry` (one consumer's delivery of one event: status, attempts, backoff), `OutboxClaim` (the entries one worker holds, and the token that fences them), `RetryBackoff` |
+| `ce/models/` | `EventDefinition` (an event's name and data schema), `EmittedEvent` (a validated event about to be written), `OutboxEntry` (one consumer's delivery of one event: status, attempts, backoff), `OutboxClaim` (the entries one worker holds, and the token that fences them), `EventRejectedError` (why an emit was refused) |
 | `ce/data-access/` | `OutboxEntryStore` |
 | `ce/clients/telemetry/` | `TelemetryClient`: the outbox metrics and the oldest-pending gauge, behind `TEventsMetrics` so services never import the meter |
 | `ce/services/event-emitter/` | `EventEmitterService` |
@@ -63,11 +63,10 @@ Owns the `event_outbox` table (`OutboxEntryStore`). Depends on no other domain.
 
 ## Mechanism
 
-- **Rules about an entry live on `OutboxEntry`**: `settle(result, backoff)` and `expireClaim(backoff)` decide
-  delivered, retry or failed, and `isFinalAttempt()` is what the consumer is told. `OutboxClaim.settle(results)`
-  matches a consumer's results to its entries by event id. The store only persists the
-  outcome, one `UPDATE` per distinct outcome (`RetryBackoff` gives entries on the same attempt one delay so
-  they group).
+- **Rules about an entry live on `OutboxEntry`**: `settle(result)` and `expireClaim()` decide delivered, retry
+  or failed and count the attempt, `drawRetryDelayMs()` is the backoff, and `isFinalAttempt()` is what the
+  consumer is told. `OutboxClaim.settle(results)` matches a consumer's results to its entries by event id. The
+  store only persists what the entry says, one `UPDATE` per distinct outcome, drawing one delay per `UPDATE`.
 - Backoff is exponential with jitter from 30s; `MAX_OUTBOX_ATTEMPTS` puts the last attempt about an hour
   after the first. Manual replay: `status = 'retry', attempts = 0, nextRetryAt = now()`.
 - **Claims are fenced leases.** `drain` refreshes `lockedAt` while `handle` runs; the sweeper recycles

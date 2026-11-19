@@ -1,5 +1,10 @@
-import { EventOutboxStatus, EventResultStatus, MAX_OUTBOX_ATTEMPTS, OutboxEntry } from "./outbox-entry";
-import { RetryBackoff } from "./retry-backoff";
+import {
+  EventOutboxStatus,
+  EventResultStatus,
+  MAX_OUTBOX_ATTEMPTS,
+  OUTBOX_BACKOFF_BASE_MS,
+  OutboxEntry
+} from "./outbox-entry";
 
 const makeEntry = (attempts = 0) =>
   OutboxEntry.restore({
@@ -27,11 +32,11 @@ describe("OutboxEntry.settle", () => {
     const entry = makeEntry(2);
 
     // Action
-    entry.settle({ status: EventResultStatus.Delivered }, RetryBackoff.forBatch());
+    entry.settle({ status: EventResultStatus.Delivered });
 
     // Assert
     expect(entry.toJSON()).toMatchObject({ status: EventOutboxStatus.Delivered, attempts: 2, lastError: null });
-    expect(entry.retryDelayMs).toBeNull();
+    expect(entry.drawRetryDelayMs()).toBeNull();
   });
 
   test("should retry later, keeping the consumer's error, when the consumer asks to retry", () => {
@@ -39,11 +44,11 @@ describe("OutboxEntry.settle", () => {
     const entry = makeEntry();
 
     // Action
-    entry.settle({ status: EventResultStatus.Retry, error: "slack 502" }, RetryBackoff.forBatch());
+    entry.settle({ status: EventResultStatus.Retry, error: "slack 502" });
 
     // Assert
     expect(entry.toJSON()).toMatchObject({ status: EventOutboxStatus.Retry, attempts: 1, lastError: "slack 502" });
-    expect(entry.retryDelayMs).toBeGreaterThanOrEqual(30_000);
+    expect(entry.drawRetryDelayMs()).toBeGreaterThanOrEqual(30_000);
   });
 
   // Otherwise a forgotten entry sits in 'processing' until the sweeper notices, looking like a crashed worker.
@@ -52,7 +57,7 @@ describe("OutboxEntry.settle", () => {
     const entry = makeEntry();
 
     // Action
-    entry.settle(undefined, RetryBackoff.forBatch());
+    entry.settle(undefined);
 
     // Assert
     expect(entry.toJSON()).toMatchObject({
@@ -66,11 +71,11 @@ describe("OutboxEntry.settle", () => {
     const entry = makeEntry();
 
     // Action
-    entry.settle({ status: EventResultStatus.Failed, error: "bad payload" }, RetryBackoff.forBatch());
+    entry.settle({ status: EventResultStatus.Failed, error: "bad payload" });
 
     // Assert
     expect(entry.toJSON()).toMatchObject({ status: EventOutboxStatus.Failed, attempts: 1, lastError: "bad payload" });
-    expect(entry.retryDelayMs).toBeNull();
+    expect(entry.drawRetryDelayMs()).toBeNull();
   });
 
   test("should fail for good when a retry is asked for on the last attempt", () => {
@@ -78,11 +83,11 @@ describe("OutboxEntry.settle", () => {
     const entry = makeEntry(MAX_OUTBOX_ATTEMPTS - 1);
 
     // Action
-    entry.settle({ status: EventResultStatus.Retry }, RetryBackoff.forBatch());
+    entry.settle({ status: EventResultStatus.Retry });
 
     // Assert
     expect(entry.toJSON()).toMatchObject({ status: EventOutboxStatus.Failed, attempts: MAX_OUTBOX_ATTEMPTS });
-    expect(entry.retryDelayMs).toBeNull();
+    expect(entry.drawRetryDelayMs()).toBeNull();
   });
 });
 
@@ -93,7 +98,7 @@ describe("OutboxEntry.expireClaim", () => {
     const entry = makeEntry();
 
     // Action
-    entry.expireClaim(RetryBackoff.forBatch());
+    entry.expireClaim();
 
     // Assert
     expect(entry.toJSON()).toMatchObject({
@@ -101,7 +106,7 @@ describe("OutboxEntry.expireClaim", () => {
       attempts: 1,
       lastError: "Worker did not report a result before the claim went stale"
     });
-    expect(entry.retryDelayMs).toBeGreaterThanOrEqual(30_000);
+    expect(entry.drawRetryDelayMs()).toBeGreaterThanOrEqual(30_000);
   });
 
   test("should fail the entry when that was its last attempt", () => {
@@ -109,9 +114,28 @@ describe("OutboxEntry.expireClaim", () => {
     const entry = makeEntry(MAX_OUTBOX_ATTEMPTS - 1);
 
     // Action
-    entry.expireClaim(RetryBackoff.forBatch());
+    entry.expireClaim();
 
     // Assert
     expect(entry.toJSON()).toMatchObject({ status: EventOutboxStatus.Failed, attempts: MAX_OUTBOX_ATTEMPTS });
+  });
+});
+
+describe("OutboxEntry.drawRetryDelayMs", () => {
+  test.each([
+    [1, OUTBOX_BACKOFF_BASE_MS],
+    [2, OUTBOX_BACKOFF_BASE_MS * 2],
+    [4, OUTBOX_BACKOFF_BASE_MS * 8]
+  ])("should wait at least the doubled base, plus bounded jitter, after attempt %s", (attempts, base) => {
+    // Setup
+    const entry = makeEntry(attempts - 1);
+    entry.settle({ status: EventResultStatus.Retry });
+
+    // Action
+    const delay = entry.drawRetryDelayMs();
+
+    // Assert
+    expect(delay).toBeGreaterThanOrEqual(base);
+    expect(delay).toBeLessThan(base + 30_000);
   });
 });

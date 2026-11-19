@@ -1,7 +1,7 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { RuleViolationError } from "@app/domains/lib/errors";
+import { EventRejectedError, EventRejectionReason } from "./event-rejection";
 
 export const MAX_OUTBOX_PAYLOAD_BYTES = 16 * 1024;
 
@@ -25,18 +25,6 @@ const EventInputSchema = z.object({
 // `id` is set at build time, so every consumer's row for the event shares it.
 export type TEventInput = z.input<typeof EventInputSchema>;
 
-// `DataRejected`: a subscribing consumer's schema refused the data.
-export enum EventRejectionReason {
-  InvalidEvent = "invalid_event",
-  DataTooLarge = "data_too_large",
-  DataRejected = "data_rejected"
-}
-
-export type TEmittedEventRejectionDetails = {
-  reason: EventRejectionReason;
-  type: string;
-};
-
 export class EmittedEvent {
   private constructor(
     readonly id: string,
@@ -45,29 +33,24 @@ export class EmittedEvent {
     readonly occurredAt: Date
   ) {}
 
-  // The reason goes in `details` for the caller to report. Users never see this message.
   static create(input: TEventInput): EmittedEvent {
     const parsed = EventInputSchema.safeParse(input);
     if (!parsed.success) {
-      throw new RuleViolationError({
-        message: parsed.error.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join(", "),
-        details: {
-          reason: EventRejectionReason.InvalidEvent,
-          type: input.type
-        } satisfies TEmittedEventRejectionDetails
-      });
+      throw new EventRejectedError(
+        EventRejectionReason.InvalidEvent,
+        input.type,
+        parsed.error.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join(", ")
+      );
     }
     const { id, type, data, time } = parsed.data;
 
     const dataBytes = Buffer.byteLength(JSON.stringify(data), "utf8");
     if (dataBytes > MAX_OUTBOX_PAYLOAD_BYTES) {
-      throw new RuleViolationError({
-        message: `data is ${dataBytes} bytes, over the ${MAX_OUTBOX_PAYLOAD_BYTES} byte limit; the outbox carries identifiers, not documents`,
-        details: {
-          reason: EventRejectionReason.DataTooLarge,
-          type
-        } satisfies TEmittedEventRejectionDetails
-      });
+      throw new EventRejectedError(
+        EventRejectionReason.DataTooLarge,
+        type,
+        `data is ${dataBytes} bytes, over the ${MAX_OUTBOX_PAYLOAD_BYTES} byte limit; the outbox carries identifiers, not documents`
+      );
     }
 
     return new EmittedEvent(id, type, data, time ?? new Date());

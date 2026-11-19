@@ -6,7 +6,7 @@ import {
   resolveCoreMeter
 } from "@app/lib/telemetry/metrics";
 
-import { EventRejectionReason } from "../../models/emitted-event";
+import { EventRejectionReason } from "../../models/event-rejection";
 import { EventOutboxStatus } from "../../models/outbox-entry";
 import { TEventsMetrics, TOldestPendingAge } from "../../services/dependencies";
 

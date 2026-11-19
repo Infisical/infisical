@@ -4,7 +4,6 @@ import { logger } from "@app/lib/logger";
 import { EventDefinition } from "../../models/event-definition";
 import { OutboxClaim } from "../../models/outbox-claim";
 import { EventOutboxStatus, EventResultStatus, OutboxEntry } from "../../models/outbox-entry";
-import { RetryBackoff } from "../../models/retry-backoff";
 import {
   TEvent,
   TEventConsumer,
@@ -126,8 +125,7 @@ export class EventDeliveryService implements TEventDeliveryService {
         });
         if (stale.length === 0) return stale;
 
-        const backoff = RetryBackoff.forBatch();
-        stale.forEach((entry) => entry.expireClaim(backoff));
+        stale.forEach((entry) => entry.expireClaim());
         await stores.outboxEntryStore.saveExpired(stale);
         return stale;
       });
@@ -213,7 +211,7 @@ export class EventDeliveryService implements TEventDeliveryService {
 
   private async settle(consumer: string, claim: OutboxClaim, results: TEventConsumerResult[]): Promise<void> {
     const { entries } = claim;
-    claim.settle(results, RetryBackoff.forBatch());
+    claim.settle(results);
 
     const now = Date.now();
     for (const entry of entries) {

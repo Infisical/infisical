@@ -167,14 +167,15 @@ export class InMemoryOutboxEntryStore implements TOutboxEntryStore {
     for (const entry of entries) {
       const row = this.rows.find((candidate) => candidate.id === entry.id);
       if (row && holding(row)) {
+        const retryDelayMs = entry.drawRetryDelayMs();
         Object.assign(row, {
           status: entry.status,
           lastError: entry.lastError,
+          attempts: entry.attempts,
           lockedAt: null,
           lockToken: null,
           updatedAt: now,
-          ...(entry.status === EventOutboxStatus.Delivered ? {} : { attempts: row.attempts + 1 }),
-          ...(entry.retryDelayMs === null ? {} : { nextRetryAt: new Date(now.getTime() + entry.retryDelayMs) })
+          ...(retryDelayMs === null ? {} : { nextRetryAt: new Date(now.getTime() + retryDelayMs) })
         });
         saved += 1;
       }
