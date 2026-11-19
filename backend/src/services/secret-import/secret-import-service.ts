@@ -971,13 +971,16 @@ export const secretImportServiceFactory = ({
       actorOrgId
     });
 
+    const secretDalVersion = Number((await keyStore.pgGetIntItem(KeyStorePrefixes.SecretDalVersion(projectId))) || 0);
     const etagRedisKey = KeyStorePrefixes.SecretEtag(projectId, utcDayStamp());
     const requestParamsHash = generateCacheKeyFromData({
       operation: "get-raw-secrets-from-imports",
       environment,
       secretPath
     });
-    const etagField = `${actorId}:${permissionFingerprint}:${permissionHash}:${requestParamsHash}`;
+    // The data version is in the field because the version commits with the write while the ETag hash is cleared
+    // outside it: an ETag stored by a read that raced a write is left under the old version and never matches again.
+    const etagField = `${secretDalVersion}:${actorId}:${permissionFingerprint}:${permissionHash}:${requestParamsHash}`;
 
     const hasIfNoneMatch = ifNoneMatch !== undefined;
     let etagMissReason: SecretEtagMissReason | undefined;
@@ -991,10 +994,9 @@ export const secretImportServiceFactory = ({
       etagMissReason = storedEtag ? SecretEtagMissReason.VALUE_DIFFERS : SecretEtagMissReason.FIELD_ABSENT;
     }
 
-    const cachedSecretDalVersion = await keyStore.pgGetIntItem(KeyStorePrefixes.SecretDalVersion(projectId));
     const cacheKey = KeyStorePrefixes.SecretsServiceLayerCache({
       projectId,
-      version: Number(cachedSecretDalVersion || 0),
+      version: secretDalVersion,
       actorId,
       permissionFingerprint,
       permissionHash,
