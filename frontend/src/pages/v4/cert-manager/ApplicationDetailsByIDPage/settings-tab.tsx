@@ -59,11 +59,7 @@ import {
   type TAlert,
   type TCertificateAlertEventType
 } from "@app/hooks/api/alerts/types";
-import {
-  ApprovalPolicyScope,
-  ApprovalPolicyType,
-  type TApprovalPolicy
-} from "@app/hooks/api/approvalPolicies/types";
+import { ApprovalPolicyScope, type TApprovalPolicy } from "@app/hooks/api/approvalPolicies/types";
 import { PkiAlertEventTypeV2, type TPkiAlertV2 } from "@app/hooks/api/pkiAlertsV2/types";
 import {
   PkiApplicationResourceActions,
@@ -84,6 +80,7 @@ import { orgHref, useGo } from "../../links";
 import { useProfileCreation, useProfileOptions } from "../ApplicationsPage/application-dialogs";
 import { PolicyProfileBadges } from "../ApprovalsPage/policies-tab";
 import { PolicySheet } from "../ApprovalsPage/policy-sheet";
+import { policyTypeLabel } from "../components/approval";
 import { canCreateAttachableProfile } from "../components/profile-model";
 import {
   CertificateAlertScopeKind,
@@ -535,6 +532,12 @@ const PoliciesCard = ({
       )
     },
     {
+      id: "type",
+      header: "Type",
+      width: 120,
+      render: (policy) => policyTypeLabel(policy.type)
+    },
+    {
       id: "profiles",
       header: "Profiles",
       width: 280,
@@ -626,7 +629,7 @@ const PoliciesCard = ({
               size="sm"
               icon="check-c"
               title="No approval policies"
-              description="Certificates from this application issue without approval."
+              description="Certificates from this application issue and revoke without approval."
             />
           }
         />
@@ -653,7 +656,7 @@ const PoliciesCard = ({
           if (!deleting) return true;
           try {
             await remove.mutateAsync({
-              policyType: ApprovalPolicyType.CertRequest,
+              policyType: deleting.type,
               policyId: deleting.id
             });
           } catch (error) {

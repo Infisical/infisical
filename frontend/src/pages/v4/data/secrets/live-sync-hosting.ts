@@ -1,5 +1,6 @@
 import { useCloud66ConnectionListStacks } from "@app/hooks/api/appConnections/cloud-66";
 import { useConvexConnectionListDeployments } from "@app/hooks/api/appConnections/convex";
+import { useCoolifyConnectionListResources } from "@app/hooks/api/appConnections/coolify";
 import { useFlyioConnectionListApps } from "@app/hooks/api/appConnections/flyio";
 import { useHerokuConnectionListApps } from "@app/hooks/api/appConnections/heroku";
 import {
@@ -49,5 +50,7 @@ export const syncHostingLive: SyncHostingLookups = {
   usePortainerEnvironments: (connectionId, options) =>
     usePortainerConnectionListEnvironments(connectionId, options),
   usePortainerStacks: (connectionId, options) =>
-    usePortainerConnectionListStacks(connectionId, options)
+    usePortainerConnectionListStacks(connectionId, options),
+  useCoolifyResources: (connectionId, options) =>
+    useCoolifyConnectionListResources(connectionId, options)
 };

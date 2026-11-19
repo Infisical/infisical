@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
 import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from "@infisical/cipher/ui/accordion";
 import { Badge, type BadgeTone } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
@@ -29,7 +35,8 @@ import {
   SheetSubheader,
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
-import { Meta } from "@infisical/cipher/ui/text";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { Heading, Meta } from "@infisical/cipher/ui/text";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { format, formatDistanceToNowStrict } from "date-fns";
 
@@ -50,13 +57,13 @@ import {
 } from "@app/hooks/api/secretScanningV2/enums";
 import type {
   TSecretScanningDataSource,
-  TSecretScanningFinding
+  TSecretScanningFinding,
+  TSecretScanningFindingLocation
 } from "@app/hooks/api/secretScanningV2/types";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { useProjectPermission } from "../../access/permissions";
 import { failed, toast } from "../../access/toast";
-import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 
 export type FindingsStatusFilter = SecretScanningFindingStatus | "all";
@@ -97,13 +104,15 @@ export const statuses: {
 const statusOf = (value: SecretScanningFindingStatus) =>
   statuses.find((item) => item.value === value) ?? statuses[0];
 const plural = (count: number) => (count === 1 ? "finding" : "findings");
-const detected = (finding: TSecretScanningFinding) =>
-  formatDistanceToNowStrict(new Date(finding.createdAt), { addSuffix: true });
+const relative = (date: string) => formatDistanceToNowStrict(new Date(date), { addSuffix: true });
+const formatDate = (date: string) => format(new Date(date), "MMM d, yyyy h:mm a");
+const formatRange = (start: number, end: number) =>
+  start === end ? `${start}` : `${start}-${end}`;
+const locationsLabel = (count: number) => (count === 1 ? "1 location" : `${count} locations`);
 const sortable: Record<string, SecretScanningFindingOrderBy> = {
   resource: SecretScanningFindingOrderBy.ResourceName,
   rule: SecretScanningFindingOrderBy.Rule,
-  author: SecretScanningFindingOrderBy.Author,
-  detected: SecretScanningFindingOrderBy.CreatedAt,
+  detected: SecretScanningFindingOrderBy.LastDetectedAt,
   status: SecretScanningFindingOrderBy.Status
 };
 
@@ -213,6 +222,128 @@ const StatusDialog = ({
   );
 };
 
+const LocationDetails = ({ location }: { location: TSecretScanningFindingLocation }) => {
+  const { details } = location;
+  const position = `${details.file}:${details.startLine}`;
+  return (
+    <DataList
+      variant="props"
+      density="compact"
+      items={[
+        [
+          "File",
+          <Stack key="file" gap={2}>
+            {details.link ? (
+              <div>
+                <Button asChild variant="link" underline="hover" icon="external">
+                  <a href={details.link} target="_blank" rel="noopener noreferrer">
+                    <code>{position}</code>
+                  </a>
+                </Button>
+              </div>
+            ) : (
+              <code>{position}</code>
+            )}
+            {details.symlinkFile && <Meta mono={false}>Linked from {details.symlinkFile}</Meta>}
+          </Stack>
+        ],
+        [
+          "Lines",
+          <Stack key="lines" gap={2}>
+            <span>{formatRange(details.startLine, details.endLine)}</span>
+            <Meta mono={false}>Columns {formatRange(details.startColumn, details.endColumn)}</Meta>
+          </Stack>
+        ],
+        [
+          "Commit",
+          <Stack key="commit" gap={2}>
+            <Meta>{details.commit.slice(0, 7)}</Meta>
+            {details.message && <Meta mono={false}>{details.message}</Meta>}
+          </Stack>
+        ],
+        [
+          "Author",
+          <Stack key="author" gap={2}>
+            <span>{details.author}</span>
+            {details.email && <Meta mono={false}>{details.email}</Meta>}
+          </Stack>
+        ],
+        ["Committed", details.date ? formatDate(details.date) : "-"],
+        ["First found", formatDate(location.createdAt)],
+        ["Rule", <code key="rule">{location.rule}</code>],
+        ...(details.tags?.length ? ([["Tags", details.tags.join(", ")]] as const) : [])
+      ]}
+    />
+  );
+};
+
+const FindingLocations = ({
+  findingId,
+  locationCount
+}: {
+  findingId: string;
+  locationCount: number;
+}) => {
+  const { data, isPending, error, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } =
+    useV4Adapter("secretScanning").useFindingLocations(findingId);
+
+  const loadedCount = data?.totalCount;
+  useEffect(() => {
+    if (loadedCount !== undefined && loadedCount !== locationCount) refetch();
+  }, [locationCount, loadedCount]);
+
+  return (
+    <Stack gap={8}>
+      <Heading level={3} size="subsection">
+        {locationsLabel(locationCount)}
+      </Heading>
+      {isPending && <Skeleton height={64} />}
+      {Boolean(error) && !data && (
+        <Inline gap={8} align="center" justify="between">
+          <Meta mono={false}>Could not load the locations.</Meta>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            Retry
+          </Button>
+        </Inline>
+      )}
+      {data && (
+        <Accordion type="multiple">
+          {data.locations.map((location) => (
+            <AccordionItem key={location.id} value={location.id}>
+              <AccordionTrigger>
+                <Inline gap={8} align="center" justify="between" wrap={false}>
+                  <code>
+                    {location.details.file}:{location.details.startLine}
+                  </code>
+                  <Meta>
+                    {location.details.commit.slice(0, 7)}
+                    {location.details.date && ` · ${relative(location.details.date)}`}
+                  </Meta>
+                </Inline>
+              </AccordionTrigger>
+              <AccordionContent>
+                <LocationDetails location={location} />
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      )}
+      {hasNextPage && (
+        <div>
+          <Button
+            variant="outline"
+            size="sm"
+            loading={isFetchingNextPage}
+            onClick={() => fetchNextPage()}
+          >
+            Show more
+          </Button>
+        </div>
+      )}
+    </Stack>
+  );
+};
+
 const FindingSheet = ({
   finding,
   position,
@@ -232,6 +363,8 @@ const FindingSheet = ({
 }) => {
   const reason = canUpdate ? undefined : NO_UPDATE;
   const source = finding ? SECRET_SCANNING_DATA_SOURCE_MAP[finding.dataSourceType] : undefined;
+  const { data: locations } = useV4Adapter("secretScanning").useFindingLocations(finding?.id ?? "");
+  const latestLocation = locations?.locations[0];
   return (
     <Sheet open={Boolean(finding)} onOpenChange={(next) => !next && onClose()}>
       <SheetContent size="lg" onOpenAutoFocus={(event) => event.preventDefault()}>
@@ -241,7 +374,9 @@ const FindingSheet = ({
               <SheetTitle>
                 <code>{finding.rule}</code>
               </SheetTitle>
-              <SheetDescription>{finding.details.description}</SheetDescription>
+              {latestLocation && (
+                <SheetDescription>{latestLocation.details.description}</SheetDescription>
+              )}
             </SheetHeader>
             <SheetSubheader>
               <Inline gap={8} align="center" justify="between" wrap={false}>
@@ -279,65 +414,27 @@ const FindingSheet = ({
               </Inline>
             </SheetSubheader>
             <SheetBody>
-              <DataList
-                variant="props"
-                items={[
-                  ["Status", <StatusBadge key="status" status={finding.status} />],
-                  [
-                    "File",
-                    finding.details.link ? (
-                      <Button key="file" asChild variant="link" underline="hover" icon="external">
-                        <a href={finding.details.link} target="_blank" rel="noopener noreferrer">
-                          <code>
-                            {finding.details.file}:{finding.details.startLine}
-                          </code>
-                        </a>
-                      </Button>
-                    ) : (
-                      <code key="file">
-                        {finding.details.file}:{finding.details.startLine}
-                      </code>
-                    )
-                  ],
-                  [
-                    "Commit",
-                    <Stack key="commit" gap={2}>
-                      <Meta>{finding.details.commit.slice(0, 7)}</Meta>
-                      {finding.details.message && (
-                        <Meta mono={false}>{finding.details.message}</Meta>
-                      )}
-                    </Stack>
-                  ],
-                  [
-                    "Author",
-                    <Stack key="author" gap={2}>
-                      <span>{finding.details.author}</span>
-                      {finding.details.email && <Meta mono={false}>{finding.details.email}</Meta>}
-                    </Stack>
-                  ],
-                  ["Committed", format(new Date(finding.details.date), "MMM d, yyyy h:mm a")],
-                  ["Detected", detected(finding)],
-                  [
-                    RESOURCE_DESCRIPTION_HELPER[finding.dataSourceType].singularTitle,
-                    <code key="resource">{finding.resourceName}</code>
-                  ],
-                  ["Fingerprint", <Meta key="fingerprint">{finding.fingerprint}</Meta>],
-                  ...(finding.triageComment ? ([["Comment", finding.triageComment]] as const) : [])
-                ]}
-              />
+              <Stack gap={24}>
+                <DataList
+                  variant="props"
+                  items={[
+                    ["Status", <StatusBadge key="status" status={finding.status} />],
+                    [
+                      RESOURCE_DESCRIPTION_HELPER[finding.dataSourceType].singularTitle,
+                      <code key="resource">{finding.resourceName}</code>
+                    ],
+                    ["Last detected", formatDate(finding.lastDetectedAt)],
+                    ["First detected", formatDate(finding.createdAt)],
+                    ...(finding.triageComment
+                      ? ([["Comment", finding.triageComment]] as const)
+                      : [])
+                  ]}
+                />
+                <FindingLocations findingId={finding.id} locationCount={finding.locationCount} />
+              </Stack>
             </SheetBody>
             <SheetFooter>
-              <Inline gap={8} align="center" justify="between">
-                <Button
-                  variant="outline"
-                  icon="copy"
-                  onClick={async () => {
-                    if (await copyText(finding.fingerprint))
-                      toast({ tone: "ok", title: "Fingerprint copied to clipboard" });
-                  }}
-                >
-                  Copy fingerprint
-                </Button>
+              <Inline gap={8} align="center" justify="end">
                 {finding.status === SecretScanningFindingStatus.Unresolved ? (
                   <Inline gap={8} align="center">
                     <Button
@@ -523,7 +620,7 @@ export const FindingsTable = ({
       sortable: true,
       width: 340,
       maxWidth: 340,
-      text: (row) => `${row.resourceName} ${row.details.file}:${row.details.startLine}`,
+      text: (row) => `${row.resourceName} ${locationsLabel(row.locationCount)}`,
       render: (row) => {
         const source = SECRET_SCANNING_DATA_SOURCE_MAP[row.dataSourceType];
         return (
@@ -539,9 +636,7 @@ export const FindingsTable = ({
                   <code>{row.resourceName}</code>
                 </Button>
               </div>
-              <Meta style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                {row.details.file}:{row.details.startLine}
-              </Meta>
+              <Meta mono={false}>{locationsLabel(row.locationCount)}</Meta>
             </Stack>
           </Inline>
         );
@@ -555,25 +650,11 @@ export const FindingsTable = ({
       render: (row) => <code>{row.rule}</code>
     },
     {
-      id: "author",
-      header: "Author",
-      sortable: true,
-      grow: true,
-      text: (row) => row.details.author,
-      render: (row) => row.details.author
-    },
-    {
-      id: "commit",
-      header: "Commit",
-      width: 96,
-      render: (row) => <Meta>{row.details.commit.slice(0, 7)}</Meta>
-    },
-    {
       id: "detected",
-      header: "Detected",
+      header: "Last detected",
       sortable: true,
-      width: 120,
-      render: (row) => <Meta mono={false}>{detected(row)}</Meta>
+      width: 140,
+      render: (row) => <Meta mono={false}>{relative(row.lastDetectedAt)}</Meta>
     },
     {
       id: "status",

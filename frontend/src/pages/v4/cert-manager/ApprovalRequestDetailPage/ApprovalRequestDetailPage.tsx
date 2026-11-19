@@ -45,6 +45,8 @@ import {
   type ApprovalRequestStep,
   type TApprovalRequest
 } from "@app/hooks/api/approvalRequests/types";
+import { crlReasonToNameMap } from "@app/hooks/api/certificates/constants";
+import type { CrlReason } from "@app/hooks/api/certificates/enums";
 
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
@@ -54,6 +56,7 @@ import {
   certDataOf,
   decisionBlock,
   RequestStatus,
+  revocationDataOf,
   signingDataOf,
   useApproverLabel
 } from "../components/approval";
@@ -68,14 +71,15 @@ type Origin = {
   from?: "root-requests";
 };
 
-const backOf = (orgId: string, isSigning: boolean, origin: Origin) => {
+const backOf = (orgId: string, type: ApprovalPolicyType, origin: Origin) => {
+  const isSigning = type === ApprovalPolicyType.CertCodeSigning;
   const pki = orgHref(orgId, "/cert-manager");
   if (origin.applicationName)
     return {
       label: origin.applicationName,
       href: `${pki}/applications/${origin.applicationName}?selectedTab=requests`
     };
-  if (origin.from === "root-requests")
+  if (origin.from === "root-requests" || type === ApprovalPolicyType.CertRevocation)
     return {
       label: "Approval requests",
       href: isSigning ? `${pki}/requests?selectedTab=signing-requests` : `${pki}/requests`
@@ -87,6 +91,12 @@ const backOf = (orgId: string, isSigning: boolean, origin: Origin) => {
     };
   if (isSigning) return { label: "Signers", href: `${pki}/code-signing` };
   return { label: "Approvals", href: `${pki}/approvals` };
+};
+
+const titleOf = (type: ApprovalPolicyType) => {
+  if (type === ApprovalPolicyType.CertCodeSigning) return "Signing request";
+  if (type === ApprovalPolicyType.CertRevocation) return "Certificate revocation request";
+  return "Certificate approval request";
 };
 
 const DecisionDialog = ({
@@ -104,6 +114,13 @@ const DecisionDialog = ({
   const [comment, setComment] = useState("");
   const [pending, setPending] = useState(false);
   const isApprove = decision === ApprovalRequestApprovalDecision.Approved;
+  const isRevocation = request.type === ApprovalPolicyType.CertRevocation;
+  const approveDescription = isRevocation
+    ? "Once every step approves, the certificate is revoked with the requester's reason. You cannot undo this."
+    : "The requester gets the access described on this request as soon as you approve.";
+  const rejectDescription = isRevocation
+    ? "The request is closed and the certificate stays active. The requester can ask again."
+    : "The request is closed and the requester gets no access. They can open a new one.";
   const close = () => {
     setComment("");
     onClose();
@@ -114,9 +131,7 @@ const DecisionDialog = ({
         <DialogHeader>
           <DialogTitle>{isApprove ? "Approve request" : "Reject request"}</DialogTitle>
           <DialogDescription>
-            {isApprove
-              ? "The requester gets the access described on this request as soon as you approve."
-              : "The request is closed and the requester gets no access. They can open a new one."}
+            {isApprove ? approveDescription : rejectDescription}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -273,22 +288,26 @@ const RequestDetail = ({
   const [decision, setDecision] = useState<ApprovalRequestApprovalDecision | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const isSigning = request.type === ApprovalPolicyType.CertCodeSigning;
-  const back = backOf(orgId, isSigning, origin);
+  const back = backOf(orgId, request.type, origin);
   const certData = certDataOf(request);
+  const revocationData = revocationDataOf(request);
   const signingData = signingDataOf(request);
   const requester = request.requesterName || "Unknown";
   const isPending = request.status === ApprovalRequestStatus.Pending;
   const block = decisionBlock(request, { userId: user.id, groupIds: viewer?.groupIds ?? [] });
   const cancelBlock =
     request.requesterId === user.id ? undefined : "Only the requester can cancel this request";
-  const subject = certData?.certificateRequest?.commonName || certData?.profileName;
+  const subject = revocationData
+    ? revocationData.commonName || revocationData.serialNumber.toUpperCase()
+    : certData?.certificateRequest?.commonName || certData?.profileName;
   const lede = isSigning ? (
     <>
       Signing request for signer {signingData?.signerName} by {requester}.
     </>
   ) : (
     <>
-      Certificate issuance request for {subject} by {requester}
+      {revocationData ? "Revocation request" : "Certificate issuance request"} for {subject} by{" "}
+      {requester}
       {application ? (
         <>
           {" on application "}
@@ -300,6 +319,8 @@ const RequestDetail = ({
         </>
       ) : null}
       .
+      {request.approversCanNoLongerApprove &&
+        " Not enough of this request's approvers can still approve it."}
     </>
   );
   const facts: DataListItem[] = [
@@ -318,7 +339,7 @@ const RequestDetail = ({
             : [])
         ] as DataListItem[])
       : ([
-          ["Profile", certData?.profileName],
+          ["Profile", revocationData?.profileName ?? certData?.profileName],
           ...(application ? [["Application", application.name]] : [])
         ] as DataListItem[])),
     ...(request.justification
@@ -335,7 +356,7 @@ const RequestDetail = ({
       <Stack gap={24}>
         <PageHeader
           breadcrumb={[back]}
-          title={isSigning ? "Signing request" : "Certificate approval request"}
+          title={titleOf(request.type)}
           badges={<RequestStatus status={request.status} />}
           description={lede}
           actions={
@@ -348,22 +369,26 @@ const RequestDetail = ({
                 >
                   Cancel request
                 </Button>
-                <Button
-                  variant="outline"
-                  icon="x"
-                  disabledReason={block}
-                  onClick={() => setDecision(ApprovalRequestApprovalDecision.Rejected)}
-                >
-                  Reject
-                </Button>
-                <Button
-                  variant="accent"
-                  icon="check"
-                  disabledReason={block}
-                  onClick={() => setDecision(ApprovalRequestApprovalDecision.Approved)}
-                >
-                  Approve
-                </Button>
+                {request.canReview && (
+                  <>
+                    <Button
+                      variant="outline"
+                      icon="x"
+                      disabledReason={block}
+                      onClick={() => setDecision(ApprovalRequestApprovalDecision.Rejected)}
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      variant="accent"
+                      icon="check"
+                      disabledReason={block}
+                      onClick={() => setDecision(ApprovalRequestApprovalDecision.Approved)}
+                    >
+                      Approve
+                    </Button>
+                  </>
+                )}
               </>
             ) : undefined
           }
@@ -396,11 +421,46 @@ const RequestDetail = ({
               <StepList key={step.id} step={step} index={index} label={label} />
             ))
           )}
-          {isSigning ? (
-            <SigningScopeCard request={request} />
-          ) : (
-            <CertificateSections orgId={orgId} request={request} />
+          {isSigning && <SigningScopeCard request={request} />}
+          {revocationData && (
+            <Card
+              variant="framed"
+              title="Revocation"
+              hint="The certificate stays active until this request is approved. Once approved, it is revoked with this reason and added to its CA's revocation list."
+            >
+              <DataList
+                variant="props"
+                density="compact"
+                items={[
+                  [
+                    "Certificate",
+                    <Button key="certificate" variant="link" asChild>
+                      <a
+                        href={orgHref(
+                          orgId,
+                          `/cert-manager/certificates/${revocationData.certificateId}`
+                        )}
+                      >
+                        {revocationData.commonName || revocationData.serialNumber.toUpperCase()}
+                      </a>
+                    </Button>
+                  ],
+                  [
+                    "Revocation reason",
+                    crlReasonToNameMap[revocationData.revocationReason as CrlReason] ??
+                      revocationData.revocationReason,
+                    { span: "half" }
+                  ],
+                  [
+                    "Serial number",
+                    <code key="serial">{revocationData.serialNumber.toUpperCase()}</code>,
+                    { span: "half" }
+                  ]
+                ]}
+              />
+            </Card>
           )}
+          {!isSigning && !revocationData && <CertificateSections orgId={orgId} request={request} />}
         </DetailLayout>
       </Stack>
       <DecisionDialog request={request} decision={decision} onClose={() => setDecision(null)} />

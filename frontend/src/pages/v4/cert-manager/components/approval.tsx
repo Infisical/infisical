@@ -2,11 +2,13 @@ import type { IconName } from "@infisical/cipher/ui/icon";
 import { StatusText } from "@infisical/cipher/ui/text";
 import { formatDistanceToNow } from "date-fns";
 
+import { truncateSerialNumber } from "@app/components/utilities/serialNumberUtils";
 import { ApprovalPolicyType, ApproverType } from "@app/hooks/api/approvalPolicies/types";
 import {
   ApprovalRequestStatus,
   ApprovalRequestStepStatus,
   type CertRequestRequestData,
+  type CertRevocationRequestData,
   type CodeSigningRequestData,
   type TApprovalRequest
 } from "@app/hooks/api/approvalRequests/types";
@@ -35,8 +37,35 @@ export const RequestStatus = ({ status }: { status: ApprovalRequestStatus }) => 
 
 export const certDataOf = (request: TApprovalRequest) => {
   const data = request.requestData?.requestData;
-  return data && "profileName" in data ? (data as CertRequestRequestData) : null;
+  return data && "certificateRequestId" in data ? (data as CertRequestRequestData) : null;
 };
+
+export const revocationDataOf = (request: TApprovalRequest) =>
+  request.type === ApprovalPolicyType.CertRevocation
+    ? (request.requestData?.requestData as CertRevocationRequestData | undefined)
+    : undefined;
+
+export const applicationRequestSummaryOf = (request: TApprovalRequest) => {
+  const revocation = revocationDataOf(request);
+  if (revocation)
+    return {
+      typeLabel: "Revocation",
+      commonName: revocation.commonName || revocation.serialNumber,
+      displayName: revocation.commonName || truncateSerialNumber(revocation.serialNumber),
+      profileName: revocation.profileName
+    };
+  const data = certDataOf(request);
+  const commonName = data?.certificateRequest?.commonName ?? "";
+  return {
+    typeLabel: data && "renewal" in data && data.renewal ? "Renewal" : "Issuance",
+    commonName,
+    displayName: commonName,
+    profileName: data?.profileName ?? ""
+  };
+};
+
+export const policyTypeLabel = (type: ApprovalPolicyType) =>
+  type === ApprovalPolicyType.CertRevocation ? "Revocation" : "Issuance";
 
 export const signingDataOf = (request: TApprovalRequest) => {
   const data = request.requestData?.requestData;

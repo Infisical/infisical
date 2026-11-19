@@ -23,6 +23,7 @@ import {
   ProjectPermissionPkiSyncActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies/types";
 import { CaType, InternalCaType } from "@app/hooks/api/ca/enums";
 import type { TUnifiedCertificateAuthority } from "@app/hooks/api/ca/types";
 import {
@@ -56,7 +57,9 @@ import {
   ExpiryBadge,
   RevokeCertificateDialog,
   shortDate,
-  useCertManagerProjectId
+  type CertificateRevocation,
+  useCertManagerProjectId,
+  useRevocationApprovals
 } from "../components/certificate";
 import {
   ExportCertificateDialog,
@@ -282,7 +285,8 @@ const reasonFor = (allowed: boolean, blocked?: string) =>
 const useCertificateReasons = (
   cert: TCertificate,
   projectId: string,
-  blocks: ReturnType<typeof certificateBlocks>
+  blocks: ReturnType<typeof certificateBlocks>,
+  revocation: CertificateRevocation
 ) => {
   const { data: appAccess } = useV4Adapter("pkiApplications").useApplicationPermissions(
     cert.applicationId ?? ""
@@ -291,7 +295,8 @@ const useCertificateReasons = (
   const access = cert.applicationId
     ? getApplicationCertificateAccess({
         applicationName: cert.applicationName ?? "this application",
-        permission: appAccess?.permission
+        permission: appAccess?.permission,
+        isRevocationApprovalRequired: revocation.isRevocationApprovalRequired
       })
     : undefined;
   const certSubject = subject(ProjectPermissionSub.Certificates, {
@@ -315,7 +320,8 @@ const useCertificateReasons = (
     renewReason: blocks.renew ?? reasonFor(access?.canRenew ?? canEdit, access?.renewBlockedReason),
     autoRenewReason: blocks.autoRenew ?? editReason,
     syncReason: blocks.sync ?? reasonFor(canManageSyncs, access?.managePkiSyncsBlockedReason),
-    revokeReason: blocks.revoke ?? reasonFor(canDelete, access?.revokeBlockedReason),
+    revokeReason:
+      blocks.revoke ?? reasonFor(access?.canRevoke ?? canDelete, access?.revokeBlockedReason),
     deleteReason: blocks.delete ?? reasonFor(canDelete, access?.deleteBlockedReason),
     metadataReason: cert.deletedAt
       ? DELETED_CERTIFICATE_NO_ACTIONS
@@ -329,6 +335,7 @@ const CertificateActionsMenu = ({
   projectId,
   caType,
   blocks,
+  revocation,
   parentApplication
 }: {
   cert: TCertificate;
@@ -336,6 +343,7 @@ const CertificateActionsMenu = ({
   projectId: string;
   caType?: CaType;
   blocks: ReturnType<typeof certificateBlocks>;
+  revocation: CertificateRevocation;
   parentApplication?: string;
 }) => {
   const navigate = useNavigate();
@@ -353,7 +361,7 @@ const CertificateActionsMenu = ({
     syncReason,
     revokeReason,
     deleteReason
-  } = useCertificateReasons(cert, projectId, blocks);
+  } = useCertificateReasons(cert, projectId, blocks, revocation);
   const isAutoRenewalEnabled = Boolean(cert.renewBeforeDays && cert.renewBeforeDays > 0);
   const disableAutoRenewal = async () => {
     try {
@@ -410,11 +418,11 @@ const CertificateActionsMenu = ({
           <DropdownMenuItem
             variant="destructive"
             disabled={Boolean(revokeReason)}
-            description={revokeReason}
+            description={revokeReason ?? revocation.revokeReplacesRequestReason}
             onSelect={() => setRevoking(true)}
           >
             <Icon name="x" />
-            Revoke certificate
+            {revocation.isRevocationApprovalRequired ? "Request revocation" : "Revoke certificate"}
           </DropdownMenuItem>
           <DropdownMenuItem
             variant="destructive"
@@ -447,6 +455,7 @@ const CertificateActionsMenu = ({
       />
       <RevokeCertificateDialog
         cert={revoking ? cert : undefined}
+        isRevocationApprovalRequired={revocation.isRevocationApprovalRequired}
         onClose={() => setRevoking(false)}
       />
       <DeleteCertificateDialog
@@ -487,11 +496,13 @@ const CertificateDetail = ({
   const org = orgHref(orgId, "/cert-manager");
   const parentApplication = cert.applicationName ?? fromApplication;
   const caType = authorities.find((ca) => ca.id === cert.caId)?.type;
+  const revocation = useRevocationApprovals(cert.applicationId)(cert);
   const blocks = certificateBlocks(cert, {
     isInventoryView: !parentApplication,
-    caType
+    caType,
+    revocation
   });
-  const { metadataReason } = useCertificateReasons(cert, projectId, blocks);
+  const { metadataReason } = useCertificateReasons(cert, projectId, blocks, revocation);
   const name = certificateName(cert);
   const sans = altNamesOf(cert);
   const chain = chainOf(cert, authorities);
@@ -500,8 +511,29 @@ const CertificateDetail = ({
       <PageHeader
         breadcrumb={[backCrumbOf(org, parentApplication, fromHsmConnector)]}
         title={name}
-        badges={<CertificateStatusBadge cert={cert} />}
-        description={ledeOf(cert)}
+        badges={<CertificateStatusBadge cert={cert} revocation={revocation} />}
+        description={
+          revocation.isPending && revocation.requestId ? (
+            <>
+              {"This certificate isn't revoked until its "}
+              <Button variant="link" asChild>
+                <a
+                  href={orgHref(
+                    orgId,
+                    `/cert-manager/approvals/${revocation.requestId}?policyType=${ApprovalPolicyType.CertRevocation}&from=root-requests`
+                  )}
+                >
+                  revocation request
+                </a>
+              </Button>
+              {" is approved."}
+              {revocation.revokeReplacesRequestReason &&
+                ` ${revocation.revokeReplacesRequestReason}`}
+            </>
+          ) : (
+            ledeOf(cert)
+          )
+        }
         actions={
           <>
             <CertificateActionsMenu
@@ -510,6 +542,7 @@ const CertificateDetail = ({
               projectId={projectId}
               caType={caType}
               blocks={blocks}
+              revocation={revocation}
               parentApplication={parentApplication}
             />
             <DownloadMenu cert={cert} projectId={projectId} block={blocks.export} />

@@ -8,6 +8,7 @@ import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { type DataListItem, DataList } from "@infisical/cipher/ui/list";
 import { MultiSelect } from "@infisical/cipher/ui/multi-select";
 import { MultiStep } from "@infisical/cipher/ui/multi-step";
+import { Select } from "@infisical/cipher/ui/select";
 import { Separator } from "@infisical/cipher/ui/separator";
 import { Heading } from "@infisical/cipher/ui/text";
 import ms from "ms";
@@ -28,6 +29,7 @@ import type { TPkiApplicationMember } from "@app/hooks/api/pkiApplications/types
 import { useProjectPermission } from "../../access/permissions";
 import { readableFailure, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
+import { policyTypeLabel } from "../components/approval";
 import { CertificateProfileSheet } from "../components/profile-sheet";
 
 type StepDraft = {
@@ -41,6 +43,7 @@ type StepDraft = {
 
 type Draft = {
   name: string;
+  policyType: ApprovalPolicyType;
   maxRequestTtl: string;
   profileNames: string[];
   bypassForMachineIdentities: boolean;
@@ -64,8 +67,13 @@ const emptyStep = (): StepDraft => ({
   groups: []
 });
 
+const policyTypeOptions = [ApprovalPolicyType.CertRequest, ApprovalPolicyType.CertRevocation].map(
+  (value) => ({ value, label: policyTypeLabel(value) })
+);
+
 const draftOf = (policy?: TApprovalPolicy): Draft => ({
   name: policy?.name ?? "",
+  policyType: policy?.type ?? ApprovalPolicyType.CertRequest,
   maxRequestTtl: policy?.maxRequestTtl ?? "",
   profileNames:
     (policy?.conditions.conditions as CertRequestPolicyConditions | undefined)?.[0]?.profileNames ??
@@ -168,6 +176,7 @@ const PolicyForm = ({ projectId, policy, application, onClose }: PolicySheetProp
     ProjectPermissionSub.CertificateProfiles
   );
   const completed = useRef(false);
+  const isRevocation = draft.policyType === ApprovalPolicyType.CertRevocation;
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {
@@ -203,12 +212,19 @@ const PolicyForm = ({ projectId, policy, application, onClose }: PolicySheetProp
   };
   const review: DataListItem[] = [
     ["Policy name", draft.name || "Not set"],
+    ...(application
+      ? ([["Policy type", policyTypeLabel(draft.policyType), { span: "half" }]] as DataListItem[])
+      : []),
     ["Max. request TTL", draft.maxRequestTtl || "Not set", { span: "half" }],
-    [
-      "Machine identity bypass",
-      draft.bypassForMachineIdentities ? "Enabled" : "Disabled",
-      { span: "half" }
-    ],
+    ...(isRevocation
+      ? []
+      : ([
+          [
+            "Machine identity bypass",
+            draft.bypassForMachineIdentities ? "Enabled" : "Disabled",
+            { span: "half" }
+          ]
+        ] as DataListItem[])),
     ["Certificate profiles", draft.profileNames.length ? draft.profileNames.join(", ") : "Not set"],
     ...draft.steps.map((entry, index): DataListItem => [
       entry.name ? `Step ${index + 1}: ${entry.name}` : `Step ${index + 1}`,
@@ -254,7 +270,7 @@ const PolicyForm = ({ projectId, policy, application, onClose }: PolicySheetProp
             name: draft.name.trim(),
             maxRequestTtl: draft.maxRequestTtl || null,
             constraints: {},
-            bypassForMachineIdentities: draft.bypassForMachineIdentities,
+            bypassForMachineIdentities: isRevocation ? false : draft.bypassForMachineIdentities,
             steps: draft.steps.map((entry) => ({
               name: entry.name.trim() || null,
               requiredApprovals: Number(entry.requiredApprovals),
@@ -271,7 +287,7 @@ const PolicyForm = ({ projectId, policy, application, onClose }: PolicySheetProp
             );
             await update
               .mutateAsync({
-                policyType: ApprovalPolicyType.CertRequest,
+                policyType: policy.type,
                 policyId: policy.id,
                 conditions: [{ profileNames: draft.profileNames }, ...conditions],
                 ...fields
@@ -282,7 +298,7 @@ const PolicyForm = ({ projectId, policy, application, onClose }: PolicySheetProp
             if (!application) return;
             await create
               .mutateAsync({
-                policyType: ApprovalPolicyType.CertRequest,
+                policyType: draft.policyType,
                 scope: ApprovalPolicyScope.PkiApplication,
                 scopeId: application.id,
                 conditions: [{ profileNames: draft.profileNames }],
@@ -309,6 +325,25 @@ const PolicyForm = ({ projectId, policy, application, onClose }: PolicySheetProp
                     onChange={(event) => set("name", event.target.value)}
                   />
                 </Field>
+                {application && (
+                  <Field
+                    label="Policy type"
+                    description={
+                      policy
+                        ? "A policy's type can't be changed after it's created."
+                        : "Issuance covers new certificates and renewals. Revocation covers revoking certificates."
+                    }
+                    wide
+                  >
+                    <Select
+                      aria-label="Policy type"
+                      options={policyTypeOptions}
+                      value={draft.policyType}
+                      disabled={Boolean(policy)}
+                      onChange={(value) => set("policyType", value as ApprovalPolicyType)}
+                    />
+                  </Field>
+                )}
                 <Field
                   label="Max. request TTL"
                   optional
@@ -327,7 +362,11 @@ const PolicyForm = ({ projectId, policy, application, onClose }: PolicySheetProp
                 </Field>
                 <Field
                   label="Certificate profiles"
-                  description="The policy applies to certificates issued from these profiles."
+                  description={
+                    isRevocation
+                      ? "Revoking a certificate issued from these profiles requires approval."
+                      : "The policy applies to certificates issued from these profiles."
+                  }
                   error={errors.profileNames}
                   wide
                 >
@@ -343,12 +382,14 @@ const PolicyForm = ({ projectId, policy, application, onClose }: PolicySheetProp
                     createLabel={(query) => `Create profile ${query}`}
                   />
                 </Field>
-                <Checkbox
-                  label="Bypass approval for machine identities"
-                  description="Machine identities can issue certificates without approval."
-                  checked={draft.bypassForMachineIdentities}
-                  onChange={(checked) => set("bypassForMachineIdentities", checked === true)}
-                />
+                {!isRevocation && (
+                  <Checkbox
+                    label="Bypass approval for machine identities"
+                    description="Machine identities can issue certificates without approval."
+                    checked={draft.bypassForMachineIdentities}
+                    onChange={(checked) => set("bypassForMachineIdentities", checked === true)}
+                  />
+                )}
               </Stack>
             )
           },

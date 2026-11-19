@@ -45,7 +45,7 @@ import {
 import type {
   TAgentVaultSession,
   TAgentVaultSessionInlineService,
-  TAgentVaultSessionNamedService
+  TAgentVaultSessionService
 } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { useDebounce } from "@app/hooks/useDebounce";
@@ -134,7 +134,7 @@ const Identity = ({ session }: { session: TAgentVaultSession }) => (
 
 type TAccessItem =
   | { kind: "bundle"; bundle: NonNullable<TAgentVaultSession["accessBundle"]> }
-  | { kind: "service"; service: TAgentVaultSessionNamedService }
+  | { kind: "service"; service: Extract<TAgentVaultSessionService, { isInline: false }> }
   | { kind: "inline"; services: TAgentVaultSessionInlineService[] };
 
 const ACCESS_ITEMS_SHOWN = 2;

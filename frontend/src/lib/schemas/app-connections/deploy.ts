@@ -4,6 +4,7 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { CircleCIConnectionMethod } from "@app/hooks/api/appConnections/types/circleci-connection";
 import { Cloud66ConnectionMethod } from "@app/hooks/api/appConnections/types/cloud-66-connection";
 import { ConvexConnectionMethod } from "@app/hooks/api/appConnections/types/convex-connection";
+import { CoolifyConnectionMethod } from "@app/hooks/api/appConnections/types/coolify-connection";
 import { FlyioConnectionMethod } from "@app/hooks/api/appConnections/types/flyio-connection";
 import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
 import { HumanitecConnectionMethod } from "@app/hooks/api/appConnections/types/humanitec-connection";
@@ -77,7 +78,7 @@ export const teamCityConnectionFormSchema = z.discriminatedUnion("method", [
   })
 ]);
 
-const isValidJenkinsInstanceUrl = (value: string) => {
+const isValidInstanceUrl = (value: string) => {
   try {
     const url = new URL(value);
     return (
@@ -106,10 +107,32 @@ export const jenkinsConnectionFormSchema = z.discriminatedUnion("method", [
         .min(1, "Instance URL required")
         .max(255)
         .refine(
-          isValidJenkinsInstanceUrl,
+          isValidInstanceUrl,
           "Instance URL must be an http or https URL without credentials, a query, or a fragment"
         ),
       username: z.string().trim().min(1, "Username required").max(255),
+      apiToken: z.string().trim().min(1, "API Token required").max(255)
+    })
+  })
+]);
+
+const coolifyRootSchema = genericAppConnectionFieldsSchema.extend({
+  app: z.literal(AppConnection.Coolify)
+});
+
+export const coolifyConnectionFormSchema = z.discriminatedUnion("method", [
+  coolifyRootSchema.extend({
+    method: z.literal(CoolifyConnectionMethod.ApiToken),
+    credentials: z.object({
+      instanceUrl: z
+        .string()
+        .trim()
+        .min(1, "Instance URL required")
+        .max(255)
+        .refine(
+          isValidInstanceUrl,
+          "Instance URL must be an http or https URL without credentials, a query, or a fragment"
+        ),
       apiToken: z.string().trim().min(1, "API Token required").max(255)
     })
   })

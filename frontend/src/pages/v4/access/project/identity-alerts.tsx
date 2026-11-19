@@ -348,11 +348,11 @@ const AlertSheet = ({
 const channelSummary = (alert: TAlert) =>
   [
     ...new Set(
-      alert.channels.filter(({ enabled }) => enabled).map(({ channelType }) => channelType)
+      alert.channels
+        .filter(({ enabled }) => enabled)
+        .map(({ channelType }) => ALERT_CHANNEL_TYPE_LABELS[channelType])
     )
-  ]
-    .map((type) => ALERT_CHANNEL_TYPE_LABELS[type])
-    .join(", ");
+  ].join(", ");
 
 const AlertRow = ({
   alert,

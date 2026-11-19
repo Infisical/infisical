@@ -327,7 +327,7 @@ export const McpToolsFields = ({
   const { toolScope, allowedTools } = form;
 
   const sourceOf = (data: TServiceForm) =>
-    JSON.stringify(buildListMcpToolsRequest(projectId, service?.id, data));
+    JSON.stringify(buildListMcpToolsRequest(projectId, service, data));
   const source = sourceOf(form);
   // An expired sign-in changes the request, but the list it loaded is still the server's, so it stays on screen.
   const serverTools =
@@ -372,7 +372,7 @@ export const McpToolsFields = ({
     setLoading(true);
     try {
       const tools = await listTools.mutateAsync(
-        buildListMcpToolsRequest(projectId, service?.id, form, own)
+        buildListMcpToolsRequest(projectId, service, form, own)
       );
       onLoaded({ source: requestSource, tools });
       return null;

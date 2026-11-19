@@ -4,7 +4,10 @@ import { Alert } from "@infisical/cipher/ui/alert";
 import { Combobox, type ComboboxOption } from "@infisical/cipher/ui/combobox";
 import { Stack } from "@infisical/cipher/ui/layout";
 
+import { COOLIFY_RESOURCE_TYPE_LABELS, COOLIFY_SYNC_SCOPE_LABELS } from "@app/helpers/secretSyncs";
+import { CoolifyResourceType } from "@app/hooks/api/appConnections/coolify/types";
 import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
+import { CoolifySyncScope } from "@app/hooks/api/secretSyncs/types/coolify-sync";
 import { RenderSyncScope, RenderSyncType } from "@app/hooks/api/secretSyncs/types/render-sync";
 
 import { useV4Adapter } from "../../../../data/adapters";
@@ -588,6 +591,72 @@ function PortainerDestination() {
   );
 }
 
+const COOLIFY_SCOPE_HELP: Record<CoolifySyncScope, string> = {
+  [CoolifySyncScope.Production]: "Secrets are written to the application's production variables.",
+  [CoolifySyncScope.Preview]:
+    "Secrets are written to the variables Coolify gives preview deployments of pull requests. Sync them from a non-production environment."
+};
+
+function CoolifyDestination() {
+  const { control, setValue } = useSyncForm();
+  const connectionId = useConnectionId();
+  const [resourceType, scope] = useWatch({
+    control,
+    name: ["destinationConfig.resourceType", "destinationConfig.scope"]
+  }) as [CoolifyResourceType | undefined, CoolifySyncScope | undefined];
+  const resources = useV4Adapter("secrets").useCoolifyResources(connectionId ?? "", {
+    enabled: Boolean(connectionId)
+  });
+  return (
+    <Stack gap={16}>
+      <ConnectionField
+        onChange={() => {
+          setValue("destinationConfig.resourceId", "");
+          setValue("destinationConfig.resourceName", "");
+          setValue("destinationConfig.scope", CoolifySyncScope.Production);
+        }}
+      />
+      <ComboField
+        name="destinationConfig.resourceId"
+        label="Resource"
+        options={(resources.data ?? []).map((resource) => ({
+          value: resource.id,
+          label: resource.name,
+          meta: COOLIFY_RESOURCE_TYPE_LABELS[resource.type],
+          group: `${resource.projectName} / ${resource.environmentName}`,
+          keywords: [resource.id]
+        }))}
+        placeholder="Select a resource..."
+        loading={resources.isPending && Boolean(connectionId)}
+        emptyText={
+          resources.error
+            ? "Unable to load Coolify resources. Check the connection's instance URL and API token."
+            : undefined
+        }
+        onSelect={(id) => {
+          const resource = resources.data?.find((entry) => entry.id === id);
+          setValue("destinationConfig.resourceName", resource?.name ?? "");
+          if (resource) setValue("destinationConfig.resourceType", resource.type);
+          setValue("destinationConfig.scope", CoolifySyncScope.Production);
+        }}
+      />
+      {resourceType === CoolifyResourceType.Application && (
+        <SelectField
+          name="destinationConfig.scope"
+          label="Scope"
+          options={Object.values(CoolifySyncScope).map((value) => ({
+            value,
+            label: COOLIFY_SYNC_SCOPE_LABELS[value]
+          }))}
+          placeholder="Select a scope..."
+          description={scope ? COOLIFY_SCOPE_HELP[scope] : undefined}
+          defaultValue={CoolifySyncScope.Production}
+        />
+      )}
+    </Stack>
+  );
+}
+
 const renderReview = (config: FieldValues): ReviewItems =>
   config.scope === RenderSyncScope.EnvironmentGroup
     ? [
@@ -632,7 +701,8 @@ export const HOSTING_SYNC_VIEWS: Record<
   | SecretSync.Cloud66
   | SecretSync.LaravelForge
   | SecretSync.Portainer
-  | SecretSync.Convex,
+  | SecretSync.Convex
+  | SecretSync.Coolify,
   SyncView
 > = {
   [SecretSync.Heroku]: {
@@ -729,5 +799,20 @@ export const HOSTING_SYNC_VIEWS: Record<
     Destination: PortainerDestination,
     defaults: {},
     destinationReview: portainerReview
+  },
+  [SecretSync.Coolify]: {
+    Destination: CoolifyDestination,
+    defaults: {
+      destinationConfig: { resourceId: "", resourceName: "", scope: CoolifySyncScope.Production }
+    },
+    destinationReview: (config) => [
+      [
+        COOLIFY_RESOURCE_TYPE_LABELS[config.resourceType as CoolifyResourceType] ?? "Resource",
+        config.resourceName || config.resourceId
+      ],
+      ...(config.resourceType === CoolifyResourceType.Application
+        ? [["Scope", COOLIFY_SYNC_SCOPE_LABELS[config.scope as CoolifySyncScope]] as const]
+        : [])
+    ]
   }
 };

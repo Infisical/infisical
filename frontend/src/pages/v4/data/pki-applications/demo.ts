@@ -180,12 +180,38 @@ const policies = createFixtureStore<TApprovalPolicy[]>([
     scopeId: DEMO_PROJECT_ID,
     createdAt: ago(24 * 90),
     updatedAt: ago(24 * 90)
+  },
+  {
+    id: "pol-8f2c1d3e-4a5b-4c6d-9e7f-0a1b2c3d4e73",
+    projectId: DEMO_PROJECT_ID,
+    name: "Production TLS revocation",
+    isActive: true,
+    maxRequestTtl: "3d",
+    type: ApprovalPolicyType.CertRevocation,
+    conditions: { version: 1, conditions: [{ profileNames: ["tls-server"] }] },
+    constraints: { version: 1, constraints: {} },
+    steps: [
+      {
+        name: "Security review",
+        requiredApprovals: 1,
+        notifyApprovers: true,
+        approvers: [{ type: ApproverType.Group, id: "group-platform-security" }]
+      }
+    ],
+    bypassForMachineIdentities: false,
+    enforcementLevel: EnforcementLevel.Hard,
+    bypassers: [],
+    scopeType: ApprovalPolicyScope.PkiApplication,
+    scopeId: PAYMENTS,
+    createdAt: ago(24 * 6),
+    updatedAt: ago(24 * 6)
   }
 ]);
 
 const policyApplication: Record<string, string> = {
   "pol-8f2c1d3e-4a5b-4c6d-9e7f-0a1b2c3d4e71": PAYMENTS,
-  "pol-8f2c1d3e-4a5b-4c6d-9e7f-0a1b2c3d4e72": PAYMENTS
+  "pol-8f2c1d3e-4a5b-4c6d-9e7f-0a1b2c3d4e72": PAYMENTS,
+  "pol-8f2c1d3e-4a5b-4c6d-9e7f-0a1b2c3d4e73": PAYMENTS
 };
 
 const legacyAlerts = createFixtureStore<TPkiAlertV2[]>([

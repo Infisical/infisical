@@ -11,6 +11,7 @@ import {
   ApprovalRequestStepStatus,
   type ApprovalRequestStep,
   type CertRequestRequestData,
+  type CertRevocationRequestData,
   type CodeSigningRequestData,
   type TApprovalRequest
 } from "@app/hooks/api/approvalRequests/types";
@@ -19,6 +20,7 @@ import {
   IssuerType,
   type TCertificateProfileWithDetails
 } from "@app/hooks/api/certificateProfiles/types";
+import { CrlReason } from "@app/hooks/api/certificates/enums";
 import type { TCertificateRequestDetails } from "@app/hooks/api/certificates/types";
 import { CodeSigningScopeField } from "@app/hooks/api/signers/types";
 
@@ -106,6 +108,20 @@ const steps = (requestId: string, seeds: StepSeed[]): ApprovalRequestStep[] =>
     };
   });
 
+const viewerGroups = ["g-security"];
+
+const canReviewOf = (status: ApprovalRequestStatus, requestSteps: ApprovalRequestStep[]) =>
+  status === ApprovalRequestStatus.Pending &&
+  Boolean(
+    requestSteps
+      .find((step) => step.status === ApprovalRequestStepStatus.InProgress)
+      ?.approvers.some((approver) =>
+        approver.type === ApproverType.User
+          ? approver.id === me
+          : viewerGroups.includes(approver.id)
+      )
+  );
+
 const certRequest = ({
   id,
   status,
@@ -143,6 +159,7 @@ const certRequest = ({
       validity: { ttl }
     }
   };
+  const requestSteps = steps(id, stepSeeds);
   return {
     id,
     projectId,
@@ -157,8 +174,9 @@ const certRequest = ({
     justification: null,
     expiresAt: null,
     requestData: { version: 1, requestData },
-    steps: steps(id, stepSeeds),
+    steps: requestSteps,
     canBreakGlass: false,
+    canReview: canReviewOf(status, requestSteps),
     isBreakGlass: false,
     createdAt: ago(hoursAgo),
     updatedAt: ago(hoursAgo)
@@ -183,35 +201,90 @@ const signingRequest = ({
   justification?: string;
   data?: Partial<CodeSigningRequestData>;
   stepSeeds: StepSeed[];
-}): TApprovalRequest => ({
+}): TApprovalRequest => {
+  const requestSteps = steps(id, stepSeeds);
+  return {
+    id,
+    projectId,
+    policyId: "pol-release-signing",
+    scopeType: ApprovalPolicyScope.Project,
+    scopeId: projectId,
+    type: ApprovalPolicyType.CertCodeSigning,
+    status,
+    requesterId,
+    requesterName: people[requesterId].name,
+    requesterEmail: people[requesterId].email,
+    justification: justification ?? null,
+    expiresAt: null,
+    requestData: {
+      version: 1,
+      requestData: {
+        signerId: `signer-${signerName}`,
+        approvalPolicyId: "pol-release-signing",
+        signerName,
+        justification,
+        ...data
+      }
+    },
+    steps: requestSteps,
+    canBreakGlass: false,
+    canReview: canReviewOf(status, requestSteps),
+    isBreakGlass: false,
+    createdAt: ago(hoursAgo),
+    updatedAt: ago(hoursAgo)
+  };
+};
+
+const revocationRequest = ({
   id,
-  projectId,
-  policyId: "pol-release-signing",
-  scopeType: ApprovalPolicyScope.Project,
-  scopeId: projectId,
-  type: ApprovalPolicyType.CertCodeSigning,
   status,
   requesterId,
-  requesterName: people[requesterId].name,
-  requesterEmail: people[requesterId].email,
-  justification: justification ?? null,
-  expiresAt: null,
-  requestData: {
-    version: 1,
-    requestData: {
-      signerId: `signer-${signerName}`,
-      approvalPolicyId: "pol-release-signing",
-      signerName,
-      justification,
-      ...data
-    }
-  },
-  steps: steps(id, stepSeeds),
-  canBreakGlass: false,
-  isBreakGlass: false,
-  createdAt: ago(hoursAgo),
-  updatedAt: ago(hoursAgo)
-});
+  hoursAgo,
+  certificate,
+  revocationReason,
+  stepSeeds
+}: {
+  id: string;
+  status: ApprovalRequestStatus;
+  requesterId: string;
+  hoursAgo: number;
+  certificate: { id: string; commonName: string; serialNumber: string };
+  revocationReason: CrlReason;
+  stepSeeds: StepSeed[];
+}): TApprovalRequest => {
+  const requestData: CertRevocationRequestData = {
+    certificateId: certificate.id,
+    serialNumber: certificate.serialNumber,
+    commonName: certificate.commonName,
+    profileId: tlsServer.id,
+    profileName: tlsServer.slug,
+    applicationId: "app-payments",
+    revocationReason
+  };
+  const requestSteps = steps(id, stepSeeds);
+  return {
+    id,
+    projectId,
+    policyId: "pol-payments-revocation",
+    scopeType: ApprovalPolicyScope.PkiApplication,
+    scopeId: "app-payments",
+    type: ApprovalPolicyType.CertRevocation,
+    approversCanNoLongerApprove: false,
+    status,
+    requesterId,
+    requesterName: people[requesterId].name,
+    requesterEmail: people[requesterId].email,
+    justification: null,
+    expiresAt: null,
+    requestData: { version: 1, requestData },
+    steps: requestSteps,
+    canBreakGlass: false,
+    canReview: canReviewOf(status, requestSteps),
+    isBreakGlass: false,
+    createdAt: ago(hoursAgo),
+    updatedAt: ago(hoursAgo)
+  };
+};
 
 const security = { type: ApproverType.Group, id: "g-security" };
 const marcus = { type: ApproverType.User, id: "u-marcus" };
@@ -325,6 +398,45 @@ const requests: TApprovalRequest[] = [
     commonName: "ledger.payments.acme.dev",
     profile: tlsServer,
     stepSeeds: [{ status: InProgress, approvers: [security] }]
+  }),
+  revocationRequest({
+    id: "d4a3f5e7-8b9c-4fa0-b1c2-3d4e5f6a7b81",
+    status: ApprovalRequestStatus.Pending,
+    requesterId: "u-priya",
+    hoursAgo: 0.5,
+    certificate: {
+      id: "6c1e8a3f-4b2d-4f90-8e75-d03a9b6c2e41",
+      commonName: "payments.acme.dev",
+      serialNumber: "61:0B:E4:93:5A:C7:28:4D"
+    },
+    revocationReason: CrlReason.KEY_COMPROMISE,
+    stepSeeds: [{ name: "Security review", status: InProgress, approvers: [security] }]
+  }),
+  revocationRequest({
+    id: "d4a3f5e7-8b9c-4fa0-b1c2-3d4e5f6a7b82",
+    status: ApprovalRequestStatus.Rejected,
+    requesterId: "u-devon",
+    hoursAgo: 40,
+    certificate: {
+      id: "0f6b2d84-1e9a-4c37-b5d2-8a3e7c1f9d06",
+      commonName: "api.acme.dev",
+      serialNumber: "4F:A1:9C:2B:7E:11:D0:E2"
+    },
+    revocationReason: CrlReason.SUPERSEDED,
+    stepSeeds: [
+      {
+        name: "Security review",
+        status: ApprovalRequestStepStatus.Rejected,
+        approvers: [security],
+        decisions: [
+          {
+            userId: "u-marcus",
+            decision: Rejected,
+            comment: "The scheduled rotation replaces it next week. Let it expire instead."
+          }
+        ]
+      }
+    ]
   }),
   signingRequest({
     id: "b2e1d3c5-6f7a-4d8e-9fa0-1b2c3d4e5f61",
@@ -497,7 +609,13 @@ const decide = (
       if (decision === Rejected) status = ApprovalRequestStatus.Rejected;
       else if (advanced.every((step) => step.status === Completed))
         status = ApprovalRequestStatus.Approved;
-      return { ...request, steps: advanced, status, updatedAt: now };
+      return {
+        ...request,
+        steps: advanced,
+        status,
+        canReview: canReviewOf(status, advanced),
+        updatedAt: now
+      };
     })
   }));
   return store.get().requests.find((request) => request.id === requestId)!;
@@ -507,14 +625,40 @@ const setStatus = (requestId: string, status: ApprovalRequestStatus) => {
   store.update((state) => ({
     ...state,
     requests: state.requests.map((request) =>
-      request.id === requestId ? { ...request, status } : request
+      request.id === requestId ? { ...request, status, canReview: false } : request
     )
   }));
   return store.get().requests.find((request) => request.id === requestId)!;
 };
 
+const revocationProfileNames = new Set([tlsServer.slug]);
+
+export const requestDemoRevocation = (
+  certificate: {
+    id: string;
+    commonName: string;
+    serialNumber: string;
+    profileName?: string | null;
+  },
+  revocationReason: string
+) => {
+  if (!certificate.profileName || !revocationProfileNames.has(certificate.profileName))
+    return undefined;
+  const request = revocationRequest({
+    id: crypto.randomUUID(),
+    status: ApprovalRequestStatus.Pending,
+    requesterId: me,
+    hoursAgo: 0,
+    certificate,
+    revocationReason: revocationReason as CrlReason,
+    stepSeeds: [{ name: "Security review", status: InProgress, approvers: [security] }]
+  });
+  store.update((state) => ({ ...state, requests: [request, ...state.requests] }));
+  return request.id;
+};
+
 export const approvalRequestsDemo: ApprovalRequestsAdapter = {
-  useViewer: () => result({ isAdmin: true, groupIds: ["g-security"] }),
+  useViewer: () => result({ isAdmin: true, groupIds: viewerGroups }),
   useRequests: ({ policyType }) => {
     const state = store.use();
     return result(state.requests.filter((request) => request.type === policyType));
@@ -548,6 +692,29 @@ export const approvalRequestsDemo: ApprovalRequestsAdapter = {
         : undefined
     );
   },
+  usePendingRevocations: () => {
+    const state = store.use();
+    return {
+      data: new Map(
+        state.requests.flatMap((request) => {
+          const data = request.requestData.requestData as CertRevocationRequestData;
+          return request.type === ApprovalPolicyType.CertRevocation &&
+            request.status === ApprovalRequestStatus.Pending
+            ? [
+                [
+                  data.certificateId,
+                  {
+                    id: request.id,
+                    approversCanNoLongerApprove: request.approversCanNoLongerApprove
+                  }
+                ] as const
+              ]
+            : [];
+        })
+      )
+    };
+  },
+  useRevocationPolicyProfileNames: () => result(revocationProfileNames),
   useApprove: fixtureMutation(({ requestId, comment }) => decide(requestId, Approved, comment)),
   useReject: fixtureMutation(({ requestId, comment }) => decide(requestId, Rejected, comment)),
   useCancel: fixtureMutation(({ requestId }) =>

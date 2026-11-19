@@ -24,6 +24,7 @@ export const CONNECTION_GATEWAYS: Partial<Record<AppConnection, "optional" | "re
   [AppConnection.AzureKeyVault]: "optional",
   [AppConnection.Chef]: "optional",
   [AppConnection.ClickHouse]: "optional",
+  [AppConnection.Coolify]: "optional",
   [AppConnection.Databricks]: "optional",
   [AppConnection.F5BigIp]: "optional",
   [AppConnection.GitHub]: "optional",

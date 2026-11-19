@@ -272,6 +272,7 @@ seedDemoProject("agent-platform", {
       revokedAt: status === Revoked ? at(-created + 30) : null,
       accessBundle: bundleRef(bundle, index),
       services,
+      skills: [],
       stats: null
     })
   )
@@ -782,6 +783,7 @@ export const agentVaultDemo: AgentVaultAdapter = {
           revokedAt: null,
           accessBundle: bundle ? { id: bundle.id, name: bundle.name } : null,
           services: namedServices,
+          skills: [],
           stats: null
         };
         updateDemoProject(projectId, (project) => ({
@@ -797,7 +799,8 @@ export const agentVaultDemo: AgentVaultAdapter = {
           createdAt: session.createdAt,
           projectId,
           accessBundle: session.accessBundle,
-          services: namedServices
+          services: namedServices,
+          skills: session.skills
         };
       }
     )(),

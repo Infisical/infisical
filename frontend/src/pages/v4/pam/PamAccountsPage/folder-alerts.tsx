@@ -401,11 +401,11 @@ export const FolderAlerts = ({
       render: (alert) =>
         [
           ...new Set(
-            alert.channels.filter(({ enabled }) => enabled).map(({ channelType }) => channelType)
+            alert.channels
+              .filter(({ enabled }) => enabled)
+              .map(({ channelType }) => ALERT_CHANNEL_TYPE_LABELS[channelType])
           )
-        ]
-          .map((type) => ALERT_CHANNEL_TYPE_LABELS[type])
-          .join(", ") || "None"
+        ].join(", ") || "None"
     },
     {
       id: "status",
