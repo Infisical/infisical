@@ -7,6 +7,7 @@ import { monitorEventLoopDelay } from "perf_hooks";
 import { z } from "zod";
 
 import { createDomains } from "@app/domains/domains";
+import { createSecretDecryptReservations, withSecretDecryptLimit } from "@app/domains/platform/kms-core/ce/module";
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
 import { registerPkiScepRouter } from "@app/ee/routes/scep/pki-scep-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
@@ -239,6 +240,7 @@ import { RunMode } from "@app/lib/types";
 import { workerHeartbeatFactory } from "@app/lib/worker-heartbeat/worker-heartbeat";
 import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
+import { currentSecretDecryptLease, secretDecryptLimit } from "@app/server/plugins/secret-decrypt-limit";
 import { registerSecretScanningV2Webhooks } from "@app/server/plugins/secret-scanner-v2";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
 import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
@@ -673,6 +675,9 @@ export const registerRoutes = async (
   domains.kmsCore.start(cronJob);
   const { usageMeteringService, licenseService } = domains.license;
   const { kmsDataKeyService, kmsKeyService, kmsRootKeyService } = domains.kmsCore;
+  await server.register(secretDecryptLimit);
+  const secretsKmsDataKeyService = withSecretDecryptLimit(kmsDataKeyService, currentSecretDecryptLease);
+  const secretDecryptReservations = createSecretDecryptReservations(currentSecretDecryptLease);
   const { organizationsProjectsService } = domains.organizationsProjects;
   const { certManagerService } = domains.certManager;
 
@@ -1017,7 +1022,7 @@ export const registerRoutes = async (
     permissionService,
     folderDAL,
     projectEnvDAL,
-    kmsDataKeyService
+    kmsDataKeyService: secretsKmsDataKeyService
   });
 
   const externalKmsService = externalKmsServiceFactory({
@@ -2570,7 +2575,8 @@ export const registerRoutes = async (
     secretDAL,
     secretQueueService,
     secretV2BridgeDAL,
-    kmsDataKeyService
+    kmsDataKeyService: secretsKmsDataKeyService,
+    secretDecryptReservations
   });
   const projectFolderGrantService = projectFolderGrantServiceFactory({
     projectFolderGrantDAL,
@@ -2638,13 +2644,14 @@ export const registerRoutes = async (
     secretImportDAL,
     secretChangePolicyService,
     secretChangeRequestService,
-    kmsDataKeyService,
+    kmsDataKeyService: secretsKmsDataKeyService,
     resourceMetadataDAL,
     reminderService,
     keyStore,
     secretValidationRuleService,
     projectFolderGrantDAL,
-    orgDAL
+    orgDAL,
+    secretDecryptReservations
   });
 
   const secretService = secretServiceFactory({
@@ -2667,7 +2674,7 @@ export const registerRoutes = async (
     reminderService,
     secretVersionV2DAL: secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
-    kmsDataKeyService,
+    kmsDataKeyService: secretsKmsDataKeyService,
     userGroupMembershipDAL,
     identityGroupMembershipDAL,
     orgDAL,

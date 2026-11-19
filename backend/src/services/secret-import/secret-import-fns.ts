@@ -250,6 +250,7 @@ export const fnSecretsV2FromImports = async ({
   secretDAL,
   secretImportDAL,
   decryptor,
+  reserveDecrypts,
   expandSecretReferences,
   hasSecretAccess,
   importAccessScopeByFolderId,
@@ -272,6 +273,7 @@ export const fnSecretsV2FromImports = async ({
   secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   decryptor: (value?: Buffer | null) => string;
+  reserveDecrypts?: (count: number) => void;
   expandSecretReferences?: (inputSecret: {
     value?: string;
     skipMultilineEncoding?: boolean | null;
@@ -390,6 +392,8 @@ export const fnSecretsV2FromImports = async ({
         }
       );
     }
+
+    reserveDecrypts?.(importedSecrets.length);
 
     const importedSecretsGroupByFolderId = groupBy(importedSecrets, (i) => i.folderId);
 

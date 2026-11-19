@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { createConcurrencyLimiter, createKeyedConcurrencyLimiter } from "./concurrency-limiter";
+import {
+  createConcurrencyLimiter,
+  createKeyedConcurrencyLimiter,
+  createKeyedInFlightCounter
+} from "./concurrency-limiter";
 
 const deferred = () => {
   let resolve!: () => void;
@@ -201,5 +205,42 @@ describe("aggregate admission across keys", () => {
 
     expect(results.filter((result) => result === null).length).toBeGreaterThan(0);
     expect(limiter.getTotalInFlight()).toBe(0);
+  });
+});
+
+describe("createKeyedInFlightCounter", () => {
+  it("should count entries per key", () => {
+    const counter = createKeyedInFlightCounter();
+
+    counter.add("org-a");
+    counter.add("org-a", 4);
+    counter.add("org-b", 2);
+
+    expect(counter.get("org-a")).toBe(5);
+    expect(counter.get("org-b")).toBe(2);
+    expect(counter.get("org-c")).toBe(0);
+  });
+
+  it("should drop a key once all of its entries are removed", () => {
+    const counter = createKeyedInFlightCounter();
+
+    counter.add("org-a", 3);
+    counter.remove("org-a", 2);
+    expect(counter.get("org-a")).toBe(1);
+    expect(counter.getTrackedKeyCount()).toBe(1);
+
+    counter.remove("org-a");
+    expect(counter.get("org-a")).toBe(0);
+    expect(counter.getTrackedKeyCount()).toBe(0);
+  });
+
+  it("should never go below zero", () => {
+    const counter = createKeyedInFlightCounter();
+
+    counter.add("org-a");
+    counter.remove("org-a", 5);
+
+    expect(counter.get("org-a")).toBe(0);
+    expect(counter.getTrackedKeyCount()).toBe(0);
   });
 });

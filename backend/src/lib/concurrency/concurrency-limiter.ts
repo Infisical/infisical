@@ -114,3 +114,26 @@ export const createKeyedConcurrencyLimiter = ({
 };
 
 export type TKeyedConcurrencyLimiter = ReturnType<typeof createKeyedConcurrencyLimiter>;
+
+export const createKeyedInFlightCounter = () => {
+  const counts = new Map<string, number>();
+
+  const add = (key: string, count = 1) => {
+    counts.set(key, (counts.get(key) ?? 0) + count);
+  };
+
+  const remove = (key: string, count = 1) => {
+    const remaining = (counts.get(key) ?? 0) - count;
+    if (remaining > 0) counts.set(key, remaining);
+    else counts.delete(key);
+  };
+
+  return {
+    add,
+    remove,
+    get: (key: string) => counts.get(key) ?? 0,
+    getTrackedKeyCount: () => counts.size
+  };
+};
+
+export type TKeyedInFlightCounter = ReturnType<typeof createKeyedInFlightCounter>;
