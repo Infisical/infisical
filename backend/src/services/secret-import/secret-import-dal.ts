@@ -624,21 +624,20 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Same-project imports that read their source directly (not replication imports), placed in the given
-  // environments. Reserved replication folders are left out, since nobody creates imports in them.
-  const findNonReplicationImportsByEnvIds = async (envIds: string[], tx?: Knex) => {
+  // Same-project imports placed in the given environments, optionally only replication or only direct ones.
+  // Reserved replication folders are left out, since nobody creates imports in them.
+  const findSameProjectImportsByEnvIds = async (
+    envIds: string[],
+    { isReplication }: { isReplication?: boolean } = {},
+    tx?: Knex
+  ) => {
     try {
-      const docs = await (tx || db.replicaNode())(TableName.SecretImport)
+      const query = (tx || db.replicaNode())(TableName.SecretImport)
         .join(TableName.SecretFolder, `${TableName.SecretImport}.folderId`, `${TableName.SecretFolder}.id`)
         .join(`${TableName.Environment} as destinationEnv`, `${TableName.SecretFolder}.envId`, "destinationEnv.id")
         .join(`${TableName.Environment} as sourceEnv`, `${TableName.SecretImport}.importEnv`, "sourceEnv.id")
         .whereIn(`${TableName.SecretFolder}.envId`, envIds)
         .whereRaw('"sourceEnv"."projectId" = "destinationEnv"."projectId"')
-        .where((qb) => {
-          void qb
-            .where(`${TableName.SecretImport}.isReplication`, false)
-            .orWhereNull(`${TableName.SecretImport}.isReplication`);
-        })
         .where((qb) => {
           void qb
             .where(`${TableName.SecretImport}.isReserved`, false)
@@ -655,16 +654,28 @@ export const secretImportDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.SecretImport),
           db.ref("folderId").withSchema(TableName.SecretImport),
           db.ref("importPath").withSchema(TableName.SecretImport),
+          db.ref("isReplication").withSchema(TableName.SecretImport),
           db.ref("id").withSchema("destinationEnv").as("envId"),
           db.ref("slug").withSchema("destinationEnv").as("environmentSlug"),
           db.ref("name").withSchema("destinationEnv").as("environmentName"),
           db.ref("slug").withSchema("sourceEnv").as("sourceEnvironmentSlug"),
           db.ref("name").withSchema("sourceEnv").as("sourceEnvironmentName")
         );
+      if (isReplication) {
+        void query.where(`${TableName.SecretImport}.isReplication`, true);
+      } else if (isReplication === false) {
+        void query.where((qb) => {
+          void qb
+            .where(`${TableName.SecretImport}.isReplication`, false)
+            .orWhereNull(`${TableName.SecretImport}.isReplication`);
+        });
+      }
+      const docs = await query;
       return docs as {
         id: string;
         folderId: string;
         importPath: string;
+        isReplication: boolean | null;
         envId: string;
         environmentSlug: string;
         environmentName: string;
@@ -672,14 +683,14 @@ export const secretImportDALFactory = (db: TDbClient) => {
         sourceEnvironmentName: string;
       }[];
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find non-replication secret imports by environment IDs" });
+      throw new DatabaseError({ error, name: "Find same-project secret imports by environment IDs" });
     }
   };
 
   return {
     ...secretImportOrm,
     find,
-    findNonReplicationImportsByEnvIds,
+    findSameProjectImportsByEnvIds,
     findById,
     lockWithFolderAgainstDelete,
     findByIds,

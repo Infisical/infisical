@@ -88551,96 +88551,6 @@ func (e GetSecretApprovalPolicyBoard500JSONResponseBodyStatusCode) Valid() bool 
 	}
 }
 
-// Defines values for ListSecretApprovalPolicyNonReplicationImports400JSONResponseBodyStatusCode.
-const (
-	ListSecretApprovalPolicyNonReplicationImports400JSONResponseBodyStatusCodeN400 ListSecretApprovalPolicyNonReplicationImports400JSONResponseBodyStatusCode = 400
-)
-
-// Valid indicates whether the value is a known member of the ListSecretApprovalPolicyNonReplicationImports400JSONResponseBodyStatusCode enum.
-func (e ListSecretApprovalPolicyNonReplicationImports400JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case ListSecretApprovalPolicyNonReplicationImports400JSONResponseBodyStatusCodeN400:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ListSecretApprovalPolicyNonReplicationImports401JSONResponseBodyStatusCode.
-const (
-	ListSecretApprovalPolicyNonReplicationImports401JSONResponseBodyStatusCodeN401 ListSecretApprovalPolicyNonReplicationImports401JSONResponseBodyStatusCode = 401
-)
-
-// Valid indicates whether the value is a known member of the ListSecretApprovalPolicyNonReplicationImports401JSONResponseBodyStatusCode enum.
-func (e ListSecretApprovalPolicyNonReplicationImports401JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case ListSecretApprovalPolicyNonReplicationImports401JSONResponseBodyStatusCodeN401:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ListSecretApprovalPolicyNonReplicationImports403JSONResponseBodyStatusCode.
-const (
-	ListSecretApprovalPolicyNonReplicationImports403JSONResponseBodyStatusCodeN403 ListSecretApprovalPolicyNonReplicationImports403JSONResponseBodyStatusCode = 403
-)
-
-// Valid indicates whether the value is a known member of the ListSecretApprovalPolicyNonReplicationImports403JSONResponseBodyStatusCode enum.
-func (e ListSecretApprovalPolicyNonReplicationImports403JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case ListSecretApprovalPolicyNonReplicationImports403JSONResponseBodyStatusCodeN403:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ListSecretApprovalPolicyNonReplicationImports404JSONResponseBodyStatusCode.
-const (
-	ListSecretApprovalPolicyNonReplicationImports404JSONResponseBodyStatusCodeN404 ListSecretApprovalPolicyNonReplicationImports404JSONResponseBodyStatusCode = 404
-)
-
-// Valid indicates whether the value is a known member of the ListSecretApprovalPolicyNonReplicationImports404JSONResponseBodyStatusCode enum.
-func (e ListSecretApprovalPolicyNonReplicationImports404JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case ListSecretApprovalPolicyNonReplicationImports404JSONResponseBodyStatusCodeN404:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ListSecretApprovalPolicyNonReplicationImports422JSONResponseBodyStatusCode.
-const (
-	ListSecretApprovalPolicyNonReplicationImports422JSONResponseBodyStatusCodeN422 ListSecretApprovalPolicyNonReplicationImports422JSONResponseBodyStatusCode = 422
-)
-
-// Valid indicates whether the value is a known member of the ListSecretApprovalPolicyNonReplicationImports422JSONResponseBodyStatusCode enum.
-func (e ListSecretApprovalPolicyNonReplicationImports422JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case ListSecretApprovalPolicyNonReplicationImports422JSONResponseBodyStatusCodeN422:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ListSecretApprovalPolicyNonReplicationImports500JSONResponseBodyStatusCode.
-const (
-	ListSecretApprovalPolicyNonReplicationImports500JSONResponseBodyStatusCodeN500 ListSecretApprovalPolicyNonReplicationImports500JSONResponseBodyStatusCode = 500
-)
-
-// Valid indicates whether the value is a known member of the ListSecretApprovalPolicyNonReplicationImports500JSONResponseBodyStatusCode enum.
-func (e ListSecretApprovalPolicyNonReplicationImports500JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case ListSecretApprovalPolicyNonReplicationImports500JSONResponseBodyStatusCodeN500:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for DeleteSecretApprovalPolicy400JSONResponseBodyStatusCode.
 const (
 	DeleteSecretApprovalPolicy400JSONResponseBodyStatusCodeN400 DeleteSecretApprovalPolicy400JSONResponseBodyStatusCode = 400
@@ -89034,6 +88944,114 @@ const (
 func (e UpdateSecretApprovalPolicy500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case UpdateSecretApprovalPolicy500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSecretApprovalPolicyImportsParamsIsReplication.
+const (
+	ListSecretApprovalPolicyImportsParamsIsReplicationFalse ListSecretApprovalPolicyImportsParamsIsReplication = "false"
+	ListSecretApprovalPolicyImportsParamsIsReplicationTrue  ListSecretApprovalPolicyImportsParamsIsReplication = "true"
+)
+
+// Valid indicates whether the value is a known member of the ListSecretApprovalPolicyImportsParamsIsReplication enum.
+func (e ListSecretApprovalPolicyImportsParamsIsReplication) Valid() bool {
+	switch e {
+	case ListSecretApprovalPolicyImportsParamsIsReplicationFalse:
+		return true
+	case ListSecretApprovalPolicyImportsParamsIsReplicationTrue:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSecretApprovalPolicyImports400JSONResponseBodyStatusCode.
+const (
+	ListSecretApprovalPolicyImports400JSONResponseBodyStatusCodeN400 ListSecretApprovalPolicyImports400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListSecretApprovalPolicyImports400JSONResponseBodyStatusCode enum.
+func (e ListSecretApprovalPolicyImports400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListSecretApprovalPolicyImports400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSecretApprovalPolicyImports401JSONResponseBodyStatusCode.
+const (
+	ListSecretApprovalPolicyImports401JSONResponseBodyStatusCodeN401 ListSecretApprovalPolicyImports401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListSecretApprovalPolicyImports401JSONResponseBodyStatusCode enum.
+func (e ListSecretApprovalPolicyImports401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListSecretApprovalPolicyImports401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSecretApprovalPolicyImports403JSONResponseBodyStatusCode.
+const (
+	ListSecretApprovalPolicyImports403JSONResponseBodyStatusCodeN403 ListSecretApprovalPolicyImports403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListSecretApprovalPolicyImports403JSONResponseBodyStatusCode enum.
+func (e ListSecretApprovalPolicyImports403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListSecretApprovalPolicyImports403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSecretApprovalPolicyImports404JSONResponseBodyStatusCode.
+const (
+	ListSecretApprovalPolicyImports404JSONResponseBodyStatusCodeN404 ListSecretApprovalPolicyImports404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListSecretApprovalPolicyImports404JSONResponseBodyStatusCode enum.
+func (e ListSecretApprovalPolicyImports404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListSecretApprovalPolicyImports404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSecretApprovalPolicyImports422JSONResponseBodyStatusCode.
+const (
+	ListSecretApprovalPolicyImports422JSONResponseBodyStatusCodeN422 ListSecretApprovalPolicyImports422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListSecretApprovalPolicyImports422JSONResponseBodyStatusCode enum.
+func (e ListSecretApprovalPolicyImports422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListSecretApprovalPolicyImports422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSecretApprovalPolicyImports500JSONResponseBodyStatusCode.
+const (
+	ListSecretApprovalPolicyImports500JSONResponseBodyStatusCodeN500 ListSecretApprovalPolicyImports500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListSecretApprovalPolicyImports500JSONResponseBodyStatusCode enum.
+func (e ListSecretApprovalPolicyImports500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListSecretApprovalPolicyImports500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -136877,38 +136895,6 @@ type GetSecretApprovalPolicyBoard422JSONResponseBodyStatusCode float32
 // GetSecretApprovalPolicyBoard500JSONResponseBodyStatusCode defines parameters for GetSecretApprovalPolicyBoard.
 type GetSecretApprovalPolicyBoard500JSONResponseBodyStatusCode float32
 
-// ListSecretApprovalPolicyNonReplicationImportsParams defines parameters for ListSecretApprovalPolicyNonReplicationImports.
-type ListSecretApprovalPolicyNonReplicationImportsParams struct {
-	ProjectId string `form:"projectId" json:"projectId"`
-
-	// Environments Comma-separated list of environment slugs the policy applies to
-	Environments string `form:"environments" json:"environments"`
-
-	// SecretPath The policy's secret path, which can be a glob pattern
-	SecretPath string `form:"secretPath" json:"secretPath"`
-
-	// PolicyId The policy being edited, if any
-	PolicyId *openapi_types.UUID `form:"policyId,omitempty" json:"policyId,omitempty"`
-}
-
-// ListSecretApprovalPolicyNonReplicationImports400JSONResponseBodyStatusCode defines parameters for ListSecretApprovalPolicyNonReplicationImports.
-type ListSecretApprovalPolicyNonReplicationImports400JSONResponseBodyStatusCode float32
-
-// ListSecretApprovalPolicyNonReplicationImports401JSONResponseBodyStatusCode defines parameters for ListSecretApprovalPolicyNonReplicationImports.
-type ListSecretApprovalPolicyNonReplicationImports401JSONResponseBodyStatusCode float32
-
-// ListSecretApprovalPolicyNonReplicationImports403JSONResponseBodyStatusCode defines parameters for ListSecretApprovalPolicyNonReplicationImports.
-type ListSecretApprovalPolicyNonReplicationImports403JSONResponseBodyStatusCode float32
-
-// ListSecretApprovalPolicyNonReplicationImports404JSONResponseBodyStatusCode defines parameters for ListSecretApprovalPolicyNonReplicationImports.
-type ListSecretApprovalPolicyNonReplicationImports404JSONResponseBodyStatusCode float32
-
-// ListSecretApprovalPolicyNonReplicationImports422JSONResponseBodyStatusCode defines parameters for ListSecretApprovalPolicyNonReplicationImports.
-type ListSecretApprovalPolicyNonReplicationImports422JSONResponseBodyStatusCode float32
-
-// ListSecretApprovalPolicyNonReplicationImports500JSONResponseBodyStatusCode defines parameters for ListSecretApprovalPolicyNonReplicationImports.
-type ListSecretApprovalPolicyNonReplicationImports500JSONResponseBodyStatusCode float32
-
 // DeleteSecretApprovalPolicy400JSONResponseBodyStatusCode defines parameters for DeleteSecretApprovalPolicy.
 type DeleteSecretApprovalPolicy400JSONResponseBodyStatusCode float32
 
@@ -137047,6 +137033,33 @@ type UpdateSecretApprovalPolicy422JSONResponseBodyStatusCode float32
 
 // UpdateSecretApprovalPolicy500JSONResponseBodyStatusCode defines parameters for UpdateSecretApprovalPolicy.
 type UpdateSecretApprovalPolicy500JSONResponseBodyStatusCode float32
+
+// ListSecretApprovalPolicyImportsParams defines parameters for ListSecretApprovalPolicyImports.
+type ListSecretApprovalPolicyImportsParams struct {
+	// IsReplication When set, list only imports that respect approval policies (true) or only imports that read their source directly (false)
+	IsReplication *ListSecretApprovalPolicyImportsParamsIsReplication `form:"isReplication,omitempty" json:"isReplication,omitempty"`
+}
+
+// ListSecretApprovalPolicyImportsParamsIsReplication defines parameters for ListSecretApprovalPolicyImports.
+type ListSecretApprovalPolicyImportsParamsIsReplication string
+
+// ListSecretApprovalPolicyImports400JSONResponseBodyStatusCode defines parameters for ListSecretApprovalPolicyImports.
+type ListSecretApprovalPolicyImports400JSONResponseBodyStatusCode float32
+
+// ListSecretApprovalPolicyImports401JSONResponseBodyStatusCode defines parameters for ListSecretApprovalPolicyImports.
+type ListSecretApprovalPolicyImports401JSONResponseBodyStatusCode float32
+
+// ListSecretApprovalPolicyImports403JSONResponseBodyStatusCode defines parameters for ListSecretApprovalPolicyImports.
+type ListSecretApprovalPolicyImports403JSONResponseBodyStatusCode float32
+
+// ListSecretApprovalPolicyImports404JSONResponseBodyStatusCode defines parameters for ListSecretApprovalPolicyImports.
+type ListSecretApprovalPolicyImports404JSONResponseBodyStatusCode float32
+
+// ListSecretApprovalPolicyImports422JSONResponseBodyStatusCode defines parameters for ListSecretApprovalPolicyImports.
+type ListSecretApprovalPolicyImports422JSONResponseBodyStatusCode float32
+
+// ListSecretApprovalPolicyImports500JSONResponseBodyStatusCode defines parameters for ListSecretApprovalPolicyImports.
+type ListSecretApprovalPolicyImports500JSONResponseBodyStatusCode float32
 
 // ListSecretImportsParams defines parameters for ListSecretImports.
 type ListSecretImportsParams struct {
@@ -174964,11 +174977,6 @@ type ClientInterface interface {
 	// GetSecretApprovalPolicyBoard performs a GET /api/v2/secret-approvals/board (the `GetSecretApprovalPolicyBoard` operationId) request.
 	GetSecretApprovalPolicyBoard(ctx context.Context, params *GetSecretApprovalPolicyBoardParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ListSecretApprovalPolicyNonReplicationImports performs a GET /api/v2/secret-approvals/non-replication-imports (the `ListSecretApprovalPolicyNonReplicationImports` operationId) request.
-	//
-	// List the imports from the same project that read their source directly, in the folders a secret change policy with these settings would govern. With 'Require approval for imported secrets' on, each of these has to be recreated as an import that respects approval policies.
-	ListSecretApprovalPolicyNonReplicationImports(ctx context.Context, params *ListSecretApprovalPolicyNonReplicationImportsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// DeleteSecretApprovalPolicy performs a DELETE /api/v2/secret-approvals/{sapId} (the `DeleteSecretApprovalPolicy` operationId) request.
 	DeleteSecretApprovalPolicy(ctx context.Context, sapId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -174982,6 +174990,11 @@ type ClientInterface interface {
 	// UpdateSecretApprovalPolicy performs a PATCH /api/v2/secret-approvals/{sapId} (the `UpdateSecretApprovalPolicy` operationId) request.
 	// Takes a body of the `application/json` content type.
 	UpdateSecretApprovalPolicy(ctx context.Context, sapId string, body UpdateSecretApprovalPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListSecretApprovalPolicyImports performs a GET /api/v2/secret-approvals/{sapId}/imports (the `ListSecretApprovalPolicyImports` operationId) request.
+	//
+	// List the imports from the same project in the folders a secret change policy governs. With 'Require approval for imported secrets' on, each import that does not respect approval policies (isReplication=false) has to be recreated as one that does.
+	ListSecretApprovalPolicyImports(ctx context.Context, sapId openapi_types.UUID, params *ListSecretApprovalPolicyImportsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListSecretImports performs a GET /api/v2/secret-imports (the `ListSecretImports` operationId) request.
 	//
@@ -190250,21 +190263,6 @@ func (c *Client) GetSecretApprovalPolicyBoard(ctx context.Context, params *GetSe
 	return c.Client.Do(req)
 }
 
-// ListSecretApprovalPolicyNonReplicationImports performs a GET /api/v2/secret-approvals/non-replication-imports (the `ListSecretApprovalPolicyNonReplicationImports` operationId) request.
-//
-// List the imports from the same project that read their source directly, in the folders a secret change policy with these settings would govern. With 'Require approval for imported secrets' on, each of these has to be recreated as an import that respects approval policies.
-func (c *Client) ListSecretApprovalPolicyNonReplicationImports(ctx context.Context, params *ListSecretApprovalPolicyNonReplicationImportsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListSecretApprovalPolicyNonReplicationImportsRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 // DeleteSecretApprovalPolicy performs a DELETE /api/v2/secret-approvals/{sapId} (the `DeleteSecretApprovalPolicy` operationId) request.
 func (c *Client) DeleteSecretApprovalPolicy(ctx context.Context, sapId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteSecretApprovalPolicyRequest(c.Server, sapId)
@@ -190309,6 +190307,21 @@ func (c *Client) UpdateSecretApprovalPolicyWithBody(ctx context.Context, sapId s
 // Takes a body of the `application/json` content type.
 func (c *Client) UpdateSecretApprovalPolicy(ctx context.Context, sapId string, body UpdateSecretApprovalPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateSecretApprovalPolicyRequest(c.Server, sapId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListSecretApprovalPolicyImports performs a GET /api/v2/secret-approvals/{sapId}/imports (the `ListSecretApprovalPolicyImports` operationId) request.
+//
+// List the imports from the same project in the folders a secret change policy governs. With 'Require approval for imported secrets' on, each import that does not respect approval policies (isReplication=false) has to be recreated as one that does.
+func (c *Client) ListSecretApprovalPolicyImports(ctx context.Context, sapId openapi_types.UUID, params *ListSecretApprovalPolicyImportsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListSecretApprovalPolicyImportsRequest(c.Server, sapId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -223965,84 +223978,6 @@ func NewGetSecretApprovalPolicyBoardRequest(server string, params *GetSecretAppr
 	return req, nil
 }
 
-// NewListSecretApprovalPolicyNonReplicationImportsRequest constructs an http.Request for the ListSecretApprovalPolicyNonReplicationImports method
-func NewListSecretApprovalPolicyNonReplicationImportsRequest(server string, params *ListSecretApprovalPolicyNonReplicationImportsParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v2/secret-approvals/non-replication-imports")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		// queryValues collects non-styled parameters (passthrough, JSON)
-		// that are safe to round-trip through url.Values.Encode().
-		queryValues := queryURL.Query()
-		// rawQueryFragments collects pre-encoded query fragments from
-		// styled parameters, preserving literal commas as delimiters
-		// per the OpenAPI spec (e.g. "color=blue,black,brown").
-		var rawQueryFragments []string
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "projectId", params.ProjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "environments", params.Environments, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "secretPath", params.SecretPath, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if params.PolicyId != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "policyId", *params.PolicyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if encoded := queryValues.Encode(); encoded != "" {
-			rawQueryFragments = append(rawQueryFragments, encoded)
-		}
-		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewDeleteSecretApprovalPolicyRequest constructs an http.Request for the DeleteSecretApprovalPolicy method
 func NewDeleteSecretApprovalPolicyRequest(server string, sapId string) (*http.Request, error) {
 	var err error
@@ -224154,6 +224089,67 @@ func NewUpdateSecretApprovalPolicyRequestWithBody(server string, sapId string, c
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListSecretApprovalPolicyImportsRequest constructs an http.Request for the ListSecretApprovalPolicyImports method
+func NewListSecretApprovalPolicyImportsRequest(server string, sapId openapi_types.UUID, params *ListSecretApprovalPolicyImportsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "sapId", sapId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v2/secret-approvals/%s/imports", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.IsReplication != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "isReplication", *params.IsReplication, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -234140,13 +234136,6 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	GetSecretApprovalPolicyBoardWithResponse(ctx context.Context, params *GetSecretApprovalPolicyBoardParams, reqEditors ...RequestEditorFn) (*GetSecretApprovalPolicyBoardResponse, error)
 
-	// ListSecretApprovalPolicyNonReplicationImportsWithResponse performs a GET /api/v2/secret-approvals/non-replication-imports (the `ListSecretApprovalPolicyNonReplicationImports` operationId) request.
-	//
-	// List the imports from the same project that read their source directly, in the folders a secret change policy with these settings would govern. With 'Require approval for imported secrets' on, each of these has to be recreated as an import that respects approval policies.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	ListSecretApprovalPolicyNonReplicationImportsWithResponse(ctx context.Context, params *ListSecretApprovalPolicyNonReplicationImportsParams, reqEditors ...RequestEditorFn) (*ListSecretApprovalPolicyNonReplicationImportsResponse, error)
-
 	// DeleteSecretApprovalPolicyWithResponse performs a DELETE /api/v2/secret-approvals/{sapId} (the `DeleteSecretApprovalPolicy` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -234166,6 +234155,13 @@ type ClientWithResponsesInterface interface {
 	// UpdateSecretApprovalPolicyWithResponse performs a PATCH /api/v2/secret-approvals/{sapId} (the `UpdateSecretApprovalPolicy` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	UpdateSecretApprovalPolicyWithResponse(ctx context.Context, sapId string, body UpdateSecretApprovalPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSecretApprovalPolicyResponse, error)
+
+	// ListSecretApprovalPolicyImportsWithResponse performs a GET /api/v2/secret-approvals/{sapId}/imports (the `ListSecretApprovalPolicyImports` operationId) request.
+	//
+	// List the imports from the same project in the folders a secret change policy governs. With 'Require approval for imported secrets' on, each import that does not respect approval policies (isReplication=false) has to be recreated as one that does.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListSecretApprovalPolicyImportsWithResponse(ctx context.Context, sapId openapi_types.UUID, params *ListSecretApprovalPolicyImportsParams, reqEditors ...RequestEditorFn) (*ListSecretApprovalPolicyImportsResponse, error)
 
 	// ListSecretImportsWithResponse performs a GET /api/v2/secret-imports (the `ListSecretImports` operationId) request.
 	//
@@ -358926,181 +358922,6 @@ func (r GetSecretApprovalPolicyBoardResponse) ContentType() string {
 	return ""
 }
 
-type ListSecretApprovalPolicyNonReplicationImportsResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *struct {
-		Imports []struct {
-			Environment struct {
-				Name string `json:"name"`
-				Slug string `json:"slug"`
-			} `json:"environment"`
-			Id                string `json:"id"`
-			SecretPath        string `json:"secretPath"`
-			SourceEnvironment struct {
-				Name string `json:"name"`
-				Slug string `json:"slug"`
-			} `json:"sourceEnvironment"`
-			SourceSecretPath string `json:"sourceSecretPath"`
-		} `json:"imports"`
-	}
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *struct {
-		Details    interface{}                                                                `json:"details,omitempty"`
-		Error      string                                                                     `json:"error"`
-		Message    string                                                                     `json:"message"`
-		ReqId      string                                                                     `json:"reqId"`
-		StatusCode ListSecretApprovalPolicyNonReplicationImports400JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *struct {
-		Error      string                                                                     `json:"error"`
-		Message    string                                                                     `json:"message"`
-		ReqId      string                                                                     `json:"reqId"`
-		StatusCode ListSecretApprovalPolicyNonReplicationImports401JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *struct {
-		Details    interface{}                                                                `json:"details,omitempty"`
-		Error      string                                                                     `json:"error"`
-		Message    string                                                                     `json:"message"`
-		ReqId      string                                                                     `json:"reqId"`
-		StatusCode ListSecretApprovalPolicyNonReplicationImports403JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *struct {
-		Error      string                                                                     `json:"error"`
-		Message    string                                                                     `json:"message"`
-		ReqId      string                                                                     `json:"reqId"`
-		StatusCode ListSecretApprovalPolicyNonReplicationImports404JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON422 the response for an HTTP 422 `application/json` response
-	JSON422 *struct {
-		Error      string                                                                     `json:"error"`
-		Message    interface{}                                                                `json:"message,omitempty"`
-		ReqId      string                                                                     `json:"reqId"`
-		StatusCode ListSecretApprovalPolicyNonReplicationImports422JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON500 the response for an HTTP 500 `application/json` response
-	JSON500 *struct {
-		Error      string                                                                     `json:"error"`
-		Message    string                                                                     `json:"message"`
-		ReqId      string                                                                     `json:"reqId"`
-		StatusCode ListSecretApprovalPolicyNonReplicationImports500JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r ListSecretApprovalPolicyNonReplicationImportsResponse) GetJSON200() *struct {
-	Imports []struct {
-		Environment struct {
-			Name string `json:"name"`
-			Slug string `json:"slug"`
-		} `json:"environment"`
-		Id                string `json:"id"`
-		SecretPath        string `json:"secretPath"`
-		SourceEnvironment struct {
-			Name string `json:"name"`
-			Slug string `json:"slug"`
-		} `json:"sourceEnvironment"`
-		SourceSecretPath string `json:"sourceSecretPath"`
-	} `json:"imports"`
-} {
-	return r.JSON200
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r ListSecretApprovalPolicyNonReplicationImportsResponse) GetJSON400() *struct {
-	Details    interface{}                                                                `json:"details,omitempty"`
-	Error      string                                                                     `json:"error"`
-	Message    string                                                                     `json:"message"`
-	ReqId      string                                                                     `json:"reqId"`
-	StatusCode ListSecretApprovalPolicyNonReplicationImports400JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON400
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r ListSecretApprovalPolicyNonReplicationImportsResponse) GetJSON401() *struct {
-	Error      string                                                                     `json:"error"`
-	Message    string                                                                     `json:"message"`
-	ReqId      string                                                                     `json:"reqId"`
-	StatusCode ListSecretApprovalPolicyNonReplicationImports401JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r ListSecretApprovalPolicyNonReplicationImportsResponse) GetJSON403() *struct {
-	Details    interface{}                                                                `json:"details,omitempty"`
-	Error      string                                                                     `json:"error"`
-	Message    string                                                                     `json:"message"`
-	ReqId      string                                                                     `json:"reqId"`
-	StatusCode ListSecretApprovalPolicyNonReplicationImports403JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON403
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r ListSecretApprovalPolicyNonReplicationImportsResponse) GetJSON404() *struct {
-	Error      string                                                                     `json:"error"`
-	Message    string                                                                     `json:"message"`
-	ReqId      string                                                                     `json:"reqId"`
-	StatusCode ListSecretApprovalPolicyNonReplicationImports404JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON404
-}
-
-// GetJSON422 returns the response for an HTTP 422 `application/json` response
-func (r ListSecretApprovalPolicyNonReplicationImportsResponse) GetJSON422() *struct {
-	Error      string                                                                     `json:"error"`
-	Message    interface{}                                                                `json:"message,omitempty"`
-	ReqId      string                                                                     `json:"reqId"`
-	StatusCode ListSecretApprovalPolicyNonReplicationImports422JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON422
-}
-
-// GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r ListSecretApprovalPolicyNonReplicationImportsResponse) GetJSON500() *struct {
-	Error      string                                                                     `json:"error"`
-	Message    string                                                                     `json:"message"`
-	ReqId      string                                                                     `json:"reqId"`
-	StatusCode ListSecretApprovalPolicyNonReplicationImports500JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON500
-}
-
-// GetBody returns the raw response body bytes
-func (r ListSecretApprovalPolicyNonReplicationImportsResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r ListSecretApprovalPolicyNonReplicationImportsResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r ListSecretApprovalPolicyNonReplicationImportsResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r ListSecretApprovalPolicyNonReplicationImportsResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
 type DeleteSecretApprovalPolicyResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -359712,6 +359533,183 @@ func (r UpdateSecretApprovalPolicyResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateSecretApprovalPolicyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListSecretApprovalPolicyImportsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Imports []struct {
+			Environment struct {
+				Name string `json:"name"`
+				Slug string `json:"slug"`
+			} `json:"environment"`
+			Id                string `json:"id"`
+			IsReplication     bool   `json:"isReplication"`
+			SecretPath        string `json:"secretPath"`
+			SourceEnvironment struct {
+				Name string `json:"name"`
+				Slug string `json:"slug"`
+			} `json:"sourceEnvironment"`
+			SourceSecretPath string `json:"sourceSecretPath"`
+		} `json:"imports"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                  `json:"details,omitempty"`
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode ListSecretApprovalPolicyImports400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode ListSecretApprovalPolicyImports401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                  `json:"details,omitempty"`
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode ListSecretApprovalPolicyImports403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode ListSecretApprovalPolicyImports404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                       `json:"error"`
+		Message    interface{}                                                  `json:"message,omitempty"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode ListSecretApprovalPolicyImports422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode ListSecretApprovalPolicyImports500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListSecretApprovalPolicyImportsResponse) GetJSON200() *struct {
+	Imports []struct {
+		Environment struct {
+			Name string `json:"name"`
+			Slug string `json:"slug"`
+		} `json:"environment"`
+		Id                string `json:"id"`
+		IsReplication     bool   `json:"isReplication"`
+		SecretPath        string `json:"secretPath"`
+		SourceEnvironment struct {
+			Name string `json:"name"`
+			Slug string `json:"slug"`
+		} `json:"sourceEnvironment"`
+		SourceSecretPath string `json:"sourceSecretPath"`
+	} `json:"imports"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListSecretApprovalPolicyImportsResponse) GetJSON400() *struct {
+	Details    interface{}                                                  `json:"details,omitempty"`
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode ListSecretApprovalPolicyImports400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListSecretApprovalPolicyImportsResponse) GetJSON401() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode ListSecretApprovalPolicyImports401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListSecretApprovalPolicyImportsResponse) GetJSON403() *struct {
+	Details    interface{}                                                  `json:"details,omitempty"`
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode ListSecretApprovalPolicyImports403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListSecretApprovalPolicyImportsResponse) GetJSON404() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode ListSecretApprovalPolicyImports404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListSecretApprovalPolicyImportsResponse) GetJSON422() *struct {
+	Error      string                                                       `json:"error"`
+	Message    interface{}                                                  `json:"message,omitempty"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode ListSecretApprovalPolicyImports422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListSecretApprovalPolicyImportsResponse) GetJSON500() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode ListSecretApprovalPolicyImports500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListSecretApprovalPolicyImportsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListSecretApprovalPolicyImportsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListSecretApprovalPolicyImportsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListSecretApprovalPolicyImportsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -387093,19 +387091,6 @@ func (c *ClientWithResponses) GetSecretApprovalPolicyBoardWithResponse(ctx conte
 	return ParseGetSecretApprovalPolicyBoardResponse(rsp)
 }
 
-// ListSecretApprovalPolicyNonReplicationImportsWithResponse performs a GET /api/v2/secret-approvals/non-replication-imports (the `ListSecretApprovalPolicyNonReplicationImports` operationId) request.
-//
-// List the imports from the same project that read their source directly, in the folders a secret change policy with these settings would govern. With 'Require approval for imported secrets' on, each of these has to be recreated as an import that respects approval policies.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ListSecretApprovalPolicyNonReplicationImportsWithResponse(ctx context.Context, params *ListSecretApprovalPolicyNonReplicationImportsParams, reqEditors ...RequestEditorFn) (*ListSecretApprovalPolicyNonReplicationImportsResponse, error) {
-	rsp, err := c.ListSecretApprovalPolicyNonReplicationImports(ctx, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseListSecretApprovalPolicyNonReplicationImportsResponse(rsp)
-}
-
 // DeleteSecretApprovalPolicyWithResponse performs a DELETE /api/v2/secret-approvals/{sapId} (the `DeleteSecretApprovalPolicy` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -387148,6 +387133,19 @@ func (c *ClientWithResponses) UpdateSecretApprovalPolicyWithResponse(ctx context
 		return nil, err
 	}
 	return ParseUpdateSecretApprovalPolicyResponse(rsp)
+}
+
+// ListSecretApprovalPolicyImportsWithResponse performs a GET /api/v2/secret-approvals/{sapId}/imports (the `ListSecretApprovalPolicyImports` operationId) request.
+//
+// List the imports from the same project in the folders a secret change policy governs. With 'Require approval for imported secrets' on, each import that does not respect approval policies (isReplication=false) has to be recreated as one that does.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListSecretApprovalPolicyImportsWithResponse(ctx context.Context, sapId openapi_types.UUID, params *ListSecretApprovalPolicyImportsParams, reqEditors ...RequestEditorFn) (*ListSecretApprovalPolicyImportsResponse, error) {
+	rsp, err := c.ListSecretApprovalPolicyImports(ctx, sapId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListSecretApprovalPolicyImportsResponse(rsp)
 }
 
 // ListSecretImportsWithResponse performs a GET /api/v2/secret-imports (the `ListSecretImports` operationId) request.
@@ -468250,120 +468248,6 @@ func ParseGetSecretApprovalPolicyBoardResponse(rsp *http.Response) (*GetSecretAp
 	return response, nil
 }
 
-// ParseListSecretApprovalPolicyNonReplicationImportsResponse parses an HTTP response from a ListSecretApprovalPolicyNonReplicationImportsWithResponse call
-func ParseListSecretApprovalPolicyNonReplicationImportsResponse(rsp *http.Response) (*ListSecretApprovalPolicyNonReplicationImportsResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &ListSecretApprovalPolicyNonReplicationImportsResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest struct {
-			Imports []struct {
-				Environment struct {
-					Name string `json:"name"`
-					Slug string `json:"slug"`
-				} `json:"environment"`
-				Id                string `json:"id"`
-				SecretPath        string `json:"secretPath"`
-				SourceEnvironment struct {
-					Name string `json:"name"`
-					Slug string `json:"slug"`
-				} `json:"sourceEnvironment"`
-				SourceSecretPath string `json:"sourceSecretPath"`
-			} `json:"imports"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest struct {
-			Details    interface{}                                                                `json:"details,omitempty"`
-			Error      string                                                                     `json:"error"`
-			Message    string                                                                     `json:"message"`
-			ReqId      string                                                                     `json:"reqId"`
-			StatusCode ListSecretApprovalPolicyNonReplicationImports400JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest struct {
-			Error      string                                                                     `json:"error"`
-			Message    string                                                                     `json:"message"`
-			ReqId      string                                                                     `json:"reqId"`
-			StatusCode ListSecretApprovalPolicyNonReplicationImports401JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest struct {
-			Details    interface{}                                                                `json:"details,omitempty"`
-			Error      string                                                                     `json:"error"`
-			Message    string                                                                     `json:"message"`
-			ReqId      string                                                                     `json:"reqId"`
-			StatusCode ListSecretApprovalPolicyNonReplicationImports403JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest struct {
-			Error      string                                                                     `json:"error"`
-			Message    string                                                                     `json:"message"`
-			ReqId      string                                                                     `json:"reqId"`
-			StatusCode ListSecretApprovalPolicyNonReplicationImports404JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest struct {
-			Error      string                                                                     `json:"error"`
-			Message    interface{}                                                                `json:"message,omitempty"`
-			ReqId      string                                                                     `json:"reqId"`
-			StatusCode ListSecretApprovalPolicyNonReplicationImports422JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest struct {
-			Error      string                                                                     `json:"error"`
-			Message    string                                                                     `json:"message"`
-			ReqId      string                                                                     `json:"reqId"`
-			StatusCode ListSecretApprovalPolicyNonReplicationImports500JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseDeleteSecretApprovalPolicyResponse parses an HTTP response from a DeleteSecretApprovalPolicyWithResponse call
 func ParseDeleteSecretApprovalPolicyResponse(rsp *http.Response) (*DeleteSecretApprovalPolicyResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -468741,6 +468625,121 @@ func ParseUpdateSecretApprovalPolicyResponse(rsp *http.Response) (*UpdateSecretA
 			Message    string                                                  `json:"message"`
 			ReqId      string                                                  `json:"reqId"`
 			StatusCode UpdateSecretApprovalPolicy500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListSecretApprovalPolicyImportsResponse parses an HTTP response from a ListSecretApprovalPolicyImportsWithResponse call
+func ParseListSecretApprovalPolicyImportsResponse(rsp *http.Response) (*ListSecretApprovalPolicyImportsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListSecretApprovalPolicyImportsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Imports []struct {
+				Environment struct {
+					Name string `json:"name"`
+					Slug string `json:"slug"`
+				} `json:"environment"`
+				Id                string `json:"id"`
+				IsReplication     bool   `json:"isReplication"`
+				SecretPath        string `json:"secretPath"`
+				SourceEnvironment struct {
+					Name string `json:"name"`
+					Slug string `json:"slug"`
+				} `json:"sourceEnvironment"`
+				SourceSecretPath string `json:"sourceSecretPath"`
+			} `json:"imports"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                  `json:"details,omitempty"`
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode ListSecretApprovalPolicyImports400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode ListSecretApprovalPolicyImports401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                  `json:"details,omitempty"`
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode ListSecretApprovalPolicyImports403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode ListSecretApprovalPolicyImports404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    interface{}                                                  `json:"message,omitempty"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode ListSecretApprovalPolicyImports422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode ListSecretApprovalPolicyImports500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

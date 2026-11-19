@@ -73,21 +73,18 @@ export type TGetBoardSapDTO = {
   secretPath: string;
 } & Omit<TProjectPermission, "projectId">;
 
-// The settings of a policy that is being created or edited. `policyId` is set when editing, so the saved
-// version of the policy is replaced by these settings instead of competing with them.
-export type TListNonReplicationImportsDTO = {
-  projectId: string;
-  environments: string[];
-  secretPath: string;
-  policyId?: string;
+export type TListSecretChangePolicyImportsDTO = {
+  sapId: string;
+  isReplication?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TNonReplicationSecretImport = {
+export type TSecretChangePolicyImport = {
   id: string;
   environment: { slug: string; name: string };
   secretPath: string;
   sourceEnvironment: { slug: string; name: string };
   sourceSecretPath: string;
+  isReplication: boolean;
 };
 
 export type TSecretChangePolicyEnvironment = Pick<TProjectEnvironments, "id" | "name" | "slug">;
@@ -125,9 +122,7 @@ export type TSecretChangePolicyMethods = {
     tx?: Knex
   ) => Promise<Map<string, TSecretChangePolicy>>;
   getSecretApprovalPolicyOfFolder: (dto: TGetBoardSapDTO) => Promise<TSecretChangePolicy | undefined>;
-  listNonReplicationImportsCoveredByPolicy: (
-    dto: TListNonReplicationImportsDTO
-  ) => Promise<TNonReplicationSecretImport[]>;
+  listSecretApprovalPolicyImports: (dto: TListSecretChangePolicyImportsDTO) => Promise<TSecretChangePolicyImport[]>;
 };
 
 export type TSecretChangePolicyServiceFactoryDep = {
@@ -147,7 +142,7 @@ export type TSecretChangePolicyServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findEffectiveProjectSubjectsMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "findNonReplicationImportsByEnvIds">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findSameProjectImportsByEnvIds">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: TLicenseService;

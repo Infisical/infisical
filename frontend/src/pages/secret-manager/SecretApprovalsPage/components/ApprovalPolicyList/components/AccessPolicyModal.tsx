@@ -20,7 +20,6 @@ import {
   AlertDescription,
   AlertDialog,
   AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -80,8 +79,11 @@ import { TDelegatedApprovalPolicyInput } from "@app/hooks/api/delegatedApprovals
 import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { onRequestError } from "@app/hooks/api/reactQuery";
-import { fetchSecretApprovalPolicyNonReplicationImports } from "@app/hooks/api/secretApproval";
-import { TSecretApprovalPolicyNonReplicationImport } from "@app/hooks/api/secretApproval/types";
+import { fetchSecretApprovalPolicyImports } from "@app/hooks/api/secretApproval";
+import {
+  TSecretApprovalPolicy,
+  TSecretApprovalPolicyImport
+} from "@app/hooks/api/secretApproval/types";
 import { ApiErrorTypes } from "@app/hooks/api/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
@@ -185,11 +187,7 @@ const Form = ({
   onRequestClose: () => void;
 }) => {
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
-  const [nonReplicationImportsReview, setNonReplicationImportsReview] = useState<{
-    imports: TSecretApprovalPolicyNonReplicationImport[];
-    data: TApprovalPolicyFormSchema;
-  } | null>(null);
-  const [isSavingAfterReview, setIsSavingAfterReview] = useState(false);
+  const [directImports, setDirectImports] = useState<TSecretApprovalPolicyImport[] | null>(null);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
   const editFormValues = useMemo<TApprovalPolicyFormSchema | undefined>(
     () =>
@@ -333,20 +331,21 @@ const Form = ({
     delegatedApproval,
     enforceImportReplication,
     ...data
-  }: TApprovalPolicyFormSchema) => {
-    if (!projectId) return;
+  }: TApprovalPolicyFormSchema): Promise<{ changePolicy?: TSecretApprovalPolicy } | undefined> => {
+    if (!projectId) return undefined;
 
     const bypassers = [...userBypassers, ...groupBypassers];
+    let changePolicy: TSecretApprovalPolicy | undefined;
 
     if (data.policyType === PolicyType.ChangePolicy) {
-      await createSecretApprovalPolicy({
+      ({ approval: changePolicy } = await createSecretApprovalPolicy({
         ...data,
         enforceImportReplication,
         approvers: [...userApprovers, ...groupApprovers],
         bypassers: bypassers.length > 0 ? bypassers : undefined,
         environments: environments.map((env) => env.slug),
         projectId: currentProject?.id || ""
-      });
+      }));
     } else if (isDelegated) {
       await createAccessApprovalPolicy({
         ...data,
@@ -377,7 +376,7 @@ const Form = ({
       type: "success",
       text: "Successfully created policy"
     });
-    onToggle(false);
+    return { changePolicy };
   };
 
   const handleUpdatePolicy = async ({
@@ -391,14 +390,15 @@ const Form = ({
     delegatedApproval,
     enforceImportReplication,
     ...data
-  }: TApprovalPolicyFormSchema) => {
-    if (!projectId || !projectSlug) return;
-    if (!editValues?.id) return;
+  }: TApprovalPolicyFormSchema): Promise<{ changePolicy?: TSecretApprovalPolicy } | undefined> => {
+    if (!projectId || !projectSlug) return undefined;
+    if (!editValues?.id) return undefined;
 
     const bypassers = [...userBypassers, ...groupBypassers];
+    let changePolicy: TSecretApprovalPolicy | undefined;
 
     if (data.policyType === PolicyType.ChangePolicy) {
-      await updateSecretApprovalPolicy({
+      ({ approval: changePolicy } = await updateSecretApprovalPolicy({
         id: editValues?.id,
         ...data,
         enforceImportReplication,
@@ -406,7 +406,7 @@ const Form = ({
         bypassers: bypassers.length > 0 ? bypassers : undefined,
         projectId: currentProject?.id || "",
         environments: environments.map((env) => env.slug)
-      });
+      }));
     } else if (isDelegated) {
       await updateAccessApprovalPolicy({
         id: editValues?.id,
@@ -440,16 +440,34 @@ const Form = ({
       type: "success",
       text: "Successfully updated policy"
     });
-    onToggle(false);
+    return { changePolicy };
   };
 
-  const savePolicy = async (data: TApprovalPolicyFormSchema) => {
+  // Imports that still read their source directly are not converted when the policy starts requiring approval
+  // for imported secrets, so once it is saved the admin is shown which ones to recreate.
+  const showDirectImports = async (policy: TSecretApprovalPolicy) => {
     try {
-      if (isEditMode) {
-        await handleUpdatePolicy(data);
-      } else {
-        await handleCreatePolicy(data);
-      }
+      const imports = await fetchSecretApprovalPolicyImports({
+        policyId: policy.id,
+        isReplication: false
+      });
+      if (!imports.length) return false;
+      setDirectImports(imports);
+      return true;
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        type: "warning",
+        text: "The policy was saved, but the imports that ignore it couldn't be listed. Check this path's imports and recreate any that read their source directly."
+      });
+      return false;
+    }
+  };
+
+  const handleFormSubmit = async (data: TApprovalPolicyFormSchema) => {
+    let saved: Awaited<ReturnType<typeof handleCreatePolicy>>;
+    try {
+      saved = isEditMode ? await handleUpdatePolicy(data) : await handleCreatePolicy(data);
     } catch (error) {
       const serverResponse = axios.isAxiosError(error) ? error.response?.data : undefined;
       const message = serverResponse?.message;
@@ -464,34 +482,12 @@ const Form = ({
       }
 
       if (serverResponse?.error === ApiErrorTypes.BadRequestError) onRequestError(error);
+      return;
     }
-  };
+    if (!saved) return;
 
-  // Imports that still read their source directly are not converted when the policy starts requiring approval
-  // for imported secrets, so the admin is shown which ones to recreate before the policy is saved.
-  const handleFormSubmit = async (data: TApprovalPolicyFormSchema) => {
-    if (data.policyType === PolicyType.ChangePolicy && data.enforceImportReplication && projectId) {
-      try {
-        const imports = await fetchSecretApprovalPolicyNonReplicationImports({
-          projectId,
-          environments: data.environments.map((env) => env.slug),
-          secretPath: data.secretPath,
-          policyId: editValues?.id
-        });
-        if (imports.length) {
-          setNonReplicationImportsReview({ imports, data });
-          return;
-        }
-      } catch (error) {
-        console.error(error);
-        createNotification({
-          type: "error",
-          text: "Failed to check for imports that ignore this policy. The policy was not saved; try again."
-        });
-        return;
-      }
-    }
-    await savePolicy(data);
+    if (saved.changePolicy?.enforceImportReplication && (await showDirectImports(saved.changePolicy))) return;
+    onToggle(false);
   };
 
   const memberOptions = useMemo<ApproverOptionData[]>(
@@ -1328,29 +1324,31 @@ const Form = ({
         )}
       </div>
       <AlertDialog
-        open={Boolean(nonReplicationImportsReview)}
+        open={Boolean(directImports)}
         onOpenChange={(open) => {
-          if (!open) setNonReplicationImportsReview(null);
+          if (open) return;
+          setDirectImports(null);
+          onToggle(false);
         }}
-        isPending={isSavingAfterReview}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogMedia>
               <TriangleAlertIcon className="text-warning" />
             </AlertDialogMedia>
-            <AlertDialogTitle>Save With Imports That Ignore This Policy?</AlertDialogTitle>
+            <AlertDialogTitle>Recreate Imports That Ignore This Policy</AlertDialogTitle>
             <AlertDialogDescription>
-              {nonReplicationImportsReview?.imports.length === 1
+              The policy was saved.{" "}
+              {directImports?.length === 1
                 ? "This import reads its source directly"
-                : `These ${nonReplicationImportsReview?.imports.length} imports read their source directly`}
+                : `These ${directImports?.length} imports read their source directly`}
               , so changes to their values won&apos;t need approval. Recreate each one as an import
               that respects approval policies, and delete the old one after the new import&apos;s
               first change request is merged.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <ul className="flex max-h-60 flex-col overflow-y-auto rounded-md border border-border text-sm">
-            {nonReplicationImportsReview?.imports.map((secretImport) => (
+            {directImports?.map((secretImport) => (
               <li
                 key={secretImport.id}
                 className="flex flex-wrap items-center gap-1.5 border-b border-border px-3 py-2 last:border-b-0"
@@ -1364,23 +1362,7 @@ const Form = ({
             ))}
           </ul>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep Editing</AlertDialogCancel>
-            <AlertDialogAction
-              variant="project"
-              onClick={async (event) => {
-                event.preventDefault();
-                if (!nonReplicationImportsReview || isSavingAfterReview) return;
-                setIsSavingAfterReview(true);
-                try {
-                  await savePolicy(nonReplicationImportsReview.data);
-                } finally {
-                  setIsSavingAfterReview(false);
-                  setNonReplicationImportsReview(null);
-                }
-              }}
-            >
-              Save Policy
-            </AlertDialogAction>
+            <AlertDialogAction variant="project">Done</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -63,19 +63,18 @@ export type TGetSecretApprovalPoliciesDTO = {
   projectId: string;
 };
 
-export type TListSecretApprovalPolicyNonReplicationImportsDTO = {
-  projectId: string;
-  environments: string[];
-  secretPath: string;
-  policyId?: string;
+export type TListSecretApprovalPolicyImportsDTO = {
+  policyId: string;
+  isReplication?: boolean;
 };
 
-export type TSecretApprovalPolicyNonReplicationImport = {
+export type TSecretApprovalPolicyImport = {
   id: string;
   environment: { slug: string; name: string };
   secretPath: string;
   sourceEnvironment: { slug: string; name: string };
   sourceSecretPath: string;
+  isReplication: boolean;
 };
 
 export type TGetSecretApprovalPolicyOfBoardDTO = {

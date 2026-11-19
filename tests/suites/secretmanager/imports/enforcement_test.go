@@ -40,7 +40,7 @@ func TestImportReplicationEnforcement_ExistingImports(t *testing.T) {
 		require.Equal(t, map[string][]string{"KEY": {"v2"}}, importedValues(importedSecrets(t, tn.Admin, proj, "prod", "/")))
 	})
 
-	t.Run("should list only the direct same-project imports in folders the policy would govern", func(t *testing.T) {
+	t.Run("should list only the direct same-project imports in folders the policy governs", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -61,9 +61,10 @@ func TestImportReplicationEnforcement_ExistingImports(t *testing.T) {
 			secretmanager.FromProject(other))
 		secretmanager.CreateImport(t, proj, "prod", stagingApp, secretmanager.IntoPath("/governed-elsewhere"))
 		createPolicy(t, proj, "prod", "/governed-elsewhere", tn.Admin, false)
+		policyID := createPolicy(t, proj, "prod", "/**", tn.Admin, true)
 
 		// Action
-		imports := listNonReplicationImports(t, proj, "prod", "/**")
+		imports := listPolicyImports(t, proj, policyID, api.ListSecretApprovalPolicyImportsParamsIsReplicationFalse)
 
 		// Assert
 		require.Len(t, imports, 1)
@@ -107,38 +108,46 @@ func TestImportReplicationEnforcement_ExistingImports(t *testing.T) {
 		require.Equal(t, map[string][]string{directImport: {"KEY"}, replicatedImport: {}}, keysByImport)
 	})
 
-	t.Run("should reject an environment list that holds an invalid slug", func(t *testing.T) {
+	t.Run("should list only the replicated imports when asked for them", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		for _, folder := range []string{"/app", "/other"} {
+			secretmanager.CreateFolder(t, proj, "staging", folder)
+		}
+		secretmanager.CreateImport(t, proj, "prod", stagingApp)
+		replicated := secretmanager.CreateImport(t, proj, "prod", secretmanager.Location{Env: "staging", Path: "/other"},
+			secretmanager.Replicated())
+		policyID := createPolicy(t, proj, "prod", "/", tn.Admin, true)
 
 		// Action
-		res, err := tn.Admin.API.ListSecretApprovalPolicyNonReplicationImportsWithResponse(t.Context(),
-			&api.ListSecretApprovalPolicyNonReplicationImportsParams{ProjectId: proj.ID, Environments: "prod,Not A Slug", SecretPath: "/"})
+		imports := listPolicyImports(t, proj, policyID, api.ListSecretApprovalPolicyImportsParamsIsReplicationTrue)
 
 		// Assert
-		require.NoError(t, err)
-		require.Equalf(t, http.StatusUnprocessableEntity, res.StatusCode(), "listing returned %s", apierr.Body(res.Body))
+		require.Len(t, imports, 1)
+		require.Equal(t, replicated, imports[0].Id)
+		require.True(t, imports[0].IsReplication)
 	})
 
-	t.Run("should let a role that can only create policies list the imports that ignore one", func(t *testing.T) {
+	t.Run("should refuse to list a policy's imports to a role that cannot read policies", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		policyID := createPolicy(t, proj, "prod", "/", tn.Admin, true)
 		proj.NewRole(t, "policy-creator", fixture.Permission{Subject: "secret-approval", Action: []string{"create"}})
 		creator := proj.NewUser(t, fixture.WithRoles("policy-creator"))
 
 		// Action
-		res, err := creator.API.ListSecretApprovalPolicyNonReplicationImportsWithResponse(t.Context(),
-			&api.ListSecretApprovalPolicyNonReplicationImportsParams{ProjectId: proj.ID, Environments: "prod", SecretPath: "/"})
+		res, err := creator.API.ListSecretApprovalPolicyImportsWithResponse(t.Context(), policyID,
+			&api.ListSecretApprovalPolicyImportsParams{})
 
 		// Assert
 		require.NoError(t, err)
-		require.Equalf(t, http.StatusOK, res.StatusCode(), "listing returned %s", apierr.Body(res.Body))
+		require.Equalf(t, http.StatusForbidden, res.StatusCode(), "listing returned %s", apierr.Body(res.Body))
 	})
 
 	t.Run("should refuse to point a direct import at another source in a governed folder", func(t *testing.T) {
@@ -305,12 +314,14 @@ func importRowByID(t *testing.T, proj *fixture.Project, env, folderPath, importI
 	return importRow{}
 }
 
-func listNonReplicationImports(t *testing.T, proj *fixture.Project, env, secretPath string) []struct {
+func listPolicyImports(t *testing.T, proj *fixture.Project, policyID uuid.UUID,
+	isReplication api.ListSecretApprovalPolicyImportsParamsIsReplication) []struct {
 	Environment struct {
 		Name string `json:"name"`
 		Slug string `json:"slug"`
 	} `json:"environment"`
 	Id                string `json:"id"`
+	IsReplication     bool   `json:"isReplication"`
 	SecretPath        string `json:"secretPath"`
 	SourceEnvironment struct {
 		Name string `json:"name"`
@@ -319,10 +330,10 @@ func listNonReplicationImports(t *testing.T, proj *fixture.Project, env, secretP
 	SourceSecretPath string `json:"sourceSecretPath"`
 } {
 	t.Helper()
-	res, err := proj.Tenant().Admin.API.ListSecretApprovalPolicyNonReplicationImportsWithResponse(t.Context(),
-		&api.ListSecretApprovalPolicyNonReplicationImportsParams{ProjectId: proj.ID, Environments: env, SecretPath: secretPath})
+	res, err := proj.Tenant().Admin.API.ListSecretApprovalPolicyImportsWithResponse(t.Context(), policyID,
+		&api.ListSecretApprovalPolicyImportsParams{IsReplication: &isReplication})
 	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "listing direct imports returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	require.NotNilf(t, res.JSON200, "listing the policy's imports returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 	return res.JSON200.Imports
 }
 

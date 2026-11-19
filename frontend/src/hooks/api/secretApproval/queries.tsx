@@ -6,9 +6,9 @@ import { TReactQueryOptions } from "@app/types/reactQuery";
 import {
   TGetSecretApprovalPoliciesDTO,
   TGetSecretApprovalPolicyOfBoardDTO,
-  TListSecretApprovalPolicyNonReplicationImportsDTO,
+  TListSecretApprovalPolicyImportsDTO,
   TSecretApprovalPolicy,
-  TSecretApprovalPolicyNonReplicationImport
+  TSecretApprovalPolicyImport
 } from "./types";
 
 export const secretApprovalKeys = {
@@ -38,15 +38,13 @@ export const useGetSecretApprovalPolicies = ({
     enabled: Boolean(projectId) && (options?.enabled ?? true)
   });
 
-export const fetchSecretApprovalPolicyNonReplicationImports = async ({
-  projectId,
-  environments,
-  secretPath,
-  policyId
-}: TListSecretApprovalPolicyNonReplicationImportsDTO) => {
-  const { data } = await apiRequest.get<{ imports: TSecretApprovalPolicyNonReplicationImport[] }>(
-    "/api/v2/secret-approvals/non-replication-imports",
-    { params: { projectId, environments: environments.join(","), secretPath, policyId } }
+export const fetchSecretApprovalPolicyImports = async ({
+  policyId,
+  isReplication
+}: TListSecretApprovalPolicyImportsDTO) => {
+  const { data } = await apiRequest.get<{ imports: TSecretApprovalPolicyImport[] }>(
+    `/api/v2/secret-approvals/${policyId}/imports`,
+    { params: { isReplication } }
   );
   return data.imports;
 };

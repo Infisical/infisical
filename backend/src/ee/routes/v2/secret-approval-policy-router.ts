@@ -5,17 +5,12 @@ import { ApproverType, BypasserType } from "@app/ee/services/access-approval-pol
 import { removeTrailingSlash } from "@app/lib/fn";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { secretChangePolicyPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { DelegatedApprovalSchema } from "@app/services/delegated-approval/delegated-approval-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
-
-const environmentSlugSchema = slugSchema({ max: 64, field: "Environment slug" });
-// Room for 63 environment slugs at their maximum length, plus the commas between them.
-const MAX_ENVIRONMENTS_QUERY_LENGTH = 4096;
 
 export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -331,38 +326,26 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
   });
 
   server.route({
-    url: "/non-replication-imports",
+    url: "/:sapId/imports",
     method: "GET",
     config: {
       rateLimit: readLimit
     },
     schema: {
-      operationId: "listSecretApprovalPolicyNonReplicationImports",
+      operationId: "listSecretApprovalPolicyImports",
       description:
-        "List the imports from the same project that read their source directly, in the folders a secret change policy with these settings would govern. With 'Require approval for imported secrets' on, each of these has to be recreated as an import that respects approval policies.",
+        "List the imports from the same project in the folders a secret change policy governs. With 'Require approval for imported secrets' on, each import that does not respect approval policies (isReplication=false) has to be recreated as one that does.",
+      params: z.object({
+        sapId: z.string().uuid()
+      }),
       querystring: z.object({
-        projectId: z.string().trim().min(1).max(36),
-        environments: z
-          .string()
-          .trim()
-          .min(1)
-          .max(MAX_ENVIRONMENTS_QUERY_LENGTH)
-          .superRefine((val, ctx) => {
-            val.split(",").forEach((slug) => {
-              const result = environmentSlugSchema.safeParse(slug.trim());
-              if (!result.success) {
-                ctx.addIssue({ code: z.ZodIssueCode.custom, message: result.error.issues[0].message });
-              }
-            });
-          })
-          .describe("Comma-separated list of environment slugs the policy applies to"),
-        secretPath: z
-          .string()
-          .trim()
-          .min(1)
-          .max(1000)
-          .describe("The policy's secret path, which can be a glob pattern"),
-        policyId: z.string().uuid().optional().describe("The policy being edited, if any")
+        isReplication: z
+          .enum(["true", "false"])
+          .transform((value) => value === "true")
+          .optional()
+          .describe(
+            "When set, list only imports that respect approval policies (true) or only imports that read their source directly (false)"
+          )
       }),
       response: {
         200: z.object({
@@ -372,21 +355,22 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
               environment: z.object({ slug: z.string(), name: z.string() }),
               secretPath: z.string(),
               sourceEnvironment: z.object({ slug: z.string(), name: z.string() }),
-              sourceSecretPath: z.string()
+              sourceSecretPath: z.string(),
+              isReplication: z.boolean()
             })
             .array()
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const imports = await server.services.secretChangePolicy.listNonReplicationImportsCoveredByPolicy({
+      const imports = await server.services.secretChangePolicy.listSecretApprovalPolicyImports({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        ...req.query,
-        environments: req.query.environments.split(",").map((slug) => slug.trim())
+        sapId: req.params.sapId,
+        isReplication: req.query.isReplication
       });
       return { imports };
     }
