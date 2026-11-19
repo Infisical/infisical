@@ -39,6 +39,7 @@ import { useTimedReset } from "@app/hooks";
 import { useUpdateGateway } from "@app/hooks/api/gateways-v2";
 import { TGatewayV2, TGatewayV2WithAuthMethod } from "@app/hooks/api/gateways-v2/types";
 import {
+  formatGatewayCliVersion,
   getGatewayTransportHealth,
   getLastSeenHeartbeat,
   isGatewayHealthy
@@ -49,20 +50,68 @@ import {
   toNetworkingAuthMethodInput
 } from "../../../components/NetworkingAuthMethodForm";
 
+const isGatewayUnregistered = (gateway: TGatewayV2) =>
+  !getLastSeenHeartbeat(gateway) &&
+  gateway.heartbeatTTL === null &&
+  gateway.directAddress === null &&
+  gateway.relayId === null;
+
 const HealthBadge = ({ gateway }: { gateway: TGatewayV2 }) => {
-  const heartbeat = getLastSeenHeartbeat(gateway);
-  if (
-    !heartbeat &&
-    gateway.heartbeatTTL === null &&
-    gateway.directAddress === null &&
-    gateway.relayId === null
-  ) {
+  if (isGatewayUnregistered(gateway)) {
     return <Badge variant="warning">Unregistered</Badge>;
   }
   if (isGatewayHealthy(gateway)) {
     return <Badge variant="success">Healthy</Badge>;
   }
   return <Badge variant="danger">Unreachable</Badge>;
+};
+
+const GatewayCliVersion = ({ gateway }: { gateway: TGatewayV2 }) => {
+  if (gateway.cliVersion) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="cursor-default font-mono text-xs">
+            {formatGatewayCliVersion(gateway.cliVersion)}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs">
+          {gateway.cliVersionReportedAt
+            ? `Reported by the gateway on ${format(new Date(gateway.cliVersionReportedAt), "PPpp")}.`
+            : "Reported by the gateway."}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  // A report with no version comes only from a CLI release too old to send one.
+  if (gateway.cliVersionReportedAt) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="cursor-default text-muted">Older than v0.43.131</span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs">
+          This gateway runs an Infisical CLI release that doesn&apos;t report its version. Upgrade
+          it to v0.43.131 or later to see the exact version here.
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  if (isGatewayUnregistered(gateway)) return <span className="text-muted">—</span>;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="cursor-default text-muted">—</span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs">
+        No version reported. Gateways running Infisical CLI v0.43.131 or later report theirs when
+        they connect and with each heartbeat.
+      </TooltipContent>
+    </Tooltip>
+  );
 };
 
 export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMethod }) => {
@@ -166,6 +215,12 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
               ) : (
                 <span className="text-muted">—</span>
               )}
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Version</DetailLabel>
+            <DetailValue>
+              <GatewayCliVersion gateway={gateway} />
             </DetailValue>
           </Detail>
           <Detail>

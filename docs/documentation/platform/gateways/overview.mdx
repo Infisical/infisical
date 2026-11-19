@@ -54,6 +54,8 @@ Gateways send a heartbeat every 3 minutes, each carrying a TTL that says how lon
 
 A gateway running both modes is probed on each transport separately, so it stays healthy while either one works. Its detail page shows the two transports individually, which is how you tell a relay outage from a direct listen one.
 
+The detail page also shows the Infisical CLI version that the gateway last reported. If a gateway runs Infisical CLI v0.43.131 or later, it reports its version each time it connects and with each heartbeat. Older releases don't report an exact version, so the detail page shows those gateways as older than v0.43.131.
+
 Relays send a heartbeat every 30 minutes and are marked unhealthy after an hour without one.
 
 Infisical notifies all organization admins of unhealthy gateways and relays by email and in-app notification.
