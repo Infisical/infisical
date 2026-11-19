@@ -27,6 +27,7 @@ const checkboxVariants = cva(
         "sub-org":
           "data-[state=checked]:border-sub-org/25 data-[state=checked]:bg-sub-org/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-sub-org/15 data-[state=checked]:hover:border-sub-org/30",
         av: "data-[state=checked]:border-product-av/25 data-[state=checked]:bg-product-av/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-product-av/15 data-[state=checked]:hover:border-product-av/30",
+        ss: "data-[state=checked]:border-product-ss/25 data-[state=checked]:bg-product-ss/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-product-ss/15 data-[state=checked]:hover:border-product-ss/30",
         success:
           "data-[state=checked]:border-success/25 data-[state=checked]:bg-success/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-success/15 data-[state=checked]:hover:border-success/30",
         info: "data-[state=checked]:border-info/25 data-[state=checked]:bg-info/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-info/15 data-[state=checked]:hover:border-info/30",

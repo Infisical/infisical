@@ -19,6 +19,9 @@ export type TCmek = {
   isReserved: boolean;
   isExportable: boolean;
   hasDeleteProtection: boolean;
+  isPublicKeyPublished: boolean;
+  kid: string | null;
+  jwksUrl: string | null;
   orgId: string;
   version: number;
   createdAt: string;
@@ -32,7 +35,12 @@ export type TCreateCmek = Pick<TCmek, "name" | "description" | "algorithm" | "ke
   Partial<Pick<TCmek, "isExportable" | "hasDeleteProtection">> &
   ProjectRef;
 export type TUpdateCmek = KeyRef &
-  Partial<Pick<TCmek, "name" | "description" | "isDisabled" | "hasDeleteProtection">> &
+  Partial<
+    Pick<
+      TCmek,
+      "name" | "description" | "isDisabled" | "hasDeleteProtection" | "isPublicKeyPublished"
+    >
+  > &
   ProjectRef;
 export type TDeleteCmek = KeyRef & ProjectRef;
 export type TRotateCmek = KeyRef & ProjectRef;
@@ -155,6 +163,7 @@ export enum CmekOrderBy {
 export enum AsymmetricKeyAlgorithm {
   RSA_4096 = "RSA_4096",
   ECC_NIST_P256 = "ECC_NIST_P256",
+  ED25519 = "ED25519",
   ML_DSA_44 = "ML_DSA_44",
   ML_DSA_65 = "ML_DSA_65",
   ML_DSA_87 = "ML_DSA_87"
@@ -195,6 +204,8 @@ export enum SigningAlgorithm {
   ECDSA_SHA_256 = "ECDSA_SHA_256",
   ECDSA_SHA_384 = "ECDSA_SHA_384",
   ECDSA_SHA_512 = "ECDSA_SHA_512",
+
+  ED25519 = "ED25519",
 
   // ML-DSA (post-quantum) — signing algorithm equals key algorithm
   ML_DSA_44 = "ML_DSA_44",

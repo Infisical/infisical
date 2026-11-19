@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { TriangleAlert } from "lucide-react";
 
-import { ContentLoader } from "@app/components/v2";
-import { Button } from "@app/components/v3";
+import { Button, PageLoader } from "@app/components/v3";
 import { TPamAccount } from "@app/hooks/api/pam";
 
 import { DisconnectedScreen } from "./DisconnectedScreen";
@@ -52,10 +51,9 @@ export const RdpContent = ({ account, reason, mfaSessionId, selectedHost }: RdpC
     <div className="flex h-dvh w-screen flex-col bg-background">
       <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden">
         {isConnecting && (
-          <ContentLoader
-            text="Connecting to remote desktop..."
-            className="absolute inset-0 z-10 h-full"
-          />
+          <div className="absolute inset-0 z-10">
+            <PageLoader text="Connecting to remote desktop..." />
+          </div>
         )}
         {error && (
           <WebAccessStatusCard

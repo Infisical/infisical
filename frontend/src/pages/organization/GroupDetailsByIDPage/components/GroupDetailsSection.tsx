@@ -2,7 +2,6 @@ import { format } from "date-fns";
 import { CheckIcon, ClipboardListIcon, PencilIcon } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Tooltip } from "@app/components/v2";
 import {
   Badge,
   Card,
@@ -17,7 +16,10 @@ import {
   DetailValue,
   IconButton,
   OrgIcon,
-  SubOrgIcon
+  SubOrgIcon,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useTimedReset } from "@app/hooks";
@@ -81,17 +83,20 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen, canEditGroup = t
             <DetailLabel>ID</DetailLabel>
             <DetailValue className="flex items-center gap-x-1">
               {data.group.id}
-              <Tooltip content="Copy group ID to clipboard">
-                <IconButton
-                  onClick={() => {
-                    navigator.clipboard.writeText(data.group.id);
-                    setCopyTextId("Copied");
-                  }}
-                  variant="ghost"
-                  size="xs"
-                >
-                  {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                </IconButton>
+              <Tooltip hoverable delayDuration={50}>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    onClick={() => {
+                      navigator.clipboard.writeText(data.group.id);
+                      setCopyTextId("Copied");
+                    }}
+                    variant="ghost"
+                    size="xs"
+                  >
+                    {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>Copy group ID to clipboard</TooltipContent>
               </Tooltip>
             </DetailValue>
           </Detail>
@@ -99,17 +104,20 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen, canEditGroup = t
             <DetailLabel>Slug</DetailLabel>
             <DetailValue className="flex items-center gap-x-1">
               {data.group.slug}
-              <Tooltip content="Copy slug to clipboard">
-                <IconButton
-                  onClick={() => {
-                    navigator.clipboard.writeText(data.group.slug);
-                    setCopyTextSlug("Copied");
-                  }}
-                  variant="ghost"
-                  size="xs"
-                >
-                  {isCopyingSlug ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                </IconButton>
+              <Tooltip hoverable delayDuration={50}>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    onClick={() => {
+                      navigator.clipboard.writeText(data.group.slug);
+                      setCopyTextSlug("Copied");
+                    }}
+                    variant="ghost"
+                    size="xs"
+                  >
+                    {isCopyingSlug ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>Copy slug to clipboard</TooltipContent>
               </Tooltip>
             </DetailValue>
           </Detail>

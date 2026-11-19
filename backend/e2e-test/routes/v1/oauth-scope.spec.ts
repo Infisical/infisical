@@ -2,11 +2,15 @@ import jwt from "jsonwebtoken";
 
 import { seedData1 } from "@app/db/seed-data";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { OauthDelegationMode } from "@app/services/oauth-client/oauth-client-types";
 
 // Mints a delegated OAuth access token for the seed user (an org admin) with the given scopes. It
 // reuses the same session (tokenVersionId/accessVersion) as the working jwtAuthToken, so it passes
 // signature + session validation and only differs by the oauthClientId/scopes claims.
-const signOauthToken = (scopes: string[], tokenVersionId = seedData1.token.id) =>
+const signDelegatedToken = (
+  delegationClaim: { scopes: string[] } | { delegation: OauthDelegationMode },
+  tokenVersionId = seedData1.token.id
+) =>
   jwt.sign(
     {
       authTokenType: AuthTokenType.ACCESS_TOKEN,
@@ -16,11 +20,13 @@ const signOauthToken = (scopes: string[], tokenVersionId = seedData1.token.id) =
       organizationId: seedData1.organization.id,
       accessVersion: 1,
       oauthClientId: "oauth_client_e2e_test",
-      scopes
+      ...delegationClaim
     },
     process.env.AUTH_SECRET ?? "something-random",
     { expiresIn: "1h" }
   );
+
+const signOauthToken = (scopes: string[], tokenVersionId?: string) => signDelegatedToken({ scopes }, tokenVersionId);
 
 // GET /api/v3/secrets/raw — the secret-read endpoint `infisical run` calls at runtime. This is one
 // of the few routes that explicitly opts into AuthMode.OAUTH, so a delegated token can reach it; the
@@ -108,6 +114,51 @@ describe("OAuth delegated token scope enforcement", async () => {
     });
     // 200 (configured) or 404 (no TOTP set up) — the point is it is NOT 403/forbidden by auth mode.
     expect(res.statusCode).not.toBe(403);
+  });
+
+  const getCustomMigrationEnabled = async (token: string) =>
+    testServer.inject({
+      method: "GET",
+      url: `/api/v3/external-migration/custom-migration-enabled/vault`,
+      headers: { authorization: `Bearer ${token}` }
+    });
+
+  // This route is gated on the org admin role alone, with no CASL check a scope could narrow.
+  test("a secrets:read token from an org admin fails a role-only admin check", async () => {
+    const res = await getCustomMigrationEnabled(signOauthToken(["secrets:read"]));
+    expect(res.statusCode).toBe(403);
+  });
+
+  test("the first-party session JWT passes the same role-only admin check", async () => {
+    const res = await getCustomMigrationEnabled(jwtAuthToken);
+    expect(res.statusCode).toBe(200);
+  });
+
+  const createPamTemplate = async (token: string, name: string) =>
+    testServer.inject({
+      method: "POST",
+      url: `/api/v1/pam/account-templates`,
+      headers: { authorization: `Bearer ${token}` },
+      body: { name, type: "postgres" }
+    });
+
+  // Creating a PAM template is gated on the PAM admin project role alone.
+  test("a secrets:read token from a PAM admin fails a role-only project admin check", async () => {
+    const res = await createPamTemplate(signOauthToken(["secrets:read"]), "oauth-scoped-template");
+    expect(res.statusCode).toBe(403);
+  });
+
+  test("the first-party session JWT passes the same role-only project admin check", async () => {
+    const res = await createPamTemplate(jwtAuthToken, "session-template");
+    expect(res.statusCode).toBe(200);
+  });
+
+  test("a fully delegated token keeps the user's project role", async () => {
+    const res = await createPamTemplate(
+      signDelegatedToken({ delegation: OauthDelegationMode.Full }),
+      "full-delegation-template"
+    );
+    expect(res.statusCode).toBe(200);
   });
 
   const validate = async (token: string) =>

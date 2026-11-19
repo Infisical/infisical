@@ -19,61 +19,101 @@ export const PasswordPolicyConfigSchema = z.object({
 export type TPasswordPolicyRequirement = z.infer<typeof PasswordPolicyRequirementSchema>;
 export type TPasswordPolicyConfig = z.infer<typeof PasswordPolicyConfigSchema>;
 
+const MINIMUM_LENGTH_REQUIREMENT = {
+  code: "minimumLength",
+  patterns: [String.raw`^[\s\S]{14,}$`],
+  flags: "u",
+  shouldMatch: true,
+  message: "At least 14 characters",
+  validationMessage: "Password must contain at least 14 characters",
+  isPrimary: true
+} as const satisfies TPasswordPolicyRequirement;
+
+const MAXIMUM_LENGTH_REQUIREMENT = {
+  code: "maximumLength",
+  patterns: [String.raw`^[\s\S]{0,100}$`],
+  flags: "u",
+  shouldMatch: true,
+  message: "At most 100 characters",
+  validationMessage: "Password must contain at most 100 characters",
+  isPrimary: false
+} as const satisfies TPasswordPolicyRequirement;
+
+const LETTER_REQUIREMENT = {
+  code: "letter",
+  patterns: [String.raw`\p{L}`],
+  flags: "u",
+  shouldMatch: true,
+  message: "At least 1 letter",
+  validationMessage: "Password must contain at least 1 letter",
+  isPrimary: true
+} as const satisfies TPasswordPolicyRequirement;
+
+const NUMBER_OR_SPECIAL_REQUIREMENT = {
+  code: "numberOrSpecial",
+  patterns: [String.raw`[\d!@#$%^&*(),.?":{}|<>]|[^\p{L}\p{N}\s]`],
+  flags: "u",
+  shouldMatch: true,
+  message: "At least 1 number or special character",
+  validationMessage: "Password must contain at least 1 number or special character",
+  isPrimary: true
+} as const satisfies TPasswordPolicyRequirement;
+
+const REPEATED_CHARACTERS_REQUIREMENT = {
+  code: "repeatedCharacters",
+  patterns: [String.raw`\s{4,}`],
+  maxConsecutiveCharacters: 3,
+  shouldMatch: false,
+  message: "No more than 3 repeated consecutive characters",
+  validationMessage: "Password cannot contain more than 3 repeated consecutive characters",
+  isPrimary: false
+} as const satisfies TPasswordPolicyRequirement;
+
+const ESCAPE_CHARACTERS_REQUIREMENT = {
+  code: "escapeCharacters",
+  patterns: [String.raw`[\n\t\r\\]`],
+  shouldMatch: false,
+  message: "No escape characters",
+  validationMessage: "Password cannot contain escape characters",
+  isPrimary: false
+} as const satisfies TPasswordPolicyRequirement;
+
 export const PASSWORD_POLICY = {
   requirements: [
+    MINIMUM_LENGTH_REQUIREMENT,
+    MAXIMUM_LENGTH_REQUIREMENT,
+    LETTER_REQUIREMENT,
+    NUMBER_OR_SPECIAL_REQUIREMENT,
+    REPEATED_CHARACTERS_REQUIREMENT,
+    ESCAPE_CHARACTERS_REQUIREMENT
+  ]
+} as const satisfies TPasswordPolicyConfig;
+
+export const PKCS12_PASSWORD_POLICY = {
+  requirements: [
+    MINIMUM_LENGTH_REQUIREMENT,
+    MAXIMUM_LENGTH_REQUIREMENT,
+    LETTER_REQUIREMENT,
     {
-      code: "minimumLength",
-      patterns: [String.raw`^[\s\S]{14,}$`],
+      code: "number",
+      patterns: [String.raw`\p{N}`],
       flags: "u",
       shouldMatch: true,
-      message: "At least 14 characters",
-      validationMessage: "Password must contain at least 14 characters",
+      message: "At least 1 number",
+      validationMessage: "Password must contain at least 1 number",
       isPrimary: true
     },
     {
-      code: "maximumLength",
-      patterns: [String.raw`^[\s\S]{0,100}$`],
+      code: "special",
+      patterns: [String.raw`[^\p{L}\p{N}\s]`],
       flags: "u",
       shouldMatch: true,
-      message: "At most 100 characters",
-      validationMessage: "Password must contain at most 100 characters",
-      isPrimary: false
-    },
-    {
-      code: "letter",
-      patterns: [String.raw`\p{L}`],
-      flags: "u",
-      shouldMatch: true,
-      message: "At least 1 letter",
-      validationMessage: "Password must contain at least 1 letter",
+      message: "At least 1 special character",
+      validationMessage: "Password must contain at least 1 special character",
       isPrimary: true
     },
-    {
-      code: "numberOrSpecial",
-      patterns: [String.raw`[\d!@#$%^&*(),.?":{}|<>]|[^\p{L}\p{N}\s]`],
-      flags: "u",
-      shouldMatch: true,
-      message: "At least 1 number or special character",
-      validationMessage: "Password must contain at least 1 number or special character",
-      isPrimary: true
-    },
-    {
-      code: "repeatedCharacters",
-      patterns: [String.raw`\s{4,}`],
-      maxConsecutiveCharacters: 3,
-      shouldMatch: false,
-      message: "No more than 3 repeated consecutive characters",
-      validationMessage: "Password cannot contain more than 3 repeated consecutive characters",
-      isPrimary: false
-    },
-    {
-      code: "escapeCharacters",
-      patterns: [String.raw`[\n\t\r\\]`],
-      shouldMatch: false,
-      message: "No escape characters",
-      validationMessage: "Password cannot contain escape characters",
-      isPrimary: false
-    }
+    REPEATED_CHARACTERS_REQUIREMENT,
+    ESCAPE_CHARACTERS_REQUIREMENT
   ]
 } as const satisfies TPasswordPolicyConfig;
 
@@ -102,13 +142,18 @@ export const doesPasswordMeetRequirement = (password: string, requirement: TPass
   return matches === requirement.shouldMatch;
 };
 
-export const PasswordPolicySchema = z.string().superRefine((password, context) => {
-  PASSWORD_POLICY.requirements.forEach((requirement) => {
-    if (!doesPasswordMeetRequirement(password, requirement)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: requirement.validationMessage
-      });
-    }
+export const createPasswordPolicySchema = (policy: TPasswordPolicyConfig) =>
+  z.string().superRefine((password, context) => {
+    policy.requirements.forEach((requirement) => {
+      if (!doesPasswordMeetRequirement(password, requirement)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: requirement.validationMessage
+        });
+      }
+    });
   });
-});
+
+export const PasswordPolicySchema = createPasswordPolicySchema(PASSWORD_POLICY);
+
+export const Pkcs12PasswordSchema = createPasswordPolicySchema(PKCS12_PASSWORD_POLICY);

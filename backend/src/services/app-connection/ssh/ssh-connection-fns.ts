@@ -273,7 +273,7 @@ type TSshGatewayServices = {
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
-const toSshExecCredentials = (config: TSshConnectionConfig): SshExecCredentials => {
+export const toSshExecCredentials = (config: TSshConnectionConfig): SshExecCredentials => {
   switch (config.method) {
     case SshConnectionMethod.Password:
       return {
@@ -356,7 +356,7 @@ export const executeSshCommandViaGateway = async (
 
 const MAX_SSH_COMMAND_OUTPUT_BYTES = 16 * 1024 * 1024;
 
-const execOverSshClient = (client: Client, command: string, timeoutMs: number): Promise<SshExecResult> =>
+export const execOverSshClient = (client: Client, command: string, timeoutMs: number): Promise<SshExecResult> =>
   new Promise((resolve, reject) => {
     let settled = false;
     let timer: NodeJS.Timeout;

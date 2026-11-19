@@ -1,21 +1,21 @@
-import { useNavigate } from "@tanstack/react-router";
-import { CheckIcon, ChevronRightIcon, CopyIcon, KeyIcon, SearchIcon } from "lucide-react";
+import type { MouseEvent } from "react";
+import { ChevronRightIcon, KeyIcon, SearchIcon } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Badge,
-  IconButton,
+  RowLink,
   TableCell,
   TableRow,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useProject } from "@app/context";
-import { useTimedReset } from "@app/hooks";
-import { fetchSecretValue } from "@app/hooks/api/dashboard/queries";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
+import { isPlainClick, QUICK_SEARCH_ROUTE } from "./quickSearchLink";
+import { QuickSearchMetadata, QuickSearchMetadataList } from "./QuickSearchMetadataList";
+import { QuickSearchSecretCopyButton } from "./QuickSearchSecretCopyButton";
+import { QuickSearchSecretDetails } from "./QuickSearchSecretDetails";
 import { QuickSearchSelection } from "./quickSearchTypes";
 
 type Props = {
@@ -25,6 +25,7 @@ type Props = {
   tags: string[];
   search: string;
   onSelectResult: (selection: QuickSearchSelection) => void;
+  onApplyMetadataFilter: (metadata: QuickSearchMetadata) => void;
 };
 
 export const QuickSearchSecretItem = ({
@@ -32,56 +33,14 @@ export const QuickSearchSecretItem = ({
   envSlug,
   onClose,
   onSelectResult,
+  onApplyMetadataFilter,
   tags,
   search
 }: Props) => {
-  const navigate = useNavigate({
-    from: "/organizations/$orgId/projects/secret-management/$projectId/overview"
-  });
-  const [isUrlCopied, , setIsUrlCopied] = useTimedReset<boolean>({
-    initialState: false
-  });
-
-  const { currentProject } = useProject();
-
-  const handleNavigate = () => {
+  const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (!isPlainClick(event)) return;
     onSelectResult({ search: secret.key, tags });
-    navigate({
-      search: (prev) => ({
-        ...prev,
-        secretPath: secret.path,
-        search: undefined,
-        tags: undefined,
-        filterBy: "secret",
-        environments: [envSlug]
-      })
-    });
     onClose(false);
-  };
-
-  const handleCopy = async () => {
-    try {
-      const data = await fetchSecretValue({
-        environment: secret.env,
-        secretPath: secret.path!,
-        secretKey: secret.key,
-        projectId: currentProject.id
-      });
-
-      navigator.clipboard.writeText(data.valueOverride ?? data.value!);
-      createNotification({
-        type: "info",
-        title: "Secret value copied.",
-        text: ""
-      });
-      setIsUrlCopied(true);
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        type: "error",
-        text: "Error fetching secret value"
-      });
-    }
   };
 
   const tagMatch =
@@ -98,12 +57,26 @@ export const QuickSearchSecretItem = ({
     );
 
   return (
-    <TableRow className="group cursor-pointer" onClick={handleNavigate}>
+    <TableRow linked>
       <TableCell>
         <KeyIcon className="text-secret" />
       </TableCell>
       <TableCell isTruncatable>
-        <span className="truncate font-medium">{secret.key}</span>
+        <RowLink
+          from={QUICK_SEARCH_ROUTE}
+          to="."
+          search={(prev) => ({
+            ...prev,
+            secretPath: secret.path,
+            search: secret.key,
+            tags: undefined,
+            filterBy: "secret",
+            environments: [envSlug]
+          })}
+          onClick={handleClick}
+        >
+          <span className="font-medium">{secret.key}</span>
+        </RowLink>
       </TableCell>
       <TableCell isTruncatable>
         <Tooltip delayDuration={1000}>
@@ -113,8 +86,15 @@ export const QuickSearchSecretItem = ({
           <TooltipContent className="max-w-lg">{secret.path}</TooltipContent>
         </Tooltip>
       </TableCell>
+      <TableCell>
+        <QuickSearchMetadataList
+          metadata={secret.secretMetadata}
+          onApplyFilter={onApplyMetadataFilter}
+        />
+      </TableCell>
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-1">
+          <QuickSearchSecretDetails tags={secret.tags} />
           {tagMatch && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -137,28 +117,12 @@ export const QuickSearchSecretItem = ({
               <TooltipContent>Search matched metadata</TooltipContent>
             </Tooltip>
           )}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <IconButton
-                variant="ghost"
-                className="mr-2"
-                size="xs"
-                isDisabled={secret.secretValueHidden}
-                aria-label="Copy secret value"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCopy();
-                }}
-              >
-                {isUrlCopied ? <CheckIcon /> : <CopyIcon />}
-              </IconButton>
-            </TooltipTrigger>
-            <TooltipContent>
-              {secret.secretValueHidden
-                ? "You do not have permission to view this secret value"
-                : "Copy secret value"}
-            </TooltipContent>
-          </Tooltip>
+          <QuickSearchSecretCopyButton
+            environment={secret.env}
+            secretPath={secret.path ?? "/"}
+            secretKey={secret.key}
+            secretValueHidden={secret.secretValueHidden}
+          />
           <ChevronRightIcon className="size-4 text-muted" />
         </div>
       </TableCell>

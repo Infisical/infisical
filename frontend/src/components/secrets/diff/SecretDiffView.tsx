@@ -1,5 +1,3 @@
-/* eslint-disable jsx-a11y/no-static-element-interactions */
-/* eslint-disable jsx-a11y/click-events-have-key-events */
 import { useRef, useState } from "react";
 import { EyeIcon, EyeOffIcon, TriangleAlertIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -68,7 +66,7 @@ export const SecretValueRenderer = ({
   isBothSingleLine: boolean;
   oldValue: string;
   newValue: string;
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
   onReveal?: () => Promise<void>;
   isLoading?: boolean;
 }) => {

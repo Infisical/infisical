@@ -1,5 +1,5 @@
 import { Attributes, CertificationRequest, CertificationRequestInfo } from "@peculiar/asn1-csr";
-import { ECDSASigValue, id_ecdsaWithSHA256, id_ecdsaWithSHA384 } from "@peculiar/asn1-ecc";
+import { id_ecdsaWithSHA256, id_ecdsaWithSHA384 } from "@peculiar/asn1-ecc";
 import { id_sha256WithRSAEncryption, id_sha384WithRSAEncryption } from "@peculiar/asn1-rsa";
 import { AsnConvert, OctetString } from "@peculiar/asn1-schema";
 import {
@@ -23,6 +23,7 @@ import {
 } from "@peculiar/asn1-x509";
 import * as x509 from "@peculiar/x509";
 
+import { ecdsaRawRsToDer } from "@app/lib/csr/pkcs11-algorithm-map";
 import { BadRequestError } from "@app/lib/errors";
 import { HsmKeyAlgorithm } from "@app/services/signer/signer-enums";
 
@@ -52,6 +53,7 @@ const pickAlgorithmShape = (
   const nullParams = new Uint8Array([0x05, 0x00]).buffer as ArrayBuffer;
   switch (keyAlgorithm) {
     case HsmKeyAlgorithm.RSA_2048:
+    case HsmKeyAlgorithm.RSA_3072:
       return {
         mechanism: "CKM_SHA256_RSA_PKCS",
         pk11SignsDigest: false,
@@ -139,21 +141,6 @@ const buildCodeSigningExtensions = (subjectAltNames?: string[]): Extensions => {
   return new Extensions(extensions);
 };
 
-// PKCS#11 emits raw `r || s`; X.509 expects DER ECDSASigValue.
-const rawRsToDer = (raw: Buffer): Buffer => {
-  if (raw.length % 2 !== 0) {
-    throw new BadRequestError({ message: `Unexpected ECDSA signature length: ${raw.length}` });
-  }
-  const half = raw.length / 2;
-  const r = raw.subarray(0, half);
-  const s = raw.subarray(half);
-  const sig = new ECDSASigValue({
-    r: bufferToArrayBuffer(r),
-    s: bufferToArrayBuffer(s)
-  });
-  return Buffer.from(AsnConvert.serialize(sig));
-};
-
 export const buildCsrWithExternalSigner = async (input: BuildCsrInput): Promise<BuiltCsr> => {
   const shape = pickAlgorithmShape(input.keyAlgorithm);
 
@@ -180,7 +167,7 @@ export const buildCsrWithExternalSigner = async (input: BuildCsrInput): Promise<
   // isDigest=false: HSM hashes via *_SHA<NN>_* so the wire payload stays raw TBS.
   let signatureBytes = await input.signCallback(tbsDer, shape.mechanism, shape.pk11SignsDigest);
   if (shape.isEcdsa) {
-    signatureBytes = rawRsToDer(signatureBytes);
+    signatureBytes = ecdsaRawRsToDer(signatureBytes);
   }
 
   const sigAlg = new AlgorithmIdentifier({

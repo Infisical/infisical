@@ -1,4 +1,9 @@
-import { LinuxServerPkiSyncConfigSchema, LinuxServerPkiSyncOptionsSchema } from "./linux-server-pki-sync-schemas";
+import {
+  CreateLinuxServerPkiSyncSchema,
+  LinuxServerPkiSyncConfigSchema,
+  LinuxServerPkiSyncCredentialsSchema,
+  LinuxServerPkiSyncOptionsSchema
+} from "./linux-server-pki-sync-schemas";
 
 const parseName = (certificateNameSchema: string) =>
   LinuxServerPkiSyncOptionsSchema.safeParse({ certificateNameSchema }).success;
@@ -120,5 +125,32 @@ describe("Linux Server target host validation", () => {
   test("rejects an empty or whitespace-only host", () => {
     expect(parseHost("")).toBe(false);
     expect(parseHost("   ")).toBe(false);
+  });
+});
+
+describe("Linux Server export password validation", () => {
+  const parseCreate = (exportFormat: string, exportPassword?: string) =>
+    CreateLinuxServerPkiSyncSchema.safeParse({
+      name: "sync",
+      connectionId: "connection",
+      destinationConfig: { destinationPath: "/etc/ssl/certs" },
+      syncOptions: { exportFormat, certificateNameSchema: "{{commonName}}" },
+      credentials: exportPassword === undefined ? undefined : { exportPassword }
+    });
+
+  test("rejects a blank password for keystore formats", () => {
+    expect(parseCreate("jks", "   ").success).toBe(false);
+    expect(parseCreate("pkcs12", "   ").success).toBe(false);
+    expect(parseCreate("jks").success).toBe(false);
+  });
+
+  test("rejects a blank password for PEM too", () => {
+    expect(parseCreate("pem", "   ").success).toBe(false);
+  });
+
+  test("keeps surrounding spaces in a real password", () => {
+    expect(LinuxServerPkiSyncCredentialsSchema.parse({ exportPassword: " change it " }).exportPassword).toBe(
+      " change it "
+    );
   });
 });

@@ -45,7 +45,7 @@ export const checkPasswordBreachStatus = async (
   const HAVE_I_BEEN_PWNED_API_URL = "https://api.pwnedpasswords.com";
   const maxRetryAttempts = 3;
 
-  let encodedPwd: Uint8Array | undefined;
+  let encodedPwd: Uint8Array<ArrayBuffer> | undefined;
   let hashedPwdBuffer: ArrayBuffer | undefined;
 
   try {
@@ -96,8 +96,8 @@ export const checkPasswordBreachStatus = async (
       }) from the Pwnd Passwords API`
     );
     return "unavailable";
-  } catch (err: any) {
-    console.error("An unexpected error has occurred:", err.message);
+  } catch (err) {
+    console.error("An unexpected error has occurred:", err instanceof Error ? err.message : err);
     return "unavailable";
   } finally {
     // Clear the UTF-8 encoded password from memory

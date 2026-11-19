@@ -1,5 +1,3 @@
-import { useRef } from "react";
-
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@app/components/v3";
 import { WorkflowIntegrationPlatform } from "@app/hooks/api/workflowIntegrations/types";
 
@@ -14,8 +12,6 @@ type Props = {
 };
 
 export const EditWorkflowIntegrationSheet = ({ isOpen, onClose, integration }: Props) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-
   const platformLabel = integration ? WORKFLOW_INTEGRATION_PLATFORM_LABELS[integration] : "";
 
   return (
@@ -28,7 +24,7 @@ export const EditWorkflowIntegrationSheet = ({ isOpen, onClose, integration }: P
       }}
     >
       <SheetContent className="sm:max-w-lg">
-        <div ref={containerRef} className="flex h-full min-h-0 flex-col">
+        <div className="flex h-full min-h-0 flex-col">
           <SheetHeader>
             <SheetTitle>Edit {platformLabel} Integration</SheetTitle>
             <SheetDescription>
@@ -36,10 +32,10 @@ export const EditWorkflowIntegrationSheet = ({ isOpen, onClose, integration }: P
             </SheetDescription>
           </SheetHeader>
           {integration === WorkflowIntegrationPlatform.SLACK && (
-            <SlackIntegrationForm onClose={onClose} menuContainer={containerRef} />
+            <SlackIntegrationForm onClose={onClose} />
           )}
           {integration === WorkflowIntegrationPlatform.MICROSOFT_TEAMS && (
-            <MicrosoftTeamsIntegrationForm onClose={onClose} menuContainer={containerRef} />
+            <MicrosoftTeamsIntegrationForm onClose={onClose} />
           )}
         </div>
       </SheetContent>

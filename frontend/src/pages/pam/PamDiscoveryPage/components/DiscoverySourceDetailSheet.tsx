@@ -192,7 +192,6 @@ const ActiveDirectoryConfigForm = ({
 
   useEffect(() => {
     reset(defaults);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, reset]);
 
   const onSubmit = (data: z.infer<typeof activeDirectoryConfigSchema>) => {
@@ -282,7 +281,6 @@ const HostRangeConfigForm = ({
 
   useEffect(() => {
     reset(defaults);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, reset]);
 
   const onSubmit = (data: z.infer<typeof hostRangeConfigSchema>) => {
@@ -377,7 +375,9 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
   const { map: accountTypeMap } = usePamAccountTypeMap();
   const source = sources.find((s) => s.id === sourceId);
   const typeMeta = discoveryTypes.find((t) => t.type === source?.discoveryType);
-  const showDependencies = source?.discoveryType !== PamDiscoveryType.Postgres;
+  const showDependencies =
+    source?.discoveryType !== PamDiscoveryType.Postgres &&
+    source?.discoveryType !== PamDiscoveryType.MsSQL;
   const credentialAccount = adminAccounts.find((a) => a.id === source?.credentialAccountId);
   const credentialAccountLabel = (() => {
     if (!credentialAccount) return "View account";
@@ -887,7 +887,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
               : "Never"
           }
         ]}
-        footer={
+        sidebarFooter={
           <Button
             variant="pam"
             size="xs"
@@ -911,8 +911,15 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
           isOpen={isImportOpen}
           onOpenChange={setIsImportOpen}
           sourceId={sourceId}
+          credentialAccountId={source?.credentialAccountId}
           accounts={selectedAccounts}
-          onImported={() => setSelected({})}
+          onImported={(discoveredAccountIds) =>
+            setSelected((prev) =>
+              Object.fromEntries(
+                Object.entries(prev).filter(([id]) => !discoveredAccountIds.includes(id))
+              )
+            )
+          }
         />
       )}
     </>

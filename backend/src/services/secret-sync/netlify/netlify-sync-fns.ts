@@ -1,4 +1,6 @@
 /* eslint-disable no-continue */
+import { HttpStatusCode, isAxiosError } from "axios";
+
 import { NetlifyPublicAPI } from "@app/services/app-connection/netlify/netlify-connection-public-client";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
@@ -6,6 +8,23 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SecretSyncError } from "../secret-sync-errors";
 import type { TNetlifySyncWithCredentials } from "./netlify-sync-types";
+
+const throwNetlifySyncError = (error: unknown, secretKey?: string): never => {
+  throw new SecretSyncError({
+    error,
+    secretKey,
+    // Netlify answers 400 for variables it refuses to store, so retrying the same request can't succeed.
+    shouldRetry: !(isAxiosError(error) && error.response?.status === HttpStatusCode.BadRequest)
+  });
+};
+
+const getNetlifyVariables = async (...args: Parameters<typeof NetlifyPublicAPI.getVariables>) => {
+  try {
+    return await NetlifyPublicAPI.getVariables(...args);
+  } catch (error) {
+    throwNetlifySyncError(error);
+  }
+};
 
 export const NetlifySyncFns = {
   async getSecrets(secretSync: TNetlifySyncWithCredentials): Promise<TSecretMap> {
@@ -17,11 +36,11 @@ export const NetlifySyncFns = {
       site_id: config.siteId
     };
 
-    const variables = await NetlifyPublicAPI.getVariables(secretSync.connection, params);
+    const variables = await getNetlifyVariables(secretSync.connection, params);
 
     const map = {} as TSecretMap;
 
-    for (const variable of variables) {
+    for (const variable of variables ?? []) {
       if (variable.is_secret) continue;
 
       const latest = variable.values.sort((a, b) => Number(b.created_at) - Number(a.created_at))[0];
@@ -53,8 +72,8 @@ export const NetlifySyncFns = {
       context_name: config.context
     };
 
-    const variables = await NetlifyPublicAPI.getVariables(secretSync.connection, baseParams);
-    const existingInNetlify = Object.fromEntries(variables.map((variable) => [variable.key, variable]));
+    const variables = await getNetlifyVariables(secretSync.connection, baseParams);
+    const existingInNetlify = Object.fromEntries(variables?.map((variable) => [variable.key, variable]) ?? []);
 
     const variablesToCreate = Object.keys(secretMap).filter((key) => !existingInNetlify[key]);
     const variablesToUpdate = Object.keys(secretMap).filter((key) => existingInNetlify[key]);
@@ -76,7 +95,7 @@ export const NetlifySyncFns = {
           values: [{ context: config.context, value: secretMap[key].value }]
         });
       } catch (error) {
-        throw new SecretSyncError({ error, secretKey: key });
+        throwNetlifySyncError(error, key);
       }
     }
 
@@ -88,7 +107,7 @@ export const NetlifySyncFns = {
           value: secretMap[key].value
         });
       } catch (error) {
-        throw new SecretSyncError({ error, secretKey: key });
+        throwNetlifySyncError(error, key);
       }
     }
 
@@ -110,7 +129,7 @@ export const NetlifySyncFns = {
           await NetlifyPublicAPI.deleteVariable(secretSync.connection, params, { key });
         }
       } catch (error) {
-        throw new SecretSyncError({ error, secretKey: key });
+        throwNetlifySyncError(error, key);
       }
     }
   },
@@ -129,9 +148,9 @@ export const NetlifySyncFns = {
       context_name: config.context
     };
 
-    const variables = await NetlifyPublicAPI.getVariables(secretSync.connection, baseParams);
+    const variables = await getNetlifyVariables(secretSync.connection, baseParams);
 
-    const existingSecrets = Object.fromEntries(variables.map((variable) => [variable.key, variable]));
+    const existingSecrets = Object.fromEntries(variables?.map((variable) => [variable.key, variable]) ?? []);
 
     for await (const secret of Object.keys(existingSecrets)) {
       try {

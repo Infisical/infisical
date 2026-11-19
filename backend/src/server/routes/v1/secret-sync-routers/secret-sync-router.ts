@@ -36,9 +36,15 @@ import {
   CloudflarePagesSyncSchema
 } from "@app/services/secret-sync/cloudflare-pages/cloudflare-pages-schema";
 import {
+  CloudflareSecretsStoreSyncListItemSchema,
+  CloudflareSecretsStoreSyncSchema
+} from "@app/services/secret-sync/cloudflare-secrets-store/cloudflare-secrets-store-sync-schemas";
+import {
   CloudflareWorkersSyncListItemSchema,
   CloudflareWorkersSyncSchema
 } from "@app/services/secret-sync/cloudflare-workers/cloudflare-workers-schemas";
+import { ConvexSyncListItemSchema, ConvexSyncSchema } from "@app/services/secret-sync/convex";
+import { CoolifySyncListItemSchema, CoolifySyncSchema } from "@app/services/secret-sync/coolify";
 import { DatabricksSyncListItemSchema, DatabricksSyncSchema } from "@app/services/secret-sync/databricks";
 import { DaytonaSyncListItemSchema, DaytonaSyncSchema } from "@app/services/secret-sync/daytona";
 import { DevinSyncListItemSchema, DevinSyncSchema } from "@app/services/secret-sync/devin";
@@ -61,12 +67,15 @@ import {
 import { HCVaultSyncListItemSchema, HCVaultSyncSchema } from "@app/services/secret-sync/hc-vault";
 import { HerokuSyncListItemSchema, HerokuSyncSchema } from "@app/services/secret-sync/heroku";
 import { HumanitecSyncListItemSchema, HumanitecSyncSchema } from "@app/services/secret-sync/humanitec";
+import { JenkinsSyncListItemSchema, JenkinsSyncSchema } from "@app/services/secret-sync/jenkins";
+import { KeeperSyncListItemSchema, KeeperSyncSchema } from "@app/services/secret-sync/keeper";
 import { LaravelForgeSyncListItemSchema, LaravelForgeSyncSchema } from "@app/services/secret-sync/laravel-forge";
 import { NetlifySyncListItemSchema, NetlifySyncSchema } from "@app/services/secret-sync/netlify";
 import { NorthflankSyncListItemSchema, NorthflankSyncSchema } from "@app/services/secret-sync/northflank";
 import { OctopusDeploySyncListItemSchema, OctopusDeploySyncSchema } from "@app/services/secret-sync/octopus-deploy";
 import { OnaSyncListItemSchema, OnaSyncSchema } from "@app/services/secret-sync/ona";
 import { OvhSyncListItemSchema, OvhSyncSchema } from "@app/services/secret-sync/ovh";
+import { PortainerSyncListItemSchema, PortainerSyncSchema } from "@app/services/secret-sync/portainer";
 import { QoverySyncListItemSchema, QoverySyncSchema } from "@app/services/secret-sync/qovery";
 import { RailwaySyncListItemSchema, RailwaySyncSchema } from "@app/services/secret-sync/railway/railway-sync-schemas";
 import { RenderSyncListItemSchema, RenderSyncSchema } from "@app/services/secret-sync/render/render-sync-schemas";
@@ -107,8 +116,13 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   GitLabSyncSchema,
   CloudflarePagesSyncSchema,
   CloudflareWorkersSyncSchema,
+  CloudflareSecretsStoreSyncSchema,
+  ConvexSyncSchema,
   SupabaseSyncSchema,
   RundeckSyncSchema,
+  PortainerSyncSchema,
+  JenkinsSyncSchema,
+  CoolifySyncSchema,
   ZabbixSyncSchema,
   RailwaySyncSchema,
   ChecklySyncSchema,
@@ -131,7 +145,8 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   QoverySyncSchema,
   Cloud66SyncSchema,
   SpaceliftSyncSchema,
-  DaytonaSyncSchema
+  DaytonaSyncSchema,
+  KeeperSyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -159,12 +174,17 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   GitLabSyncListItemSchema,
   CloudflarePagesSyncListItemSchema,
   CloudflareWorkersSyncListItemSchema,
+  CloudflareSecretsStoreSyncListItemSchema,
+  ConvexSyncListItemSchema,
   DigitalOceanAppPlatformSyncListItemSchema,
   ZabbixSyncListItemSchema,
   RailwaySyncListItemSchema,
   ChecklySyncListItemSchema,
   SupabaseSyncListItemSchema,
   RundeckSyncListItemSchema,
+  PortainerSyncListItemSchema,
+  JenkinsSyncListItemSchema,
+  CoolifySyncListItemSchema,
   NetlifySyncListItemSchema,
   NorthflankSyncListItemSchema,
   BitbucketSyncListItemSchema,
@@ -183,7 +203,8 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   QoverySyncListItemSchema,
   Cloud66SyncListItemSchema,
   SpaceliftSyncListItemSchema,
-  DaytonaSyncListItemSchema
+  DaytonaSyncListItemSchema,
+  KeeperSyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

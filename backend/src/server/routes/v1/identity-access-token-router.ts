@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { ApiDocsTags, UNIVERSAL_AUTH } from "@app/lib/api-docs";
 import { writeLimit } from "@app/server/config/rateLimiter";
+import { readClientCertificateHeader } from "@app/services/identity-access-token/identity-access-token-fns";
 
 export const registerIdentityAccessTokenRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -29,7 +30,8 @@ export const registerIdentityAccessTokenRouter = async (server: FastifyZodProvid
     },
     handler: async (req) => {
       const { accessToken, expiresIn, accessTokenMaxTTL } = await server.services.identityAccessToken.renewAccessToken({
-        accessToken: req.body.accessToken
+        accessToken: req.body.accessToken,
+        clientCertificate: readClientCertificateHeader(req.headers)
       });
       return {
         accessToken,

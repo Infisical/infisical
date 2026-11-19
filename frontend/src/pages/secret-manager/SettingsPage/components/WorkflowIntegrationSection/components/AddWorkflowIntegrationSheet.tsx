@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { BsMicrosoftTeams, BsSlack } from "react-icons/bs";
 
 import {
@@ -42,7 +42,6 @@ export const AddWorkflowIntegrationSheet = ({ isOpen, onOpenChange }: Props) => 
   const [selectedPlatform, setSelectedPlatform] = useState<WorkflowIntegrationPlatform | null>(
     null
   );
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const { currentProject } = useProject();
   const { data: slackConfig } = useGetWorkspaceWorkflowIntegrationConfig({
@@ -69,7 +68,7 @@ export const AddWorkflowIntegrationSheet = ({ isOpen, onOpenChange }: Props) => 
   return (
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetContent className="sm:max-w-lg">
-        <div ref={containerRef} className="flex h-full min-h-0 flex-col">
+        <div className="flex h-full min-h-0 flex-col">
           <SheetHeader>
             <SheetTitle>
               {selectedPlatform
@@ -121,14 +120,12 @@ export const AddWorkflowIntegrationSheet = ({ isOpen, onOpenChange }: Props) => 
             <SlackIntegrationForm
               onClose={() => handleOpenChange(false)}
               onBack={() => setSelectedPlatform(null)}
-              menuContainer={containerRef}
             />
           )}
           {selectedPlatform === WorkflowIntegrationPlatform.MICROSOFT_TEAMS && (
             <MicrosoftTeamsIntegrationForm
               onClose={() => handleOpenChange(false)}
               onBack={() => setSelectedPlatform(null)}
-              menuContainer={containerRef}
             />
           )}
         </div>

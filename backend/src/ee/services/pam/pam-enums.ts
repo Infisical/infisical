@@ -1,6 +1,7 @@
 export enum PamAccountType {
   SSH = "ssh",
   Postgres = "postgres",
+  CockroachDB = "cockroachdb",
   MySQL = "mysql",
   MsSQL = "mssql",
   OracleDB = "oracledb",
@@ -26,6 +27,12 @@ export enum PamResourceRole {
 export enum PamProductRole {
   Admin = "admin",
   Member = "member"
+}
+
+export enum PamFolderCallerAccess {
+  Admin = "admin",
+  Member = "member",
+  None = "none"
 }
 
 export enum PamHeartbeatStatus {
@@ -77,13 +84,6 @@ export enum PamPostgresAuthMethod {
 export enum PamAccessType {
   Session = "session",
   Credential = "credential"
-}
-
-// The caller's just-in-time approval state for an account gated behind an access request flow
-export enum PamAccessStatus {
-  None = "none",
-  Pending = "pending",
-  Granted = "granted"
 }
 
 export enum PamMemberKind {

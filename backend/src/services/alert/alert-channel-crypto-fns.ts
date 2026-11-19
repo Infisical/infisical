@@ -1,14 +1,13 @@
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 
 export type TAlertEncryptor = (data: { plainText: Buffer }) => { cipherTextBlob: Buffer };
 export type TAlertDecryptor = (data: { cipherTextBlob: Buffer }) => Buffer;
 
 export const getAlertChannelCipher = (
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
+  kmsDataKeyService: TKmsDataKeyService,
   scope: { orgId: string; projectId?: string | null }
 ) =>
-  kmsService.createCipherPairWithDataKey(
+  kmsDataKeyService.createCipherPairWithDataKey(
     scope.projectId
       ? { type: KmsDataKey.SecretManager, projectId: scope.projectId }
       : { type: KmsDataKey.Organization, orgId: scope.orgId }

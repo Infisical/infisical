@@ -3,8 +3,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 import { signerKeys } from "@app/hooks/api/signers/queries";
 
+import { ApprovalPolicyType } from "../approvalPolicies/types";
+import { invalidateRevokedCertificate } from "../certificates/mutations";
 import { approvalRequestQuery } from "./queries";
 import {
+  ApprovalRequestStatus,
+  CertRevocationRequestData,
   TApprovalRequest,
   TApproveApprovalRequestDTO,
   TCancelApprovalRequestDTO,
@@ -34,19 +38,25 @@ export const useCreateApprovalRequest = () => {
 export const useApproveApprovalRequest = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      policyType,
-      requestId,
-      comment,
-      bypassReason
-    }: TApproveApprovalRequestDTO) => {
+    mutationFn: async ({ policyType, requestId, comment }: TApproveApprovalRequestDTO) => {
       const { data } = await apiRequest.post<{ request: TApprovalRequest }>(
         `/api/v1/approval-policies/${policyType}/requests/${requestId}/approve`,
-        { comment, bypassReason }
+        { comment }
       );
       return data.request;
     },
-    onSuccess: () => invalidateApprovalRequests(queryClient)
+    onSuccess: (request) => {
+      invalidateApprovalRequests(queryClient);
+      if (
+        request.type === ApprovalPolicyType.CertRevocation &&
+        request.status !== ApprovalRequestStatus.Pending
+      ) {
+        invalidateRevokedCertificate(
+          queryClient,
+          (request.requestData.requestData as CertRevocationRequestData).certificateId
+        );
+      }
+    }
   });
 };
 

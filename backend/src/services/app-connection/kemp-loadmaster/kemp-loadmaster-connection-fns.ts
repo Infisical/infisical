@@ -2,12 +2,14 @@ import { AxiosError, AxiosRequestConfig } from "axios";
 import { XMLParser } from "fast-xml-parser";
 import https from "https";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
+import { getTlsServerNameOptions } from "@app/lib/tls";
 import { safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -87,7 +89,7 @@ export const executeKempLoadMasterOperationWithGateway = async <T>(
     return withGatewayV2Proxy(
       async (proxyPort) => {
         const httpsAgent = new https.Agent({
-          servername: hostname,
+          ...getTlsServerNameOptions(hostname),
           rejectUnauthorized: credentials.sslRejectUnauthorized,
           ca: credentials.sslCertificate ? [credentials.sslCertificate] : undefined
         });
@@ -218,7 +220,7 @@ export const validateKempLoadMasterConnectionCredentials = async (
       }
     );
   } catch (error: unknown) {
-    if (error instanceof BadRequestError) {
+    if (error instanceof BadRequestError || error instanceof RuleViolationError) {
       throw error;
     }
 

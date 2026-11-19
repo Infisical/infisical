@@ -2,6 +2,7 @@ import ms from "ms";
 import { z } from "zod";
 
 import { ActorType, EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
+import { AuditLogEventClass } from "@app/hooks/api/auditLogSettings/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 export enum AuditLogDateFilterType {
@@ -17,6 +18,7 @@ export const auditLogFilterFormSchema = z.object({
     .nullable(),
   environment: z.object({ name: z.string(), slug: z.string() }).optional().nullable(),
   eventType: z.nativeEnum(EventType).array(),
+  eventClass: z.nativeEnum(AuditLogEventClass).array().optional(),
   actor: z.string().optional(),
   userAgentType: z.nativeEnum(UserAgentType).nullish(),
   secretPath: z.string().optional(),

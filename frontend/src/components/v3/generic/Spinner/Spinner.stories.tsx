@@ -20,6 +20,10 @@ const meta = {
       control: "select",
       options: ["xs", "sm", "md", "lg"]
     },
+    variant: {
+      control: "select",
+      options: ["project", "av"]
+    },
     label: {
       control: "text"
     },
@@ -37,6 +41,27 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const Variants: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use `av` on Agent Vault pages so the spinner matches the product colour; everything else keeps the default `project`."
+      }
+    }
+  },
+  render: () => (
+    <div className="flex items-center gap-6">
+      {(["project", "av"] as const).map((variant) => (
+        <div key={variant} className="flex flex-col items-center gap-2 text-xs text-muted">
+          <Spinner variant={variant} label={`Loading ${variant} example`} />
+          <span>{variant}</span>
+        </div>
+      ))}
+    </div>
+  )
+};
 
 export const Sizes: Story = {
   parameters: {

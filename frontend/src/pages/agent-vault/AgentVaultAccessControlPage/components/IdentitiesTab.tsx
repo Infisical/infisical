@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
 import {
   MoreHorizontalIcon,
   PencilIcon,
@@ -19,7 +18,7 @@ import {
   Button,
   Card,
   CardContent,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -34,6 +33,7 @@ import {
   InputGroupInput,
   OrgIcon,
   Pagination,
+  RowLink,
   Skeleton,
   SubOrgIcon,
   Table,
@@ -70,9 +70,8 @@ import { ProductRoleDialog } from "./ProductRoleDialog";
 type TMachineIdentityMember = TAgentVaultProductMemberOf<AgentVaultMemberType.MachineIdentity>;
 
 export const IdentitiesTab = () => {
-  const { currentProject } = useProject();
+  const { currentProject, projectId } = useProject();
   const { currentOrg, isSubOrganization } = useOrganization();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
@@ -81,13 +80,13 @@ export const IdentitiesTab = () => {
     getUserTablePreference("agentVaultAccessControlTable", PreferenceKey.PerPage, 20)
   );
 
-  const { data, isPending } = useListAgentVaultMembers({
+  const { data, isPending } = useListAgentVaultMembers(projectId, {
     actorType: AgentVaultMemberType.MachineIdentity,
     search: debouncedSearch.trim() || undefined,
     limit: perPage,
     offset: (page - 1) * perPage
   });
-  const revokeMembers = useRevokeAgentVaultMembers();
+  const revokeMembers = useRevokeAgentVaultMembers(projectId);
   const deleteIdentity = useDeleteProjectIdentity();
   const updateIdentity = useUpdateProjectIdentity();
 
@@ -103,8 +102,7 @@ export const IdentitiesTab = () => {
   const [toRemove, setToRemove] = useState<TMachineIdentityMember | null>(null);
 
   // An identity created here is scoped to the Agent Vault project, so detaching it would orphan it.
-  const isAgentVaultManaged = (member: TMachineIdentityMember) =>
-    member.actor.isManagedByAgentVault;
+  const isAgentVaultManaged = (member: TMachineIdentityMember) => member.isManagedByAgentVault;
 
   const renderManagedByBadge = (identity: TMachineIdentityMember) => {
     if (isAgentVaultManaged(identity)) {
@@ -115,7 +113,7 @@ export const IdentitiesTab = () => {
         </Badge>
       );
     }
-    if (isSubOrganization && currentOrg.id === identity.actor.orgId) {
+    if (isSubOrganization && currentOrg.id === identity.orgId) {
       return (
         <Badge variant="sub-org">
           <SubOrgIcon />
@@ -138,19 +136,21 @@ export const IdentitiesTab = () => {
       if (isAgentVaultManaged(toRemove)) {
         // Identities are created here with delete protection on, which the delete endpoint refuses.
         await updateIdentity.mutateAsync({
-          identityId: toRemove.actor.id,
+          identityId: toRemove.id,
           projectId: currentProject.id,
           hasDeleteProtection: false
         });
         await deleteIdentity.mutateAsync({
-          identityId: toRemove.actor.id,
+          identityId: toRemove.id,
           projectId: currentProject.id
         });
-        queryClient.invalidateQueries({ queryKey: agentVaultKeys.members(currentOrg.id) });
-        createNotification({ text: `"${toRemove.actor.name}" deleted`, type: "success" });
+        queryClient.invalidateQueries({
+          queryKey: agentVaultKeys.members(currentOrg.id, projectId)
+        });
+        createNotification({ text: `"${toRemove.name}" deleted`, type: "success" });
       } else {
-        await revokeMembers.mutateAsync({ machineIdentityIds: [toRemove.actor.id] });
-        createNotification({ text: `"${toRemove.actor.name}" removed`, type: "success" });
+        await revokeMembers.mutateAsync({ machineIdentityIds: [toRemove.id] });
+        createNotification({ text: `"${toRemove.name}" removed`, type: "success" });
       }
 
       setToRemove(null);
@@ -229,24 +229,20 @@ export const IdentitiesTab = () => {
               ))}
             {!isPending &&
               filtered.map((identity) => (
-                <TableRow
-                  key={identity.id}
-                  className="cursor-pointer"
-                  onClick={() => {
-                    navigate({
-                      to: "/organizations/$orgId/agent-vault/identities/$identityId",
-                      params: { orgId: currentOrg.id, identityId: identity.actor.id }
-                    });
-                  }}
-                >
-                  <TableCell isTruncatable className="min-w-32" title={identity.actor.name}>
-                    <HighlightText text={identity.actor.name} highlight={debouncedSearch} />
+                <TableRow key={identity.id} linked>
+                  <TableCell isTruncatable className="min-w-32" title={identity.name}>
+                    <RowLink
+                      to="/organizations/$orgId/projects/agent-vault/$projectId/identities/$identityId"
+                      params={{ orgId: currentOrg.id, projectId, identityId: identity.id }}
+                    >
+                      <HighlightText text={identity.name} highlight={debouncedSearch} />
+                    </RowLink>
                   </TableCell>
                   <TableCell>
                     <ProductRoleBadge role={identity.role} />
                   </TableCell>
                   <TableCell>{renderManagedByBadge(identity)}</TableCell>
-                  <TableCell variant="action" onClick={(event) => event.stopPropagation()}>
+                  <TableCell variant="action">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <IconButton variant="ghost" size="xs" aria-label="Open identity actions">
@@ -296,25 +292,25 @@ export const IdentitiesTab = () => {
       <ProductRoleDialog
         member={toEdit}
         onOpenChange={() => setToEdit(null)}
-        subject={toEdit?.actor.name ?? ""}
+        subject={toEdit?.name ?? ""}
       />
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={Boolean(toRemove)}
         onOpenChange={(isOpen) => {
           if (!isOpen) setToRemove(null);
         }}
         title={
           toRemove && isAgentVaultManaged(toRemove)
-            ? `Delete "${toRemove.actor.name}"`
-            : `Remove "${toRemove?.actor.name ?? ""}"`
+            ? `Delete "${toRemove.name}"`
+            : `Remove "${toRemove?.name ?? ""}"`
         }
         description={
           toRemove && isAgentVaultManaged(toRemove)
             ? "This machine identity is managed by Agent Vault. Deleting it removes the identity along with its access. This cannot be undone."
-            : "It loses Agent Vault access, along with every access bundle granted to it. The machine identity won't be deleted because it isn't managed by Agent Vault."
+            : "It loses access to this project, along with every access bundle granted to it. The machine identity won't be deleted because it isn't managed by Agent Vault."
         }
-        confirmKey={toRemove?.actor.name ?? ""}
+        confirmKey={toRemove?.name ?? ""}
         confirmLabel={toRemove && isAgentVaultManaged(toRemove) ? "Delete" : "Remove"}
         isPending={revokeMembers.isPending || updateIdentity.isPending || deleteIdentity.isPending}
         onConfirm={handleRemove}

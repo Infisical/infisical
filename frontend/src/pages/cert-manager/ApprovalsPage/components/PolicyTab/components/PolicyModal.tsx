@@ -1,11 +1,23 @@
 import { useEffect, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
-import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { PolicyApprovalSteps } from "@app/components/approvals";
 import { createNotification } from "@app/components/notifications";
-import { Button, Modal, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  DiscardChangesAlertDialog,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   ApprovalPolicyScope,
@@ -15,11 +27,12 @@ import {
   useCreateApprovalPolicy,
   useUpdateApprovalPolicy
 } from "@app/hooks/api/approvalPolicies";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { PolicyFormSchema, TPolicyForm } from "./PolicySchema";
 import { PolicyDetailsStep } from "./PolicySteps/PolicyDetailsStep";
 import { PolicyReviewStep } from "./PolicySteps/PolicyReviewStep";
-import { PolicyFormSchema, TPolicyForm } from "./PolicySchema";
 
 type Props = {
   popUp: UsePopUpState<["policy"]>;
@@ -50,6 +63,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
     resolver: zodResolver(PolicyFormSchema),
     defaultValues: {
       name: "",
+      policyType: ApprovalPolicyType.CertRequest,
       maxRequestTtl: null,
       conditions: [{ profileNames: [] }],
       constraints: {},
@@ -65,16 +79,30 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
     }
   });
 
-  const { handleSubmit, trigger, reset } = formMethods;
+  const {
+    handleSubmit,
+    trigger,
+    reset,
+    watch,
+    formState: { isDirty, isSubmitting, isValidating }
+  } = formMethods;
+  const selectedPolicyType = watch("policyType");
 
   const { mutateAsync: createPolicy, isPending: isCreating } = useCreateApprovalPolicy();
   const { mutateAsync: updatePolicy, isPending: isUpdating } = useUpdateApprovalPolicy();
+  const isPending = isCreating || isUpdating || isSubmitting;
+  const { requestDiscard, isDiscardDialogOpen, setIsDiscardDialogOpen, confirmDiscard } =
+    useDiscardChangesGuard({
+      isDirty,
+      onDiscard: () => handlePopUpToggle("policy", false)
+    });
 
   useEffect(() => {
     if (policyData?.policy) {
       const conditions = policyData.policy.conditions.conditions as CertRequestPolicyConditions;
       reset({
         name: policyData.policy.name,
+        policyType: policyData.policy.type,
         maxRequestTtl: policyData.policy.maxRequestTtl,
         conditions,
         constraints: {},
@@ -87,6 +115,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
     } else {
       reset({
         name: "",
+        policyType: ApprovalPolicyType.CertRequest,
         maxRequestTtl: null,
         conditions: [{ profileNames: [] }],
         constraints: {},
@@ -104,15 +133,21 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
     setSelectedStepIndex(0);
   }, [policyData, reset, isOpen]);
 
-  const onSubmit = async (data: TPolicyForm) => {
+  const onSubmit = async ({ policyType, ...data }: TPolicyForm) => {
     if (!currentProject?.id) return;
+
+    const policyFields = {
+      ...data,
+      bypassForMachineIdentities:
+        policyType === ApprovalPolicyType.CertRevocation ? false : data.bypassForMachineIdentities
+    };
 
     try {
       if (policyData?.policyId) {
         await updatePolicy({
-          policyType: ApprovalPolicyType.CertRequest,
+          policyType: policyData.policy.type,
           policyId: policyData.policyId,
-          ...data
+          ...policyFields
         });
         createNotification({
           text: "Successfully updated policy",
@@ -120,10 +155,10 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
         });
       } else {
         await createPolicy({
-          policyType: ApprovalPolicyType.CertRequest,
+          policyType: applicationId ? policyType : ApprovalPolicyType.CertRequest,
           scope: applicationId ? ApprovalPolicyScope.PkiApplication : ApprovalPolicyScope.Project,
           scopeId: applicationId || currentProject.id,
-          ...data
+          ...policyFields
         });
         createNotification({
           text: "Successfully created policy",
@@ -149,6 +184,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
   const isFinalStep = selectedStepIndex === FORM_STEPS.length - 1;
 
   const handleNext = async () => {
+    if (isPending || isValidating) return;
     if (isFinalStep) {
       await handleSubmit(onSubmit)();
       return;
@@ -162,11 +198,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
   };
 
   const handlePrev = () => {
-    if (selectedStepIndex === 0) {
-      handlePopUpToggle("policy", false);
-      return;
-    }
-
+    if (isPending || isValidating) return;
     setSelectedStepIndex((prev) => prev - 1);
   };
 
@@ -181,70 +213,109 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={(open) => handlePopUpToggle("policy", open)}>
-      <ModalContent
-        title={
-          policyData?.policyId
-            ? "Edit Certificate Approval Policy"
-            : "Create Certificate Approval Policy"
-        }
-        subTitle="Configure a certificate approval policy requiring approval for certificate issuance"
-        className="max-w-3xl"
-      >
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open && !isPending) requestDiscard();
+      }}
+    >
+      <SheetContent size="form" isPending={isPending}>
+        <SheetHeader>
+          <SheetTitle>
+            {policyData?.policyId
+              ? "Edit Certificate Approval Policy"
+              : "Create Certificate Approval Policy"}
+          </SheetTitle>
+          <SheetDescription>
+            {selectedPolicyType === ApprovalPolicyType.CertRevocation
+              ? "Configure a certificate approval policy requiring approval for certificate revocation."
+              : "Configure a certificate approval policy requiring approval for certificate issuance."}
+          </SheetDescription>
+        </SheetHeader>
         <FormProvider {...formMethods}>
-          <form>
-            <Tab.Group selectedIndex={selectedStepIndex} onChange={setSelectedStepIndex}>
-              <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-border-control">
-                {FORM_STEPS.map((step, index) => (
-                  <Tab
-                    onClick={async (e) => {
-                      e.preventDefault();
-                      const isEnabled = await isTabEnabled(index);
-                      setSelectedStepIndex((prev) => (isEnabled ? index : prev));
-                    }}
-                    className={({ selected }) =>
-                      `-mb-[0.14rem] whitespace-nowrap ${index > selectedStepIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
-                        selected
-                          ? "border-b-2 border-border-bright text-foreground-secondary"
-                          : "text-label-secondary"
-                      }`
-                    }
-                    key={step.key}
-                  >
-                    {index + 1}. {step.name}
-                  </Tab>
-                ))}
-              </Tab.List>
-              <Tab.Panels>
-                <Tab.Panel>
-                  <PolicyDetailsStep applicationId={applicationId} />
-                </Tab.Panel>
-                <Tab.Panel>
-                  <PolicyApprovalSteps applicationId={applicationId} />
-                </Tab.Panel>
-                <Tab.Panel>
+          <form
+            className="contents"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              await handleNext();
+            }}
+          >
+            <fieldset
+              disabled={isPending}
+              className="min-h-0 thin-scrollbar flex-1 overflow-y-auto p-4"
+            >
+              <Tabs
+                value={FORM_STEPS[selectedStepIndex].key}
+                onValueChange={async (value) => {
+                  if (isPending || isValidating) return;
+                  const index = FORM_STEPS.findIndex((step) => step.key === value);
+                  if (await isTabEnabled(index)) setSelectedStepIndex(index);
+                }}
+              >
+                <TabsList variant="project" aria-label="Policy configuration steps">
+                  {FORM_STEPS.map((step, index) => (
+                    <TabsTrigger
+                      value={step.key}
+                      disabled={isPending || isValidating}
+                      key={step.key}
+                    >
+                      {index + 1}. {step.name}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                <TabsContent value="configuration">
+                  <PolicyDetailsStep
+                    applicationId={applicationId}
+                    isEditing={Boolean(policyData?.policyId)}
+                  />
+                </TabsContent>
+                <TabsContent value="approvals">
+                  <PolicyApprovalSteps
+                    applicationId={applicationId}
+                    excludeAuditors={selectedPolicyType === ApprovalPolicyType.CertRevocation}
+                  />
+                </TabsContent>
+                <TabsContent value="review">
                   <PolicyReviewStep />
-                </Tab.Panel>
-              </Tab.Panels>
-            </Tab.Group>
+                </TabsContent>
+              </Tabs>
+            </fieldset>
 
-            <div className="mt-6 flex justify-between border-t border-border-control pt-4">
-              <Button type="button" variant="outline_bg" onClick={handlePrev}>
-                {selectedStepIndex === 0 ? "Cancel" : "Back"}
+            <SheetFooter className="justify-end border-t">
+              {selectedStepIndex > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mr-auto"
+                  onClick={handlePrev}
+                  isDisabled={isPending || isValidating}
+                >
+                  Back
+                </Button>
+              )}
+              <Button type="button" variant="ghost" onClick={requestDiscard} isDisabled={isPending}>
+                Cancel
               </Button>
               <Button
-                type="button"
-                onClick={handleNext}
-                isLoading={isCreating || isUpdating}
-                isDisabled={isCreating || isUpdating}
+                type="submit"
+                variant="project"
+                isPending={isPending}
+                isDisabled={isPending || isValidating}
               >
                 {isFinalStep && (policyData?.policyId ? "Update" : "Create")}
                 {!isFinalStep && "Next"}
               </Button>
-            </div>
+            </SheetFooter>
           </form>
         </FormProvider>
-      </ModalContent>
-    </Modal>
+        <DiscardChangesAlertDialog
+          open={isDiscardDialogOpen}
+          onOpenChange={setIsDiscardDialogOpen}
+          onDiscard={confirmDiscard}
+          title="Discard Changes?"
+          description="Your unsaved policy changes will be lost."
+        />
+      </SheetContent>
+    </Sheet>
   );
 };

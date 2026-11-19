@@ -4,6 +4,7 @@ import { PamAccountType, PamPolicyType } from "@app/hooks/api/pam";
 
 import { BooleanPolicyEditor } from "./BooleanPolicyEditor";
 import { DurationPolicyEditor } from "./DurationPolicyEditor";
+import { OutputMaskingPolicyEditor } from "./OutputMaskingPolicyEditor";
 import { TextAreaPolicyEditor } from "./TextAreaPolicyEditor";
 import { PolicyEditorProps } from "./types";
 
@@ -27,11 +28,13 @@ const CommandBlockingEditor = ({ accountType, ...props }: PolicyEditorProps) => 
 
 export const POLICY_EDITORS: Partial<Record<PamPolicyType, ComponentType<PolicyEditorProps>>> = {
   [PamPolicyType.RequiresApproval]: BooleanPolicyEditor,
+  [PamPolicyType.AllowAutoApproval]: BooleanPolicyEditor,
   [PamPolicyType.AllowBreakGlass]: BooleanPolicyEditor,
   [PamPolicyType.RequireMfa]: BooleanPolicyEditor,
   [PamPolicyType.RequireReason]: BooleanPolicyEditor,
   [PamPolicyType.MaxSessionDuration]: DurationPolicyEditor,
-  [PamPolicyType.CommandBlocking]: CommandBlockingEditor
+  [PamPolicyType.CommandBlocking]: CommandBlockingEditor,
+  [PamPolicyType.OutputMasking]: OutputMaskingPolicyEditor
 };
 
 export type { PolicyEditorProps } from "./types";

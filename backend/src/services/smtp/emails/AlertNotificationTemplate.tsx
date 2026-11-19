@@ -2,6 +2,7 @@ import { Column, Heading, Hr, Row, Section, Text } from "@react-email/components
 
 import { BaseButton } from "./BaseButton";
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
+import { BaseLink } from "./BaseLink";
 
 interface AlertNotificationTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   alertName: string;
@@ -11,7 +12,14 @@ interface AlertNotificationTemplateProps extends Omit<BaseEmailWrapperProps, "ti
   summary: string;
   severity?: string;
   viewUrl: string;
-  items: { id: string; title: string; identifier?: string; fields?: { label: string; value: string }[] }[];
+  items: {
+    id: string;
+    title: string;
+    identifier?: string;
+    fields?: { label: string; value: string }[];
+    url?: string;
+  }[];
+  remainingCount?: number;
 }
 
 const SEVERITY_STYLES: Record<string, { label: string; color: string; background: string; border: string }> = {
@@ -30,7 +38,8 @@ export const AlertNotificationTemplate = ({
   severity = "info",
   viewUrl,
   siteUrl,
-  items
+  items,
+  remainingCount = 0
 }: AlertNotificationTemplateProps) => {
   const title = `${resourceKind} ${eventLabel} Notice`;
   const sev = SEVERITY_STYLES[severity] ?? SEVERITY_STYLES.info;
@@ -66,7 +75,9 @@ export const AlertNotificationTemplate = ({
             key={item.id}
             className="mb-[12px] px-[20px] pt-[16px] pb-[8px] border border-solid border-gray-200 rounded-lg bg-gray-50"
           >
-            <Text className="text-[15px] font-semibold text-black m-0 mb-[2px]">{item.title}</Text>
+            <Text className="text-[15px] font-semibold text-black m-0 mb-[2px]">
+              {item.url ? <BaseLink href={item.url}>{item.title}</BaseLink> : item.title}
+            </Text>
             {item.identifier && <Text className="text-[12px] text-gray-500 m-0 mb-[10px]">{item.identifier}</Text>}
             {!item.identifier && <div className="mb-[10px]" />}
             {(item.fields ?? []).map((field) => (
@@ -81,6 +92,11 @@ export const AlertNotificationTemplate = ({
             ))}
           </Section>
         ))}
+        {remainingCount > 0 && (
+          <Text className="text-[13px] text-gray-600 text-center m-0 mt-[4px]">
+            And {remainingCount} more. View them all in Infisical.
+          </Text>
+        )}
       </Section>
 
       <Section className="text-center mt-[28px] mb-[4px]">
@@ -97,7 +113,7 @@ export const AlertNotificationTemplate = ({
 
       <Text className="text-[11px] text-gray-400 text-center leading-[16px] mt-[16px] mb-[0px]">
         You are receiving this because you are a recipient of this alert. Manage recipients and channels in the{" "}
-        {resourceOwnerKind.toLowerCase()}&apos;s alert settings in Infisical.
+        {resourceOwnerKind} alert settings in Infisical.
       </Text>
     </BaseEmailWrapper>
   );

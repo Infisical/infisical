@@ -1,3 +1,4 @@
+import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
@@ -8,7 +9,8 @@ import {
   AuthModeAccountRecoveryTokenPayload,
   AuthModeSignUpTokenPayload,
   AuthTokenType,
-  MfaMethod
+  MfaMethod,
+  SsoMfaTrust
 } from "./auth-type";
 
 const oauthLoginMethods = {
@@ -50,25 +52,82 @@ export const assertOAuthLoginMethodEnabled = ({
   });
 };
 
+export const MFA_METHOD_PRIORITY = [MfaMethod.WEBAUTHN, MfaMethod.TOTP, MfaMethod.EMAIL] as const;
+
+type TMfaPolicyOrg = {
+  enforceMfa?: boolean | null;
+  allowedMfaMethods?: string[] | null;
+};
+type TMfaPolicyUser = { isMfaEnabled?: boolean | null; selectedMfaMethod?: string | null };
+
+export const isMfaRequired = (org: TMfaPolicyOrg, user: TMfaPolicyUser) =>
+  Boolean(org.enforceMfa) || Boolean(user.isMfaEnabled);
+
+export const getOrgAllowedMfaMethods = (org: TMfaPolicyOrg): MfaMethod[] => {
+  const allowed = MFA_METHOD_PRIORITY.filter((method) => org.allowedMfaMethods?.includes(method));
+  return allowed.length ? allowed : [MfaMethod.EMAIL];
+};
+
+export const getUserAllowedMfaMethods = (org: TMfaPolicyOrg, user: TMfaPolicyUser): MfaMethod[] =>
+  org.enforceMfa ? getOrgAllowedMfaMethods(org) : [(user.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL];
+
 /*
- * Determines whether MFA is required and which method applies, based on org enforcement vs user
- * preference. Org enforcement takes precedence over the user's own selection. Shared between the
- * login flow (which challenges for MFA) and the OAuth consent flow (which must reject sessions that
- * never completed a required MFA challenge before issuing a delegation code).
+ * Picks the method to challenge: the user's preferred one if it is allowed and set up, else the strongest
+ * that is. usableMethods feeds "More options" at login; a null challengeMethod means the user must enroll
+ * an allowed method first. Shared by login, step-up and PAM so all three challenge the same method.
  */
-export const getRequiredMfaMethod = (
-  org: { enforceMfa?: boolean | null; selectedMfaMethod?: string | null },
-  user: { isMfaEnabled?: boolean | null; selectedMfaMethod?: string | null }
-): { isMfaRequired: boolean; requiredMfaMethod: MfaMethod } => {
-  const isOrgMfaEnforced = Boolean(org.enforceMfa);
-  const isUserMfaEnabled = Boolean(user.isMfaEnabled);
-  const isMfaRequired = isOrgMfaEnforced || isUserMfaEnabled;
+export const resolveMfaChallenge = ({
+  allowedMethods,
+  enrolledMethods,
+  preferredMethod
+}: {
+  allowedMethods: MfaMethod[];
+  enrolledMethods: MfaMethod[];
+  preferredMethod?: string | null;
+}): { usableMethods: MfaMethod[]; challengeMethod: MfaMethod | null } => {
+  const usableMethods = MFA_METHOD_PRIORITY.filter(
+    (method) => allowedMethods.includes(method) && enrolledMethods.includes(method)
+  );
+  const challengeMethod = usableMethods.find((method) => method === preferredMethod) ?? usableMethods[0] ?? null;
+  return { usableMethods, challengeMethod };
+};
 
-  const requiredMfaMethod = isOrgMfaEnforced
-    ? ((org.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL)
-    : ((user.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL);
+export const isSsoAuthMethod = (authMethod: AuthMethod) =>
+  isAuthMethodSaml(authMethod) || authMethod === AuthMethod.OIDC || authMethod === AuthMethod.LDAP;
 
-  return { isMfaRequired, requiredMfaMethod };
+/**
+ * Whether a session counts as this root org's own SSO. The method alone is not enough: a SAML
+ * session another org's IdP minted would otherwise satisfy this org's enforcement without its IdP,
+ * MFA or deprovisioning ever seeing the login. Tokens issued before the claim existed carry no
+ * issuer and are taken at their method, as before.
+ */
+export const isSsoSessionIssuedByOrg = ({
+  authMethod,
+  issuingRootOrgId,
+  rootOrgId
+}: {
+  authMethod: AuthMethod;
+  issuingRootOrgId?: string;
+  rootOrgId: string;
+}) => isSsoAuthMethod(authMethod) && (!issuingRootOrgId || issuingRootOrgId === rootOrgId);
+
+// Whether the MFA the IdP performed satisfies this root org's enforcement. Shared by org selection and OAuth
+// consent so a session that skipped the login prompt is not refused later. Only SAML and OIDC carry a signed
+// IdP signal: password, Google and LDAP never qualify, so break-glass accounts always get the Infisical
+// challenge. The proof names the org whose IdP produced it: a user in two orgs could otherwise tune one org's
+// allowlist to accept a single factor and carry that verdict into the other.
+export const isIdpMfaTrusted = ({
+  org,
+  authMethod,
+  idpMfaOrgId
+}: {
+  org: { id: string; enforceMfa?: boolean | null; ssoMfaTrust?: string | null };
+  authMethod: AuthMethod;
+  idpMfaOrgId?: string;
+}): boolean => {
+  if (!org.enforceMfa) return false;
+  if (!isAuthMethodSaml(authMethod) && authMethod !== AuthMethod.OIDC) return false;
+  return org.ssoMfaTrust === SsoMfaTrust.Signal && idpMfaOrgId === org.id;
 };
 
 export const RECOVERY_CODE_MFA_ASSURANCE = "recovery-code";

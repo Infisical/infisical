@@ -1,7 +1,14 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessScope, AccessScopeData, MembershipsSchema, OrgMembershipRole, TableName } from "@app/db/schemas";
+import {
+  AccessScope,
+  AccessScopeData,
+  MembershipsSchema,
+  OrgMembershipRole,
+  OrgMembershipStatus,
+  TableName
+} from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { buildKnexFilterForSearchResource } from "@app/lib/search-resource/db";
@@ -283,17 +290,71 @@ export const membershipUserDALFactory = (db: TDbClient) => {
     }
   };
 
-  // this right now only support sub organization
-  const listAvailableUsers = async (orgId: string, rootOrgId: string) => {
+  // Sub-org: root org users not in it yet. Project: anyone grantable in the project's org
+  // (findActorsWithActiveOrgAccess rule) without a direct project row.
+  const listAvailableUsers = async (scopeData: AccessScopeData, rootOrgId?: string | null) => {
     try {
+      const userColumns = [
+        db.ref("id").withSchema(TableName.Users),
+        db.ref("email").withSchema(TableName.Users),
+        db.ref("username").withSchema(TableName.Users),
+        db.ref("firstName").withSchema(TableName.Users),
+        db.ref("lastName").withSchema(TableName.Users)
+      ];
+
+      if (scopeData.scope === AccessScope.Project) {
+        const usersInProject = db
+          .replicaNode()(TableName.Membership)
+          .where(`${TableName.Membership}.scope`, AccessScope.Project)
+          .where(`${TableName.Membership}.scopeProjectId`, scopeData.projectId)
+          .whereNotNull(`${TableName.Membership}.actorUserId`)
+          .select("actorUserId");
+        const directOrgUsers = (activeOnly: boolean) =>
+          db
+            .replicaNode()(TableName.Membership)
+            .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+            .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
+            .whereNotNull(`${TableName.Membership}.actorUserId`)
+            .where((qb) => {
+              if (activeOnly) void qb.where(`${TableName.Membership}.isActive`, true);
+            })
+            .select("actorUserId");
+        const activeGroupOrgUsers = db
+          .replicaNode()(TableName.UserGroupMembership)
+          .join(
+            TableName.Membership,
+            `${TableName.Membership}.actorGroupId`,
+            `${TableName.UserGroupMembership}.groupId`
+          )
+          .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+          .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
+          .where(`${TableName.Membership}.isActive`, true)
+          .select(`${TableName.UserGroupMembership}.userId`);
+
+        return await db
+          .replicaNode()(TableName.Users)
+          .where(`${TableName.Users}.isGhost`, false)
+          .where((qb) => {
+            void qb.whereIn(`${TableName.Users}.id`, directOrgUsers(true)).orWhere((viaGroup) => {
+              void viaGroup
+                .whereIn(`${TableName.Users}.id`, activeGroupOrgUsers)
+                .whereNotIn(`${TableName.Users}.id`, directOrgUsers(false));
+            });
+          })
+          .whereNotIn(`${TableName.Users}.id`, usersInProject)
+          .select(userColumns);
+      }
+
+      if (!rootOrgId) return [];
+
       const usersConnectedToOrg = db
         .replicaNode()(TableName.Membership)
         .whereNotNull(`${TableName.Membership}.actorUserId`)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
         .select("actorUserId");
 
-      const docs = await db
+      return await db
         .replicaNode()(TableName.Membership)
         .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
@@ -301,15 +362,7 @@ export const membershipUserDALFactory = (db: TDbClient) => {
         .whereNotNull(`${TableName.Membership}.actorUserId`)
         .where(`${TableName.Membership}.scopeOrgId`, rootOrgId)
         .whereNotIn(`${TableName.Membership}.actorUserId`, usersConnectedToOrg)
-        .select(
-          db.ref("id").withSchema(TableName.Users),
-          db.ref("email").withSchema(TableName.Users),
-          db.ref("username").withSchema(TableName.Users),
-          db.ref("firstName").withSchema(TableName.Users),
-          db.ref("lastName").withSchema(TableName.Users)
-        );
-
-      return docs;
+        .select(userColumns);
     } catch (error) {
       throw new DatabaseError({ error, name: "ListAvailableUsers" });
     }
@@ -347,5 +400,48 @@ export const membershipUserDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findUsers, getUserById, listAvailableUsers, countActiveAdmins };
+  // Same admin rules as countActiveAdmins so both guards agree.
+  const findOrgsWhereUserIsLastAdmin = async (userId: string, tx?: Knex) => {
+    try {
+      const activeAdminMemberships = (qb: Knex.QueryBuilder, alias: string) =>
+        qb
+          .join(`${TableName.MembershipRole} as ${alias}Role`, `${alias}Role.membershipId`, `${alias}.id`)
+          .whereNotNull(`${alias}.actorUserId`)
+          .where(`${alias}.isActive`, true)
+          .where(`${alias}Role.role`, OrgMembershipRole.Admin)
+          .where(`${alias}Role.isTemporary`, false)
+          .where(`${alias}.scope`, AccessScope.Organization);
+
+      // Primary on purpose, replica lag would let the guard miss a change.
+      const orgs = await activeAdminMemberships((tx || db)(`${TableName.Membership} as own`), "own")
+        .join(TableName.Organization, `${TableName.Organization}.id`, "own.scopeOrgId")
+        .where("own.actorUserId", userId)
+        .where((statusQb) => {
+          void statusQb.whereNull("own.status").orWhereNot("own.status", OrgMembershipStatus.Invited);
+        })
+        .whereNotExists((qb) => {
+          void activeAdminMemberships(qb.select(db.raw("1")).from(`${TableName.Membership} as other`), "other")
+            .where("other.scopeOrgId", db.ref("own.scopeOrgId"))
+            .whereNot("other.id", db.ref("own.id"));
+        })
+        .distinct(
+          `${TableName.Organization}.id`,
+          `${TableName.Organization}.name`,
+          `${TableName.Organization}.rootOrgId`
+        );
+
+      return orgs as { id: string; name: string; rootOrgId: string | null }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "MembershipUserFindOrgsWhereUserIsLastAdmin" });
+    }
+  };
+
+  return {
+    ...orm,
+    findUsers,
+    getUserById,
+    listAvailableUsers,
+    countActiveAdmins,
+    findOrgsWhereUserIsLastAdmin
+  };
 };

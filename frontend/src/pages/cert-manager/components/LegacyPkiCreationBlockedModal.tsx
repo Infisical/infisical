@@ -10,7 +10,7 @@ import {
   DialogTitle
 } from "@app/components/v3";
 import { LEGACY_PKI_DEPRECATION_DATE, LegacyPkiResource } from "@app/const/legacyPkiDeprecation";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization } from "@app/context";
 import { useScopeVariant } from "@app/hooks";
 
 import { PkiDocsUrls } from "../pki-docs-urls";
@@ -30,15 +30,14 @@ const RESOURCE_NOUN: Record<LegacyPkiResource, string> = {
 export const LegacyPkiCreationBlockedModal = ({ resource, isOpen, onOpenChange }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
   const scopeVariant = useScopeVariant();
 
   const noun = RESOURCE_NOUN[resource];
 
   const handleNavigate = () => {
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/applications",
-      params: { orgId: currentOrg.id, projectId: currentProject.id }
+      to: "/organizations/$orgId/cert-manager/applications",
+      params: { orgId: currentOrg.id }
     });
     onOpenChange(false);
   };

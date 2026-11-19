@@ -9,7 +9,7 @@ export const ProxyStatusBadge = ({ proxy }: { proxy: TAgentVaultProxy }) => {
     return (
       <Badge variant="neutral">
         <CircleDashedIcon />
-        {proxy.rootCaFingerprint ? "Not connected" : "Never enrolled"}
+        Not connected
       </Badge>
     );
   }

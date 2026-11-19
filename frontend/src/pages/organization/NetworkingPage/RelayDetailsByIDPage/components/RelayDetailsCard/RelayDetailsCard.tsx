@@ -244,7 +244,6 @@ export const RelayDetailsCard = ({ relay }: { relay: TRelayWithAuthMethod }) => 
                             form.method === "aws"
                               ? {
                                   method: "aws",
-                                  stsEndpoint: form.stsEndpoint,
                                   allowedPrincipalArns: form.allowedPrincipalArns,
                                   allowedAccountIds: form.allowedAccountIds
                                 }

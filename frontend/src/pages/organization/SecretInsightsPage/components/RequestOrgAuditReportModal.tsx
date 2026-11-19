@@ -12,13 +12,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  EmailInput,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
-  FieldLabel,
-  TextArea
+  FieldLabel
 } from "@app/components/v3";
+import { emailListSchema } from "@app/helpers/email";
 import { OrgAuditReportType, useRequestOrgAuditReport } from "@app/hooks/api/auditReports";
 
 import {
@@ -28,23 +29,11 @@ import {
   ORG_AUDIT_REPORT_TYPES_REQUIRING_AUDIT_LOG
 } from "./orgAuditReportMeta";
 
-const parseEmails = (raw?: string): string[] =>
-  (raw ?? "")
-    .split(/[\s,]+/)
-    .map((email) => email.trim())
-    .filter(Boolean);
+const MAX_AUDIT_REPORT_RECIPIENTS = 20;
 
 const formSchema = z.object({
   reportTypes: z.nativeEnum(OrgAuditReportType).array().min(1, "Select at least one report type"),
-  emailRecipients: z
-    .string()
-    .optional()
-    .refine(
-      (value) => parseEmails(value).every((email) => z.string().email().safeParse(email).success),
-      {
-        message: "Enter valid, comma-separated email addresses"
-      }
-    )
+  emailRecipients: emailListSchema({ max: MAX_AUDIT_REPORT_RECIPIENTS })
 });
 
 type TFormSchema = z.infer<typeof formSchema>;
@@ -73,7 +62,7 @@ export const RequestOrgAuditReportModal = ({
     formState: { isSubmitting }
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
-    defaultValues: { reportTypes: [], emailRecipients: "" }
+    defaultValues: { reportTypes: [], emailRecipients: [] }
   });
 
   const handleClose = (open: boolean) => {
@@ -82,7 +71,7 @@ export const RequestOrgAuditReportModal = ({
   };
 
   const onSubmit = async (data: TFormSchema) => {
-    const recipients = parseEmails(data.emailRecipients);
+    const recipients = data.emailRecipients;
     try {
       await requestOrgAuditReport.mutateAsync({
         reports: data.reportTypes.map((type) => ({ type })),
@@ -170,14 +159,15 @@ export const RequestOrgAuditReportModal = ({
               <Field>
                 <FieldLabel>Email recipients</FieldLabel>
                 <FieldContent>
-                  <TextArea
-                    {...field}
+                  <EmailInput
+                    ref={field.ref}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    aria-label="Email recipients"
                     isError={Boolean(error)}
                     placeholder="auditor@example.com, compliance@example.com"
                   />
-                  <FieldDescription>
-                    Comma-separated emails. Defaults to your own email when left blank.
-                  </FieldDescription>
+                  <FieldDescription>Defaults to your own email when left blank.</FieldDescription>
                   <FieldError errors={[error]} />
                 </FieldContent>
               </Field>

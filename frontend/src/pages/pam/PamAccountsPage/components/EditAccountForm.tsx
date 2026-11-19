@@ -28,9 +28,10 @@ import { SheetSaveBar } from "../../components/SheetSaveBar";
 import {
   accountFormSchema,
   applyServerValidationErrors,
-  buildDefaultFieldValues,
   buildEditCredentialValues,
+  buildEditFieldValues,
   getMissingRequiredFields,
+  omitUnsetAbsentFields,
   TAccountFormValues
 } from "./accountFormSchema";
 import { ConnectionDetailsForm } from "./ConnectionDetailsForm";
@@ -109,10 +110,10 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
         description: account.description ?? "",
         folderId: account.folderId,
         templateId: account.templateId,
-        connectionDetails: {
-          ...buildDefaultFieldValues(metadata.connectionFields),
-          ...account.connectionDetails
-        },
+        connectionDetails: buildEditFieldValues(
+          metadata.connectionFields,
+          account.connectionDetails
+        ),
         credentials: buildEditCredentialValues(metadata.credentialFields, account.credentials)
       });
     }
@@ -166,7 +167,10 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
           description: values.description || null,
           folderId: values.folderId,
           templateId: values.templateId,
-          connectionDetails: values.connectionDetails,
+          connectionDetails: omitUnsetAbsentFields(
+            values.connectionDetails,
+            account.connectionDetails
+          ),
           ...(filteredCredentials ? { credentials: filteredCredentials } : {})
         },
         {

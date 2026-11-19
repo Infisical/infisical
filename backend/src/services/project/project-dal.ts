@@ -34,6 +34,33 @@ import {
 } from "../secret-v2-bridge/secret-tree-hard-delete-fns";
 import { Filter, ProjectFilterType, SearchProjectSortBy } from "./project-types";
 
+type TDeletedByRow = {
+  deletedByUserId: string | null;
+  deletedByIdentityId: string | null;
+  deletedByUserEmail: string | null;
+  deletedByUserUsername: string | null;
+  deletedByUserFirstName: string | null;
+  deletedByUserLastName: string | null;
+  deletedByIdentityName: string | null;
+};
+
+const toDeletedBy = (row: TDeletedByRow) => {
+  if (row.deletedByUserId) {
+    return {
+      type: "user" as const,
+      id: row.deletedByUserId,
+      email: row.deletedByUserEmail,
+      username: row.deletedByUserUsername,
+      firstName: row.deletedByUserFirstName,
+      lastName: row.deletedByUserLastName
+    };
+  }
+  if (row.deletedByIdentityId) {
+    return { type: "identity" as const, id: row.deletedByIdentityId, name: row.deletedByIdentityName ?? "" };
+  }
+  return null;
+};
+
 export type TProjectDALFactory = ReturnType<typeof projectDALFactory>;
 
 export const projectDALFactory = (db: TDbClient) => {
@@ -128,6 +155,38 @@ export const projectDALFactory = (db: TDbClient) => {
       return doc as TProjects | undefined;
     } catch (error) {
       throw new DatabaseError({ error, name: "Soft delete project" });
+    }
+  };
+
+  const expireSoftDeletedById = async (id: string, slug: string, tx?: Knex) => {
+    try {
+      const [doc] = await (tx || db)(TableName.Project)
+        .where({ id })
+        .whereNotNull("deleteAfter")
+        .update({ deleteAfter: new Date(), slug })
+        .returning("*");
+      return doc as TProjects | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Expire soft-deleted project" });
+    }
+  };
+
+  const restoreById = async (id: string, tx?: Knex) => {
+    try {
+      const [doc] = await (tx || db)(TableName.Project)
+        .where({ id })
+        .whereNotNull("deleteAfter")
+        .andWhere("deleteAfter", ">", new Date())
+        .update({
+          deleteAfter: null,
+          softDeletedAt: null,
+          deletedByActorType: null,
+          deletedByActorId: null
+        })
+        .returning("*");
+      return doc as TProjects | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Restore project" });
     }
   };
 
@@ -237,53 +296,108 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findIdentityProjects = async (identityId: string, orgId: string, projectType?: ProjectType) => {
+  const findActorProjects = async ({
+    actorType,
+    actorId,
+    orgIds,
+    projectType,
+    limit,
+    offset = 0
+  }: {
+    actorType: ActorType.USER | ActorType.IDENTITY;
+    actorId: string;
+    orgIds: string[];
+    projectType?: ProjectType;
+    limit?: number;
+    offset?: number;
+  }) => {
     try {
-      const identityGroupSubquery = db
+      const isUser = actorType === ActorType.USER;
+      const groupMembershipTable = isUser ? TableName.UserGroupMembership : TableName.IdentityGroupMembership;
+      const groupMembershipActorColumn = isUser ? "userId" : "identityId";
+      const actorColumn = isUser ? "actorUserId" : "actorIdentityId";
+
+      const groupSubquery = db
         .replicaNode()(TableName.Groups)
-        .leftJoin(
-          TableName.IdentityGroupMembership,
-          `${TableName.IdentityGroupMembership}.groupId`,
-          `${TableName.Groups}.id`
-        )
-        .where(`${TableName.IdentityGroupMembership}.identityId`, identityId)
+        .leftJoin(groupMembershipTable, `${groupMembershipTable}.groupId`, `${TableName.Groups}.id`)
+        .where(`${groupMembershipTable}.${groupMembershipActorColumn}`, actorId)
         .select(db.ref("id").withSchema(TableName.Groups));
 
-      const workspaces = await db
-        .replicaNode()(TableName.Membership)
-        .where(`${TableName.Membership}.scope`, AccessScope.Project)
-        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
-        .where(`${TableName.Project}.orgId`, orgId)
-        .whereNull(`${TableName.Project}.deleteAfter`)
-        .andWhere((qb) => {
-          void qb
-            .where(`${TableName.Membership}.actorIdentityId`, identityId)
-            .orWhereIn(`${TableName.Membership}.actorGroupId`, identityGroupSubquery);
-        })
-        .andWhere((qb) => {
-          if (projectType) {
-            void qb.where(`${TableName.Project}.type`, projectType);
-          }
-        })
-        .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
-          this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-            `${TableName.Environment}.deleteAfter`
-          );
-        })
-        .select(
-          selectAllTableCols(TableName.Project),
-          db.ref("id").withSchema(TableName.Project).as("_id"),
-          db.ref("id").withSchema(TableName.Environment).as("envId"),
-          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
-          db.ref("name").withSchema(TableName.Environment).as("envName")
-        )
-        .orderBy([
-          { column: `${TableName.Project}.name`, order: "asc" },
-          { column: `${TableName.Environment}.position`, order: "asc" }
-        ]);
+      const membershipProjectIds = (qb: Knex.QueryBuilder) =>
+        qb.from(TableName.Membership).where("scope", AccessScope.Project).select("scopeProjectId");
 
-      const nestedWorkspaces = sqlNestRelationships({
-        data: workspaces,
+      const accessibleProjects = () =>
+        db
+          .replicaNode()(TableName.Project)
+          .whereIn(`${TableName.Project}.orgId`, orgIds)
+          .whereNull(`${TableName.Project}.deleteAfter`)
+          .whereIn(`${TableName.Project}.id`, (qb) => {
+            void membershipProjectIds(qb)
+              .where(actorColumn, actorId)
+              .union((unionQb) => {
+                void membershipProjectIds(unionQb).whereIn("actorGroupId", groupSubquery);
+              });
+          })
+          .andWhere((qb) => {
+            if (projectType) {
+              void qb.where(`${TableName.Project}.type`, projectType);
+            }
+          });
+
+      const projectsWithEnvironments = (projectIds: string[] | Knex.QueryBuilder) =>
+        db
+          .replicaNode()(TableName.Project)
+          .whereIn(`${TableName.Project}.id`, projectIds)
+          .whereNull(`${TableName.Project}.deleteAfter`)
+          .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
+            this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
+              `${TableName.Environment}.deleteAfter`
+            );
+          })
+          .select(
+            selectAllTableCols(TableName.Project),
+            db.ref("id").withSchema(TableName.Project).as("_id"),
+            db.ref("id").withSchema(TableName.Environment).as("envId"),
+            db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+            db.ref("name").withSchema(TableName.Environment).as("envName")
+          )
+          .orderByRaw("lower(??) asc", [`${TableName.Project}.name`])
+          .orderBy([
+            { column: `${TableName.Project}.id`, order: "asc" },
+            { column: `${TableName.Environment}.position`, order: "asc" }
+          ]);
+
+      let rows;
+      let totalCount: number | undefined;
+      if (limit !== undefined || offset > 0) {
+        // The page is cut over projects, not over the project-environment rows, and the window count is
+        // taken before LIMIT/OFFSET, so it is the full total.
+        const page = accessibleProjects()
+          .select<{ id: string; totalCount: string }[]>(
+            db.ref("id").withSchema(TableName.Project),
+            db.raw(`count(*) over () as "totalCount"`)
+          )
+          .orderByRaw("lower(??) asc", [`${TableName.Project}.name`])
+          .orderBy(`${TableName.Project}.id`, "asc")
+          .offset(offset);
+        if (limit !== undefined) void page.limit(limit);
+        const pageRows = await page;
+
+        if (pageRows.length) {
+          totalCount = Number(pageRows[0].totalCount);
+        } else if (offset > 0) {
+          const countRow = await accessibleProjects().count<{ count: string }[]>({ count: "*" }).first();
+          totalCount = Number(countRow?.count ?? 0);
+        } else {
+          totalCount = 0;
+        }
+        rows = pageRows.length ? await projectsWithEnvironments(pageRows.map((row) => row.id)) : [];
+      } else {
+        rows = await projectsWithEnvironments(accessibleProjects().select(db.ref("id").withSchema(TableName.Project)));
+      }
+
+      const projects = sqlNestRelationships({
+        data: rows,
         key: "id",
         parentMapper: ({ _id, ...el }) => ({ _id, ...ProjectsSchema.parse(el) }),
         childrenMapper: [
@@ -297,82 +411,35 @@ export const projectDALFactory = (db: TDbClient) => {
             })
           }
         ]
-      });
-
-      return nestedWorkspaces.map((workspace) => ({
-        ...workspace,
-        organization: workspace.orgId
+      }).map((project) => ({
+        ...project,
+        organization: project.orgId
       }));
+
+      return { projects, totalCount: totalCount ?? projects.length };
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find identity projects" });
+      throw new DatabaseError({ error, name: "Find actor projects" });
     }
   };
 
+  const findIdentityProjects = async (identityId: string, orgId: string, projectType?: ProjectType) => {
+    const { projects } = await findActorProjects({
+      actorType: ActorType.IDENTITY,
+      actorId: identityId,
+      orgIds: [orgId],
+      projectType
+    });
+    return projects;
+  };
+
   const findUserProjects = async (userId: string, orgId: string | string[], projectType?: ProjectType) => {
-    try {
-      const userGroupSubquery = db
-        .replicaNode()(TableName.Groups)
-        .leftJoin(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
-        .where(`${TableName.UserGroupMembership}.userId`, userId)
-        .select(db.ref("id").withSchema(TableName.Groups));
-
-      const projects = await db
-        .replicaNode()(TableName.Membership)
-        .where(`${TableName.Membership}.scope`, AccessScope.Project)
-        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
-        .whereIn(`${TableName.Project}.orgId`, Array.isArray(orgId) ? orgId : [orgId])
-        .whereNull(`${TableName.Project}.deleteAfter`)
-        .andWhere((qb) => {
-          void qb
-            .where(`${TableName.Membership}.actorUserId`, userId)
-            .orWhereIn(`${TableName.Membership}.actorGroupId`, userGroupSubquery);
-        })
-        .andWhere((qb) => {
-          if (projectType) {
-            void qb.where(`${TableName.Project}.type`, projectType);
-          }
-        })
-        .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
-          this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-            `${TableName.Environment}.deleteAfter`
-          );
-        })
-        .select(
-          selectAllTableCols(TableName.Project),
-          db.ref("id").withSchema(TableName.Project).as("_id"),
-          db.ref("id").withSchema(TableName.Environment).as("envId"),
-          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
-          db.ref("name").withSchema(TableName.Environment).as("envName")
-        )
-        .orderBy([
-          { column: `${TableName.Project}.name`, order: "asc" },
-          { column: `${TableName.Environment}.position`, order: "asc" }
-        ]);
-
-      const formattedProjects = sqlNestRelationships({
-        data: projects,
-        key: "id",
-        parentMapper: ({ _id, ...el }) => ({ _id, ...ProjectsSchema.parse(el) }),
-        childrenMapper: [
-          {
-            key: "envId",
-            label: "environments" as const,
-            mapper: ({ envId: id, envSlug: slug, envName: name }) => ({
-              id,
-              slug,
-              name
-            })
-          }
-        ]
-      });
-
-      return formattedProjects.map((workspace) => ({
-        ...workspace,
-        organization: workspace.orgId
-      }));
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find all projects" });
-    }
+    const { projects } = await findActorProjects({
+      actorType: ActorType.USER,
+      actorId: userId,
+      orgIds: Array.isArray(orgId) ? orgId : [orgId],
+      projectType
+    });
+    return projects;
   };
 
   // Lightweight variant of findUserProjects/findIdentityProjects that returns only the
@@ -779,10 +846,10 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findProjectWithOrg = async (projectId: string) => {
+  const findProjectWithOrg = async (projectId: string, tx?: Knex) => {
     // we just need the project, and we need to include a new .organization field that includes the org from the orgId reference
 
-    const project = await db(TableName.Project)
+    const project = await (tx || db)(TableName.Project)
       .where({ [`${TableName.Project}.id` as "id"]: projectId })
       .whereNull(`${TableName.Project}.deleteAfter`)
       .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Project}.orgId`)
@@ -937,19 +1004,12 @@ export const projectDALFactory = (db: TDbClient) => {
 
   const findProjectDeletedEnvironments = async (projectId: string, tx?: Knex) => {
     try {
-      type DeletedEnvironmentRow = {
+      type DeletedEnvironmentRow = TDeletedByRow & {
         id: string;
         slug: string;
         name: string;
         deleteAfter: Date;
         softDeletedAt: Date;
-        deletedByUserId: string | null;
-        deletedByIdentityId: string | null;
-        deletedByUserEmail: string | null;
-        deletedByUserUsername: string | null;
-        deletedByUserFirstName: string | null;
-        deletedByUserLastName: string | null;
-        deletedByIdentityName: string | null;
       };
 
       const rows = (await (tx || db.replicaNode())(TableName.Environment)
@@ -974,70 +1034,82 @@ export const projectDALFactory = (db: TDbClient) => {
         )
         .orderBy(`${TableName.Environment}.position`, "asc")) as DeletedEnvironmentRow[];
 
-      return rows.map((row) => {
-        let deletedBy:
-          | {
-              type: "user";
-              id: string;
-              email: string | null;
-              username: string | null;
-              firstName: string | null;
-              lastName: string | null;
-            }
-          | { type: "identity"; id: string; name: string }
-          | null = null;
-
-        if (row.deletedByUserId) {
-          deletedBy = {
-            type: "user",
-            id: row.deletedByUserId,
-            email: row.deletedByUserEmail,
-            username: row.deletedByUserUsername,
-            firstName: row.deletedByUserFirstName,
-            lastName: row.deletedByUserLastName
-          };
-        } else if (row.deletedByIdentityId) {
-          deletedBy = {
-            type: "identity",
-            id: row.deletedByIdentityId,
-            name: row.deletedByIdentityName ?? ""
-          };
-        }
-
-        return {
-          id: row.id,
-          slug: row.slug,
-          name: row.name,
-          deleteAfter: row.deleteAfter,
-          softDeletedAt: row.softDeletedAt,
-          deletedBy
-        };
-      });
+      return rows.map((row) => ({
+        id: row.id,
+        slug: row.slug,
+        name: row.name,
+        deleteAfter: row.deleteAfter,
+        softDeletedAt: row.softDeletedAt,
+        deletedBy: toDeletedBy(row)
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find project deleted environments" });
     }
   };
 
-  const countOfBillableOrgProjects = async (orgId: string | null, tx?: Knex) => {
+  const findDeletedProjects = async (orgId: string, type?: ProjectType, tx?: Knex) => {
     try {
-      const subOrgProjects = db.replicaNode()(TableName.Organization).where({ rootOrgId: orgId }).select("id");
+      type DeletedProjectRow = TDeletedByRow & {
+        id: string;
+        name: string;
+        type: string;
+        deleteAfter: Date;
+        softDeletedAt: Date;
+      };
 
-      const doc = await (tx || db.replicaNode())(TableName.Project)
-        .whereNotIn("type", [ProjectType.CertificateManager])
-        .whereNull("deleteAfter")
-        .whereNotIn("type", [ProjectType.CertificateManager, ProjectType.PAM, ProjectType.AgentVault])
-        // Project rows of the removed SSH / Agent Sentinel products are left in
-        // place (see migration 20260729150000) but must not consume workspace quota.
-        .whereNotIn("type", ["ssh", "ai"])
-        .andWhere((bd) => {
-          if (orgId) {
-            void bd.where({ orgId }).orWhereIn("orgId", subOrgProjects);
-          }
-        })
-        .count();
-      return Number(doc?.[0]?.count ?? 0);
+      const query = (tx || db.replicaNode())(TableName.Project)
+        .leftJoin(TableName.Users, `${TableName.Project}.deletedByActorId`, `${TableName.Users}.id`)
+        .leftJoin(TableName.Identity, `${TableName.Project}.deletedByActorId`, `${TableName.Identity}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .where(`${TableName.Project}.deleteAfter`, ">", new Date())
+        .whereNotNull(`${TableName.Project}.softDeletedAt`)
+        .select(
+          `${TableName.Project}.id`,
+          `${TableName.Project}.name`,
+          `${TableName.Project}.type`,
+          `${TableName.Project}.deleteAfter`,
+          `${TableName.Project}.softDeletedAt`,
+          db.ref("id").withSchema(TableName.Users).as("deletedByUserId"),
+          db.ref("id").withSchema(TableName.Identity).as("deletedByIdentityId"),
+          db.ref("email").withSchema(TableName.Users).as("deletedByUserEmail"),
+          db.ref("username").withSchema(TableName.Users).as("deletedByUserUsername"),
+          db.ref("firstName").withSchema(TableName.Users).as("deletedByUserFirstName"),
+          db.ref("lastName").withSchema(TableName.Users).as("deletedByUserLastName"),
+          db.ref("name").withSchema(TableName.Identity).as("deletedByIdentityName")
+        )
+        .orderBy(`${TableName.Project}.deleteAfter`, "asc");
+      if (type) void query.where(`${TableName.Project}.type`, type);
+
+      const rows = (await query) as DeletedProjectRow[];
+
+      return rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        type: row.type,
+        deleteAfter: row.deleteAfter,
+        softDeletedAt: row.softDeletedAt,
+        deletedBy: toDeletedBy(row)
+      }));
     } catch (error) {
-      throw new DatabaseError({ error, name: "Count of Org Projects" });
+      throw new DatabaseError({ error, name: "Find deleted projects" });
+    }
+  };
+
+  // Other live projects this project shares folders of live environments with. A deleted environment's grants
+  // are inactive and can't be revoked. Reads the primary so a grant made just before a delete is seen.
+  const findProjectsSharedWith = async (projectId: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db)(TableName.ProjectFolderGrant)
+        .join(TableName.SecretFolder, `${TableName.ProjectFolderGrant}.sourceFolderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.ProjectFolderGrant}.targetProjectId`, `${TableName.Project}.id`)
+        .where(`${TableName.ProjectFolderGrant}.sourceProjectId`, projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .distinct(db.ref("id").withSchema(TableName.Project), db.ref("name").withSchema(TableName.Project));
+      return docs as { id: string; name: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find projects shared with" });
     }
   };
 
@@ -1049,6 +1121,8 @@ export const projectDALFactory = (db: TDbClient) => {
     findByIdIncludingExpired,
     findIncludingExpired,
     softDeleteById,
+    expireSoftDeletedById,
+    restoreById,
     findExpiredForHardDelete,
     hardDeleteProjectSecretVersionsInBatches,
     hardDeleteProjectSecretReferencesInBatches,
@@ -1057,6 +1131,7 @@ export const projectDALFactory = (db: TDbClient) => {
     softDeleteProjectEnvironments,
     countProjectEnvironments,
     findUserProjects,
+    findActorProjects,
     findIdentityProjects,
     findActorAccessibleProjectIds,
     findEffectiveProjectMemberships,
@@ -1074,6 +1149,7 @@ export const projectDALFactory = (db: TDbClient) => {
     searchProjects,
     findProjectByEnvId,
     findProjectDeletedEnvironments,
-    countOfBillableOrgProjects
+    findDeletedProjects,
+    findProjectsSharedWith
   };
 };

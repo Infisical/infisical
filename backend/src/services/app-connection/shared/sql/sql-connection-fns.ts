@@ -15,6 +15,7 @@ import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { getTlsServerNameOptions } from "@app/lib/tls";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionRaw, TSqlConnection } from "@app/services/app-connection/app-connection-types";
 import { TSqlConnectionConfig } from "@app/services/app-connection/shared/sql/sql-connection-types";
@@ -26,6 +27,11 @@ export const SQL_CONNECTION_CLIENT_MAP = {
   [AppConnection.MsSql]: "mssql",
   [AppConnection.MySql]: "mysql2",
   [AppConnection.OracleDB]: "oracledb"
+};
+
+// Pinned so knex skips its version() probe, which throws on servers that don't report as PostgreSQL (CockroachDB)
+const SQL_CONNECTION_CLIENT_VERSION: Partial<Record<keyof typeof SQL_CONNECTION_CLIENT_MAP, string>> = {
+  [AppConnection.Postgres]: "16"
 };
 
 // Trivial "is this credential valid" query, per dialect (Oracle's SELECT needs a FROM clause).
@@ -46,7 +52,7 @@ export const getConnectionConfig = ({
           ? {
               rejectUnauthorized: sslRejectUnauthorized,
               ca: sslCertificate,
-              servername: host
+              ...getTlsServerNameOptions(host)
             }
           : false
       };
@@ -57,8 +63,7 @@ export const getConnectionConfig = ({
           ? {
               trustServerCertificate: !sslRejectUnauthorized,
               encrypt: true,
-              cryptoCredentialsDetails: sslCertificate ? { ca: sslCertificate } : {},
-              servername: host
+              cryptoCredentialsDetails: sslCertificate ? { ca: sslCertificate } : {}
             }
           : { encrypt: false }
       };
@@ -68,8 +73,7 @@ export const getConnectionConfig = ({
         ssl: sslEnabled
           ? {
               rejectUnauthorized: sslRejectUnauthorized,
-              ca: sslCertificate,
-              serverName: host
+              ca: sslCertificate
             }
           : false
       };
@@ -134,6 +138,7 @@ export const getSqlConnectionClient = async (appConnection: Pick<TSqlConnection,
 
   const client = knex({
     client: SQL_CONNECTION_CLIENT_MAP[app],
+    version: SQL_CONNECTION_CLIENT_VERSION[app],
     connection: {
       database,
       port,
@@ -192,6 +197,7 @@ export const executeWithPotentialGateway = async <T>(
 
       return knex({
         client: SQL_CONNECTION_CLIENT_MAP[app],
+        version: SQL_CONNECTION_CLIENT_VERSION[app],
         connection: {
           database: credentials.database,
           port: proxyPort,

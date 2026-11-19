@@ -21,7 +21,6 @@ export const resourceAuthMethodAuditMetadata = ({
       ...base,
       method: view.method,
       methodConfigId: view.config.id,
-      stsEndpoint: view.config.stsEndpoint,
       allowedPrincipalArns: view.config.allowedPrincipalArns,
       allowedAccountIds: view.config.allowedAccountIds
     };

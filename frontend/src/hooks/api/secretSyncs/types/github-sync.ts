@@ -8,6 +8,12 @@ export enum GitHubSyncScope {
   RepositoryEnvironment = "repository-environment"
 }
 
+export enum GitHubSyncSecretType {
+  Actions = "actions",
+  Dependabot = "dependabot",
+  Codespaces = "codespaces"
+}
+
 export enum GitHubSyncVisibility {
   All = "all",
   Private = "private",
@@ -19,17 +25,20 @@ export type TGitHubSync = TRootSecretSync & {
   destinationConfig:
     | {
         scope: GitHubSyncScope.Organization;
+        secretType: GitHubSyncSecretType;
         org: string;
         visibility: GitHubSyncVisibility;
         selectedRepositoryIds?: number[];
       }
     | {
         scope: GitHubSyncScope.Repository;
+        secretType: GitHubSyncSecretType;
         owner: string;
         repo: string;
       }
     | {
         scope: GitHubSyncScope.RepositoryEnvironment;
+        secretType: GitHubSyncSecretType;
         owner: string;
         repo: string;
         env: string;

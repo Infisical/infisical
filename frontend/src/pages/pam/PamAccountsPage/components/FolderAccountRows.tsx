@@ -1,8 +1,10 @@
 import { Folder } from "lucide-react";
 
-import { TableCell, TableRow } from "@app/components/v3";
+import { Badge, RowLink, TableCell, TableRow } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import {
   PamAccountType,
+  PamFolderCallerAccess,
   TAccessiblePamAccount,
   TPamAccountListItem,
   TPamFolderWithCount
@@ -17,7 +19,6 @@ type Props = {
   search: string;
   // Matching accounts, supplied by the page's filter query. Undefined when nothing is filtered.
   accounts?: TPamAccountListItem[];
-  onOpenFolderView: () => void;
   onOpenAccount: (accountId: string, tab?: PamSheetTab) => void;
   onLaunchAccount: (account: TAccessiblePamAccount) => void;
   onRequestAccess: (account: TAccessiblePamAccount) => void;
@@ -27,13 +28,13 @@ type Props = {
   onOpenFolder: (tab?: PamSheetTab) => void;
   onFolderAddAccount: () => void;
   onFolderDelete: () => void;
+  onFolderJoinAsAdmin: () => void;
 };
 
 export const FolderAccountRows = ({
   folder,
   search,
   accounts,
-  onOpenFolderView,
   onOpenAccount,
   onLaunchAccount,
   onRequestAccess,
@@ -42,20 +43,43 @@ export const FolderAccountRows = ({
   onDeleteAccount,
   onOpenFolder,
   onFolderAddAccount,
-  onFolderDelete
+  onFolderDelete,
+  onFolderJoinAsAdmin
 }: Props) => {
+  const { currentOrg } = useOrganization();
   const count = accounts ? accounts.length : folder.accountCount;
+  // Only org admins are sent folders they hold no membership on; opening one means joining it.
+  const isNotMember = folder.callerAccess === PamFolderCallerAccess.None;
 
   return (
     <>
-      <TableRow className="cursor-pointer select-none" onClick={onOpenFolderView}>
+      <TableRow
+        linked={!isNotMember}
+        className={isNotMember ? "cursor-pointer select-none" : undefined}
+        onClick={isNotMember ? onFolderJoinAsAdmin : undefined}
+      >
         <TableCell>
           <div className="flex items-center gap-2.5">
             <Folder className="size-5 shrink-0 text-product-pam" />
-            <span className="shrink-0 font-medium text-foreground">{folder.name}</span>
-            <span className="shrink-0 text-xs text-muted">({count})</span>
-            {folder.description && (
-              <span className="max-w-md truncate text-muted">{folder.description}</span>
+            {isNotMember ? (
+              <>
+                <span className="shrink-0 font-medium text-foreground">{folder.name}</span>
+                <Badge variant="neutral">Not a Member</Badge>
+              </>
+            ) : (
+              <>
+                <RowLink
+                  to="/organizations/$orgId/pam/accounts/$folderId"
+                  params={{ orgId: currentOrg.id, folderId: folder.id }}
+                  className="shrink-0 font-medium text-foreground"
+                >
+                  {folder.name}
+                </RowLink>
+                <span className="shrink-0 text-xs text-muted">({count})</span>
+                {folder.description && (
+                  <span className="max-w-md truncate text-muted">{folder.description}</span>
+                )}
+              </>
             )}
           </div>
         </TableCell>
@@ -66,6 +90,7 @@ export const FolderAccountRows = ({
               onOpenTab={(tab) => onOpenFolder(tab)}
               onAddAccount={onFolderAddAccount}
               onDelete={onFolderDelete}
+              onJoinAsAdmin={onFolderJoinAsAdmin}
             />
           </div>
         </TableCell>

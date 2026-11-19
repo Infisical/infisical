@@ -1,0 +1,68 @@
+---
+title: "Run an AI agent unattended"
+sidebarTitle: "Run unattended"
+description: "Run an AI agent as its own machine identity."
+---
+
+If an AI agent runs on a schedule or on a server, run it as its own [machine identity](/documentation/platform/identities/machine-identities) instead of as a person. Infisical then attributes the agent's sessions and access requests to the identity, and the identity's roles decide which accounts the agent can reach.
+
+Running as a machine identity is also the safest way to run an agent you don't fully trust, even when you're watching it. No person's credentials are part of the run, so the agent can never reach more than the identity can.
+
+## Prerequisites
+
+- The [Infisical CLI](/cli/install) on the machine that runs the agent
+- The Product Admin [role](/documentation/platform/pam/concepts/access-control#product-membership) in PAM, to add the machine identity
+- The Admin role on the folders or accounts the agent needs, to give the identity a role on them
+
+## Step 1: Add a machine identity to PAM
+
+<Steps>
+  <Step>
+    Go to **Privileged Access Management** > **Access Control**, open the **Identities** tab, and select **Add Identity**.
+  </Step>
+  <Step>
+    Create a new machine identity, or assign one that already exists in your organization. Give the identity the **Member** role.
+  </Step>
+  <Step>
+    Open the identity and create a client secret, then copy the **Client ID** and the **Client Secret**.
+  </Step>
+</Steps>
+
+A new identity has [Universal Auth](/documentation/platform/identities/universal-auth) attached. If the agent's host can authenticate through Kubernetes, AWS, GCP, Azure, OIDC, JWT, or LDAP, attach that [auth method](/documentation/platform/identities/machine-identities#authentication-methods) instead.
+
+## Step 2: Give the identity access to accounts
+
+<Steps>
+  <Step>
+    Open the [folder](/documentation/platform/pam/folders/overview) or account that the agent needs, go to **Permissions**, and select **Assign Access**.
+  </Step>
+  <Step>
+    Select the identity and give it the **Connector** role. If the access is temporary, set an expiration.
+  </Step>
+</Steps>
+
+Give the identity a role only on the accounts its task needs.
+
+## Step 3: Run the agent as the identity
+
+Set the identity's credentials as environment variables, then start the agent:
+
+```bash
+export INFISICAL_AUTH_METHOD=universal-auth
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id>
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
+
+infisical pam agentic access --reason "nightly triage agent" -- python triage_agent.py
+```
+
+The CLI renews the identity's token for the whole run, and removes these variables from the agent's environment before it starts the agent.
+
+<Tip>
+  Pass the credentials as environment variables, not as flags such as `--client-secret`. A secret on the command line is saved in your shell history, and any process that can list processes can read it.
+</Tip>
+
+For the variables that other auth methods use, see the [CLI reference](/cli/reference#pam-agentic-access).
+
+## Use a dedicated machine
+
+For a sensitive task, we recommend running the agent on a dedicated host or container that has no other credentials. This way, if the agent gets past the [sandbox](/documentation/platform/pam/ai-agents/run#sandbox), the only access it can find is the machine identity's, which is limited by role, duration, and [approval](/documentation/platform/pam/access-requests/overview).

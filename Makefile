@@ -77,6 +77,10 @@ test-api-unit: build-test-suite-image
 test-api-e2e: build-test-suite-image
 	$(TEST_SUITE_COMPOSE) run --rm api-tests npm run test:e2e -- $(SPEC)
 
+# Runs on the host, not the FIPS image, since Testcontainers needs Docker. Narrow with SPEC=<pattern>.
+test-api-integration:
+	cd backend && npm run test:integration -- $(SPEC)
+
 test-api: test-api-unit test-api-e2e
 
 lint-docs:

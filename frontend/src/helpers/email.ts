@@ -74,42 +74,61 @@ export const allowedEmailDomainsSchema = z
   })
   .transform(normalizeAllowedEmailDomains);
 
+// The authoritative frontend email-shape check. It answers whether an address is well formed and
+// fits what the backend stores; it never claims the mailbox or domain exists.
 export const isValidEmail = (email: string) =>
   email.length <= MAX_EMAIL_LENGTH &&
   EmailSchema.safeParse(email).success &&
   isValidEmailDomain(email.slice(email.indexOf("@") + 1));
 
-// Mirror the backend cap (inviteeEmails.array().max(100)) so oversized invites are rejected inline
-// before hitting the API.
-export const MAX_INVITE_EMAILS = 100;
+// Mirror the backend cap on new members per org invite (MAX_NEW_MEMBERS_PER_INVITE) so oversized
+// invites are rejected inline before hitting the API.
+export const MAX_INVITE_EMAILS = 10;
 
-export const parseEmailList = (value: string) =>
-  value
-    .split(",")
-    .map((email) => email.trim())
-    .filter(Boolean);
+// Project invites mostly add existing org members, and the backend counts only people new to the org
+// against MAX_INVITE_EMAILS, so these forms keep a higher cap and let the backend refuse the rest.
+export const MAX_PROJECT_INVITE_EMAILS = 100;
 
-// Shared validation for a comma-separated email list entered in a textarea. Embed it directly as an
-// object field in a react-hook-form schema: z.object({ emails: emailListSchema, ... }).
-export const emailListSchema = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .superRefine((value, ctx) => {
-    const emails = parseEmailList(value);
+export const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
-    if (!emails.length) {
+// Splits pasted or typed text on commas, semicolons and whitespace, normalizes each address, and
+// drops duplicates while keeping the first occurrence's order. EmailInput runs every change through
+// this, so a value held by a form is always a clean, deduplicated list.
+export const EMAIL_LIST_DELIMITER = /[\s,;]+/;
+
+export const parseEmailList = (values: string[]) =>
+  Array.from(
+    new Set(
+      values
+        .flatMap((value) => value.split(EMAIL_LIST_DELIMITER))
+        .map(normalizeEmail)
+        .filter(Boolean)
+    )
+  );
+
+// Shared validation for an EmailInput value. Embed it directly as an object field in a
+// react-hook-form schema: z.object({ emails: emailListSchema({ max: MAX_INVITE_EMAILS }) }).
+// Shape validation only: an address that passes is well formed, not known to exist.
+export const emailListSchema = ({
+  max,
+  isRequired = false
+}: {
+  max?: number;
+  isRequired?: boolean;
+} = {}) =>
+  z.array(z.string()).superRefine((emails, ctx) => {
+    if (isRequired && !emails.length) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Please enter at least one email address."
+        message: "Enter at least one email address."
       });
       return;
     }
 
-    if (emails.length > MAX_INVITE_EMAILS) {
+    if (max !== undefined && emails.length > max) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `You can invite up to ${MAX_INVITE_EMAILS} users at a time.`
+        message: `Enter up to ${max} email address${max === 1 ? "" : "es"}.`
       });
     }
 

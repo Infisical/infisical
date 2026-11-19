@@ -1,4 +1,13 @@
-import { TProjectPermission } from "@app/lib/types";
+import { ProjectType } from "@app/db/schemas";
+import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+
+export type TListActorProjectMembershipsFilter = {
+  limit?: number;
+  offset?: number;
+  search?: string;
+  orderDirection?: OrderByDirection;
+  excludeProjectType?: ProjectType;
+};
 
 export type TGetProjectMembershipDTO = { includeGroupMembers?: boolean; roles?: string[] } & TProjectPermission;
 export type TLeaveProjectDTO = Omit<TProjectPermission, "actorOrgId" | "actorAuthMethod">;

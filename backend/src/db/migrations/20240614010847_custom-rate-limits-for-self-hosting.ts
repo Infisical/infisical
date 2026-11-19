@@ -4,8 +4,8 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.RateLimit))) {
-    await knex.schema.createTable(TableName.RateLimit, (t) => {
+  if (!(await knex.schema.hasTable(TableName.DeprecatedRateLimit))) {
+    await knex.schema.createTable(TableName.DeprecatedRateLimit, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.integer("readRateLimit").defaultTo(600).notNullable();
       t.integer("writeRateLimit").defaultTo(200).notNullable();
@@ -18,14 +18,14 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
 
-    await createOnUpdateTrigger(knex, TableName.RateLimit);
+    await createOnUpdateTrigger(knex, TableName.DeprecatedRateLimit);
 
     // create init rate limit entry with defaults
-    await knex(TableName.RateLimit).insert({});
+    await knex(TableName.DeprecatedRateLimit).insert({});
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTableIfExists(TableName.RateLimit);
-  await dropOnUpdateTrigger(knex, TableName.RateLimit);
+  await knex.schema.dropTableIfExists(TableName.DeprecatedRateLimit);
+  await dropOnUpdateTrigger(knex, TableName.DeprecatedRateLimit);
 }

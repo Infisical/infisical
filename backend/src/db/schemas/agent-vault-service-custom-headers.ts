@@ -14,7 +14,7 @@ export const AgentVaultServiceCustomHeadersSchema = z.object({
   serviceId: z.string().uuid(),
   name: z.string(),
   prefix: z.string(),
-  encryptedValue: zodBuffer,
+  encryptedValue: zodBuffer.nullable().optional(),
   position: z.number(),
   createdAt: z.date(),
   updatedAt: z.date()

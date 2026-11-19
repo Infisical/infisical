@@ -9,7 +9,7 @@ import { EventOutboxStatus, MAX_OUTBOX_ATTEMPTS } from "@app/services/event-outb
 
 declare const testDb: Knex;
 
-// Unit tests only check query shape. Only real Postgres can prove the partial-index conflict target
+// Unit tests only check query shape. Only real Postgres can prove the conflict target
 // compiles, two claimers never grab the same row, and the retry clock is computed in SQL.
 const dal = eventOutboxDALFactory(testDb as never);
 
@@ -21,6 +21,7 @@ const KEY = { consumer: CONSUMER };
 
 const makeRow = (overrides?: Partial<TOutboxInsertRow>): TOutboxInsertRow => ({
   consumer: CONSUMER,
+  eventId: randomUUID(),
   eventType: "e2e.resource.happened",
   payload: { orgId: ORG_ID, resourceType: "e2e.resource", resourceId: "res-1", targetIds: ["t-1"] },
   occurredAt: new Date(),
@@ -39,18 +40,51 @@ describe("event outbox (postgres)", () => {
   afterEach(purge);
   afterAll(purge);
 
-  test("insertEvents dedupes on (consumer, idempotencyKey) and lets rows without a key repeat", async () => {
-    await insert([makeRow({ idempotencyKey: "k-1" }), makeRow(), makeRow()]);
-    await insert([makeRow({ idempotencyKey: "k-1" })]);
-    await insert([makeRow({ idempotencyKey: "k-1", consumer: `${CONSUMER}-other` })]);
+  test("insertEvents drops an event a consumer already has, and keeps it for another consumer", async () => {
+    const eventId = randomUUID();
+    await insert([makeRow({ eventId }), makeRow(), makeRow()]);
+    await insert([makeRow({ eventId })]);
+    await insert([makeRow({ eventId, consumer: `${CONSUMER}-other` })]);
 
     const mine = await rowsFor();
     expect(mine).toHaveLength(3);
-    expect(mine.filter((row) => row.idempotencyKey === "k-1")).toHaveLength(1);
+    expect(mine.filter((row) => row.eventId === eventId)).toHaveLength(1);
     expect(mine[0].status).toBe(EventOutboxStatus.Pending);
     expect(mine[0].attempts).toBe(0);
 
     expect(await rowsFor(`${CONSUMER}-other`)).toHaveLength(1);
+  });
+
+  // Old pods still insert without an eventId during a rolling deploy.
+  test("claimBatch gives a row written without an eventId one of its own", async () => {
+    const { eventId, ...withoutEventId } = makeRow();
+    await testDb(TableName.EventOutbox).insert([
+      { ...withoutEventId, payload: JSON.stringify(withoutEventId.payload) },
+      { ...withoutEventId, payload: JSON.stringify(withoutEventId.payload) },
+      { ...withoutEventId, eventId, payload: JSON.stringify(withoutEventId.payload) }
+    ]);
+
+    const { rows } = await dal.claimBatch(KEY, 10);
+
+    expect(rows).toHaveLength(3);
+    expect(rows[2].eventId).toBe(eventId);
+    expect(new Set(rows.map((row) => row.eventId)).size).toBe(3);
+    rows.forEach((row) => expect(row.eventId).toMatch(/^[0-9a-f-]{36}$/));
+  });
+
+  // A bulk secret write can go past the 1000-row chunk insertEvents splits on.
+  test("insertEvents writes a batch larger than one chunk in the caller's transaction", async () => {
+    await insert(Array.from({ length: 1001 }, () => makeRow()));
+
+    expect(await rowsFor()).toHaveLength(1001);
+  });
+
+  test("insertEvents keeps nothing from a batch whose second chunk fails", async () => {
+    const rows = Array.from({ length: 1001 }, () => makeRow());
+    rows[1000] = makeRow({ eventId: "not-a-uuid" });
+
+    await expect(insert(rows)).rejects.toThrow();
+    expect(await rowsFor()).toHaveLength(0);
   });
 
   test("claimBatch hands each row to exactly one concurrent claimer, in id order", async () => {

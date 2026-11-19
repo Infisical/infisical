@@ -3,7 +3,6 @@ import { Knex } from "knex";
 import forge from "node-forge";
 import RE2 from "re2";
 
-import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -16,12 +15,15 @@ import {
 import { TCertificateSource, toX509Certificate } from "@app/services/certificate-common/certificate-parse-utils";
 
 import { extractDnParts } from "../certificate-authority/certificate-authority-fns";
-import { getProjectKmsCertificateKeyId } from "../project/project-fns";
+import type { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
+import type { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
+import type { TPkiCollectionItemDALFactory } from "../pki-collection/pki-collection-item-dal";
+import type { TCertificateBodyDALFactory } from "./certificate-body-dal";
 import type { TCertificateDALFactory } from "./certificate-dal";
+import type { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
   CertExtendedKeyUsageOIDToName,
-  CertificateDeletionEligibility,
   CertKeyAlgorithm,
   CertKeyUsage,
   CertSignatureAlgorithm,
@@ -104,10 +106,46 @@ export const buildCertificateBundle = (cert: string, privateKey: string, certifi
   return `${parts.join("\n")}\n`;
 };
 
+export const normalizePemText = (pemText: string) => {
+  const cleaned = pemText
+    .replace(new RE2("\\\\r\\\\n|\\\\n|\\\\r", "g"), "\n")
+    .replace(new RE2("[\\x{2010}-\\x{2015}\\x{2212}]", "g"), "-")
+    .replace(new RE2("[\\x{00A0}\\x{2007}\\x{202F}]", "g"), " ")
+    .replace(new RE2("[\\x{200B}-\\x{200D}\\x{2060}\\x{FEFF}]", "g"), "");
+
+  const blockPattern = new RE2("-----BEGIN ([A-Z0-9 ]+)-----([A-Za-z0-9+/=\\s]*)-----END ([A-Z0-9 ]+)-----", "g");
+  const whitespace = new RE2("\\s", "g");
+  const blocks: string[] = [];
+  let match = blockPattern.exec(cleaned);
+  while (match) {
+    const [, beginLabel, body, endLabel] = match;
+    if (beginLabel === endLabel) {
+      const base64Body = body.replace(whitespace, "");
+      const lines = base64Body.match(/.{1,64}/g) ?? [];
+      blocks.push([`-----BEGIN ${beginLabel}-----`, ...lines, `-----END ${endLabel}-----`].join("\n"));
+    }
+    match = blockPattern.exec(cleaned);
+  }
+
+  const beginMarkerCount = (cleaned.match(/-----BEGIN /g) ?? []).length;
+  return blocks.length && blocks.length === beginMarkerCount ? blocks.join("\n") : pemText.trim();
+};
+
 export const splitPemChain = (pemText: string) => {
   const re2Pattern = new RE2("-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----", "g");
 
   return re2Pattern.match(pemText) || [];
+};
+
+export const parsePemCertificateChain = (chainPem: string): x509.X509Certificate[] | null => {
+  const chainBlocks = splitPemChain(chainPem);
+  if (chainBlocks.length !== (chainPem.match(/-----BEGIN /g) ?? []).length) return null;
+
+  try {
+    return chainBlocks.map((pem) => new x509.X509Certificate(pem));
+  } catch {
+    return null;
+  }
 };
 
 /**
@@ -118,19 +156,15 @@ export const getCertificateCredentials = async ({
   certId,
   projectId,
   certificateSecretDAL,
-  projectDAL,
-  kmsService
+  kmsDataKeyService,
+  kmsKeyService
 }: TGetCertificateCredentialsDTO) => {
   const certificateSecret = await certificateSecretDAL.findOne({ certId });
   if (!certificateSecret)
     throw new NotFoundError({ message: `Certificate secret for certificate with ID '${certId}' not found` });
 
-  const keyId = await getProjectKmsCertificateKeyId({
-    projectId,
-    projectDAL,
-    kmsService
-  });
-  const kmsDecryptor = await kmsService.decryptWithKmsKey({
+  const keyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
+  const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
     kmsId: keyId
   });
   const decryptedPrivateKey = await kmsDecryptor({
@@ -340,7 +374,7 @@ const RSA_SIGNATURE_ALGORITHMS: Record<string, CertSignatureAlgorithm> = {
   "SHA-512": CertSignatureAlgorithm.RSA_SHA512
 };
 
-const ECDSA_SIGNATURE_ALGORITHMS: Record<string, CertSignatureAlgorithm> = {
+export const ECDSA_SIGNATURE_ALGORITHMS: Record<string, CertSignatureAlgorithm> = {
   "SHA-256": CertSignatureAlgorithm.ECDSA_SHA256,
   "SHA-384": CertSignatureAlgorithm.ECDSA_SHA384,
   "SHA-512": CertSignatureAlgorithm.ECDSA_SHA512
@@ -494,6 +528,95 @@ export const extractExternallyIssuedCertificateFields = (
   };
 };
 
+export const resolveCertificateStatus = (
+  certificate: {
+    status: string;
+    notAfter: Date;
+    renewedByCertificateId?: string | null;
+  },
+  at: Date = new Date()
+): CertStatus => {
+  if (certificate.status === CertStatus.REVOKED) return CertStatus.REVOKED;
+  if (new Date(certificate.notAfter).getTime() <= at.getTime()) return CertStatus.EXPIRED;
+  if (certificate.renewedByCertificateId) return CertStatus.RENEWED;
+  return CertStatus.ACTIVE;
+};
+
+export const resolveCurrentCertificateStatus = (
+  certificate: {
+    status: string;
+    notAfter: Date;
+    renewedByCertificateId?: string | null;
+    deletedAt?: Date | null;
+  },
+  at?: Date
+): CertStatus => (certificate.deletedAt ? CertStatus.DELETED : resolveCertificateStatus(certificate, at));
+
+type TDeletableCertificate = {
+  friendlyName?: string | null;
+  commonName?: string | null;
+  serialNumber: string;
+  deletedAt?: Date | null;
+};
+
+export const getCertificateDisplayName = (certificate: Omit<TDeletableCertificate, "deletedAt">) =>
+  certificate.friendlyName || certificate.commonName || certificate.serialNumber;
+
+export const assertCertificateNotDeleted = (
+  certificate: TDeletableCertificate,
+  consequence = "It can no longer be renewed or changed."
+) => {
+  if (!certificate.deletedAt) return;
+
+  throw new BadRequestError({
+    message: `Certificate '${getCertificateDisplayName(certificate)}' was deleted on ${new Date(certificate.deletedAt).toISOString()}. ${consequence}`
+  });
+};
+
+export const assertCertificateMaterialAvailable = (certificate: TDeletableCertificate) =>
+  assertCertificateNotDeleted(certificate, "Its certificate and private key are no longer available.");
+
+export const softDeleteCertificates = async (
+  { certificateIds, actorType, actorId }: { certificateIds: string[]; actorType: string; actorId?: string | null },
+  {
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    certificateRequestDAL,
+    pkiCollectionItemDAL,
+    certificateSyncDAL
+  }: {
+    certificateDAL: Pick<TCertificateDALFactory, "update">;
+    certificateBodyDAL: Pick<TCertificateBodyDALFactory, "delete">;
+    certificateSecretDAL: Pick<TCertificateSecretDALFactory, "delete">;
+    certificateRequestDAL: Pick<TCertificateRequestDALFactory, "update">;
+    pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "delete">;
+    certificateSyncDAL: Pick<TCertificateSyncDALFactory, "find">;
+  },
+  tx: Knex
+) => {
+  if (certificateIds.length === 0) return { deletedCertificates: [], pkiSyncIdsHoldingCertificates: [] };
+
+  const deletedCertificates = await certificateDAL.update(
+    { $in: { id: certificateIds }, deletedAt: null },
+    { deletedAt: new Date(), deletedByActorType: actorType, deletedByActorId: actorId ?? null },
+    tx
+  );
+  const deletedIds = deletedCertificates.map((cert) => cert.id);
+  if (deletedIds.length === 0) return { deletedCertificates, pkiSyncIdsHoldingCertificates: [] };
+
+  await certificateBodyDAL.delete({ $in: { certId: deletedIds } }, tx);
+  await certificateSecretDAL.delete({ $in: { certId: deletedIds } }, tx);
+  await certificateRequestDAL.update({ $in: { certificateId: deletedIds } }, { encryptedPrivateKey: null }, tx);
+  await pkiCollectionItemDAL.delete({ $in: { certId: deletedIds } }, tx);
+  const syncLinks = await certificateSyncDAL.find({ $in: { certificateId: deletedIds } }, { tx });
+
+  return {
+    deletedCertificates,
+    pkiSyncIdsHoldingCertificates: [...new Set(syncLinks.map((link) => link.pkiSyncId))]
+  };
+};
+
 export const linkRenewedCertificate = async (
   certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById">,
   originalCertificateId: string,
@@ -507,20 +630,4 @@ export const linkRenewedCertificate = async (
   }
 
   await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: renewedCertificateId }, tx);
-};
-
-export const resolveCertificateDeletionEligibility = (certificate: {
-  status: string;
-  notAfter: Date;
-  source?: string | null;
-}): CertificateDeletionEligibility | null => {
-  const hasExpired = new Date(certificate.notAfter).getTime() <= Date.now();
-
-  if (!hasExpired && certificate.status === CertStatus.REVOKED) return null;
-
-  if (certificate.source === CertificateSource.Discovered) return CertificateDeletionEligibility.Discovered;
-  if (certificate.source === CertificateSource.Imported) return CertificateDeletionEligibility.Imported;
-  if (hasExpired) return CertificateDeletionEligibility.Expired;
-
-  return null;
 };

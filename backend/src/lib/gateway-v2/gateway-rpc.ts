@@ -4,6 +4,8 @@ import { logger } from "@app/lib/logger";
 
 export type GatewayRpcRawResponse = { status: number; text: string };
 
+export class GatewayRpcResponseTooLargeError extends Error {}
+
 // shared transport for the gateway RPCs sent over the local relay proxy
 export const postGatewayRpc = (args: {
   port: number;
@@ -47,7 +49,9 @@ export const postGatewayRpc = (args: {
           received += chunk.length;
           if (maxResponseBytes !== undefined && received > maxResponseBytes) {
             req.destroy();
-            finish(() => reject(new Error(`${label} RPC response exceeded ${maxResponseBytes} bytes`)));
+            finish(() =>
+              reject(new GatewayRpcResponseTooLargeError(`${label} RPC response exceeded ${maxResponseBytes} bytes`))
+            );
             return;
           }
           chunks.push(chunk);

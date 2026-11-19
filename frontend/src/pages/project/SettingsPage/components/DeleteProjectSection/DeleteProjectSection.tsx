@@ -1,4 +1,6 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { addDays, format } from "date-fns";
 import { Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -34,22 +36,33 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
-import { useToggle } from "@app/hooks";
+import { projectTypeToUrlSlug } from "@app/helpers/project";
+import { useScopeVariant, useToggle } from "@app/hooks";
 import { useDeleteWorkspace, useLeaveProject, useUpdateProject } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
+import { secretScanningV2Keys } from "@app/hooks/api/secretScanningV2/queries";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 const CONFIRM_KEYWORD = "confirm";
 
+const DELETE_CONSEQUENCES: Partial<Record<ProjectType, string>> = {
+  [ProjectType.AgentVault]:
+    "Running agents and proxies stop working, and its session logs can no longer be viewed."
+};
+
 export const DeleteProjectSection = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+    "scheduleDeleteWorkspace",
     "deleteWorkspace",
     "leaveWorkspace"
   ] as const);
 
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+  const scopeVariant = useScopeVariant();
   const { memberships } = useProjectPermission();
   const isDirectMember = Boolean(memberships?.some((membership) => !membership.actorGroupId));
   const [isDeleting, setIsDeleting] = useToggle();
@@ -58,14 +71,16 @@ export const DeleteProjectSection = () => {
   const leaveProject = useLeaveProject();
   const { mutateAsync: updateProject, isPending: isUpdatingDeleteProtection } = useUpdateProject();
   const hasDeleteProtection = currentProject?.hasDeleteProtection ?? false;
+  const isRestorable = currentProject?.type === ProjectType.SecretManager;
 
-  const handleDeleteWorkspaceSubmit = async () => {
+  const handleDeleteWorkspaceSubmit = async (hardDelete: boolean) => {
     setIsDeleting.on();
     try {
       if (!currentProject?.id) return;
 
       await deleteWorkspace.mutateAsync({
-        projectID: currentProject?.id
+        projectID: currentProject?.id,
+        hardDelete
       });
 
       createNotification({
@@ -73,10 +88,13 @@ export const DeleteProjectSection = () => {
         type: "success"
       });
 
+      // Secret Scanning's list page redirects into its cached active project, which may be this one.
+      queryClient.removeQueries({ queryKey: secretScanningV2Keys.all });
       navigate({
-        to: "/organizations/$orgId/projects",
-        params: { orgId: currentOrg.id }
+        to: "/organizations/$orgId/projects/$type",
+        params: { orgId: currentOrg.id, type: projectTypeToUrlSlug(currentProject.type) }
       });
+      handlePopUpClose("scheduleDeleteWorkspace");
       handlePopUpClose("deleteWorkspace");
     } finally {
       setIsDeleting.off();
@@ -138,7 +156,9 @@ export const DeleteProjectSection = () => {
         isPending={isDeleting}
         isDisabled={isDisabled}
         variant="danger"
-        onClick={() => handlePopUpOpen("deleteWorkspace")}
+        onClick={() =>
+          handlePopUpOpen(isRestorable ? "scheduleDeleteWorkspace" : "deleteWorkspace")
+        }
       >
         <Trash2Icon />
         {`Delete ${currentProject?.name}`}
@@ -176,7 +196,7 @@ export const DeleteProjectSection = () => {
               {(isAllowed) => (
                 <Toggle
                   id="hasDeleteProtection"
-                  variant="project"
+                  variant={scopeVariant}
                   checked={hasDeleteProtection}
                   disabled={!isAllowed || isUpdatingDeleteProtection}
                   aria-label="Toggle delete protection"
@@ -233,6 +253,58 @@ export const DeleteProjectSection = () => {
       </Card>
 
       <AlertDialog
+        isPending={isDeleting}
+        open={popUp.scheduleDeleteWorkspace.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("scheduleDeleteWorkspace", isOpen)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Schedule Deletion of {currentProject?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {currentProject?.name} will be inaccessible immediately, then permanently deleted on{" "}
+              <span className="font-medium text-foreground">
+                {format(addDays(new Date(), 14), "MMM d, yyyy")}
+              </span>
+              .
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="list-disc pl-4 text-sm text-label">
+            <li>
+              Organization admins can restore it within 14 days. Secrets, environments, and history
+              are preserved.
+            </li>
+            <li>After 14 days, all project data is wiped and cannot be recovered.</li>
+          </ul>
+          <AlertDialogFooter className="sm:justify-between">
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => {
+                handlePopUpClose("scheduleDeleteWorkspace");
+                handlePopUpOpen("deleteWorkspace");
+              }}
+              isDisabled={isDeleting}
+            >
+              Delete Now
+            </Button>
+            <div className="flex gap-2">
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                variant={scopeVariant}
+                onClick={(event) => {
+                  event.preventDefault();
+                  handleDeleteWorkspaceSubmit(false);
+                }}
+              >
+                Confirm
+              </AlertDialogAction>
+            </div>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        isPending={isDeleting}
         open={popUp.deleteWorkspace.isOpen}
         confirmationValue={CONFIRM_KEYWORD}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteWorkspace", isOpen)}
@@ -245,6 +317,9 @@ export const DeleteProjectSection = () => {
                 <AlertContent>
                   Permanently delete {currentProject?.name} and all of its data. This action is not
                   reversible.
+                  {currentProject && DELETE_CONSEQUENCES[currentProject.type] && (
+                    <> {DELETE_CONSEQUENCES[currentProject.type]}</>
+                  )}
                 </AlertContent>
               </Alert>
             </AlertDialogDescription>
@@ -252,17 +327,16 @@ export const DeleteProjectSection = () => {
           <AlertDialogConfirmationField
             inputProps={{ placeholder: `Type ${CONFIRM_KEYWORD} here` }}
             onConfirm={() => {
-              if (!isDeleting) handleDeleteWorkspaceSubmit();
+              handleDeleteWorkspaceSubmit(isRestorable);
             }}
           />
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isPending={isDeleting}
               onClick={(event) => {
                 event.preventDefault();
-                handleDeleteWorkspaceSubmit();
+                handleDeleteWorkspaceSubmit(isRestorable);
               }}
             >
               Delete Project
@@ -272,6 +346,7 @@ export const DeleteProjectSection = () => {
       </AlertDialog>
 
       <AlertDialog
+        isPending={isLeaving}
         open={popUp.leaveWorkspace.isOpen}
         confirmationValue={CONFIRM_KEYWORD}
         onOpenChange={(isOpen) => handlePopUpToggle("leaveWorkspace", isOpen)}
@@ -291,14 +366,13 @@ export const DeleteProjectSection = () => {
           <AlertDialogConfirmationField
             inputProps={{ placeholder: `Type ${CONFIRM_KEYWORD} here` }}
             onConfirm={() => {
-              if (!isLeaving) handleLeaveWorkspaceSubmit();
+              handleLeaveWorkspaceSubmit();
             }}
           />
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isLeaving}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="warning"
-              isPending={isLeaving}
               onClick={(event) => {
                 event.preventDefault();
                 handleLeaveWorkspaceSubmit();

@@ -63,13 +63,13 @@ export const PkiSyncMatchedCertificatesTable = ({
   }
 
   return (
-    <Table>
+    <Table className="w-full">
       <TableHeader>
         <TableRow>
           <TableHead className="w-full">SAN / CN</TableHead>
-          <TableHead className="w-1/5">Serial Number</TableHead>
-          <TableHead className="w-1/5">Profile</TableHead>
-          <TableHead className="w-1/6">Expires At</TableHead>
+          <TableHead className="whitespace-nowrap">Serial Number</TableHead>
+          <TableHead className="whitespace-nowrap">Profile</TableHead>
+          <TableHead className="whitespace-nowrap">Expires At</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -89,17 +89,17 @@ export const PkiSyncMatchedCertificatesTable = ({
                   </TooltipContent>
                 </Tooltip>
               </TableCell>
-              <TableCell className="max-w-0">
+              <TableCell className="whitespace-nowrap">
                 <div className="font-mono text-xs" title={row.serialNumber ?? ""}>
                   {truncateCertificateSerialNumber(row.serialNumber ?? "")}
                 </div>
               </TableCell>
-              <TableCell className="max-w-0">
+              <TableCell className="max-w-40">
                 <div className="truncate text-sm" title={row.profileName ?? ""}>
                   {row.profileName ?? "-"}
                 </div>
               </TableCell>
-              <TableCell className="max-w-0">
+              <TableCell className="whitespace-nowrap">
                 <span className={isExpired ? "text-sm text-danger" : "text-sm"}>
                   {row.notAfter ? new Date(row.notAfter).toLocaleDateString() : "-"}
                 </span>

@@ -14,7 +14,6 @@ import {
   UploadIcon
 } from "lucide-react";
 
-import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DropdownMenu,
@@ -31,8 +30,6 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { ProjectPermissionSub } from "@app/context";
-import { ProjectPermissionProxiedServiceActions } from "@app/context/ProjectPermissionContext/types";
 import type {
   SecretsAddResourceAction,
   SecretsAddResourceMenuLevel,
@@ -163,10 +160,19 @@ export function AddResourceButtons({
               isDisabled={!canCreateSecrets}
             >
               <KeyIcon className="text-secret" />
-              Add Secret
+              New Secret
             </DropdownMenuItem>
           </MenuItemTooltip>
         )}
+        <MenuItemTooltip isDisabled={!canCreateFolders} content="Access Restricted">
+          <DropdownMenuItem
+            onClick={selectAction("folder", onAddFolder)}
+            isDisabled={!canCreateFolders}
+          >
+            <FolderIcon className="text-folder" />
+            New Folder
+          </DropdownMenuItem>
+        </MenuItemTooltip>
         <MenuItemTooltip isDisabled={!canCreateSecrets} content="Access Restricted">
           <DropdownMenuItem
             onClick={selectAction("upload-secrets", onImportSecrets)}
@@ -176,17 +182,24 @@ export function AddResourceButtons({
             Upload Secrets
           </DropdownMenuItem>
         </MenuItemTooltip>
-        <MenuItemTooltip isDisabled={!canCreateFolders} content="Access Restricted">
-          <DropdownMenuItem
-            onClick={selectAction("folder", onAddFolder)}
-            isDisabled={!canCreateFolders}
-          >
-            <FolderIcon className="text-folder" />
-            Add Folder
-          </DropdownMenuItem>
-        </MenuItemTooltip>
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Advanced</DropdownMenuLabel>
+        <MenuItemTooltip
+          isDisabled={!isSecretImportAvailable || !isSingleEnvSelected}
+          content={
+            !isSecretImportAvailable
+              ? "Access Restricted"
+              : "Select a single environment to import secrets"
+          }
+        >
+          <DropdownMenuItem
+            onClick={selectAction("secret-import", onAddSecretImport)}
+            isDisabled={!isSecretImportAvailable || !isSingleEnvSelected}
+          >
+            <ImportIcon className="text-import" />
+            Import Secrets
+          </DropdownMenuItem>
+        </MenuItemTooltip>
         <MenuItemTooltip isDisabled={!isDyanmicSecretAvailable} content="Access Restricted">
           <DropdownMenuItem
             onClick={selectAction("dynamic-secret", onAddDyanamicSecret)}
@@ -205,6 +218,10 @@ export function AddResourceButtons({
             Add Secret Rotation
           </DropdownMenuItem>
         </MenuItemTooltip>
+        <DropdownMenuItem onClick={selectAction("proxied-service", onAddProxiedService)}>
+          <ChevronsLeftRightEllipsisIcon className="text-proxied-service" />
+          Add Proxied Service
+        </DropdownMenuItem>
         <MenuItemTooltip
           isDisabled={!isHoneyTokenAvailable || !canCreateHoneyTokens}
           content="Access Restricted"
@@ -217,51 +234,12 @@ export function AddResourceButtons({
             Add Honey Token
           </DropdownMenuItem>
         </MenuItemTooltip>
-        <ProjectPermissionCan
-          I={ProjectPermissionProxiedServiceActions.Create}
-          a={ProjectPermissionSub.ProxiedServices}
-        >
-          {(isAllowed) => (
-            <MenuItemTooltip
-              isDisabled={!isSingleEnvSelected || !isAllowed}
-              content={
-                !isAllowed
-                  ? "Access Restricted"
-                  : "Select a single environment to add a proxied service"
-              }
-            >
-              <DropdownMenuItem
-                onClick={selectAction("proxied-service", onAddProxiedService)}
-                isDisabled={!isSingleEnvSelected || !isAllowed}
-              >
-                <ChevronsLeftRightEllipsisIcon className="text-proxied-service" />
-                Add Proxied Service
-              </DropdownMenuItem>
-            </MenuItemTooltip>
-          )}
-        </ProjectPermissionCan>
         <DropdownMenuSub onOpenChange={(isOpen) => isOpen && onMenuOpen(variant, "more")}>
           <DropdownMenuSubTrigger>
             <ListPlusIcon />
-            Add More
+            More
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
-            <MenuItemTooltip
-              isDisabled={!isSecretImportAvailable || !isSingleEnvSelected}
-              content={
-                !isSecretImportAvailable
-                  ? "Access Restricted"
-                  : "Select a single environment to add a secret import"
-              }
-            >
-              <DropdownMenuItem
-                onSelect={selectAction("secret-import", onAddSecretImport)}
-                isDisabled={!isSecretImportAvailable || !isSingleEnvSelected}
-              >
-                <ImportIcon className="text-import" />
-                Add Secret Import
-              </DropdownMenuItem>
-            </MenuItemTooltip>
             <MenuItemTooltip
               isDisabled={isCopySecretsDisabled || !canCopySecrets}
               content={
@@ -291,7 +269,7 @@ export function AddResourceButtons({
                 isDisabled={!canCreateSecretSyncs || !isSingleEnvSelected}
               >
                 <RefreshCwIcon className="text-accent" />
-                Add Secret Sync
+                New Secret Sync
               </DropdownMenuItem>
             </MenuItemTooltip>
             {(hasVaultConnection || hasDopplerConnection) && <DropdownMenuSeparator />}

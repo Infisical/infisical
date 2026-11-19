@@ -69,7 +69,7 @@ export const CreateDynamicSecretForm = ({
   };
 
   const header = definition ? (
-    <SheetHeader className="-mx-4 -mt-5">
+    <SheetHeader>
       <SheetTitle className="flex items-center gap-2">
         Add {definition.label} Dynamic Secret
         <DocumentationLinkBadge

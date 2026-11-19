@@ -14,5 +14,8 @@ export type TSecretScanningDataSourceBase = {
     name: string;
   } | null;
   isAutoScanEnabled: boolean;
+  isHistoricalScanEnabled: boolean;
+  isScanNewCommitsEnabled: boolean;
+  isDiscoveryEnabled: boolean;
   isDisconnected: boolean;
 };

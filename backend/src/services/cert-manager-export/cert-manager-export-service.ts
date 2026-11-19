@@ -1,10 +1,12 @@
 /* eslint-disable no-await-in-loop */
 import { OrganizationActionScope, OrgMembershipRole, ProjectType, TableName } from "@app/db/schemas";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorType } from "@app/services/auth/auth-type";
+import { isExternalCaKeySource } from "@app/services/certificate-authority/ca-key-source/ca-key-source-fns";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
@@ -12,11 +14,8 @@ import { TInternalCertificateAuthorityDALFactory } from "@app/services/certifica
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
-import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { TExportCertManagerProjectDTO, TExportCertManagerProjectResult } from "./cert-manager-export-types";
 
@@ -33,7 +32,8 @@ type TCertManagerExportServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "decryptWithKmsKey" | "generateKmsKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
 
@@ -49,7 +49,8 @@ export const certManagerExportServiceFactory = ({
   certificateProfileDAL,
   projectDAL,
   orgDAL,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   permissionService
 }: TCertManagerExportServiceFactoryDep) => {
   const allocateUniqueName = (desired: string, taken: Set<string>): string => {
@@ -130,19 +131,11 @@ export const certManagerExportServiceFactory = ({
       });
     }
 
-    const sourceKmsKeyId = await getProjectKmsCertificateKeyId({
-      projectId: sourceProjectId,
-      projectDAL,
-      kmsService
-    });
-    const destinationKmsKeyId = await getProjectKmsCertificateKeyId({
-      projectId: destinationProjectId,
-      projectDAL,
-      kmsService
-    });
+    const sourceKmsKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(sourceProjectId);
+    const destinationKmsKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(destinationProjectId);
 
-    const sourceDecryptor = await kmsService.decryptWithKmsKey({ kmsId: sourceKmsKeyId });
-    const destinationEncryptor = await kmsService.encryptWithKmsKey({ kmsId: destinationKmsKeyId });
+    const sourceDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: sourceKmsKeyId });
+    const destinationEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: destinationKmsKeyId });
 
     const reencrypt = async (cipherTextBlob: Buffer): Promise<Buffer> => {
       const plainText = await sourceDecryptor({ cipherTextBlob });
@@ -178,16 +171,16 @@ export const certManagerExportServiceFactory = ({
         else sourceSecretsByCaId.set(secret.caId, [secret]);
       }
 
-      const hsmBackedCaIds = new Set(
-        allSourceSecrets.filter((s) => s.keySource === CertKeySource.Hsm).map((s) => s.caId)
+      const externallyKeyedCaIds = new Set(
+        allSourceSecrets.filter((s) => isExternalCaKeySource(s.keySource)).map((s) => s.caId)
       );
-      if (hsmBackedCaIds.size) {
+      if (externallyKeyedCaIds.size) {
         const names = sourceInternalCAs
-          .filter((ca) => hsmBackedCaIds.has(ca.id))
+          .filter((ca) => externallyKeyedCaIds.has(ca.id))
           .map((ca) => ca.name)
           .join(", ");
         throw new BadRequestError({
-          message: `Cannot export HSM-backed certificate authorities (${names}). Their signing keys live on an HSM reached through a connector that exists only in the source project, so they cannot be recreated in the destination. Delete these certificate authorities, then export again.`
+          message: `Cannot export certificate authorities whose signing keys are held in an HSM or AWS KMS (${names}). Their keys are reached through a connection that is not exported, so they cannot be recreated in the destination. Delete these certificate authorities, then export again.`
         });
       }
 
@@ -235,9 +228,6 @@ export const certManagerExportServiceFactory = ({
             {
               caId: newCa.id,
               keySource: sourceSecret.keySource,
-              hsmConnectorId: sourceSecret.hsmConnectorId,
-              hsmKeyLabel: sourceSecret.hsmKeyLabel,
-              hsmPublicKeySpki: sourceSecret.hsmPublicKeySpki,
               encryptedPrivateKey: sourceSecret.encryptedPrivateKey
                 ? await reencrypt(sourceSecret.encryptedPrivateKey)
                 : undefined
@@ -293,7 +283,8 @@ export const certManagerExportServiceFactory = ({
             notBefore: internalCa.notBefore ? new Date(internalCa.notBefore) : null,
             notAfter: internalCa.notAfter ? new Date(internalCa.notAfter) : null,
             activeCaCertId: newActiveCaCertId,
-            crlDistributionPointUrls: internalCa.crlDistributionPointUrls ?? []
+            crlDistributionPointUrls: internalCa.crlDistributionPointUrls ?? [],
+            crlValidityDays: internalCa.crlValidityDays
           },
           tx
         );
@@ -310,7 +301,10 @@ export const certManagerExportServiceFactory = ({
             {
               caId: newCa.id,
               caSecretId: newCrlSecretId,
-              encryptedCrl: await reencrypt(sourceCrl.encryptedCrl)
+              encryptedCrl: await reencrypt(sourceCrl.encryptedCrl),
+              thisUpdate: sourceCrl.thisUpdate,
+              nextUpdate: sourceCrl.nextUpdate,
+              crlNumber: sourceCrl.crlNumber
             },
             tx
           );

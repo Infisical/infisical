@@ -5,27 +5,17 @@ import { apiRequest } from "@app/config/request";
 import { webAuthnKeys } from "./queries";
 import {
   TGenerateAuthenticationOptionsResponse,
-  TGenerateRegistrationOptionsResponse,
   TUpdateWebAuthnCredentialDTO,
   TVerifyAuthenticationDTO,
   TVerifyRegistrationDTO,
   TVerifyRegistrationResponse
 } from "./types";
 
-export const useGenerateRegistrationOptions = () =>
-  useMutation({
-    mutationFn: async () => {
-      const { data } = await apiRequest.post<TGenerateRegistrationOptionsResponse>(
-        "/api/v1/user/me/webauthn/register"
-      );
-      return data;
-    }
-  });
-
 export const useVerifyRegistration = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    meta: { handledErrorCodes: ["SESSION_MFA_REQUIRED"] },
     mutationFn: async (dto: TVerifyRegistrationDTO) => {
       const { data } = await apiRequest.post<TVerifyRegistrationResponse>(
         "/api/v1/user/me/webauthn/register/verify",

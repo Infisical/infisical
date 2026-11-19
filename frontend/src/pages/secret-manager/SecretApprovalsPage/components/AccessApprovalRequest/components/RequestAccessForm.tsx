@@ -26,13 +26,17 @@ import {
   RotateCcwIcon,
   TimerIcon,
   Trash2Icon,
+  TriangleAlertIcon,
   XIcon
 } from "lucide-react";
 import ms from "ms";
+import picomatch from "picomatch";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
   Button,
   Checkbox,
   Combobox,
@@ -69,9 +73,19 @@ import {
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
 import { useCreateAccessRequest } from "@app/hooks/api";
+import { useListProjectEnvironmentsFolders } from "@app/hooks/api/secretFolders/queries";
 import { TAccessApprovalPolicy } from "@app/hooks/api/types";
+import { normalizeFolderPath } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 
-import { getAccessDurationLabel, parseAccessDurationMs } from "../AccessApprovalRequest.utils";
+import {
+  ENTIRE_SCOPE_PATH,
+  getAccessDurationLabel,
+  isGlobPath,
+  parseAccessDurationMs,
+  resolveAccessPolicyForPath
+} from "../AccessApprovalRequest.utils";
+import { AccessRequestPathInput } from "./AccessRequestPathInput";
+import { AccessRequestScope } from "./AccessRequestScope";
 
 const INVALID_DURATION_MESSAGE = "Enter a duration greater than 0.";
 const policyMaxDurationMessage = (maxTimePeriod: string) =>
@@ -314,7 +328,7 @@ const RESOURCE_CONFIGS: TResourceConfig[] = [
 
 const requestAccessSchema = z.object({
   environmentSlug: z.string().min(1),
-  secretPath: z.string().min(1, "Please select a secret path"),
+  secretPath: z.string().trim().min(1, "Enter a secret path").transform(normalizeFolderPath),
   resources: z
     .object({
       subject: z.nativeEnum(ProjectPermissionSub),
@@ -503,23 +517,63 @@ export const RequestAccessForm = ({
   const secretPath = form.watch("secretPath");
   const resources = form.watch("resources");
 
-  const selectablePaths = useMemo(
+  const [isPathFocused, setIsPathFocused] = useState(false);
+
+  const environmentPolicies = useMemo(
     () =>
-      policies
-        .filter((policy) => policy.environments.some((env) => env.slug === selectedEnvironment))
-        .map((policy) => policy.secretPath),
+      policies.filter((policy) =>
+        policy.environments.some((env) => env.slug === selectedEnvironment)
+      ),
     [policies, selectedEnvironment]
   );
+  const policyPaths = useMemo(
+    () => [...new Set(environmentPolicies.map((policy) => policy.secretPath))],
+    [environmentPolicies]
+  );
+  const { data: environmentFolders } = useListProjectEnvironmentsFolders(currentProject.id, {
+    environment: selectedEnvironment,
+    enabled: policyPaths.length > 0
+  });
+  const folderPaths = useMemo(
+    () => environmentFolders?.[selectedEnvironment]?.folders.map((folder) => folder.path) ?? [],
+    [environmentFolders, selectedEnvironment]
+  );
+  // When no policy in the environment is a glob, only the policy paths themselves can be requested.
+  const isFixedPathsOnly = policyPaths.length > 0 && !policyPaths.some(isGlobPath);
+
+  const requestedPath = secretPath.trim() ? normalizeFolderPath(secretPath) : "";
 
   const matchedPolicy = useMemo(
     () =>
-      policies.find(
-        (policy) =>
-          policy.environments.some((env) => env.slug === selectedEnvironment) &&
-          policy.secretPath === secretPath
-      ),
-    [policies, selectedEnvironment, secretPath]
+      requestedPath ? resolveAccessPolicyForPath(environmentPolicies, requestedPath) : undefined,
+    [environmentPolicies, requestedPath]
   );
+
+  const environmentName =
+    currentProject.environments?.find((env) => env.slug === selectedEnvironment)?.name ??
+    selectedEnvironment;
+
+  const pathIssue = useMemo(() => {
+    if (!requestedPath) return null;
+    if (!matchedPolicy) {
+      return (
+        <>
+          Access requests are not enabled for <code className="font-mono">{requestedPath}</code> in{" "}
+          {environmentName}. Ask a project admin to add an access policy.
+        </>
+      );
+    }
+    if (!environmentFolders) return null;
+    const isMatch = picomatch(requestedPath, { strictSlashes: false });
+    if (!folderPaths.some((path) => isMatch(path))) {
+      return (
+        <>
+          No folder matches <code className="font-mono">{requestedPath}</code> in {environmentName}.
+        </>
+      );
+    }
+    return null;
+  }, [requestedPath, matchedPolicy, environmentFolders, folderPaths, environmentName]);
 
   const maxDurationMs = matchedPolicy?.maxTimePeriod ? ms(matchedPolicy.maxTimePeriod) : null;
 
@@ -569,6 +623,8 @@ export const RequestAccessForm = ({
       return;
     }
 
+    if (pathIssue) return;
+
     const { isTemporary, temporaryRange } = data.duration;
 
     if (
@@ -613,77 +669,118 @@ export const RequestAccessForm = ({
       className="flex flex-1 flex-col gap-4 overflow-hidden"
     >
       <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
-        <div className="grid grid-cols-2 gap-3">
-          <Controller
-            control={form.control}
-            name="environmentSlug"
-            render={({ field }) => (
-              <Field>
-                <FieldLabel htmlFor="environmentSlug">Environment</FieldLabel>
-                <Combobox
-                  modal
-                  options={currentProject?.environments ?? []}
-                  value={
-                    currentProject?.environments?.find(({ slug }) => slug === field.value) ?? null
-                  }
-                  onValueChange={(environmentOption) => {
-                    if (environmentOption?.slug === field.value) return;
-                    field.onChange(environmentOption?.slug ?? "");
-                    // clear alongside the env change so both land in one render
-                    form.setValue("secretPath", "", {
-                      shouldValidate: form.formState.isSubmitted
-                    });
-                  }}
-                  getOptionValue={(environmentOption) => environmentOption.slug}
-                  getOptionLabel={(environmentOption) => environmentOption.name}
-                  id="environmentSlug"
-                  placeholder="Select an environment"
-                  searchPlaceholder="Search environments..."
-                  searchAriaLabel="Search environments"
-                />
-              </Field>
-            )}
-          />
-          <Controller
-            control={form.control}
-            name="secretPath"
-            render={({ field, fieldState: { error } }) => {
-              const secretPathField = (
+        <Controller
+          control={form.control}
+          name="environmentSlug"
+          render={({ field }) => (
+            <Field>
+              <FieldLabel htmlFor="environmentSlug">Environment</FieldLabel>
+              <Combobox
+                modal
+                options={currentProject?.environments ?? []}
+                value={
+                  currentProject?.environments?.find(({ slug }) => slug === field.value) ?? null
+                }
+                onValueChange={(environmentOption) => {
+                  if (environmentOption?.slug === field.value) return;
+                  field.onChange(environmentOption?.slug ?? "");
+                  // clear alongside the env change so both land in one render
+                  form.setValue("secretPath", "", {
+                    shouldValidate: form.formState.isSubmitted
+                  });
+                }}
+                getOptionValue={(environmentOption) => environmentOption.slug}
+                getOptionLabel={(environmentOption) => environmentOption.name}
+                id="environmentSlug"
+                placeholder="Select an environment"
+                searchPlaceholder="Search environments..."
+                searchAriaLabel="Search environments"
+              />
+            </Field>
+          )}
+        />
+        <Controller
+          control={form.control}
+          name="secretPath"
+          render={({ field, fieldState: { error } }) => {
+            if (!policyPaths.length) {
+              return (
                 <Field>
-                  <FieldLabel htmlFor="secretPath">Secret Path</FieldLabel>
+                  <FieldLabel>Secret Path</FieldLabel>
+                  <FieldError>
+                    Access requests are not enabled in {environmentName}. Ask a project admin to add
+                    an access policy.
+                  </FieldError>
+                </Field>
+              );
+            }
+
+            const showPathIssue = Boolean(pathIssue) && !isPathFocused;
+            let feedback = (
+              <FieldDescription>
+                {isFixedPathsOnly
+                  ? `Only these paths can be requested in ${environmentName}.`
+                  : "Type a folder path or glob. Request the narrowest path you need."}
+              </FieldDescription>
+            );
+            if (showPathIssue) feedback = <FieldError>{pathIssue}</FieldError>;
+            else if (error) feedback = <FieldError errors={[error]} />;
+
+            return (
+              <Field>
+                <FieldLabel htmlFor="secretPath">Secret Path</FieldLabel>
+                {isFixedPathsOnly ? (
                   <Combobox
                     modal
-                    options={selectablePaths}
-                    value={selectablePaths.find((path) => path === field.value) ?? null}
-                    onValueChange={field.onChange}
+                    options={policyPaths}
+                    value={policyPaths.find((path) => path === field.value) ?? null}
+                    onValueChange={(path) => field.onChange(path ?? "")}
                     getOptionValue={(path) => path}
                     getOptionLabel={(path) => path}
+                    renderOption={(path) => (
+                      <span className="flex items-center gap-2 font-mono">
+                        <FolderIcon className="size-3.5 text-folder" />
+                        {path}
+                      </span>
+                    )}
                     id="secretPath"
-                    isDisabled={!selectablePaths.length}
-                    isError={Boolean(error)}
+                    isError={showPathIssue || Boolean(error)}
                     placeholder="Select a secret path"
                     searchPlaceholder="Search secret paths..."
                     searchAriaLabel="Search secret paths"
                   />
-                  <FieldError errors={[error]} />
-                </Field>
-              );
-
-              if (selectablePaths.length) return secretPathField;
-
-              return (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="w-full">{secretPathField}</div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    The selected environment doesn&apos;t have any policies.
-                  </TooltipContent>
-                </Tooltip>
-              );
-            }}
-          />
-        </div>
+                ) : (
+                  <AccessRequestPathInput
+                    id="secretPath"
+                    value={field.value}
+                    onChange={field.onChange}
+                    onFocus={() => setIsPathFocused(true)}
+                    onBlur={() => setIsPathFocused(false)}
+                    folderPaths={folderPaths}
+                    policyPaths={policyPaths}
+                    isError={showPathIssue || Boolean(error)}
+                  />
+                )}
+                {feedback}
+              </Field>
+            );
+          }}
+        />
+        {requestedPath === ENTIRE_SCOPE_PATH && !pathIssue && (
+          <Alert variant="warning">
+            <TriangleAlertIcon />
+            <AlertDescription>
+              Grants every folder in {environmentName}, including folders created later. Approvers
+              see this request flagged as entire scope.
+            </AlertDescription>
+          </Alert>
+        )}
+        {requestedPath && !pathIssue && isGlobPath(requestedPath) && (
+          <Field>
+            <FieldLabel>Folders Granted</FieldLabel>
+            <AccessRequestScope secretPath={requestedPath} environment={selectedEnvironment} />
+          </Field>
+        )}
         <Field>
           <FieldLabel>Resources & Permissions</FieldLabel>
           {resourceFields.map((resourceField, index) => {
@@ -799,16 +896,16 @@ export const RequestAccessForm = ({
           )}
         />
       </div>
-      <SheetFooter className="border-t">
+      <SheetFooter className="justify-end border-t">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
         <Button
           type="submit"
           variant="project"
           isPending={form.formState.isSubmitting || requestAccess.isPending}
         >
           Request Access
-        </Button>
-        <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
         </Button>
       </SheetFooter>
     </form>

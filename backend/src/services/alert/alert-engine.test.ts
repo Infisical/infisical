@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { AlertDispatchOutcome } from "@app/lib/telemetry/metrics";
 
-import { TAlertPayload } from "./alert-channel-types";
+import { AlertChannelType, TAlertPayload } from "./alert-channel-types";
 import { alertEngineFactory, TAlertEngineDep } from "./alert-engine";
 import { alertProviderRegistryFactory } from "./alert-provider-registry";
 import {
@@ -12,6 +12,7 @@ import {
   IResourceAlertProvider,
   TAlertContext
 } from "./alert-types";
+import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
 
 // logger is `export let logger` assigned by initLogger(), which unit tests don't run, so any
 // channel-failure path (which logs) would otherwise dereference undefined. Mock it per-file.
@@ -61,21 +62,21 @@ const makeAlert = () => ({
 
 const makeProvider = (
   targets: TTarget[],
-  onFindDueTargets?: () => void,
-  onFindTargetsByIds?: (payload: Record<string, unknown>) => void
+  onFindScheduledTargets?: () => void,
+  onFindEventTargets?: (payload: Record<string, unknown>) => void
 ): IResourceAlertProvider<TTarget> => ({
   resourceType: RESOURCE_TYPE,
   events: [
     { key: "test.resource.expiration", triggerType: AlertTriggerType.Scheduled, conditionSchema: z.any() },
     { key: "test.resource.opened", triggerType: AlertTriggerType.Event, conditionSchema: z.any() }
   ],
-  findDueTargets: async () => {
-    onFindDueTargets?.();
+  findScheduledTargets: async () => {
+    onFindScheduledTargets?.();
     return targets;
   },
   // Like a real provider, a target deleted between emit and delivery just drops out.
-  findTargetsByIds: async ({ targetIds, payload }) => {
-    onFindTargetsByIds?.(payload);
+  findEventTargets: async ({ targetIds, payload }) => {
+    onFindEventTargets?.(payload);
     return targets.filter((target) => targetIds.includes(target.id));
   },
   assertPermission: async () => undefined,
@@ -115,7 +116,7 @@ type TDelivery = { targetId: string; channelId: string; channelType: string; sta
 
 const buildEngine = (opts: {
   targets: TTarget[];
-  channels: Array<{ id: string; channelType: string; encryptedConfig: Buffer; enabled: boolean }>;
+  channels: Array<{ id: string; channelType: string; encryptedConfig: Buffer; enabled: boolean; createdAt?: Date }>;
   recentlyAlerted?: Array<{ channelId: string; targetId: string }>;
   deliveredForEvent?: string[];
   recipients?: Array<{ userId: string; email: string; firstName?: string | null }>;
@@ -125,13 +126,13 @@ const buildEngine = (opts: {
   failHistoryWriteTimes?: number;
 }) => {
   const registry = alertProviderRegistryFactory();
-  let findDueTargetsCalls = 0;
+  let findScheduledTargetsCalls = 0;
   const eventPayloads: Record<string, unknown>[] = [];
   registry.register(
     makeProvider(
       opts.targets,
       () => {
-        findDueTargetsCalls += 1;
+        findScheduledTargetsCalls += 1;
       },
       (payload) => eventPayloads.push(payload)
     ) as IResourceAlertProvider
@@ -152,9 +153,8 @@ const buildEngine = (opts: {
     alertChannelDAL: {
       findByAlertId: async (_alertId: string, filter?: { enabled?: boolean; readFromPrimary?: boolean }) => {
         channelLookups.push(filter);
-        return filter?.enabled === undefined
-          ? opts.channels
-          : opts.channels.filter((c) => c.enabled === filter.enabled);
+        const channels = opts.channels.map((c) => ({ createdAt: new Date(0), ...c }));
+        return filter?.enabled === undefined ? channels : channels.filter((c) => c.enabled === filter.enabled);
       }
     },
     alertChannelRecipientDAL: {
@@ -195,7 +195,7 @@ const buildEngine = (opts: {
         return new Map([...rowsByChannel.keys()].map((channelId) => [channelId, resolved]));
       }
     },
-    kmsService: kmsServiceMock,
+    kmsDataKeyService: kmsServiceMock,
     smtpService: {
       sendMail: async (opt: { recipients: string[] }) => {
         inFlightSends += 1;
@@ -223,7 +223,7 @@ const buildEngine = (opts: {
     eventPayloads,
     getHistoryAttempts: () => historyAttempts,
     getPeakConcurrentSends: () => peakConcurrentSends,
-    getFindDueTargetsCalls: () => findDueTargetsCalls
+    getFindScheduledTargetsCalls: () => findScheduledTargetsCalls
   };
 };
 
@@ -353,6 +353,22 @@ describe("alert engine", () => {
       { targetId: "t1", channelId: "c-email", channelType: "email", status: AlertRunStatus.FAILED },
       { targetId: "t1", channelId: "c-slack", channelType: "slack", status: AlertRunStatus.SUCCESS }
     ]);
+  });
+
+  test("shows a run as partial without retrying when a channel reached only some of its destinations", async () => {
+    const send = vi
+      .spyOn(ALERT_CHANNEL_REGISTRY[AlertChannelType.SLACK_APP], "send")
+      .mockResolvedValue({ success: true, error: "#security is archived." });
+    const { engine, historyWrites } = buildEngine({
+      targets: [{ id: "t1" }],
+      channels: [{ id: "c-slack-app", channelType: "slack-app", encryptedConfig: encConfig({}), enabled: true }]
+    });
+
+    const outcome = await engine.runAlert(makeAlert());
+    send.mockRestore();
+
+    expect(outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
+    expect(historyWrites[0].status).toBe(AlertRunStatus.PARTIAL);
   });
 
   test("marks a directed channel SUCCESS when at least one recipient delivers, so healthy recipients are not re-spammed", async () => {
@@ -501,7 +517,7 @@ describe("alert engine", () => {
   });
 
   test("writes no history and skips the resource scan when there are no enabled channels", async () => {
-    const { engine, historyWrites, getFindDueTargetsCalls } = buildEngine({
+    const { engine, historyWrites, getFindScheduledTargetsCalls } = buildEngine({
       targets: [{ id: "t1" }],
       channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: false }]
     });
@@ -511,7 +527,7 @@ describe("alert engine", () => {
     expect(outcome).toBe(AlertDispatchOutcome.NoChannels);
     expect(historyWrites).toHaveLength(0);
     // The scan is the expensive part of a run; a channel-less alert must not pay for it daily.
-    expect(getFindDueTargetsCalls()).toBe(0);
+    expect(getFindScheduledTargetsCalls()).toBe(0);
   });
 
   test("reports no due targets when nothing matches the condition", async () => {
@@ -532,9 +548,44 @@ describe("alert engine, event path", () => {
   const EVENT = {
     eventId: "7",
     eventType: "test.resource.opened",
+    occurredAt: new Date(),
     targetIds: ["t1"],
     payload: { targetIds: ["t1"], note: "x" }
   };
+
+  test("a retried event skips channels created after the event happened", async () => {
+    const { engine, sentMail } = buildEngine({
+      targets: [{ id: "t1" }],
+      channels: [
+        { id: "c-old", channelType: "email", encryptedConfig: encConfig({}), enabled: true },
+        {
+          id: "c-new",
+          channelType: "email",
+          encryptedConfig: encConfig({}),
+          enabled: true,
+          createdAt: new Date(Date.now() + 60_000)
+        }
+      ]
+    });
+
+    await engine.runAlertForEvent(eventAlert(), EVENT);
+    expect(sentMail).toHaveLength(1);
+
+    const late = buildEngine({
+      targets: [{ id: "t1" }],
+      channels: [
+        {
+          id: "c-new",
+          channelType: "email",
+          encryptedConfig: encConfig({}),
+          enabled: true,
+          createdAt: new Date(Date.now() + 60_000)
+        }
+      ]
+    });
+    expect(await late.engine.runAlertForEvent(eventAlert(), EVENT)).toBe(AlertDispatchOutcome.NoChannels);
+    expect(late.sentMail).toHaveLength(0);
+  });
 
   test("delivers the targets the event named and files the run under the event id", async () => {
     const { engine, sentMail, historyWrites, eventPayloads } = buildEngine({

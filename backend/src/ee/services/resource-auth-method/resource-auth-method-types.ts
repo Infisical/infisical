@@ -8,7 +8,6 @@ import {
 } from "./resource-auth-method-fns";
 
 export type TAwsAuthMethodConfig = {
-  stsEndpoint: string;
   allowedPrincipalArns: string;
   allowedAccountIds: string;
 };

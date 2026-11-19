@@ -1,20 +1,19 @@
 import { Controller, useFormContext } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { InfoIcon } from "lucide-react";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import { AwsRegionSelect } from "@app/components/secret-syncs/forms/SecretSyncDestinationFields/shared";
 import {
+  Combobox,
   Field,
   FieldError,
   FieldFeedback,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { TAwsIamUserSecret, useListAwsConnectionIamUsers } from "@app/hooks/api/appConnections/aws";
+import { useListAwsConnectionIamUsers } from "@app/hooks/api/appConnections/aws";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 export const AwsIamUserSecretRotationParametersFields = () => {
@@ -38,23 +37,18 @@ export const AwsIamUserSecretRotationParametersFields = () => {
         render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
           <Field data-invalid={Boolean(error)}>
             <FieldLabelWithTooltip htmlFor="aws-iam-user">IAM User</FieldLabelWithTooltip>
-            <FilterableSelect
-              inputId="aws-iam-user"
+            <Combobox
+              id="aws-iam-user"
               isLoading={isClientsPending && Boolean(connectionId)}
               isDisabled={!connectionId}
-              value={clients?.find((client) => client.UserName === value) ?? ""}
+              value={clients?.find((client) => client.UserName === value) ?? null}
               onBlur={onBlur}
-              onChange={(option) => {
-                onChange((option as SingleValue<TAwsIamUserSecret>)?.UserName ?? "");
-              }}
+              onValueChange={(option) => onChange(option.UserName)}
+              isClearable={false}
               options={clients}
               placeholder="Select an IAM user..."
-              getOptionLabel={(option) =>
-                (option as SingleValue<TAwsIamUserSecret>)?.UserName ?? ""
-              }
-              getOptionValue={(option) =>
-                (option as SingleValue<TAwsIamUserSecret>)?.UserName ?? ""
-              }
+              getOptionLabel={(option) => option.UserName}
+              getOptionValue={(option) => option.UserName}
               isError={Boolean(error)}
               aria-describedby="aws-iam-user-feedback"
             />

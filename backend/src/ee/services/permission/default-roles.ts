@@ -5,6 +5,8 @@ import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionAgentVaultSkillActions,
+  ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionAppConnectionActions,
   ProjectPermissionApplicationActions,
   ProjectPermissionApprovalRequestActions,
@@ -97,7 +99,7 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.SecretFolders
   );
 
-  can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
+  can([ProjectPermissionAuditLogsActions.Read, ProjectPermissionAuditLogsActions.Edit], ProjectPermissionSub.AuditLogs);
 
   can(
     [
@@ -279,7 +281,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCmekActions.GenerateMac,
       ProjectPermissionCmekActions.VerifyMac,
       ProjectPermissionCmekActions.Rotate,
-      ProjectPermissionCmekActions.ExportPrivateKey
+      ProjectPermissionCmekActions.ExportPrivateKey,
+      ProjectPermissionCmekActions.PublishPublicKey
     ],
     ProjectPermissionSub.Cmek
   );
@@ -815,7 +818,13 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
     [
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionAgentVaultSessionActions.Create,
-      ProjectPermissionAgentVaultSessionActions.Revoke
+      ProjectPermissionAgentVaultSessionActions.Edit,
+      ProjectPermissionAgentVaultSessionActions.Revoke,
+      ProjectPermissionAgentVaultSessionActions.ReadAny,
+      ProjectPermissionAgentVaultSessionActions.EditAny,
+      ProjectPermissionAgentVaultSessionActions.RevokeAny,
+      ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
+      ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills
     ],
     ProjectPermissionSub.AgentVaultSessions
   );
@@ -830,6 +839,38 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
       ProjectPermissionAgentVaultProxyActions.Revoke
     ],
     ProjectPermissionSub.AgentVaultProxies
+  );
+
+  can(
+    [
+      ProjectPermissionAgentVaultSkillActions.Read,
+      ProjectPermissionAgentVaultSkillActions.Create,
+      ProjectPermissionAgentVaultSkillActions.Edit,
+      ProjectPermissionAgentVaultSkillActions.Delete
+    ],
+    ProjectPermissionSub.AgentVaultSkills
+  );
+
+  can(
+    [
+      ProjectPermissionAgentVaultVariableActions.Read,
+      ProjectPermissionAgentVaultVariableActions.Create,
+      ProjectPermissionAgentVaultVariableActions.Edit,
+      ProjectPermissionAgentVaultVariableActions.Delete,
+      ProjectPermissionAgentVaultVariableActions.ReadValue
+    ],
+    ProjectPermissionSub.AgentVaultVariables
+  );
+
+  can(
+    [
+      ProjectPermissionAppConnectionActions.Read,
+      ProjectPermissionAppConnectionActions.Create,
+      ProjectPermissionAppConnectionActions.Edit,
+      ProjectPermissionAppConnectionActions.Delete,
+      ProjectPermissionAppConnectionActions.Connect
+    ],
+    ProjectPermissionSub.AppConnections
   );
 
   can(
@@ -891,7 +932,7 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
 
   can([ProjectPermissionActions.Edit, ProjectPermissionActions.Delete], ProjectPermissionSub.Project);
 
-  can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
+  can([ProjectPermissionAuditLogsActions.Read, ProjectPermissionAuditLogsActions.Edit], ProjectPermissionSub.AuditLogs);
 
   return rules;
 };
@@ -906,11 +947,14 @@ const buildAgentVaultProjectMemberPermissionRules = () => {
     [
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionAgentVaultSessionActions.Create,
-      ProjectPermissionAgentVaultSessionActions.Revoke
+      ProjectPermissionAgentVaultSessionActions.Edit,
+      ProjectPermissionAgentVaultSessionActions.Revoke,
+      ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills
     ],
     ProjectPermissionSub.AgentVaultSessions
   );
   can([ProjectPermissionAgentVaultProxyActions.Read], ProjectPermissionSub.AgentVaultProxies);
+  can([ProjectPermissionAgentVaultSkillActions.Read], ProjectPermissionSub.AgentVaultSkills);
 
   return rules;
 };
@@ -1074,6 +1118,7 @@ const buildApplicationOperatorPermissionRules = () => {
       ResourcePermissionCertificateActions.List,
       ResourcePermissionCertificateActions.Create,
       ResourcePermissionCertificateActions.Edit,
+      ResourcePermissionCertificateActions.RequestRevocation,
       ResourcePermissionCertificateActions.ReadPrivateKey,
       ResourcePermissionCertificateActions.Import
     ],
@@ -1183,6 +1228,7 @@ const buildSignerAdminPermissionRules = () => {
       ResourcePermissionSignerActions.PreApprove,
       ResourcePermissionSignerActions.RevokeRequest,
       ResourcePermissionSignerActions.ReissueCertificate,
+      ResourcePermissionSignerActions.RevokeCertificate,
       ResourcePermissionSignerActions.ExportCertificate
     ],
     ResourcePermissionSub.Signer

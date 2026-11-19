@@ -30,6 +30,8 @@ const WindowsServerSyncOptionsSchema = z.object({
     .nativeEnum(PemCertificateExtension)
     .default(PemCertificateExtension.Pem),
   combineCertificateChain: z.boolean().default(false),
+  keystoreAlias: z.string().optional(),
+  includeTruststore: z.boolean().optional(),
   fileAccessRules: z
     .array(
       z.object({
@@ -89,7 +91,7 @@ export const WindowsServerPkiSyncDestinationSchema = BasePkiSyncSchema(
     }),
     credentials: z
       .object({
-        exportPassword: z.string().min(1).optional()
+        exportPassword: z.string().optional()
       })
       .optional()
   })

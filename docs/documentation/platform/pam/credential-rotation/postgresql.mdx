@@ -1,0 +1,40 @@
+---
+title: "PostgreSQL credential rotation for PAM"
+sidebarTitle: "PostgreSQL"
+description: "Rotate the passwords of PostgreSQL accounts."
+---
+
+This page covers what's specific to rotating the password of a [PostgreSQL account](/documentation/platform/pam/accounts/postgresql). To turn on rotation and set a rotation account, see [Credential rotation](/documentation/platform/pam/credential-rotation/overview).
+
+## Rotation account
+
+The rotation account needs permission to change the target role's password:
+
+- **The account itself:** A role can always change its own password, so it needs no extra privileges
+- **A different account:** The rotation account needs the `CREATEROLE` attribute, or must be a superuser
+
+For example, to create a rotation role and a role for it to rotate:
+
+```sql
+-- the role that Infisical signs in as to rotate passwords
+CREATE ROLE infisical_rotator WITH LOGIN PASSWORD '<temporary-password>' CREATEROLE;
+
+-- the role whose password Infisical rotates
+CREATE ROLE app_user WITH LOGIN PASSWORD '<temporary-password>';
+```
+
+On PostgreSQL 16 and later, a `CREATEROLE` role can only change the password of a role it has `ADMIN OPTION` on. Grant it with:
+
+```sql
+GRANT app_user TO infisical_rotator WITH ADMIN OPTION;
+```
+
+Add both roles to Infisical PAM as PostgreSQL accounts with the same host and port, then select `infisical_rotator` as the rotation account on the `app_user` account's **Rotation** tab.
+
+## How the password is changed
+
+Infisical signs in as the rotation account, using the account's connection details and SSL settings, and runs:
+
+```sql
+ALTER USER "<target-role>" WITH PASSWORD '<generated-password>';
+```

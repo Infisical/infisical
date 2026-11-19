@@ -1,4 +1,5 @@
 import { TCertificateRequests } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -6,7 +7,10 @@ import { decryptAppConnectionCredentials } from "@app/services/app-connection/ap
 import { getDigiCertApiBaseUrl } from "@app/services/app-connection/digicert/digicert-connection-fns";
 import { TDigiCertConnection } from "@app/services/app-connection/digicert/digicert-connection-types";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import {
+  getIssuanceAlertEvent,
+  TCertificateAlertEventEmitter
+} from "@app/services/certificate/certificate-alert-events";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 
@@ -52,20 +56,22 @@ export type TDigiCertOrderMetadata = {
     lastCheckStatus?: string;
     isRenewal?: boolean;
     originalCertificateId?: string;
+    previousCertificateId?: number;
   };
 };
 
 export type TProcessDigiCertRequestDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "setPendingMessage">;
   certificateRequestService: TDigiCertCertificateRequestServiceDep;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
-  digicertFns: Pick<TDigiCertCertificateAuthorityFns, "fetchAndAttachIssuedCertificate">;
+  digicertFns: Pick<TDigiCertCertificateAuthorityFns, "fetchAndAttachIssuedCertificate" | "cancelReissue">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
 };
 
 export type TProcessDigiCertRequestResult =
@@ -76,7 +82,7 @@ export type TProcessDigiCertRequestResult =
 
 const getOrCreateClient = async (
   request: TCertificateRequests,
-  deps: Pick<TProcessDigiCertRequestDeps, "certificateAuthorityDAL" | "appConnectionDAL" | "kmsService">,
+  deps: Pick<TProcessDigiCertRequestDeps, "certificateAuthorityDAL" | "appConnectionDAL" | "kmsDataKeyService">,
   clientCache?: Map<string, TDigiCertApiClient>
 ): Promise<TDigiCertApiClient> => {
   if (!request.caId) {
@@ -97,7 +103,7 @@ const getOrCreateClient = async (
     orgId: appConnection.orgId,
     projectId: appConnection.projectId,
     encryptedCredentials: appConnection.encryptedCredentials,
-    kmsService: deps.kmsService
+    kmsDataKeyService: deps.kmsDataKeyService
   })) as TDigiCertConnection["credentials"];
 
   const client = createDigiCertApiClient(credentials.apiKey, getDigiCertApiBaseUrl(credentials));
@@ -133,16 +139,6 @@ export const processDigiCertPendingValidationRequest = async (
   const parsed = parseResult.data as TDigiCertOrderMetadata;
 
   const age = Date.now() - new Date(parsed.digicert.orderPlacedAt).getTime();
-  if (age >= DIGICERT_VALIDATION_TIMEOUT_MS) {
-    await deps.certificateRequestService.updateCertificateRequestStatus({
-      certificateRequestId: request.id,
-      status: CertificateRequestStatus.FAILED,
-      errorMessage: "Validation timed out after 24h"
-    });
-    logger.info(`DigiCert validation timed out [certificateRequestId=${request.id}]`);
-    return { status: CertificateRequestStatus.FAILED, orderStatus: "timeout", reason: "timeout" };
-  }
-
   const client = await getOrCreateClient(request, deps, clientCache);
 
   const orderInfo = await client.getOrder(parsed.digicert.orderId);
@@ -150,15 +146,16 @@ export const processDigiCertPendingValidationRequest = async (
   let newCertificateId = orderInfo.certificate?.id ?? parsed.digicert.certificateId;
   let lastCheckStatus: string | undefined;
 
-  if (orderStatus === DigiCertOrderStatus.Pending) {
+  if (orderStatus === DigiCertOrderStatus.Pending || orderStatus === DigiCertOrderStatus.ReissuePending) {
     const checkResult = await client.checkValidation(parsed.digicert.orderId);
     orderStatus = checkResult.order_status?.toLowerCase() ?? orderStatus;
     newCertificateId = checkResult.certificate_id ?? newCertificateId;
     lastCheckStatus = checkResult.dcv_status ?? orderStatus;
   }
 
+  const isAwaitingReissue = newCertificateId === parsed.digicert.previousCertificateId;
   const isFinalisable = DIGICERT_FINAL_ISSUED_STATUSES.some((status) => status === orderStatus);
-  if (isFinalisable && newCertificateId) {
+  if (isFinalisable && newCertificateId && !isAwaitingReissue) {
     const { certificateId } = await deps.digicertFns.fetchAndAttachIssuedCertificate({
       caId: request.caId,
       certificateRequest: {
@@ -215,6 +212,13 @@ export const processDigiCertPendingValidationRequest = async (
       );
     }
 
+    await deps.certificateAlertEventEmitter.notify({
+      certificateId,
+      projectId: request.projectId,
+      eventType: getIssuanceAlertEvent(parsed.digicert.isRenewal),
+      applicationId: request.applicationId
+    });
+
     return { status: CertificateRequestStatus.ISSUED, certificateId, orderStatus };
   }
 
@@ -227,6 +231,8 @@ export const processDigiCertPendingValidationRequest = async (
     await deps.certificateRequestService.updateCertificateRequestStatus({
       certificateRequestId: request.id,
       status: CertificateRequestStatus.FAILED,
+      operation: parsed.digicert.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
+      originalCertificateId: parsed.digicert.originalCertificateId,
       errorMessage: `DigiCert order ${orderStatus}`
     });
     logger.info(`DigiCert order terminal state [certificateRequestId=${request.id}] [status=${orderStatus}]`);
@@ -235,6 +241,28 @@ export const processDigiCertPendingValidationRequest = async (
       orderStatus,
       reason: `DigiCert order ${orderStatus}`
     };
+  }
+
+  if (age >= DIGICERT_VALIDATION_TIMEOUT_MS) {
+    let errorMessage = "Validation timed out after 24h";
+    if (parsed.digicert.previousCertificateId !== undefined) {
+      const isReissueCanceled = await deps.digicertFns.cancelReissue({
+        caId: request.caId,
+        orderId: parsed.digicert.orderId
+      });
+      errorMessage = isReissueCanceled
+        ? `DigiCert didn't finish the reissue on order ${parsed.digicert.orderId} within 24 hours, so it was canceled. Submit a new request to reissue again.`
+        : `DigiCert didn't finish the reissue on order ${parsed.digicert.orderId} within 24 hours. Cancel the reissue in DigiCert CertCentral and submit a new request. Finishing it in CertCentral won't bring its certificate into Infisical.`;
+    }
+    await deps.certificateRequestService.updateCertificateRequestStatus({
+      certificateRequestId: request.id,
+      status: CertificateRequestStatus.FAILED,
+      operation: parsed.digicert.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
+      originalCertificateId: parsed.digicert.originalCertificateId,
+      errorMessage
+    });
+    logger.info(`DigiCert validation timed out [certificateRequestId=${request.id}]`);
+    return { status: CertificateRequestStatus.FAILED, orderStatus: "timeout", reason: "timeout" };
   }
 
   await deps.certificateRequestDAL.updateById(request.id, {

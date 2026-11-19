@@ -28,7 +28,6 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { formatDateTime } from "@app/helpers/datetime";
-import { useToggle } from "@app/hooks";
 import { TDashboardProxiedService } from "@app/hooks/api/proxiedServices/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
@@ -56,9 +55,10 @@ type Props = {
   environments: { name: string; slug: string }[];
   isProxiedServiceInEnv: (name: string, env: string) => boolean;
   getProxiedServiceByName: (slug: string, name: string) => TDashboardProxiedService | undefined;
-  tableWidth: number;
   onEdit: (proxiedService: TDashboardProxiedService) => void;
   onDelete: (proxiedService: TDashboardProxiedService) => void;
+  isExpanded: boolean;
+  onExpandedChange: (isExpanded: boolean) => void;
 };
 
 export const ProxiedServiceTableRow = ({
@@ -66,12 +66,11 @@ export const ProxiedServiceTableRow = ({
   environments = [],
   isProxiedServiceInEnv,
   getProxiedServiceByName,
-  tableWidth,
   onEdit,
-  onDelete
+  onDelete,
+  isExpanded,
+  onExpandedChange
 }: Props) => {
-  const [isExpanded, setIsExpanded] = useToggle(false);
-
   const isSingleEnvView = environments.length === 1;
   const totalCols = environments.length + 2;
 
@@ -187,7 +186,7 @@ export const ProxiedServiceTableRow = ({
   return (
     <>
       <TableRow
-        onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
+        onClick={isSingleEnvView ? undefined : () => onExpandedChange(!isExpanded)}
         className="group hover:z-10"
       >
         <TableCell
@@ -259,10 +258,7 @@ export const ProxiedServiceTableRow = ({
       {!isSingleEnvView && isExpanded && (
         <TableRow className="border-0 hover:bg-transparent">
           <TableCell colSpan={totalCols} className="border-0 p-0">
-            <div
-              style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 border-y border-border"
-            >
+            <div className="sticky left-0 max-w-(--overview-table-width) min-w-(--overview-table-width) border-y border-border">
               <Table
                 className="w-full min-w-[calc(var(--name-column-width,180px)+24rem)] table-fixed"
                 containerClassName="rounded-none border-0"

@@ -4,6 +4,7 @@ import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService, TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -13,16 +14,14 @@ import { createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { createSshCert, createSshKeyPair, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { constructPemChainFromCerts, prependCertToPemChain } from "@app/services/certificate/certificate-fns";
-import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
   createSerialNumber,
   getNotAfterWithClockSkew,
   getNotBeforeWithClockSkew,
   keyAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
+import { constructPemChainFromCerts, prependCertToPemChain } from "@app/services/certificate/certificate-fns";
+import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -47,7 +46,8 @@ export const relayServiceFactory = ({
   instanceRelayConfigDAL,
   orgRelayConfigDAL,
   relayDAL,
-  kmsService,
+  kmsDataKeyService,
+  kmsRootKeyService,
   permissionService,
   orgDAL,
   notificationService,
@@ -59,7 +59,8 @@ export const relayServiceFactory = ({
   instanceRelayConfigDAL: TInstanceRelayConfigDALFactory;
   orgRelayConfigDAL: TOrgRelayConfigDALFactory;
   relayDAL: TRelayDALFactory;
-  kmsService: TKmsServiceFactory;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsRootKeyService: TKmsRootKeyService;
   permissionService: TPermissionServiceFactory;
   orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -74,6 +75,9 @@ export const relayServiceFactory = ({
       if (existingInstanceRelayConfig) return existingInstanceRelayConfig;
 
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.InstanceRelayConfigInit()]);
+      // Re-read under the lock: a request that waited on it must not create a second one.
+      const lockedInstanceRelayConfig = await instanceRelayConfigDAL.findById(INSTANCE_RELAY_CONFIG_UUID, tx);
+      if (lockedInstanceRelayConfig) return lockedInstanceRelayConfig;
 
       const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
       const rootCaKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
@@ -224,7 +228,7 @@ export const relayServiceFactory = ({
       const instanceSshServerCaKeyPair = await createSshKeyPair(SshCertKeyAlgorithm.RSA_2048);
       const instanceSshClientCaKeyPair = await createSshKeyPair(SshCertKeyAlgorithm.RSA_2048);
 
-      const encryptWithRoot = kmsService.encryptWithRootKey();
+      const encryptWithRoot = kmsRootKeyService.encryptWithRootKey();
 
       // root relay CA
       const encryptedRootRelayPkiCaPrivateKey = encryptWithRoot(
@@ -332,7 +336,7 @@ export const relayServiceFactory = ({
     });
 
     // decrypt the instance config
-    const decryptWithRoot = kmsService.decryptWithRootKey();
+    const decryptWithRoot = kmsRootKeyService.decryptWithRootKey();
 
     // decrypt root relay CA
     const rootRelayPkiCaPrivateKey = decryptWithRoot(instanceConfig.encryptedRootRelayPkiCaPrivateKey);
@@ -410,10 +414,11 @@ export const relayServiceFactory = ({
 
   const $getOrgCAs = async (orgId: string) => {
     const instanceCAs = await $getInstanceCAs();
-    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId
-    });
+    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } =
+      await kmsDataKeyService.createCipherPairWithDataKey({
+        type: KmsDataKey.Organization,
+        orgId
+      });
 
     const orgRelayConfig = await orgRelayConfigDAL.transaction(async (tx) => {
       const existingOrgRelayConfig = await orgRelayConfigDAL.findOne(
@@ -428,6 +433,9 @@ export const relayServiceFactory = ({
       }
 
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.OrgRelayConfigInit(orgId)]);
+      // Re-read under the lock: a request that waited on it must not create a second one.
+      const lockedOrgRelayConfig = await orgRelayConfigDAL.findOne({ orgId }, tx);
+      if (lockedOrgRelayConfig) return lockedOrgRelayConfig;
 
       const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
       const orgRelayCaCert = new x509.X509Certificate(instanceCAs.orgRelayPkiCaCertificate);
@@ -630,10 +638,10 @@ export const relayServiceFactory = ({
     relaySshServerCaPrivateKey
   }: {
     host: string;
-    relayPkiServerCaCertificate: Buffer;
+    relayPkiServerCaCertificate: Buffer<ArrayBuffer>;
     relayPkiServerCaPrivateKey: Buffer;
     relayPkiClientCaCertificateChain: Buffer;
-    relayPkiClientCaCertificate: Buffer;
+    relayPkiClientCaCertificate: Buffer<ArrayBuffer>;
     relaySshServerCaPrivateKey: Buffer;
     relaySshClientCaPublicKey: Buffer;
     orgId?: string;
@@ -735,9 +743,9 @@ export const relayServiceFactory = ({
     gatewayName: string;
     orgId: string;
     orgName: string;
-    relayPkiClientCaCertificate: Buffer;
+    relayPkiClientCaCertificate: Buffer<ArrayBuffer>;
     relayPkiClientCaPrivateKey: Buffer;
-    relayPkiServerCaCertificate: Buffer;
+    relayPkiServerCaCertificate: Buffer<ArrayBuffer>;
     relayPkiServerCaCertificateChain: Buffer;
     duration?: number;
   }) => {
@@ -1306,7 +1314,7 @@ export const relayServiceFactory = ({
     name: string;
     host: string;
     authMethod:
-      | { method: "aws"; config: { stsEndpoint: string; allowedPrincipalArns: string; allowedAccountIds: string } }
+      | { method: "aws"; config: { allowedPrincipalArns: string; allowedAccountIds: string } }
       | { method: "token" };
     actor: {
       type: ActorType;

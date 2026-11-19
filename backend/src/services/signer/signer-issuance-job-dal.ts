@@ -6,17 +6,22 @@ import { TableName, TPkiSignerCertificateIssuanceJobs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-import { SignerIssuanceJobStatus } from "./signer-enums";
+import { CertStatus } from "../certificate/certificate-types";
+import {
+  POLLED_SIGNER_ISSUANCE_JOB_STATUSES,
+  SignerIssuanceJobCancelReason,
+  SignerIssuanceJobStatus
+} from "./signer-enums";
 
 export type TSignerIssuanceJobDALFactory = ReturnType<typeof signerIssuanceJobDALFactory>;
 
 export const signerIssuanceJobDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.PkiSignerCertificateIssuanceJobs);
 
-  const findDuePending = async (now: Date, limit: number, tx?: Knex): Promise<TPkiSignerCertificateIssuanceJobs[]> => {
+  const findDuePolled = async (now: Date, limit: number, tx?: Knex): Promise<TPkiSignerCertificateIssuanceJobs[]> => {
     try {
       return (await (tx || db.replicaNode())(TableName.PkiSignerCertificateIssuanceJobs)
-        .where({ status: SignerIssuanceJobStatus.Pending })
+        .whereIn("status", POLLED_SIGNER_ISSUANCE_JOB_STATUSES)
         .andWhere("nextPollAt", "<=", now)
         .orderBy("nextPollAt", "asc")
         .limit(limit)) as TPkiSignerCertificateIssuanceJobs[];
@@ -25,17 +30,68 @@ export const signerIssuanceJobDALFactory = (db: TDbClient) => {
     }
   };
 
-  const cancelOpenForSigner = async (signerId: string, reason: string, tx?: Knex) => {
+  const findPendingForSignerForUpdate = async (
+    signerId: string,
+    tx: Knex
+  ): Promise<TPkiSignerCertificateIssuanceJobs[]> => {
     try {
-      await (tx || db)(TableName.PkiSignerCertificateIssuanceJobs)
+      return (await tx(TableName.PkiSignerCertificateIssuanceJobs)
         .where({ signerId, status: SignerIssuanceJobStatus.Pending })
+        .forUpdate()) as TPkiSignerCertificateIssuanceJobs[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindPendingSignerIssuanceJobsForUpdate" });
+    }
+  };
+
+  const closePending = async (
+    {
+      jobIds,
+      status,
+      cancelReason,
+      reason
+    }: {
+      jobIds: string[];
+      status: SignerIssuanceJobStatus.Cancelling | SignerIssuanceJobStatus.Cancelled;
+      cancelReason: SignerIssuanceJobCancelReason;
+      reason: string;
+    },
+    tx: Knex
+  ) => {
+    if (!jobIds.length) return;
+    try {
+      await tx(TableName.PkiSignerCertificateIssuanceJobs)
+        .whereIn("id", jobIds)
+        .where({ status: SignerIssuanceJobStatus.Pending })
         .update({
-          status: SignerIssuanceJobStatus.Failed,
+          status,
+          cancelReason,
           failureReason: reason.slice(0, 1000),
+          nextPollAt: new Date(),
           updatedAt: new Date()
         } as Record<string, unknown>);
     } catch (error) {
-      throw new DatabaseError({ error, name: "CancelOpenSignerIssuanceJobs" });
+      throw new DatabaseError({ error, name: "ClosePendingSignerIssuanceJobs" });
+    }
+  };
+
+  const completeIfPending = async (
+    jobId: string,
+    certificateId: string,
+    tx?: Knex
+  ): Promise<TPkiSignerCertificateIssuanceJobs | null> => {
+    try {
+      const [row] = await (tx || db)(TableName.PkiSignerCertificateIssuanceJobs)
+        .where({ id: jobId, status: SignerIssuanceJobStatus.Pending })
+        .update({
+          status: SignerIssuanceJobStatus.Completed,
+          certificateId,
+          failureReason: null,
+          updatedAt: new Date()
+        } as Record<string, unknown>)
+        .returning("*");
+      return row ?? null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CompleteSignerIssuanceJob" });
     }
   };
 
@@ -48,7 +104,8 @@ export const signerIssuanceJobDALFactory = (db: TDbClient) => {
   ): Promise<TPkiSignerCertificateIssuanceJobs | null> => {
     try {
       const [row] = await (tx || db)(TableName.PkiSignerCertificateIssuanceJobs)
-        .where({ id: jobId, status: SignerIssuanceJobStatus.Pending, attempts: expectedAttempts })
+        .where({ id: jobId, attempts: expectedAttempts })
+        .whereIn("status", POLLED_SIGNER_ISSUANCE_JOB_STATUSES)
         .update({
           attempts: expectedAttempts + 1,
           lastAttemptAt,
@@ -76,5 +133,39 @@ export const signerIssuanceJobDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findDuePending, cancelOpenForSigner, claimForAttempt, findLatestForSigner };
+  const findUnrevokedUnownedCertificateId = async (signerId: string, tx: Knex): Promise<string | undefined> => {
+    try {
+      const row = (await tx(TableName.PkiSignerCertificateIssuanceJobs)
+        .join(
+          TableName.Certificate,
+          `${TableName.Certificate}.id`,
+          `${TableName.PkiSignerCertificateIssuanceJobs}.certificateId`
+        )
+        .where(`${TableName.PkiSignerCertificateIssuanceJobs}.signerId`, signerId)
+        .whereIn(`${TableName.PkiSignerCertificateIssuanceJobs}.status`, POLLED_SIGNER_ISSUANCE_JOB_STATUSES)
+        .whereNot(`${TableName.Certificate}.status`, CertStatus.REVOKED)
+        .whereNotExists((qb) => {
+          void qb
+            .select(tx.raw("1"))
+            .from(TableName.PkiSigners)
+            .whereRaw("??.?? = ??.??", [TableName.PkiSigners, "certificateId", TableName.Certificate, "id"]);
+        })
+        .select(`${TableName.Certificate}.id`)
+        .first()) as { id: string } | undefined;
+      return row?.id;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindUnrevokedUnownedSignerIssuanceCertificate" });
+    }
+  };
+
+  return {
+    ...orm,
+    findUnrevokedUnownedCertificateId,
+    findDuePolled,
+    findPendingForSignerForUpdate,
+    closePending,
+    completeIfPending,
+    claimForAttempt,
+    findLatestForSigner
+  };
 };

@@ -2,7 +2,6 @@ import { useFormContext } from "react-hook-form";
 
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
-import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { AwsCertificateManagerPkiSyncFields } from "./AwsCertificateManagerPkiSyncFields";
 import { AwsElasticLoadBalancerPkiSyncFields } from "./AwsElasticLoadBalancerPkiSyncFields";
 import { AwsSecretsManagerPkiSyncFields } from "./AwsSecretsManagerPkiSyncFields";
@@ -11,10 +10,13 @@ import { ChefPkiSyncFields } from "./ChefPkiSyncFields";
 import { CloudflareCustomCertificatePkiSyncFields } from "./CloudflareCustomCertificatePkiSyncFields";
 import { F5BigIpPkiSyncFields } from "./F5BigIpPkiSyncFields";
 import { GcpCertificateManagerPkiSyncFields } from "./GcpCertificateManagerPkiSyncFields";
+import { ImpervaPkiSyncFields } from "./ImpervaPkiSyncFields";
 import { KempLoadMasterPkiSyncFields } from "./KempLoadMasterPkiSyncFields";
 import { LinuxServerPkiSyncFields } from "./LinuxServerPkiSyncFields";
 import { NetScalerPkiSyncFields } from "./NetScalerPkiSyncFields";
 import { NutanixPrismCentralPkiSyncFields } from "./NutanixPrismCentralPkiSyncFields";
+import { PaloAltoNetworksPkiSyncFields } from "./PaloAltoNetworksPkiSyncFields";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { WindowsServerPkiSyncFields } from "./WindowsServerPkiSyncFields";
 
 type Props = {
@@ -43,10 +45,16 @@ export const PkiSyncDestinationFields = ({ isUpdate }: Props) => {
       return <GcpCertificateManagerPkiSyncFields isUpdate={isUpdate} />;
     case PkiSync.NetScaler:
       return <NetScalerPkiSyncFields />;
+    case PkiSync.PaloAltoNetworks:
+      return <PaloAltoNetworksPkiSyncFields />;
+    case PkiSync.PaloAltoNetworksSslTlsProfile:
+      return <PaloAltoNetworksPkiSyncFields withSslTlsServiceProfile />;
     case PkiSync.F5BigIp:
       return <F5BigIpPkiSyncFields />;
     case PkiSync.KempLoadMaster:
       return <KempLoadMasterPkiSyncFields />;
+    case PkiSync.Imperva:
+      return <ImpervaPkiSyncFields />;
     case PkiSync.LinuxServer:
       return <LinuxServerPkiSyncFields />;
     case PkiSync.WindowsServer:

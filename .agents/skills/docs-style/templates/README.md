@@ -65,6 +65,33 @@ step title doesn't work, because steps don't have a `title` prop.
 Links from a sync or rotation page to the organization-level connection steps use
 `/integrations/app-connections/{product}#step-2-create-the-app-connection`.
 
+## Steps that depend on the integration
+
+When a connection needs different setup for each integration that uses it, such as a separate
+permission policy per integration, put a use case picker at the top of the page instead of a tab
+per integration. `snippets/UseCasePicker.jsx` exports two components:
+
+- `<UseCasePicker prefix="I want my {Product} connection to work for" groups={...} />`: a
+  sentence ending in a dropdown where the reader picks one or more integrations
+- `<UseCase use="{id}">`: shows its children only when the reader picked that id, or when they
+  picked nothing, so the page reads as the complete guide by default. `use` takes a
+  comma-separated list for content that several integrations share. Add `hideWhenEmpty` for
+  content that only makes sense next to a filtered result, such as setup notes that follow a
+  combined policy, so it stays hidden until the reader picks something
+
+A `<UseCase>` can hold its own `###` heading. Mintlify builds the "On this page" list at build
+time, so it would still list hidden headings; the picker hides those entries at runtime, so the
+list matches what's on the page
+
+Put the options in `snippets/app-connections/{product}/use-cases.jsx` as an exported array of
+`{ label, options: [{ id, label }] }` groups, import it on the page next to the component, and
+pass it as `groups`. A snippet can't import another snippet, so the page does both imports. The
+picker writes the selection to the URL (`?use=id-1,id-2`), so a reader can share a link to a
+filtered page.
+
+Wrap each integration's content in its own `<UseCase>`, including its card in the
+"Configure integrations" step. `integrations/app-connections/aws.mdx` is the example.
+
 ## Where the example pages differ from the templates
 
 The example pages each template names predate some of the style guide's rules. When you read

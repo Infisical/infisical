@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { HardDriveIcon, UserIcon } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
@@ -18,6 +17,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Pagination,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -28,24 +28,26 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useProject } from "@app/context";
 import {
-  getSigningOperationStatusBadgeVariant,
   SIGNER_TABLE_PAGE_SIZE,
+  SignerStatus,
   SigningActorType,
-  signingAlgorithmLabels,
-  signingOperationStatusLabels,
   TSigner,
   TSigningOperation,
+  getSignerRevocationNote,
+  getSigningOperationStatusBadgeVariant,
+  signingAlgorithmLabels,
+  signingOperationStatusLabels,
   useListSigningOperations
 } from "@app/hooks/api/signers";
 
+import { getCertManagerLink } from "../../cert-manager-link";
 import { ConnectToSignerDrawer } from "./ConnectToSignerDrawer";
 
 type Props = {
   signer: TSigner;
   signerId: string;
-  projectId: string;
 };
 
 const getActorDisplayName = (actorType: SigningActorType, actorName?: string | null) => {
@@ -61,12 +63,11 @@ const getActorDisplayName = (actorType: SigningActorType, actorName?: string | n
   }
 };
 
-export const SigningOperationsTable = ({ signer, signerId, projectId }: Props) => {
+export const SigningOperationsTable = ({ signer, signerId }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(SIGNER_TABLE_PAGE_SIZE);
   const [isConnectOpen, setIsConnectOpen] = useState(false);
-  const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
 
   const { data, isLoading } = useListSigningOperations({
     signerId,
@@ -77,46 +78,31 @@ export const SigningOperationsTable = ({ signer, signerId, projectId }: Props) =
   const operations = data?.operations ?? [];
   const totalCount = data?.totalCount ?? 0;
 
-  const handleActorClick = (op: TSigningOperation) => {
-    if (op.actorType === SigningActorType.User) {
-      if (!op.actorMembershipId) {
-        createNotification({
-          type: "info",
-          text: "This user is no longer a member of this organization."
-        });
-        return;
-      }
-      navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/members/$membershipId",
-        params: {
-          orgId: currentOrg.id,
-          projectId,
-          membershipId: op.actorId
-        }
-      });
-    } else if (op.actorType === SigningActorType.Identity) {
-      if (!op.actorName) {
-        createNotification({
-          type: "info",
-          text: "This identity is no longer a member of this organization."
-        });
-        return;
-      }
-      navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/identities/$identityId",
-        params: {
-          orgId: currentOrg.id,
-          projectId,
-          identityId: op.actorId
-        }
-      });
-    }
-  };
+  const renderActorName = (op: TSigningOperation) => {
+    const actorName = getActorDisplayName(op.actorType, op.actorName);
+    const linkClassName = "font-medium text-accent underline";
 
-  const isActorClickable = (op: TSigningOperation) => {
-    if (op.actorType === SigningActorType.User) return Boolean(op.actorMembershipId);
-    if (op.actorType === SigningActorType.Identity) return Boolean(op.actorName);
-    return false;
+    if (op.actorType === SigningActorType.User && op.actorMembershipId) {
+      return (
+        <Link
+          {...getCertManagerLink(currentProject, `members/${op.actorId}`)}
+          className={linkClassName}
+        >
+          {actorName}
+        </Link>
+      );
+    }
+    if (op.actorType === SigningActorType.Identity && op.actorName) {
+      return (
+        <Link
+          {...getCertManagerLink(currentProject, `identities/${op.actorId}`)}
+          className={linkClassName}
+        >
+          {actorName}
+        </Link>
+      );
+    }
+    return <span className="text-muted">{actorName}</span>;
   };
 
   return (
@@ -125,11 +111,14 @@ export const SigningOperationsTable = ({ signer, signerId, projectId }: Props) =
         <CardHeader>
           <CardTitle>Signing History</CardTitle>
           <CardDescription>Trail of signing operations on this signer.</CardDescription>
-          <CardAction>
-            <Button variant="neutral" size="sm" onClick={() => setIsConnectOpen(true)}>
-              Set up signing
-            </Button>
-          </CardAction>
+          {signer.status !== SignerStatus.Revoked &&
+            signer.status !== SignerStatus.RevocationPending && (
+              <CardAction>
+                <Button variant="neutral" size="sm" onClick={() => setIsConnectOpen(true)}>
+                  Set up signing
+                </Button>
+              </CardAction>
+            )}
         </CardHeader>
         <CardContent>
           {(isLoading || operations.length > 0) && (
@@ -160,21 +149,18 @@ export const SigningOperationsTable = ({ signer, signerId, projectId }: Props) =
                   operations.map((op) => (
                     <TableRow
                       key={op.id}
-                      className="cursor-pointer transition-colors hover:bg-surface-hover [&>td]:py-3"
-                      onClick={() =>
-                        navigate({
-                          to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId/operations/$operationId",
-                          params: {
-                            orgId: currentOrg.id,
-                            projectId,
-                            signerId,
-                            operationId: op.id
-                          }
-                        })
-                      }
+                      linked
+                      className="transition-colors hover:bg-surface-hover [&>td]:py-3"
                     >
                       <TableCell>
-                        {format(new Date(op.createdAt), "MMM d, yyyy HH:mm:ss")}
+                        <RowLink
+                          {...getCertManagerLink(
+                            currentProject,
+                            `code-signing/${signerId}/operations/${op.id}`
+                          )}
+                        >
+                          {format(new Date(op.createdAt), "MMM d, yyyy HH:mm:ss")}
+                        </RowLink>
                       </TableCell>
                       <TableCell>
                         <Badge variant={getSigningOperationStatusBadgeVariant(op.status)}>
@@ -187,7 +173,7 @@ export const SigningOperationsTable = ({ signer, signerId, projectId }: Props) =
                       <TableCell className="max-w-[120px] truncate font-mono text-xs">
                         {op.dataHash}
                       </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+                      <TableCell>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <div className="flex items-center gap-1.5">
@@ -196,19 +182,7 @@ export const SigningOperationsTable = ({ signer, signerId, projectId }: Props) =
                               ) : (
                                 <HardDriveIcon className="size-3.5 text-muted" />
                               )}
-                              <button
-                                type="button"
-                                onClick={
-                                  isActorClickable(op) ? () => handleActorClick(op) : undefined
-                                }
-                                className={
-                                  isActorClickable(op)
-                                    ? "cursor-pointer font-medium text-accent underline"
-                                    : "text-muted"
-                                }
-                              >
-                                {getActorDisplayName(op.actorType, op.actorName)}
-                              </button>
+                              {renderActorName(op)}
                             </div>
                           </TooltipTrigger>
                           <TooltipContent>{op.actorName ?? op.actorId}</TooltipContent>
@@ -224,7 +198,8 @@ export const SigningOperationsTable = ({ signer, signerId, projectId }: Props) =
               <EmptyHeader>
                 <EmptyTitle>No signing activity yet</EmptyTitle>
                 <EmptyDescription>
-                  Set up a signing tool on your machine to start signing with this Signer.
+                  {getSignerRevocationNote(signer, { isDetailed: true }) ??
+                    "Set up a signing tool on your machine to start signing with this Signer."}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>

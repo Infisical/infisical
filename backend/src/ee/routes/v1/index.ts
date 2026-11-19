@@ -42,7 +42,6 @@ import { registerPkiInstallationRouter } from "./pki-installation-router";
 import { registerProjectRoleRouter } from "./project-role-router";
 import { registerProjectRouter } from "./project-router";
 import { registerProxiedServiceRouter } from "./proxied-service-router";
-import { registerRateLimitRouter } from "./rate-limit-router";
 import { registerRelayRouter } from "./relay-router";
 import { registerRemovedProductTombstoneRouter } from "./removed-product-tombstone-router";
 import { registerSamlRouter } from "./saml-router";
@@ -90,7 +89,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
 
   await server.register(registerAccessApprovalPolicyRouter, { prefix: "/access-approvals/policies" });
   await server.register(registerAccessApprovalRequestRouter, { prefix: "/access-approvals/requests" });
-  await server.register(registerRateLimitRouter, { prefix: "/rate-limit" });
 
   await server.register(
     async (dynamicSecretRouter) => {

@@ -738,7 +738,8 @@ export const CreateDynamicSecretLease = ({
     return <Spinner className="mx-auto my-12" label="Provisioning lease" />;
   }
 
-  const { fixedTtl } = leaseCapabilities;
+  const { fixedTtl, ttlDescription } = leaseCapabilities;
+  const ttlFeedback = fixedTtl ? `This provider has a fixed TTL of ${fixedTtl}.` : ttlDescription;
 
   if (isOutputMode) {
     return renderOutputForm(
@@ -763,13 +764,13 @@ export const CreateDynamicSecretLease = ({
               disabled={Boolean(fixedTtl)}
               isError={Boolean(error)}
               aria-describedby={
-                fixedTtl || error?.message ? "dynamic-secret-lease-ttl-feedback" : undefined
+                ttlFeedback || error?.message ? "dynamic-secret-lease-ttl-feedback" : undefined
               }
             />
-            {(fixedTtl || error?.message) && (
+            {(ttlFeedback || error?.message) && (
               <FieldFeedback
                 id="dynamic-secret-lease-ttl-feedback"
-                description={fixedTtl ? `This provider has a fixed TTL of ${fixedTtl}.` : undefined}
+                description={ttlFeedback}
                 error={error?.message}
               />
             )}

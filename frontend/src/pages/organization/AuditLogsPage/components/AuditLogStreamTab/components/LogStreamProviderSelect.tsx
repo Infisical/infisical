@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Loader2Icon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { AuditLogStreamsUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { ProviderIcon } from "@app/components/v3";
 import { AUDIT_LOG_STREAM_PROVIDER_MAP } from "@app/helpers/auditLogStreams";
 import { usePopUp } from "@app/hooks";
@@ -83,12 +83,14 @@ export const LogStreamProviderSelect = ({ onSelect }: Props) => {
           );
         })}
       </div>
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="organization.log-stream-provider-select"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Your current plan does not include access to this audit log stream provider. To unlock this feature, please upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+        intent={{
+          ...AuditLogStreamsUpgradeIntent,
+          isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
+        }}
       />
     </div>
   );

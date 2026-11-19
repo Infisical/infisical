@@ -1,0 +1,67 @@
+---
+title: "Oracle credential rotation for PAM"
+sidebarTitle: "Oracle"
+description: "Rotate the passwords of Oracle accounts."
+---
+
+This page covers what's specific to rotating the password of an [Oracle account](/documentation/platform/pam/accounts/oracledb). To turn on rotation and set a rotation account, see [Credential rotation](/documentation/platform/pam/credential-rotation/overview).
+
+## Prerequisites
+
+- A [Gateway](/documentation/platform/gateways/overview) running v0.43.133 or later
+- A rotation account with a password of 30 characters or fewer (see [Password length](#password-length))
+
+## Rotation account
+
+The rotation account needs permission to change the target user's password:
+
+- **The account itself:** An Oracle user can change its own password, so it needs no privileges beyond `CREATE SESSION`
+- **A different account:** The rotation account needs the `ALTER USER` system privilege
+
+For example, to create a rotation user and a user for it to rotate:
+
+```sql
+-- the user that Infisical signs in as to rotate passwords
+CREATE USER infisical_rotator IDENTIFIED BY "<temporary-password>";
+GRANT CREATE SESSION TO infisical_rotator;
+GRANT ALTER USER TO infisical_rotator;
+
+-- the user whose password Infisical rotates
+CREATE USER app_user IDENTIFIED BY "<temporary-password>";
+GRANT CREATE SESSION TO app_user;
+```
+
+Add both users to Infisical PAM as Oracle accounts with the same host, port, and service name, then select `infisical_rotator` as the rotation account on the `app_user` account's **Rotation** tab. Oracle scopes each user to one database, so a rotation account that connects to a different service name can't find the target user.
+
+## How the password is changed
+
+Infisical signs in as the rotation account, using the account's connection details and SSL settings, and runs:
+
+```sql
+ALTER USER "<target-username>" IDENTIFIED BY "<generated-password>";
+```
+
+If the account rotates its own password, the statement also includes the current password, which Oracle requires when a password policy is in force:
+
+```sql
+ALTER USER "<target-username>" IDENTIFIED BY "<generated-password>" REPLACE "<current-password>";
+```
+
+## Password length
+
+Infisical can't generate an Oracle password longer than 30 characters, and an Oracle template doesn't accept a **Min length** above 30.
+
+Oracle itself accepts longer passwords, but the Gateway can't sign in with them. If Infisical generated a longer password, it could no longer reach, check, or rotate the account.
+
+If the rotation account's own password is longer than 30 characters, the rotation account can't sign in, so change its password to 30 characters or fewer.
+
+## Troubleshooting
+
+If sessions on an account work but rotation fails with one of these errors, the account's username probably doesn't match the case that Oracle stored:
+
+- `ORA-01031: insufficient privileges`, if the account rotates its own password
+- `ORA-01918: user does not exist`, if a different account rotates the password
+
+The rotation statement matches the username exactly. Change the account's username to the case that Oracle stored, which is uppercase unless the user was created with a quoted name.
+
+If a different rotation account returns `ORA-01031` and the username is correct, grant the rotation account the `ALTER USER` privilege.

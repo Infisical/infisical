@@ -4,7 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 import { TReactQueryOptions } from "@app/types/reactQuery";
 
+import { DelegatedApprovalRequestStatus } from "../delegatedApprovals/enums";
 import { TProjectPermission } from "../roles/types";
+import { isDelegatedDispatchRetrying } from "./retrying-delegated-dispatch";
 import {
   TAccessApprovalPolicy,
   TAccessApprovalRequest,
@@ -12,6 +14,8 @@ import {
   TGetAccessApprovalRequestsDTO,
   TGetAccessPolicyApprovalCountDTO
 } from "./types";
+
+const DELEGATED_DISPATCH_POLL_MS = 2000;
 
 export const accessApprovalKeys = {
   getAccessApprovalPolicies: (projectSlug: string) =>
@@ -135,5 +139,14 @@ export const useGetAccessApprovalRequests = ({
     ...options,
     enabled: Boolean(projectSlug) && (options?.enabled ?? true),
     placeholderData: (previousData) => previousData,
-    refetchInterval: options?.refetchInterval ?? 30_000
+    refetchInterval:
+      options?.refetchInterval ??
+      ((query) =>
+        query.state.data?.some(
+          (request) =>
+            isDelegatedDispatchRetrying(request.id) ||
+            request.delegatedApproval?.status === DelegatedApprovalRequestStatus.PendingDispatch
+        )
+          ? DELEGATED_DISPATCH_POLL_MS
+          : 30_000)
   });

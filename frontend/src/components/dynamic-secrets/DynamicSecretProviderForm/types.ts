@@ -39,6 +39,8 @@ export type TDynamicSecretProviderCommonFields = {
   name?: TDynamicSecretProviderCommonField;
   defaultTTL?: TDynamicSecretProviderCommonField;
   maxTTL?: TDynamicSecretProviderCommonField;
+  // applies to both TTL fields, so it renders once below the row instead of under each input
+  ttlDescription?: string;
   environment?: TDynamicSecretProviderCommonField;
   configurationHeading?: string | false;
 };

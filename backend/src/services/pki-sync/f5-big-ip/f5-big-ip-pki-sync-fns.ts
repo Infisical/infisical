@@ -12,9 +12,9 @@ import {
   F5_BIG_IP_LOGIN_PROVIDER
 } from "@app/services/app-connection/f5-big-ip/f5-big-ip-connection-fns";
 import { TF5BigIpConnection } from "@app/services/app-connection/f5-big-ip/f5-big-ip-connection-types";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
 
 import {
@@ -1020,10 +1020,10 @@ export const f5BigIpPkiSyncFactory = ({
             }
 
             if (partitionCandidates.length > 0) {
-              const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(
-                partitionCandidates,
-                pkiSync.id
-              );
+              const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(partitionCandidates, {
+                excludePkiSyncId: pkiSync.id,
+                destination: pkiSync.destination
+              });
               for (const certName of partitionCandidates) {
                 if (!ownedByOtherSync.has(certName)) {
                   certNamesToRemove.add(certName);

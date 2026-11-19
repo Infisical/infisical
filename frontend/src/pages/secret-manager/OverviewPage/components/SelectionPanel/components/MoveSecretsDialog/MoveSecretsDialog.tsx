@@ -18,6 +18,10 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  SecretSyncMoveWarning,
+  useSecretSyncMoveWarning
+} from "@app/components/secret-syncs/SecretSyncMoveWarning";
+import {
   Alert,
   AlertDescription,
   AlertTitle,
@@ -52,6 +56,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
+import { TItemMove } from "@app/helpers/secretSyncCoverage";
 import { removeTrailingSlash } from "@app/helpers/string";
 import { useMoveSecrets } from "@app/hooks/api";
 import {
@@ -73,6 +78,7 @@ import {
 } from "@app/hooks/api/secretFolders/queries";
 import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
 import { TSecretRotationV2, useMoveSecretRotation } from "@app/hooks/api/secretRotationsV2";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
 type Props = {
@@ -378,7 +384,6 @@ const DestinationPathField = ({
 
       // Create each segment in order so a typed path such as /apps/api creates both levels.
       // The get-or-create mutation keeps retries idempotent after a partial failure.
-      // eslint-disable-next-line no-restricted-syntax
       for await (const segment of getPathSegments(path)) {
         const currentParentPath = parentPath;
         const environmentsMissingSegment = missingCreationTargets
@@ -538,6 +543,42 @@ const buildDestinationTargets = ({
   });
 
   return { checks: isSelfMove ? [] : checks, isSelfMove };
+};
+
+// one move per path the items land at. a moved folder always lands at a new path (the backend rejects a
+// name clash), so only recursive syncs above it can cover it or anything inside it.
+const buildItemMoves = ({
+  sourceSecretPath,
+  destinationPath,
+  secretEnvironments,
+  movedFolders
+}: {
+  sourceSecretPath: string;
+  destinationPath?: string;
+  secretEnvironments: { sourceEnv: string; destinationEnvironment: string }[];
+  movedFolders: MovedFolder[];
+}): TItemMove[] => {
+  if (!destinationPath) return [];
+
+  const secretMoves = secretEnvironments.map(({ sourceEnv, destinationEnvironment }) => ({
+    source: { environment: sourceEnv, secretPath: removeTrailingSlash(sourceSecretPath) },
+    destination: {
+      environment: destinationEnvironment,
+      secretPath: removeTrailingSlash(destinationPath)
+    }
+  }));
+  const folderMoves = movedFolders.map(({ folderName, sourceEnv, destinationEnvironment }) => ({
+    source: {
+      environment: sourceEnv,
+      secretPath: `${removeTrailingSlash(sourceSecretPath)}/${folderName}`
+    },
+    destination: {
+      environment: destinationEnvironment,
+      secretPath: `${removeTrailingSlash(destinationPath)}/${folderName}`
+    }
+  }));
+
+  return [...secretMoves, ...folderMoves];
 };
 
 // memoizes the destination checks for the moved folders and runs the destination approval-policy eligibility
@@ -878,6 +919,33 @@ const SingleEnvContent = ({
       destinationPath: destinationSelected ? selectedPath?.secretPath : undefined
     });
 
+  const hasSecretsToMove =
+    Object.values(secrets).some((secretRecord) => Boolean(secretRecord[sourceEnv.slug])) ||
+    Object.values(rotations).some((rotationRecord) => Boolean(rotationRecord[sourceEnv.slug]));
+
+  const itemMoves = useMemo(
+    () =>
+      buildItemMoves({
+        sourceSecretPath,
+        destinationPath: destinationSelected && !isSelfMove ? selectedPath?.secretPath : undefined,
+        secretEnvironments: hasSecretsToMove
+          ? [{ sourceEnv: sourceEnv.slug, destinationEnvironment: selectedEnvironment }]
+          : [],
+        movedFolders
+      }),
+    [
+      sourceSecretPath,
+      destinationSelected,
+      isSelfMove,
+      selectedPath?.secretPath,
+      hasSecretsToMove,
+      sourceEnv.slug,
+      selectedEnvironment,
+      movedFolders
+    ]
+  );
+  const secretSyncWarning = useSecretSyncMoveWarning(projectId, itemMoves);
+
   const handleFormSubmit = async (data: TSingleEnvFormSchema) => {
     if (!selectedPath) {
       createNotification({
@@ -912,26 +980,31 @@ const SingleEnvContent = ({
 
     let isDestinationUpdated = true;
     let isSourceUpdated = true;
+    let secretMoveSucceeded = false;
 
     if (secretsToMove.length) {
-      const result = await moveSecrets.mutateAsync({
-        shouldOverwrite: data.shouldOverwrite,
-        sourceEnvironment: sourceEnv.slug,
-        sourceSecretPath,
-        destinationEnvironment: data.environment,
-        destinationSecretPath: selectedPath.secretPath,
-        projectId,
-        projectSlug,
-        secretIds: secretsToMove.map((sec) => sec.id)
-      });
-      isDestinationUpdated = result.isDestinationUpdated;
-      isSourceUpdated = result.isSourceUpdated;
+      try {
+        const result = await moveSecrets.mutateAsync({
+          shouldOverwrite: data.shouldOverwrite,
+          sourceEnvironment: sourceEnv.slug,
+          sourceSecretPath,
+          destinationEnvironment: data.environment,
+          destinationSecretPath: selectedPath.secretPath,
+          projectId,
+          projectSlug,
+          secretIds: secretsToMove.map((sec) => sec.id)
+        });
+        isDestinationUpdated = result.isDestinationUpdated;
+        isSourceUpdated = result.isSourceUpdated;
+        secretMoveSucceeded = true;
+      } catch (error) {
+        showSecretWriteErrors([{ error }]);
+        if (!foldersToMove.length && !rotationsToMove.length) return;
+      }
     }
 
-    const rotationFailures: { name: string; message: string }[] = [];
     let rotationSuccessCount = 0;
 
-    // eslint-disable-next-line no-restricted-syntax
     for await (const rotation of rotationsToMove) {
       try {
         await moveSecretRotation.mutateAsync({
@@ -945,20 +1018,13 @@ const SingleEnvContent = ({
         });
         rotationSuccessCount += 1;
       } catch (error) {
-        let message = (error as Error)?.message ?? "Failed to move rotation";
-        if (axios.isAxiosError(error)) {
-          const responseMessage = (error?.response?.data as { message?: string })?.message;
-          if (responseMessage) message = responseMessage;
-        }
-        rotationFailures.push({ name: rotation.name, message });
+        showSecretWriteErrors([{ error }]);
       }
     }
 
-    const folderFailures: { name: string; message: string }[] = [];
     let folderSuccessCount = 0;
     let folderApprovalCount = 0;
 
-    // eslint-disable-next-line no-restricted-syntax
     for await (const folder of foldersToMove) {
       try {
         const result = await moveFolder.mutateAsync({
@@ -973,16 +1039,13 @@ const SingleEnvContent = ({
         folderSuccessCount += 1;
         if (result.hasApprovalRequests) folderApprovalCount += 1;
       } catch (error) {
-        let message = (error as Error)?.message ?? "Failed to move folder";
-        if (axios.isAxiosError(error)) {
-          const responseMessage = (error?.response?.data as { message?: string })?.message;
-          if (responseMessage) message = responseMessage;
-        }
-        folderFailures.push({ name: folder.name, message });
+        showSecretWriteErrors([{ error }]);
       }
     }
 
-    if (secretsToMove.length) {
+    if (!secretMoveSucceeded && !rotationSuccessCount && !folderSuccessCount) return;
+
+    if (secretMoveSucceeded) {
       if (isDestinationUpdated && isSourceUpdated) {
         createNotification({
           type: "success",
@@ -1024,15 +1087,6 @@ const SingleEnvContent = ({
                 folderSuccessCount === 1 ? "" : "s"
               }. Approval requests were generated for change-policy protected paths.`
             : `Successfully moved ${folderSuccessCount} folder${folderSuccessCount === 1 ? "" : "s"}`
-      });
-    }
-
-    if (folderFailures.length > 0) {
-      createNotification({
-        type: "error",
-        text: `Failed to move ${folderFailures.length} folder${
-          folderFailures.length === 1 ? "" : "s"
-        }: ${folderFailures.map((f) => f.name).join(", ")}`
       });
     }
 
@@ -1106,6 +1160,12 @@ const SingleEnvContent = ({
         environments={environments}
       />
       <FolderRbacPoliciesWarning folderNames={foldersWithRbacPolicies} />
+      <SecretSyncMoveWarning
+        warning={secretSyncWarning}
+        projectId={projectId}
+        noun={moveCopy.noun}
+        verb="moved"
+      />
       <DialogFooter className="items-center">
         {showOverwriteOption && (
           <Controller
@@ -1135,7 +1195,8 @@ const SingleEnvContent = ({
             isCreatingFolder ||
             isSelfMove ||
             isCheckingDestination ||
-            isDestinationBlocked
+            isDestinationBlocked ||
+            secretSyncWarning.isBlockingSubmit
           }
           isPending={isSubmitting}
         >
@@ -1261,6 +1322,36 @@ const MultiEnvContent = ({
       destinationPath: destinationSelected ? selectedPath?.secretPath : undefined
     });
 
+  const itemMoves = useMemo(
+    () =>
+      buildItemMoves({
+        sourceSecretPath,
+        destinationPath: destinationSelected && !isSelfMove ? selectedPath?.secretPath : undefined,
+        secretEnvironments: environments
+          .filter(
+            ({ slug }) =>
+              (Object.values(secrets).some((secretRecord) => Boolean(secretRecord[slug])) &&
+                !moveEligibility[slug].cannotMoveSecrets) ||
+              (Object.values(rotations).some((rotationRecord) => Boolean(rotationRecord[slug])) &&
+                !moveEligibility[slug].cannotMoveRotations)
+          )
+          .map(({ slug }) => ({ sourceEnv: slug, destinationEnvironment: slug })),
+        movedFolders
+      }),
+    [
+      sourceSecretPath,
+      destinationSelected,
+      isSelfMove,
+      selectedPath?.secretPath,
+      environments,
+      secrets,
+      rotations,
+      moveEligibility,
+      movedFolders
+    ]
+  );
+  const secretSyncWarning = useSecretSyncMoveWarning(projectId, itemMoves);
+
   const environmentsToBeSkipped = useMemo(() => {
     if (!destinationSelected) return [];
 
@@ -1341,7 +1432,6 @@ const MultiEnvContent = ({
       })
     );
 
-    // eslint-disable-next-line no-restricted-syntax
     for await (const environment of environments) {
       const envSlug = environment.slug;
 
@@ -1409,7 +1499,7 @@ const MultiEnvContent = ({
         } catch (error) {
           let errorMessage = (error as Error)?.message ?? "Failed to move secrets";
           if (axios.isAxiosError(error)) {
-            const { message } = error?.response?.data as { message: string };
+            const { message } = (error.response?.data ?? {}) as { message: string };
             if (message) errorMessage = message;
           }
 
@@ -1422,7 +1512,6 @@ const MultiEnvContent = ({
         }
       }
 
-      // eslint-disable-next-line no-restricted-syntax
       for await (const rotation of rotationsToMove) {
         try {
           await moveSecretRotation.mutateAsync({
@@ -1457,7 +1546,6 @@ const MultiEnvContent = ({
         }
       }
 
-      // eslint-disable-next-line no-restricted-syntax
       for await (const folder of foldersToMove) {
         try {
           const { hasApprovalRequests } = await moveFolder.mutateAsync({
@@ -1575,6 +1663,12 @@ const MultiEnvContent = ({
         environments={environments}
       />
       <FolderRbacPoliciesWarning folderNames={foldersWithRbacPolicies} />
+      <SecretSyncMoveWarning
+        warning={secretSyncWarning}
+        projectId={projectId}
+        noun={moveCopy.noun}
+        verb="moved"
+      />
       <DialogFooter className="items-center">
         {showOverwriteOption && (
           <Controller
@@ -1604,7 +1698,8 @@ const MultiEnvContent = ({
             isCreatingFolder ||
             isSelfMove ||
             isCheckingDestination ||
-            isDestinationBlocked
+            isDestinationBlocked ||
+            secretSyncWarning.isBlockingSubmit
           }
           isPending={isSubmitting}
         >

@@ -1,7 +1,7 @@
 import * as x509 from "@peculiar/x509";
 import { describe, expect, it } from "vitest";
 
-import { extractCertificateRequestFromCSR } from "./certificate-csr-utils";
+import { assertCsrMatchesCertificate, extractCertificateRequestFromCSR } from "./certificate-csr-utils";
 
 // the extraction every CSR-based enrollment shares; fixtures produced with openssl
 const WINDOWS_ORDER_CSR = `-----BEGIN CERTIFICATE REQUEST-----
@@ -125,5 +125,86 @@ describe("extractCertificateRequestFromCSR custom extensions", () => {
     ]);
 
     expect(extractCertificateRequestFromCSR(csr).customExtensions?.map((entry) => entry.oid)).toEqual([CUSTOM_OID]);
+  });
+});
+
+describe("assertCsrMatchesCertificate", () => {
+  const ALG = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
+
+  const generateKeys = () => crypto.subtle.generateKey(ALG, true, ["sign", "verify"]);
+
+  const sanExtension = (names: string[]) =>
+    names.length
+      ? [new x509.SubjectAlternativeNameExtension(names.map((value) => ({ type: "dns" as const, value })))]
+      : [];
+
+  const buildCsr = async (keys: CryptoKeyPair, altNames: string[] = []) =>
+    x509.Pkcs10CertificateRequestGenerator.create({
+      name: "CN=web.example.com",
+      keys,
+      signingAlgorithm: ALG,
+      extensions: sanExtension(altNames)
+    });
+
+  const buildCertificate = async (keys: CryptoKeyPair, altNames: string[] = []) =>
+    x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "01",
+      name: "CN=web.example.com",
+      notBefore: new Date("2026-01-01"),
+      notAfter: new Date("2027-01-01"),
+      keys,
+      signingAlgorithm: ALG,
+      extensions: sanExtension(altNames)
+    });
+
+  it("accepts a CSR generated from the certificate's private key", async () => {
+    const keys = await generateKeys();
+    const [csr, certificate] = await Promise.all([buildCsr(keys), buildCertificate(keys)]);
+
+    await expect(assertCsrMatchesCertificate(csr.toString("pem"), certificate)).resolves.toBeUndefined();
+  });
+
+  it("refuses a CSR generated from a different key", async () => {
+    const [certificateKeys, otherKeys] = await Promise.all([generateKeys(), generateKeys()]);
+    const [csr, certificate] = await Promise.all([buildCsr(otherKeys), buildCertificate(certificateKeys)]);
+
+    await expect(assertCsrMatchesCertificate(csr.toString("pem"), certificate)).rejects.toThrow(
+      /generated from a different key than the certificate/
+    );
+  });
+
+  it("refuses a CSR whose signature does not verify", async () => {
+    const keys = await generateKeys();
+    const [csr, certificate] = await Promise.all([buildCsr(keys), buildCertificate(keys)]);
+    const tampered = new Uint8Array(csr.rawData.slice(0));
+    tampered[tampered.length - 1] = 255 - tampered[tampered.length - 1];
+    const tamperedPem = new x509.Pkcs10CertificateRequest(tampered.buffer).toString("pem");
+
+    await expect(assertCsrMatchesCertificate(tamperedPem, certificate)).rejects.toThrow(/signature is invalid/);
+  });
+
+  it("refuses a CSR naming something the certificate doesn't", async () => {
+    const keys = await generateKeys();
+    const [csr, certificate] = await Promise.all([buildCsr(keys, ["admin.example.com"]), buildCertificate(keys)]);
+
+    await expect(assertCsrMatchesCertificate(csr.toString("pem"), certificate)).rejects.toThrow(
+      /includes 'admin.example.com', which the certificate doesn't/
+    );
+  });
+
+  it("accepts a CSR when the CA added names to the certificate at issuance", async () => {
+    const keys = await generateKeys();
+    const [csr, certificate] = await Promise.all([
+      buildCsr(keys),
+      buildCertificate(keys, ["web.example.com", "www.example.com"])
+    ]);
+
+    await expect(assertCsrMatchesCertificate(csr.toString("pem"), certificate)).resolves.toBeUndefined();
+  });
+
+  it("refuses text that is not a CSR", async () => {
+    const certificate = await buildCertificate(await generateKeys());
+
+    await expect(assertCsrMatchesCertificate("not a csr", certificate)).rejects.toThrow(/could not be parsed/);
   });
 });

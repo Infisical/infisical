@@ -21,8 +21,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  ConfirmationAlertDialog,
   CopyButton,
-  DeleteConfirmDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -319,7 +319,7 @@ export const OrgOauthClientsTab = () => {
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteClient.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteClient", isOpen)}
         title={`Delete "${clientPendingDeletion?.name ?? ""}"?`}

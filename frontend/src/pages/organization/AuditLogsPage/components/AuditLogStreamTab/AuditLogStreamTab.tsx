@@ -1,6 +1,6 @@
 import { PlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { AuditLogStreamsUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -12,12 +12,16 @@ import {
   CardTitle,
   DocumentationLinkBadge
 } from "@app/components/v3";
-import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
+import {
+  OrgPermissionAuditLogsActions,
+  OrgPermissionSubjects,
+  useSubscription
+} from "@app/context";
 import { withPermission } from "@app/hoc";
 import { usePopUp, useScopeVariant } from "@app/hooks";
 
+import { AddAuditLogStreamModal, AuditLogStreamAlertAction } from "./components";
 import { AuditLogStreamTable } from "./components/AuditLogStreamTable";
-import { AddAuditLogStreamModal } from "./components";
 
 export const AuditLogStreamsTab = withPermission(
   () => {
@@ -40,8 +44,12 @@ export const AuditLogStreamsTab = withPermission(
             <CardDescription>
               Send audit logs from Infisical to external logging providers via HTTP
             </CardDescription>
-            <CardAction>
-              <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Settings}>
+            <CardAction className="flex items-center gap-2">
+              <AuditLogStreamAlertAction />
+              <OrgPermissionCan
+                I={OrgPermissionAuditLogsActions.Edit}
+                a={OrgPermissionSubjects.AuditLogStreams}
+              >
                 {(isAllowed) => (
                   <Button
                     variant={scopeVariant}
@@ -71,19 +79,21 @@ export const AuditLogStreamsTab = withPermission(
           isOpen={popUp.auditLogStreamForm.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("auditLogStreamForm", isOpen)}
         />
-        <UpgradePlanModal
+        <UpgradeGate
           paywallKey="organization.audit-log-stream"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text="Your current plan does not include access to audit log streams. To unlock this feature, please upgrade to Infisical Enterprise plan."
-          isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+          intent={{
+            ...AuditLogStreamsUpgradeIntent,
+            isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
+          }}
         />
       </>
     );
   },
   {
-    action: OrgPermissionActions.Read,
-    subject: OrgPermissionSubjects.Settings,
+    action: OrgPermissionAuditLogsActions.Read,
+    subject: OrgPermissionSubjects.AuditLogStreams,
     accessRestrictedMode: "dialog"
   }
 );

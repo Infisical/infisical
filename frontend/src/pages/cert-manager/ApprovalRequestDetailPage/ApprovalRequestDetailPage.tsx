@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { faBan, faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
@@ -7,8 +6,22 @@ import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { ConfirmActionModal, ContentLoader, EmptyState } from "@app/components/v2";
-import { Badge, Button } from "@app/components/v3";
+import { PageTitle } from "@app/components/PageTitle";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  ConfirmationAlertDialog,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  PageLoader
+} from "@app/components/v3";
 import { useOrganization, useProject, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
@@ -16,16 +29,20 @@ import {
   approvalRequestQuery,
   ApprovalRequestStatus,
   CertRequestRequestData,
+  CertRevocationRequestData,
   CodeSigningRequestData,
   useCancelApprovalRequest
 } from "@app/hooks/api/approvalRequests";
+import { crlReasonToNameMap } from "@app/hooks/api/certificates/constants";
 import { useGetPkiApplicationById } from "@app/hooks/api/pkiApplications";
+import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import {
   CodeSigningScopeField,
   codeSigningScopeFieldLabels,
   MONOSPACED_SCOPE_FIELDS
 } from "@app/hooks/api/signers";
 import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
+import { getCertManagerLink } from "@app/pages/cert-manager/cert-manager-link";
 
 import {
   ApprovalStepsSection,
@@ -34,7 +51,79 @@ import {
 } from "./components";
 
 const ROUTE_ID =
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approvals/$approvalRequestId" as const;
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/approvals/$approvalRequestId" as const;
+
+const RevocationDetailsSection = ({
+  requestProject,
+  requestData,
+  isPending,
+  requesterName,
+  requesterEmail
+}: {
+  requestProject: Pick<Project, "id" | "type" | "orgId">;
+  requestData: CertRevocationRequestData;
+  isPending: boolean;
+  requesterName?: string;
+  requesterEmail?: string;
+}) => (
+  <div className="flex flex-col gap-4">
+    <Card>
+      <CardHeader>
+        <CardTitle role="heading" aria-level={2}>
+          Requested by
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm font-medium text-foreground">{requesterName || "Unknown"}</p>
+        {requesterEmail && <p className="text-sm text-muted">{requesterEmail}</p>}
+      </CardContent>
+    </Card>
+    <Card>
+      <CardHeader>
+        <CardTitle role="heading" aria-level={3}>
+          Revocation Details
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <span className="text-xs text-muted">Certificate</span>
+            <p className="text-sm text-foreground">
+              <Link
+                {...getCertManagerLink(requestProject, `certificates/${requestData.certificateId}`)}
+                className="font-mono underline hover:text-foreground-secondary"
+              >
+                {requestData.commonName || requestData.serialNumber.toUpperCase()}
+              </Link>
+            </p>
+          </div>
+          <div>
+            <span className="text-xs text-muted">Revocation Reason</span>
+            <p className="text-sm text-foreground">
+              {crlReasonToNameMap[requestData.revocationReason] ?? requestData.revocationReason}
+            </p>
+          </div>
+          <div>
+            <span className="text-xs text-muted">Serial Number</span>
+            <p className="font-mono text-xs break-all text-foreground">
+              {requestData.serialNumber.toUpperCase()}
+            </p>
+          </div>
+          <div>
+            <span className="text-xs text-muted">Profile</span>
+            <p className="font-mono text-xs text-foreground">{requestData.profileName}</p>
+          </div>
+        </div>
+        {isPending && (
+          <p className="mt-4 border-t border-border-control pt-4 text-xs text-muted">
+            The certificate isn&apos;t revoked until this request is approved. Once approved, it is
+            revoked with the reason above and added to its CA&apos;s revocation list.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  </div>
+);
 
 const CodeSigningDetailsSection = ({
   requestData,
@@ -47,73 +136,85 @@ const CodeSigningDetailsSection = ({
 }) => {
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-lg border border-border-control bg-surface-base p-4">
-        <h2 className="text-lg font-medium text-foreground">
-          Signing access for {requestData.signerName}
-        </h2>
-        <div className="mt-4 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-hover text-sm font-medium text-foreground-secondary">
-            {(requesterName || "U")
-              .split(" ")
-              .map((n) => n[0])
-              .join("")
-              .slice(0, 2)
-              .toUpperCase()}
-          </div>
-          <div>
-            <p className="text-sm font-medium text-foreground">{requesterName || "Unknown"}</p>
-            {requesterEmail && <p className="text-sm text-muted">{requesterEmail}</p>}
-          </div>
-        </div>
-      </div>
-      <div className="rounded-lg border border-border-control bg-surface-base p-5">
-        <h3 className="mb-4 text-lg font-medium text-foreground">Signing Access Details</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <span className="text-xs text-muted">Signer</span>
-            <p className="text-sm text-foreground">{requestData.signerName}</p>
-          </div>
-          {requestData.requestedWindowDuration && (
+      <Card>
+        <CardHeader>
+          <CardTitle role="heading" aria-level={2}>
+            Signing access for {requestData.signerName}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-hover text-sm font-medium text-foreground-secondary">
+              {(requesterName || "U")
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase()}
+            </div>
             <div>
-              <span className="text-xs text-muted">Access Duration</span>
-              <p className="text-sm text-foreground">
-                {requestData.requestedWindowDuration} from approval
+              <p className="text-sm font-medium text-foreground">{requesterName || "Unknown"}</p>
+              {requesterEmail && <p className="text-sm text-muted">{requesterEmail}</p>}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle role="heading" aria-level={3}>
+            Signing Access Details
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <span className="text-xs text-muted">Signer</span>
+              <p className="text-sm text-foreground">{requestData.signerName}</p>
+            </div>
+            {requestData.requestedWindowDuration && (
+              <div>
+                <span className="text-xs text-muted">Access Duration</span>
+                <p className="text-sm text-foreground">
+                  {requestData.requestedWindowDuration} from approval
+                </p>
+              </div>
+            )}
+            {requestData.requestedSignings && (
+              <div>
+                <span className="text-xs text-muted">Allowed Sign Operations</span>
+                <p className="text-sm text-foreground">{requestData.requestedSignings}</p>
+              </div>
+            )}
+          </div>
+          {requestData.scope && Object.values(requestData.scope).some(Boolean) && (
+            <div className="mt-4 border-t border-border-control pt-4">
+              <h4 className="mb-1 text-sm font-normal text-foreground">Request Scope</h4>
+              <p className="mb-3 text-xs text-muted">
+                Signing is only allowed when every parameter below matches exactly.
               </p>
+              <div className="flex flex-col gap-4">
+                {Object.values(CodeSigningScopeField)
+                  .filter((field) => requestData.scope?.[field])
+                  .map((field) => (
+                    <div key={field}>
+                      <span className="text-xs text-muted">
+                        {codeSigningScopeFieldLabels[field]}
+                      </span>
+                      <p
+                        className={twMerge(
+                          "text-sm break-all text-foreground",
+                          MONOSPACED_SCOPE_FIELDS.includes(field) && "font-mono text-xs"
+                        )}
+                      >
+                        {requestData.scope?.[field]}
+                      </p>
+                    </div>
+                  ))}
+              </div>
             </div>
           )}
-          {requestData.requestedSignings && (
-            <div>
-              <span className="text-xs text-muted">Allowed Sign Operations</span>
-              <p className="text-sm text-foreground">{requestData.requestedSignings}</p>
-            </div>
-          )}
-        </div>
-        {requestData.scope && Object.values(requestData.scope).some(Boolean) && (
-          <div className="mt-4 border-t border-border-control pt-4">
-            <h4 className="mb-1 text-sm font-medium text-foreground">Request Scope</h4>
-            <p className="mb-3 text-xs text-muted">
-              Signing is only allowed when every parameter below matches exactly.
-            </p>
-            <div className="flex flex-col gap-4">
-              {Object.values(CodeSigningScopeField)
-                .filter((field) => requestData.scope?.[field])
-                .map((field) => (
-                  <div key={field}>
-                    <span className="text-xs text-muted">{codeSigningScopeFieldLabels[field]}</span>
-                    <p
-                      className={twMerge(
-                        "text-sm break-all text-foreground",
-                        MONOSPACED_SCOPE_FIELDS.includes(field) && "font-mono text-xs"
-                      )}
-                    >
-                      {requestData.scope?.[field]}
-                    </p>
-                  </div>
-                ))}
-            </div>
-          </div>
-        )}
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
@@ -130,6 +231,8 @@ const PageContent = () => {
 
   const resolvedPolicyType = policyType || ApprovalPolicyType.CertRequest;
   const isCodeSigning = resolvedPolicyType === ApprovalPolicyType.CertCodeSigning;
+  const isRevocation = resolvedPolicyType === ApprovalPolicyType.CertRevocation;
+  const returnsToRequests = from === "root-requests" || isRevocation;
 
   const { data: request, isPending } = useQuery(
     approvalRequestQuery.getById({
@@ -158,29 +261,27 @@ const PageContent = () => {
           });
           if (applicationName) {
             navigate({
-              to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+              to: "/organizations/$orgId/cert-manager/applications/$applicationName",
               params: {
                 orgId: currentProject.orgId,
-                projectId: currentProject.id,
                 applicationName
               },
               search: { selectedTab: ApplicationTab.Requests }
             });
             return;
           }
-          if (from === "root-requests") {
+          if (returnsToRequests) {
             navigate({
-              to: "/organizations/$orgId/projects/cert-manager/$projectId/requests",
-              params: { orgId: currentProject.orgId, projectId: currentProject.id }
+              to: "/organizations/$orgId/cert-manager/requests",
+              params: { orgId: currentProject.orgId }
             });
             return;
           }
           if (signerId) {
             navigate({
-              to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId",
+              to: "/organizations/$orgId/cert-manager/code-signing/$signerId",
               params: {
                 orgId: currentOrg.id,
-                projectId: currentProject.id,
                 signerId
               },
               search: { selectedTab: "approvals" }
@@ -189,11 +290,10 @@ const PageContent = () => {
           }
           navigate({
             to: isCodeSigning
-              ? "/organizations/$orgId/projects/cert-manager/$projectId/code-signing"
-              : "/organizations/$orgId/projects/cert-manager/$projectId/approvals",
+              ? "/organizations/$orgId/cert-manager/code-signing"
+              : "/organizations/$orgId/cert-manager/approvals",
             params: {
-              orgId: currentProject.orgId,
-              projectId: currentProject.id
+              orgId: currentProject.orgId
             },
             search: undefined
           });
@@ -205,7 +305,7 @@ const PageContent = () => {
   if (isPending) {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <ContentLoader />
+        <PageLoader />
       </div>
     );
   }
@@ -213,14 +313,26 @@ const PageContent = () => {
   if (!request) {
     return (
       <div className="flex h-full w-full items-center justify-center px-20">
-        <EmptyState
-          className="max-w-2xl rounded-md text-center"
-          icon={faBan}
-          title={`Could not find approval request with ID ${approvalRequestId}`}
-        />
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <FontAwesomeIcon icon={faBan} />
+            </EmptyMedia>
+            <EmptyTitle>Approval Request Not Found</EmptyTitle>
+            <EmptyDescription>
+              Could not find approval request with ID {approvalRequestId}.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       </div>
     );
   }
+
+  const requestProject = {
+    id: request.projectId,
+    orgId: currentOrg.id,
+    type: ProjectType.CertificateManager
+  };
 
   const getStatusBadgeVariant = (status: ApprovalRequestStatus) => {
     switch (status) {
@@ -250,7 +362,7 @@ const PageContent = () => {
       return (
         <>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-foreground">Signing Request</h1>
+            <h1 className="text-2xl font-normal text-foreground">Signing Request</h1>
             <Badge variant={getStatusBadgeVariant(request.status)}>
               {getStatusLabel(request.status)}
             </Badge>
@@ -264,11 +376,51 @@ const PageContent = () => {
       );
     }
 
+    const applicationLink = requestApplication && (
+      <>
+        {" "}
+        on application{" "}
+        <Link
+          {...getCertManagerLink(requestProject, `applications/${requestApplication.name}`)}
+          className="font-medium text-foreground-secondary underline hover:text-foreground"
+        >
+          {requestApplication.name}
+        </Link>
+      </>
+    );
+
+    if (isRevocation) {
+      const revocationData = request.requestData.requestData as CertRevocationRequestData;
+      return (
+        <>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-normal text-foreground">Certificate Revocation Request</h1>
+            <Badge variant={getStatusBadgeVariant(request.status)}>
+              {getStatusLabel(request.status)}
+            </Badge>
+          </div>
+          <p className="mt-1 text-sm text-muted">
+            Revocation request for{" "}
+            <span className="font-medium text-foreground-secondary">
+              {revocationData.commonName || revocationData.serialNumber.toUpperCase()}
+            </span>{" "}
+            by {request.requesterName || "Unknown"}
+            {applicationLink}
+          </p>
+          {request.approversCanNoLongerApprove && (
+            <p className="mt-1 text-sm text-warning">
+              Not enough of this request&apos;s approvers can still approve it.
+            </p>
+          )}
+        </>
+      );
+    }
+
     const reqData = request.requestData.requestData as CertRequestRequestData;
     return (
       <>
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold text-foreground">Certificate Approval Request</h1>
+          <h1 className="text-2xl font-normal text-foreground">Certificate Approval Request</h1>
           <Badge variant={getStatusBadgeVariant(request.status)}>
             {getStatusLabel(request.status)}
           </Badge>
@@ -279,23 +431,7 @@ const PageContent = () => {
             {reqData.certificateRequest?.commonName || reqData.profileName}
           </span>{" "}
           by {request.requesterName || "Unknown"}
-          {requestApplication && (
-            <>
-              {" "}
-              on application{" "}
-              <Link
-                to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
-                params={{
-                  orgId: currentOrg.id,
-                  projectId: currentProject.id,
-                  applicationName: requestApplication.name
-                }}
-                className="font-medium text-foreground-secondary underline hover:text-foreground"
-              >
-                {requestApplication.name}
-              </Link>
-            </>
-          )}
+          {applicationLink}
         </p>
       </>
     );
@@ -312,6 +448,17 @@ const PageContent = () => {
         />
       );
     }
+    if (isRevocation) {
+      return (
+        <RevocationDetailsSection
+          requestProject={requestProject}
+          requestData={request.requestData.requestData as CertRevocationRequestData}
+          isPending={request.status === ApprovalRequestStatus.Pending}
+          requesterName={request.requesterName}
+          requesterEmail={request.requesterEmail}
+        />
+      );
+    }
     return <CertificateDetailsSection request={request} />;
   };
 
@@ -322,10 +469,9 @@ const PageContent = () => {
     if (applicationName) {
       return (
         <Link
-          to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+          to="/organizations/$orgId/cert-manager/applications/$applicationName"
           params={{
             orgId: currentOrg.id,
-            projectId: currentProject.id,
             applicationName
           }}
           search={{ selectedTab: ApplicationTab.Requests }}
@@ -337,11 +483,11 @@ const PageContent = () => {
       );
     }
 
-    if (from === "root-requests") {
+    if (returnsToRequests) {
       return (
         <Link
-          to="/organizations/$orgId/projects/cert-manager/$projectId/requests"
-          params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+          to="/organizations/$orgId/cert-manager/requests"
+          params={{ orgId: currentOrg.id }}
           className={linkClass}
         >
           <FontAwesomeIcon icon={faChevronLeft} />
@@ -353,10 +499,9 @@ const PageContent = () => {
     if (signerId) {
       return (
         <Link
-          to="/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId"
+          to="/organizations/$orgId/cert-manager/code-signing/$signerId"
           params={{
             orgId: currentOrg.id,
-            projectId: currentProject.id,
             signerId
           }}
           search={{ selectedTab: "approvals" }}
@@ -372,10 +517,10 @@ const PageContent = () => {
       <Link
         to={
           isCodeSigning
-            ? "/organizations/$orgId/projects/cert-manager/$projectId/code-signing"
-            : "/organizations/$orgId/projects/cert-manager/$projectId/approvals"
+            ? "/organizations/$orgId/cert-manager/code-signing"
+            : "/organizations/$orgId/cert-manager/approvals"
         }
-        params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+        params={{ orgId: currentOrg.id }}
         search={isCodeSigning ? undefined : { section: "certificates" }}
         className={linkClass}
       >
@@ -386,7 +531,7 @@ const PageContent = () => {
   };
 
   return (
-    <div className="container mx-auto flex flex-col justify-between bg-page font-inter text-foreground-inverse">
+    <div className="container mx-auto flex flex-col justify-between bg-page font-sans text-foreground-inverse">
       <div className="mx-auto mb-6 w-full max-w-8xl">
         {renderBackLink()}
 
@@ -412,18 +557,21 @@ const PageContent = () => {
         <div className="flex flex-col justify-center gap-4 lg:flex-row">
           <div className="flex min-w-0 flex-1 flex-col gap-4">{renderDetailsSection()}</div>
           <div className="flex flex-col gap-4 lg:w-96 lg:flex-shrink-0">
-            <RequestActionsSection request={request} />
+            <RequestActionsSection request={request} canReview={request.canReview} />
             <ApprovalStepsSection request={request} />
           </div>
         </div>
       </div>
-      <ConfirmActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.cancelRequest.isOpen}
+        confirmVariant="project"
+        description="This action is irreversible."
         confirmKey="cancel"
         title="Do you want to cancel this approval request?"
-        onChange={(isOpen) => handlePopUpToggle("cancelRequest", isOpen)}
-        onConfirmed={handleRequestCancel}
-        buttonText="Confirm"
+        onOpenChange={(isOpen) => handlePopUpToggle("cancelRequest", isOpen)}
+        onConfirm={handleRequestCancel}
+        isPending={cancelApprovalRequest.isPending}
+        confirmLabel="Confirm"
       />
     </div>
   );
@@ -432,10 +580,8 @@ const PageContent = () => {
 export const ApprovalRequestDetailPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Approval Request | Infisical</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Approval Request" />
+      <link rel="icon" href="/infisical.ico" />
       <PageContent />
     </>
   );

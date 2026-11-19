@@ -40,8 +40,8 @@ revealing one is an intentional act.
 - Scope- and product-aware (org / sub-org / project / admin / PAM / Agent Vault)
 - Border-first depth with the shared `Card`'s `shadow-xs`; overlapping labels
   retain the shared Badge styling
-- Inter for product UI, Alliance for display typography, and distinct
-  functional and decorative monospace roles
+- IBM Plex Sans for product UI, Alliance No. 2 for headings, and JetBrains
+  Mono for monospaced content
 - Secrets masked by default; reveal is an act
 
 ## 2. Color Palette & Roles
@@ -62,11 +62,11 @@ Used to signal the scope a surface, badge, or action belongs to.
 | Project          | `--color-project` |
 | Admin            | `--color-admin`   |
 
-PAM and Agent Vault are product identities rather than additional levels in
-the org/project hierarchy. Use `--color-product-pam` and `--color-product-av`
-when the current product calls for them; `PageHeader` maps the PAM and Agent
-Vault project types to these accents, while `Button` exposes `pam` and `av`
-variants. Check each component's supported variants instead of treating all
+PAM, Agent Vault and Secret Scanning are product identities rather than
+additional levels in the org/project hierarchy. Use `--color-product-pam`,
+`--color-product-av` and `--color-product-ss` when the current product calls
+for them; `PageHeader` and the org sidebar map those project types to these
+accents, while `Button` exposes `pam`, `av` and `ss` variants. Check each component's supported variants instead of treating all
 scope and product variants as interchangeable.
 
 ### Semantic colors
@@ -96,10 +96,6 @@ scope and product variants as interchangeable.
 | Muted text        | `--color-muted`           |
 | Label text        | `--color-label`           |
 
-The `mineshaft-*` scale (50–900) is the underlying neutral ramp; see
-`index.css` for the full list. Prefer semantic tokens (`card`, `border`,
-`accent`) over raw mineshaft values.
-
 ### Product-area accents (secret-manager)
 
 Reserved for resource types in the secret management product:
@@ -125,28 +121,27 @@ for exact classes and supported variants.
 
 ## 3. Typography
 
-Typography uses several intentional families. Do not collapse them into one
-font or substitute one role for another:
+Typography uses three intentional families:
 
-- **Inter** (`font-inter`, `--font-inter`) is the default product and control
-  face. Body copy, forms, tables, buttons, labels, navigation, and dense product
-  surfaces inherit Inter unless a documented role below applies.
-- **Alliance No. 2** (`font-alliance`, `--font-alliance`) is the display face.
-  Use it selectively for prominent authentication, onboarding, and
-  brand-forward headings or supporting display copy—not routine product chrome.
-- **The existing application mono** (`font-mono`) is functional. Preserve it
-  for code, secret values, identifiers, timestamps, logs, and other content
-  whose character shapes and alignment carry meaning.
-- **JetBrains Mono** (`font-jetbrains-mono`, `--font-jetbrains-mono`) is a
-  decorative mono. Use it for short eyebrow labels, technical decals, and
-  brand-forward microcopy. It does not replace `font-mono` and should not be
-  used for code editors, data tables, IDs, logs, or secret values.
+- **IBM Plex Sans** (`font-sans`, `--font-sans`) is the default product UI face.
+  Body copy, forms, tables, buttons, labels, and navigation inherit it. Real
+  400, 500, 600, and 700 weights are bundled for UI hierarchy.
+- **Alliance No. 2** (`font-alliance`, `--font-alliance`) is the heading face.
+  Semantic headings and shared page, card, dialog, alert dialog, and sheet
+  titles use its bundled Regular weight. Do not use it for arbitrary bold body
+  text or request synthetic heavier weights.
+  Product and project tile names are titles, not descriptions. Use `CardTitle`
+  for them. Do not override semantic headings or shared titles with medium,
+  semibold, or bold weights; express hierarchy with size and spacing instead.
+- **JetBrains Mono** (`font-mono`, `--font-mono`) is the functional and
+  decorative mono. Use it for code, secret values, identifiers, timestamps,
+  logs, and short technical microcopy.
 
 | Role                    | Class                                                                     | Notes                                                              |
 | ----------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Page title (h1)         | `text-2xl font-medium underline underline-offset-4 decoration-<scope>/90` | In `PageHeader`; scope icon (size 26) sits inline before the title |
+| Page title (h1)         | `font-alliance text-2xl font-normal underline underline-offset-4 decoration-<scope>/90` | In `PageHeader`; scope icon (size 26) sits inline before the title |
 | Page description        | `text-label`                                                              | Sits under the title, separated by the header's `gap-2`            |
-| Card title              | `text-lg font-semibold leading-none`                                      | `flex gap-1.5` so badges can sit inline                            |
+| Card title              | `font-alliance text-lg font-normal leading-none`                           | `flex gap-1.5` so badges can sit inline                            |
 | Card description        | `text-sm text-accent`                                                     |                                                                    |
 | Body                    | `text-sm`                                                                 | Default for table cells, form values, dialog content               |
 | Label / meta            | `text-xs text-accent`                                                     | Field labels, table column captions, metadata                      |
@@ -165,11 +160,9 @@ labels, and dropdown menu items. See §8 for voice rules on copy itself.
 
 ## 4. Component Stylings
 
-Prefer v3 components from [`frontend/src/components/v3/`](frontend/src/components/v3)
-for new UI. The v2 library is legacy; use it for new work only when v3 does not
-cover the required behavior. Existing v2 consumers marked blocked in the
-[lifecycle ledger](frontend/src/components/COMPONENT_LIFECYCLE.md) need
-consumer-specific parity checks before replacement, even on mixed pages.
+Use v3 components from [`frontend/src/components/v3/`](frontend/src/components/v3)
+for all UI. A deprecated API carries an `@deprecated` tag that names its
+replacement.
 
 For exact tokens, classes, and supported variants, read component source and
 the story when present; stories may not enumerate every implemented variant.
@@ -218,12 +211,12 @@ specialized primitives not listed here (for example `CodeBlock`, `CopyButton`,
 | [`InputGroup`](frontend/src/components/v3/generic/InputGroup/InputGroup.tsx)                                                              | Input with left/right addons — search bars, prefixed values.                                                |
 | [`Select`](frontend/src/components/v3/generic/Select/Select.tsx)                                                                          | Non-searchable single-select with a short, known option list.                                               |
 | [`Combobox`](frontend/src/components/v3/generic/Combobox/Combobox.tsx)                                                                    | Searchable single- or multi-select, including grouped/rich rows and inline or dialog creation when its contract fits. |
-| [`ReactSelect`](frontend/src/components/v3/generic/ReactSelect/index.ts)                                                                  | Deprecated compatibility for consumers needing react-select-specific overrides; see the lifecycle ledger. |
 | [`Toggle`](frontend/src/components/v3/generic/Toggle/Toggle.tsx) / [`Checkbox`](frontend/src/components/v3/generic/Checkbox/Checkbox.tsx) | Boolean toggle / multi-select boolean.                                                                      |
 | [`Calendar`](frontend/src/components/v3/generic/Calendar/Calendar.tsx)                                                                    | Date / multi-date / range picker primitive.                                                                 |
 | [`DateRangeFilter`](frontend/src/components/v3/platform/DateRangeFilter/DateRangeFilter.tsx)                                               | Platform date-range filter with presets — for filter bars.                                                  |
-| [`SecretInput`](frontend/src/components/v3/platform/SecretInput/SecretInput.tsx)                                                           | Platform secret-value editor with mask toggle and `${var}` highlighting.                                    |
+| [`SecretInput`](frontend/src/components/v3/platform/SecretInput/SecretInput.tsx)                                                           | Platform secret-value editor with masking and `${var}` highlighting; callers own any reveal toggle.          |
 | [`PasswordGenerator`](frontend/src/components/v3/platform/PasswordGenerator/PasswordGenerator.tsx)                                         | Platform password generator against project secret-validation rules.                                        |
+| [`EmailInput`](frontend/src/components/v3/platform/EmailInput/EmailInput.tsx)                                                              | Platform chip field for one or more free-text email addresses. Validate it with `emailListSchema` from `@app/helpers/email`; check single addresses or picker-created invitees with `isValidEmail` rather than a local regex or `z.string().email()`. |
 
 #### Containers & overlays
 
@@ -297,11 +290,13 @@ host component; don't override unless necessary.
 
 - **Page container** — `max-w-8xl` (88rem) centered, `bg-page`.
 - **Page header** — v3 `PageHeader` with scope/product icon + underlined `h1` + description. Import it from `@app/components/v3` and set `scope` to `org`, `namespace`, `instance`, or the applicable `ProjectType`. See [`PageHeader.tsx`](frontend/src/components/v3/platform/PageHeader/PageHeader.tsx).
+- **Header boundary** — `PageHeader` owns the normal 40px bottom margin (`mb-10`). Do not repeat that margin at ordinary callers or add a parent row gap between the header and body. Keep independent card/section spacing in the body layout. Use `className` for genuine compact/responsive cases, such as `mb-6 md:mb-10` for Overview; see the header's spacing stories.
 - **Section** — one `Card` per logical section. Title + optional `DocumentationLinkBadge` in `CardHeader`; primary action in `CardAction` (top-right).
 - **Tables inside Cards** — filters and search sit in the `CardHeader` above the table; pagination sits in the `CardFooter` or bottom of `CardContent`. **Empty state** — when the table has no rows (and isn't loading), hide the `Table` entirely and render `Empty` in its place; never leave a column header floating above a blank body. Add `className="border"` to `Empty` whenever it's nested in a `Card`, `Sheet`, or `Dialog` so the dashed frame is visible against the parent surface (the component ships dashed-but-borderless on purpose for page-level use).
 - **Forms inside Sheets/Dialog** — create / edit flows open in a Sheet or Dialog, never inline, never as a full-page route. **Pick by form size:** small forms (1–2 fields, e.g. "Add domain", "Rename") go in a centered `Dialog`; large or multi-step forms (multiple fields, scrollable detail, file uploads, wizard steps) go in a right-side `Sheet`. When in doubt, default to Dialog — Sheet is for cases where Dialog feels cramped.
 - **Authentication form stacks** — use `CardContent className="flex flex-col gap-4"` for the major vertical rhythm between fields, validation groups, and primary actions. Use a nested `flex flex-col gap-2` only for compact sets of equivalent actions such as social or SSO provider buttons. Use `FieldSeparator` between alternate authentication paths. Do not recreate sibling spacing with `mt-*`, `mb-*`, or `py-*`; keep a wrapper only when it owns animation, responsive visibility, conditional grouping, or tightly coupled control/error content.
 - **Spacing rhythm** — `gap-1.5` (intra-element), `gap-2 / gap-3` (adjacent elements), `p-4 / p-5` (section padding). Card = `p-5 gap-5`; Sheet header/footer = `p-4`.
+- **Sheet and Dialog footers** — actions sit right-aligned with the primary action last: `SheetFooter className="justify-end border-t"` (`DialogFooter` is right-aligned by default), then Cancel (`ghost`), then the primary button. Back navigation in a multi-step flow sits on the left with `mr-auto`, and wizard footers with status text on the left use `justify-between`. A single full-width action needs no alignment class.
 
 ## 6. Depth & Elevation
 
@@ -338,7 +333,6 @@ remain legible across the control edge.
 - **DO** pair destructive confirmations with the resource name and the
   consequence (see §9).
 - **DO** cite tokens (`bg-card`) over hex (`#xxxxxx`) in new code.
-- **DON'T** replace existing blocked v2 consumers based on matching component names alone; check the lifecycle ledger and interaction parity first.
 - **DON'T** add ad hoc box-shadows as a depth cue — borders and surface tones do
   that work. The shared `Card` already has `shadow-xs`; floating elements
   (Popover, DropdownMenu, Sheet, SelectedActionBar) include stronger shadows.
@@ -349,9 +343,9 @@ remain legible across the control edge.
   The documented brand-forward `text-highlight` treatment and deliberately
   branded `ButtonBadge` flags are narrow exceptions for authentication and
   onboarding surfaces.
-- **DON'T** mix font families arbitrarily. Choose the documented role: Inter
-  for product UI, Alliance for display type, `font-mono` for functional
-  monospaced content, and JetBrains Mono for decorative technical microcopy.
+- **DON'T** mix font families arbitrarily. Use IBM Plex Sans for UI and body
+  text, Alliance Regular for headings, and JetBrains Mono (`font-mono`) for
+  monospaced content.
 - **DON'T** animate for decoration. Motion should clarify state change only.
 
 ## 8. Voice & Content Tone
@@ -474,7 +468,7 @@ Pasteable prompt fragments for AI coding agents producing new UI.
 4. **Adding a variant** — extend the `cva()` block in the component and add
    a story when appropriate. Match the existing variant family rather than
    imposing a tint recipe on neutral, outline, or product variants.
-5. **Prefer v3 for new code** — use v2 only where needed for behavior not covered
-   by v3. Existing blocked v2 consumers migrate after lifecycle parity review.
+5. **Use v3.** Don't reach for an API marked `@deprecated`; use the
+   replacement it names.
 6. **Before merging** — `make reviewable-ui` (lint + type-check).
 7. **When in doubt** — mirror `OverviewPage`.

@@ -17,6 +17,7 @@ import {
   FieldLabel,
   Input
 } from "@app/components/v3";
+import { useScopeVariant } from "@app/hooks";
 import { useUpdateGateway } from "@app/hooks/api/gateways-v2";
 import { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
 import { slugSchema } from "@app/lib/schemas";
@@ -34,6 +35,7 @@ type Props = {
 };
 
 export const RenameGatewayModal = ({ isOpen, onToggle, gateway }: Props) => {
+  const scopeVariant = useScopeVariant();
   const updateGateway = useUpdateGateway();
 
   const { control, handleSubmit, reset } = useForm<TFormData>({
@@ -94,7 +96,7 @@ export const RenameGatewayModal = ({ isOpen, onToggle, gateway }: Props) => {
               </Button>
             </DialogClose>
             <Button
-              variant="org"
+              variant={scopeVariant}
               type="submit"
               isPending={updateGateway.isPending}
               isDisabled={updateGateway.isPending}

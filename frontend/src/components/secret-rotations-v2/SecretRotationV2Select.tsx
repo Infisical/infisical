@@ -15,7 +15,7 @@ import {
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
-  SECRET_ROTATION_CONNECTION_MAP,
+  getSecretRotationConnectionApps,
   SECRET_ROTATION_MAP
 } from "@app/helpers/secretRotationsV2";
 import { SecretRotation, useSecretRotationV2Options } from "@app/hooks/api/secretRotationsV2";
@@ -26,7 +26,9 @@ type Props = {
 
 const ProviderCard = ({ type, onSelect }: { type: SecretRotation; onSelect: () => void }) => {
   const { image, name } = SECRET_ROTATION_MAP[type];
-  const connectionName = APP_CONNECTION_MAP[SECRET_ROTATION_CONNECTION_MAP[type]].name;
+  const connectionName = getSecretRotationConnectionApps(type)
+    .map((app) => APP_CONNECTION_MAP[app].name)
+    .join(" or ");
 
   return (
     <button
@@ -60,8 +62,10 @@ export const SecretRotationV2Select = ({ onSelect }: Props) => {
 
     return (secretRotationOptions ?? []).filter(({ type }) => {
       const { name } = SECRET_ROTATION_MAP[type];
-      const connectionName = APP_CONNECTION_MAP[SECRET_ROTATION_CONNECTION_MAP[type]].name;
-      return [name, connectionName, type].some((value) => value.toLowerCase().includes(query));
+      const connectionNames = getSecretRotationConnectionApps(type).map(
+        (app) => APP_CONNECTION_MAP[app].name
+      );
+      return [name, ...connectionNames, type].some((value) => value.toLowerCase().includes(query));
     });
   }, [search, secretRotationOptions]);
 

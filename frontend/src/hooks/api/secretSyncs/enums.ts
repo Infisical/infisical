@@ -22,6 +22,8 @@ export enum SecretSync {
   GitLab = "gitlab",
   CloudflarePages = "cloudflare-pages",
   CloudflareWorkers = "cloudflare-workers",
+  CloudflareSecretsStore = "cloudflare-secrets-store",
+  Convex = "convex",
   Supabase = "supabase",
   Zabbix = "zabbix",
   Railway = "railway",
@@ -43,11 +45,15 @@ export enum SecretSync {
   Snowflake = "snowflake",
   TriggerDev = "trigger-dev",
   Rundeck = "rundeck",
+  Portainer = "portainer",
   HasuraCloud = "hasura-cloud",
   Qovery = "qovery",
   Cloud66 = "cloud-66",
   Spacelift = "spacelift",
-  Daytona = "daytona"
+  Daytona = "daytona",
+  Keeper = "keeper-password-manager",
+  Jenkins = "jenkins",
+  Coolify = "coolify"
 }
 
 export enum SecretSyncStatus {

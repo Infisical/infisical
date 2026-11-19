@@ -1,8 +1,10 @@
 import { createMongoAbility } from "@casl/ability";
-import { Knex } from "knex";
+import knex, { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { AccessScope } from "@app/db/schemas";
+import { AccessScope, ProjectType } from "@app/db/schemas";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 
 import { membershipIdentityServiceFactory } from "./membership-identity-service";
 import {
@@ -40,12 +42,22 @@ const buildDto = (): TDeleteMembershipIdentityDTO => ({
 });
 
 const createService = ({
-  existingMembership = { id: MEMBERSHIP_ID, actorIdentityId: IDENTITY_ID }
-}: { existingMembership?: Record<string, unknown> | null } = {}) => {
+  existingMembership = { id: MEMBERSHIP_ID, actorIdentityId: IDENTITY_ID },
+  projectType,
+  tx = {} as Knex
+}: { existingMembership?: Record<string, unknown> | null; projectType?: ProjectType; tx?: Knex } = {}) => {
   const bumpIdentityRevocationVersion = vi.fn().mockResolvedValue(undefined);
   const insertOrgMembershipRevocationMarker = vi.fn().mockResolvedValue(undefined);
   const removeOrgMembershipRevocationMarkers = vi.fn().mockResolvedValue(undefined);
   const deleteAlertsForResource = vi.fn().mockResolvedValue(0);
+  const emit = vi.fn().mockResolvedValue(undefined);
+  const deleteByIdentityIdsInGroupsOwnedByOrgs = vi.fn().mockResolvedValue(undefined);
+  const deleteMetadata = vi.fn().mockResolvedValue([]);
+  const lockActorsForOrgAccess = vi.fn().mockResolvedValue(undefined);
+  const revoked = [{ orgId: SUB_ORG_ID, identityId: IDENTITY_ID, projectIds: ["project-1"], resources: [] }];
+  const revokeActorsInOrgs = vi.fn().mockResolvedValue({ revoked, sendPamCancellations: () => {} });
+  const createAuditLog = vi.fn().mockResolvedValue(undefined);
+  const licenseService = new FakeLicenseService();
 
   const membershipIdentityDAL = {
     findOne: vi.fn().mockResolvedValue(existingMembership),
@@ -57,7 +69,8 @@ const createService = ({
     create: vi.fn().mockResolvedValue({ id: MEMBERSHIP_ID, actorIdentityId: IDENTITY_ID }),
     updateById: vi.fn().mockImplementation(async (id: string, data: Record<string, unknown>) => ({ id, ...data })),
     deleteById: vi.fn().mockResolvedValue({ id: MEMBERSHIP_ID }),
-    transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb({} as Knex))
+    delete: vi.fn().mockResolvedValue([]),
+    transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb(tx))
   };
 
   const service = membershipIdentityServiceFactory({
@@ -83,22 +96,36 @@ const createService = ({
         .fn()
         .mockImplementation(async (roles: string[]) => (roles.length ? [{ permission: createMongoAbility([]) }] : []))
     } as never,
-    orgDAL: { findById: vi.fn().mockResolvedValue({}), findEffectiveOrgMembership: vi.fn() } as never,
+    orgDAL: {
+      findById: vi.fn().mockResolvedValue({}),
+      lockActorsForOrgAccess,
+      findActorsWithActiveOrgAccess: vi.fn(async ({ identityIds }: { identityIds: string[] }) => ({
+        userIds: new Set<string>(),
+        identityIds: new Set(identityIds)
+      }))
+    } as never,
     additionalPrivilegeDAL: { delete: vi.fn().mockResolvedValue(undefined) } as never,
     identityDAL: {
       findById: vi.fn().mockResolvedValue({ orgId: ROOT_ORG_ID, projectId: null })
     } as never,
-    licenseService: { getPlan: vi.fn() } as never,
+    identityMetadataDAL: { delete: deleteMetadata },
+    identityGroupMembershipDAL: { deleteByIdentityIdsInGroupsOwnedByOrgs },
+    licenseService,
+    usageMeteringService: new FakeUsageMeteringService(),
     applicationMembershipCleanupService: { cleanupActorApplicationMemberships: vi.fn() } as never,
-    projectDAL: { findById: vi.fn() } as never,
+    projectDAL: {
+      findById: vi.fn().mockResolvedValue(projectType ? { id: "project-1", type: projectType } : undefined)
+    } as never,
     keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
-    usageMeteringService: { emit: vi.fn(), emitForProject: vi.fn() } as never,
     alertService: { deleteAlertsForResource } as never,
     identityAccessTokenService: {
       insertOrgMembershipRevocationMarker,
       removeOrgMembershipRevocationMarkers,
       bumpIdentityRevocationVersion
-    } as never
+    } as never,
+    eventEmitter: { emit },
+    projectAccessRevokeService: { revokeActorsInOrgs },
+    auditLogService: { createAuditLog }
   });
 
   return {
@@ -107,7 +134,13 @@ const createService = ({
     bumpIdentityRevocationVersion,
     insertOrgMembershipRevocationMarker,
     removeOrgMembershipRevocationMarkers,
-    deleteAlertsForResource
+    deleteAlertsForResource,
+    deleteByIdentityIdsInGroupsOwnedByOrgs,
+    deleteMetadata,
+    lockActorsForOrgAccess,
+    revokeActorsInOrgs,
+    createAuditLog,
+    emit
   };
 };
 
@@ -142,7 +175,70 @@ describe("deleteMembership org revocation bump ordering", () => {
   });
 });
 
+describe("deleteMembership org project access", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  test("revokes everything the org granted the identity in its transaction and audits it after commit", async () => {
+    const tx = { marker: "tx" } as unknown as Knex;
+    const { service, revokeActorsInOrgs, createAuditLog } = createService({ tx });
+
+    await service.deleteMembership(buildDto());
+
+    expect(revokeActorsInOrgs).toHaveBeenCalledWith({ orgIds: [SUB_ORG_ID], identityIds: [IDENTITY_ID] }, tx);
+    expect(createAuditLog).toHaveBeenCalledTimes(1);
+  });
+
+  test("hands the revoked access to the caller instead of auditing when it owns the transaction", async () => {
+    const { service, createAuditLog } = createService();
+
+    const result = await service.deleteMembership(buildDto(), {} as Knex);
+
+    expect(createAuditLog).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ revokedProjectAccess: [{ identityId: IDENTITY_ID, projectIds: ["project-1"] }] });
+  });
+
+  test("removing a project membership leaves the rest of the org alone", async () => {
+    const { service, revokeActorsInOrgs } = createService();
+
+    await service.deleteMembership({
+      ...buildDto(),
+      scopeData: { scope: AccessScope.Project, orgId: SUB_ORG_ID, projectId: "project-1" }
+    });
+
+    expect(revokeActorsInOrgs).not.toHaveBeenCalled();
+  });
+});
+
 const PROJECT_ID = "project-1";
+
+describe("project admin identity deactivation", () => {
+  test.each([ProjectType.CertificateManager, ProjectType.PAM, ProjectType.AgentVault])(
+    "refuses disabling the last admin while retaining its Admin role in %s",
+    async (projectType) => {
+      const query = knex({ client: "pg" }).queryBuilder();
+      vi.spyOn(query, "first").mockResolvedValueOnce({ count: "0" }).mockResolvedValue({ count: "1" });
+      const tx = Object.assign(
+        vi.fn(() => query),
+        { raw: vi.fn().mockResolvedValue(undefined) }
+      ) as unknown as Knex;
+      const { service, membershipIdentityDAL } = createService({
+        projectType,
+        tx,
+        existingMembership: { id: MEMBERSHIP_ID, actorIdentityId: IDENTITY_ID, isActive: true }
+      });
+      await expect(
+        service.updateMembership({
+          ...buildDto(),
+          scopeData: { scope: AccessScope.Project, orgId: SUB_ORG_ID, projectId: PROJECT_ID },
+          data: { roles: [{ role: "admin", isTemporary: false }], isActive: false }
+        })
+      ).rejects.toThrow("must keep at least one admin");
+      expect(membershipIdentityDAL.updateById).not.toHaveBeenCalled();
+      expect(membershipIdentityDAL.findByIdForUpdate).not.toHaveBeenCalled();
+      expect(query.toSQL().bindings).toContain(MEMBERSHIP_ID);
+    }
+  );
+});
 
 describe("deleteMembership alert cleanup", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -165,7 +261,7 @@ describe("deleteMembership alert cleanup", () => {
     // Reaped at the end of the transaction: the write locks it takes on the org-wide alerts table
     // must not be held across the membership work that precedes it.
     expect(deleteAlertsForResource.mock.invocationCallOrder[0]).toBeGreaterThan(
-      membershipIdentityDAL.deleteById.mock.invocationCallOrder[0]
+      membershipIdentityDAL.delete.mock.invocationCallOrder[0]
     );
   });
 
@@ -188,6 +284,131 @@ describe("deleteMembership alert cleanup", () => {
       },
       expect.anything()
     );
+  });
+});
+
+describe("deleteMembership org access reconcile", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  test("removing an org membership emits the removal in the same transaction", async () => {
+    const tx = { marker: "tx" } as unknown as Knex;
+    const { service, emit } = createService({ tx });
+
+    await service.deleteMembership(buildDto());
+
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith(
+      [
+        {
+          id: expect.any(String) as string,
+          type: "com.infisical.organization.membership.removed.v1",
+          data: { orgId: SUB_ORG_ID, actorType: "identity", actorId: IDENTITY_ID }
+        }
+      ],
+      tx
+    );
+  });
+
+  test("removing a project membership emits nothing, the identity still reaches the org", async () => {
+    const { service, emit } = createService();
+
+    await service.deleteMembership({
+      ...buildDto(),
+      scopeData: { scope: AccessScope.Project, orgId: SUB_ORG_ID, projectId: PROJECT_ID }
+    });
+
+    expect(emit).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteMembership org removal", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  test("deletes the identity's rows in the org, its metadata there and its rows in the org's own groups", async () => {
+    const tx = { marker: "tx" } as unknown as Knex;
+    const { service, membershipIdentityDAL, deleteByIdentityIdsInGroupsOwnedByOrgs, deleteMetadata } = createService({
+      tx
+    });
+
+    await service.deleteMembership(buildDto());
+
+    expect(membershipIdentityDAL.delete).toHaveBeenCalledWith(
+      { actorIdentityId: IDENTITY_ID, scopeOrgId: SUB_ORG_ID },
+      tx
+    );
+    expect(deleteMetadata).toHaveBeenCalledWith({ identityId: IDENTITY_ID, orgId: SUB_ORG_ID }, tx);
+    expect(deleteByIdentityIdsInGroupsOwnedByOrgs).toHaveBeenCalledWith(
+      { identityIds: [IDENTITY_ID], orgIds: [SUB_ORG_ID] },
+      tx
+    );
+  });
+
+  test("takes the org access lock that group additions take, before anything is removed", async () => {
+    const tx = { marker: "tx" } as unknown as Knex;
+    const { service, membershipIdentityDAL, lockActorsForOrgAccess } = createService({ tx });
+
+    await service.deleteMembership(buildDto());
+
+    expect(lockActorsForOrgAccess).toHaveBeenCalledWith({ orgId: SUB_ORG_ID, actorIds: [IDENTITY_ID] }, tx);
+    expect(lockActorsForOrgAccess.mock.invocationCallOrder[0]).toBeLessThan(
+      membershipIdentityDAL.delete.mock.invocationCallOrder[0]
+    );
+  });
+
+  test("revokes project access before the membership delete so the removed project rows are audited", async () => {
+    const { service, membershipIdentityDAL, revokeActorsInOrgs } = createService();
+
+    await service.deleteMembership(buildDto());
+
+    expect(revokeActorsInOrgs.mock.invocationCallOrder[0]).toBeLessThan(
+      membershipIdentityDAL.delete.mock.invocationCallOrder[0]
+    );
+  });
+
+  test("leaves the org's groups before the revoke so its personal value clear sees the identity out of them", async () => {
+    const { service, deleteByIdentityIdsInGroupsOwnedByOrgs, revokeActorsInOrgs } = createService();
+
+    await service.deleteMembership(buildDto());
+
+    expect(deleteByIdentityIdsInGroupsOwnedByOrgs.mock.invocationCallOrder[0]).toBeLessThan(
+      revokeActorsInOrgs.mock.invocationCallOrder[0]
+    );
+  });
+
+  test("removing a project membership leaves the identity's groups alone", async () => {
+    const { service, deleteByIdentityIdsInGroupsOwnedByOrgs } = createService();
+
+    await service.deleteMembership({
+      ...buildDto(),
+      scopeData: { scope: AccessScope.Project, orgId: SUB_ORG_ID, projectId: PROJECT_ID }
+    });
+
+    expect(deleteByIdentityIdsInGroupsOwnedByOrgs).not.toHaveBeenCalled();
+  });
+});
+
+describe("removeIdentityFromOrg", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  test("removes the identity in its own transaction, then bumps and audits after commit", async () => {
+    const tx = { marker: "tx" } as unknown as Knex;
+    const { service, membershipIdentityDAL, revokeActorsInOrgs, bumpIdentityRevocationVersion, createAuditLog, emit } =
+      createService({ tx });
+    membershipIdentityDAL.transaction.mockImplementationOnce(async (cb: (tx: Knex) => Promise<unknown>) => {
+      const result = await cb(tx);
+      expect(bumpIdentityRevocationVersion).not.toHaveBeenCalled();
+      expect(createAuditLog).not.toHaveBeenCalled();
+      return result;
+    });
+
+    await service.removeIdentityFromOrg({ identityId: IDENTITY_ID, orgId: SUB_ORG_ID });
+
+    expect(revokeActorsInOrgs).toHaveBeenCalledWith({ orgIds: [SUB_ORG_ID], identityIds: [IDENTITY_ID] }, tx);
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(bumpIdentityRevocationVersion).toHaveBeenCalledWith({ identityId: IDENTITY_ID });
+    expect(createAuditLog.mock.calls[0][0]).toMatchObject({
+      event: { metadata: { identityId: IDENTITY_ID, projectIds: ["project-1"] } }
+    });
   });
 });
 

@@ -15,6 +15,7 @@ type Props = {
   value: string;
   onChange: (value: string | undefined) => void;
   isError?: boolean;
+  isDisabled?: boolean;
   "aria-describedby"?: string;
   "aria-labelledby"?: string;
 };

@@ -1,7 +1,27 @@
+export enum ApprovalNotificationEvent {
+  Requested = "requested",
+  Approved = "approved",
+  Rejected = "rejected",
+  Bypassed = "bypassed",
+  AutoApproved = "auto-approved",
+  ApprovedActionFailed = "approved-action-failed"
+}
+
+export enum ApprovalAuditAction {
+  RequestCreated = "request-created",
+  RequestReviewed = "request-reviewed",
+  RequestBypassed = "request-bypassed",
+  RequestAutoApproved = "request-auto-approved",
+  GrantRevoked = "grant-revoked"
+}
+
 export enum ApprovalPolicyType {
   PamAccess = "pam-access",
   CertRequest = "cert-request",
-  CertCodeSigning = "cert-code-signing"
+  CertRevocation = "cert-revocation",
+  CertCodeSigning = "cert-code-signing",
+  SecretChange = "secret-change",
+  SecretAccess = "secret-access"
 }
 
 export enum ApprovalPolicyScope {
@@ -21,7 +41,9 @@ export enum ApprovalRequestStatus {
   Approved = "approved",
   Rejected = "rejected",
   Expired = "expired",
-  Cancelled = "cancelled"
+  Cancelled = "cancelled",
+  Open = "open",
+  Closed = "close"
 }
 
 export enum ApprovalRequestStepStatus {

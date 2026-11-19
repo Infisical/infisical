@@ -7,6 +7,10 @@ type AppConnectionFormContextValue = {
    */
   onCancel: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
+  onPendingChange?: (isPending: boolean) => void;
+  layout?: "sheet" | "dialog";
+  /** The sheet that created this connection is still open on it, to finish setting it up. */
+  isNewConnection?: boolean;
 };
 
 const AppConnectionFormContext = createContext<AppConnectionFormContextValue>({

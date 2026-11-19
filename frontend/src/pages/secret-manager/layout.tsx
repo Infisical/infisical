@@ -1,10 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { BreadcrumbTypes } from "@app/components/v2";
 import { projectKeys } from "@app/hooks/api";
 import { fetchProjectById } from "@app/hooks/api/projects/queries";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { fetchUserProjectPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
-import { ProjectSelect } from "@app/layouts/ProjectLayout/components/ProjectSelect";
 import { SecretManagerLayout } from "@app/layouts/SecretManagerLayout";
 
 export const Route = createFileRoute(
@@ -28,12 +27,8 @@ export const Route = createFileRoute(
 
     return {
       project,
-      breadcrumbs: [
-        {
-          type: BreadcrumbTypes.Component,
-          component: ProjectSelect
-        }
-      ]
+      productType: ProjectType.SecretManager,
+      breadcrumbs: []
     };
   }
 });

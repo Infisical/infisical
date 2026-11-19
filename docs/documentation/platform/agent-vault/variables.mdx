@@ -1,0 +1,21 @@
+---
+title: "Variables"
+description: "Values you store once and use in any service in an Agent Vault project."
+---
+
+A global variable is a value that you store once and use in any [service](/documentation/platform/agent-vault/services) in an [Agent Vault project](/documentation/platform/agent-vault/projects), whichever [access bundle](/documentation/platform/agent-vault/access-bundles) the service is in.
+
+When an agent sends a request, the [proxy](/documentation/platform/agent-vault/proxies) fills in each variable the service uses.
+
+A global variable has one of two types, which you pick when you create it:
+
+<CardGroup cols={2}>
+  <Card title="Text variables" icon="braces" href="/documentation/platform/agent-vault/text-variables">
+    A value, such as an API key, that services reference by its key, as in `{{GITHUB_TOKEN}}`.
+  </Card>
+  <Card title="OAuth variables" icon="key" href="/documentation/platform/agent-vault/oauth-variables">
+    A sign-in with an OAuth provider, which HTTP and MCP services use as their credential.
+  </Card>
+</CardGroup>
+
+Each member can also keep [personal variables](/documentation/platform/agent-vault/text-variables#personal-variables), which only that member can read and use in their [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values).

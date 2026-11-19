@@ -11,6 +11,7 @@ import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
+import { getTlsServerNameOptions } from "@app/lib/tls";
 import { generatePasswordWithConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-password-generator";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
@@ -158,7 +159,7 @@ export const SqlDatabaseProvider = ({
       ? {
           rejectUnauthorized: providerInputs.sslRejectUnauthorized,
           ca: providerInputs.ca,
-          servername: providerInputs.originalHost
+          ...getTlsServerNameOptions(providerInputs.originalHost)
         }
       : undefined;
 
@@ -205,7 +206,10 @@ export const SqlDatabaseProvider = ({
           : undefined
       },
       acquireConnectionTimeout: EXTERNAL_REQUEST_TIMEOUT,
-      pool: { min: 0, max: 7 }
+      pool: { min: 0, max: 7 },
+      // The value doesn't matter. Passing any version stops knex from running `select version()` on connect,
+      // and knex's Postgres client can't parse CockroachDB's reply to it, which leaves the connection hanging.
+      ...(providerInputs.client === SqlProviders.Postgres ? { version: "9.6.0" } : {})
     });
     return db;
   };

@@ -15,7 +15,10 @@ import { TChefSync } from "./chef-sync";
 import { TCircleCISync } from "./circleci-sync";
 import { TCloud66Sync } from "./cloud-66-sync";
 import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
+import { TCloudflareSecretsStoreSync } from "./cloudflare-secrets-store-sync";
 import { TCloudflareWorkersSync } from "./cloudflare-workers-sync";
+import { TConvexSync } from "./convex-sync";
+import { TCoolifySync } from "./coolify-sync";
 import { TDatabricksSync } from "./databricks-sync";
 import { TDaytonaSync } from "./daytona-sync";
 import { TDevinSync } from "./devin-sync";
@@ -29,6 +32,8 @@ import { THasuraCloudSync } from "./hasura-cloud-sync";
 import { THCVaultSync } from "./hc-vault-sync";
 import { THerokuSync } from "./heroku-sync";
 import { THumanitecSync } from "./humanitec-sync";
+import { TJenkinsSync } from "./jenkins-sync";
+import { TKeeperSync } from "./keeper-sync";
 import { TLaravelForgeSync } from "./laravel-forge-sync";
 import { TNetlifySync } from "./netlify-sync";
 import { TNorthflankSync } from "./northflank-sync";
@@ -36,6 +41,7 @@ import { TOCIVaultSync } from "./oci-vault-sync";
 import { TOctopusDeploySync } from "./octopus-deploy-sync";
 import { TOnaSync } from "./ona-sync";
 import { TOvhSync } from "./ovh-sync";
+import { TPortainerSync } from "./portainer-sync";
 import { TQoverySync } from "./qovery-sync";
 import { TRailwaySync } from "./railway-sync";
 import { TRenderSync } from "./render-sync";
@@ -85,11 +91,14 @@ export type TSecretSync =
   | TGitLabSync
   | TCloudflarePagesSync
   | TCloudflareWorkersSync
+  | TCloudflareSecretsStoreSync
+  | TConvexSync
   | TZabbixSync
   | TRailwaySync
   | TChecklySync
   | TSupabaseSync
   | TRundeckSync
+  | TPortainerSync
   | TDigitalOceanAppPlatformSync
   | TNetlifySync
   | TNorthflankSync
@@ -110,7 +119,10 @@ export type TSecretSync =
   | TQoverySync
   | TCloud66Sync
   | TSpaceliftSync
-  | TDaytonaSync;
+  | TDaytonaSync
+  | TKeeperSync
+  | TJenkinsSync
+  | TCoolifySync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 
@@ -126,7 +138,7 @@ export type TCreateSecretSyncDTO = DiscriminativePick<
   | "syncOptions"
   | "destination"
   | "isAutoSyncEnabled"
-> & { environment: string; secretPath: string; projectId: string };
+> & { environment: string; secretPath: string; includeAllSubFolders?: boolean; projectId: string };
 
 export type TUpdateSecretSyncDTO = Partial<
   Omit<TCreateSecretSyncDTO, "destination" | "projectId">

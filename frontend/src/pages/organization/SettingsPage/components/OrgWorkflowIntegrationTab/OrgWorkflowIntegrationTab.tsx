@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { BsMicrosoftTeams, BsSlack } from "react-icons/bs";
 import axios from "axios";
 import { Info, MoreHorizontal, Plus, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
@@ -6,14 +5,6 @@ import { Info, MoreHorizontal, Plus, RotateCcw, ShieldCheck, Trash2 } from "luci
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle,
   Badge,
   Button,
   Card,
@@ -22,6 +13,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -31,7 +23,6 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
-  Input,
   Skeleton,
   Table,
   TableBody,
@@ -45,12 +36,13 @@ import {
 } from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { withPermission } from "@app/hoc";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import {
   fetchSlackReinstallUrl,
   useCheckMicrosoftTeamsIntegrationInstallationStatus,
   useDeleteMicrosoftTeamsIntegration,
   useDeleteSlackIntegration,
+  useGetSlackIntegrationAlertCount,
   useGetWorkflowIntegrations
 } from "@app/hooks/api";
 import {
@@ -75,12 +67,12 @@ const renderStatus = (status: WorkflowIntegrationStatus) => {
 
 export const OrgWorkflowIntegrationTab = withPermission(
   () => {
+    const scopeVariant = useScopeVariant();
     const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
       "addWorkflowIntegration",
       "integrationDetails",
       "removeIntegration"
     ] as const);
-    const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
     const { currentOrg } = useOrganization();
     const { data: workflowIntegrations, isPending: isWorkflowIntegrationsLoading } =
@@ -100,6 +92,25 @@ export const OrgWorkflowIntegrationTab = withPermission(
     const removeIntegrationData = popUp.removeIntegration.data as
       | { id: string; slug: string; platform: WorkflowIntegrationPlatform }
       | undefined;
+
+    const {
+      data: slackAlertCount = 0,
+      isLoading: isLoadingSlackAlertCount,
+      isError: isSlackAlertCountError
+    } = useGetSlackIntegrationAlertCount(
+      popUp.removeIntegration.isOpen &&
+        removeIntegrationData?.platform === WorkflowIntegrationPlatform.SLACK
+        ? removeIntegrationData.id
+        : undefined
+    );
+
+    let slackAlertWarning = "";
+    if (isSlackAlertCountError) {
+      slackAlertWarning =
+        " Infisical could not check which alerts post through it. Any that do will fail to send until they are edited to use another Slack integration.";
+    } else if (slackAlertCount > 0) {
+      slackAlertWarning = ` ${slackAlertCount} alert${slackAlertCount === 1 ? " posts" : "s post"} through it and will fail to send until ${slackAlertCount === 1 ? "it is" : "they are"} edited to use another Slack integration.`;
+    }
 
     const handleRemoveIntegration = async () => {
       if (!currentOrg || !removeIntegrationData) {
@@ -122,7 +133,6 @@ export const OrgWorkflowIntegrationTab = withPermission(
       }
 
       handlePopUpClose("removeIntegration");
-      setDeleteConfirmation("");
       createNotification({
         text: `Deleted integration "${slug}"`,
         type: "success"
@@ -171,7 +181,7 @@ export const OrgWorkflowIntegrationTab = withPermission(
             <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Settings}>
               {(isAllowed) => (
                 <Button
-                  variant="org"
+                  variant={scopeVariant}
                   size="sm"
                   onClick={() => {
                     handlePopUpOpen("addWorkflowIntegration");
@@ -347,55 +357,15 @@ export const OrgWorkflowIntegrationTab = withPermission(
           id={popUp.integrationDetails?.data?.id}
           onOpenChange={(state) => handlePopUpToggle("integrationDetails", state)}
         />
-        <AlertDialog
-          open={popUp.removeIntegration.isOpen}
-          onOpenChange={(isOpen) => {
-            handlePopUpToggle("removeIntegration", isOpen);
-            if (!isOpen) setDeleteConfirmation("");
-          }}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogMedia>
-                <Trash2 />
-              </AlertDialogMedia>
-              <AlertDialogTitle>
-                Delete integration &quot;{removeIntegrationData?.slug}&quot;?
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                Projects using this integration will stop sending notifications to it. This cannot
-                be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="w-full">
-              <p className="mb-2 text-sm text-muted">
-                Type {removeIntegrationData?.slug ?? ""} to confirm.
-              </p>
-              <Input
-                value={deleteConfirmation}
-                onChange={(e) => setDeleteConfirmation(e.target.value)}
-                placeholder={removeIntegrationData?.slug ?? ""}
-                aria-label="Confirm integration alias"
-              />
-            </div>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={handleRemoveIntegration}
-                isPending={isDeletingIntegration}
-                isDisabled={
-                  isDeletingIntegration ||
-                  !removeIntegrationData?.slug ||
-                  deleteConfirmation !== removeIntegrationData.slug
-                }
-              >
-                Delete
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ConfirmationAlertDialog
+          isOpen={popUp.removeIntegration.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("removeIntegration", isOpen)}
+          title={`Delete integration "${removeIntegrationData?.slug ?? ""}"?`}
+          description={`Projects using this integration will stop sending notifications to it.${slackAlertWarning} This cannot be undone.`}
+          confirmKey={removeIntegrationData?.slug ?? ""}
+          isPending={isDeletingIntegration || isLoadingSlackAlertCount}
+          onConfirm={handleRemoveIntegration}
+        />
       </Card>
     );
   },

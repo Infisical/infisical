@@ -41,7 +41,8 @@ export enum OrgPermissionAppConnectionActions {
 }
 
 export enum OrgPermissionAuditLogsActions {
-  Read = "read"
+  Read = "read",
+  Edit = "edit"
 }
 
 // TODO: remove once KMIP clients are fully migrated to KMIP servers (OrgPermissionKmipServerActions).
@@ -159,7 +160,8 @@ export enum OrgPermissionHoneyTokenActions {
 export enum OrgPermissionSecretsManagementInsightsActions {
   Read = "read",
   GenerateReport = "generate-report",
-  DeleteReport = "delete-report"
+  DeleteReport = "delete-report",
+  SearchAllSecretValues = "search-all-secret-values"
 }
 
 export enum OrgPermissionProjectActions {
@@ -187,6 +189,7 @@ export enum OrgPermissionSubjects {
   AdminConsole = "organization-admin-console",
   MachineIdentityAuthTemplate = "machine-identity-auth-template",
   AuditLogs = "audit-logs",
+  AuditLogStreams = "audit-log-streams",
   ProjectTemplates = "project-templates",
   AppConnections = "app-connections",
   Kmip = "kmip",
@@ -226,6 +229,7 @@ export type OrgPermissionSet =
   | [OrgPermissionIdentityActions, OrgPermissionSubjects.Identity]
   | [OrgPermissionActions, OrgPermissionSubjects.Kms]
   | [OrgPermissionAuditLogsActions, OrgPermissionSubjects.AuditLogs]
+  | [OrgPermissionAuditLogsActions, OrgPermissionSubjects.AuditLogStreams]
   | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
   | [OrgPermissionGatewayActions, OrgPermissionSubjects.Gateway]
   | [OrgPermissionGatewayPoolActions, OrgPermissionSubjects.GatewayPool]
@@ -346,6 +350,12 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.AuditLogs).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionAuditLogsActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.AuditLogStreams).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionAuditLogsActions).describe(
       "Describe what action an entity can take."
     )
@@ -541,7 +551,9 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Kms);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Kms);
 
-  can(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs);
+  can([OrgPermissionAuditLogsActions.Read, OrgPermissionAuditLogsActions.Edit], OrgPermissionSubjects.AuditLogs);
+
+  can([OrgPermissionAuditLogsActions.Read, OrgPermissionAuditLogsActions.Edit], OrgPermissionSubjects.AuditLogStreams);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.ProjectTemplates);
@@ -624,6 +636,10 @@ const buildAdminPermission = () => {
   can(OrgPermissionSecretsManagementInsightsActions.Read, OrgPermissionSubjects.SecretsManagementInsights);
   can(OrgPermissionSecretsManagementInsightsActions.GenerateReport, OrgPermissionSubjects.SecretsManagementInsights);
   can(OrgPermissionSecretsManagementInsightsActions.DeleteReport, OrgPermissionSubjects.SecretsManagementInsights);
+  can(
+    OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues,
+    OrgPermissionSubjects.SecretsManagementInsights
+  );
 
   return rules;
 };
@@ -654,6 +670,8 @@ const buildMemberPermission = () => {
   can(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
 
   can(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs);
+
+  can(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogStreams);
 
   can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
   can(OrgPermissionGatewayActions.ListGateways, OrgPermissionSubjects.Gateway);

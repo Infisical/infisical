@@ -1,4 +1,4 @@
-import { FormLabel, Spinner } from "@app/components/v2";
+import { Detail, DetailLabel, Spinner } from "@app/components/v3";
 import { useGetIntegrationAuthOctopusDeployScopeValues } from "@app/hooks/api/integrationAuth/queries";
 import {
   OctopusDeployScope,
@@ -72,11 +72,8 @@ export const OctopusDeployScopeValues = ({ integration }: OctopusDeployScopeValu
         };
 
         return (
-          <div className="mt-4" key={key}>
-            <FormLabel
-              className="text-sm font-medium text-foreground-secondary"
-              label={getLabel(key)}
-            />
+          <Detail className="mt-4" key={key}>
+            <DetailLabel>{getLabel(key)}</DetailLabel>
 
             <div className="text-sm text-label">
               {values
@@ -85,7 +82,7 @@ export const OctopusDeployScopeValues = ({ integration }: OctopusDeployScopeValu
                   <p key={name}>{name}</p>
                 ))}
             </div>
-          </div>
+          </Detail>
         );
       })}
     </>

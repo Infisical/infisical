@@ -5,13 +5,14 @@ import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
 
 import { cn } from "../../utils";
+import {
+  OverlayLayerContext,
+  useOverlayIsPending,
+  useOverlayLayer
+} from "../../utils/overlay-layer";
 
 const isAllowedOutsideInteraction = (target: EventTarget | null) =>
-  Boolean(
-    (target as HTMLElement)?.closest?.(
-      "[data-sonner-toast], [data-slot='combobox-portal'], .react-select-menu-portal"
-    )
-  );
+  Boolean((target as HTMLElement)?.closest?.("[data-sonner-toast], [data-slot='combobox-portal']"));
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;
@@ -22,7 +23,15 @@ function SheetTrigger({ ...props }: React.ComponentProps<typeof SheetPrimitive.T
 }
 
 function SheetClose({ ...props }: React.ComponentProps<typeof SheetPrimitive.Close>) {
-  return <SheetPrimitive.Close data-slot="sheet-close" {...props} />;
+  const isPending = useOverlayIsPending();
+
+  return (
+    <SheetPrimitive.Close
+      data-slot="sheet-close"
+      {...props}
+      {...(isPending && { disabled: true })}
+    />
+  );
 }
 
 function SheetPortal({ ...props }: React.ComponentProps<typeof SheetPrimitive.Portal>) {
@@ -50,31 +59,42 @@ function SheetContent({
   children,
   side = "right",
   size,
+  isPending = false,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
+  onEscapeKeyDown,
   onPointerDownOutside,
   onInteractOutside,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left";
   size?: "form" | "wide" | "workspace";
+  isPending?: boolean;
 }) {
+  const { contextValue, guardDismiss, captureFocusReturn, restoreFocusReturn } =
+    useOverlayLayer(isPending);
+
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
         data-slot="sheet-content"
+        onOpenAutoFocus={(e) => captureFocusReturn(e, onOpenAutoFocus)}
+        onCloseAutoFocus={(e) => restoreFocusReturn(e, onCloseAutoFocus)}
+        onEscapeKeyDown={(e) => guardDismiss(e, onEscapeKeyDown)}
         onPointerDownOutside={(e) => {
           if (isAllowedOutsideInteraction(e.target)) {
             e.preventDefault();
             return;
           }
-          onPointerDownOutside?.(e);
+          guardDismiss(e, onPointerDownOutside);
         }}
         onInteractOutside={(e) => {
           if (isAllowedOutsideInteraction(e.target)) {
             e.preventDefault();
             return;
           }
-          onInteractOutside?.(e);
+          guardDismiss(e, onInteractOutside);
         }}
         className={cn(
           "fixed z-[var(--z-index-modal)] flex thin-scrollbar flex-col border-border bg-popover text-foreground shadow-lg outline-0 transition data-[state=closed]:animate-out data-[state=closed]:duration-150 data-[state=closed]:ease-in data-[state=closed]:fade-out-50 data-[state=open]:animate-in data-[state=open]:duration-200 data-[state=open]:ease-out",
@@ -93,8 +113,11 @@ function SheetContent({
         )}
         {...props}
       >
-        {children}
-        <SheetPrimitive.Close className="data-[state=open]:bg-secondary absolute top-4 right-4 z-20 cursor-pointer rounded-xs text-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
+        <OverlayLayerContext.Provider value={contextValue}>{children}</OverlayLayerContext.Provider>
+        <SheetPrimitive.Close
+          disabled={isPending}
+          className="data-[state=open]:bg-secondary absolute top-4 right-4 z-20 cursor-pointer rounded-xs text-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none"
+        >
           <XIcon className="size-4" />
           <span className="sr-only">Close</span>
         </SheetPrimitive.Close>
@@ -127,7 +150,7 @@ function SheetTitle({ className, ...props }: React.ComponentProps<typeof SheetPr
   return (
     <SheetPrimitive.Title
       data-slot="sheet-title"
-      className={cn("font-semibold text-foreground", className)}
+      className={cn("font-alliance font-normal text-foreground", className)}
       {...props}
     />
   );

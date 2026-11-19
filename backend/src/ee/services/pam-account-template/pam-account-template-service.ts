@@ -2,9 +2,15 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
+import { isRotatableAccountType, ROTATABLE_ACCOUNT_TYPES } from "../pam-account-rotation/pam-rotation-fns";
+import { ORACLE_MAX_PASSWORD_LENGTH } from "../pam-account/pam-account-connection-test";
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import { ACCOUNT_TYPE_CONFIGS } from "../pam-account/pam-account-schemas";
+import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import { TPamRecordingResolvedConfig } from "../pam-session-recording/pam-recording-storage-types";
 import { accountTypeSupportsSessionLogMasking, PamAccountType, PamProductRole } from "../pam/pam-enums";
 import { TActorContext, verifyProductMembership } from "../pam/pam-permission";
-import { validatePolicyValues } from "../pam/pam-policies";
+import { defaultTemplatePolicies, validatePolicyValues } from "../pam/pam-policies";
 import {
   mintCorsProbeUrl,
   TPamValidatorDeps,
@@ -12,12 +18,6 @@ import {
   validateRecordingConnection,
   validateRecordingS3Config
 } from "../pam/pam-validators";
-import { ORACLE_MAX_PASSWORD_LENGTH } from "../pam-account/pam-account-connection-test";
-import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import { ACCOUNT_TYPE_CONFIGS } from "../pam-account/pam-account-schemas";
-import { isRotatableAccountType, ROTATABLE_ACCOUNT_TYPES } from "../pam-account-rotation/pam-rotation-fns";
-import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
-import { TPamRecordingResolvedConfig } from "../pam-session-recording/pam-recording-storage-types";
 import { TPamAccountTemplateDALFactory } from "./pam-account-template-dal";
 import {
   DEFAULT_HEARTBEAT_CONFIG,
@@ -119,7 +119,8 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
 
     if (isS3Backend && (!recordingConnectionId || !resolvedS3Config)) {
       throw new BadRequestError({
-        message: "S3 storage backend requires an AWS connection and valid S3 bucket configuration"
+        message:
+          "S3 storage backend requires an AWS or S3-Compatible Storage connection and valid S3 bucket configuration"
       });
     }
 
@@ -161,7 +162,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     await verifyProductAdmin(projectId, ctx);
     await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
-    const validatedPolicies = validateTemplatePolicies(type, policies);
+    const validatedPolicies = validateTemplatePolicies(type, policies ?? defaultTemplatePolicies(type));
     validateTemplateRotationConfig(type, settings);
 
     const resolvedS3Config = await validateTemplateRecordingS3Config(recordingConnectionId, settings, ctx);
@@ -215,13 +216,16 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     ...ctx
   }: TUpdatePamAccountTemplateDTO & TActorContext) => {
     await verifyProductAdmin(projectId, ctx);
-    await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
-    await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
     const existing = await pamAccountTemplateDAL.findById(templateId);
     if (!existing || existing.projectId !== projectId) {
       throw new NotFoundError({ message: `Account template with ID '${templateId}' not found` });
     }
+
+    await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx, {
+      previousGatewayId: existing.gatewayId
+    });
+    await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
     const validatedPolicies = validateTemplatePolicies(existing.type, policies);
     validateTemplateRotationConfig(existing.type, settings);

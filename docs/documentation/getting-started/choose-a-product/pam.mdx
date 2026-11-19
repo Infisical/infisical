@@ -16,13 +16,13 @@ Infisical Privileged Access Management (PAM) brokers connections to systems such
   <Card title="Broker access to a database" icon="database" href="/documentation/platform/pam/quick-starts/launch-first-session">
     Allow users to connect to PostgreSQL, MySQL, and other databases without providing them with the credential.
   </Card>
-  <Card title="Broker access to a server" icon="server" href="/documentation/platform/pam/quick-starts/launch-first-session">
+  <Card title="Broker access to a server" icon="server" href="/documentation/platform/pam/accounts/ssh">
     Allow users to open SSH sessions to jump boxes and production servers under policy-gated, recorded sessions.
   </Card>
   <Card title="Give AI agents scoped access" icon="bot" href="/documentation/platform/pam/ai-agents/overview">
     Allow an AI agent to access infrastructure under the identity of the user who started it, or as its own machine identity.
   </Card>
-  <Card title="Record and replay sessions" icon="film" href="/documentation/platform/pam/overview">
+  <Card title="Record and replay sessions" icon="film" href="/documentation/platform/pam/sessions/session-recording">
     Attribute every action to the identity that opened the session, and replay the session for later review.
   </Card>
 </CardGroup>
@@ -39,6 +39,6 @@ When access is brokered instead, the credential is stored in a single location a
 
 ## How Infisical does it
 
-Infisical PAM organizes credentials into three types of resources: templates, folders, and accounts. A template defines the structure of a type of credential, a folder groups related credentials, and an account is a specific credential that can be used to access a system. To access a system, a user requests a session against an account they have been granted access to. Infisical opens a connection to the target system through a [Gateway](/documentation/platform/gateways/overview), and the account's credential is applied within that connection. The credential isn't sent to the user's client. Sessions are recorded and can be replayed for later review.
+Infisical PAM organizes credentials into three types of resources: templates, folders, and accounts. A template sets the rules for connecting with a type of credential, a folder groups related credentials, and an account is a specific credential that can be used to access a system. To access a system, a user requests a session against an account they have been granted access to. Infisical opens a connection to the target system through a [Gateway](/documentation/platform/gateways/overview), and the account's credential is applied within that connection. The credential isn't sent to the user's client. Sessions are recorded and can be replayed for later review.
 
 PAM sessions can be requested by users or by AI agents. A user connects through a browser or through the CLI. An [AI agent](/documentation/platform/pam/ai-agents/overview) can be configured to act as the user who started it, or to act as its own [machine identity](/documentation/platform/identities/machine-identities) with a distinct set of permissions. In both configurations, the credential is stored in Infisical, and every action is recorded in the audit log.

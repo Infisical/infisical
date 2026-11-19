@@ -2,6 +2,7 @@ import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
 import RE2 from "re2";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { request } from "@app/lib/config/request";
@@ -9,7 +10,8 @@ import { BadRequestError } from "@app/lib/errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
+import { getTlsServerNameOptions } from "@app/lib/tls";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { VenafiTppConnectionMethod } from "./venafi-tpp-connection-enums";
@@ -54,7 +56,7 @@ export const requestWithVenafiTppGateway = async <T>(
   await blockLocalAndPrivateIpAddresses(url.toString(), Boolean(gatewayId));
 
   if (!gatewayId) {
-    return request.request(requestConfig);
+    return safeRequest.request({ ...requestConfig, url: requestConfig.url as string });
   }
 
   const [targetHost] = await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });
@@ -87,7 +89,7 @@ export const requestWithVenafiTppGateway = async <T>(
         },
         ...(isHttps && {
           httpsAgent: new https.Agent({
-            servername: targetHost
+            ...getTlsServerNameOptions(targetHost)
           })
         })
       };
@@ -199,7 +201,7 @@ export const validateVenafiTppConnectionCredentials = async (
       "Venafi TPP: Credential validation successful"
     );
   } catch (error: unknown) {
-    if (error instanceof BadRequestError) {
+    if (error instanceof BadRequestError || error instanceof RuleViolationError) {
       throw error;
     }
     if (error instanceof AxiosError) {

@@ -1,5 +1,6 @@
 import { deepEqualSkipFields } from "@app/lib/fn/object";
 
+import { GitHubSyncSecretType } from "./github/github-sync-enums";
 import { SecretSync } from "./secret-sync-enums";
 
 // These optional scopes use the same provider destination when empty or omitted.
@@ -20,6 +21,41 @@ const normalizeOptionalScope = (destination: SecretSync, config: unknown) => {
   );
 };
 
+// Configs saved before one of these fields existed omit it, and behave as if they held the default.
+const DEFAULTED_FIELDS: Partial<Record<SecretSync, Record<string, unknown>>> = {
+  [SecretSync.GitHub]: { secretType: GitHubSyncSecretType.Actions }
+};
+
+const fillDefaultedFields = (destination: SecretSync, config: unknown) => {
+  const defaults = DEFAULTED_FIELDS[destination];
+  if (!defaults || !config || typeof config !== "object" || Array.isArray(config)) return config;
+
+  const filled: Record<string, unknown> = { ...config };
+  Object.entries(defaults).forEach(([key, value]) => {
+    if (filled[key] === undefined) filled[key] = value;
+  });
+  return filled;
+};
+
+// The provider resolves these names regardless of case, so `team` and `TEAM` are the same destination.
+const CASE_INSENSITIVE_FIELDS: Partial<Record<SecretSync, string>> = {
+  [SecretSync.Jenkins]: "folderPath"
+};
+
+const lowercaseCaseInsensitiveField = (destination: SecretSync, config: unknown) => {
+  const field = CASE_INSENSITIVE_FIELDS[destination];
+  if (!field || !config || typeof config !== "object" || Array.isArray(config)) return config;
+
+  const value = (config as Record<string, unknown>)[field];
+  return typeof value === "string" ? { ...config, [field]: value.toLowerCase() } : config;
+};
+
+const normalizeDestinationConfig = (destination: SecretSync, config: unknown) =>
+  lowercaseCaseInsensitiveField(
+    destination,
+    normalizeOptionalScope(destination, fillDefaultedFields(destination, config))
+  );
+
 export const areSecretSyncDestinationConfigsEqual = (
   destination: SecretSync,
   existingConfig: unknown,
@@ -27,7 +63,7 @@ export const areSecretSyncDestinationConfigsEqual = (
   skipFields: string[]
 ) =>
   deepEqualSkipFields(
-    normalizeOptionalScope(destination, existingConfig),
-    normalizeOptionalScope(destination, newConfig),
+    normalizeDestinationConfig(destination, existingConfig),
+    normalizeDestinationConfig(destination, newConfig),
     skipFields
   );

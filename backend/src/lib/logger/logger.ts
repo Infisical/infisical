@@ -93,7 +93,8 @@ const outgoingRequestRedactPaths = [
   "*.*.*._header",
   "request.path",
   "*.request.path",
-  "*.*.request.path"
+  "*.*.request.path",
+  "*.*.*.config"
 ];
 
 // redact until depth of three

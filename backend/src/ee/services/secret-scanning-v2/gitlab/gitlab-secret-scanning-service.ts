@@ -1,22 +1,17 @@
-import { GitLabDataSourceScope } from "@app/ee/services/secret-scanning-v2/gitlab/gitlab-secret-scanning-enums";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TSecretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { TSecretScanningV2QueueServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-queue";
 import { crypto } from "@app/lib/crypto";
 import { logger } from "@app/lib/logger";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import {
-  TGitLabDataSource,
-  TGitLabDataSourceCredentials,
-  THandleGitLabPushEvent
-} from "./gitlab-secret-scanning-types";
+import { GitLabDataSourceConfigSchema } from "./gitlab-secret-scanning-schemas";
+import { TGitLabDataSourceCredentials, THandleGitLabPushEvent } from "./gitlab-secret-scanning-types";
 
 export const gitlabSecretScanningService = (
   secretScanningV2DAL: TSecretScanningV2DALFactory,
-  secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "queueResourceDiffScan">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "handleResourcePushEvent">,
+  kmsDataKeyService: TKmsDataKeyService
 ) => {
   const handlePushEvent = async ({ payload, token, dataSourceId }: THandleGitLabPushEvent) => {
     if (!payload.total_commits_count || !payload.project) {
@@ -28,10 +23,10 @@ export const gitlabSecretScanningService = (
       return;
     }
 
-    const dataSource = (await secretScanningV2DAL.dataSources.findOne({
+    const dataSource = await secretScanningV2DAL.dataSources.findOne({
       id: dataSourceId,
       type: SecretScanningDataSource.GitLab
-    })) as TGitLabDataSource | undefined;
+    });
 
     if (!dataSource) {
       logger.error(
@@ -40,7 +35,17 @@ export const gitlabSecretScanningService = (
       return;
     }
 
-    const { isAutoScanEnabled, config, encryptedCredentials, projectId } = dataSource;
+    const parsedConfig = GitLabDataSourceConfigSchema.safeParse(dataSource.config);
+
+    if (!parsedConfig.success) {
+      logger.error(
+        parsedConfig.error,
+        `secretScanningV2PushEvent: GitLab - Invalid data source config [dataSourceId=${dataSource.id}] [projectId=${payload.project.id}]`
+      );
+      return;
+    }
+
+    const { encryptedCredentials, projectId } = dataSource;
 
     if (!encryptedCredentials) {
       logger.info(
@@ -49,7 +54,7 @@ export const gitlabSecretScanningService = (
       return;
     }
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -71,28 +76,11 @@ export const gitlabSecretScanningService = (
       return;
     }
 
-    if (!isAutoScanEnabled) {
-      logger.info(
-        `secretScanningV2PushEvent: GitLab - ignoring due to auto scan disabled [dataSourceId=${dataSource.id}] [projectId=${payload.project.id}]`
-      );
-      return;
-    }
-
-    if (
-      config.scope === GitLabDataSourceScope.Project
-        ? config.projectId.toString() === payload.project_id.toString()
-        : config.includeProjects.includes("*") || config.includeProjects.includes(payload.project.path_with_namespace)
-    ) {
-      await secretScanningV2Queue.queueResourceDiffScan({
-        dataSourceType: SecretScanningDataSource.GitLab,
-        payload,
-        dataSourceId: dataSource.id
-      });
-    } else {
-      logger.info(
-        `secretScanningV2PushEvent: GitLab - ignoring due to repository not being present in config [dataSourceId=${dataSource.id}] [projectId=${payload.project.id}]`
-      );
-    }
+    await secretScanningV2Queue.handleResourcePushEvent({
+      dataSource,
+      dataSourceType: SecretScanningDataSource.GitLab,
+      payload
+    });
   };
 
   return {

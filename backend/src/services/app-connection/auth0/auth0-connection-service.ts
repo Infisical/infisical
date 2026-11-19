@@ -1,10 +1,9 @@
-import { request } from "@app/lib/config/request";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { OrgServiceActor } from "@app/lib/types";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { getAuth0ConnectionAccessToken } from "@app/services/app-connection/auth0/auth0-connection-fns";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAuth0Connection, TAuth0ListClient, TAuth0ListClientsResponse } from "./auth0-connection-types";
 
@@ -17,9 +16,9 @@ type TGetAppConnectionFunc = (
 const listAuth0Clients = async (
   appConnection: TAuth0Connection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsDataKeyService: TKmsDataKeyService
 ) => {
-  const accessToken = await getAuth0ConnectionAccessToken(appConnection, appConnectionDAL, kmsService);
+  const accessToken = await getAuth0ConnectionAccessToken(appConnection, appConnectionDAL, kmsDataKeyService);
 
   const { audience, clientId: connectionClientId } = appConnection.credentials;
   await blockLocalAndPrivateIpAddresses(audience);
@@ -30,7 +29,7 @@ const listAuth0Clients = async (
 
   while (hasMore) {
     // eslint-disable-next-line no-await-in-loop
-    const { data: clientsPage } = await request.get<TAuth0ListClientsResponse>(`${audience}clients`, {
+    const { data: clientsPage } = await safeRequest.get<TAuth0ListClientsResponse>(`${audience}clients`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Accept-Encoding": "application/json"
@@ -55,12 +54,12 @@ const listAuth0Clients = async (
 export const auth0ConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsDataKeyService: TKmsDataKeyService
 ) => {
   const listClients = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.Auth0, connectionId, actor);
 
-    const clients = await listAuth0Clients(appConnection, appConnectionDAL, kmsService);
+    const clients = await listAuth0Clients(appConnection, appConnectionDAL, kmsDataKeyService);
 
     return clients.map((client) => ({ id: client.client_id, name: client.name }));
   };

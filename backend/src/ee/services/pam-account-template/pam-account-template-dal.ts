@@ -5,8 +5,8 @@ import { TableName, TPamAccountTemplates } from "@app/db/schemas";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify } from "@app/lib/knex";
 
-import { PamAccountType } from "../pam/pam-enums";
 import { ACCOUNT_NEEDS_ROTATION_ACCOUNT_SQL, ACCOUNT_WILL_ROTATE_SQL } from "../pam-account-rotation/pam-rotation-fns";
+import { PamAccountType } from "../pam/pam-enums";
 
 export type TPamAccountTemplateWithCount = TPamAccountTemplates & { accountCount: number };
 
@@ -64,5 +64,26 @@ export const pamAccountTemplateDALFactory = (db: TDbClient) => {
     };
   };
 
-  return { ...orm, findByProjectId, countAccountsByTemplateId, getTemplateRotationStats };
+  const findByGatewayId = async (gatewayId: string, tx?: Knex) =>
+    (tx || db.replicaNode())(TableName.PamAccountTemplate)
+      .where(`${TableName.PamAccountTemplate}.gatewayId`, gatewayId)
+      .select("id", "name", "type");
+
+  const countByGatewayIds = async (gatewayIds: string[], tx?: Knex) =>
+    (await (tx || db.replicaNode())(TableName.PamAccountTemplate)
+      .whereIn(`${TableName.PamAccountTemplate}.gatewayId`, gatewayIds)
+      .groupBy(`${TableName.PamAccountTemplate}.gatewayId`)
+      .select(`${TableName.PamAccountTemplate}.gatewayId as id`, db.raw("count(*)::int as count"))) as {
+      id: string;
+      count: number;
+    }[];
+
+  return {
+    ...orm,
+    findByProjectId,
+    countAccountsByTemplateId,
+    getTemplateRotationStats,
+    findByGatewayId,
+    countByGatewayIds
+  };
 };

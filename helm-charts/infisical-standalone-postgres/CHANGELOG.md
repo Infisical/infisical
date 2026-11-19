@@ -1,3 +1,40 @@
+## 1.12.2
+Changes:
+* Updated the default Infisical image (`appVersion`) from `v0.167.0` to `v0.167.12`.
+
+Upgrade notes:
+* Agent Vault session logs license (`v0.167.5`): Session logs in default storage (OBJECT_STORAGE_S3_*) now need a license that includes them, and existing licenses may not. Without one, instances stop recording them there and can't show existing ones, while external storage is unaffected. If you store session logs in default storage, confirm before upgrading that your license includes them, and replace offline license keys that don't.
+* Proxied service creation disabled (`v0.167.5`): Creating a proxied service, including through POST /api/v1/proxied-services, now returns a 400 error as Agent Proxy moves to Agent Vault. Existing proxied services keep working and can still be edited or deleted. Move any automation that creates proxied services to Agent Vault before upgrading.
+* AWS IAM dynamic secret IRSA setting (`v0.167.5`): AWS IAM dynamic secrets that use IRSA with the temporary credentials type now require KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN, as the IAM user type already did. With the default of false, creating, updating and leasing them fails. If you use these dynamic secrets, set KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN=true before upgrading, or move them to another authentication method.
+* PKI certificate deletion keeps records (`v0.167.5`): Deleting a certificate, including through Certificate Cleanup, now keeps its record as Deleted, and the same certificate can't be imported again. Change automation that deletes and re-imports a certificate so it issues a new one.
+* Legacy access approval system removed (`v0.167.8`): Infisical no longer reads the legacy access approval tables, so policies that the v0.166.9 migration left on the legacy system are not listed or enforced, and their requests can't be reviewed. Before upgrading, search the logs from your v0.166.9 or later upgrade for "migrate-access-approval-policies-to-global: policy not migrated" and recreate any policy listed there.
+* Audit log reads need a license (`v0.167.8`): GET /api/v1/organization/audit-logs and the deprecated project audit logs route now return a 400 error when the license doesn't include audit logs, which is the default without a license. Logs are still recorded. If you read audit logs through the API, confirm before upgrading that your license includes them.
+
+## 1.12.1
+Changes:
+* `infisical.image.tag` now defaults to `""`, which uses the chart's `appVersion`. Each chart release sets `appVersion` to the Infisical release it ships, so the default image no longer has to be bumped by hand. Setting `infisical.image.tag` still pins a specific version.
+
+## 1.12.0
+Changes:
+* Added `infisical.rolloutOnEveryRender` (default `true`) to control the `updatedAt` annotation on the Infisical Deployment and pod template. The annotation is set to the render time, so every `helm upgrade`, and every Argo CD or Flux sync, rolls all pods even when nothing changed, and GitOps tools show the release as permanently out of sync. Set it to `false` to keep the pod spec stable between renders. After changing the `infisical.kubeSecretRef` secret, restart the pods with `kubectl rollout restart`.
+* Fixed the `updatedAt` date format, which printed the month in place of the day of the month.
+* Backwards compatible. The default keeps the current behavior, including for releases upgraded with `--reuse-values`, where the new key is unset. Only an explicit `false` turns the annotation off, and doing so triggers a one-time pod rollout.
+
+## 1.11.1 (October 22, 2026)
+Changes:
+* Updated the default `infisical.image.tag` value from `v0.158.0` to `v0.167.0`.
+* Updated the default `infisical.autoBootstrap.image.tag` value from `0.41.86` to `0.44.6`.
+
+Upgrade notes:
+
+Upgrading on default values moves Infisical from `v0.158.0` to `v0.167.0`, across releases with breaking changes. The full list, with the action for each, is in `upgrade-impact/data/releases/` (`v0.159.19` through `v0.167.0`). Act on these before you upgrade:
+* Org identity credentials (`v0.166.6`): revoking auth, and creating, reading or deleting tokens and client secrets on org identities, now checks only the specific identity action. In orgs on the legacy privilege system, roles without that action, including the built-in Member role, get 403. Give users and machine identities that manage identity credentials a role with the `edit-auth`, `revoke-auth`, `create-token`, `get-token` and `delete-token` identity actions they need.
+* Identity auth TLS (`v0.159.24`): TLS is now verified for the OIDC issuer and JWT JWKS URL that identity auth calls. If either uses a self-signed or internal CA, add the issuing CA certificate to that auth method's configuration. Kubernetes auth is different: methods that had no CA certificate stored keep TLS verification disabled after the upgrade. To turn it on, add the Kubernetes API server's issuing CA certificate to the method and set `verifyTlsCertificate` to `true`.
+* Removed APIs and fields: the upgrade-path endpoints are removed (`v0.159.19`), native integrations can no longer be created (`v0.162.22`; existing integrations keep working, so move creation to Secret Syncs), and the super-admin `trustSamlEmails` and `trustOidcEmails` fields are dropped (`v0.163.0`). Update any tooling that uses them.
+* Rollout: with the default `infisical.replicaCount: 2`, the Deployment replaces pods one at a time, so pods still running `v0.158.0` keep serving requests after the first new pod has migrated the database. The `v0.166.5` notes ask for all pods to roll out together. To avoid running mixed versions, scale the Deployment to 0 before `helm upgrade`, which means downtime until the new pod is ready.
+* Rollback: back up the database before upgrading. After the migrations run, a `v0.158.0` pod refuses to start against the database, so `helm rollback` alone does not restore the old version.
+* Bootstrap token (`v0.159.26`): upgrading from Infisical `v0.159.25` or older invalidates the root identity token that the bootstrap Job stored in `infisical.autoBootstrap.secretDestination.name` (`infisical-bootstrap-secret` by default). Infisical `v0.159.26` and newer reject access tokens that have no expiry once `LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT` (default `2026-05-04`) plus `MAX_MACHINE_IDENTITY_TOKEN_AGE` (default `90d`) has passed, and the bootstrap Job runs only on install, so the upgrade does not replace the token. After upgrading, create a new access token for the instance admin identity and update anything that reads the bootstrap secret. To keep the old token working for another 90 days while you do that, set `LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT` to the upgrade date through `infisical.extraEnv`.
+
 ## 1.11.0 (September 17, 2026)
 Changes:
 * `infisical.autoBootstrap.secretDestination.namespace` now defaults to `""` instead of the literal `"default"`. Helm's `default` function only substitutes on an empty value, so the non-empty `"default"` meant the template's documented fall back to the release namespace never applied. Every install that left this key alone wrote the root identity token to the `default` namespace and created the bootstrap Role and RoleBinding there, and the bootstrap Job still reported success. Fresh installs now place the secret and its RBAC in the release namespace.

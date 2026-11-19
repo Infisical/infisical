@@ -1,37 +1,81 @@
+import { ScimError, scimPatch, ScimPatchOperation, ScimResource } from "scim-patch";
+import { parse } from "scim2-parse-filter";
+
+import { ScimRequestError } from "@app/lib/errors";
+import { isUuidV4 } from "@app/lib/validator/validate-uuid";
+
 import { TListScimGroups, TListScimUsers, TScimGroup, TScimUser } from "./scim-types";
 
 export const buildScimUserList = ({
   scimUsers,
   startIndex,
-  limit,
   totalResults
 }: {
   scimUsers: TScimUser[];
   startIndex: number;
-  limit: number;
   totalResults: number;
 }): TListScimUsers => {
   return {
     Resources: scimUsers,
-    itemsPerPage: limit,
+    itemsPerPage: scimUsers.length,
     schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
     startIndex,
     totalResults
   };
 };
 
-export const parseScimFilter = (filterToParse: string | undefined) => {
-  if (!filterToParse) return {};
-  const [parsedName, parsedValue] = filterToParse.split("eq").map((s) => s.trim());
+const invalidScimFilter = (detail: string, error?: unknown) =>
+  new ScimRequestError({ detail, status: 400, scimType: "invalidFilter", error });
 
-  let attributeName = parsedName;
-  if (parsedName === "userName") {
-    attributeName = "email";
-  } else if (parsedName === "displayName") {
-    attributeName = "name";
+const parseFilterOrThrow = (filter: string) => {
+  try {
+    return parse(filter);
+  } catch (err) {
+    throw invalidScimFilter(`The filter '${filter}' could not be parsed.`, err);
+  }
+};
+
+export const assertParsableScimFilter = (filter: string | undefined) => {
+  if (filter) parseFilterOrThrow(filter);
+};
+
+const SCIM_GROUP_FILTER_COLUMNS: Record<string, "name" | "id"> = {
+  displayname: "name",
+  id: "id"
+};
+
+/**
+ * Groups support a single `eq` comparison on displayName or id, which is what IdPs send to
+ * look a group up before creating it. Returns null when the filter can match no group.
+ */
+export const parseScimGroupFilter = (filter: string | undefined): { name?: string; id?: string } | null => {
+  if (!filter) return {};
+
+  const ast = parseFilterOrThrow(filter);
+  const column =
+    ast.op === "eq" && "attrPath" in ast ? SCIM_GROUP_FILTER_COLUMNS[ast.attrPath.toLowerCase()] : undefined;
+  if (!column || !("compValue" in ast) || typeof ast.compValue !== "string") {
+    throw invalidScimFilter(
+      `The filter '${filter}' is not supported. Groups can be filtered by 'displayName eq "<name>"' or 'id eq "<id>"'.`
+    );
   }
 
-  return { [attributeName]: parsedValue.replaceAll('"', "") };
+  if (column === "name") return { name: ast.compValue };
+  return isUuidV4(ast.compValue) ? { id: ast.compValue } : null;
+};
+
+// A PATCH value is not validated by the route schema, and Entra sends booleans as "True"/"False".
+export const isScimActive = (active: unknown) => String(active).toLowerCase() === "true";
+
+export const applyScimPatch = <T extends ScimResource>(resource: T, operations: ScimPatchOperation[]) => {
+  try {
+    return scimPatch(resource, operations);
+  } catch (err) {
+    if (err instanceof ScimError) {
+      throw new ScimRequestError({ detail: err.message, status: 400, scimType: err.scimCode, error: err });
+    }
+    throw err;
+  }
 };
 
 export const buildScimUser = ({
@@ -86,17 +130,15 @@ export const buildScimUser = ({
 export const buildScimGroupList = ({
   scimGroups,
   startIndex,
-  limit,
   totalResults
 }: {
   scimGroups: TScimGroup[];
   startIndex: number;
-  limit: number;
   totalResults: number;
 }): TListScimGroups => {
   return {
     Resources: scimGroups,
-    itemsPerPage: limit,
+    itemsPerPage: scimGroups.length,
     schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
     startIndex,
     totalResults

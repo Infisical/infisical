@@ -34,6 +34,16 @@ export type TCloudflareWorkersScript = {
   id: string;
 };
 
+export type TCloudflareWorkersPreview = {
+  id: string;
+  name: string;
+};
+
+export type TCloudflareSecretsStore = {
+  id: string;
+  name: string;
+};
+
 export type TCloudflareZone = {
   id: string;
   name: string;

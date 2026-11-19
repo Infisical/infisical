@@ -6,6 +6,7 @@ import net from "net";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -17,16 +18,21 @@ import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
+import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { TAzureDnsConnection } from "@app/services/app-connection/azure-dns/azure-dns-connection-types";
 import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/cloudflare-connection-types";
 import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
+import { TGcpConnection } from "@app/services/app-connection/gcp/gcp-connection-types";
 import { TPowerDnsConnection } from "@app/services/app-connection/powerdns/powerdns-connection-types";
+import { TUltraDNSConnection } from "@app/services/app-connection/ultradns/ultradns-connection-types";
+import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
+import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import {
@@ -40,15 +46,10 @@ import {
   CertKeyUsage,
   CertStatus
 } from "@app/services/certificate/certificate-types";
-import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
-import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
 import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-utils";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -66,7 +67,13 @@ import {
 import { azureDnsDeleteTxtRecord, azureDnsInsertTxtRecord } from "./dns-providers/azure-dns";
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
+import {
+  gcpCloudDnsDeleteTxtRecord,
+  gcpCloudDnsInsertTxtRecord,
+  validateGcpCloudDnsZone
+} from "./dns-providers/gcp-cloud-dns";
 import { powerDnsDeleteTxtRecord, powerDnsInsertTxtRecord, TPowerDnsProviderDeps } from "./dns-providers/powerdns";
+import { ultraDNSDeleteTxtRecord, ultraDNSInsertTxtRecord } from "./dns-providers/ultradns";
 
 const UNCHANGED_CREDENTIAL_SENTINEL = "__INFISICAL_UNCHANGED__";
 
@@ -149,14 +156,11 @@ type TAcmeCertificateAuthorityFnsDeps = {
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
-  >;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -170,11 +174,8 @@ type TOrderCertificateDeps = {
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
-  >;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -279,6 +280,25 @@ const waitForDnsPropagation = async (
   }
 };
 
+const ACME_DNS_PROVIDER_APP_CONNECTION_MAP: Record<AcmeDnsProvider, AppConnection> = {
+  [AcmeDnsProvider.Route53]: AppConnection.AWS,
+  [AcmeDnsProvider.Cloudflare]: AppConnection.Cloudflare,
+  [AcmeDnsProvider.DNSMadeEasy]: AppConnection.DNSMadeEasy,
+  [AcmeDnsProvider.AzureDNS]: AppConnection.AzureDNS,
+  [AcmeDnsProvider.PowerDns]: AppConnection.PowerDns,
+  [AcmeDnsProvider.GcpCloudDns]: AppConnection.GCP,
+  [AcmeDnsProvider.UltraDNS]: AppConnection.UltraDNS
+};
+
+const validateDnsProviderAppConnection = (provider: AcmeDnsProvider, dnsAppConnectionId: string, app: string) => {
+  const requiredApp = ACME_DNS_PROVIDER_APP_CONNECTION_MAP[provider];
+  if (app !== requiredApp) {
+    throw new BadRequestError({
+      message: `App connection with ID '${dnsAppConnectionId}' must be ${APP_CONNECTION_NAME_MAP[requiredApp]} for this DNS provider`
+    });
+  }
+};
+
 const getAcmeChallengeRecord = async (
   provider: AcmeDnsProvider,
   identifierValue: string,
@@ -338,8 +358,7 @@ export const executeAcmeOrder = async (
     isCancelled?: () => Promise<boolean>;
     abortSignal?: AbortSignal;
   },
-  deps: TOrderCertificateDeps,
-  tx?: Knex
+  deps: TOrderCertificateDeps
 ) => {
   const reportProgress = async (message: string) => {
     if (!onProgress) return;
@@ -356,8 +375,8 @@ export const executeAcmeOrder = async (
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    kmsService,
-    projectDAL,
+    kmsDataKeyService,
+    kmsKeyService,
     certificateProfileDAL,
     gatewayV2Service,
     gatewayPoolService,
@@ -366,7 +385,7 @@ export const executeAcmeOrder = async (
 
   const powerDnsDeps: TPowerDnsProviderDeps = { gatewayV2Service, gatewayPoolService, keyStore };
 
-  const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
+  const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
   if (!ca.externalCa || ca.externalCa.type !== CaType.ACME) {
     throw new BadRequestError({ message: "CA is not an ACME CA" });
   }
@@ -376,17 +395,13 @@ export const executeAcmeOrder = async (
     throw new BadRequestError({ message: "CA is disabled" });
   }
 
-  const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-    projectId: ca.projectId,
-    projectDAL,
-    kmsService
-  });
+  const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
-  const kmsEncryptor = await kmsService.encryptWithKmsKey({
+  const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
     kmsId: certificateManagerKmsId
   });
 
-  const kmsDecryptor = await kmsService.decryptWithKmsKey({
+  const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
     kmsId: certificateManagerKmsId
   });
 
@@ -437,11 +452,23 @@ export const executeAcmeOrder = async (
   const acmeClient = new acme.Client(acmeClientOptions);
 
   const appConnection = await appConnectionDAL.findById(acmeCa.configuration.dnsAppConnectionId);
-  const connection = await decryptAppConnection(appConnection, kmsService);
+  const connection = await decryptAppConnection(appConnection, kmsDataKeyService);
 
   await reportProgress("Submitting order to the certificate authority");
 
-  const pem = await acmeClient.auto({
+  const ssrfInterceptorId = acme.axios.interceptors.request.use(async (config) => {
+    if (!config.url) return config;
+    const agent = await buildSsrfSafeAgent(config.url);
+    return {
+      ...config,
+      httpAgent: agent,
+      httpsAgent: agent,
+      maxRedirects: 0,
+      ...(getConfig().SAFE_REQUEST_FORCE_DIRECT_EGRESS && { proxy: false as const })
+    };
+  });
+
+  const order = acmeClient.auto({
     csr,
     email: acmeCa.configuration.accountEmail,
     challengePriority: ["dns-01"],
@@ -508,6 +535,27 @@ export const executeAcmeOrder = async (
             recordName,
             recordValue,
             powerDnsDeps
+          );
+          break;
+        }
+        case AcmeDnsProvider.GcpCloudDns: {
+          await gcpCloudDnsInsertTxtRecord(
+            connection as TGcpConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue,
+            keyStore,
+            abortSignal
+          );
+          break;
+        }
+        case AcmeDnsProvider.UltraDNS: {
+          await ultraDNSInsertTxtRecord(
+            connection as TUltraDNSConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue,
+            { keyStore }
           );
           break;
         }
@@ -581,12 +629,34 @@ export const executeAcmeOrder = async (
           );
           break;
         }
+        case AcmeDnsProvider.GcpCloudDns: {
+          await gcpCloudDnsDeleteTxtRecord(
+            connection as TGcpConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue,
+            keyStore
+          );
+          break;
+        }
+        case AcmeDnsProvider.UltraDNS: {
+          await ultraDNSDeleteTxtRecord(
+            connection as TUltraDNSConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue,
+            { keyStore }
+          );
+          break;
+        }
         default: {
           throw new Error(`Unsupported DNS provider: ${acmeCa.configuration.dnsProviderConfig.provider as string}`);
         }
       }
     }
   });
+
+  const pem = await order.finally(() => acme.axios.interceptors.request.eject(ssrfInterceptorId));
 
   if (isCancelled && (await isCancelled())) {
     throw new CertificateRequestCancelledError();
@@ -614,7 +684,7 @@ export const executeAcmeOrder = async (
 
   const parsedFields = extractExternallyIssuedCertificateFields(certObj);
 
-  return (tx || certificateDAL).transaction(async (innerTx: Knex) => {
+  return certificateDAL.transaction(async (innerTx: Knex) => {
     const cert = await certificateDAL.create(
       {
         ...parsedFields,
@@ -690,8 +760,8 @@ export const AcmeCertificateAuthorityFns = ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  kmsService,
-  projectDAL,
+  kmsDataKeyService,
+  kmsKeyService,
   pkiSubscriberDAL,
   pkiSyncDAL,
   pkiSyncQueue,
@@ -727,34 +797,10 @@ export const AcmeCertificateAuthorityFns = ({
       throw new NotFoundError({ message: `App connection with ID '${dnsAppConnectionId}' not found` });
     }
 
-    if (dnsProviderConfig.provider === AcmeDnsProvider.Route53 && appConnection.app !== AppConnection.AWS) {
-      throw new BadRequestError({
-        message: `App connection with ID '${dnsAppConnectionId}' is not an AWS connection`
-      });
-    }
+    validateDnsProviderAppConnection(dnsProviderConfig.provider, dnsAppConnectionId, appConnection.app);
 
-    if (dnsProviderConfig.provider === AcmeDnsProvider.Cloudflare && appConnection.app !== AppConnection.Cloudflare) {
-      throw new BadRequestError({
-        message: `App connection with ID '${dnsAppConnectionId}' is not a Cloudflare connection`
-      });
-    }
-
-    if (dnsProviderConfig.provider === AcmeDnsProvider.DNSMadeEasy && appConnection.app !== AppConnection.DNSMadeEasy) {
-      throw new BadRequestError({
-        message: `App connection with ID '${dnsAppConnectionId}' is not a DNS Made Easy connection`
-      });
-    }
-
-    if (dnsProviderConfig.provider === AcmeDnsProvider.AzureDNS && appConnection.app !== AppConnection.AzureDNS) {
-      throw new BadRequestError({
-        message: `App connection with ID '${dnsAppConnectionId}' is not an Azure DNS connection`
-      });
-    }
-
-    if (dnsProviderConfig.provider === AcmeDnsProvider.PowerDns && appConnection.app !== AppConnection.PowerDns) {
-      throw new BadRequestError({
-        message: `App connection with ID '${dnsAppConnectionId}' is not a PowerDNS connection`
-      });
+    if (dnsProviderConfig.provider === AcmeDnsProvider.GcpCloudDns) {
+      validateGcpCloudDnsZone(dnsProviderConfig.hostedZoneId);
     }
 
     if (dnsResolver) {
@@ -831,69 +877,43 @@ export const AcmeCertificateAuthorityFns = ({
     actor: OrgServiceActor;
     name?: string;
   }) => {
+    // Validated before the transaction: the connection check decrypts through KMS Core, which takes its own connection.
+    if (configuration) {
+      const { dnsAppConnectionId, dnsProviderConfig, dnsResolver } = configuration;
+      const appConnection = await appConnectionDAL.findById(dnsAppConnectionId);
+
+      if (!appConnection) {
+        throw new NotFoundError({ message: `App connection with ID '${dnsAppConnectionId}' not found` });
+      }
+
+      validateDnsProviderAppConnection(dnsProviderConfig.provider, dnsAppConnectionId, appConnection.app);
+
+      if (dnsProviderConfig.provider === AcmeDnsProvider.GcpCloudDns) {
+        validateGcpCloudDnsZone(dnsProviderConfig.hostedZoneId);
+      }
+
+      if (dnsResolver) {
+        validateDnsResolver(dnsResolver);
+      }
+
+      const ca = await certificateAuthorityDAL.findById(id);
+
+      if (!ca) {
+        throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+      }
+
+      // validates permission to connect
+      await appConnectionService.validateAppConnectionUsageById(
+        appConnection.app as AppConnection,
+        { connectionId: dnsAppConnectionId, projectId: ca.projectId },
+        actor
+      );
+    }
+
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
         const { dnsAppConnectionId, directoryUrl, accountEmail, dnsProviderConfig, eabKid, eabHmacKey, dnsResolver } =
           configuration;
-        const appConnection = await appConnectionDAL.findById(dnsAppConnectionId);
-
-        if (!appConnection) {
-          throw new NotFoundError({ message: `App connection with ID '${dnsAppConnectionId}' not found` });
-        }
-
-        if (dnsProviderConfig.provider === AcmeDnsProvider.Route53 && appConnection.app !== AppConnection.AWS) {
-          throw new BadRequestError({
-            message: `App connection with ID '${dnsAppConnectionId}' is not an AWS connection`
-          });
-        }
-
-        if (
-          dnsProviderConfig.provider === AcmeDnsProvider.Cloudflare &&
-          appConnection.app !== AppConnection.Cloudflare
-        ) {
-          throw new BadRequestError({
-            message: `App connection with ID '${dnsAppConnectionId}' is not a Cloudflare connection`
-          });
-        }
-
-        if (
-          dnsProviderConfig.provider === AcmeDnsProvider.DNSMadeEasy &&
-          appConnection.app !== AppConnection.DNSMadeEasy
-        ) {
-          throw new BadRequestError({
-            message: `App connection with ID '${dnsAppConnectionId}' is not a DNS Made Easy connection`
-          });
-        }
-
-        if (dnsProviderConfig.provider === AcmeDnsProvider.AzureDNS && appConnection.app !== AppConnection.AzureDNS) {
-          throw new BadRequestError({
-            message: `App connection with ID '${dnsAppConnectionId}' is not an Azure DNS connection`
-          });
-        }
-
-        if (dnsProviderConfig.provider === AcmeDnsProvider.PowerDns && appConnection.app !== AppConnection.PowerDns) {
-          throw new BadRequestError({
-            message: `App connection with ID '${dnsAppConnectionId}' is not a PowerDNS connection`
-          });
-        }
-
-        if (dnsResolver) {
-          validateDnsResolver(dnsResolver);
-        }
-
-        const ca = await certificateAuthorityDAL.findById(id);
-
-        if (!ca) {
-          throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
-        }
-
-        // validates permission to connect
-        await appConnectionService.validateAppConnectionUsageById(
-          appConnection.app as AppConnection,
-          { connectionId: dnsAppConnectionId, projectId: ca.projectId },
-          actor
-        );
-
         let resolvedEabHmacKey = eabHmacKey;
         if (eabHmacKey === UNCHANGED_CREDENTIAL_SENTINEL || eabHmacKey === undefined) {
           const existingExternalCa = await externalCertificateAuthorityDAL.findOne({ caId: id, type: CaType.ACME }, tx);
@@ -1001,8 +1021,8 @@ export const AcmeCertificateAuthorityFns = ({
         certificateDAL,
         certificateBodyDAL,
         certificateSecretDAL,
-        kmsService,
-        projectDAL,
+        kmsDataKeyService,
+        kmsKeyService,
         gatewayV2Service,
         gatewayPoolService,
         keyStore
@@ -1073,8 +1093,8 @@ export const AcmeCertificateAuthorityFns = ({
         certificateDAL,
         certificateBodyDAL,
         certificateSecretDAL,
-        kmsService,
-        projectDAL,
+        kmsDataKeyService,
+        kmsKeyService,
         certificateProfileDAL,
         gatewayV2Service,
         gatewayPoolService,

@@ -13,6 +13,18 @@ export const PKI_TEXT_COLUMN_MAX_LENGTH = 255;
 
 export const PKI_ALT_NAMES_COLUMN_MAX_LENGTH = 4096;
 
+/**
+ * Post-quantum keys and signatures (ML-DSA, SLH-DSA) make PEM CSRs far larger than RSA/ECDSA ones;
+ * an SLH-DSA-256f CSR alone is over 60 KB.
+ */
+export const CSR_MAX_LENGTH = 128 * 1024;
+
+export const csrSchema = z
+  .string()
+  .trim()
+  .min(1, "CSR cannot be empty")
+  .max(CSR_MAX_LENGTH, "CSR cannot exceed 128 KB");
+
 const MAX_CERTIFICATE_TTL_MS = 100 * 365 * 24 * 60 * 60 * 1000;
 
 /**
@@ -326,6 +338,12 @@ export const CERTIFICATE_RENEWAL_CONFIG = {
 } as const;
 
 export const DEFAULT_CRL_VALIDITY_DAYS = 7;
+export const MIN_CRL_VALIDITY_DAYS = 1;
+export const MAX_CRL_VALIDITY_DAYS = 365;
+export const CRL_REBUILD_MAX_LEAD_HOURS = 24;
+export const CRL_REBUILD_LEAD_HOURS_PER_VALIDITY_DAY = 12;
+export const CRL_VALIDITY_TOLERANCE_HOURS = 1;
+export const CRL_REVOCATION_CATCH_UP_MARGIN_MINUTES = 5;
 
 /**
  * Certificates we mint just-in-time are verified by gateways, relays, and agents on hosts whose

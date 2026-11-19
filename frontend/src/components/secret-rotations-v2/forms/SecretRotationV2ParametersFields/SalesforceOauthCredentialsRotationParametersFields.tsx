@@ -1,19 +1,17 @@
 import { Controller, useFormContext } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { InfoIcon } from "lucide-react";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import {
+  Combobox,
   Field,
   FieldFeedback,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
 import { useSalesforceConnectionListOauthApps } from "@app/hooks/api/appConnections/salesforce";
-import { TSalesforceOauthApp } from "@app/hooks/api/appConnections/salesforce/types";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 export const SalesforceOauthCredentialsRotationParametersFields = () => {
@@ -39,24 +37,25 @@ export const SalesforceOauthCredentialsRotationParametersFields = () => {
           <FieldLabelWithTooltip htmlFor="salesforce-external-client-app">
             External Client App
           </FieldLabelWithTooltip>
-          <FilterableSelect
-            inputId="salesforce-external-client-app"
+          <Combobox
+            id="salesforce-external-client-app"
             isLoading={isAppsPending && Boolean(connectionId)}
             isDisabled={!connectionId}
             value={apps?.find((app) => app.identifier === value) ?? null}
             onBlur={onBlur}
-            onChange={(option) => {
-              const selected = option as SingleValue<TSalesforceOauthApp>;
-              onChange(selected?.identifier ?? "");
-              setValue("parameters.appName", selected?.developerName ?? "", {
+            onValueChange={(selected) => {
+              onChange(selected.identifier);
+              setValue("parameters.appName", selected.developerName, {
                 shouldDirty: true,
                 shouldValidate: true
               });
             }}
+            isClearable={false}
             options={apps}
             placeholder="Select an external client app..."
             getOptionLabel={(option) => option.developerName}
             getOptionValue={(option) => option.identifier}
+            getOptionKeywords={(option) => [option.identifier]}
             isError={Boolean(error)}
             aria-describedby="salesforce-external-client-app-feedback"
           />

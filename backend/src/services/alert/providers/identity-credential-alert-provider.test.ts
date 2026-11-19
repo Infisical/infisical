@@ -95,8 +95,10 @@ const buildProvider = (opts?: {
   userLabel?: string;
 }) => {
   const dal = {
-    findIdentitiesByIds: async (ids: string[]) =>
-      (opts?.identities ?? [{ id: "ident-1", name: "ci-runner" }]).filter((identity) => ids.includes(identity.id)),
+    findIdentitiesByIds: async (ids: string[], orgId: string) =>
+      orgId === "org-1"
+        ? (opts?.identities ?? [{ id: "ident-1", name: "ci-runner" }]).filter((identity) => ids.includes(identity.id))
+        : [],
     findUserLabelById: async () => opts?.userLabel,
     findExpiringUaClientSecrets: async (args: {
       orgId: string;
@@ -154,6 +156,14 @@ const changePayload = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe("identity credential alert provider", () => {
+  test("getResourceNames returns identity names only from the caller's org", async () => {
+    const provider = buildProvider();
+    const names = await provider.getResourceNames?.({ orgId: "org-1", resourceIds: ["ident-1"] });
+    expect(names?.get("ident-1")).toBe("ci-runner");
+    const foreign = await provider.getResourceNames?.({ orgId: "org-2", resourceIds: ["ident-1"] });
+    expect(foreign?.size).toBe(0);
+  });
+
   test("expiry condition schema accepts 1d-90d and rejects everything else", () => {
     const schema = eventSchema(buildProvider(), IDENTITY_AUTHENTICATION_EXPIRY_EVENT);
     expect(schema.safeParse({ alertBefore: "1d" }).success).toBe(true);
@@ -189,7 +199,9 @@ describe("identity credential alert provider", () => {
   // place the two get checked against each other.
   test("the emitted payload is accepted by the delivery schema", async () => {
     const emitted: unknown[] = [];
-    const emitter = { emit: async (event: { payload: unknown }) => void emitted.push(event.payload) };
+    const emitter = {
+      emit: async (events: { data: unknown }[]) => void emitted.push(...events.map((event) => event.data))
+    };
     const membership = { identity: { id: "ident-1", projectId: null }, scopeOrgId: "org-1" };
 
     await emitIdentityAuthMethodChanged(
@@ -222,10 +234,10 @@ describe("identity credential alert provider", () => {
     }
   });
 
-  test("findTargetsByIds rehydrates the identity and the change from the event payload", async () => {
+  test("findEventTargets rehydrates the identity and the change from the event payload", async () => {
     const provider = buildProvider({ userLabel: "alice@example.com" });
 
-    const targets = await provider.findTargetsByIds({
+    const targets = await provider.findEventTargets({
       orgId: "org-1",
       resourceId: "ident-1",
       eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
@@ -246,9 +258,9 @@ describe("identity credential alert provider", () => {
     expect(provider.targetId(target)).toBe("auth-method-change:ident-1:universal-auth:added");
   });
 
-  test("findTargetsByIds drops an identity deleted between emit and delivery", async () => {
+  test("findEventTargets drops an identity deleted between emit and delivery", async () => {
     const provider = buildProvider({ identities: [] });
-    const targets = await provider.findTargetsByIds({
+    const targets = await provider.findEventTargets({
       orgId: "org-1",
       resourceId: "ident-1",
       eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
@@ -259,14 +271,14 @@ describe("identity credential alert provider", () => {
     expect(targets).toEqual([]);
   });
 
-  test("findTargetsByIds names a machine identity actor and falls back to the actor type", async () => {
+  test("findEventTargets names a machine identity actor and falls back to the actor type", async () => {
     const provider = buildProvider({
       identities: [
         { id: "ident-1", name: "ci-runner" },
         { id: "ident-admin", name: "terraform" }
       ]
     });
-    const byIdentity = await provider.findTargetsByIds({
+    const byIdentity = await provider.findEventTargets({
       orgId: "org-1",
       resourceId: "ident-1",
       eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
@@ -278,7 +290,7 @@ describe("identity credential alert provider", () => {
       "terraform (machine identity)"
     );
 
-    const byPlatform = await provider.findTargetsByIds({
+    const byPlatform = await provider.findEventTargets({
       orgId: "org-1",
       resourceId: "ident-1",
       eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
@@ -290,10 +302,10 @@ describe("identity credential alert provider", () => {
   });
 
   // A drifted emit site must fail the event with a clear error, not send a notification with blank fields.
-  test("findTargetsByIds rejects a payload the emitter contract does not describe", async () => {
+  test("findEventTargets rejects a payload the emitter contract does not describe", async () => {
     const provider = buildProvider();
     await expect(
-      provider.findTargetsByIds({
+      provider.findEventTargets({
         orgId: "org-1",
         resourceId: "ident-1",
         eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
@@ -306,7 +318,7 @@ describe("identity credential alert provider", () => {
 
   test("a credential change carries the credential through the payload, the target id, and the fields", async () => {
     const provider = buildProvider({ userLabel: "alice@example.com" });
-    const [target] = await provider.findTargetsByIds({
+    const [target] = await provider.findEventTargets({
       orgId: "org-1",
       resourceId: "ident-1",
       eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
@@ -415,7 +427,7 @@ describe("identity credential alert provider", () => {
     expect(item.fields?.find((f) => f.label === "Changed At")?.value).toContain("2026");
   });
 
-  test("findDueTargets converts alertBefore to a postgres interval and tags credential type", async () => {
+  test("findScheduledTargets converts alertBefore to a postgres interval and tags credential type", async () => {
     let seenArgs:
       | {
           alertBeforeInterval: string;
@@ -433,7 +445,7 @@ describe("identity credential alert provider", () => {
     });
 
     const asOf = new Date("2026-07-24T00:00:00.000Z");
-    const targets = await provider.findDueTargets({
+    const targets = await provider.findScheduledTargets({
       orgId: "org-1",
       resourceId: "ident-1",
       eventType: IDENTITY_AUTHENTICATION_EXPIRY_EVENT,
@@ -449,7 +461,7 @@ describe("identity credential alert provider", () => {
     expect(provider.targetId(targets[0])).toBe("ua-client-secret:sec-1");
   });
 
-  test("findDueTargets scopes the query to the alert's project so it cannot leak org-wide credentials", async () => {
+  test("findScheduledTargets scopes the query to the alert's project so it cannot leak org-wide credentials", async () => {
     let seenArgs: { projectId?: string | null } | undefined;
     const provider = buildProvider({
       onFind: (args) => {
@@ -457,7 +469,7 @@ describe("identity credential alert provider", () => {
       }
     });
 
-    await provider.findDueTargets({
+    await provider.findScheduledTargets({
       orgId: "org-1",
       projectId: "proj-1",
       resourceId: null,
@@ -495,7 +507,7 @@ describe("identity credential alert provider", () => {
     expect(expires).toContain("UTC");
   });
 
-  test("findDueTargets scans Token Auth tokens with the same window and scope as client secrets", async () => {
+  test("findScheduledTargets scans Token Auth tokens with the same window and scope as client secrets", async () => {
     let secretArgs: TScanArgs | undefined;
     let tokenArgs: TScanArgs | undefined;
     const provider = buildProvider({
@@ -508,7 +520,7 @@ describe("identity credential alert provider", () => {
       }
     });
 
-    const targets = await provider.findDueTargets({
+    const targets = await provider.findScheduledTargets({
       orgId: "org-1",
       projectId: "proj-1",
       resourceId: "ident-1",
@@ -525,7 +537,7 @@ describe("identity credential alert provider", () => {
     expect(provider.targetId(targets[0])).toBe("token-auth-token:tok-1");
   });
 
-  test("findDueTargets merges client secrets and tokens ordered by soonest expiry", async () => {
+  test("findScheduledTargets merges client secrets and tokens ordered by soonest expiry", async () => {
     const provider = buildProvider({
       secrets: [sampleSecret({ id: "sec-late", expiresAt: futureDate(20) })],
       tokens: [
@@ -534,7 +546,7 @@ describe("identity credential alert provider", () => {
       ]
     });
 
-    const targets = await provider.findDueTargets({
+    const targets = await provider.findScheduledTargets({
       orgId: "org-1",
       resourceId: null,
       eventType: IDENTITY_AUTHENTICATION_EXPIRY_EVENT,

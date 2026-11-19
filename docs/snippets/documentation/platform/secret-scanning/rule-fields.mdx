@@ -1,0 +1,39 @@
+import AllowlistFields from "/snippets/documentation/platform/secret-scanning/allowlist-fields.mdx";
+
+If a rule has the same `id` as a built-in rule, the fields you set replace the built-in rule's fields.
+
+<ResponseField name="id" type="string" required>
+A unique ID for the rule.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+What the rule detects.
+</ResponseField>
+
+<ResponseField name="regex" type="string">
+A [Go regular expression](https://pkg.go.dev/regexp/syntax) that matches the secret. A rule needs `regex`, `path`, or both.
+</ResponseField>
+
+<ResponseField name="path" type="string">
+A regular expression for file paths. On its own, `path` makes the rule report every file whose path matches. With `regex`, the rule only checks files whose path matches.
+</ResponseField>
+
+<ResponseField name="keywords" type="string[]">
+Words that a line must contain before the scanner checks the line against `regex`.
+</ResponseField>
+
+<ResponseField name="entropy" type="number">
+The minimum randomness a match needs.
+</ResponseField>
+
+<ResponseField name="secretGroup" type="integer">
+The group in `regex` that holds the secret.
+</ResponseField>
+
+<ResponseField name="allowlists" type="table[]">
+Matches of this rule to skip, as `[[rules.allowlists]]` tables.
+
+<Expandable title="properties">
+<AllowlistFields />
+</Expandable>
+</ResponseField>

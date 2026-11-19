@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { ChevronDownIcon, MoreHorizontalIcon, SearchIcon, UserRoundXIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -19,6 +18,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -33,7 +33,12 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import {
+  getInstancePinningLink,
+  getProjectBaseURL,
+  getProjectLabel,
+  hidesProjects
+} from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -42,7 +47,6 @@ import {
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useListWorkspaceGroups } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { GroupRoles } from "./GroupRoles";
@@ -64,9 +68,8 @@ enum GroupsOrderBy {
 export const GroupTable = ({ handlePopUpOpen }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
-  const navigate = useNavigate();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const productLabel = getProjectLabel(currentProject?.type);
+  const projectsHidden = hidesProjects(currentProject?.type);
 
   const {
     search,
@@ -127,8 +130,8 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
           <InputGroupInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={isCertManager ? "Search groups..." : "Search project groups..."}
-            aria-label={isCertManager ? "Search groups" : "Search project groups"}
+            placeholder={projectsHidden ? "Search groups..." : "Search project groups..."}
+            aria-label={projectsHidden ? "Search groups" : "Search project groups"}
           />
         </InputGroup>
       </div>
@@ -138,10 +141,10 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
             <EmptyTitle>
               {/* eslint-disable-next-line no-nested-ternary */}
               {search
-                ? isCertManager
+                ? projectsHidden
                   ? "No groups match search"
                   : "No project groups match search"
-                : isCertManager
+                : projectsHidden
                   ? "No groups found"
                   : "No project groups found"}
             </EmptyTitle>
@@ -199,37 +202,26 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                     const isLinkedGroup =
                       groupOrgId != null && currentOrg != null && groupOrgId !== currentOrg.id;
                     return (
-                      <TableRow
-                        className="group cursor-pointer"
-                        key={`st-v3-${id}`}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(evt) => {
-                          if (evt.currentTarget !== evt.target) return;
-                          if (evt.key === "Enter" || evt.key === " ") {
-                            evt.preventDefault();
-                            navigate({
-                              to: `${getProjectBaseURL(currentProject.type)}/groups/$groupId` as const,
-                              params: {
-                                orgId: currentOrg.id,
-                                projectId: currentProject.id,
-                                groupId: id
-                              }
-                            });
-                          }
-                        }}
-                        onClick={() =>
-                          navigate({
-                            to: `${getProjectBaseURL(currentProject.type)}/groups/$groupId` as const,
-                            params: {
-                              orgId: currentOrg.id,
-                              projectId: currentProject.id,
-                              groupId: id
-                            }
-                          })
-                        }
-                      >
-                        <TableCell isTruncatable>{name}</TableCell>
+                      <TableRow linked key={`st-v3-${id}`}>
+                        <TableCell isTruncatable>
+                          <RowLink
+                            {...(getInstancePinningLink(
+                              currentOrg.id,
+                              currentProject,
+                              `groups/${id}`
+                            ) ??
+                              ({
+                                to: `${getProjectBaseURL(currentProject.type)}/groups/$groupId`,
+                                params: {
+                                  orgId: currentOrg.id,
+                                  projectId: currentProject.id,
+                                  groupId: id
+                                }
+                              } as const))}
+                          >
+                            {name}
+                          </RowLink>
+                        </TableCell>
                         <TableCell>
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Edit}
@@ -246,7 +238,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                           </ProjectPermissionCan>
                         </TableCell>
                         <TableCell>{format(new Date(createdAt), "MMM d, yyyy")}</TableCell>
-                        <TableCell>
+                        <TableCell data-row-interactive>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <IconButton

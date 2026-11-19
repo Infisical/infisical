@@ -366,7 +366,7 @@ export const KubernetesProvider = ({
       let errorMessage = error instanceof Error ? error.message : "Unknown error";
       if (isAxiosError(error)) {
         if (error.response) {
-          let { message } = error?.response?.data as unknown as { message?: string };
+          let { message } = error.response.data as unknown as { message?: string };
 
           if (!message && typeof error.response.data === "string") {
             message = error.response.data;
@@ -640,7 +640,7 @@ export const KubernetesProvider = ({
       let errorMessage = error instanceof Error ? error.message : "Unknown error";
       if (isAxiosError(error)) {
         if (error.response) {
-          let { message } = error?.response?.data as unknown as { message?: string };
+          let { message } = error.response.data as unknown as { message?: string };
 
           if (!message && typeof error.response.data === "string") {
             message = error.response.data;
@@ -788,7 +788,7 @@ export const KubernetesProvider = ({
         let errorMessage = error instanceof Error ? error.message : "Unknown error";
         if (isAxiosError(error)) {
           if (error.response) {
-            let { message } = error?.response?.data as unknown as { message?: string };
+            let { message } = error.response.data as unknown as { message?: string };
 
             if (!message && typeof error.response.data === "string") {
               message = error.response.data;

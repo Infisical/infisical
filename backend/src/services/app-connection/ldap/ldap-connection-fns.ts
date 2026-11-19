@@ -9,7 +9,8 @@ import { BadRequestError } from "@app/lib/errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { getTlsServerNameOptions } from "@app/lib/tls";
+import { blockLocalAndPrivateIpAddresses, buildSsrfSafeUrl } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { LdapConnectionMethod } from "./ldap-connection-enums";
@@ -200,18 +201,21 @@ export const getLdapConnectionClient = async ({
   sslCertificate,
   sslRejectUnauthorized = true
 }: TLdapConnectionConfig["credentials"]) => {
-  await blockLocalAndPrivateIpAddresses(url, false);
+  // ldapjs resolves the host itself when it connects, so connect to the validated IP or a DNS answer that
+  // changes after validation could send the connection to an internal address
+  const { url: pinnedUrl, checkServerIdentity } = await buildSsrfSafeUrl(url);
 
   const isSSL = url.startsWith("ldaps");
 
   const client = ldap.createClient({
-    url,
+    url: pinnedUrl,
     timeout: LDAP_TIMEOUT,
     connectTimeout: LDAP_TIMEOUT,
     tlsOptions: isSSL
       ? {
           rejectUnauthorized: sslRejectUnauthorized,
-          ca: sslCertificate ? [sslCertificate] : undefined
+          ca: sslCertificate ? [sslCertificate] : undefined,
+          ...(checkServerIdentity ? { checkServerIdentity } : {})
         }
       : undefined
   });
@@ -264,7 +268,7 @@ export const executeWithPotentialGateway = async <T>(
             ? {
                 rejectUnauthorized: config.credentials.sslRejectUnauthorized,
                 ca: config.credentials.sslCertificate ? [config.credentials.sslCertificate] : undefined,
-                servername: host,
+                ...getTlsServerNameOptions(host),
                 // bypass hostname verification for development
                 ...(appCfg.isDevelopmentMode ? { checkServerIdentity: () => undefined } : {})
               }

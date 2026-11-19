@@ -2,19 +2,20 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TAgentVaultProxyDALFactory } from "../agent-vault-proxy/agent-vault-proxy-dal";
 import { TGatewayPoolDALFactory } from "../gateway-pool/gateway-pool-dal";
 import { TGatewayPoolMembershipDALFactory } from "../gateway-pool/gateway-pool-membership-dal";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TKmipServerDALFactory } from "../kmip-server/kmip-server-dal";
-import { TLicenseServiceFactory } from "../license/license-service";
 import {
   OrgPermissionGatewayActions,
   OrgPermissionGatewayPoolActions,
@@ -58,6 +59,7 @@ import {
   ResourceAuthLoginFailureReason,
   ResourceAuthMethodType,
   type ResourceRef,
+  type TKubernetesTokenReviewMode,
   type TSettableAuthMethod
 } from "./resource-auth-method-fns";
 import {
@@ -102,7 +104,7 @@ type TResourceAuthMethodServiceFactoryDep = {
   resourceGcpAuthDAL: TResourceGcpAuthDALFactory;
   resourceKubernetesAuthDAL: TResourceKubernetesAuthDALFactory;
   resourceTokenAuthDAL: TResourceTokenAuthDALFactory;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById" | "updateById">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   gatewayPoolMembershipDAL: Pick<TGatewayPoolMembershipDALFactory, "find">;
@@ -111,7 +113,8 @@ type TResourceAuthMethodServiceFactoryDep = {
   agentVaultProxyDAL: Pick<TAgentVaultProxyDALFactory, "findByIdWithOrg" | "updateById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   gatewayProxyRegistry: TGatewayProxyRegistry;
 };
 
@@ -167,7 +170,7 @@ export const resourceAuthMethodServiceFactory = ({
   resourceGcpAuthDAL,
   resourceKubernetesAuthDAL,
   resourceTokenAuthDAL,
-  kmsService,
+  kmsDataKeyService,
   gatewayV2DAL,
   gatewayPoolDAL,
   gatewayPoolMembershipDAL,
@@ -177,6 +180,7 @@ export const resourceAuthMethodServiceFactory = ({
   identityDAL,
   permissionService,
   licenseService,
+  orgDAL,
   gatewayProxyRegistry
 }: TResourceAuthMethodServiceFactoryDep) => {
   // Registry rows carry the resource FK in a per-type column (gatewayId/relayId/kmipServerId).
@@ -306,7 +310,12 @@ export const resourceAuthMethodServiceFactory = ({
   // Machine identity Kubernetes auth gates its gateway selection the same way.
   const $assertCanAttachProxy = async (
     actor: Pick<OrgServiceActor, "type" | "id" | "authMethod" | "orgId">,
-    proxy: { gatewayV2Id?: string | null; gatewayPoolId?: string | null }
+    proxy: {
+      gatewayV2Id?: string | null;
+      gatewayPoolId?: string | null;
+      tokenReviewMode?: TKubernetesTokenReviewMode | null;
+    },
+    previousGatewayV2Id?: string | null
   ) => {
     if (!proxy.gatewayV2Id && !proxy.gatewayPoolId) return;
 
@@ -323,6 +332,16 @@ export const resourceAuthMethodServiceFactory = ({
         OrgPermissionGatewayActions.AttachGateways,
         OrgPermissionSubjects.Gateway
       );
+      // The reviewing gateway attests every login, so it has to be one specific gateway and a pool is
+      // refused for this mode. Exempting it keeps the mode usable under the org's pool requirement.
+      if (proxy.tokenReviewMode !== KubernetesTokenReviewMode.Gateway) {
+        await assertIndividualGatewayAllowed({
+          orgDAL,
+          orgId: actor.orgId,
+          gatewayId: proxy.gatewayV2Id,
+          previousGatewayId: previousGatewayV2Id
+        });
+      }
     }
 
     // Pools carry their own attach permission, so holding it for gateways is not sufficient.
@@ -333,7 +352,7 @@ export const resourceAuthMethodServiceFactory = ({
       );
 
       const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.gatewayPool) {
+      if (!plan.has(PlanFeature.GatewayPool)) {
         throw new BadRequestError({
           message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
         });
@@ -370,7 +389,6 @@ export const resourceAuthMethodServiceFactory = ({
         method: ResourceAuthMethodType.Aws,
         config: {
           id: config.id,
-          stsEndpoint: config.stsEndpoint,
           allowedPrincipalArns: config.allowedPrincipalArns,
           allowedAccountIds: config.allowedAccountIds,
           createdAt: config.createdAt,
@@ -406,7 +424,7 @@ export const resourceAuthMethodServiceFactory = ({
 
       let caCertificate = "";
       if (config.encryptedKubernetesCaCertificate && loaded.orgId) {
-        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.Organization,
           orgId: loaded.orgId
         });
@@ -735,7 +753,7 @@ export const resourceAuthMethodServiceFactory = ({
       return {};
     }
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
 
     const encrypt = (value: string | undefined) => {
       if (value === undefined) return undefined;
@@ -778,7 +796,6 @@ export const resourceAuthMethodServiceFactory = ({
       await resourceAwsAuthDAL.create(
         {
           authMethodId: registry.id,
-          stsEndpoint: authMethod.config.stsEndpoint,
           allowedPrincipalArns: authMethod.config.allowedPrincipalArns,
           allowedAccountIds: authMethod.config.allowedAccountIds
         },
@@ -854,9 +871,10 @@ export const resourceAuthMethodServiceFactory = ({
       let effectiveCa = authMethod.caCertificate;
       let effectiveReviewer = authMethod.tokenReviewerJwt;
       let destinationChanged = false;
+      const stored =
+        !isMethodChange && current ? await resourceKubernetesAuthDAL.findOne({ authMethodId: current.id }) : undefined;
       if (!isMethodChange && current && (effectiveCa === undefined || effectiveReviewer === undefined)) {
-        const stored = await resourceKubernetesAuthDAL.findOne({ authMethodId: current.id });
-        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.Organization,
           orgId: actor.orgId
         });
@@ -888,7 +906,13 @@ export const resourceAuthMethodServiceFactory = ({
       }
 
       await $assertProxyNotSelf(resource, authMethod);
-      await $assertCanAttachProxy(actor, authMethod);
+      // A reviewer gateway was only allowed through the exemption, so it can't be carried into another
+      // review mode as if it were a kept attachment.
+      await $assertCanAttachProxy(
+        actor,
+        authMethod,
+        stored?.tokenReviewMode === KubernetesTokenReviewMode.Gateway ? undefined : stored?.gatewayV2Id
+      );
 
       const validation = await $buildKubernetesExecutor(
         {
@@ -965,7 +989,6 @@ export const resourceAuthMethodServiceFactory = ({
           await resourceAwsAuthDAL.updateById(
             existingAws.id,
             {
-              stsEndpoint: authMethod.stsEndpoint,
               allowedPrincipalArns: authMethod.allowedPrincipalArns,
               allowedAccountIds: authMethod.allowedAccountIds
             },
@@ -975,7 +998,6 @@ export const resourceAuthMethodServiceFactory = ({
           await resourceAwsAuthDAL.create(
             {
               authMethodId: registryRow.id,
-              stsEndpoint: authMethod.stsEndpoint,
               allowedPrincipalArns: authMethod.allowedPrincipalArns,
               allowedAccountIds: authMethod.allowedAccountIds
             },
@@ -1110,6 +1132,11 @@ export const resourceAuthMethodServiceFactory = ({
         }
       }
       await $bumpTokenVersion(resource, tx);
+      // Routing only checks that a transport is recorded, so a running agent would keep receiving
+      // traffic until it next authenticates. Clearing them cuts it off now; re-enrolling connects again.
+      if (resource.type === RESOURCE_TYPE_GATEWAY) {
+        await gatewayV2DAL.updateById(resource.id, { relayId: null, directAddress: null }, tx);
+      }
     });
 
     return {
@@ -1163,7 +1190,6 @@ export const resourceAuthMethodServiceFactory = ({
       iamHttpRequestMethod,
       iamRequestBody,
       iamRequestHeaders,
-      defaultStsEndpoint: config.stsEndpoint,
       errorContext
     });
 
@@ -1296,7 +1322,7 @@ export const resourceAuthMethodServiceFactory = ({
     let caCertificate = "";
     let tokenReviewerJwt = "";
     if (config.encryptedKubernetesCaCertificate || config.encryptedKubernetesTokenReviewerJwt) {
-      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
         orgId: resourceOrgId
       });

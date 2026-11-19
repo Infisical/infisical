@@ -4,6 +4,7 @@ import { TDbClient } from "@app/db";
 import { TableName, TAuditLogs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
+import { withTransaction } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 
 import { AuditLogStreamOutboxStatus, TAuditLogStreamOutboxRow } from "./audit-log-stream-outbox-types";
@@ -17,6 +18,7 @@ export type TInsertOutboxRow = {
 };
 
 const OUTBOX_INSERT_CHUNK_SIZE = 1_000;
+const STALE_SWEEP_STATEMENT_TIMEOUT_MS = 30_000;
 
 export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
   const batchInsert = async (rows: TInsertOutboxRow[], tx?: Knex) => {
@@ -130,28 +132,31 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
   // 'delivered' but retriable rows still 'processing'); either every write
   // commits or none do, and the stale-claim sweeper picks up an un-applied
   // claim on the next pass.
-  const commitDeliveryResult = async (input: {
-    successIds: number[];
-    retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
-    exhaustedIds: number[];
-  }) => {
+  //
+  // Takes the caller's `tx` so the result commits with the stream health flip and its alert event.
+  const commitDeliveryResult = async (
+    input: {
+      successIds: number[];
+      retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
+      exhaustedIds: number[];
+    },
+    tx: Knex
+  ) => {
     const retriableCount = input.retriable?.groups.reduce((n, g) => n + g.ids.length, 0) ?? 0;
     if (input.successIds.length === 0 && retriableCount === 0 && input.exhaustedIds.length === 0) return;
     try {
-      await db.transaction(async (tx) => {
-        if (input.successIds.length > 0) {
-          await markBatchAsDelivered(input.successIds, tx);
+      if (input.successIds.length > 0) {
+        await markBatchAsDelivered(input.successIds, tx);
+      }
+      if (input.retriable) {
+        for (const group of input.retriable.groups) {
+          // eslint-disable-next-line no-await-in-loop
+          await markBatchForRetry(group.ids, group.nextRetryDelayMs, tx);
         }
-        if (input.retriable) {
-          for (const group of input.retriable.groups) {
-            // eslint-disable-next-line no-await-in-loop
-            await markBatchForRetry(group.ids, group.nextRetryDelayMs, tx);
-          }
-        }
-        if (input.exhaustedIds.length > 0) {
-          await tx(TableName.AuditLogStreamOutbox).whereIn("id", input.exhaustedIds).del();
-        }
-      });
+      }
+      if (input.exhaustedIds.length > 0) {
+        await tx(TableName.AuditLogStreamOutbox).whereIn("id", input.exhaustedIds).del();
+      }
     } catch (error) {
       throw new DatabaseError({ error, name: "AuditLogStreamOutbox: commitDeliveryResult" });
     }
@@ -166,66 +171,72 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
   // emits a metric for the dropped count.
   const recoverStaleClaims = async (
     thresholdMs: number,
-    maxAttempts: number
+    maxAttempts: number,
+    limit: number,
+    tx: Knex
   ): Promise<{ retried: number; dropped: { streamId: string; orgId: string; provider: string | null }[] }> => {
     try {
-      return await db.transaction(async (tx) => {
-        const staleRows = await tx(TableName.AuditLogStreamOutbox)
-          .where("status", AuditLogStreamOutboxStatus.Processing)
-          .andWhereRaw(`"lockedAt" < NOW() - (? || ' milliseconds')::INTERVAL`, [thresholdMs])
-          .forUpdate()
-          .skipLocked()
-          .select<TAuditLogStreamOutboxRow[]>("*");
+      // SET LOCAL lasts until the caller's transaction ends, so it also bounds the stream writes the
+      // sweeper makes in the same batch after this returns.
+      await tx.raw(`SET LOCAL statement_timeout = ${STALE_SWEEP_STATEMENT_TIMEOUT_MS}`);
 
-        if (staleRows.length === 0) return { retried: 0, dropped: [] };
+      const staleRows = await tx(TableName.AuditLogStreamOutbox)
+        .where("status", AuditLogStreamOutboxStatus.Processing)
+        .andWhereRaw(`"lockedAt" < NOW() - (? || ' milliseconds')::INTERVAL`, [thresholdMs])
+        .orderBy("lockedAt", "asc")
+        .limit(limit)
+        .forUpdate()
+        .skipLocked()
+        .select<TAuditLogStreamOutboxRow[]>("*");
 
-        const exhausted: TAuditLogStreamOutboxRow[] = [];
-        const retriable: TAuditLogStreamOutboxRow[] = [];
-        for (const row of staleRows) {
-          if (row.attempts + 1 >= maxAttempts) {
-            exhausted.push(row);
-          } else {
-            retriable.push(row);
-          }
+      if (staleRows.length === 0) return { retried: 0, dropped: [] };
+
+      const exhausted: TAuditLogStreamOutboxRow[] = [];
+      const retriable: TAuditLogStreamOutboxRow[] = [];
+      for (const row of staleRows) {
+        if (row.attempts + 1 >= maxAttempts) {
+          exhausted.push(row);
+        } else {
+          retriable.push(row);
         }
+      }
 
-        if (retriable.length > 0) {
-          await tx(TableName.AuditLogStreamOutbox)
-            .whereIn(
-              "id",
-              retriable.map((row) => row.id)
-            )
-            .update({
-              status: AuditLogStreamOutboxStatus.Retry,
-              attempts: db.raw('"attempts" + 1'),
-              nextRetryAt: tx.fn.now(),
-              lockedAt: null
-            });
-        }
-
-        if (exhausted.length === 0) return { retried: retriable.length, dropped: [] };
-
+      if (retriable.length > 0) {
         await tx(TableName.AuditLogStreamOutbox)
           .whereIn(
             "id",
-            exhausted.map((row) => row.id)
+            retriable.map((row) => row.id)
           )
-          .del();
+          .update({
+            status: AuditLogStreamOutboxStatus.Retry,
+            attempts: db.raw('"attempts" + 1'),
+            nextRetryAt: tx.fn.now(),
+            lockedAt: null
+          });
+      }
 
-        const streams = await tx(TableName.AuditLogStream)
-          .whereIn("id", [...new Set(exhausted.map((row) => row.streamId))])
-          .select<{ id: string; provider: string }[]>("id", "provider");
-        const providerByStreamId = new Map(streams.map((stream) => [stream.id, stream.provider]));
+      if (exhausted.length === 0) return { retried: retriable.length, dropped: [] };
 
-        return {
-          retried: retriable.length,
-          dropped: exhausted.map((row) => ({
-            streamId: row.streamId,
-            orgId: row.orgId,
-            provider: providerByStreamId.get(row.streamId) ?? null
-          }))
-        };
-      });
+      await tx(TableName.AuditLogStreamOutbox)
+        .whereIn(
+          "id",
+          exhausted.map((row) => row.id)
+        )
+        .del();
+
+      const streams = await tx(TableName.AuditLogStream)
+        .whereIn("id", [...new Set(exhausted.map((row) => row.streamId))])
+        .select<{ id: string; provider: string }[]>("id", "provider");
+      const providerByStreamId = new Map(streams.map((stream) => [stream.id, stream.provider]));
+
+      return {
+        retried: retriable.length,
+        dropped: exhausted.map((row) => ({
+          streamId: row.streamId,
+          orgId: row.orgId,
+          provider: providerByStreamId.get(row.streamId) ?? null
+        }))
+      };
     } catch (error) {
       throw new DatabaseError({ error, name: "AuditLogStreamOutbox: recoverStaleClaims" });
     }
@@ -286,12 +297,54 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
-  return {
+  // Flips the stream to failing only if it was healthy, so the caller emits the alert event on
+  // the null -> set edge exactly once even when two workers race. Returns the timestamp it set,
+  // or null when the stream was already failing (or no longer exists). An already failing stream
+  // still gets the latest drop reason, so lastDeliveryError never reports a cause that was fixed.
+  const markStreamFailing = async (
+    { streamId, errorMessage }: { streamId: string; errorMessage: string },
+    tx: Knex
+  ): Promise<Date | null> => {
+    try {
+      const [row] = await tx(TableName.AuditLogStream)
+        .where("id", streamId)
+        .whereNull("failingSince")
+        .update({ failingSince: new Date(), lastDeliveryError: errorMessage })
+        .returning<{ failingSince: Date }[]>("failingSince");
+      if (row) return row.failingSince;
+
+      // Guarded so a credential update that cleared the health fields between the two statements is
+      // not undone, since clearStreamFailing would then never clear the stale error.
+      await tx(TableName.AuditLogStream)
+        .where("id", streamId)
+        .whereNotNull("failingSince")
+        .update({ lastDeliveryError: errorMessage });
+      return null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "AuditLogStreamOutbox: markStreamFailing" });
+    }
+  };
+
+  // Called after every clean batch, so the whereNotNull keeps it from writing to a healthy stream.
+  const clearStreamFailing = async (streamId: string, tx: Knex) => {
+    try {
+      await tx(TableName.AuditLogStream)
+        .where("id", streamId)
+        .whereNotNull("failingSince")
+        .update({ failingSince: null, lastDeliveryError: null });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "AuditLogStreamOutbox: clearStreamFailing" });
+    }
+  };
+
+  return withTransaction(db, {
     batchInsert,
+    markStreamFailing,
+    clearStreamFailing,
     claimBatchForStream,
     commitDeliveryResult,
     recoverStaleClaims,
     findStreamsWithOverdueRows,
     deleteDeliveredOlderThan
-  };
+  });
 };

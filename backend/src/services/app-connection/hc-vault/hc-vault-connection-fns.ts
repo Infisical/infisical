@@ -1,6 +1,7 @@
 import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
 
+import { RuleViolationError } from "@app/domains/lib/errors";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -12,6 +13,7 @@ import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
+import { getTlsServerNameOptions } from "@app/lib/tls";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -209,7 +211,7 @@ export const requestWithHCVaultGateway = async <T>(
         },
         ...(isHttps && {
           httpsAgent: new https.Agent({
-            servername: targetHost
+            ...getTlsServerNameOptions(targetHost)
           })
         })
       };
@@ -302,7 +304,7 @@ export const validateHCVaultConnectionCredentials = async (
       });
     }
 
-    if (error instanceof BadRequestError) {
+    if (error instanceof BadRequestError || error instanceof RuleViolationError) {
       throw error;
     }
 
@@ -1080,7 +1082,7 @@ const fetchVaultSecretAtPath = async ({
       });
     }
 
-    if (error instanceof BadRequestError) {
+    if (error instanceof BadRequestError || error instanceof RuleViolationError) {
       throw error;
     }
 

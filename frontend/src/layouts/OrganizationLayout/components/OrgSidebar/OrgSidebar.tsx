@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { useLocation, useParams } from "@tanstack/react-router";
 
 import { Sidebar, SidebarContent, SidebarFooter, SidebarTrigger } from "@app/components/v3";
@@ -8,7 +9,6 @@ import {
   urlSlugToProjectType
 } from "@app/helpers/project";
 import { useImplicitProduct } from "@app/hooks";
-import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { OrgNav } from "./OrgNav";
 import { ProjectNav } from "./ProjectNav";
@@ -32,13 +32,13 @@ export const OrgSidebar = () => {
   const effectiveTypeSlug = typeSlug ?? parseProjectSlugFromPath(pathname);
   const projectType = effectiveTypeSlug ? urlSlugToProjectType(effectiveTypeSlug) : null;
   const isOnProjectTypeListing =
-    !isInsideProject && Boolean(projectType) && hasIntermediateProjectsView(projectType!);
+    !isInsideProject &&
+    Boolean(projectType) &&
+    (hasIntermediateProjectsView(projectType!) || pathname.includes("/product-settings"));
   const { isSubOrganization } = useOrganization();
 
-  let scope: "project" | "sub-org" | "org" | "pam" | "agent-vault" = "org";
-  if (orgScopedProduct === ProjectType.PAM) scope = "pam";
-  else if (orgScopedProduct === ProjectType.AgentVault) scope = "agent-vault";
-  else if (isInsideProject || isOnProjectTypeListing) scope = "project";
+  let scope: "project" | "sub-org" | "org" = "org";
+  if (isInsideProject || isOnProjectTypeListing) scope = "project";
   else if (isSubOrganization) scope = "sub-org";
 
   let body: JSX.Element;

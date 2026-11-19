@@ -27,6 +27,7 @@ export type TDynamicSecretLeaseCapabilities = {
   supportsRenewal: boolean;
   autoGenerate?: boolean;
   fixedTtl?: string;
+  ttlDescription?: string;
 };
 
 export type TDynamicSecretProviderRuntimeMetadata = {
@@ -242,6 +243,37 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
         { key: "CLIENT_SECRET", label: "Client Secret", isOptional: true },
         { key: "FEDERATED_CREDENTIAL_ID", label: "Federated Credential ID", isOptional: true },
         { key: "AUDIENCE", label: "Audience", isOptional: true }
+      ]),
+      supportsRenewal: false
+    }
+  },
+  [DynamicSecretProviders.OAuth2]: {
+    presentation: { providerFamily: "OAuth 2.0" },
+    leaseCapabilities: {
+      provisioner: "default",
+      output: oneTimeFields([
+        { key: "ACCESS_TOKEN", label: "Access Token" },
+        { key: "TOKEN_TYPE", label: "Token Type", isOptional: true },
+        { key: "EXPIRES_AT", label: "Expires At", isOptional: true },
+        { key: "SCOPE", label: "Scope", isOptional: true }
+      ]),
+      supportsRenewal: false,
+      ttlDescription:
+        "Must fit within the token lifetime the authorization server sets. Not checked if the server doesn't report a lifetime."
+    }
+  },
+  [DynamicSecretProviders.Kafka]: {
+    presentation: { providerFamily: "Kafka", logoFileName: "Kafka.png" },
+    leaseCapabilities: createDefaultLeaseCapabilities(credentials)
+  },
+  [DynamicSecretProviders.OpenRouter]: {
+    presentation: { providerFamily: "OpenRouter", logoFileName: "OpenRouter.png" },
+    leaseCapabilities: {
+      provisioner: "default",
+      output: oneTimeFields([
+        { key: "API_KEY", label: "API Key" },
+        { key: "KEY_HASH", label: "Key Hash" },
+        { key: "KEY_NAME", label: "Key Name" }
       ]),
       supportsRenewal: false
     }

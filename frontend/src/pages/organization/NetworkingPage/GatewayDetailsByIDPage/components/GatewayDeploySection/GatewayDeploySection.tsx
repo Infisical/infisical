@@ -34,6 +34,7 @@ import {
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { useScopeVariant } from "@app/hooks";
 import { useMintGatewayToken } from "@app/hooks/api/gateways-v2";
 import { GatewayAuthMethodView, TGatewayEnrollmentToken } from "@app/hooks/api/gateways-v2/types";
 
@@ -79,6 +80,7 @@ export const GatewayDeploySection = ({
   relayId,
   authMethod
 }: Props) => {
+  const scopeVariant = useScopeVariant();
   const isCloud = isInfisicalCloud();
   const isKubernetes = authMethod.method === "kubernetes";
   const isGcp = authMethod.method === "gcp";
@@ -189,12 +191,12 @@ export const GatewayDeploySection = ({
                 <Field>
                   <FieldLabel>Connection Mode</FieldLabel>
                   <RadioGroup value={connectionMode} onValueChange={handleConnectionModeChange}>
-                    <FieldLabel htmlFor="gateway-connection-mode-direct" variant="org">
+                    <FieldLabel htmlFor="gateway-connection-mode-direct" variant={scopeVariant}>
                       <Field orientation="horizontal">
                         <FieldContent>
                           <FieldTitle>
                             Direct Listen
-                            <Badge variant="org">Recommended</Badge>
+                            <Badge variant={scopeVariant}>Recommended</Badge>
                           </FieldTitle>
                           <FieldDescription>
                             Infisical opens the connection to the gateway. Choose this when your
@@ -204,7 +206,7 @@ export const GatewayDeploySection = ({
                         <RadioGroupItem value="direct" id="gateway-connection-mode-direct" />
                       </Field>
                     </FieldLabel>
-                    <FieldLabel htmlFor="gateway-connection-mode-relay" variant="org">
+                    <FieldLabel htmlFor="gateway-connection-mode-relay" variant={scopeVariant}>
                       <Field orientation="horizontal">
                         <FieldContent>
                           <FieldTitle>Relay</FieldTitle>

@@ -1,3 +1,4 @@
+import fastJsonStringify, { type Schema as FastJsonSchema } from "fast-json-stringify";
 /* eslint-disable */
 // Code taken from https://www.npmjs.com/package/fastify-type-provider-zod
 // Full credits goes to https://github.com/turkerdev
@@ -51,11 +52,19 @@ const zodToJsonSchemaOptions = {
 } as const;
 
 /**
- * Recursively removes properties marked with "x-hidden": true from the JSON schema.
- * This allows fields to be hidden from OpenAPI docs while still being validated.
- * Usage: .describe(JSON.stringify({ "x-hidden": true }))
+ * Normalizes a JSON schema for OpenAPI output.
+ *
+ * Two jobs. It removes properties and union variants marked with "x-hidden": true, so a
+ * field or variant can be hidden from the docs while still being validated
+ * (usage: .describe(JSON.stringify({ "x-hidden": true }))). And it flattens JSON
+ * Schema tuple form, which zod-to-json-schema emits for z.tuple() even under its
+ * openApi3 target: OpenAPI 3.0 has no tuple type and requires `items` to be a single
+ * schema, so a spec containing one fails to parse in any standard OpenAPI parser.
+ *
+ * keepHidden suppresses only the first job. The tuple flattening is unconditional,
+ * because it is about producing valid OpenAPI rather than about hiding anything.
  */
-const removeHiddenProperties = (schema: FreeformRecord): FreeformRecord => {
+const removeHiddenProperties = (schema: FreeformRecord, keepHidden = false): FreeformRecord => {
   if (!schema || typeof schema !== "object") {
     return schema;
   }
@@ -68,10 +77,10 @@ const removeHiddenProperties = (schema: FreeformRecord): FreeformRecord => {
 
     for (const key of Object.keys(result.properties)) {
       const prop = result.properties[key];
-      if (prop?.["x-hidden"]) {
+      if (!keepHidden && prop?.["x-hidden"]) {
         hiddenKeys.push(key);
       } else {
-        filteredProperties[key] = removeHiddenProperties(prop);
+        filteredProperties[key] = removeHiddenProperties(prop, keepHidden);
       }
     }
 
@@ -86,28 +95,33 @@ const removeHiddenProperties = (schema: FreeformRecord): FreeformRecord => {
   }
 
   if (Array.isArray(result.items)) {
-    const variants = (result.items as FreeformRecord[]).map((v) => removeHiddenProperties(v));
+    const variants = (result.items as FreeformRecord[]).map((v) => removeHiddenProperties(v, keepHidden));
     if (result.additionalItems && typeof result.additionalItems === "object") {
-      const rest = removeHiddenProperties(result.additionalItems);
+      const rest = removeHiddenProperties(result.additionalItems, keepHidden);
       if (Object.keys(rest).length > 0) variants.push(rest);
     }
     delete result.additionalItems;
     const unique = variants.filter((v, i, arr) => arr.findIndex((x) => JSON.stringify(x) === JSON.stringify(v)) === i);
     result.items = unique.length === 1 ? unique[0] : { oneOf: unique };
   } else if (result.items) {
-    result.items = removeHiddenProperties(result.items);
+    result.items = removeHiddenProperties(result.items, keepHidden);
   }
 
   if (result.allOf && Array.isArray(result.allOf)) {
-    result.allOf = result.allOf.map(removeHiddenProperties);
+    result.allOf = result.allOf.map((v: FreeformRecord) => removeHiddenProperties(v, keepHidden));
   }
 
+  const visibleVariants = (variants: FreeformRecord[]) =>
+    variants
+      .filter((v) => keepHidden || !v?.["x-hidden"])
+      .map((v: FreeformRecord) => removeHiddenProperties(v, keepHidden));
+
   if (result.oneOf && Array.isArray(result.oneOf)) {
-    result.oneOf = result.oneOf.map(removeHiddenProperties);
+    result.oneOf = visibleVariants(result.oneOf);
   }
 
   if (result.anyOf && Array.isArray(result.anyOf)) {
-    result.anyOf = result.anyOf.map(removeHiddenProperties);
+    result.anyOf = visibleVariants(result.anyOf);
   }
 
   return result;
@@ -147,9 +161,12 @@ const stripPropertyDeep = (schema: FreeformRecord, propertyName: string): Freefo
   if (result.items) {
     result.items = stripPropertyDeep(result.items, propertyName);
   }
-  if (Array.isArray(result.allOf)) result.allOf = result.allOf.map((s: FreeformRecord) => stripPropertyDeep(s, propertyName));
-  if (Array.isArray(result.oneOf)) result.oneOf = result.oneOf.map((s: FreeformRecord) => stripPropertyDeep(s, propertyName));
-  if (Array.isArray(result.anyOf)) result.anyOf = result.anyOf.map((s: FreeformRecord) => stripPropertyDeep(s, propertyName));
+  if (Array.isArray(result.allOf))
+    result.allOf = result.allOf.map((s: FreeformRecord) => stripPropertyDeep(s, propertyName));
+  if (Array.isArray(result.oneOf))
+    result.oneOf = result.oneOf.map((s: FreeformRecord) => stripPropertyDeep(s, propertyName));
+  if (Array.isArray(result.anyOf))
+    result.anyOf = result.anyOf.map((s: FreeformRecord) => stripPropertyDeep(s, propertyName));
 
   return result;
 };
@@ -172,7 +189,13 @@ function resolveSchema(maybeSchema: ZodAny | { properties: ZodAny }): Pick<ZodAn
   throw new Error(`Invalid schema passed: ${JSON.stringify(maybeSchema)}`);
 }
 
-export const createJsonSchemaTransform = ({ skipList }: { skipList: readonly string[] }) => {
+export const createJsonSchemaTransform = ({
+  skipList,
+  full = false
+}: {
+  skipList: readonly string[];
+  full?: boolean;
+}) => {
   return ({ schema = {}, url }: { schema: Schema; url: string }) => {
     if (!schema) {
       return {
@@ -181,14 +204,17 @@ export const createJsonSchemaTransform = ({ skipList }: { skipList: readonly str
       };
     }
 
+    // Routes are hidden by default, so the published spec only carries what a route
+    // explicitly opted into. `full` lifts every suppression below, which is what lets
+    // a client be generated for the complete surface outside production.
     if (typeof schema.hide === "undefined") {
-      schema.hide = true;
+      schema.hide = !full;
     }
     const { response, headers, querystring, body, params, hide, ...rest } = schema;
 
     const transformed: FreeformRecord = {};
 
-    if (skipList.includes(url) || hide) {
+    if (!full && (skipList.includes(url) || hide)) {
       transformed.hide = true;
       return { schema: transformed, url };
     }
@@ -198,13 +224,13 @@ export const createJsonSchemaTransform = ({ skipList }: { skipList: readonly str
     for (const prop in zodSchemas) {
       const zodSchema = zodSchemas[prop];
       if (zodSchema) {
-        transformed[prop] = removeHiddenProperties(zodToJsonSchema(zodSchema, zodToJsonSchemaOptions));
+        transformed[prop] = removeHiddenProperties(zodToJsonSchema(zodSchema, zodToJsonSchemaOptions), full);
       }
     }
 
     if (response) {
       transformed.response = {};
-      const stripProjectId = isCertManagerUrl(url);
+      const stripProjectId = !full && isCertManagerUrl(url);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       for (const prop in response as any) {
@@ -216,7 +242,8 @@ export const createJsonSchemaTransform = ({ skipList }: { skipList: readonly str
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             schema as any,
             zodToJsonSchemaOptions
-          )
+          ),
+          full
         );
         if (stripProjectId) {
           transformedResponse = stripPropertyDeep(transformedResponse, "projectId");
@@ -238,6 +265,11 @@ export const createJsonSchemaTransform = ({ skipList }: { skipList: readonly str
 
 export const jsonSchemaTransform = createJsonSchemaTransform({
   skipList: defaultSkipList
+});
+
+export const fullJsonSchemaTransform = createJsonSchemaTransform({
+  skipList: defaultSkipList,
+  full: true
 });
 
 export const validatorCompiler: FastifySchemaCompiler<ZodAny> =
@@ -273,3 +305,16 @@ export const serializerCompiler: FastifySerializerCompiler<ZodAny | { properties
 
     throw new ResponseValidationError(result);
   };
+
+// For large responses: compiles the schema once instead of zod-parsing every response. fast-json-stringify
+// writes only the properties the schema lists, so unlisted fields are still dropped.
+// Fastify types a route-level compiler with the whole route schema, but calls it with each status's response schema.
+export const fastJsonSerializerCompiler: FastifySerializerCompiler<unknown> = (routeSchema) => {
+  const responseRouteSchema = routeSchema as Parameters<typeof serializerCompiler>[0];
+  if (!routeSchema.httpStatus?.startsWith("2")) return serializerCompiler(responseRouteSchema);
+
+  const zodSchema = resolveSchema(responseRouteSchema.schema) as ZodAny;
+  return fastJsonStringify(
+    zodToJsonSchema(zodSchema, { target: "jsonSchema7", $refStrategy: "none" }) as FastJsonSchema
+  );
+};

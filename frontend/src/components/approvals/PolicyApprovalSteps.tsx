@@ -1,31 +1,52 @@
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
-import { MultiValue } from "react-select";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { PlusIcon, TrashIcon } from "lucide-react";
 
-import { Button, FilterableSelect, FormControl, IconButton, Input } from "@app/components/v2";
+import {
+  Button,
+  Combobox,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  IconButton,
+  Input
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
 import { ApproverType } from "@app/hooks/api/approvalPolicies";
-import { useListPkiApplicationMembers } from "@app/hooks/api/pkiApplications";
+import {
+  PkiApplicationMemberRole,
+  useListPkiApplicationMembers
+} from "@app/hooks/api/pkiApplications";
 
 import { TFormWithApprovalSteps } from "./ApprovalStepsSchema";
 
 type Props = {
   applicationId?: string;
+  // Revocation approvers must be able to approve, and Auditors can't.
+  excludeAuditors?: boolean;
 };
 
-export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
+export const PolicyApprovalSteps = ({ applicationId, excludeAuditors = false }: Props = {}) => {
   const { control } = useFormContext<TFormWithApprovalSteps>();
+  const fieldIdPrefix = useId();
 
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
 
   const { data: members = [] } = useGetWorkspaceUsers(projectId);
   const { data: groups = [] } = useListWorkspaceGroups(projectId);
-  const { data: appMembers = [] } = useListPkiApplicationMembers(applicationId ?? "");
+  const { data: allAppMembers = [] } = useListPkiApplicationMembers(applicationId ?? "");
+  const appMembers = useMemo(
+    () =>
+      excludeAuditors
+        ? allAppMembers.filter((m) => m.role !== PkiApplicationMemberRole.Auditor)
+        : allAppMembers,
+    [allAppMembers, excludeAuditors]
+  );
 
   const {
     fields: stepFields,
@@ -64,7 +85,7 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
 
   const userLabel = (userId: string) => {
     if (applicationId) {
-      const m = appMembers.find((member) => member.actorUserId === userId);
+      const m = allAppMembers.find((member) => member.actorUserId === userId);
       return m?.details?.name || m?.details?.username || m?.details?.email || userId;
     }
     const member = members.find((m) => m.user.id === userId);
@@ -72,7 +93,7 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
   };
   const groupLabel = (groupId: string) => {
     if (applicationId) {
-      const m = appMembers.find((member) => member.actorGroupId === groupId);
+      const m = allAppMembers.find((member) => member.actorGroupId === groupId);
       return m?.details?.name || groupId;
     }
     return groups?.find(({ group }) => group.id === groupId)?.group.name ?? groupId;
@@ -87,9 +108,8 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
         </div>
         <Button
           type="button"
-          variant="outline_bg"
+          variant="outline"
           size="xs"
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
           onClick={() =>
             appendStep({
               name: "",
@@ -99,6 +119,7 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
             })
           }
         >
+          <PlusIcon />
           Add Step
         </Button>
       </div>
@@ -115,12 +136,12 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
               </div>
               {stepFields.length > 1 && (
                 <IconButton
-                  ariaLabel="Remove step"
-                  variant="plain"
+                  aria-label="Remove step"
+                  variant="ghost"
                   size="xs"
                   onClick={() => removeStep(index)}
                 >
-                  <FontAwesomeIcon icon={faTrash} className="text-danger" />
+                  <TrashIcon className="text-danger" />
                 </IconButton>
               )}
             </div>
@@ -130,16 +151,20 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
                 control={control}
                 name={`steps.${index}.name`}
                 render={({ field: nameField }) => (
-                  <FormControl
-                    label="Step Name (Optional)"
-                    helperText="A descriptive name for this approval step"
-                  >
-                    <Input
-                      {...nameField}
-                      value={nameField.value || ""}
-                      placeholder="e.g., Security Team Review"
-                    />
-                  </FormControl>
+                  <Field>
+                    <FieldLabel htmlFor={`${fieldIdPrefix}-${index}-name`}>
+                      Step Name <span className="text-muted">(optional)</span>
+                    </FieldLabel>
+                    <FieldContent>
+                      <Input
+                        {...nameField}
+                        id={`${fieldIdPrefix}-${index}-name`}
+                        value={nameField.value || ""}
+                        placeholder="e.g., Security Team Review"
+                      />
+                      <FieldDescription>A descriptive name for this approval step</FieldDescription>
+                    </FieldContent>
+                  </Field>
                 )}
               />
 
@@ -147,21 +172,26 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
                 control={control}
                 name={`steps.${index}.requiredApprovals`}
                 render={({ field: approvalsField, fieldState: { error } }) => (
-                  <FormControl
-                    label="Required Approvals"
-                    isRequired
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    helperText="Number of approvers that must approve (1-100)"
-                  >
-                    <Input
-                      {...approvalsField}
-                      type="number"
-                      min={1}
-                      max={100}
-                      onChange={(e) => approvalsField.onChange(parseInt(e.target.value, 10))}
-                    />
-                  </FormControl>
+                  <Field>
+                    <FieldLabel htmlFor={`${fieldIdPrefix}-${index}-required-approvals`}>
+                      Required Approvals <span className="text-danger">*</span>
+                    </FieldLabel>
+                    <FieldContent>
+                      <Input
+                        {...approvalsField}
+                        id={`${fieldIdPrefix}-${index}-required-approvals`}
+                        type="number"
+                        min={1}
+                        max={100}
+                        isError={Boolean(error)}
+                        onChange={(e) => approvalsField.onChange(parseInt(e.target.value, 10))}
+                      />
+                      <FieldDescription isOpen={!error}>
+                        Number of approvers that must approve (1-100)
+                      </FieldDescription>
+                      <FieldError errors={[error]} />
+                    </FieldContent>
+                  </Field>
                 )}
               />
 
@@ -170,73 +200,64 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
                 <Controller
                   control={control}
                   name={`steps.${index}.approvers`}
-                  render={({ field: { value, onChange }, fieldState: { error } }) => {
+                  render={({ field: { value, onChange, onBlur, ref }, fieldState: { error } }) => {
                     const userApprovers = value.filter((a) => a.type === ApproverType.User);
                     const groupApprovers = value.filter((a) => a.type === ApproverType.Group);
+                    const approversError =
+                      userApprovers.length === 0 && groupApprovers.length === 0
+                        ? error?.message
+                        : undefined;
 
                     return (
                       <>
-                        <FormControl
-                          label="User Approvers"
-                          isError={Boolean(error)}
-                          errorText={
-                            error?.message &&
-                            userApprovers.length === 0 &&
-                            groupApprovers.length === 0
-                              ? error?.message
-                              : undefined
-                          }
-                        >
-                          <FilterableSelect
-                            isMulti
-                            placeholder="Select users..."
-                            options={memberOptions}
-                            getOptionValue={(option) => option.id}
-                            getOptionLabel={(option) => userLabel(option.id)}
-                            value={userApprovers}
-                            onChange={(selected) => {
-                              const newApprovers = [
-                                ...((selected as MultiValue<{
-                                  type: ApproverType;
-                                  id: string;
-                                }>) || []),
-                                ...groupApprovers
-                              ];
-                              onChange(newApprovers);
-                            }}
-                          />
-                        </FormControl>
+                        <Field>
+                          <FieldLabel htmlFor={`${fieldIdPrefix}-${index}-user-approvers`}>
+                            User Approvers
+                          </FieldLabel>
+                          <FieldContent>
+                            <Combobox
+                              id={`${fieldIdPrefix}-${index}-user-approvers`}
+                              ref={ref}
+                              onBlur={onBlur}
+                              multiple
+                              isError={Boolean(approversError)}
+                              placeholder="Select users..."
+                              options={memberOptions}
+                              getOptionValue={(option) => option.id}
+                              getOptionLabel={(option) => userLabel(option.id)}
+                              value={userApprovers}
+                              onValueChange={(selected) => {
+                                const newApprovers = [...selected, ...groupApprovers];
+                                onChange(newApprovers);
+                              }}
+                            />
+                            <FieldError>{approversError}</FieldError>
+                          </FieldContent>
+                        </Field>
 
-                        <FormControl
-                          label="Group Approvers"
-                          isError={Boolean(error)}
-                          errorText={
-                            error?.message &&
-                            userApprovers.length === 0 &&
-                            groupApprovers.length === 0
-                              ? error?.message
-                              : undefined
-                          }
-                        >
-                          <FilterableSelect
-                            isMulti
-                            placeholder="Select groups..."
-                            options={groupOptions}
-                            getOptionValue={(option) => option.id}
-                            getOptionLabel={(option) => groupLabel(option.id)}
-                            value={groupApprovers}
-                            onChange={(selected) => {
-                              const newApprovers = [
-                                ...userApprovers,
-                                ...((selected as MultiValue<{
-                                  type: ApproverType;
-                                  id: string;
-                                }>) || [])
-                              ];
-                              onChange(newApprovers);
-                            }}
-                          />
-                        </FormControl>
+                        <Field>
+                          <FieldLabel htmlFor={`${fieldIdPrefix}-${index}-group-approvers`}>
+                            Group Approvers
+                          </FieldLabel>
+                          <FieldContent>
+                            <Combobox
+                              id={`${fieldIdPrefix}-${index}-group-approvers`}
+                              onBlur={onBlur}
+                              multiple
+                              isError={Boolean(approversError)}
+                              placeholder="Select groups..."
+                              options={groupOptions}
+                              getOptionValue={(option) => option.id}
+                              getOptionLabel={(option) => groupLabel(option.id)}
+                              value={groupApprovers}
+                              onValueChange={(selected) => {
+                                const newApprovers = [...userApprovers, ...selected];
+                                onChange(newApprovers);
+                              }}
+                            />
+                            <FieldError>{approversError}</FieldError>
+                          </FieldContent>
+                        </Field>
                       </>
                     );
                   }}

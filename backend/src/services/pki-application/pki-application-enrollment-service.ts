@@ -1,7 +1,8 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ResourceType } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionApplicationActions,
@@ -20,10 +21,10 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
-import { APPROVAL_POLICY_FACTORY_MAP } from "@app/services/approval-policy/approval-policy-factory";
+import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { TCertRequestPolicy } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
+import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -38,10 +39,6 @@ import { TAcmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TEstEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { TScepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
-import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TPkiApplicationDALFactory } from "./pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "./pki-application-profile-dal";
@@ -112,18 +109,15 @@ type TPkiApplicationEnrollmentServiceFactoryDep = {
   acmeEnrollmentConfigDAL: Pick<TAcmeEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId">;
+  licenseService: TLicenseService;
+  approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "matchPolicy">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find">;
-  hsmConnectorService: THsmConnectorServiceFactory;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey" | "createCipherPairWithDataKey"
-  >;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
 };
 
@@ -138,14 +132,14 @@ export const pkiApplicationEnrollmentServiceFactory = ({
   scepEnrollmentConfigDAL,
   appConnectionService,
   licenseService,
-  approvalPolicyDAL,
+  approvalPolicyService,
   certificateProfileDAL,
   certificateAuthorityDAL,
   certificateAuthoritySecretDAL,
   certificateAuthorityCertDAL,
-  hsmConnectorService,
-  kmsService,
-  projectDAL,
+  caKeySourceService,
+  kmsDataKeyService,
+  kmsKeyService,
   permissionService
 }: TPkiApplicationEnrollmentServiceFactoryDep) => {
   const $loadJunction = async (applicationId: string, profileId: string, projectId: string) => {
@@ -407,7 +401,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     // Runtime enrollment is already gated in the EST service, so this only moves the refusal to where
     // an admin can act on it instead of surfacing as a device that silently fails to enroll.
     const estPlan = await licenseService.getPlan(actorOrgId);
-    if (!estPlan.pkiEst) {
+    if (!estPlan.has(PlanFeature.PkiEst)) {
       throw new BadRequestError({
         message: "Failed to enable EST enrollment due to plan restriction. Upgrade plan to use EST."
       });
@@ -423,7 +417,12 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     const caChainProvided = typeof config.caChain === "string" && config.caChain.length > 0;
     let encryptedCaChain: Buffer | null = null;
     if (!config.disableBootstrapCaValidation && caChainProvided) {
-      const result = await validateAndEncryptPemCaChain(config.caChain as string, projectId, kmsService, projectDAL);
+      const result = await validateAndEncryptPemCaChain(
+        config.caChain as string,
+        projectId,
+        kmsDataKeyService,
+        kmsKeyService
+      );
       encryptedCaChain = result.encryptedCaChain;
     }
 
@@ -513,6 +512,10 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       });
     }
 
+    const newEabSecret = junction.acmeConfigId
+      ? undefined
+      : (await generateAndEncryptAcmeEabSecret(projectId, kmsDataKeyService, kmsKeyService)).encryptedEabSecret;
+
     return pkiApplicationProfileDAL.transaction(async (tx) => {
       let { acmeConfigId } = junction;
       if (acmeConfigId) {
@@ -525,12 +528,11 @@ export const pkiApplicationEnrollmentServiceFactory = ({
           tx
         );
       } else {
-        const { encryptedEabSecret } = await generateAndEncryptAcmeEabSecret(projectId, kmsService, projectDAL);
         const created = await acmeEnrollmentConfigDAL.create(
           {
             skipDnsOwnershipVerification: config.skipDnsOwnershipVerification ?? false,
             skipEabBinding: config.skipEabBinding ?? false,
-            encryptedEabSecret,
+            encryptedEabSecret: newEabSecret as Buffer,
             applicationProfileId: junction.id
           },
           tx
@@ -613,8 +615,8 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       throw new NotFoundError({ message: "ACME EAB secret is not available." });
     }
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
     const eabSecret = await kmsDecryptor({ cipherTextBlob: acmeConfig.encryptedEabSecret });
 
     return {
@@ -657,7 +659,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     if (!junction.acmeConfigId) {
       throw new NotFoundError({ message: "ACME enrollment is not configured for this profile." });
     }
-    const { encryptedEabSecret } = await generateAndEncryptAcmeEabSecret(projectId, kmsService, projectDAL);
+    const { encryptedEabSecret } = await generateAndEncryptAcmeEabSecret(projectId, kmsDataKeyService, kmsKeyService);
     await acmeEnrollmentConfigDAL.updateById(junction.acmeConfigId, { encryptedEabSecret });
     return { applicationId, applicationName: application.name, profileId };
   };
@@ -685,7 +687,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     );
 
     const scepPlan = await licenseService.getPlan(actorOrgId);
-    if (!scepPlan.pkiScep) {
+    if (!scepPlan.has(PlanFeature.PkiScep)) {
       throw new BadRequestError({
         message: "Failed to enable SCEP enrollment due to plan restriction. Upgrade plan to use SCEP."
       });
@@ -751,13 +753,13 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     }
 
     if (isIntune && profile) {
-      const certRequestApprovalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](
-        ApprovalPolicyType.CertRequest
-      );
-      const matchedApprovalPolicy = (await certRequestApprovalFactory.matchPolicy(
-        approvalPolicyDAL as TApprovalPolicyDALFactory,
+      const matchedApprovalPolicy = (await approvalPolicyService.matchPolicy(
+        ApprovalPolicyType.CertRequest,
         projectId,
-        { profileName: profile.slug, applicationId }
+        {
+          profileName: profile.slug,
+          applicationId
+        }
       )) as TCertRequestPolicy | null;
 
       if (matchedApprovalPolicy) {
@@ -803,9 +805,9 @@ export const pkiApplicationEnrollmentServiceFactory = ({
           certificateAuthorityDAL,
           certificateAuthoritySecretDAL,
           certificateAuthorityCertDAL,
-          projectDAL,
-          kmsService,
-          hsmConnectorService
+          kmsDataKeyService,
+          kmsKeyService,
+          caKeySourceService
         }
       });
     }

@@ -1,20 +1,21 @@
 import { createNotification } from "@app/components/notifications";
-import { Button, Modal, ModalClose, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@app/components/v3";
 import { SecretRotation, TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 import { useReconcileLocalAccountRotation } from "@app/hooks/api/secretRotationsV2/mutations";
-import { THpIloRotation } from "@app/hooks/api/secretRotationsV2/types/hp-ilo-rotation";
-import { TUnixLinuxLocalAccountRotation } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
-import { TWindowsLocalAccountRotation } from "@app/hooks/api/secretRotationsV2/types/windows-local-account-rotation";
 
 type Props = {
   secretRotation?: TSecretRotationV2;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-};
-
-type ContentProps = {
-  secretRotation: TUnixLinuxLocalAccountRotation | TWindowsLocalAccountRotation | THpIloRotation;
-  onComplete: () => void;
 };
 
 const getRotationTypeName = (type: SecretRotation): string => {
@@ -23,8 +24,20 @@ const getRotationTypeName = (type: SecretRotation): string => {
   return "HP iLO Local Account";
 };
 
-const Content = ({ secretRotation, onComplete }: ContentProps) => {
+export const ReconcileLocalAccountRotationModal = ({
+  isOpen,
+  onOpenChange,
+  secretRotation
+}: Props) => {
   const reconcileLocalAccount = useReconcileLocalAccountRotation();
+
+  if (
+    !secretRotation ||
+    (secretRotation.type !== SecretRotation.UnixLinuxLocalAccount &&
+      secretRotation.type !== SecretRotation.WindowsLocalAccount &&
+      secretRotation.type !== SecretRotation.HpIloLocalAccount)
+  )
+    return null;
 
   const { id: rotationId, projectId, folder, type } = secretRotation;
   const rotationTypeName = getRotationTypeName(type);
@@ -32,10 +45,7 @@ const Content = ({ secretRotation, onComplete }: ContentProps) => {
   const handleReconcile = async () => {
     const result = await reconcileLocalAccount.mutateAsync({
       rotationId,
-      type: type as
-        | SecretRotation.UnixLinuxLocalAccount
-        | SecretRotation.WindowsLocalAccount
-        | SecretRotation.HpIloLocalAccount,
+      type,
       projectId,
       secretPath: folder.path
     });
@@ -47,69 +57,41 @@ const Content = ({ secretRotation, onComplete }: ContentProps) => {
       type: "success"
     });
 
-    onComplete();
+    onOpenChange(false);
   };
 
   return (
-    <div>
-      <p className="mb-4 text-sm text-foreground-secondary">
-        Reconciliation ensures the password stored in Infisical matches the actual password on the
-        server.
-      </p>
-      <p className="mb-8 text-sm text-foreground-secondary">
-        Use this if you suspect the credentials are out of sync, for example after a failed rotation
-        or manual password change on the server.
-      </p>
-      <div className="mt-8 flex w-full items-center justify-between gap-2">
-        <ModalClose asChild>
-          <Button colorSchema="secondary" variant="plain">
-            Cancel
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent isPending={reconcileLocalAccount.isPending}>
+        <DialogHeader>
+          <DialogTitle>Reconcile {rotationTypeName}</DialogTitle>
+          <DialogDescription>
+            Sync the {rotationTypeName} password between Infisical and the server.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-4 text-sm text-foreground-secondary">
+          <p>
+            Reconciliation ensures the password stored in Infisical matches the actual password on
+            the server.
+          </p>
+          <p>
+            Use this if you suspect the credentials are out of sync, for example after a failed
+            rotation or manual password change on the server.
+          </p>
+        </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="ghost">Cancel</Button>
+          </DialogClose>
+          <Button
+            variant="project"
+            onClick={() => handleReconcile().catch(() => undefined)}
+            isPending={reconcileLocalAccount.isPending}
+          >
+            Reconcile
           </Button>
-        </ModalClose>
-        <Button
-          onClick={handleReconcile}
-          isDisabled={reconcileLocalAccount.isPending}
-          isLoading={reconcileLocalAccount.isPending}
-          colorSchema="secondary"
-        >
-          Reconcile
-        </Button>
-      </div>
-    </div>
-  );
-};
-
-export const ReconcileLocalAccountRotationModal = ({
-  isOpen,
-  onOpenChange,
-  secretRotation
-}: Props) => {
-  if (
-    !secretRotation ||
-    (secretRotation.type !== SecretRotation.UnixLinuxLocalAccount &&
-      secretRotation.type !== SecretRotation.WindowsLocalAccount &&
-      secretRotation.type !== SecretRotation.HpIloLocalAccount)
-  )
-    return null;
-
-  const rotationTypeName = getRotationTypeName(secretRotation.type);
-
-  return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        title={`Reconcile ${rotationTypeName}`}
-        subTitle={`Sync the ${rotationTypeName} password between Infisical and the server.`}
-      >
-        <Content
-          secretRotation={
-            secretRotation as
-              | TUnixLinuxLocalAccountRotation
-              | TWindowsLocalAccountRotation
-              | THpIloRotation
-          }
-          onComplete={() => onOpenChange(false)}
-        />
-      </ModalContent>
-    </Modal>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

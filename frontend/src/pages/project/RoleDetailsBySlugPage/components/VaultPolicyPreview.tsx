@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { CircleCheckIcon, CircleXIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 

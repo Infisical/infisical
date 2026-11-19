@@ -1,11 +1,12 @@
-import { LookupAddress } from "node:dns";
-import dns from "node:dns/promises";
+import { lookup as dnsLookup, LookupAddress } from "node:dns";
 import http from "node:http";
 import https from "node:https";
-import { LookupFunction } from "node:net";
+import net, { LookupFunction } from "node:net";
+import tls from "node:tls";
 
 import { AxiosRequestConfig } from "axios";
 import { isIP } from "net";
+import dns from "node:dns/promises";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { getConfig } from "@app/lib/config/env";
@@ -13,10 +14,14 @@ import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { sanitizeUrlForLog } from "@app/lib/logger/sanitize-url";
 import { recordSafeRequestAgentEvictionMetric } from "@app/lib/telemetry/metrics";
+import { getTlsServerNameOptions } from "@app/lib/tls";
 
 import { BadRequestError } from "../errors";
 import { isPrivateIp } from "../ip/ipRange";
 import { AGENT_CACHE_MAX, agentCache } from "./agent-pool";
+
+// Exported so a caller can tell this refusal, which retrying never fixes, from a failure that might pass.
+export const PRIVATE_ADDRESS_REFUSED_MESSAGE = "Local IPs not allowed as URL";
 
 const formatEntries = (entries: LookupAddress[]) => entries.map((e) => `${e.family}:${e.address}`).join(",");
 
@@ -63,9 +68,9 @@ export const validateAndPinUrl = async (
   if (isIP(rawHost)) {
     entries = [{ address: rawHost, family: isIP(rawHost) }];
   } else {
-    if (rawHost === "localhost" || rawHost === "host.docker.internal") {
+    if (!appCfg.ALLOW_INTERNAL_IP_CONNECTIONS && (rawHost === "localhost" || rawHost === "host.docker.internal")) {
       logger.warn(`safeRequest: rejecting literal local hostname [hostname=${rawHost}]`);
-      throw new BadRequestError({ message: "Local IPs not allowed as URL" });
+      throw new BadRequestError({ message: PRIVATE_ADDRESS_REFUSED_MESSAGE });
     }
     const lookups = await dns.lookup(rawHost, { all: true });
 
@@ -79,7 +84,7 @@ export const validateAndPinUrl = async (
   const isInternalIp = entries.some((e) => isPrivateIp(e.address));
   if (isInternalIp && !appCfg.ALLOW_INTERNAL_IP_CONNECTIONS) {
     logger.warn(`safeRequest: rejecting private/internal IP [hostname=${rawHost}] [entries=${formatEntries(entries)}]`);
-    throw new BadRequestError({ message: "Local IPs not allowed as URL" });
+    throw new BadRequestError({ message: PRIVATE_ADDRESS_REFUSED_MESSAGE });
   }
 
   // Block Infisical's own infrastructure (DB, Redis, etc.).
@@ -117,8 +122,12 @@ const pickPreferredEntry = (entries: LookupAddress[]): LookupAddress =>
 // dns.lookup-shaped function that always returns the pre-validated IPs.
 // Installed on an http(s).Agent so connect-time DNS cannot land on a different
 // IP than the one validation approved.
-const makePinnedLookup = (entries: LookupAddress[]): LookupFunction =>
+const makePinnedLookup = ({ hostname: validatedHostname, entries }: TValidatedHost): LookupFunction =>
   ((hostname: string, optionsOrCb: unknown, maybeCb?: unknown) => {
+    if ((hostname.endsWith(".") ? hostname.slice(0, -1) : hostname) !== validatedHostname) {
+      (dnsLookup as (...args: unknown[]) => void)(hostname, optionsOrCb, maybeCb);
+      return;
+    }
     if (typeof optionsOrCb === "function") {
       const first = pickPreferredEntry(entries);
       (optionsOrCb as TLookupOneCallback)(null, first.address, first.family);
@@ -151,6 +160,52 @@ const makePinnedLookup = (entries: LookupAddress[]): LookupFunction =>
       (maybeCb as TLookupOneCallback)(null, first.address, first.family);
     }
   }) as LookupFunction;
+
+// dns.lookup replacement that refuses internal addresses, for clients that make their own HTTP requests and
+// take a lookup function but no agent we could build ahead of time (openid-client). The addresses it checks are
+// the ones the socket connects to, so DNS cannot answer differently between the check and the connection.
+// Node does not call lookup for an IP literal host, so validate those URLs (validateAndPinUrl) before the request.
+export const ssrfSafeLookup = ((hostname: string, optionsOrCb: unknown, maybeCb?: unknown) => {
+  const callback = (typeof optionsOrCb === "function" ? optionsOrCb : maybeCb) as TLookupOneCallback &
+    TLookupAllCallback;
+  const opts = (typeof optionsOrCb === "function" ? {} : (optionsOrCb ?? {})) as { all?: boolean; family?: number };
+
+  dnsLookup(hostname, { ...opts, all: true }, (err, entries) => {
+    if (err) {
+      callback(err, null as never, 0 as never);
+      return;
+    }
+
+    const appCfg = getConfig();
+    const check = async () => {
+      if (appCfg.isDevelopmentMode) return;
+      if (!appCfg.ALLOW_INTERNAL_IP_CONNECTIONS && entries.some((e) => isPrivateIp(e.address))) {
+        logger.warn(
+          `ssrfSafeLookup: rejecting private/internal IP [hostname=${hostname}] [entries=${formatEntries(entries)}]`
+        );
+        throw new BadRequestError({ message: PRIVATE_ADDRESS_REFUSED_MESSAGE });
+      }
+      await verifyHostInputValidity({
+        host: hostname,
+        isGateway: false,
+        isDynamicSecret: false,
+        preResolvedIps: entries.map((e) => e.address)
+      });
+    };
+
+    check().then(
+      () => {
+        if (opts.all) {
+          callback(null, sortV4First(entries));
+          return;
+        }
+        const first = pickPreferredEntry(entries);
+        callback(null, first.address, first.family);
+      },
+      (checkErr: NodeJS.ErrnoException) => callback(checkErr, null as never, 0 as never)
+    );
+  });
+}) as LookupFunction;
 
 type TBuildAgentOptions = {
   addressFamily?: 4 | 6;
@@ -240,7 +295,7 @@ const constructAgent = (
   opts: TBuildAgentOptions
 ): http.Agent | https.Agent => {
   const isHttps = protocol === "https:";
-  const lookup = validated ? makePinnedLookup(validated.entries) : undefined;
+  const lookup = validated ? makePinnedLookup(validated) : undefined;
   // Default keepAlive: true so cached agents reuse connections.
   const baseOpts: http.AgentOptions = {
     keepAlive: opts.keepAlive ?? true,
@@ -260,7 +315,7 @@ const constructAgent = (
       ...baseOpts,
       ...(opts.ca !== undefined && { ca: opts.ca }),
       ...(opts.rejectUnauthorized !== undefined && { rejectUnauthorized: opts.rejectUnauthorized }),
-      ...(opts.servername !== undefined && { servername: opts.servername }),
+      ...(opts.servername !== undefined && getTlsServerNameOptions(opts.servername)),
       ...(opts.checkServerIdentity !== undefined && { checkServerIdentity: opts.checkServerIdentity })
     };
     return new https.Agent(httpsOpts);
@@ -334,6 +389,72 @@ export const buildSsrfSafeAgent = async (
   });
 };
 
+// Same as buildSsrfSafeAgent, but always builds a new agent instead of returning a
+// cached one. Use it for clients that destroy their agent on close (such as
+// @clickhouse/client), which would otherwise tear down a pool other requests share.
+export const buildUncachedSsrfSafeAgent = async (
+  url: string,
+  options: TBuildSsrfSafeAgentOptions = {}
+): Promise<http.Agent | https.Agent> => {
+  const { allowPrivateIps, ...agentOptions } = options;
+  const validated = await validateAndPinUrl(url, { allowPrivateIps });
+  return constructAgent(validated, new URL(url).protocol, agentOptions);
+};
+
+export type TSsrfSafeUrl = {
+  url: string;
+  checkServerIdentity?: NonNullable<tls.ConnectionOptions["checkServerIdentity"]>;
+};
+
+const DEFAULT_PORTS: Record<string, number> = { "ldap:": 389, "ldaps:": 636, "http:": 80, "https:": 443 };
+const REACHABILITY_PROBE_TIMEOUT_MS = 10_000;
+
+// Connecting by name, Node tries each address in turn until one answers. A URL holding one IP loses that, so
+// when the name has several validated addresses, connect to them the same way (only these addresses) and
+// keep the one that answers. If none does, the client's own connection reports the error.
+const pickReachableEntry = (validated: TValidatedHost, port: number) =>
+  new Promise<LookupAddress>((resolve) => {
+    const fallback = pickPreferredEntry(validated.entries);
+    const socket = net.connect({
+      host: validated.hostname,
+      port,
+      lookup: makePinnedLookup(validated),
+      autoSelectFamily: true
+    });
+    let timer: NodeJS.Timeout | undefined;
+    const finish = (entry: LookupAddress) => {
+      clearTimeout(timer);
+      socket.destroy();
+      resolve(entry);
+    };
+    timer = setTimeout(() => finish(fallback), REACHABILITY_PROBE_TIMEOUT_MS);
+    socket.once("connect", () => finish(validated.entries.find((e) => e.address === socket.remoteAddress) ?? fallback));
+    socket.once("error", () => finish(fallback));
+  });
+
+// For clients that resolve the URL's host themselves when they connect and accept no lookup function or agent
+// (ldapjs): put one of the validated IPs in the URL, so a second DNS answer cannot redirect the connection.
+// The certificate is still checked against the original name through checkServerIdentity. servername is left
+// alone on purpose: setting it would start sending SNI on connections that send none today.
+export const buildSsrfSafeUrl = async (url: string, options?: SafeRequestSharedOptions): Promise<TSsrfSafeUrl> => {
+  const validated = await validateAndPinUrl(url, options);
+  if (!validated || isIP(validated.hostname)) return { url };
+
+  const pinnedUrl = new URL(url);
+  const port = Number(pinnedUrl.port) || DEFAULT_PORTS[pinnedUrl.protocol];
+  const entry =
+    validated.entries.length > 1 && port
+      ? await pickReachableEntry(validated, port)
+      : pickPreferredEntry(validated.entries);
+  pinnedUrl.hostname = entry.family === 6 ? `[${entry.address}]` : entry.address;
+
+  const { hostname } = validated;
+  return {
+    url: pinnedUrl.toString(),
+    checkServerIdentity: (_host, cert) => tls.checkServerIdentity(hostname, cert)
+  };
+};
+
 type TSharedHttpsAgentOptions = {
   ca?: string;
   rejectUnauthorized: boolean;
@@ -351,6 +472,9 @@ export const getSharedHttpsAgent = (options: TSharedHttpsAgentOptions): https.Ag
 
 type TSafeRequestExtras = {
   allowPrivateIps?: boolean;
+  // Skip an ambient HTTP(S)_PROXY for this request even when SAFE_REQUEST_FORCE_DIRECT_EGRESS is off, for callers
+  // whose previous transport never used one
+  forceDirectEgress?: boolean;
   addressFamily?: 4 | 6;
   ca?: string | string[];
   rejectUnauthorized?: boolean;
@@ -394,7 +518,8 @@ const dispatch = async <T>(
   data: unknown,
   options: TSafeRequestConfig & TSafeRequestExtras = {}
 ) => {
-  const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, ...axiosOpts } = options;
+  const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, forceDirectEgress, ...axiosOpts } =
+    options;
   const appCfg = getConfig();
   const effectiveUrl = resolveBaseUrl(url, axiosOpts.baseURL);
   const validated = await validateAndPinUrl(effectiveUrl, { allowPrivateIps });
@@ -410,14 +535,15 @@ const dispatch = async <T>(
     maxRedirects: 0,
     // Force direct egress so an ambient HTTP(S)_PROXY can't route around the
     // pinned agent (the proxy would re-resolve the target, defeating the pin).
-    ...(appCfg.SAFE_REQUEST_FORCE_DIRECT_EGRESS && { proxy: false as const }),
+    ...((appCfg.SAFE_REQUEST_FORCE_DIRECT_EGRESS || forceDirectEgress) && { proxy: false as const }),
     httpAgent: protocol === "http:" ? (agent as http.Agent | undefined) : undefined,
     httpsAgent: protocol === "https:" ? (agent as https.Agent | undefined) : undefined
   });
 };
 
 const dispatchFull = async <T>(config: TSafeRequestFullConfig) => {
-  const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, url, ...axiosOpts } = config;
+  const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, forceDirectEgress, url, ...axiosOpts } =
+    config;
   const appCfg = getConfig();
   const effectiveUrl = resolveBaseUrl(url, axiosOpts.baseURL);
   const validated = await validateAndPinUrl(effectiveUrl, { allowPrivateIps });
@@ -431,7 +557,7 @@ const dispatchFull = async <T>(config: TSafeRequestFullConfig) => {
     maxRedirects: 0,
     // Force direct egress so an ambient HTTP(S)_PROXY can't route around the
     // pinned agent (the proxy would re-resolve the target, defeating the pin).
-    ...(appCfg.SAFE_REQUEST_FORCE_DIRECT_EGRESS && { proxy: false as const }),
+    ...((appCfg.SAFE_REQUEST_FORCE_DIRECT_EGRESS || forceDirectEgress) && { proxy: false as const }),
     httpAgent: protocol === "http:" ? (agent as http.Agent | undefined) : undefined,
     httpsAgent: protocol === "https:" ? (agent as https.Agent | undefined) : undefined
   });
@@ -458,4 +584,28 @@ export const safeRequest = {
     dispatch<T>("DELETE", url, undefined, options),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   request: <T = any>(config: TSafeRequestFullConfig) => dispatchFull<T>(config)
+};
+
+// jwks-rsa's own default. A fetcher replaces jwks-rsa's request, so its timeout option no longer applies.
+const DEFAULT_JWKS_FETCH_TIMEOUT_MS = 30_000;
+
+// jwks-rsa parses the JWKS URL with the legacy url.parse, which can read a host differently from the WHATWG
+// parser the checks use (http://127.0.0.1%61.example is 127.0.0.1a.example to one and 127.0.0.1 to the other),
+// so a requestAgent pinned to the checked host does not stop it. Give JwksClient this as its fetcher instead:
+// the request goes through safeRequest and jwks-rsa never opens a connection itself. The URL is also checked
+// here, so a bad one fails when the client is built.
+export const buildSsrfSafeJwksFetcher = async (jwksUri: string, options: { ca?: string; timeoutMs?: number } = {}) => {
+  await validateAndPinUrl(jwksUri);
+  return async (uri: string) => {
+    const { data } = await safeRequest.get<{ keys: unknown[] }>(uri, {
+      ca: options.ca,
+      // jwks-rsa's own request never used a proxy, and a proxy resolves the host itself, which would undo the pin
+      forceDirectEgress: true,
+      timeout: options.timeoutMs ?? DEFAULT_JWKS_FETCH_TIMEOUT_MS,
+      // jwks-rsa's own request sent no User-Agent, and some issuers' WAFs (Replit's, behind Cloudflare) refuse
+      // axios's default one with a 403; false stops axios adding it
+      headers: { "User-Agent": false }
+    });
+    return data;
+  };
 };

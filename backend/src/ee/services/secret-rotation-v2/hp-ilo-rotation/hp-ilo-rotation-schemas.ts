@@ -89,6 +89,7 @@ export const UpdateHpIloRotationSchema = BaseUpdateSecretRotationSchema(SecretRo
 export const HpIloRotationListItemSchema = z.object({
   name: z.literal("HP iLO Local Account"),
   connection: z.literal(AppConnection.SSH),
+  additionalConnections: z.array(z.nativeEnum(AppConnection)).optional(),
   type: z.literal(SecretRotation.HpIloLocalAccount),
   template: HpIloRotationTemplateSchema
 });

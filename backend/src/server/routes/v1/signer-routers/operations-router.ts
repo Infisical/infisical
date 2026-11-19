@@ -7,10 +7,48 @@ import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { SigningOperationStatus } from "@app/services/signer/signer-enums";
+import { SigningActivityRange } from "@app/services/signer/signer-types";
 
 import { SignerIdParamsSchema } from "./schemas";
 
 export const registerSignerOperationsRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/activity-trend",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: true,
+      operationId: "getSigningActivityTrend",
+      tags: [ApiDocsTags.PkiSigners],
+      description: "Get signing operation counts per period across the signers the caller can read",
+      querystring: z.object({
+        range: z.nativeEnum(SigningActivityRange).default(SigningActivityRange.ThirtyDays),
+        signerId: z.string().uuid().optional()
+      }),
+      response: {
+        200: z.object({
+          periods: z.array(
+            z.object({
+              period: z.string(),
+              success: z.number(),
+              failed: z.number()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) =>
+      server.services.pkiSigner.getActivityTrend({
+        ...req.query,
+        projectId: req.internalCertManagerProjectId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      })
+  });
+
   server.route({
     method: "GET",
     url: "/:signerId/operations",

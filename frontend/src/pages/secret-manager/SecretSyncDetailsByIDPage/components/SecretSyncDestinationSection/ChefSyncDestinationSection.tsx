@@ -18,6 +18,10 @@ export const ChefSyncDestinationSection = ({ secretSync }: Props) => {
         <DetailLabel>Data Bag Item</DetailLabel>
         <DetailValue>{destinationConfig.dataBagItemName}</DetailValue>
       </Detail>
+      <Detail>
+        <DetailLabel>Encrypt Secrets</DetailLabel>
+        <DetailValue>{destinationConfig.shouldEncryptSecrets ? "Yes" : "No"}</DetailValue>
+      </Detail>
     </>
   );
 };

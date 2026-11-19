@@ -6,6 +6,7 @@ import { cassandraDynamicSecretProvider } from "./cassandra";
 import { DATA_PROTOCOL_DYNAMIC_SECRET_PROVIDERS } from "./dataProtocolContract";
 import { elasticSearchDynamicSecretProvider } from "./elasticSearch";
 import { ibmApiConnectDynamicSecretProvider } from "./ibmApiConnect";
+import { kafkaDynamicSecretProvider } from "./kafka";
 import { kubernetesDynamicSecretProvider } from "./kubernetes";
 import { milvusDynamicSecretProvider } from "./milvus";
 import { rabbitMqDynamicSecretProvider } from "./rabbitMq";
@@ -18,7 +19,8 @@ const definitionsByProvider = {
   [DynamicSecretProviders.Milvus]: milvusDynamicSecretProvider,
   [DynamicSecretProviders.RabbitMq]: rabbitMqDynamicSecretProvider,
   [DynamicSecretProviders.IbmApiConnect]: ibmApiConnectDynamicSecretProvider,
-  [DynamicSecretProviders.Totp]: totpDynamicSecretProvider
+  [DynamicSecretProviders.Totp]: totpDynamicSecretProvider,
+  [DynamicSecretProviders.Kafka]: kafkaDynamicSecretProvider
 } satisfies Record<
   (typeof DATA_PROTOCOL_DYNAMIC_SECRET_PROVIDERS)[number],
   TRegisteredDynamicSecretProviderDefinition

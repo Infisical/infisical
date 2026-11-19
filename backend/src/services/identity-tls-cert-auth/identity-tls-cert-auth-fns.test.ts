@@ -269,10 +269,10 @@ describe("permitsClientAuth", () => {
     modulusLength: 2048
   };
 
-  x509.cryptoProvider.set(crypto.webcrypto as Crypto);
+  x509.cryptoProvider.set(globalThis.crypto);
 
   const makeLeafWithUsages = async (usages?: string[]) => {
-    const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const keys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const cert = await x509.X509CertificateGenerator.createSelfSigned({
       serialNumber: "04",
       name: "CN=workload",
@@ -324,10 +324,10 @@ describe("permitsClientAuth", () => {
 });
 
 describe("readSubjectAltNames", () => {
-  x509.cryptoProvider.set(crypto.webcrypto as Crypto);
+  x509.cryptoProvider.set(globalThis.crypto);
 
   const makeLeafWithSans = async (sans?: { type: "dns" | "url"; value: string }[]) => {
-    const keys = await crypto.webcrypto.subtle.generateKey(
+    const keys = await globalThis.crypto.subtle.generateKey(
       { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256", publicExponent: new Uint8Array([1, 0, 1]), modulusLength: 2048 },
       true,
       ["sign", "verify"]
@@ -441,7 +441,7 @@ describe("verifyDirectlyIssuedClientCertificate", () => {
     modulusLength: 2048
   };
 
-  x509.cryptoProvider.set(crypto.webcrypto as Crypto);
+  x509.cryptoProvider.set(globalThis.crypto);
 
   const NOW = new Date("2026-06-24T12:00:00Z");
   const NOT_BEFORE = new Date("2026-06-01T00:00:00Z");
@@ -453,7 +453,7 @@ describe("verifyDirectlyIssuedClientCertificate", () => {
     name: string,
     opts?: { notAfter?: Date; extensions?: x509.Extension[]; omitBasicConstraints?: boolean }
   ) => {
-    const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const keys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const cert = await x509.X509CertificateGenerator.createSelfSigned({
       serialNumber: "01",
       name: `CN=${name}`,
@@ -473,7 +473,7 @@ describe("verifyDirectlyIssuedClientCertificate", () => {
     dnsName: string,
     extraExtensions: x509.Extension[] = []
   ) => {
-    const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const keys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const cert = await x509.X509CertificateGenerator.create({
       serialNumber: "02",
       subject: "CN=workload",
@@ -493,7 +493,7 @@ describe("verifyDirectlyIssuedClientCertificate", () => {
   };
 
   const makeLeafWithUriSan = async (issuer: { cert: x509.X509Certificate; keys: CryptoKeyPair }, uri: string) => {
-    const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const keys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const cert = await x509.X509CertificateGenerator.create({
       serialNumber: "02",
       subject: "CN=workload",
@@ -517,7 +517,7 @@ describe("verifyDirectlyIssuedClientCertificate", () => {
     issuer: { cert: x509.X509Certificate; keys: CryptoKeyPair },
     ...sanGroups: x509.JsonGeneralName[][]
   ) => {
-    const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const keys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const cert = await x509.X509CertificateGenerator.create({
       serialNumber: "02",
       subject: "CN=workload",
@@ -827,7 +827,7 @@ describe("name constraints on an Ed25519 chain", () => {
   const FAR_FUTURE = new Date("2030-01-01T00:00:00Z");
 
   const generateKeys = () =>
-    crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]) as Promise<CryptoKeyPair>;
+    globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]) as Promise<CryptoKeyPair>;
 
   const build = async (permitted: string[], dnsName: string) => {
     const caKeys = await generateKeys();
@@ -900,7 +900,7 @@ describe("findNameConstraintsProblem", () => {
   const toNative = (cert: x509.X509Certificate) => new crypto.X509Certificate(Buffer.from(cert.rawData));
 
   const makeCa = async (name: string, extensions: x509.Extension[]) => {
-    const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const keys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     return x509.X509CertificateGenerator.createSelfSigned({
       serialNumber: "01",
       name: `CN=${name}`,
@@ -942,7 +942,7 @@ describe("verifyClientCertificateChain", () => {
     modulusLength: 2048
   };
 
-  x509.cryptoProvider.set(crypto.webcrypto as Crypto);
+  x509.cryptoProvider.set(globalThis.crypto);
 
   type TIssued = { cert: x509.X509Certificate; keys: CryptoKeyPair };
 
@@ -953,7 +953,7 @@ describe("verifyClientCertificateChain", () => {
   const toNative = (cert: x509.X509Certificate) => new crypto.X509Certificate(Buffer.from(cert.rawData));
 
   const makeRoot = async (name: string): Promise<TIssued> => {
-    const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const keys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const cert = await x509.X509CertificateGenerator.createSelfSigned({
       serialNumber: "01",
       name: `CN=${name}`,
@@ -976,7 +976,7 @@ describe("verifyClientCertificateChain", () => {
       extraExtensions?: x509.Extension[];
     }
   ): Promise<TIssued> => {
-    const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const keys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const cert = await x509.X509CertificateGenerator.create({
       serialNumber: opts?.serialNumber ?? "02",
       subject: `CN=${name}`,
@@ -1045,7 +1045,7 @@ describe("verifyClientCertificateChain", () => {
       extraExtensions?: x509.Extension[];
     }
   ) => {
-    const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const keys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const sans: x509.JsonGeneralName[] = opts?.sans ?? (opts?.dnsName ? [{ type: "dns", value: opts.dnsName }] : []);
     const cert = await x509.X509CertificateGenerator.create({
       serialNumber: "03",
@@ -1135,8 +1135,8 @@ describe("verifyClientCertificateChain", () => {
     // Every maze certificate carries and is signed by one shared key, so any certificate at a level
     // verifies against any at the level above it. That is what creates the combinatorial path
     // explosion the search caps and the signature cache exist to bound.
-    const mazeKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-    const anchorKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const mazeKeys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const anchorKeys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
 
     let serial = 0x100;
     const mazeCert = async (subject: string, issuer: string, signingKey: CryptoKey, publicKey: CryptoKey) => {
@@ -1195,7 +1195,7 @@ describe("verifyClientCertificateChain", () => {
     // Shares the maze public key, so the leaf verifies against it as well as against every dead end.
     const successfulIssuer = await mazeCert("CN=level-0", "CN=anchor", anchorKeys.privateKey, mazeKeys.publicKey);
 
-    const leafKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const leafKeys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const leaf = await x509.X509CertificateGenerator.create({
       serialNumber: "0e",
       subject: "CN=leaf",
@@ -1251,7 +1251,7 @@ describe("verifyClientCertificateChain", () => {
     // A configured certificate that is not marked CA:TRUE must not anchor a path even when it
     // cryptographically signed the leaf. Otherwise chain mode would authenticate against a non-CA
     // issuer despite being documented as trust-anchor (CA) validation.
-    const nonCaAnchorKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const nonCaAnchorKeys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const nonCaAnchor = await x509.X509CertificateGenerator.createSelfSigned({
       serialNumber: "0a",
       name: "CN=Non-CA Anchor",
@@ -1658,7 +1658,7 @@ describe("verifyClientCertificateChain", () => {
   test("builds a path through an alternative issuer when one candidate forbids client auth", async () => {
     // Two CAs share a subject and key, so both verify as the leaf's issuer; only one permits
     // client authentication. The EKU check must not strand the chain on the wrong candidate.
-    const usableKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const usableKeys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const serverOnly = await makeCrossSigned("Shared Subject CA", usableKeys, root, "50", [
       clientAuthEku(["1.3.6.1.5.5.7.3.1"])
     ]);
@@ -1687,7 +1687,7 @@ describe("verifyClientCertificateChain", () => {
     });
     const openSub = await makeIntermediate("Unconstrained Sub CA", root, { serialNumber: "61" });
 
-    const sharedKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const sharedKeys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const viaConstrained = await makeCrossSigned("Shared Issuing CA", sharedKeys, constrainedSub, "62");
     const viaOpen = await makeCrossSigned("Shared Issuing CA", sharedKeys, openSub, "63");
     const leaf = await makeLeaf("workload", { cert: viaOpen, keys: sharedKeys });
@@ -1710,7 +1710,7 @@ describe("verifyClientCertificateChain", () => {
     });
     const openSub = await makeIntermediate("Unconstrained Sub CA", root, { serialNumber: "65" });
 
-    const sharedKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const sharedKeys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const viaConstrained = await makeCrossSigned("Shared Issuing CA", sharedKeys, constrainedSub, "66");
     const viaOpen = await makeCrossSigned("Shared Issuing CA", sharedKeys, openSub, "67");
     const leaf = await makeLeaf(
@@ -1760,7 +1760,7 @@ describe("verifyClientCertificateChain", () => {
     });
     const openParent = await makeIntermediate("Unconstrained Sub CA", root, { serialNumber: "71" });
 
-    const sharedKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const sharedKeys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const viaConstrained = await makeCrossSigned("Shared Issuing CA", sharedKeys, constrainedParent, "72");
     const viaOpen = await makeCrossSigned("Shared Issuing CA", sharedKeys, openParent, "73");
     const leaf = await makeLeaf("workload", { cert: viaOpen, keys: sharedKeys });
@@ -1775,7 +1775,7 @@ describe("verifyClientCertificateChain", () => {
     });
     const openParent = await makeIntermediate("Unconstrained Sub CA", root, { serialNumber: "75" });
 
-    const sharedKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const sharedKeys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const viaConstrained = await makeCrossSigned("Shared Issuing CA", sharedKeys, constrainedParent, "76");
     const viaOpen = await makeCrossSigned("Shared Issuing CA", sharedKeys, openParent, "77");
     const leaf = await makeLeaf(
@@ -1799,7 +1799,7 @@ describe("verifyClientCertificateChain", () => {
       extraExtensions: [permittedDnsConstraint(["team-a.example.com"])]
     });
 
-    const sharedKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const sharedKeys = await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const viaPathLen = await makeCrossSigned("Shared Issuing CA", sharedKeys, constrainedSub, "6a");
     const viaNamespace = await makeCrossSigned("Shared Issuing CA", sharedKeys, namespaceSub, "6b");
     const leaf = await makeLeaf(
@@ -1857,7 +1857,7 @@ describe("verifyClientCertificateChain", () => {
   });
 
   test("rejects a trust anchor whose own key usage omits keyCertSign", async () => {
-    const keys = (await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"])) as CryptoKeyPair;
+    const keys = (await globalThis.crypto.subtle.generateKey(alg, true, ["sign", "verify"])) as CryptoKeyPair;
     const anchorCert = await x509.X509CertificateGenerator.createSelfSigned({
       serialNumber: "01",
       name: "CN=Non-signing Root",
@@ -2022,7 +2022,7 @@ describe("verifyClientCertificateChain", () => {
     const edAlg = { name: "Ed25519" } as unknown as EcKeyGenParams;
 
     const makeEdRoot = async (name: string, extraExtensions: x509.Extension[] = []) => {
-      const keys = (await crypto.webcrypto.subtle.generateKey(edAlg, true, ["sign", "verify"])) as CryptoKeyPair;
+      const keys = (await globalThis.crypto.subtle.generateKey(edAlg, true, ["sign", "verify"])) as CryptoKeyPair;
       const cert = await x509.X509CertificateGenerator.createSelfSigned({
         serialNumber: "01",
         name: `CN=${name}`,
@@ -2036,7 +2036,7 @@ describe("verifyClientCertificateChain", () => {
     };
 
     const makeEdLeaf = async (name: string, issuer: { cert: x509.X509Certificate; keys: CryptoKeyPair }) => {
-      const keys = (await crypto.webcrypto.subtle.generateKey(edAlg, true, ["sign", "verify"])) as CryptoKeyPair;
+      const keys = (await globalThis.crypto.subtle.generateKey(edAlg, true, ["sign", "verify"])) as CryptoKeyPair;
       const cert = await x509.X509CertificateGenerator.create({
         serialNumber: "02",
         subject: `CN=${name}`,

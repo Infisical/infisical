@@ -1,6 +1,9 @@
+import { createMongoAbility, ForbiddenError } from "@casl/ability";
+import knex, { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
 import { AccessScope } from "@app/db/schemas";
+import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ActorType } from "@app/services/auth/auth-type";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
@@ -19,6 +22,75 @@ const ctx = {
 } as unknown as Parameters<ReturnType<typeof pamMembershipServiceFactory>["addProductUserMembers"]>[0];
 
 const user = (id: string, username: string) => ({ id, username, isGhost: false });
+
+describe("pamMembership product admin retention", () => {
+  const buildRemovalService = (adminCount: number) => {
+    const query = knex({ client: "pg" }).queryBuilder();
+    vi.spyOn(query, "first")
+      .mockResolvedValueOnce({ count: String(adminCount) })
+      .mockResolvedValue({ count: "1" });
+    const tx = Object.assign(
+      vi.fn(() => query),
+      { raw: vi.fn().mockResolvedValue(undefined) }
+    ) as unknown as Knex;
+    const deps = {
+      permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ hasRole: () => true }) },
+      membershipDAL: {
+        find: vi.fn().mockResolvedValue([{ id: "membership-1" }]),
+        transaction: vi.fn((cb: (trx: Knex) => unknown) => cb(tx)),
+        deleteById: vi.fn()
+      },
+      membershipRoleDAL: {
+        find: vi.fn().mockResolvedValue([{ role: PamProductRole.Admin }]),
+        update: vi.fn(),
+        delete: vi.fn()
+      }
+    };
+    return {
+      service: pamMembershipServiceFactory(deps as unknown as Parameters<typeof pamMembershipServiceFactory>[0]),
+      deps,
+      tx
+    };
+  };
+
+  test("refuses last-admin removal before deleting any roles or membership", async () => {
+    const { service, deps } = buildRemovalService(0);
+    await expect(service.removeProductMember({ ...ctx, projectId: PROJECT_ID, userId: "other-user" })).rejects.toThrow(
+      "Privileged Access Manager must keep at least one admin"
+    );
+    expect(deps.membershipRoleDAL.delete).not.toHaveBeenCalled();
+    expect(deps.membershipDAL.deleteById).not.toHaveBeenCalled();
+  });
+
+  test("refuses last-admin demotion before changing the role", async () => {
+    const { service, deps } = buildRemovalService(0);
+    await expect(
+      service.updateProductMemberRole({
+        ...ctx,
+        projectId: PROJECT_ID,
+        userId: "other-user",
+        role: PamProductRole.Member
+      })
+    ).rejects.toThrow("Privileged Access Manager must keep at least one admin");
+    expect(deps.membershipRoleDAL.update).not.toHaveBeenCalled();
+  });
+
+  test("allows demotion when another admin remains, in the guard transaction", async () => {
+    const { service, deps, tx } = buildRemovalService(1);
+    await service.updateProductMemberRole({
+      ...ctx,
+      projectId: PROJECT_ID,
+      userId: "other-user",
+      role: PamProductRole.Member
+    });
+    expect(deps.membershipRoleDAL.update).toHaveBeenCalledWith(
+      { membershipId: "membership-1" },
+      { role: PamProductRole.Member },
+      tx
+    );
+    expect(tx.raw).toHaveBeenCalled();
+  });
+});
 
 // Only the collaborators addProductUserMembers touches on the add path; everything else is left
 // undefined so an unexpected reach shows up as a crash rather than a silent pass.
@@ -42,7 +114,16 @@ const buildService = ({
           Promise.resolve(aliases.filter((a) => externalIds.includes(a.externalId)))
       )
     },
-    orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, rootOrgId: null }) },
+    orgDAL: {
+      findById: vi.fn().mockResolvedValue({ id: ORG_ID, rootOrgId: null }),
+      lockActorsForOrgAccess: vi.fn().mockResolvedValue(undefined),
+      findActorsWithActiveOrgAccess: vi.fn(({ userIds }: { userIds: string[] }) =>
+        Promise.resolve({
+          userIds: new Set(userIds.filter((id) => orgMemberUserIds.includes(id))),
+          identityIds: new Set<string>()
+        })
+      )
+    },
     membershipDAL: {
       find: vi.fn(({ scope }: { scope: string }) =>
         Promise.resolve(scope === AccessScope.Organization ? orgMemberUserIds.map((id) => ({ actorUserId: id })) : [])
@@ -59,7 +140,7 @@ const buildService = ({
       })
     },
     projectAccessRequestDAL: { delete: vi.fn().mockResolvedValue(undefined) },
-    usageMeteringService: { emitForProject: vi.fn() }
+    usageMeteringService: { emit: vi.fn() }
   };
 
   const service = pamMembershipServiceFactory(deps as unknown as Parameters<typeof pamMembershipServiceFactory>[0]);
@@ -129,5 +210,61 @@ describe("pamMembership addProductUserMembers", () => {
     const { service } = buildService();
 
     await expect(add(service, [IDENTIFIER])).rejects.toThrow(`'${IDENTIFIER}'`);
+  });
+});
+
+describe("pamMembership member lists", () => {
+  const buildListService = (rules: { action: string; subject: string }[]) => {
+    const createdAt = new Date();
+    const deps = {
+      permissionService: {
+        getProjectPermission: vi.fn().mockResolvedValue({ permission: createMongoAbility(rules) })
+      },
+      membershipDAL: {
+        find: vi.fn().mockResolvedValue([
+          { id: "mem-1", actorUserId: "user-1", isActive: true, createdAt },
+          { id: "mem-2", actorUserId: "user-2", isActive: true, createdAt },
+          { id: "mem-3", actorGroupId: "group-1", isActive: true, createdAt },
+          { id: "mem-4", actorIdentityId: "identity-1", isActive: true, createdAt }
+        ])
+      },
+      membershipRoleDAL: { find: vi.fn().mockResolvedValue([{ role: PamProductRole.Member }]) },
+      userDAL: {
+        find: vi.fn().mockResolvedValue([
+          { id: "user-1", email: "robert@example.com", username: "robert" },
+          { id: "user-2", email: null, username: "ldap-user" }
+        ])
+      }
+    };
+    return {
+      service: pamMembershipServiceFactory(deps as unknown as Parameters<typeof pamMembershipServiceFactory>[0]),
+      deps
+    };
+  };
+
+  test("returns each user member's email and username from one batched lookup", async () => {
+    const { service, deps } = buildListService([
+      { action: ProjectPermissionMemberActions.Read, subject: ProjectPermissionSub.Member }
+    ]);
+
+    const members = await service.listProductMembers({ ...ctx, projectId: PROJECT_ID });
+
+    expect(deps.userDAL.find).toHaveBeenCalledTimes(1);
+    expect(deps.userDAL.find).toHaveBeenCalledWith({ $in: { id: ["user-1", "user-2"] } });
+    expect(members.map(({ email, username }) => ({ email, username }))).toEqual([
+      { email: "robert@example.com", username: "robert" },
+      { email: null, username: "ldap-user" },
+      { email: null, username: null },
+      { email: null, username: null }
+    ]);
+  });
+
+  // A delegated OAuth token scoped to secrets:read is left with no member or identity rules.
+  test("refuses a caller whose ability cannot read members", async () => {
+    const { service, deps } = buildListService([]);
+
+    await expect(service.listProductMembers({ ...ctx, projectId: PROJECT_ID })).rejects.toThrow(ForbiddenError);
+    await expect(service.listProductIdentityMembers({ ...ctx, projectId: PROJECT_ID })).rejects.toThrow(ForbiddenError);
+    expect(deps.membershipDAL.find).not.toHaveBeenCalled();
   });
 });

@@ -50,7 +50,8 @@ export const useAccountSheetDetails = (account: TAccessiblePamAccount | null, is
       typeName: undefined,
       subtitle: undefined,
       metadata: [],
-      hosts: []
+      hosts: [],
+      webAccessUnavailableReason: null
     };
   }
 
@@ -78,5 +79,7 @@ export const useAccountSheetDetails = (account: TAccessiblePamAccount | null, is
     ...fieldRows(typeMeta?.credentialFields, credentials)
   ];
 
-  return { typeMeta, typeName, subtitle, metadata, hosts };
+  const webAccessUnavailableReason = fullAccount?.webAccessUnavailableReason ?? null;
+
+  return { typeMeta, typeName, subtitle, metadata, hosts, webAccessUnavailableReason };
 };

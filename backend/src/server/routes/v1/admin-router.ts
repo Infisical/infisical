@@ -8,22 +8,26 @@ import {
   OrgMembershipsSchema,
   OrgMembershipStatus
 } from "@app/db/schemas";
-import { getLicenseKeyConfig } from "@app/ee/services/license/license-fns";
-import { LicenseType } from "@app/ee/services/license/license-types";
+import { RootKeyEncryptionStrategy } from "@app/domains/platform/kms-core/ce/module";
 import { ENCRYPTION_KEY_ROTATION } from "@app/lib/api-docs";
 import { getConfig, overridableKeys } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { AllowedEmailDomainsSchema } from "@app/lib/validator";
-import { PASSWORD_POLICY, PasswordPolicyConfigSchema, PasswordPolicySchema } from "@app/lib/validator/password-policy";
+import {
+  PASSWORD_POLICY,
+  PasswordPolicyConfigSchema,
+  PasswordPolicySchema,
+  PKCS12_PASSWORD_POLICY
+} from "@app/lib/validator/password-policy";
 import { invalidateCacheLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { StorageHostnameSchema } from "@app/services/app-connection/s3-compatible";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { CacheType, LoginMethod } from "@app/services/super-admin/super-admin-types";
@@ -44,6 +48,7 @@ const SanitizedSuperAdminSchema = z.object({
   enabledLoginMethods: z.string().array().nullable().optional(),
   authConsentContent: z.string().nullable().optional(),
   pageFrameContent: z.string().nullable().optional(),
+  allowedStorageHostnames: z.string().array().nullable().optional(),
   // Populated on self-hosted instances when a newer release than the running version exists
   latestAvailableVersion: z.string().nullable().optional(),
   // Super admin-only fields (omitted for non-super-admin callers)
@@ -63,7 +68,8 @@ const SanitizedSuperAdminSchema = z.object({
   defaultAuthOrgSlug: z.string().nullable(),
   defaultAuthOrgAuthEnforced: z.boolean().nullish(),
   defaultAuthOrgAuthMethod: z.string().nullish(),
-  passwordPolicy: PasswordPolicyConfigSchema
+  passwordPolicy: PasswordPolicyConfigSchema,
+  pkcs12PasswordPolicy: PasswordPolicyConfigSchema
 });
 
 export const registerAdminRouter = async (server: FastifyZodProvider) => {
@@ -85,8 +91,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       const config = await getServerCfg();
       const serverEnvs = getConfig();
 
-      const licenseKeyConfig = getLicenseKeyConfig();
-      const hasOfflineLicense = licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
+      const hasOfflineLicense = server.services.licenseService.hasOfflineLicenseKey();
 
       const isSuperAdminUser = req.auth && isSuperAdmin(req.auth);
 
@@ -110,8 +115,10 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             defaultAuthOrgAuthMethod: config.defaultAuthOrgAuthMethod,
             enabledLoginMethods: config.enabledLoginMethods,
             passwordPolicy: PASSWORD_POLICY,
+            pkcs12PasswordPolicy: PKCS12_PASSWORD_POLICY,
             authConsentContent: config.authConsentContent,
             pageFrameContent: config.pageFrameContent,
+            allowedStorageHostnames: config.allowedStorageHostnames,
             isPublicSecretSharingDisabled: serverEnvs.DISABLE_PUBLIC_SECRET_SHARING,
             isClickhouseAuditLogEnabled,
             latestAvailableVersion
@@ -123,6 +130,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         config: {
           ...config,
           passwordPolicy: PASSWORD_POLICY,
+          pkcs12PasswordPolicy: PKCS12_PASSWORD_POLICY,
           fipsEnabled: crypto.isFipsModeEnabled(),
           isMigrationModeOn: serverEnvs.MAINTENANCE_MODE,
           isSecretScanningDisabled: serverEnvs.DISABLE_SECRET_SCANNING,
@@ -182,6 +190,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             message: "Page frame content contains unsafe HTML."
           })
           .optional(),
+        allowedStorageHostnames: StorageHostnameSchema.array().max(50).optional(),
         envOverrides: z.record(z.enum(Array.from(overridableKeys) as [string, ...string[]]), z.string()).optional()
       }),
       response: {
@@ -199,7 +208,13 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const config = await server.services.superAdmin.updateServerCfg(req.body, req.permission.id);
-      return { config: { ...config, passwordPolicy: PASSWORD_POLICY } };
+      return {
+        config: {
+          ...config,
+          passwordPolicy: PASSWORD_POLICY,
+          pkcs12PasswordPolicy: PKCS12_PASSWORD_POLICY
+        }
+      };
     }
   });
 
@@ -363,7 +378,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const organization = await server.services.superAdmin.deleteOrganization(req.params.organizationId);
+      const organization = await server.services.orgDeletion.deleteOrganization(req.params.organizationId);
 
       return {
         organization
@@ -599,7 +614,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
 
     handler: async () => {
-      const encryptionDetails = await server.services.superAdmin.getConfiguredEncryptionStrategies();
+      const encryptionDetails = await server.services.kmsRootKeyService.listEncryptionStrategies();
       return encryptionDetails;
     }
   });
@@ -669,7 +684,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async () => {
-      const rootKey = await server.services.encryptionKeyRotation.getRootKey();
+      const rootKey = await server.services.kmsRootKeyService.getRootKey();
 
       return { rootKey };
     }
@@ -708,7 +723,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      return server.services.encryptionKeyRotation.listRotations({
+      return server.services.kmsRootKeyService.listRotations({
         offset: req.query.offset,
         limit: req.query.limit
       });
@@ -746,7 +761,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req, res) => {
-      const rotation = await server.services.encryptionKeyRotation.createRotation({
+      const rotation = await server.services.kmsRootKeyService.createRotation({
         replaceStaged: req.body.replaceStaged
       });
 
@@ -776,7 +791,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req, res) => {
-      await server.services.encryptionKeyRotation.deleteStagedKey({ label: req.body.label });
+      await server.services.kmsRootKeyService.deleteStagedKey({ label: req.body.label });
 
       void res.status(204);
     }
@@ -802,7 +817,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req, res) => {
-      await server.services.encryptionKeyRotation.deleteExpiringKey({
+      await server.services.kmsRootKeyService.deleteExpiringKey({
         label: req.body.label,
         force: req.body.force
       });
@@ -955,6 +970,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "revokeAdminAccessFromUser",
       params: z.object({
         userId: z.string()
       }),
@@ -986,6 +1002,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "adminBootstrap",
       body: z.object({
         email: z.string().email().trim().min(1),
         password: z.string().trim().min(1),
@@ -1153,6 +1170,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createAdminOrganization",
       body: z.object({
         name: GenericResourceNameSchema,
         inviteAdminEmails: z.string().email().array().min(1)
@@ -1191,6 +1209,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "resendAdminOrganizationInvite",
       params: z.object({
         organizationId: z.string(),
         membershipId: z.string()
@@ -1225,6 +1244,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "joinAdminOrganization",
       params: z.object({
         organizationId: z.string()
       }),

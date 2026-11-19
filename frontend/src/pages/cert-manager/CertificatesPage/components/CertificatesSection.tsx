@@ -2,7 +2,6 @@ import { ImportIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -13,6 +12,7 @@ import {
   CardTitle,
   DocumentationLinkBadge
 } from "@app/components/v3";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub,
@@ -28,6 +28,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
 import { CertificateCertModal } from "./CertificateCertModal";
+import { CertificateDeletionSyncImpact } from "./CertificateDeletionSyncImpact";
 import { CertificateExportModal, ExportOptions } from "./CertificateExportModal";
 import { CertificateImportSheet } from "./CertificateImportSheet";
 import { CertificateManagePkiSyncsModal } from "./CertificateManagePkiSyncsModal";
@@ -35,7 +36,9 @@ import { CertificateManageRenewalModal } from "./CertificateManageRenewalModal";
 import { CertificateRenewalModal } from "./CertificateRenewalModal";
 import { CertificateRevocationModal } from "./CertificateRevocationModal";
 import { CertificatesTable } from "./CertificatesTable";
+import { getCertificateDeletionWarning } from "./CertificatesTable.utils";
 import type { FilterRule } from "./inventory-types";
+import { useCertificateHoldingSyncs } from "./useCertificateHoldingSyncs";
 
 type CertificatesSectionProps = {
   externalFilter?: {
@@ -136,6 +139,24 @@ export const CertificatesSection = ({
     }
   };
 
+  const deleteCertificateData = popUp?.deleteCertificate?.data as
+    | {
+        status: string;
+        notAfter: string;
+        hasPrivateKey?: boolean;
+        canRevoke?: boolean;
+        isRevocableAfterDeletion?: boolean;
+        certificateId?: string;
+        applicationId?: string | null;
+      }
+    | undefined;
+
+  const { holdingSyncs, isLoadingHoldingSyncs } = useCertificateHoldingSyncs({
+    certificateId: deleteCertificateData?.certificateId,
+    applicationId: deleteCertificateData?.applicationId ?? applicationId,
+    isEnabled: popUp.deleteCertificate.isOpen
+  });
+
   return (
     <Card className="mb-6">
       <CardHeader>
@@ -212,15 +233,25 @@ export const CertificatesSection = ({
           handlePopUpToggle={handlePopUpToggle}
           applicationName={applicationName}
         />
-        <DeleteActionModal
+        <ConfirmationAlertDialog
           isOpen={popUp.deleteCertificate.isOpen}
-          title={`Are you sure you want to remove the certificate ${
+          title={`Delete Certificate ${
             (popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""
           }?`}
-          subTitle="This action cannot be undone."
-          onChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
-          deleteKey="confirm"
-          onDeleteApproved={() =>
+          description={
+            <>
+              {getCertificateDeletionWarning(
+                deleteCertificateData,
+                deleteCertificateData?.canRevoke,
+                deleteCertificateData?.isRevocableAfterDeletion
+              )}
+              <CertificateDeletionSyncImpact holdingSyncs={holdingSyncs} />
+            </>
+          }
+          onOpenChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
+          isPending={isLoadingHoldingSyncs}
+          confirmKey="confirm"
+          onConfirm={() =>
             onRemoveCertificateSubmit(
               (popUp?.deleteCertificate?.data as { certificateId: string })?.certificateId
             )

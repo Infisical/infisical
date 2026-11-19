@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 
 import {
   THsmConnector,
+  THsmConnectorKey,
   THsmConnectorLinkedCertificate,
   THsmConnectorLinkedCertificateAuthority
 } from "./types";
@@ -12,6 +13,7 @@ export const hsmConnectorKeys = {
   all: ["hsm-connectors"] as const,
   list: () => [...hsmConnectorKeys.all, "list"] as const,
   byId: (id: string) => [...hsmConnectorKeys.all, "by-id", id] as const,
+  keys: (id: string, label: string) => [...hsmConnectorKeys.all, "keys", id, label] as const,
   linkedResourcesAll: (id: string) => [...hsmConnectorKeys.all, "linked-resources", id] as const,
   linkedResources: (id: string, pagination: { offset: number; limit: number }) =>
     [...hsmConnectorKeys.linkedResourcesAll(id), pagination] as const
@@ -82,5 +84,25 @@ export const useListHsmConnectorLinkedResources = (
     },
     placeholderData: (prev) => prev,
     enabled: Boolean(connectorId) && (options?.enabled ?? true)
+  });
+};
+
+export const useListHsmConnectorKeys = (
+  connectorId: string | null | undefined,
+  label: string,
+  options?: Omit<UseQueryOptions<THsmConnectorKey[]>, "queryKey" | "queryFn">
+) => {
+  return useQuery({
+    retry: false,
+    ...options,
+    queryKey: hsmConnectorKeys.keys(connectorId ?? "", label),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ keys: THsmConnectorKey[] }>(
+        `/api/v1/cert-manager/hsm-connectors/${connectorId}/keys`,
+        { params: { label } }
+      );
+      return data.keys;
+    },
+    enabled: Boolean(connectorId) && Boolean(label) && (options?.enabled ?? true)
   });
 };

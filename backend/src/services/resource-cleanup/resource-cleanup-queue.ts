@@ -1,6 +1,8 @@
-import { TAgentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
+import { TAgentVaultSessionInlineServiceDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-service-dal";
+import { TAgentVaultSessionInlineSkillDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-skill-dal";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { THoneyTokenCleanupQueueFactory } from "@app/ee/services/honey-token/honey-token-cleanup-queue";
 import { TScepTransactionDALFactory } from "@app/ee/services/pki-scep/pki-scep-transaction-dal";
 import { TScimServiceFactory } from "@app/ee/services/scim/scim-types";
 import { TKeyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
@@ -15,10 +17,10 @@ import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identit
 import { TIdentityAccessTokenRevocationDALFactory } from "../identity-access-token/identity-access-token-revocation-dal";
 import { TIdentityUaClientSecretDALFactory } from "../identity-ua/identity-ua-client-secret-dal";
 import { TOrgServiceFactory } from "../org/org-service";
-import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
 import { TSecretSharingDALFactory } from "../secret-sharing/secret-sharing-dal";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
+import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
 import { TServiceTokenServiceFactory } from "../service-token/service-token-service";
 
 type TDailyResourceCleanUpQueueServiceFactoryDep = {
@@ -41,7 +43,9 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "markExpiredGrants">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "markExpiredApprovalRequests">;
   scepTransactionDAL: Pick<TScepTransactionDALFactory, "pruneExpiredTransactions">;
-  agentVaultSessionService: Pick<TAgentVaultSessionServiceFactory, "sweepRetiredSessions">;
+  honeyTokenCleanupQueue: Pick<THoneyTokenCleanupQueueFactory, "queueFolderlessHoneyTokenCleanup">;
+  agentVaultSessionInlineServiceDAL: Pick<TAgentVaultSessionInlineServiceDALFactory, "deleteSecretsOfEndedSessions">;
+  agentVaultSessionInlineSkillDAL: Pick<TAgentVaultSessionInlineSkillDALFactory, "deleteFilesOfEndedSessions">;
 };
 
 export type TDailyResourceCleanUpQueueServiceFactory = ReturnType<typeof dailyResourceCleanUpQueueServiceFactory>;
@@ -66,7 +70,9 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   approvalRequestGrantsDAL,
   certificateRequestDAL,
   scepTransactionDAL,
-  agentVaultSessionService
+  honeyTokenCleanupQueue,
+  agentVaultSessionInlineServiceDAL,
+  agentVaultSessionInlineSkillDAL
 }: TDailyResourceCleanUpQueueServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -99,7 +105,6 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
         await keyValueStoreDAL.pruneExpiredKeys();
         await scepTransactionDAL.pruneExpiredTransactions();
         await identityAccessTokenRevocationDAL.removeExpiredRevocations();
-        await agentVaultSessionService.sweepRetiredSessions();
       }
     });
 
@@ -163,6 +168,10 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
           await certificateRequestDAL.markExpiredApprovalRequests();
         }
         await approvalRequestGrantsDAL.markExpiredGrants();
+        await honeyTokenCleanupQueue.queueFolderlessHoneyTokenCleanup();
+        // Revoke deletes them at once, so this catches sessions that expired or lost their owner within the hour.
+        await agentVaultSessionInlineServiceDAL.deleteSecretsOfEndedSessions();
+        await agentVaultSessionInlineSkillDAL.deleteFilesOfEndedSessions();
       }
     });
   };

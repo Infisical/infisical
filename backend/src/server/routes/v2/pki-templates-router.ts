@@ -7,12 +7,13 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
   validateAltNamesField,
   validateCaDateField
 } from "@app/services/certificate-authority/certificate-authority-validators";
+import { csrSchema } from "@app/services/certificate-common/certificate-constants";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
+import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
 
 export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -309,7 +310,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
       body: z.object({
         projectId: z.string(),
         ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number"),
-        csr: z.string().trim().min(1).max(4096)
+        csr: csrSchema
       }),
       response: {
         200: z.object({

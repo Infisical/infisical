@@ -1,6 +1,5 @@
 export {
   useGenerateAuthenticationOptions,
-  useGenerateRegistrationOptions,
   useUpdateWebAuthnCredential,
   useVerifyAuthentication,
   useVerifyRegistration

@@ -9,6 +9,14 @@ import {
   UpdateCertRequestPolicySchema
 } from "@app/services/approval-policy/cert-request/cert-request-policy-schemas";
 import {
+  CertRevocationPolicyInputsSchema,
+  CertRevocationPolicySchema,
+  CertRevocationRequestGrantSchema,
+  CertRevocationRequestSchema,
+  CreateCertRevocationPolicySchema,
+  UpdateCertRevocationPolicySchema
+} from "@app/services/approval-policy/cert-revocation/cert-revocation-policy-schemas";
+import {
   CodeSigningPolicyInputsSchema,
   CodeSigningPolicySchema,
   CodeSigningRequestGrantSchema,
@@ -17,13 +25,38 @@ import {
   CreateCodeSigningRequestSchema,
   UpdateCodeSigningPolicySchema
 } from "@app/services/approval-policy/code-signing/code-signing-policy-schemas";
+import {
+  CreatePamAccessPolicySchema,
+  CreatePamAccessRequestSchema,
+  PamAccessCheckPolicyMatchResponseSchema,
+  PamAccessPolicyInputsSchema,
+  PamAccessPolicySchema,
+  PamAccessRequestGrantSchema,
+  PamAccessRequestSchema,
+  UpdatePamAccessPolicySchema
+} from "@app/services/approval-policy/pam-access/pam-access-policy-schemas";
+import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerApprovalPolicyEndpoints } from "./approval-policy-endpoints";
 
-// PamAccess is intentionally absent; PAM access requests are served only by /v1/pam/access-requests
 export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Partial<
   Record<ApprovalPolicyType, (server: FastifyZodProvider) => Promise<void>>
 > = {
+  [ApprovalPolicyType.PamAccess]: async (server: FastifyZodProvider) => {
+    registerApprovalPolicyEndpoints({
+      server,
+      policyType: ApprovalPolicyType.PamAccess,
+      createPolicySchema: CreatePamAccessPolicySchema,
+      updatePolicySchema: UpdatePamAccessPolicySchema,
+      policyResponseSchema: PamAccessPolicySchema,
+      createRequestSchema: CreatePamAccessRequestSchema,
+      requestResponseSchema: PamAccessRequestSchema,
+      grantResponseSchema: PamAccessRequestGrantSchema,
+      inputsSchema: PamAccessPolicyInputsSchema,
+      checkPolicyMatchResponseSchema: PamAccessCheckPolicyMatchResponseSchema,
+      requestAuthModes: [AuthMode.JWT, AuthMode.OAUTH]
+    });
+  },
   [ApprovalPolicyType.CertRequest]: async (server: FastifyZodProvider) => {
     registerApprovalPolicyEndpoints({
       server,
@@ -41,6 +74,23 @@ export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Partial<
       // before its certificate request row exists, and once it exists the row already carries
       // its own approval request. Exposing creation would let a caller pick which policy gates
       // a certificate request they did not create, so it stays off.
+      allowRequestCreation: false
+    });
+  },
+  [ApprovalPolicyType.CertRevocation]: async (server: FastifyZodProvider) => {
+    registerApprovalPolicyEndpoints({
+      server,
+      policyType: ApprovalPolicyType.CertRevocation,
+      createPolicySchema: CreateCertRevocationPolicySchema,
+      updatePolicySchema: UpdateCertRevocationPolicySchema,
+      policyResponseSchema: CertRevocationPolicySchema,
+      requestResponseSchema: CertRevocationRequestSchema,
+      grantResponseSchema: CertRevocationRequestGrantSchema,
+      inputsSchema: CertRevocationPolicyInputsSchema,
+      checkPolicyMatchResponseSchema: BaseCheckPolicyMatchResponseSchema,
+      // Revocation requests are opened only by the revoke endpoints, atomically with the certificate they
+      // hold, so a caller can't pick which policy gates a revocation or open one for a certificate it can't
+      // revoke.
       allowRequestCreation: false
     });
   },

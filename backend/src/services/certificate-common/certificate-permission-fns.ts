@@ -35,7 +35,7 @@ type TAssertCanEditCertificateDTO = {
   tx?: Knex;
 };
 
-export const assertCanEditCertificate = async ({
+const assertCertificatePermission = async ({
   certificate,
   actor,
   actorId,
@@ -43,8 +43,15 @@ export const assertCanEditCertificate = async ({
   actorOrgId,
   permissionService,
   resourceMetadataDAL,
-  tx
-}: TAssertCanEditCertificateDTO): Promise<{
+  tx,
+  resourceAction,
+  projectAction,
+  extraSubjectFields
+}: TAssertCanEditCertificateDTO & {
+  resourceAction: ResourcePermissionCertificateActions;
+  projectAction: ProjectPermissionCertificateActions;
+  extraSubjectFields?: Record<string, string | undefined>;
+}): Promise<{
   certMetadata: { key: string; value: string }[];
   projectPermission?: MongoAbility;
 }> => {
@@ -58,10 +65,7 @@ export const assertCanEditCertificate = async ({
       actorAuthMethod,
       actorOrgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionCertificateActions.Edit,
-      ResourcePermissionSub.Certificates
-    );
+    ForbiddenError.from(permission).throwUnlessCan(resourceAction, ResourcePermissionSub.Certificates);
 
     return { certMetadata: [] };
   }
@@ -79,16 +83,76 @@ export const assertCanEditCertificate = async ({
   });
 
   ForbiddenError.from(permission).throwUnlessCan(
-    ProjectPermissionCertificateActions.Edit,
+    projectAction,
     subject(ProjectPermissionSub.Certificates, {
       commonName: certificate.commonName ?? undefined,
       altNames: certificate.altNames?.split(",").map((s) => s.trim()),
       serialNumber: certificate.serialNumber ?? undefined,
+      ...extraSubjectFields,
       metadata: certMetadata
     })
   );
 
   return { certMetadata, projectPermission: permission };
+};
+
+export const assertCanEditCertificate = (dto: TAssertCanEditCertificateDTO) =>
+  assertCertificatePermission({
+    ...dto,
+    resourceAction: ResourcePermissionCertificateActions.Edit,
+    projectAction: ProjectPermissionCertificateActions.Edit
+  });
+
+type TAssertCanRevokeCertificateDTO = Omit<TAssertCanEditCertificateDTO, "certificate"> & {
+  certificate: TCertificateSubjectFields & { friendlyName?: string | null; status?: string | null };
+};
+
+export const assertCanRevokeCertificate = async ({ certificate, ...dto }: TAssertCanRevokeCertificateDTO) => {
+  await assertCertificatePermission({
+    ...dto,
+    certificate,
+    resourceAction: ResourcePermissionCertificateActions.Delete,
+    projectAction: ProjectPermissionCertificateActions.Delete,
+    extraSubjectFields: {
+      friendlyName: certificate.friendlyName ?? undefined,
+      status: certificate.status ?? undefined
+    }
+  });
+};
+
+// An actor who can't revoke directly may still request a revocation, so the caller must refuse them
+// unless a revocation approval policy covers the certificate.
+export const assertCanRevokeOrRequestRevocation = async (
+  dto: TAssertCanRevokeCertificateDTO
+): Promise<{ canRevokeDirectly: boolean }> => {
+  const { certificate } = dto;
+  if (!certificate.applicationId) {
+    await assertCanRevokeCertificate(dto);
+    return { canRevokeDirectly: true };
+  }
+
+  const { permission } = await dto.permissionService.getResourcePermission({
+    actor: dto.actor,
+    actorId: dto.actorId,
+    projectId: certificate.projectId,
+    resourceType: ResourceType.CertificateApplication,
+    resourceId: certificate.applicationId,
+    actorAuthMethod: dto.actorAuthMethod,
+    actorOrgId: dto.actorOrgId
+  });
+
+  const canRevokeDirectly = permission.can(
+    ResourcePermissionCertificateActions.Delete,
+    ResourcePermissionSub.Certificates
+  );
+  if (!canRevokeDirectly) {
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionCertificateActions.RequestRevocation,
+      ResourcePermissionSub.Certificates
+    );
+  }
+
+  return { canRevokeDirectly };
 };
 
 export const assertCanEditCertificateResult = ({

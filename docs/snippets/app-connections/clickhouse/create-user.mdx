@@ -1,0 +1,16 @@
+<Steps>
+    <Step>
+        Connect to ClickHouse as a user that can create users and grant privileges, such as `default`, and create a user for Infisical:
+
+        ```sql
+        CREATE USER infisical IDENTIFIED WITH sha256_password BY '<strong-password>';
+        ```
+    </Step>
+    <Step>
+        Grant the user the `ALTER USER` privilege:
+
+        ```sql
+        GRANT ALTER USER ON *.* TO infisical;
+        ```
+    </Step>
+</Steps>

@@ -7,7 +7,7 @@ import { logger } from "@app/lib/logger";
 export const asymmetricFipsValidated = () => {
   const generateKeyPair = async () => {
     const { publicKey, privateKey } = await new Promise<{ publicKey: KeyObject; privateKey: KeyObject }>((resolve) => {
-      crypto.generateKeyPair("x25519", undefined, (err, pubKey, privKey) => {
+      crypto.generateKeyPair("x25519", {}, (err, pubKey, privKey) => {
         if (err) {
           logger.error(err, "FIPS generateKeyPair: Failed to generate key pair");
           throw new CryptographyError({

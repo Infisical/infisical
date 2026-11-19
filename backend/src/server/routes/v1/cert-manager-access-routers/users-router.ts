@@ -16,9 +16,32 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedUserSchema } from "../../sanitizedSchemas";
+import { AvailableProjectUserSchema } from "../project-membership-router";
 import { MembershipRoleSchema, RolesUpdateBodySchema } from "./schemas";
 
 export const registerCertManagerAccessUsersRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/available-users",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "listAvailableCertManagerUsers",
+      response: {
+        200: z.object({ users: AvailableProjectUserSchema.array() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const projectId = req.internalCertManagerProjectId;
+      const { users } = await server.services.membershipUser.listAvailableUsers({
+        permission: req.permission,
+        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
+        data: {}
+      });
+      return { users };
+    }
+  });
+
   server.route({
     method: "GET",
     url: "/users",
@@ -122,7 +145,8 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
         scopeData: { scope: AccessScope.Organization, orgId: req.permission.orgId },
         data: {
           roles: [{ isTemporary: false, role: OrgMembershipRole.NoAccess }],
-          usernames: usernamesAndEmails
+          usernames: usernamesAndEmails,
+          skipUsersWithOrgAccess: true
         }
       });
 

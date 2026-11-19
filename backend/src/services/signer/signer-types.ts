@@ -8,8 +8,8 @@ import {
   TCodeSigningRequestScopeInput,
   TCodeSigningScope
 } from "../approval-policy/code-signing/code-signing-policy-types";
-import { CertKeyAlgorithm } from "../certificate/certificate-types";
 import { CaType } from "../certificate-authority/certificate-authority-enums";
+import { CertKeyAlgorithm, CrlReason } from "../certificate/certificate-types";
 import { CertKeySource, SignerStatus, SigningOperationStatus } from "./signer-enums";
 
 type TActorPermission = Omit<TProjectPermission, "projectId">;
@@ -28,17 +28,16 @@ export type TCreateSignerApprovalPolicyInput = {
 export type TSignerCertificateInput = {
   keySource?: CertKeySource;
   hsmConnectorId?: string;
+  hsmKeyLabel?: string;
+  hsmKeyId?: string;
 };
 
-export type TSignerExternalConfigurationInput =
-  | {
-      caType: CaType.DIGICERT;
-      reissueFromExternalOrderId?: string;
-    }
-  | {
-      caType: CaType.ADCS;
-      template?: string;
-    };
+export type TSignerExternalConfigurationInput = {
+  caType?: CaType.DIGICERT | CaType.ADCS;
+  reissueFromExternalOrderId?: string;
+  importFromExternalOrderId?: string;
+  template?: string;
+};
 
 const RE_NO_NEWLINES = new RE2("^[^\\r\\n]+$");
 
@@ -114,6 +113,17 @@ export type TGetPublicKeyDTO = {
   signerId: string;
 } & TActorPermission;
 
+export enum SigningActivityRange {
+  SevenDays = "7d",
+  ThirtyDays = "30d",
+  SixMonths = "6m"
+}
+
+export type TGetSigningActivityTrendDTO = {
+  range: SigningActivityRange;
+  signerId?: string;
+} & TProjectPermission;
+
 export type TListSigningOperationsDTO = {
   signerId: string;
   offset?: number;
@@ -142,6 +152,30 @@ export type TReissueCertificateDTO = {
   keyAlgorithm?: CertKeyAlgorithm;
   certificate?: TSignerCertificateInput;
   externalConfiguration?: TSignerExternalConfigurationInput;
+} & TActorPermission;
+
+export type TRenewCertificateDTO = {
+  signerId: string;
+} & TActorPermission;
+
+export type TRevokeSignerCertificateDTO = {
+  signerId: string;
+  revocationReason: CrlReason;
+} & TActorPermission;
+
+export type TImportCertificateDTO = {
+  signerId: string;
+  caId: string;
+  externalOrderId: string;
+  certificate: { hsmConnectorId: string; hsmKeyLabel: string; hsmKeyId?: string };
+  certificateRenewBeforeDays?: number | null;
+} & TActorPermission;
+
+export type TCheckCertificateImportDTO = {
+  projectId: string;
+  caId: string;
+  externalOrderId: string;
+  certificate: { hsmConnectorId: string; hsmKeyLabel: string; hsmKeyId?: string };
 } & TActorPermission;
 
 export type TExportCertificateDTO = {

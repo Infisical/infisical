@@ -1,4 +1,11 @@
-import { Modal, ModalContent } from "@app/components/v2";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  PageLoader
+} from "@app/components/v3";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub,
@@ -47,7 +54,7 @@ export const CertificateCertModal = ({ popUp, handlePopUpToggle, applicationId }
   // With metadata-based RBAC conditions the generic check may be overly
   // optimistic, so we always fetch the cert body as a fallback.
   const { data: bundleData } = useGetCertBundle(canReadPrivateKey ? serialNumber : "");
-  const { data: bodyData } = useGetCertBody(serialNumber);
+  const { data: bodyData, isError } = useGetCertBody(serialNumber);
 
   // Prefer bundle data (cert + key) when available, otherwise fall back to
   // body data (cert only). This ensures the certificate is always shown even
@@ -62,24 +69,36 @@ export const CertificateCertModal = ({ popUp, handlePopUpToggle, applicationId }
     | undefined = bundleData ?? bodyData;
 
   return (
-    <Modal
-      isOpen={popUp?.certificateCert?.isOpen}
+    <Dialog
+      open={popUp?.certificateCert?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("certificateCert", isOpen);
       }}
     >
-      <ModalContent title="Export Certificate">
-        {data ? (
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Export Certificate</DialogTitle>
+          <DialogDescription>
+            Copy or download the certificate and its key material.
+          </DialogDescription>
+        </DialogHeader>
+        {data && (
           <CertificateContent
             serialNumber={data.serialNumber}
             certificate={data.certificate}
             certificateChain={data.certificateChain}
             privateKey={data.privateKey || undefined}
           />
-        ) : (
-          <div />
         )}
-      </ModalContent>
-    </Modal>
+        {!data && isError && (
+          <p className="py-8 text-center text-sm text-danger">Failed to load certificate.</p>
+        )}
+        {!data && !isError && (
+          <div className="py-8">
+            <PageLoader />
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 };

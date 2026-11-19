@@ -1,13 +1,22 @@
+import {
+  COOLIFY_RESOURCE_TYPE_LABELS,
+  COOLIFY_SYNC_SCOPE_LABELS,
+  getGitHubSyncSecretTypeName,
+  JENKINS_SYNC_SCOPE_LABELS
+} from "@app/helpers/secretSyncs";
 import { TerraformCloudSyncScope } from "@app/hooks/api/appConnections/terraform-cloud";
 import { ZabbixSyncScope } from "@app/hooks/api/appConnections/zabbix";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
+import { CoolifySyncScope } from "@app/hooks/api/secretSyncs/types/coolify-sync";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import {
   GitHubSyncScope,
+  GitHubSyncSecretType,
   GitHubSyncVisibility
 } from "@app/hooks/api/secretSyncs/types/github-sync";
 import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
+import { JenkinsSyncScope } from "@app/hooks/api/secretSyncs/types/jenkins-sync";
 import { OctopusDeploySyncScope } from "@app/hooks/api/secretSyncs/types/octopus-deploy-sync";
 import { RenderSyncScope } from "@app/hooks/api/secretSyncs/types/render-sync";
 import { VercelSyncScope } from "@app/hooks/api/secretSyncs/types/vercel-sync";
@@ -49,6 +58,12 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
           break;
         default:
           throw new Error(`Unhandled GitHub Scope Destination Col Values ${destination}`);
+      }
+      if (
+        destinationConfig.secretType &&
+        destinationConfig.secretType !== GitHubSyncSecretType.Actions
+      ) {
+        secondaryText = `${getGitHubSyncSecretTypeName(destinationConfig.secretType)} - ${secondaryText}`;
       }
       break;
     case SecretSync.GCPSecretManager:
@@ -176,7 +191,17 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       break;
     case SecretSync.CloudflareWorkers:
       primaryText = destinationConfig.scriptId;
-      secondaryText = "Script ID";
+      secondaryText = destinationConfig.previewName
+        ? `Preview: ${destinationConfig.previewName}`
+        : "Script ID";
+      break;
+    case SecretSync.Convex:
+      primaryText = destinationConfig.deploymentName;
+      secondaryText = "Convex Deployment";
+      break;
+    case SecretSync.CloudflareSecretsStore:
+      primaryText = destinationConfig.storeName || destinationConfig.storeId;
+      secondaryText = "Secrets Store";
       break;
     case SecretSync.Zabbix:
       if (destinationConfig.scope === ZabbixSyncScope.Host) {
@@ -208,6 +233,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
     case SecretSync.Rundeck:
       primaryText = destinationConfig.project;
       secondaryText = destinationConfig.path;
+      break;
+    case SecretSync.Portainer:
+      primaryText = `Stack #${destinationConfig.stackId}`;
+      secondaryText = `Environment #${destinationConfig.environmentId}`;
       break;
     case SecretSync.DigitalOceanAppPlatform:
       primaryText = destinationConfig.appName;
@@ -293,12 +322,30 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = secretSync.connection.name;
       secondaryText = "Daytona Organization";
       break;
+    case SecretSync.Keeper:
+      primaryText = destinationConfig.folderName || destinationConfig.folderUid;
+      secondaryText = "Shared Folder";
+      break;
     case SecretSync.Spacelift:
       primaryText = destinationConfig.contextName;
       secondaryText =
         destinationConfig.configType === "environment-variable"
           ? "environment variables"
           : "file mount";
+      break;
+    case SecretSync.Jenkins:
+      primaryText =
+        destinationConfig.scope === JenkinsSyncScope.Folder
+          ? destinationConfig.folderPath
+          : JENKINS_SYNC_SCOPE_LABELS[JenkinsSyncScope.Global];
+      secondaryText = "Credentials";
+      break;
+    case SecretSync.Coolify:
+      primaryText = destinationConfig.resourceName;
+      secondaryText =
+        destinationConfig.scope === CoolifySyncScope.Preview
+          ? `${COOLIFY_RESOURCE_TYPE_LABELS[destinationConfig.resourceType]} (${COOLIFY_SYNC_SCOPE_LABELS[CoolifySyncScope.Preview]})`
+          : COOLIFY_RESOURCE_TYPE_LABELS[destinationConfig.resourceType];
       break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);

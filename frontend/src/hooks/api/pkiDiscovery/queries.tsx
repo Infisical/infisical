@@ -165,7 +165,10 @@ export const useListPkiInstallations = (
   });
 };
 
-export const useGetPkiInstallation = ({ installationId }: TGetPkiInstallationDTO) => {
+export const useGetPkiInstallation = (
+  { installationId }: TGetPkiInstallationDTO,
+  options?: { refetchInterval: (installation?: TPkiInstallation) => number | false }
+) => {
   return useQuery({
     queryKey: pkiInstallationKeys.installation(installationId),
     queryFn: async () => {
@@ -174,6 +177,7 @@ export const useGetPkiInstallation = ({ installationId }: TGetPkiInstallationDTO
       );
       return data;
     },
-    enabled: Boolean(installationId)
+    enabled: Boolean(installationId),
+    refetchInterval: (query) => options?.refetchInterval(query.state.data) ?? false
   });
 };

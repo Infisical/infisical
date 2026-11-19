@@ -47,6 +47,13 @@ export const SCEP_OIDS = {
   recipientNonce: "2.16.840.1.113733.1.9.6"
 } as const;
 
+export const KEY_TRANSPORT_OIDS = {
+  rsaEncryption: "1.2.840.113549.1.1.1",
+  rsaesOaep: "1.2.840.113549.1.1.7",
+  mgf1: "1.2.840.113549.1.1.8",
+  pSpecified: "1.2.840.113549.1.1.9"
+} as const;
+
 export const DIGEST_OID_TO_HASH: Record<string, string> = {
   "2.16.840.1.101.3.4.2.1": "sha256",
   "1.3.14.3.2.26": "sha1",

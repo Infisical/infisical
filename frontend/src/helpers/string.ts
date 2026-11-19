@@ -17,3 +17,24 @@ export const DistinguishedNameRegex =
   /^(?:(?:[a-zA-Z0-9]+=[^,+="<>#;\\\\]+)(?:(?:\\+[a-zA-Z0-9]+=[^,+="<>#;\\\\]+)*)(?:,(?:[a-zA-Z0-9]+=[^,+="<>#;\\\\]+)(?:(?:\\+[a-zA-Z0-9]+=[^,+="<>#;\\\\]+)*))*)?$/;
 
 export const UserPrincipalNameRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+const NAMES_SHOWN = 3;
+
+/** Names a list for a sentence: "a", "a and b", "a, b and c", and past three, "a, b, c and 4 more". */
+export const nameList = (names: string[]) => {
+  const shown = names.slice(0, NAMES_SHOWN);
+  const more = names.length - shown.length;
+  if (more > 0) return `${shown.join(", ")} and ${more} more`;
+  if (shown.length <= 2) return shown.join(" and ");
+  return `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}`;
+};
+
+// Only the part of an email before the @ counts, so "jane.doe@example.com" gives "JD", not "JE".
+export const getInitials = (value: string) =>
+  value
+    .split("@")[0]
+    .split(/[\s._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join("") || "?";

@@ -41,7 +41,12 @@ export const RevokeHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken }: Prop
   };
 
   return (
-    <AlertDialog open={isOpen} confirmationValue={honeyToken.name} onOpenChange={onOpenChange}>
+    <AlertDialog
+      isPending={revokeHoneyToken.isPending}
+      open={isOpen}
+      confirmationValue={honeyToken.name}
+      onOpenChange={onOpenChange}
+    >
       <AlertDialogContent className="sm:max-w-xl!">
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure you want to revoke {honeyToken.name}?</AlertDialogTitle>
@@ -57,17 +62,16 @@ export const RevokeHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken }: Prop
         </AlertDialogHeader>
         <AlertDialogConfirmationField
           onConfirm={() => {
-            if (!revokeHoneyToken.isPending) handleRevoke().catch(() => undefined);
+            handleRevoke().catch(() => undefined);
           }}
         />
         <AlertDialogFooter>
-          <AlertDialogCancel isDisabled={revokeHoneyToken.isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="danger"
-            isPending={revokeHoneyToken.isPending}
             onClick={(event) => {
               event.preventDefault();
-              if (!revokeHoneyToken.isPending) handleRevoke().catch(() => undefined);
+              handleRevoke().catch(() => undefined);
             }}
           >
             Revoke

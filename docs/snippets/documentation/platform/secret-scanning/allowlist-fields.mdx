@@ -1,0 +1,25 @@
+The scanner skips a match if any field in the table matches it.
+
+<ResponseField name="description" type="string">
+What the allowlist is for.
+</ResponseField>
+
+<ResponseField name="paths" type="string[]">
+Regular expressions for the paths of files to skip.
+</ResponseField>
+
+<ResponseField name="commits" type="string[]">
+The IDs of commits to skip.
+</ResponseField>
+
+<ResponseField name="regexes" type="string[]">
+Regular expressions for secrets to skip.
+</ResponseField>
+
+<ResponseField name="stopwords" type="string[]">
+Words that, if a secret contains one, make the scanner skip the secret.
+</ResponseField>
+
+<ResponseField name="condition" type="string" default="OR">
+Set to `AND` to skip a match only if every field you set matches it.
+</ResponseField>

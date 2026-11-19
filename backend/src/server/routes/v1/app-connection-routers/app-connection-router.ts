@@ -70,6 +70,10 @@ import {
   SanitizedCircleCIConnectionSchema
 } from "@app/services/app-connection/circleci";
 import {
+  ClickHouseConnectionListItemSchema,
+  SanitizedClickHouseConnectionSchema
+} from "@app/services/app-connection/clickhouse";
+import {
   Cloud66ConnectionListItemSchema,
   SanitizedCloud66ConnectionSchema
 } from "@app/services/app-connection/cloud-66";
@@ -78,6 +82,10 @@ import {
   SanitizedCloudflareConnectionSchema
 } from "@app/services/app-connection/cloudflare/cloudflare-connection-schema";
 import { ConvexConnectionListItemSchema, SanitizedConvexConnectionSchema } from "@app/services/app-connection/convex";
+import {
+  CoolifyConnectionListItemSchema,
+  SanitizedCoolifyConnectionSchema
+} from "@app/services/app-connection/coolify";
 import {
   DatabricksConnectionListItemSchema,
   SanitizedDatabricksConnectionSchema
@@ -141,10 +149,25 @@ import {
   SanitizedHCVaultConnectionSchema
 } from "@app/services/app-connection/hc-vault";
 import { HerokuConnectionListItemSchema, SanitizedHerokuConnectionSchema } from "@app/services/app-connection/heroku";
+import { HpeIloConnectionListItemSchema, SanitizedHpeIloConnectionSchema } from "@app/services/app-connection/hpe-ilo";
 import {
   HumanitecConnectionListItemSchema,
   SanitizedHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
+import {
+  ImpervaConnectionListItemSchema,
+  SanitizedImpervaConnectionSchema
+} from "@app/services/app-connection/imperva";
+import {
+  IncidentIoConnectionListItemSchema,
+  SanitizedIncidentIoConnectionSchema
+} from "@app/services/app-connection/incident-io";
+import {
+  JenkinsConnectionListItemSchema,
+  SanitizedJenkinsConnectionSchema
+} from "@app/services/app-connection/jenkins";
+import { JiraConnectionListItemSchema, SanitizedJiraConnectionSchema } from "@app/services/app-connection/jira";
+import { KeeperConnectionListItemSchema, SanitizedKeeperConnectionSchema } from "@app/services/app-connection/keeper";
 import {
   KempLoadMasterConnectionListItemSchema,
   SanitizedKempLoadMasterConnectionSchema
@@ -197,6 +220,14 @@ import {
 import { OpenAIConnectionListItemSchema, SanitizedOpenAIConnectionSchema } from "@app/services/app-connection/openai";
 import { OvhConnectionListItemSchema, SanitizedOvhConnectionSchema } from "@app/services/app-connection/ovh";
 import {
+  PaloAltoNetworksConnectionListItemSchema,
+  SanitizedPaloAltoNetworksConnectionSchema
+} from "@app/services/app-connection/palo-alto-networks";
+import {
+  PortainerConnectionListItemSchema,
+  SanitizedPortainerConnectionSchema
+} from "@app/services/app-connection/portainer";
+import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
@@ -219,9 +250,17 @@ import {
   SanitizedRundeckConnectionSchema
 } from "@app/services/app-connection/rundeck";
 import {
+  S3CompatibleConnectionListItemSchema,
+  SanitizedS3CompatibleConnectionSchema
+} from "@app/services/app-connection/s3-compatible";
+import {
   SalesforceConnectionListItemSchema,
   SanitizedSalesforceConnectionSchema
 } from "@app/services/app-connection/salesforce";
+import {
+  SanitizedServiceNowConnectionSchema,
+  ServiceNowConnectionListItemSchema
+} from "@app/services/app-connection/servicenow";
 import { SanitizedSmbConnectionSchema, SmbConnectionListItemSchema } from "@app/services/app-connection/smb";
 import {
   SanitizedSnowflakeConnectionSchema,
@@ -253,6 +292,10 @@ import {
   SanitizedTriggerDevConnectionSchema,
   TriggerDevConnectionListItemSchema
 } from "@app/services/app-connection/trigger-dev";
+import {
+  SanitizedUltraDNSConnectionSchema,
+  UltraDNSConnectionListItemSchema
+} from "@app/services/app-connection/ultradns/ultradns-connection-schema";
 import { SanitizedVenafiConnectionSchema, VenafiConnectionListItemSchema } from "@app/services/app-connection/venafi";
 import {
   SanitizedVenafiTppConnectionSchema,
@@ -322,6 +365,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedLaravelForgeConnectionSchema.options,
   ...SanitizedChefConnectionSchema.options,
   ...SanitizedDNSMadeEasyConnectionSchema.options,
+  ...SanitizedUltraDNSConnectionSchema.options,
   ...SanitizedAzureDnsConnectionSchema.options,
   ...SanitizedOctopusDeployConnectionSchema.options,
   ...SanitizedSmbConnectionSchema.options,
@@ -337,7 +381,9 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedVenafiTppConnectionSchema.options,
   ...SanitizedExternalInfisicalConnectionSchema.options,
   ...SanitizedNetScalerConnectionSchema.options,
+  ...SanitizedPaloAltoNetworksConnectionSchema.options,
   ...SanitizedKempLoadMasterConnectionSchema.options,
+  ...SanitizedImpervaConnectionSchema.options,
   ...SanitizedDopplerConnectionSchema.options,
   ...SanitizedOvhConnectionSchema.options,
   ...SanitizedOnaConnectionSchema.options,
@@ -350,6 +396,9 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedF5BigIpConnectionSchema.options,
   ...SanitizedConvexConnectionSchema.options,
   ...SanitizedRundeckConnectionSchema.options,
+  ...SanitizedPortainerConnectionSchema.options,
+  ...SanitizedJenkinsConnectionSchema.options,
+  ...SanitizedCoolifyConnectionSchema.options,
   ...SanitizedQoveryConnectionSchema.options,
   ...SanitizedLiteLLMConnectionSchema.options,
   ...SanitizedFireworksConnectionSchema.options,
@@ -357,7 +406,14 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedPowerDnsConnectionSchema.options,
   ...SanitizedSpaceliftConnectionSchema.options,
   ...SanitizedDaytonaConnectionSchema.options,
-  ...SanitizedStripeConnectionSchema.options
+  ...SanitizedStripeConnectionSchema.options,
+  ...SanitizedKeeperConnectionSchema.options,
+  ...SanitizedHpeIloConnectionSchema.options,
+  ...SanitizedServiceNowConnectionSchema.options,
+  ...SanitizedS3CompatibleConnectionSchema.options,
+  ...SanitizedJiraConnectionSchema.options,
+  ...SanitizedClickHouseConnectionSchema.options,
+  ...SanitizedIncidentIoConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -411,6 +467,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   LaravelForgeConnectionListItemSchema,
   ChefConnectionListItemSchema,
   DNSMadeEasyConnectionListItemSchema,
+  UltraDNSConnectionListItemSchema,
   AzureDnsConnectionListItemSchema,
   OctopusDeployConnectionListItemSchema,
   SmbConnectionListItemSchema,
@@ -425,7 +482,9 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   ExternalInfisicalConnectionListItemSchema,
   DopplerConnectionListItemSchema,
   NetScalerConnectionListItemSchema,
+  PaloAltoNetworksConnectionListItemSchema,
   KempLoadMasterConnectionListItemSchema,
+  ImpervaConnectionListItemSchema,
   AnthropicConnectionListItemSchema,
   OvhConnectionListItemSchema,
   DevinConnectionListItemSchema,
@@ -439,6 +498,9 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   F5BigIpConnectionListItemSchema,
   ConvexConnectionListItemSchema,
   RundeckConnectionListItemSchema,
+  PortainerConnectionListItemSchema,
+  JenkinsConnectionListItemSchema,
+  CoolifyConnectionListItemSchema,
   QoveryConnectionListItemSchema,
   LiteLLMConnectionListItemSchema,
   FireworksConnectionListItemSchema,
@@ -446,7 +508,14 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   PowerDnsConnectionListItemSchema,
   SpaceliftConnectionListItemSchema,
   DaytonaConnectionListItemSchema,
-  StripeConnectionListItemSchema
+  StripeConnectionListItemSchema,
+  KeeperConnectionListItemSchema,
+  HpeIloConnectionListItemSchema,
+  ServiceNowConnectionListItemSchema,
+  S3CompatibleConnectionListItemSchema,
+  JiraConnectionListItemSchema,
+  ClickHouseConnectionListItemSchema,
+  IncidentIoConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

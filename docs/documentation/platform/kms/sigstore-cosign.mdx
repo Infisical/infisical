@@ -1,71 +1,75 @@
 ---
-title: "Sigstore Cosign integration"
-description: "Sign and verify container images and artifacts using Infisical KMS with Sigstore Cosign."
+title: "Sign container images with Sigstore Cosign"
+sidebarTitle: "Sigstore Cosign"
+description: "Sign container images with a key in Infisical KMS."
 ---
 
-Infisical KMS integrates with [Sigstore Cosign](https://github.com/sigstore/cosign) through the [sigstore-kms-infisical](https://github.com/Infisical/sigstore-kms-infisical) plugin, enabling you to sign and verify container images and artifacts using keys managed in Infisical.
+[Sigstore Cosign](https://github.com/sigstore/cosign) signs container images and other artifacts. With the [sigstore-kms-infisical](https://github.com/Infisical/sigstore-kms-infisical) plugin, Cosign signs with a [Sign/Verify key](/documentation/platform/kms/sign-verify) in Infisical KMS, so the private key never leaves Infisical.
 
-### KMS plugin capabilities
+The plugin supports RSA-4096 keys (the default) and ECC-NIST-P256 keys.
 
-| Capability | Supported |
-| ---------- | --------- |
-| DefaultAlgorithm | RSA_4096 |
-| SupportedAlgorithms | RSA_4096, ECC_NIST_P256 |
-| CreateKey | ✅ |
-| PublicKey | ✅ |
-| SignMessage | ✅ |
-| VerifyMessage | ✅ |
+## Prerequisites
 
-## Setup
+- [Cosign](https://docs.sigstore.dev/cosign/system_config/installation/) and [Go](https://go.dev/doc/install) installed
+- A [machine identity](/documentation/platform/identities/machine-identities) with [Universal Auth](/documentation/platform/identities/universal-auth), and the **Member** role in your KMS project
 
-<Steps>
-  <Step title="Install the Plugin">
-    For the Sigstore library to invoke the plugin, the binary must be in your system's `PATH`.
+## Step 1: Install the plugin
 
-    ```bash
-    git clone https://github.com/Infisical/sigstore-kms-infisical.git
-    cd sigstore-kms-infisical
-    go build -o sigstore-kms-infisical
-    cp sigstore-kms-infisical /usr/local/bin
-    ```
-  </Step>
-
-  <Step title="Configure Environment Variables">
-    The plugin uses environment variables for authentication. Currently only [Machine Identity Universal Auth](/documentation/platform/identities/universal-auth) is supported.
-
-    Set the following environment variables:
-
-    ```bash
-    export INFISICAL_SITE_URL="https://app.infisical.com"
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="<machine-identity-client-id>"
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="<machine-identity-client-secret>"
-    export INFISICAL_PROJECT_ID="<infisical-kms-project-id>"
-    ```
-
-    <Note>
-      For self-hosted Infisical instances, set `INFISICAL_SITE_URL` to your instance's URL.
-    </Note>
-  </Step>
-</Steps>
-
-## Usage
-
-### Signing a container image
+Build the plugin, and put it in a directory on your `PATH` so Cosign can find it:
 
 ```bash
-cosign sign --key "infisical://{KMS_KEY_NAME}" --tlog-upload=false my-repo/image:v1
+git clone https://github.com/Infisical/sigstore-kms-infisical.git
+cd sigstore-kms-infisical
+go build -o sigstore-kms-infisical
+sudo cp sigstore-kms-infisical /usr/local/bin
 ```
 
-### Verifying a container image
+## Step 2: Set the plugin's credentials
+
+Set the following environment variables with your machine identity's credentials and the ID of your KMS project:
 
 ```bash
-cosign verify --key "infisical://{KMS_KEY_NAME}" --insecure-ignore-tlog=true my-repo/image:v1
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="<machine-identity-client-id>"
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="<machine-identity-client-secret>"
+export INFISICAL_PROJECT_ID="<kms-project-id>"
 ```
 
-### Creating a new key pair
+The plugin reads the following environment variables:
+
+<ResponseField name="INFISICAL_UNIVERSAL_AUTH_CLIENT_ID" type="string" required>
+The client ID of your machine identity's Universal Auth.
+</ResponseField>
+
+<ResponseField name="INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET" type="string" required>
+A client secret for your machine identity's Universal Auth.
+</ResponseField>
+
+<ResponseField name="INFISICAL_PROJECT_ID" type="string" required>
+The ID of the KMS project that your keys are in.
+</ResponseField>
+
+<ResponseField name="INFISICAL_SITE_URL" type="string" default="https://app.infisical.com">
+The address of Infisical. If you use EU Cloud, set it to `https://eu.infisical.com`. If you self-host Infisical, set it to the address of your instance.
+</ResponseField>
+
+## Step 3: Sign and verify images
+
+In each command, `<key-name>` is the name of a Sign/Verify key in your KMS project.
+
+To sign an image:
 
 ```bash
-cosign generate-key-pair --kms infisical://{NEW_KEY_NAME}
+cosign sign --key "infisical://<key-name>" --tlog-upload=false my-repo/image:v1
 ```
 
-This creates an RSA 4096 KMS key with the specified name, which you can then use for signing and verification.
+To verify an image:
+
+```bash
+cosign verify --key "infisical://<key-name>" --insecure-ignore-tlog=true my-repo/image:v1
+```
+
+If you don't have a key yet, Cosign can create an RSA-4096 key in your KMS project:
+
+```bash
+cosign generate-key-pair --kms "infisical://<key-name>"
+```

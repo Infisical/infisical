@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useParams } from "@tanstack/react-router";
 import { HelpCircleIcon, InfoIcon, PlusIcon, XIcon } from "lucide-react";
 import { z } from "zod";
 
@@ -9,11 +8,11 @@ import { createNotification } from "@app/components/notifications";
 import { BashGlobPatternTooltip } from "@app/components/permissions";
 import {
   Button,
+  Combobox,
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   IconButton,
   Input,
   Tabs,
@@ -37,7 +36,7 @@ import {
   superRefineAccessTokenTtl,
   trustedIpsSchema
 } from "@app/helpers/identityAuthSchemas";
-import { useScopeVariant } from "@app/hooks";
+import { useRouteProjectId, useScopeVariant } from "@app/hooks";
 import { useAddIdentityOidcAuth, useUpdateIdentityOidcAuth } from "@app/hooks/api";
 import { useGetIdentityOidcAuth } from "@app/hooks/api/identities/queries";
 import { MachineIdentityAuthMethod } from "@app/hooks/api/identityAuthTemplates";
@@ -169,9 +168,7 @@ export const IdentityOidcAuthForm = ({
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
-  const { projectId } = useParams({
-    strict: false
-  });
+  const projectId = useRouteProjectId();
   const scopeVariant = useScopeVariant();
   const { mutateAsync: addMutateAsync } = useAddIdentityOidcAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityOidcAuth();
@@ -410,20 +407,19 @@ export const IdentityOidcAuthForm = ({
                 render={({ field: { onChange }, fieldState: { error } }) => (
                   <Field>
                     <FieldLabel htmlFor="oidc-configuration">Configuration</FieldLabel>
-                    <FilterableSelect<ConfigurationOption>
-                      inputId="oidc-configuration"
+                    <Combobox<ConfigurationOption>
+                      id="oidc-configuration"
                       value={selectedConfiguration}
                       options={configurationOptions}
-                      groupBy="group"
+                      getOptionGroup={(option) => option.group}
                       getOptionLabel={(option) => option.label}
                       getOptionValue={(option) => option.value}
                       placeholder="Select or search configurations..."
+                      searchAriaLabel="Search configurations"
                       isLoading={isTemplatesLoading}
                       isError={Boolean(error || errors.templateId)}
-                      onChange={(option) => {
-                        const selectedOption = option as ConfigurationOption | null;
-                        if (!selectedOption) return;
-
+                      isClearable={false}
+                      onValueChange={(selectedOption) => {
                         if (selectedOption.value === "custom") {
                           onChange("custom");
                           setValue("templateId", "");

@@ -5,7 +5,10 @@ import { TAwsElasticLoadBalancerPkiSync } from "./aws-elastic-load-balancer-sync
 import { TAwsSecretsManagerPkiSync } from "./aws-secrets-manager-sync";
 import { TAzureKeyVaultPkiSync } from "./azure-key-vault-sync";
 import { TChefPkiSync } from "./chef-sync";
-import { TCloudflareCustomCertificatePkiSync } from "./cloudflare-custom-certificate-sync";
+import {
+  CloudflareBundleMethod,
+  TCloudflareCustomCertificatePkiSync
+} from "./cloudflare-custom-certificate-sync";
 import { TPkiSyncFilters } from "./common";
 import { TF5BigIpPkiSync } from "./f5-big-ip-sync";
 import {
@@ -13,10 +16,15 @@ import {
   TGcpCertificateManagerPkiSync,
   TGcpLabel
 } from "./gcp-certificate-manager-sync";
+import { TImpervaPkiSync } from "./imperva-sync";
 import { TKempLoadMasterPkiSync } from "./kemp-loadmaster-sync";
 import { TLinuxServerPkiSync } from "./linux-server-sync";
 import { TNetScalerPkiSync } from "./netscaler-sync";
 import { TNutanixPrismCentralPkiSync } from "./nutanix-prism-central-sync";
+import {
+  TPaloAltoNetworksPkiSync,
+  TPaloAltoNetworksSslTlsProfilePkiSync
+} from "./palo-alto-networks-sync";
 import { TWindowsServerPkiSync } from "./windows-server-sync";
 
 export type TPkiSyncOption = {
@@ -33,6 +41,7 @@ export type TPkiSyncOption = {
   allowedCharacterPattern?: string;
   maxCertificateNameLength?: number;
   minCertificateNameLength?: number;
+  unsupportedExportFormats?: PkiSyncExportFormat[];
 };
 
 export type TPkiSync =
@@ -44,8 +53,11 @@ export type TPkiSync =
   | TCloudflareCustomCertificatePkiSync
   | TGcpCertificateManagerPkiSync
   | TNetScalerPkiSync
+  | TPaloAltoNetworksPkiSync
+  | TPaloAltoNetworksSslTlsProfilePkiSync
   | TF5BigIpPkiSync
   | TKempLoadMasterPkiSync
+  | TImpervaPkiSync
   | TLinuxServerPkiSync
   | TWindowsServerPkiSync
   | TNutanixPrismCentralPkiSync;
@@ -72,6 +84,7 @@ type TCreatePkiSyncDTOBase = {
     caCertificateNameSchema?: string;
     exportFormat?: PkiSyncExportFormat;
     includePrivateKey?: boolean;
+    bundleMethod?: CloudflareBundleMethod;
     fieldMappings?: {
       certificate: string;
       privateKey: string;
@@ -104,6 +117,10 @@ export type TCreatePkiSyncDTO = TCreatePkiSyncDTOBase & {
     }>;
     zoneId?: string;
     vserverName?: string;
+    template?: string;
+    sslTlsServiceProfileName?: string;
+    sslTlsServiceProfileVsys?: string;
+    pushToDevices?: boolean;
     virtualServiceId?: string;
     partition?: string;
     profileType?: string;
@@ -112,6 +129,8 @@ export type TCreatePkiSyncDTO = TCreatePkiSyncDTOBase & {
     parentProfile?: string;
     clusterId?: string;
     clusterName?: string;
+    siteId?: string;
+    siteName?: string;
     destinationPath?: string;
     gcpProjectId?: string;
     location?: string;
@@ -123,9 +142,12 @@ export type TCreatePkiSyncDTO = TCreatePkiSyncDTOBase & {
   };
 };
 
+export type TPkiSyncRemovalOptions = Record<string, unknown>;
+
 export type TUpdatePkiSyncDTO = Partial<Omit<TCreatePkiSyncDTO, "projectId">> & {
   syncId: string;
   projectId: string;
+  removalOptions?: TPkiSyncRemovalOptions;
 };
 
 export type TDeletePkiSyncDTO = {
@@ -150,6 +172,7 @@ export type TTriggerPkiSyncRemoveCertificatesDTO = {
   syncId: string;
   destination: PkiSync;
   projectId: string;
+  removalOptions?: TPkiSyncRemovalOptions;
 };
 
 export * from "./aws-certificate-manager-sync";
@@ -161,8 +184,10 @@ export * from "./cloudflare-custom-certificate-sync";
 export * from "./common";
 export * from "./f5-big-ip-sync";
 export * from "./gcp-certificate-manager-sync";
+export * from "./imperva-sync";
 export * from "./kemp-loadmaster-sync";
 export * from "./linux-server-sync";
 export * from "./netscaler-sync";
 export * from "./nutanix-prism-central-sync";
+export * from "./palo-alto-networks-sync";
 export * from "./windows-server-sync";

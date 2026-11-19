@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type JSX, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 import axios from "axios";

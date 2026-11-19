@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { MoreHorizontalIcon, SearchIcon } from "lucide-react";
 
@@ -23,19 +23,24 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionSub,
-  useOrganization
+  useProject
 } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import {
   TPkiInstallation,
   useDeletePkiInstallation,
@@ -43,10 +48,23 @@ import {
 } from "@app/hooks/api";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { getEndpoint, getGatewayLabel } from "@app/pages/cert-manager/pki-discovery-utils";
+import {
+  canSetKeystorePassword,
+  getEndpoint,
+  getGatewayLabel,
+  getInstallationDiscoveryType,
+  getKeystoreStatusBadge,
+  useCanRescanPkiInstallations
+} from "@app/pages/cert-manager/pki-discovery-utils";
 
 import { DeleteInstallationModal } from "./DeleteInstallationModal";
+import { DiscoveryTypeIcon } from "./DiscoveryJobSheet/DiscoveryTypeIcon";
 import { EditInstallationModal } from "./EditInstallationModal";
+import {
+  RESCAN_POLL_INTERVAL_MS,
+  RESCAN_POLL_TIMEOUT_MS,
+  SetKeystorePasswordDialog
+} from "./SetKeystorePasswordDialog";
 
 type Props = {
   projectId: string;
@@ -55,23 +73,47 @@ type Props = {
 const PAGE_SIZE = 25;
 
 export const InstallationsTab = ({ projectId }: Props) => {
-  const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const [page, setPage] = useState(1);
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter, 300);
 
+  const canRescanInstallations = useCanRescanPkiInstallations();
+
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "editInstallation",
-    "deleteInstallation"
+    "deleteInstallation",
+    "setKeystorePassword"
   ] as const);
 
-  const { data, isPending } = useListPkiInstallations({
-    projectId,
-    offset: (page - 1) * PAGE_SIZE,
-    limit: PAGE_SIZE,
-    search: debouncedSearch || undefined
-  });
+  const [pendingRescan, setPendingRescan] = useState<{
+    installationId: string;
+    previousCheckedAt?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!pendingRescan) return undefined;
+    const timeout = setTimeout(() => setPendingRescan(null), RESCAN_POLL_TIMEOUT_MS);
+    return () => clearTimeout(timeout);
+  }, [pendingRescan]);
+
+  const { data, isPending } = useListPkiInstallations(
+    {
+      projectId,
+      offset: (page - 1) * PAGE_SIZE,
+      limit: PAGE_SIZE,
+      search: debouncedSearch || undefined
+    },
+    { refetchInterval: pendingRescan ? RESCAN_POLL_INTERVAL_MS : false }
+  );
+
+  useEffect(() => {
+    if (!pendingRescan) return;
+    const rescanned = data?.installations.find((item) => item.id === pendingRescan.installationId);
+    if (rescanned && rescanned.metadata?.lastCheckedAt !== pendingRescan.previousCheckedAt) {
+      setPendingRescan(null);
+    }
+  }, [data, pendingRescan]);
 
   useEffect(() => {
     setPage(1);
@@ -93,7 +135,8 @@ export const InstallationsTab = ({ projectId }: Props) => {
       <CardHeader>
         <CardTitle>Installations</CardTitle>
         <CardDescription>
-          Every place a certificate was found during a scan, identified by its host and port.
+          Every place a certificate was found during a scan, identified by its host and its port,
+          file path or certificate store.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -105,7 +148,7 @@ export const InstallationsTab = ({ projectId }: Props) => {
             <InputGroupInput
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
-              placeholder="Search by name, IP, or domain…"
+              placeholder="Search by name, host, IP, domain, or path…"
             />
           </InputGroup>
         </div>
@@ -142,23 +185,47 @@ export const InstallationsTab = ({ projectId }: Props) => {
               </TableHeader>
               <TableBody>
                 {installations.map((installation) => (
-                  <TableRow
-                    key={installation.id}
-                    className="cursor-pointer"
-                    onClick={() =>
-                      navigate({
-                        to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery/installations/$installationId",
-                        params: {
-                          orgId: currentOrg.id,
-                          projectId,
-                          installationId: installation.id
-                        }
-                      })
-                    }
-                  >
-                    <TableCell>{installation.name || getEndpoint(installation)}</TableCell>
-                    <TableCell>
-                      {installation.primaryCertName || <span className="text-accent">—</span>}
+                  <TableRow key={installation.id} linked>
+                    <TableCell className="max-w-96">
+                      <div className="flex items-center gap-2">
+                        <DiscoveryTypeIcon
+                          type={getInstallationDiscoveryType(installation)}
+                          className="size-4 shrink-0"
+                        />
+                        <RowLink
+                          {...getInstancePinningLink(
+                            currentProject.orgId,
+                            currentProject,
+                            `discovery/installations/${installation.id}`
+                          )!}
+                          className="min-w-0"
+                          title={installation.name || getEndpoint(installation)}
+                        >
+                          {installation.name || getEndpoint(installation)}
+                        </RowLink>
+                        {getKeystoreStatusBadge(installation)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-56">
+                      {installation.primaryCertName ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Link
+                              {...getInstancePinningLink(
+                                currentProject.orgId,
+                                currentProject,
+                                `discovery/installations/${installation.id}`
+                              )!}
+                              className="block truncate"
+                            >
+                              {installation.primaryCertName}
+                            </Link>
+                          </TooltipTrigger>
+                          <TooltipContent>{installation.primaryCertName}</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <span className="text-accent">—</span>
+                      )}
                     </TableCell>
                     <TableCell>{getGatewayLabel(installation) || "N/A"}</TableCell>
                     <TableCell>
@@ -167,7 +234,7 @@ export const InstallationsTab = ({ projectId }: Props) => {
                     <TableCell>
                       {format(new Date(installation.lastSeenAt), "MMM dd, yyyy HH:mm")}
                     </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableCell data-row-interactive>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton variant="ghost" size="xs">
@@ -188,6 +255,16 @@ export const InstallationsTab = ({ projectId }: Props) => {
                               </DropdownMenuItem>
                             )}
                           </ProjectPermissionCan>
+                          {canSetKeystorePassword(installation) && (
+                            <DropdownMenuItem
+                              isDisabled={!canRescanInstallations}
+                              onClick={() => handlePopUpOpen("setKeystorePassword", installation)}
+                            >
+                              {installation.hasKeystorePassword
+                                ? "Change Password"
+                                : "Set Password"}
+                            </DropdownMenuItem>
+                          )}
                           <ProjectPermissionCan
                             I={ProjectPermissionPkiCertificateInstallationActions.Delete}
                             a={ProjectPermissionSub.PkiCertificateInstallations}
@@ -229,6 +306,22 @@ export const InstallationsTab = ({ projectId }: Props) => {
         onClose={() => handlePopUpClose("editInstallation")}
         projectId={projectId}
         installation={popUp.editInstallation.data as TPkiInstallation | undefined}
+      />
+
+      <SetKeystorePasswordDialog
+        isOpen={popUp.setKeystorePassword.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("setKeystorePassword", isOpen)}
+        projectId={projectId}
+        installation={popUp.setKeystorePassword.data as TPkiInstallation | undefined}
+        onSaved={() => {
+          const saved = popUp.setKeystorePassword.data as TPkiInstallation | undefined;
+          if (saved) {
+            setPendingRescan({
+              installationId: saved.id,
+              previousCheckedAt: saved.metadata?.lastCheckedAt
+            });
+          }
+        }}
       />
 
       <DeleteInstallationModal

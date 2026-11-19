@@ -2,11 +2,12 @@ import { ForbiddenError } from "@casl/ability";
 import { AxiosError, AxiosRequestConfig } from "axios";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionAppConnectionActions,
   OrgPermissionGatewayActions,
@@ -37,8 +38,6 @@ import {
   signGitHubAppJwt
 } from "@app/services/app-connection/github/github-connection-fns";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TGitHubAppDALFactory } from "./github-app-dal";
@@ -55,9 +54,9 @@ import {
 type TGitHubAppServiceFactoryDep = {
   gitHubAppDAL: TGitHubAppDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
@@ -73,7 +72,7 @@ export type TGitHubAppServiceFactory = ReturnType<typeof gitHubAppServiceFactory
 export const gitHubAppServiceFactory = ({
   gitHubAppDAL,
   permissionService,
-  kmsService,
+  kmsDataKeyService,
   keyStore,
   licenseService,
   gatewayV2Service,
@@ -125,7 +124,7 @@ export const gitHubAppServiceFactory = ({
   // GitHub Enterprise Server) isn't directly reachable from the Infisical backend.
   const assertGatewayUsable = async (gatewayId: string, orgPermission: OrgServiceActor) => {
     const plan = await licenseService.getPlan(orgPermission.orgId);
-    if (!plan.gateway) {
+    if (!plan.has(PlanFeature.Gateway)) {
       throw new BadRequestError({
         message:
           "Your current plan does not support gateway usage with app connections. Please upgrade your plan or contact Infisical Sales for assistance."
@@ -318,7 +317,7 @@ export const gitHubAppServiceFactory = ({
     try {
       credentials = await resolveGitHubAppCredentials(
         { gitHubAppId: id, orgId: orgPermission.orgId },
-        { gitHubAppDAL, kmsService }
+        { gitHubAppDAL, kmsDataKeyService }
       );
     } catch {
       // App missing or credentials unreadable — the transaction below still performs (or rejects)
@@ -464,7 +463,14 @@ export const gitHubAppServiceFactory = ({
         secrets: "write",
         environments: "write",
         actions: "read",
-        organization_secrets: "write"
+        organization_secrets: "write",
+        dependabot_secrets: "write",
+        organization_dependabot_secrets: "write",
+        // GitHub Enterprise Server has no Codespaces, so these permissions do not exist there
+        ...(instanceType !== "server" && {
+          codespaces_secrets: "write",
+          organization_codespaces_secrets: "write"
+        })
       },
       default_events: [] as string[]
     };
@@ -607,7 +613,7 @@ export const gitHubAppServiceFactory = ({
         }
         codeExchanged = true;
 
-        const { encryptor } = await kmsService.createCipherPairWithDataKey(
+        const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
           projectId ? { type: KmsDataKey.SecretManager, projectId } : { type: KmsDataKey.Organization, orgId }
         );
 

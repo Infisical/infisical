@@ -2,7 +2,8 @@ export enum CertStatus {
   ACTIVE = "active",
   RENEWED = "renewed",
   EXPIRED = "expired",
-  REVOKED = "revoked"
+  REVOKED = "revoked",
+  DELETED = "deleted"
 }
 
 export enum CertKeyAlgorithm {
@@ -28,6 +29,10 @@ export enum CrlReason {
   // REMOVE_FROM_CRL = "REMOVE_FROM_CRL",
   PRIVILEGE_WITHDRAWN = "PRIVILEGE_WITHDRAWN",
   A_A_COMPROMISE = "A_A_COMPROMISE"
+}
+
+export enum CertificateRevocationSource {
+  MicrosoftIntune = "microsoft-intune"
 }
 
 export enum CertKeyUsage {

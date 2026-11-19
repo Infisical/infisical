@@ -1,11 +1,10 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus } from "@app/db/schemas";
+import { PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
@@ -16,14 +15,15 @@ import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@ap
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { matchesAllowedEmailDomain } from "@app/lib/validator";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { ActorType } from "@app/services/auth/auth-type";
 import {
   filterRolesNeedingPrivilegeBoundary,
   resolveMembershipRoleSlugs
 } from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { MAX_NEW_MEMBERS_PER_INVITE, TOrgInviteQuota } from "@app/services/org/org-invite-quota";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
@@ -40,11 +40,12 @@ type TOrgMembershipUserScopeFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage">;
+  licenseService: TLicenseService;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find" | "getUserById">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
+  orgInviteQuota: Pick<TOrgInviteQuota, "admit" | "getSeatPlan" | "assertSeatsForInvites">;
 };
 
 export const newOrgMembershipUserFactory = ({
@@ -57,7 +58,8 @@ export const newOrgMembershipUserFactory = ({
   membershipUserDAL,
   emailDomainDAL,
   oidcConfigDAL,
-  samlConfigDAL
+  samlConfigDAL,
+  orgInviteQuota
 }: TOrgMembershipUserScopeFactoryDep): TMembershipUserScopeFactory => {
   const getScopeField: TMembershipUserScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Organization) {
@@ -96,7 +98,8 @@ export const newOrgMembershipUserFactory = ({
 
   const onCreateMembershipUserGuard: TMembershipUserScopeFactory["onCreateMembershipUserGuard"] = async (
     dto,
-    newMembers
+    newMembers,
+    newUserEmails
   ) => {
     const { permission } = await permissionService.getOrgPermission({
       actor: dto.permission.type,
@@ -129,10 +132,10 @@ export const newOrgMembershipUserFactory = ({
       });
     }
 
-    const identityLimit = getEnforcedIdentityLimit(await licenseService.getPlan(dto.permission.orgId));
-    if (identityLimit) {
-      const { identitiesUsed } = await licenseService.getOrgSeatUsage(dto.permission.orgId);
-      if (identitiesUsed >= identityLimit) {
+    const plan = await licenseService.getPlan(dto.permission.orgId);
+    if (plan.isLimited(PlanLimit.Identities)) {
+      const { identitiesUsed } = await licenseService.getSeatUsage(dto.permission.orgId);
+      if (plan.exceeds(PlanLimit.Identities, identitiesUsed)) {
         throw new BadRequestError({
           name: "InviteUser",
           message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
@@ -144,7 +147,10 @@ export const newOrgMembershipUserFactory = ({
       orgDAL.findById(dto.permission.orgId)
     );
     if (org?.authEnforced) {
-      const invitedEmails = newMembers.map((el) => el.email).filter((email): email is string => Boolean(email));
+      const invitedEmails = [
+        ...newMembers.map((el) => el.email).filter((email): email is string => Boolean(email)),
+        ...newUserEmails
+      ];
 
       // The invited address must belong to a verified org domain — anything else could never
       // complete the enforced SSO login, leaving a dead invitation.
@@ -192,16 +198,41 @@ export const newOrgMembershipUserFactory = ({
         },
         scopeOrgId: org.rootOrgId
       });
-      if (rootOrgMembership.length !== newMembers.length) {
-        const emails = newMembers
-          .filter((user) => !rootOrgMembership.find((i) => i.actorUserId === user.id))
-          .map((el) => el.email)
-          .join(",");
+      if (rootOrgMembership.length !== newMembers.length || newUserEmails.length) {
+        const emails = [
+          ...newMembers
+            .filter((user) => !rootOrgMembership.find((i) => i.actorUserId === user.id))
+            .map((el) => el.email),
+          ...newUserEmails
+        ].join(",");
         throw new BadRequestError({
           message: `Users with email ${emails}  doesn't have membership in root organization`
         });
       }
+    } else if (newMembers.length + newUserEmails.length > MAX_NEW_MEMBERS_PER_INVITE) {
+      throw new BadRequestError({
+        name: "InviteUser",
+        message: `You can invite up to ${MAX_NEW_MEMBERS_PER_INVITE} new members at a time.`
+      });
     }
+  };
+
+  const onCreateMembershipReserve: TMembershipUserScopeFactory["onCreateMembershipReserve"] = async (
+    dto,
+    newMemberCount
+  ) => {
+    const org = await requestMemoize(requestMemoKeys.orgFindById(dto.permission.orgId), () =>
+      orgDAL.findById(dto.permission.orgId)
+    );
+    if (org.rootOrgId) return undefined;
+
+    const seatPlan = await orgInviteQuota.getSeatPlan(org.id);
+    const { release } = await orgInviteQuota.admit(org.id, newMemberCount);
+    return {
+      release,
+      checkInTransaction: (tx) =>
+        orgInviteQuota.assertSeatsForInvites({ orgId: org.id, plan: seatPlan, count: newMemberCount }, tx)
+    };
   };
 
   const onCreateMembershipComplete: TMembershipUserScopeFactory["onCreateMembershipComplete"] = async (
@@ -453,6 +484,7 @@ export const newOrgMembershipUserFactory = ({
 
   return {
     onCreateMembershipUserGuard,
+    onCreateMembershipReserve,
     onCreateMembershipComplete,
     onUpdateMembershipUserGuard,
     onDeleteMembershipUserGuard,

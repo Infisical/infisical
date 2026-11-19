@@ -21,12 +21,13 @@ export const SecretApprovalRequestsSecretsV2Schema = z.object({
   metadata: z.unknown().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  requestId: z.string().uuid(),
+  requestId: z.string().uuid().nullable().optional(),
   op: z.string(),
   secretId: z.string().uuid().nullable().optional(),
   secretVersion: z.string().uuid().nullable().optional(),
   secretMetadata: z.unknown().nullable().optional(),
-  internalMetadata: z.unknown().nullable().optional()
+  internalMetadata: z.unknown().nullable().optional(),
+  secretChangeId: z.string().uuid().nullable().optional()
 });
 
 export type TSecretApprovalRequestsSecretsV2 = z.infer<typeof SecretApprovalRequestsSecretsV2Schema>;

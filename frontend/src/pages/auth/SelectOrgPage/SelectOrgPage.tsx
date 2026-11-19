@@ -8,9 +8,9 @@ import {
   useRef,
   useState
 } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useRouteContext, useRouter, useSearch } from "@tanstack/react-router";
+import axios from "axios";
 import { addSeconds, format, formatISO } from "date-fns";
 import { ArrowRight, ChevronRight, Search } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -19,8 +19,8 @@ import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { ContentLoader, Spinner } from "@app/components/v2";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -31,12 +31,15 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  PageLoader,
   ScrollableContent,
+  Spinner,
   VerificationCodeHeader
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { SessionStorageKeys } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { getApiErrorMessage } from "@app/helpers/errors";
 import { useToggle } from "@app/hooks";
 import {
   TOrgWithSubOrgs,
@@ -131,7 +134,8 @@ export const SelectOrgPage = () => {
     org_id: orgId,
     callback_port: callbackPort,
     is_admin_login: isBreakglassRoute,
-    mfa_method: mfaMethodFromSearch
+    mfa_method: mfaMethodFromSearch,
+    redirect_to: redirectTo
   } = search;
 
   const { data: orgs, isPending: orgsLoading } = useGetOrganizationsWithSubOrgs();
@@ -218,7 +222,11 @@ export const SelectOrgPage = () => {
   }, [selectedRootOrg, searchTerm]);
 
   // For sub-orgs, inherit the root org's SSO settings but override the ID
-  const handleSelectOrganization = async (org: TOrgWithSubOrgs, subOrgId?: string) => {
+  const handleSelectOrganization = async (
+    org: TOrgWithSubOrgs,
+    subOrgId?: string,
+    { needsFactorSetup }: { needsFactorSetup?: boolean } = {}
+  ) => {
     const targetOrgId = subOrgId || org.id;
     const canBypassOrgAuth = org.bypassOrgAuthEnabled && isBreakglassRoute;
 
@@ -250,13 +258,13 @@ export const SelectOrgPage = () => {
       token = result.token;
       isMfaEnabled = result.isMfaEnabled;
       mfaMethod = result.mfaMethod;
-    } catch (error: any) {
-      if (error?.response?.data?.error === "SmtpError") {
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.data?.error === "SmtpError") {
         // Global MutationCache.onError already showed the SMTP error toast — just log out silently.
         await handleLogout();
         return;
       }
-      const message = error?.response?.data?.message || "Failed to select organization.";
+      const message = getApiErrorMessage(error) || "Failed to select organization.";
       createNotification({ text: message, type: "error" });
       return;
     }
@@ -303,7 +311,13 @@ export const SelectOrgPage = () => {
     } else {
       setAuthToken(token);
       createNotification({ text: "Successfully logged in", type: "success" });
-      navigateUserToOrg({ navigate, organizationId: targetOrgId });
+      if (needsFactorSetup) {
+        navigate({ to: "/personal-settings", search: { selectedTab: "authentication" } });
+      } else if (redirectTo?.startsWith(`/organizations/${targetOrgId}/`)) {
+        navigate({ href: redirectTo });
+      } else {
+        navigateUserToOrg({ navigate, organizationId: targetOrgId });
+      }
     }
   };
 
@@ -318,7 +332,6 @@ export const SelectOrgPage = () => {
   }, [autoSelectErrorMessage]);
 
   // MFA challenge handed off by beforeLoad's auto-select
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const rootOrg = orgs?.find((o) => o.id === orgId);
     const subOrgParent = rootOrg
@@ -385,7 +398,7 @@ export const SelectOrgPage = () => {
             {/* While searching, surface matching sub-orgs inline so they stay discoverable */}
             {isSearching && org.subOrganizations.length > 0 && (
               <div className="ml-4 flex flex-col gap-3 border-l border-border pl-4">
-                <p className="px-1 pt-1 font-jetbrains-mono text-xs tracking-widest text-muted uppercase">
+                <p className="px-1 pt-1 font-mono text-xs tracking-widest text-muted uppercase">
                   Sub-organizations
                 </p>
                 {org.subOrganizations.map((sub) => (
@@ -416,7 +429,7 @@ export const SelectOrgPage = () => {
           joinedAt={selectedRootOrg.userJoinedAt}
           onClick={() => handleSelectOrganization(selectedRootOrg)}
         />
-        <p className="px-1 pt-1 font-jetbrains-mono text-xs tracking-widest text-muted uppercase">
+        <p className="px-1 pt-1 font-mono text-xs tracking-widest text-muted uppercase">
           Sub-organizations
         </p>
         {filteredSubOrgs.length === 0 ? (
@@ -437,28 +450,34 @@ export const SelectOrgPage = () => {
 
   if (userLoading || !user) {
     return (
-      <div className="h-screen w-screen bg-page">
-        <ContentLoader />
-      </div>
+      <>
+        <PageTitle title={t("page-titles.select-organization")} />
+        <div className="h-dvh w-screen bg-page">
+          <PageLoader />
+        </div>
+      </>
     );
   }
 
   if (shouldShowMfa) {
     return (
       <>
-        <Helmet>
-          <title>{t("common.head-title", { title: t("login.title") })}</title>
-          <link rel="icon" href="/infisical.ico" />
-          <meta property="og:image" content="/images/message.png" />
-          <meta property="og:title" content={t("login.og-title") ?? ""} />
-          <meta name="og:description" content={t("login.og-description") ?? ""} />
-        </Helmet>
+        <PageTitle title={t("page-titles.select-organization")} />
+        <link rel="icon" href="/infisical.ico" />
+        <meta property="og:image" content="/images/message.png" />
+        <meta property="og:title" content={t("login.og-title") ?? ""} />
+        <meta name="og:description" content={t("login.og-description") ?? ""} />
         <Mfa
           email={user.email as string}
-          successCallback={() => {
+          successCallback={(options) => {
             if (mfaOrgInfo.current) {
-              handleSelectOrganization(mfaOrgInfo.current.rootOrg, mfaOrgInfo.current.subOrgId);
+              return handleSelectOrganization(
+                mfaOrgInfo.current.rootOrg,
+                mfaOrgInfo.current.subOrgId,
+                options
+              );
             }
+            return undefined;
           }}
           method={requiredMfaMethod as MfaMethod}
           onChangeAccount={handleLogout}
@@ -469,13 +488,11 @@ export const SelectOrgPage = () => {
 
   return (
     <AuthPageLayout variant="focused" showFooter={false}>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("login.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t("login.og-title") ?? ""} />
-        <meta name="og:description" content={t("login.og-description") ?? ""} />
-      </Helmet>
+      <PageTitle title={t("page-titles.select-organization")} />
+      <link rel="icon" href="/infisical.ico" />
+      <meta property="og:image" content="/images/message.png" />
+      <meta property="og:title" content={t("login.og-title") ?? ""} />
+      <meta name="og:description" content={t("login.og-description") ?? ""} />
       <AuthPagePanel>
         <VerificationCodeHeader
           title="Choose your organization as"

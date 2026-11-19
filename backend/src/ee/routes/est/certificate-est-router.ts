@@ -102,14 +102,10 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
     }
 
     const params = (req.params as { identifier?: string; applicationId?: string; profileId?: string }) ?? {};
-    const isAppScoped = matchedRoute.startsWith("/applications/");
+    const { applicationId, profileId } = params;
 
     let estConfig;
-    if (isAppScoped) {
-      const { applicationId, profileId } = params;
-      if (!applicationId || !profileId) {
-        throw new NotFoundError({ message: "Certificate profile not found" });
-      }
+    if (applicationId && profileId) {
       estConfig = await server.services.certificateProfile.getEstConfigurationByProfile({
         profileId,
         applicationId,
@@ -193,7 +189,8 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
         return server.services.certificateEstV3.simpleEnrollByProfile({
           csr: req.body,
           profileId: identifier,
-          sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string
+          sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string,
+          auditLogInfo: req.auditLogInfo
         });
       }
       return server.services.certificateEst.simpleEnroll({
@@ -230,7 +227,8 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
         return server.services.certificateEstV3.simpleReenrollByProfile({
           csr: req.body,
           profileId: identifier,
-          sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string
+          sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string,
+          auditLogInfo: req.auditLogInfo
         });
       }
       return server.services.certificateEst.simpleReenroll({
@@ -299,7 +297,8 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
         csr: req.body,
         profileId,
         applicationId,
-        sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string
+        sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string,
+        auditLogInfo: req.auditLogInfo
       });
     }
   });
@@ -324,7 +323,8 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
         csr: req.body,
         profileId,
         applicationId,
-        sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string
+        sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string,
+        auditLogInfo: req.auditLogInfo
       });
     }
   });

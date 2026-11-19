@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useParams } from "@tanstack/react-router";
 import { HelpCircleIcon, InfoIcon } from "lucide-react";
 import { z } from "zod";
 
@@ -14,13 +13,13 @@ import {
   AlertDescription,
   Button,
   Checkbox,
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   GatewayPicker,
   Input,
   Select,
@@ -52,7 +51,7 @@ import {
   superRefineKubernetesConnectionFields,
   trustedIpsSchema
 } from "@app/helpers/identityAuthSchemas";
-import { useScopeVariant } from "@app/hooks";
+import { useRouteProjectId, useScopeVariant } from "@app/hooks";
 import {
   useAddIdentityKubernetesAuth,
   useGetIdentityKubernetesAuth,
@@ -148,9 +147,7 @@ export const IdentityKubernetesAuthForm = ({
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
-  const { projectId } = useParams({
-    strict: false
-  });
+  const projectId = useRouteProjectId();
   const scopeVariant = useScopeVariant();
   const { mutateAsync: addMutateAsync } = useAddIdentityKubernetesAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityKubernetesAuth();
@@ -436,12 +433,14 @@ export const IdentityKubernetesAuthForm = ({
     };
 
     if (data) {
-      // a blank field can only mean "clear" when the stored JWT was readable and
-      // prefilled; template-sourced JWTs read back as "" so blank must keep them, and
-      // removing one takes the explicit checkbox
-      let tokenReviewerJwtUpdate: string | null | undefined =
-        tokenReviewerJwt || (data.tokenReviewerJwt ? null : undefined);
-      if (removeTemplateSourcedJwt) {
+      // the stored JWT reads back as "", so blank keeps it; removing it takes the checkbox.
+      // gateway mode never sends it, so it is dropped there instead of blocking the connection change
+      let tokenReviewerJwtUpdate: string | null | undefined = tokenReviewerJwt || undefined;
+      if (
+        removeTemplateSourcedJwt ||
+        (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
+          data.hasTokenReviewerJwt)
+      ) {
         tokenReviewerJwtUpdate = null;
       }
       await updateMutateAsync(
@@ -480,14 +479,16 @@ export const IdentityKubernetesAuthForm = ({
   };
 
   const tokenReviewMode = watch("tokenReviewMode");
+  const isGatewayMode = tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway;
   const isRemovingTemplateJwt = watch("removeTemplateSourcedJwt");
   const hasTemplateSourcedJwt = Boolean(data?.isTokenReviewerJwtTemplateSourced);
+  const hasStoredJwt = hasTemplateSourcedJwt || Boolean(data?.hasTokenReviewerJwt);
   const templateDisabledClass = scope === "template" ? "opacity-55" : "";
 
   let tokenReviewerJwtPlaceholder = "eyJhbGciOiJSUzI1NiIs...";
   if (scope === "template") {
     tokenReviewerJwtPlaceholder = "Defined in template";
-  } else if (hasTemplateSourcedJwt) {
+  } else if (hasStoredJwt) {
     tokenReviewerJwtPlaceholder = "Leave blank to keep the stored JWT";
   }
 
@@ -548,20 +549,20 @@ export const IdentityKubernetesAuthForm = ({
                 render={({ field: { onChange }, fieldState: { error } }) => (
                   <Field>
                     <FieldLabel htmlFor="kubernetes-configuration">Configuration</FieldLabel>
-                    <FilterableSelect<ConfigurationOption>
-                      inputId="kubernetes-configuration"
+                    <Combobox<ConfigurationOption>
+                      id="kubernetes-configuration"
                       value={selectedConfiguration}
                       options={configurationOptions}
-                      groupBy="group"
+                      includeMissingSelectedOptions={false}
+                      getOptionGroup={(option) => option.group}
                       getOptionLabel={(option) => option.label}
                       getOptionValue={(option) => option.value}
                       placeholder="Select or search configurations..."
+                      searchAriaLabel="Search configurations"
                       isLoading={isTemplatesLoading}
                       isError={Boolean(error || errors.templateId)}
-                      onChange={(option) => {
-                        const selectedOption = option as ConfigurationOption | null;
-                        if (!selectedOption) return;
-
+                      isClearable={false}
+                      onValueChange={(selectedOption) => {
                         if (selectedOption.value === "custom") {
                           onChange("custom");
                           setValue("templateId", "");
@@ -795,7 +796,12 @@ export const IdentityKubernetesAuthForm = ({
                 )}
               />
             )}
-            {scope === "custom" && hasTemplateSourcedJwt && (
+            {scope === "custom" && hasStoredJwt && isGatewayMode && (
+              <FieldDescription>
+                Gateway mode does not use the stored token reviewer JWT, so it is removed on save.
+              </FieldDescription>
+            )}
+            {scope === "custom" && hasStoredJwt && !isGatewayMode && (
               <Controller
                 control={control}
                 name="removeTemplateSourcedJwt"
@@ -813,15 +819,16 @@ export const IdentityKubernetesAuthForm = ({
                     />
                     <FieldContent>
                       <FieldLabel htmlFor="removeTemplateSourcedJwt" className="cursor-pointer">
-                        Remove template-sourced token reviewer JWT
+                        {hasTemplateSourcedJwt
+                          ? "Remove template-sourced token reviewer JWT"
+                          : "Remove stored token reviewer JWT"}
                       </FieldLabel>
                       <FieldDescription>
-                        This identity stores a write-only token reviewer JWT copied from its auth
-                        template. Its connection settings cannot be changed while the JWT is kept.
-                        Check to remove it on save
-                        {tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
-                          ? ", or enter a new JWT above to replace it."
-                          : "."}
+                        {hasTemplateSourcedJwt
+                          ? "This identity stores a write-only token reviewer JWT copied from its auth template."
+                          : "This identity stores a write-only token reviewer JWT."}{" "}
+                        Its connection settings cannot be changed while the JWT is kept. Check to
+                        remove it on save, or enter a new JWT above to replace it.
                       </FieldDescription>
                     </FieldContent>
                   </Field>

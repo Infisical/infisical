@@ -1,24 +1,40 @@
+import { InstanceType } from "@app/domains/platform/license/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+
 import { assertCertificateAuthorityQuota, TCertificateAuthorityQuotaDeps } from "./certificate-authority-quota-fns";
 
 const buildDeps = ({
   maxCas,
   maxInternalCas,
   casUsed = 0,
-  internalCasUsed = 0
+  internalCasUsed = 0,
+  instanceType = InstanceType.OnPrem,
+  countedOrgIds = []
 }: {
   maxCas: number | null;
   maxInternalCas: number | null;
   casUsed?: number;
   internalCasUsed?: number;
-}) =>
-  ({
+  instanceType?: InstanceType;
+  countedOrgIds?: (string | null)[];
+}) => {
+  const licenseService = new FakeLicenseService().setPlan("org-1", { maxCas, maxInternalCas });
+  licenseService.instance = { ...licenseService.instance, instanceType };
+  return {
     projectDAL: { findById: async () => ({ id: "project-1", orgId: "org-1" }) },
-    licenseService: { getPlan: async () => ({ maxCas, maxInternalCas }) },
+    licenseService,
     certificateAuthorityDAL: {
-      countCasByOrgId: async () => casUsed,
-      countInternalCasByOrgId: async () => internalCasUsed
+      countCasByOrgId: async (orgId: string | null) => {
+        countedOrgIds.push(orgId);
+        return casUsed;
+      },
+      countInternalCasByOrgId: async (orgId: string | null) => {
+        countedOrgIds.push(orgId);
+        return internalCasUsed;
+      }
     }
-  }) as unknown as TCertificateAuthorityQuotaDeps;
+  } as unknown as TCertificateAuthorityQuotaDeps;
+};
 
 const assertQuota = (deps: TCertificateAuthorityQuotaDeps, isInternal = true) =>
   assertCertificateAuthorityQuota({ projectId: "project-1", isInternal, deps });
@@ -65,5 +81,24 @@ describe("assertCertificateAuthorityQuota", () => {
     await expect(
       assertQuota(buildDeps({ maxCas: 10, maxInternalCas: 3, casUsed: 3, internalCasUsed: 3 }), false)
     ).resolves.toBeUndefined();
+  });
+
+  test.each([InstanceType.EnterpriseOnPrem, InstanceType.EnterpriseOnPremOffline])(
+    "counts the whole instance under a self-hosted license (%s)",
+    async (instanceType) => {
+      const countedOrgIds: (string | null)[] = [];
+      await expect(
+        assertQuota(buildDeps({ maxCas: 10, maxInternalCas: 3, internalCasUsed: 3, instanceType, countedOrgIds }))
+      ).rejects.toThrow("(3 of 3 internal certificate authorities across this instance)");
+      expect(countedOrgIds).toEqual([null, null]);
+    }
+  );
+
+  test.each([InstanceType.Cloud, InstanceType.OnPrem])("counts the organization tree on %s", async (instanceType) => {
+    const countedOrgIds: (string | null)[] = [];
+    await expect(
+      assertQuota(buildDeps({ maxCas: 1, maxInternalCas: null, casUsed: 1, instanceType, countedOrgIds }))
+    ).rejects.toThrow("(1 of 1 certificate authorities)");
+    expect(countedOrgIds).toEqual(["org-1"]);
   });
 });

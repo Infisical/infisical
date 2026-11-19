@@ -15,6 +15,6 @@ export const AllowedEncryptionKeyAlgorithms = z.enum([
 ] as [string, ...string[]]).options;
 
 export type TSymmetricEncryptionFns = {
-  encrypt: (text: Buffer, key: Buffer) => Buffer;
-  decrypt: (blob: Buffer, key: Buffer) => Buffer;
+  encrypt: (text: Buffer, key: Buffer) => Buffer<ArrayBuffer>;
+  decrypt: (blob: Buffer, key: Buffer) => Buffer<ArrayBuffer>;
 };

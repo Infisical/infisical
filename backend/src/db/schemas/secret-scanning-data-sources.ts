@@ -22,7 +22,10 @@ export const SecretScanningDataSourcesSchema = z.object({
   projectId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  isDisconnected: z.boolean().default(false)
+  isDisconnected: z.boolean().default(false),
+  isHistoricalScanEnabled: z.boolean().default(true),
+  isScanNewCommitsEnabled: z.boolean().default(true),
+  isDiscoveryEnabled: z.boolean().default(true)
 });
 
 export type TSecretScanningDataSources = z.infer<typeof SecretScanningDataSourcesSchema>;

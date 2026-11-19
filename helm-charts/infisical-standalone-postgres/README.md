@@ -33,7 +33,7 @@ A helm chart to deploy Infisical
 | infisical.image.imagePullSecrets | list | `[]` | Secret references for pulling the image, if needed |
 | infisical.image.pullPolicy | string | `"IfNotPresent"` | Pulls image only if not already present on the node |
 | infisical.image.repository | string | `"infisical/infisical"` | Image repository for the Infisical service |
-| infisical.image.tag | string | `"v0.93.1-postgres"` | Specific version tag of the Infisical image. View the latest version here https://hub.docker.com/r/infisical/infisical |
+| infisical.image.tag | string | `""` | Infisical image tag. Leave empty to use the chart's `appVersion`, the release this chart version was published for. Set it to pin a specific version from https://hub.docker.com/r/infisical/infisical |
 | infisical.kubeSecretRef | string | `"infisical-secrets"` | Kubernetes Secret reference containing Infisical root credentials |
 | infisical.name | string | `"infisical"` |  |
 | infisical.podAnnotations | object | `{}` | Custom annotations for Infisical pods |
@@ -41,6 +41,7 @@ A helm chart to deploy Infisical
 | infisical.replicaCount | int | `2` | Number of pod replicas for high availability |
 | infisical.resources.limits.memory | string | `"600Mi"` | Memory limit for Infisical container |
 | infisical.resources.requests.cpu | string | `"350m"` | CPU request for Infisical container |
+| infisical.rolloutOnEveryRender | bool | `true` | Adds an `updatedAt` timestamp annotation to the Deployment and pods, so every render (each `helm upgrade` or GitOps sync) rolls the pods and picks up changes to `kubeSecretRef`. Set to `false` for GitOps tools like Argo CD, and restart with `kubectl rollout restart` after changing the secret. |
 | infisical.service.annotations | object | `{}` | Custom annotations for Infisical service |
 | infisical.service.nodePort | string | `""` | Optional node port for service when using NodePort type |
 | infisical.service.type | string | `"ClusterIP"` | Service type, can be changed based on exposure needs (e.g., LoadBalancer) |

@@ -30,6 +30,7 @@ import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import { useScopeVariant } from "@app/hooks";
 import { gatewaysQueryKeys } from "@app/hooks/api";
 import { useHasCustomMigrationAvailable } from "@app/hooks/api/migration";
 import { useImportVault } from "@app/hooks/api/migration/mutations";
@@ -156,6 +157,7 @@ const MAPPING_TYPE_MENU_ITEMS = [
 ];
 
 export const VaultPlatformModal = ({ onClose }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { data: isCustomMigrationAvailable } = useHasCustomMigrationAvailable(
     ExternalMigrationProviders.Vault
   );
@@ -364,7 +366,7 @@ export const VaultPlatformModal = ({ onClose }: Props) => {
         <div className="flex items-center gap-2 pt-2">
           <Button
             type="submit"
-            variant="org"
+            variant={scopeVariant}
             isPending={isLoading || isSubmitting}
             isDisabled={!isDirty || isSubmitting || isLoading || !isValid}
           >

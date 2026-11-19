@@ -14,6 +14,7 @@ export enum NotificationType {
   IMPORT_SUCCESSFUL = "import-successful",
   IMPORT_FAILED = "import-failed",
   DIRECT_PROJECT_ACCESS_ISSUED_TO_ADMIN = "direct-project-access-issued-to-admin",
+  PAM_FOLDER_ADMIN_ACCESS_ISSUED = "pam-folder-admin-access-issued",
   PROJECT_ACCESS_REQUEST = "project-access-request",
   PROJECT_INVITATION = "project-invitation",
   SECRET_SYNC_FAILED = "secret-sync-failed",
@@ -21,11 +22,14 @@ export enum NotificationType {
   GATEWAY_HEALTH_ALERT = "gateway-health-alert",
   RELAY_HEALTH_ALERT = "relay-health-alert",
   APPROVAL_REQUIRED = "approval-required",
+  APPROVED_ACTION_FAILED = "approved-action-failed",
   PKI_ALERT_CHANNEL_FAILED = "pki-alert-channel-failed",
   CREDENTIAL_ROTATION_FAILED = "credential-rotation-failed",
   AUDIT_LOG_MIGRATION_RECOMMENDED = "audit-log-migration-recommended",
   NATIVE_INTEGRATION_DEPRECATED = "native-integration-deprecated",
-  LEGACY_PKI_DEPRECATED = "legacy-pki-deprecated"
+  LEGACY_PKI_DEPRECATED = "legacy-pki-deprecated",
+  SIGNER_REVOKE_REFUSED = "signer-revoke-refused",
+  HONEY_TOKEN_TRIGGERED = "honey-token-triggered"
 }
 
 export interface TCreateUserNotificationDTO {

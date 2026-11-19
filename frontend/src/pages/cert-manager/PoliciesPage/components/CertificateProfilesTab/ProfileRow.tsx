@@ -1,7 +1,7 @@
 /* eslint-disable no-nested-ternary */
 import { useCallback } from "react";
 import { subject } from "@casl/ability";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   CheckIcon,
   CopyIcon,
@@ -20,17 +20,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
+  RowLink,
   TableCell,
   TableRow,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useProject } from "@app/context";
 import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import { useGetInternalCaById } from "@app/hooks/api/ca/queries";
 import { useGetCertificatePolicyById } from "@app/hooks/api/certificatePolicies";
@@ -44,9 +46,7 @@ interface Props {
 }
 
 export const ProfileRow = ({ profile, onEditProfile, onCloneProfile, onDeleteProfile }: Props) => {
-  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
-  const navigate = useNavigate();
   const isInternalCa = !profile.certificateAuthority?.isExternal;
   const { data: caData } = useGetInternalCaById(isInternalCa ? (profile.caId ?? "") : "");
 
@@ -69,33 +69,19 @@ export const ProfileRow = ({ profile, onEditProfile, onCloneProfile, onDeletePro
   });
 
   return (
-    <TableRow
-      key={profile.id}
-      onClick={() =>
-        navigate({
-          to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId",
-          params: {
-            orgId: currentOrg.id,
-            projectId: currentProject.id,
-            profileId: profile.id
-          }
-        })
-      }
-    >
+    <TableRow key={profile.id} linked>
       <TableCell>
         <div className="flex items-center gap-2">
-          <Link
-            to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId"
-            params={{
-              orgId: currentOrg.id,
-              projectId: currentProject.id,
-              profileId: profile.id
-            }}
-            className="rounded-sm hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            onClick={(e) => e.stopPropagation()}
+          <RowLink
+            {...getInstancePinningLink(
+              currentProject.orgId,
+              currentProject,
+              `certificate-profiles/${profile.id}`
+            )!}
+            className="hover:underline"
           >
             {profile.slug}
-          </Link>
+          </RowLink>
           {profile.description && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -117,20 +103,19 @@ export const ProfileRow = ({ profile, onEditProfile, onCloneProfile, onDeletePro
                 profile.caId}
         </span>
       </TableCell>
-      <TableCell onClick={(e) => e.stopPropagation()}>
+      <TableCell data-row-interactive>
         <Link
-          to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies/$policyId"
-          params={{
-            orgId: currentOrg.id,
-            projectId: currentProject.id,
-            policyId: profile.certificatePolicyId
-          }}
+          {...getInstancePinningLink(
+            currentProject.orgId,
+            currentProject,
+            `certificate-policies/${profile.certificatePolicyId}`
+          )!}
           className="text-sm hover:underline"
         >
           {policyData?.name || profile.certificatePolicyId}
         </Link>
       </TableCell>
-      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+      <TableCell className="text-right" data-row-interactive>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton variant="ghost" size="xs" aria-label="Profile actions">

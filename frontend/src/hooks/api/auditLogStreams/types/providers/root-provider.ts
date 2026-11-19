@@ -11,4 +11,6 @@ export type TRootProviderLogStream = {
   updatedAt: string;
   streamMode: StreamMode;
   filters?: TAuditLogStreamFilters | null;
+  failingSince?: string | null;
+  lastDeliveryError?: string | null;
 };

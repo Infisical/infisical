@@ -22,7 +22,18 @@ const config: StorybookConfig = {
     const { renderBuiltUrl, ...experimental } = viteConfig.experimental ?? {};
     return {
       ...viteConfig,
-      experimental
+      experimental,
+      optimizeDeps: {
+        ...viteConfig.optimizeDeps,
+        // Injected by vite-plugin-node-polyfills after the dependency scan; finding them on the
+        // first page load re-bundles deps and force-reloads, which leaves Firefox's preview stuck.
+        include: [
+          ...(viteConfig.optimizeDeps?.include ?? []),
+          "vite-plugin-node-polyfills/shims/buffer",
+          "vite-plugin-node-polyfills/shims/global",
+          "vite-plugin-node-polyfills/shims/process"
+        ]
+      }
     };
   }
 };

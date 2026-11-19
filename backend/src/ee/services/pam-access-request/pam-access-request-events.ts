@@ -1,0 +1,54 @@
+import crypto from "node:crypto";
+
+import { ApprovalNotificationEvent } from "@app/services/approval-policy/approval-policy-enums";
+import { TEventInput } from "@app/services/event-outbox/event-outbox-types";
+
+export const PAM_FOLDER_RESOURCE_TYPE = "pam.folder";
+
+export enum PamAccessRequestEvent {
+  Requested = "pam.folder.access-requested",
+  Approved = "pam.folder.access-request-approved",
+  Denied = "pam.folder.access-request-denied",
+  Bypassed = "pam.folder.access-request-bypassed"
+}
+
+// A failed post-approval action has no PAM domain event; every other approval event must map to one.
+const EVENT_BY_APPROVAL_EVENT: Record<
+  Exclude<ApprovalNotificationEvent, ApprovalNotificationEvent.ApprovedActionFailed>,
+  PamAccessRequestEvent
+> = {
+  [ApprovalNotificationEvent.Requested]: PamAccessRequestEvent.Requested,
+  [ApprovalNotificationEvent.Approved]: PamAccessRequestEvent.Approved,
+  [ApprovalNotificationEvent.Rejected]: PamAccessRequestEvent.Denied,
+  [ApprovalNotificationEvent.Bypassed]: PamAccessRequestEvent.Bypassed,
+  [ApprovalNotificationEvent.AutoApproved]: PamAccessRequestEvent.Approved
+};
+
+export const buildPamAccessRequestEvent = ({
+  event,
+  requestId,
+  orgId,
+  projectId,
+  folderId
+}: {
+  event: ApprovalNotificationEvent;
+  requestId: string;
+  orgId: string;
+  projectId: string;
+  folderId: string;
+}): TEventInput | null => {
+  if (event === ApprovalNotificationEvent.ApprovedActionFailed) return null;
+  const type = EVENT_BY_APPROVAL_EVENT[event];
+
+  return {
+    id: crypto.randomUUID(),
+    type,
+    data: {
+      orgId,
+      projectId,
+      resourceType: PAM_FOLDER_RESOURCE_TYPE,
+      resourceId: folderId,
+      targetIds: [requestId]
+    }
+  };
+};

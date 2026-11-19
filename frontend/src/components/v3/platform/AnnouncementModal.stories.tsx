@@ -56,7 +56,7 @@ export const Default: Story = {
     docs: {
       description: {
         story:
-          "Side arrows sit 12px from the card and bring adjacent previews into the center. Previews use a fixed 32px offset. Only their artwork and text blur as they recede, then sharpen as they become active; card surfaces and borders stay sharp. Hover or focus a preview to move it outward another 8px and brighten it; select it to navigate. Pointer and arrow-key navigation share the transition; reduced motion disables it. The card has no footer; close it with the top-right button, Escape, or the backdrop. Long content scrolls independently of the controls."
+          "A navigation bar below the card holds Previous and Next buttons, one dot per announcement, and a step count such as 2 of 3. Next becomes Done on the last announcement and closes the modal. Selecting a dot jumps straight to that announcement. Previews use a fixed 32px offset. Only their artwork and text blur as they recede, then sharpen as they become active; card surfaces and borders stay sharp. Hover or focus a preview to move it outward another 8px and brighten it; select it to navigate. Pointer and arrow-key navigation share the transition; reduced motion disables it. Close it with Done, the top-right button, Escape, or the backdrop. Long content scrolls independently of the controls."
       }
     }
   },

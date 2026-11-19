@@ -1,1 +1,0 @@
-export { FontAwesomeSymbol } from "./FontAwesomeSymbol";

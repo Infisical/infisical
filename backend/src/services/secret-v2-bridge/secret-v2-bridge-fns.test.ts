@@ -1,10 +1,15 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { TSecretFolders } from "@app/db/schemas";
+import { SecretType, TSecretFolders } from "@app/db/schemas";
 import { ClientClosedRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
-import { buildHierarchy, expandSecretReferencesGroupedByPath, generatePaths } from "./secret-v2-bridge-fns";
+import {
+  buildHierarchy,
+  expandSecretReferencesGroupedByPath,
+  fnSecretBulkDelete,
+  generatePaths
+} from "./secret-v2-bridge-fns";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
@@ -313,5 +318,79 @@ describe("expandSecretReferencesGroupedByPath", () => {
     for (const error of errors) {
       expect(error.error).toBe(`fail:${error.path}`);
     }
+  });
+});
+
+describe("fnSecretBulkDelete", () => {
+  const emit = vi.fn().mockResolvedValue(undefined);
+
+  test("removes the reminder of every deleted shared secret, whatever the legacy repeat-days column holds", async () => {
+    const removeSecretReminder = vi.fn().mockResolvedValue(undefined);
+    const tx = { tx: "bulk-delete" } as never;
+
+    await fnSecretBulkDelete({
+      folderId: "folder-1",
+      projectId: "proj-1",
+      inputSecrets: [{ type: SecretType.Shared, secretKey: "DB_PASSWORD" }],
+      actorId: "user-1",
+      tx,
+      commitChanges: [],
+      secretDAL: {
+        deleteMany: vi.fn().mockResolvedValue([
+          { id: "secret-1", type: SecretType.Shared, reminderRepeatDays: null },
+          { id: "secret-2", type: SecretType.Personal, reminderRepeatDays: null }
+        ])
+      },
+      secretQueueService: { removeSecretReminder },
+      folderCommitService: { createCommit: vi.fn() },
+      secretVersionDAL: { findLatestVersionMany: vi.fn().mockResolvedValue({}) },
+      eventEmitter: { emit },
+      eventScope: { projectId: "proj-1", environment: "dev", secretPath: "/" }
+    } as never);
+
+    expect(removeSecretReminder).toHaveBeenCalledTimes(1);
+    expect(removeSecretReminder).toHaveBeenCalledWith({ secretId: "secret-1", projectId: "proj-1" }, tx);
+  });
+
+  // The personal override deleted alongside a shared key is one user's, not the project's.
+  test("emits secret.modified for the deleted shared secret only, in the caller's transaction", async () => {
+    const tx = { tx: "bulk-delete" } as never;
+
+    await fnSecretBulkDelete({
+      folderId: "folder-1",
+      projectId: "proj-1",
+      inputSecrets: [{ type: SecretType.Shared, secretKey: "DB_PASSWORD" }],
+      actorId: "user-1",
+      tx,
+      commitChanges: [],
+      secretDAL: {
+        deleteMany: vi.fn().mockResolvedValue([
+          { id: "secret-1", type: SecretType.Shared },
+          { id: "secret-2", type: SecretType.Personal }
+        ])
+      },
+      secretQueueService: { removeSecretReminder: vi.fn() },
+      folderCommitService: { createCommit: vi.fn() },
+      secretVersionDAL: { findLatestVersionMany: vi.fn().mockResolvedValue({}) },
+      eventEmitter: { emit },
+      eventScope: { projectId: "proj-1", environment: "dev", secretPath: "/app" }
+    } as never);
+
+    expect(emit).toHaveBeenLastCalledWith(
+      [
+        {
+          id: expect.any(String) as string,
+          type: "com.infisical.secrets.secret.modified.v1",
+          data: {
+            secretId: "secret-1",
+            projectId: "proj-1",
+            environment: "dev",
+            secretPath: "/app",
+            modificationType: "deleted"
+          }
+        }
+      ],
+      tx
+    );
   });
 });

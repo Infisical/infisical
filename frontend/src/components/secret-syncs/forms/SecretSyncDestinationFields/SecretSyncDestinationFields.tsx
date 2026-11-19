@@ -17,7 +17,10 @@ import { ChefSyncFields } from "./ChefSyncFields";
 import { CircleCISyncFields } from "./CircleCISyncFields";
 import { Cloud66SyncFields } from "./Cloud66SyncFields";
 import { CloudflarePagesSyncFields } from "./CloudflarePagesSyncFields";
+import { CloudflareSecretsStoreSyncFields } from "./CloudflareSecretsStoreSyncFields";
 import { CloudflareWorkersSyncFields } from "./CloudflareWorkersSyncFields";
+import { ConvexSyncFields } from "./ConvexSyncFields";
+import { CoolifySyncFields } from "./CoolifySyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { DaytonaSyncFields } from "./DaytonaSyncFields";
 import { DevinSyncFields } from "./DevinSyncFields";
@@ -31,6 +34,8 @@ import { HasuraCloudSyncFields } from "./HasuraCloudSyncFields";
 import { HCVaultSyncFields } from "./HCVaultSyncFields";
 import { HerokuSyncFields } from "./HerokuSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
+import { JenkinsSyncFields } from "./JenkinsSyncFields";
+import { KeeperSyncFields } from "./KeeperSyncFields";
 import { LaravelForgeSyncFields } from "./LaravelForgeSyncFields";
 import { NetlifySyncFields } from "./NetlifySyncFields";
 import { NorthflankSyncFields } from "./NorthflankSyncFields";
@@ -38,6 +43,7 @@ import { OCIVaultSyncFields } from "./OCIVaultSyncFields";
 import { OctopusDeploySyncFields } from "./OctopusDeploySyncFields";
 import { OnaSyncFields } from "./OnaSyncFields";
 import { OvhSyncFields } from "./OvhSyncFields";
+import { PortainerSyncFields } from "./PortainerSyncFields";
 import { QoverySyncFields } from "./QoverySyncFields";
 import { RailwaySyncFields } from "./RailwaySyncFields";
 import { RenderSyncFields } from "./RenderSyncFields";
@@ -105,6 +111,10 @@ export const SecretSyncDestinationFields = () => {
       return <CloudflarePagesSyncFields />;
     case SecretSync.CloudflareWorkers:
       return <CloudflareWorkersSyncFields />;
+    case SecretSync.CloudflareSecretsStore:
+      return <CloudflareSecretsStoreSyncFields />;
+    case SecretSync.Convex:
+      return <ConvexSyncFields />;
     case SecretSync.Zabbix:
       return <ZabbixSyncFields />;
     case SecretSync.Railway:
@@ -115,6 +125,8 @@ export const SecretSyncDestinationFields = () => {
       return <SupabaseSyncFields />;
     case SecretSync.Rundeck:
       return <RundeckSyncFields />;
+    case SecretSync.Portainer:
+      return <PortainerSyncFields />;
     case SecretSync.DigitalOceanAppPlatform:
       return <DigitalOceanAppPlatformSyncFields />;
     case SecretSync.Netlify:
@@ -155,8 +167,14 @@ export const SecretSyncDestinationFields = () => {
       return <Cloud66SyncFields />;
     case SecretSync.Daytona:
       return <DaytonaSyncFields />;
+    case SecretSync.Keeper:
+      return <KeeperSyncFields />;
     case SecretSync.Spacelift:
       return <SpaceliftSyncFields />;
+    case SecretSync.Jenkins:
+      return <JenkinsSyncFields />;
+    case SecretSync.Coolify:
+      return <CoolifySyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

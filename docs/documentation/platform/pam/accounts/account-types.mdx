@@ -1,0 +1,18 @@
+---
+title: "Account types"
+sidebarTitle: "Account types"
+description: "Find the setup guide for each database, server, cluster, and cloud provider that PAM supports."
+---
+
+import { CatalogBrowser } from "/snippets/CatalogBrowser.jsx";
+import { pamAccountTypes, pamAccountTypeCategories, pamAccountTypeBadges } from "/snippets/catalogs/pam-account-types.jsx";
+
+Each account type has a page that describes its connection details, its credentials, and how to connect to it. You can [connect](/documentation/platform/pam/accounts/connect) to every account type with the Infisical CLI, and the cards show which account types also open in the browser.
+
+<CatalogBrowser
+  id="pam-account-types"
+  items={pamAccountTypes}
+  categories={pamAccountTypeCategories}
+  noun="account type"
+  badges={pamAccountTypeBadges}
+/>

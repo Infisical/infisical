@@ -1,8 +1,9 @@
+import { useLayoutEffect } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, Outlet, useRouterState } from "@tanstack/react-router";
 
 import { NotificationContainer } from "@app/components/notifications";
-import { TooltipProvider } from "@app/components/v2";
+import { TooltipProvider } from "@app/components/v3";
 import {
   RootCommandMenu,
   type RootCommandMenuShell
@@ -13,14 +14,18 @@ import { TServerConfig } from "@app/hooks/api/admin/types";
 import { authKeys } from "@app/hooks/api/auth/queries";
 import { fetchAuthToken, shouldRetryAuthTokenFetch } from "@app/hooks/api/auth/refresh";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { useActiveProduct } from "@app/hooks/useActiveProduct";
 
 type TRouterContext = {
   serverConfig: TServerConfig | null;
   queryClient: QueryClient;
-  // Published by the PAM and Agent Vault layouts, whose URLs carry no $projectId. Optional because
-  // only those two branches of the tree set them; see useImplicitProjectId and useImplicitProduct.
+  // Published by the Certificate Manager, Secret Scanning, PAM and Agent Vault layouts, whose URLs carry no $projectId.
+  // Optional because only those branches of the tree set them; see useImplicitProjectId and
+  // useImplicitProduct.
   implicitProjectId?: string;
   implicitProductType?: ProjectType;
+  // Published by every product's layout and org-level pages; see useActiveProduct.
+  productType?: ProjectType;
 };
 
 const RootCommandMenuMount = () => {
@@ -48,9 +53,17 @@ const RootCommandMenuMount = () => {
 
 const RootPage = () => {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const activeProduct = useActiveProduct();
+
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    if (activeProduct) root.dataset.product = activeProduct;
+    else delete root.dataset.product;
+  }, [activeProduct]);
+
   return (
     <ThemeProvider pathname={pathname}>
-      <TooltipProvider>
+      <TooltipProvider delayDuration={700} skipDelayDuration={300}>
         <Outlet />
         <RootCommandMenuMount />
         <NotificationContainer />

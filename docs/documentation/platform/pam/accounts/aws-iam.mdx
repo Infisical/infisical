@@ -1,45 +1,26 @@
 ---
 title: "AWS IAM accounts"
 sidebarTitle: "AWS IAM"
-description: "Add and connect to AWS accounts via IAM role assumption."
+description: "Give people temporary access to AWS through an IAM role."
 ---
 
-AWS IAM accounts let you manage access to AWS through IAM role assumption. Users can open the AWS console directly or use the CLI to get temporary credentials, and every access is logged.
+An AWS IAM account lets people work in AWS as an IAM role without holding long-lived access keys. When someone launches a session, Infisical assumes the role through AWS STS and gives them temporary credentials. They can open the AWS Management Console in the browser or use the credentials with the AWS CLI.
 
-Infisical assumes the IAM role you configure directly, then returns short-lived STS credentials. Those credentials work with the AWS CLI and can also be exchanged for a federated AWS Management Console sign-in URL.
-
-<Note>
-AWS IAM accounts don't require a Gateway. Infisical communicates directly with the AWS STS API.
-</Note>
-
-## How it works
-
-When a user accesses an AWS IAM account, Infisical assumes the account's IAM role using AWS STS and returns the temporary credentials:
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Infisical
-    participant Role as IAM Role<br/>(Your AWS Account)
-    participant Console as AWS Console
-    User->>Infisical: Request AWS access
-    Infisical->>Role: AssumeRole (with ExternalId = Org ID)
-    Role-->>Infisical: Temporary credentials
-    Infisical-->>User: Return credentials (CLI)
-    Infisical->>Console: Exchange for federation URL (Console)
-    Console-->>Infisical: Signed console URL
-    Infisical-->>User: Return console URL
-```
-
-There is a single role per account. Its trust policy allows Infisical to assume it, scoped by an **External ID** set to your **Infisical Organization ID**. The External ID prevents [confused deputy attacks](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html), where another Infisical customer could otherwise trick Infisical into assuming your role.
+AWS IAM accounts don't use a [Gateway](/documentation/platform/gateways/overview), because Infisical calls AWS STS directly.
 
 ## Prerequisites
 
-Before adding the account in Infisical, create the IAM role in your AWS account with a trust policy that allows Infisical to assume it.
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
+- Permission to create IAM roles in the AWS account
+- Your Infisical organization ID, which you can copy from **Organization ID** in your organization's settings
+
+## Create an IAM role
+
+Each account assumes one IAM role. The role's trust policy lets Infisical assume the role only when Infisical sends your organization ID as the [external ID](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html), so no other Infisical customer can get Infisical to assume it.
 
 <Steps>
-  <Step title="Create the role with a trust policy">
-    Create an IAM role (e.g., `infisical-pam-readonly`) with the following trust policy. Replace `<INFISICAL_AWS_ACCOUNT_ID>` with the Infisical account ID for your region and `<YOUR_INFISICAL_ORG_ID>` with your Infisical Organization ID.
+  <Step>
+    In AWS, create an IAM role, such as `infisical-pam-readonly`, with the following trust policy:
 
     ```json
     {
@@ -47,120 +28,81 @@ Before adding the account in Infisical, create the IAM role in your AWS account 
       "Statement": [{
         "Effect": "Allow",
         "Principal": {
-          "AWS": "arn:aws:iam::<INFISICAL_AWS_ACCOUNT_ID>:root"
+          "AWS": "arn:aws:iam::<infisical-aws-account-id>:root"
         },
         "Action": "sts:AssumeRole",
         "Condition": {
           "StringEquals": {
-            "sts:ExternalId": "<YOUR_INFISICAL_ORG_ID>"
+            "sts:ExternalId": "<your-infisical-organization-id>"
           }
         }
       }]
     }
     ```
 
-    <Warning>
-      Always include the External ID condition. Without it, another Infisical customer could potentially trick Infisical into assuming your role.
-    </Warning>
+    Replace `<infisical-aws-account-id>` with the AWS account that Infisical runs in:
 
-    **Infisical AWS Account IDs:**
-
-    | Region | Account ID |
-    |--------|------------|
-    | US | `381492033652` |
-    | EU | `345594589636` |
-
-    <Note>
-      **For Dedicated Instances**: Your AWS account ID differs from the ones listed above. Contact Infisical support to obtain your dedicated AWS account ID.
-    </Note>
-    <Note>
-      **For Self-Hosted Instances**: Use the AWS account ID where your Infisical instance is deployed. This is the account that hosts your Infisical infrastructure and will be assuming the role.
-    </Note>
-
-    You can find your Infisical Organization ID under **Organization Settings**.
+    | Infisical instance | AWS account ID |
+    |--------------------|----------------|
+    | Infisical Cloud (US) | `381492033652` |
+    | Infisical Cloud (EU) | `345594589636` |
+    | Dedicated instance | Ask Infisical support for your instance's account ID |
+    | Self-hosted | The AWS account your Infisical instance runs in |
   </Step>
-  <Step title="Attach permissions to the role">
-    Attach whatever permissions policies define what this role can do in AWS. These are the permissions users receive when they access this account through Infisical.
+  <Step>
+    Attach permission policies to the role. People who access the account get exactly these permissions in AWS.
+  </Step>
+  <Step>
+    Set the role's **Maximum session duration** to cover the longest session you'll allow, as described in [Session duration](#session-duration).
   </Step>
 </Steps>
 
-## Creating an account
+## Create an account
 
 <Steps>
-  <Step title="Start adding an account">
-    Go to **Privileged Access Management → Accounts** and select **Add Account**.
+  <Step>
+    Go to **Privileged Access Management** > **Accounts** and select **Add Account**.
   </Step>
-  <Step title="Select a folder and template">
-    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select an AWS IAM [template](/documentation/platform/pam/templates/overview).
+  <Step>
+    Select the **Folder** to add the account to and an AWS IAM **Account Template**, such as the default `aws-iam` [template](/documentation/platform/pam/templates/overview), then select **Next**.
   </Step>
-  <Step title="Enter connection details">
-    | Field | Description |
-    |-------|-------------|
-    | **Name** | A descriptive name (e.g., `prod-admin-access`) |
-    | **Role ARN** | The ARN of the IAM role Infisical assumes for this account (e.g., `arn:aws:iam::123456789012:role/infisical-pam-readonly`) |
+  <Step>
+    Enter a **Name** for the account and the **Role ARN** of the role you created, such as `arn:aws:iam::123456789012:role/infisical-pam-readonly`.
   </Step>
-  <Step title="Save">
+  <Step>
     Select **Create**.
   </Step>
 </Steps>
 
-<Note>
-  To expose the same role in more than one folder, add an account in each folder pointing at the same **Role ARN**. Each account is a distinct entry that references the same underlying IAM role.
-</Note>
+To offer the same role in more than one folder, create an account with the same **Role ARN** in each folder.
 
 ## Session duration
 
-Sessions use short-lived STS credentials. The duration is bounded by the target role's **maximum session duration** in AWS (`MaxSessionDuration`), with a minimum of 15 minutes. Requesting longer than the role allows will cause AWS to reject the request, so set the role's `MaxSessionDuration` to cover the session lengths you expect.
+A session lasts for the template's maximum session duration, unless the person requests a shorter one. AWS rejects a session that's shorter than 15 minutes or longer than the role's maximum session duration, so make sure both limits allow the sessions you expect.
 
-<Info>
-  AWS Console sessions can't be terminated early. Once a federated URL is generated, the session remains valid until it expires. You can [revoke active sessions](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_revoke-sessions.html) by modifying the role's trust policy.
-</Info>
+<Warning>
+  You can't end an AWS Management Console session early. Terminating the session in Infisical doesn't sign the person out of the console, which stays signed in until the session expires. To cut off access sooner, [revoke the role's active sessions](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_revoke-sessions.html) in AWS.
+</Warning>
 
-All actions performed with the credentials are logged in [AWS CloudTrail](https://console.aws.amazon.com/cloudtrail). The session is identified by the `RoleSessionName`, which includes the user's email for attribution.
+## Connect
 
-## Connecting
+To learn how to launch a session, see [Connect to an account](/documentation/platform/pam/accounts/connect). In the browser, the session opens the AWS Management Console, signed in as the role.
 
-<Tabs>
-  <Tab title="AWS Console">
-    1. Go to **Privileged Access Management → Accounts**
-    2. Find the account and select the rocket icon (or select **Launch Session** from the menu)
-    3. Select **Connect in Browser**
-    4. You'll be taken directly to the AWS console, logged in with the role
-  </Tab>
-  <Tab title="CLI">
-    The CLI writes temporary credentials to your AWS credentials file as a named profile:
+The CLI writes temporary credentials to `~/.aws/credentials` as a profile named `infisical-pam/<folder>/<account>`:
 
-    ```bash
-    infisical pam access my-folder/prod-admin-access
-    ```
+```bash
+infisical pam access <folder>/<account>
+```
 
-    This creates a profile named `infisical-pam/my-folder/prod-admin-access` in `~/.aws/credentials`. Use it with the AWS CLI:
+Pass the profile to the AWS CLI, or set `AWS_PROFILE` to use it for every command:
 
-    ```bash
-    aws s3 ls --profile "infisical-pam/my-folder/prod-admin-access"
-    ```
+```bash
+export AWS_PROFILE="infisical-pam/<folder>/<account>"
+aws sts get-caller-identity
+```
 
-    Or set the `AWS_PROFILE` environment variable:
+Press `Ctrl+C` to end the session. The CLI then removes the profile.
 
-    ```bash
-    export AWS_PROFILE="infisical-pam/my-folder/prod-admin-access"
-    aws sts get-caller-identity
-    ```
+## Track activity in AWS
 
-    Press **Ctrl+C** to stop and remove the credentials profile.
-
-    **Flags:**
-    - `--reason <reason>`: provide an access reason (if required by template)
-  </Tab>
-</Tabs>
-
-## Next steps
-
-<CardGroup cols={2}>
-  <Card title="Kubernetes Accounts" icon="settings" href="/documentation/platform/pam/accounts/kubernetes">
-    Add Kubernetes cluster accounts.
-  </Card>
-  <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
-    View and manage sessions.
-  </Card>
-</CardGroup>
+Infisical names each STS session after the email of the person who launched it, or after the name of the [machine identity](/documentation/platform/identities/machine-identities). In [AWS CloudTrail](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html), the session name shows who made each call.

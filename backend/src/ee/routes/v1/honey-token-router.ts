@@ -2,11 +2,13 @@ import { z } from "zod";
 
 import { HoneyTokensSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
+import { HoneyTokenManagedBy, HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import {
   HONEY_TOKEN_CREDENTIALS_RESPONSE_SCHEMA_MAP,
   HONEY_TOKEN_REGISTER_ROUTER_MAP
 } from "@app/ee/services/honey-token/honey-token-provider-fns";
+import { AwsHoneyTokenRowConfigSchema } from "@app/ee/services/honey-token/honey-token-types";
+import { HONEY_TOKENS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -24,6 +26,8 @@ const HoneyTokenResponseSchema = HoneyTokensSchema.pick({
   secretsMapping: true,
   createdAt: true,
   updatedAt: true
+}).extend({
+  config: AwsHoneyTokenRowConfigSchema.describe(HONEY_TOKENS.CONFIG.config)
 });
 
 const HoneyTokenDetailsResponseSchema = HoneyTokensSchema.pick({
@@ -38,6 +42,8 @@ const HoneyTokenDetailsResponseSchema = HoneyTokensSchema.pick({
   createdAt: true,
   updatedAt: true
 }).extend({
+  config: AwsHoneyTokenRowConfigSchema.describe(HONEY_TOKENS.CONFIG.config),
+  folderId: z.string().uuid(),
   environment: z
     .object({
       id: z.string(),
@@ -77,13 +83,14 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
+      operationId: "getHoneyTokenLimits",
       querystring: z.object({
         projectId: z.string().trim()
       }),
       response: {
         200: z.object({
           used: z.number(),
-          limit: z.number()
+          limit: z.number().nullish()
         })
       }
     },
@@ -100,9 +107,21 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
+      operationId: "createHoneyToken",
       body: z.object({
         projectId: z.string().trim(),
         type: z.nativeEnum(HoneyTokenType),
+        // Defaults to the organization's own account because that is how every token was created before
+        // instance-managed tokens existed, so callers that do not send it keep the same behaviour.
+        config: z
+          .object({
+            managedBy: z
+              .nativeEnum(HoneyTokenManagedBy)
+              .default(HoneyTokenManagedBy.Organization)
+              .describe(HONEY_TOKENS.CONFIG.managedBy)
+          })
+          .default({})
+          .describe(HONEY_TOKENS.CONFIG.config),
         name: slugSchema({ field: "name" }),
         description: z.string().trim().max(256).nullish(),
         secretsMapping: z.record(z.string(), z.string().min(1)),
@@ -133,6 +152,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
             honeyTokenId: honeyToken.id,
             name: honeyToken.name,
             type: honeyToken.type as HoneyTokenType,
+            managedBy: honeyToken.config.managedBy,
             environment: req.body.environment,
             secretPath: req.body.secretPath
           }
@@ -147,6 +167,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
           properties: {
             honeyTokenId: honeyToken.id,
             type: honeyToken.type,
+            managedBy: honeyToken.config.managedBy,
             projectId: honeyToken.projectId,
             environment: req.body.environment,
             secretPath: req.body.secretPath
@@ -166,6 +187,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
+      operationId: "getHoneyToken",
       params: z.object({
         id: z.string().uuid()
       }),
@@ -192,6 +214,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
+      operationId: "updateHoneyToken",
       params: z.object({
         id: z.string().uuid()
       }),
@@ -258,6 +281,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
+      operationId: "resetHoneyToken",
       params: z.object({
         id: z.string().uuid()
       }),
@@ -303,6 +327,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
+      operationId: "revokeHoneyToken",
       params: z.object({
         id: z.string().uuid()
       }),
@@ -358,6 +383,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
+      operationId: "getHoneyTokenCredentials",
       params: z.object({
         id: z.string().uuid()
       }),
@@ -385,6 +411,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
+      operationId: "listHoneyTokenEvents",
       params: z.object({
         id: z.string().uuid()
       }),

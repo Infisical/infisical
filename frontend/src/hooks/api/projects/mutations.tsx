@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import { groupMembershipsBase } from "@app/hooks/api/certManagerAccess";
+import { groupMembershipsBase, isCertManagerProject } from "@app/hooks/api/certManagerAccess";
 
 import { groupKeys } from "../groups/queries";
 import { TGroupMembership } from "../groups/types";
@@ -43,9 +43,11 @@ export const useAddGroupToWorkspace = () => {
     }) => {
       const {
         data: { groupMembership }
-      } = await apiRequest.post(`${groupMembershipsBase(projectType, projectId)}/${groupId}`, {
-        role
-      });
+      } = await apiRequest.post(
+        `${groupMembershipsBase(projectType, projectId)}/${groupId}`,
+        { role },
+        { params: isCertManagerProject(projectType) ? { projectId } : undefined }
+      );
 
       return groupMembership;
     },
@@ -102,7 +104,9 @@ export const useDeleteGroupFromWorkspace = () => {
     }) => {
       const {
         data: { groupMembership }
-      } = await apiRequest.delete(`${groupMembershipsBase(projectType, projectId)}/${groupId}`);
+      } = await apiRequest.delete(`${groupMembershipsBase(projectType, projectId)}/${groupId}`, {
+        params: isCertManagerProject(projectType) ? { projectId } : undefined
+      });
       return groupMembership;
     },
     onSuccess: (_, { projectId, username, groupId }) => {

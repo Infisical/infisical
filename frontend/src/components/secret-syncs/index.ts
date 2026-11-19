@@ -1,4 +1,3 @@
-export * from "../v2/GenericFieldLabel";
 export * from "./CreateSecretSyncModal";
 export * from "./DeleteSecretSyncModal";
 export * from "./EditSecretSyncModal";

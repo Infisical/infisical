@@ -2,17 +2,17 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionSecretValidationRuleActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
 import { OrgServiceActor } from "@app/lib/types";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { containsSecretReference, expandSecretReferencesFactory } from "../secret-v2-bridge/secret-reference-fns";
@@ -62,7 +62,7 @@ type TSecretValidationRuleServiceFactoryDep = {
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  kmsService: TKmsServiceFactory;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 export type TSecretValidationRuleServiceFactory = ReturnType<typeof secretValidationRuleServiceFactory>;
@@ -75,7 +75,7 @@ export const secretValidationRuleServiceFactory = ({
   secretVersionV2BridgeDAL,
   projectDAL,
   permissionService,
-  kmsService
+  kmsDataKeyService
 }: TSecretValidationRuleServiceFactoryDep) => {
   const $getPermission = async (projectId: string, actor: OrgServiceActor) => {
     const { permission } = await permissionService.getProjectPermission({
@@ -108,7 +108,10 @@ export const secretValidationRuleServiceFactory = ({
   };
 
   const $getCipher = (projectId: string, tx?: Knex) =>
-    kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, tx);
+    dataKeysOn(kmsDataKeyService, tx).createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
 
   // Listed rather than spread so `encryptedInputs` can never reach a response.
   const $toRecord = (rule: TSecretValidationRuleWithEnv, config: TSecretValidationRuleConfig) =>
@@ -409,9 +412,10 @@ export const secretValidationRuleServiceFactory = ({
       environment,
       secretPath,
       secrets,
+      excludedSecretIds: otherExcludedSecretIds = [],
       scope,
       generateSecretBlindIndex
-    }: Pick<TValidateSecretsDTO, "projectId" | "environment" | "secretPath" | "secrets"> & {
+    }: Pick<TValidateSecretsDTO, "projectId" | "environment" | "secretPath" | "secrets" | "excludedSecretIds"> & {
       scope: { envId?: string | null; secretPath: string };
       generateSecretBlindIndex: (value: Buffer) => Promise<string>;
     },
@@ -437,8 +441,11 @@ export const secretValidationRuleServiceFactory = ({
       else seenInBatch.set(blindIndexes[idx], { key: secret.key, environment, secretPath });
     });
 
-    const excludedSecretIds = candidates.map((secret) => secret.secretId).filter(Boolean) as string[];
-    const existing = await secretDAL.findExistingSecretsByBlindIndexes(
+    const excludedSecretIds = [
+      ...(candidates.map((secret) => secret.secretId).filter(Boolean) as string[]),
+      ...otherExcludedSecretIds
+    ];
+    const existing = await secretDAL.findExistingSecretsWithMatchingValues(
       projectId,
       [...new Set(blindIndexes)],
       excludedSecretIds.length ? excludedSecretIds : undefined,
@@ -477,7 +484,7 @@ export const secretValidationRuleServiceFactory = ({
   };
 
   const validateSecrets = async (
-    { projectId, environment, envId, secretPath, secrets }: TValidateSecretsDTO,
+    { projectId, environment, envId, secretPath, secrets, excludedSecretIds }: TValidateSecretsDTO,
     tx?: Knex
   ) => {
     if (!secrets.length) return;
@@ -486,11 +493,12 @@ export const secretValidationRuleServiceFactory = ({
       { projectId, isActive: true, type: SecretValidationRuleType.StaticSecrets },
       { tx }
     );
-    if (!rules.length) return;
+    const rulesInScope = findRulesCoveringScope(rules, { envId, secretPath });
+    if (!rulesInScope.length) return;
 
     const { decryptor, generateSecretBlindIndex } = await $getCipher(projectId, tx);
 
-    const coveringRules = findRulesCoveringScope(rules, { envId, secretPath }).map((rule) => ({
+    const coveringRules = rulesInScope.map((rule) => ({
       name: rule.name,
       scope: { envId: rule.envId, secretPath: rule.secretPath },
       config: parseSecretValidationRuleConfig(
@@ -498,7 +506,6 @@ export const secretValidationRuleServiceFactory = ({
         JSON.parse(decryptor({ cipherTextBlob: rule.encryptedInputs }).toString()) as unknown
       ) as TStaticSecretsRuleConfig
     }));
-    if (!coveringRules.length) return;
 
     // reading version history is only worth it when a covering rule actually forbids reuse
     const versionsToCheck = Math.max(
@@ -536,6 +543,7 @@ export const secretValidationRuleServiceFactory = ({
             environment,
             secretPath,
             secrets,
+            excludedSecretIds,
             scope: reuseAcrossSecretsRule.scope,
             generateSecretBlindIndex
           },

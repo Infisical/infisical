@@ -1,12 +1,54 @@
-/* eslint-disable react/no-danger */
-import { forwardRef, TextareaHTMLAttributes, useEffect, useState } from "react";
+import {
+  forwardRef,
+  MouseEvent,
+  ReactNode,
+  TextareaHTMLAttributes,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
+import { TriangleAlertIcon } from "lucide-react";
 
 import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
 import { useToggle } from "@app/hooks";
 
+import { IconButton } from "../../generic/IconButton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../generic/Tooltip";
 import { cn } from "../../utils";
+import { getInvisibleCharacterSummary, splitSuspiciousCharacters } from "./invisibleCharacters";
 
 const REGEX = /(\${([@a-zA-Z0-9-_. ]+)})/g;
+
+const markInvisibleChars = (text: string, chunkKey: number) => {
+  const nodes: ReactNode[] = [];
+  let offset = 0;
+
+  splitSuspiciousCharacters(text).forEach(({ text: part, isSuspicious }) => {
+    if (isSuspicious) {
+      nodes.push(
+        <span
+          key={`secret-value-invisible-${chunkKey}-${offset}`}
+          className="rounded-xs bg-warning/25 outline outline-1 outline-warning/70"
+        >
+          {part}
+        </span>
+      );
+    } else {
+      nodes.push(part);
+    }
+    offset += part.length;
+  });
+
+  return nodes;
+};
+
+// One dot per character, keeping line breaks, so a value being typed shows its length and shape the
+// way a password field does.
+const maskPerCharacter = (content: string) => [
+  Array.from(content, (char) => (char === "\n" ? "\n" : "\u2022")).join(""),
+  <br key="secret-value-mask-linebreak" />
+];
 
 const syntaxHighlight = (
   content?: string | null,
@@ -18,7 +60,11 @@ const syntaxHighlight = (
   hoveredPart?: string,
   isCmdOrCtrlPressed?: boolean,
   onClickSegment?: (segment: string, allSegments: string[]) => void,
-  placeholder?: string
+  placeholder?: string,
+  isMaskedPerCharacter?: boolean,
+  hoveredReferenceIndex?: number,
+  renderReferenceTooltip?: (reference: string) => ReactNode,
+  onReferenceTooltipClose?: () => void
 ) => {
   if (isLoadingValue) return HIDDEN_SECRET_VALUE;
   if (isErrorLoadingValue)
@@ -27,7 +73,7 @@ const syntaxHighlight = (
   if (placeholder && (content === "" || !content)) return placeholder;
   if (content === "") return "EMPTY";
   if (!content) return "EMPTY";
-  if (!isVisible) return HIDDEN_SECRET_VALUE;
+  if (!isVisible) return isMaskedPerCharacter ? maskPerCharacter(content) : HIDDEN_SECRET_VALUE;
 
   let skipNext = false;
   const formattedContent = content.split(REGEX).flatMap((el, i) => {
@@ -39,8 +85,12 @@ const syntaxHighlight = (
       const parts = innerContent.split(".");
       const isCrossProjectRef = parts[0]?.startsWith("@");
 
-      return (
-        <span className="ph-no-capture relative z-10 text-secret" key={`secret-value-${i + 1}`}>
+      const referenceNode = (
+        <span
+          className="ph-no-capture relative z-10 text-secret"
+          key={`secret-value-${i + 1}`}
+          data-reference-index={i}
+        >
           &#36;&#123;
           {parts.map((segment, segmentIndex) => {
             const segmentKey = `${part}-segment-${segmentIndex}`;
@@ -81,7 +131,7 @@ const syntaxHighlight = (
                     }
                   }}
                 >
-                  {segment}
+                  {markInvisibleChars(segment, i)}
                 </span>
                 {segmentIndex < parts.length - 1 && (
                   <span className="ph-no-capture pointer-events-none text-secret/80">.</span>
@@ -92,12 +142,27 @@ const syntaxHighlight = (
           &#125;
         </span>
       );
+
+      if (!renderReferenceTooltip) return referenceNode;
+
+      return (
+        <Tooltip
+          key={`secret-value-tooltip-${i + 1}`}
+          open={hoveredReferenceIndex === i}
+          onOpenChange={(open) => {
+            if (!open) onReferenceTooltipClose?.();
+          }}
+        >
+          <TooltipTrigger asChild>{referenceNode}</TooltipTrigger>
+          <TooltipContent className="max-w-96">{renderReferenceTooltip(part)}</TooltipContent>
+        </Tooltip>
+      );
     }
     if (skipNext) {
       skipNext = false;
       return [];
     }
-    return el;
+    return markInvisibleChars(el, i);
   });
 
   // akhilmhdh: Dont remove this br. I am still clueless how this works but weirdly enough
@@ -114,15 +179,21 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   variant?: SecretInputVariant;
   isVisible?: boolean;
   valueAlwaysHidden?: boolean;
+  // Masks with one dot per character instead of a fixed-length mask, which reveals the value's
+  // length. Meant for a value the user is typing, not a stored one.
+  maskEachCharacter?: boolean;
   isImport?: boolean;
   isReadOnly?: boolean;
   isDisabled?: boolean;
   containerClassName?: string;
+  // Grows from a textarea-height box with the value top-aligned, for standalone form fields.
+  isMultiline?: boolean;
   canEditButNotView?: boolean;
   isLoadingValue?: boolean;
   isErrorLoadingValue?: boolean;
   isError?: boolean;
   onClickSegment?: (segment: string, allSegments: string[]) => void;
+  renderReferenceTooltip?: (reference: string) => ReactNode;
 };
 
 const commonClassName =
@@ -136,16 +207,20 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       isVisible,
       isImport,
       valueAlwaysHidden,
+      maskEachCharacter,
       containerClassName,
+      isMultiline,
       onBlur,
       isDisabled,
       isReadOnly,
+      readOnly,
       onFocus,
       canEditButNotView,
       isLoadingValue,
       isErrorLoadingValue,
       isError,
       onClickSegment,
+      renderReferenceTooltip,
       placeholder,
       ...props
     },
@@ -153,6 +228,8 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
   ) => {
     const [isSecretFocused, setIsSecretFocused] = useToggle();
     const [hoveredPart, setHoveredPart] = useState<string | undefined>();
+    const [hoveredReferenceIndex, setHoveredReferenceIndex] = useState<number | undefined>();
+    const highlightRef = useRef<HTMLDivElement>(null);
     const [isCmdOrCtrlPressed, setIsCmdOrCtrlPressed] = useState(false);
 
     useEffect(() => {
@@ -188,6 +265,36 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
     const shouldShowMask =
       !isErrorLoadingValue && (isLoadingValue || (Boolean(value) && !shouldRevealValue));
 
+    useEffect(() => {
+      setHoveredReferenceIndex(undefined);
+    }, [value, shouldRevealValue]);
+
+    // The highlighted layer sits under the textarea with pointer events off so clicks still place
+    // the caret, so the hovered reference is found by hit-testing its rects instead of mouseenter.
+    const handleReferenceHover = (evt: MouseEvent<HTMLTextAreaElement>) => {
+      if (!renderReferenceTooltip || !shouldRevealValue) return;
+      const referenceNodes =
+        highlightRef.current?.querySelectorAll<HTMLElement>("[data-reference-index]") ?? [];
+      const hoveredNode = Array.from(referenceNodes).find((node) =>
+        Array.from(node.getClientRects()).some(
+          (rect) =>
+            evt.clientX >= rect.left &&
+            evt.clientX <= rect.right &&
+            evt.clientY >= rect.top &&
+            evt.clientY <= rect.bottom
+        )
+      );
+      setHoveredReferenceIndex(
+        hoveredNode ? Number(hoveredNode.dataset.referenceIndex) : undefined
+      );
+    };
+
+    const invisibleChars = useMemo(
+      () =>
+        value && !isLoadingValue && !isErrorLoadingValue ? getInvisibleCharacterSummary(value) : [],
+      [value, isLoadingValue, isErrorLoadingValue]
+    );
+
     return (
       <div
         data-slot="secret-input"
@@ -196,19 +303,26 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
         className={cn(
           "no-scrollbar w-full overflow-auto bg-transparent text-foreground",
           variant === "default" &&
-            "flex min-h-9 items-center rounded-md border border-border shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
+            "flex min-h-9 items-center-safe rounded-md border border-border shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
+          variant === "plain" && invisibleChars.length > 0 && "flex",
+          variant === "default" && isMultiline && "min-h-16 items-start py-1",
           containerClassName
         )}
         style={{ maxHeight: `${21 * 7}px` }}
       >
         <div
-          className={cn("relative w-full overflow-hidden", variant === "default" && "px-2.5 py-1")}
+          className={cn(
+            "relative w-full min-w-0 overflow-hidden",
+            variant === "default" && "px-2.5 py-1"
+          )}
         >
           <div
+            ref={highlightRef}
             aria-hidden
             className={cn(
               "pointer-events-none whitespace-break-spaces",
               commonClassName,
+              maskEachCharacter && "font-mono",
               !value && "text-muted",
               shouldShowMask && "tracking-normal"
             )}
@@ -225,7 +339,11 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
               hoveredPart,
               isCmdOrCtrlPressed,
               onClickSegment,
-              placeholder
+              placeholder,
+              maskEachCharacter,
+              hoveredReferenceIndex,
+              renderReferenceTooltip,
+              () => setHoveredReferenceIndex(undefined)
             )}
           </div>
           <textarea
@@ -236,7 +354,10 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             className={cn(
               "no-scrollbar absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent focus:border-0",
               variant === "default" && "px-2.5 py-1",
-              commonClassName
+              commonClassName,
+              // Monospaced in both layers, so each dot sits over the character it hides and the caret
+              // in the transparent textarea lines up with them.
+              maskEachCharacter && "font-mono"
             )}
             onFocus={(evt) => {
               onFocus?.(evt);
@@ -257,15 +378,45 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
               onBlur?.(evt);
               setIsSecretFocused.off();
             }}
+            onMouseMove={handleReferenceHover}
             onMouseLeave={() => {
               setHoveredPart(undefined);
+              setHoveredReferenceIndex(undefined);
             }}
             value={value && !shouldBindRealValue ? HIDDEN_SECRET_VALUE : (value ?? "")}
             {...props}
             aria-invalid={isError || props["aria-invalid"]}
-            readOnly={isReadOnly || isLoadingValue || isErrorLoadingValue}
+            readOnly={readOnly || isReadOnly || isLoadingValue || isErrorLoadingValue}
           />
         </div>
+        {invisibleChars.length > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                aria-label="Value contains invisible characters"
+                variant="ghost"
+                size="xs"
+                className={cn(
+                  "border-transparent bg-transparent text-warning hover:bg-transparent hover:text-warning data-[state=open]:bg-transparent",
+                  "sticky top-0 self-start",
+                  variant === "default" && "mt-1 mr-2.5"
+                )}
+              >
+                <TriangleAlertIcon />
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-72">
+              <p>This value contains invisible characters that can break it when used:</p>
+              <ul className="mt-1 list-disc pl-4">
+                {invisibleChars.map(({ codePoint, label, count }) => (
+                  <li key={codePoint}>
+                    {count}x {label} ({codePoint})
+                  </li>
+                ))}
+              </ul>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
     );
   }

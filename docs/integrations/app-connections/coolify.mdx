@@ -1,0 +1,86 @@
+---
+title: "Coolify connection"
+sidebarTitle: "Coolify"
+description: "Learn how to configure a Coolify connection for Infisical."
+---
+
+import CreateApiToken from "/snippets/app-connections/coolify/create-api-token.mdx";
+import ConnectionFormFields from "/snippets/app-connections/coolify/form-fields.mdx";
+
+A Coolify connection authenticates Infisical to Coolify Cloud or your self-hosted Coolify instance with an [API token](https://coolify.io/docs/core/security/credentials/api-tokens), so Infisical can list your applications, services, and databases and manage their environment variables.
+
+<Note>
+    This guide only authenticates Infisical with Coolify. Once the app connection is ready, you can [use it to set up integrations](#step-3-configure-integrations).
+</Note>
+
+## Prerequisites
+
+- The Owner or Admin role in the Coolify team that owns the resources you plan to sync to
+- If you self-host Coolify, API access turned on under **Settings** > **Advanced** in Coolify
+- If your Coolify instance isn't reachable from the internet, a [Gateway](/documentation/platform/gateways/overview) with network access to it
+
+## Step 1: Create a Coolify API token
+
+Infisical needs a Coolify API token that can read, write, and delete environment variables.
+
+<CreateApiToken />
+
+## Step 2: Create the app connection
+
+Next, create the app connection in Infisical.
+
+<Tip>
+    To create the connection using the API, use the Coolify [Create](/api-reference/endpoints/app-connections/coolify/create) endpoint. If the instance isn't reachable from the internet, include the ID of a Gateway that can reach it as `gatewayId`, or the ID of a [Gateway pool](/documentation/platform/gateways/gateway-pools) as `gatewayPoolId`.
+</Tip>
+
+<View title="Organization-level">
+    <Steps>
+        <Step>
+            In the sidebar, select **Integrations**, then open the **App Connections** tab.
+
+            ![App Connections Tab](/images/app-connections/general/add-connection.png)
+        </Step>
+        <Step>
+            Select **Add Connection** and choose **Coolify**.
+        </Step>
+        <Step>
+            Fill out the form's fields:
+
+            <ConnectionFormFields />
+
+            Then, select **Connect to Coolify**.
+        </Step>
+    </Steps>
+</View>
+
+<View title="Project-level">
+    <Steps>
+        <Step>
+            In your Secrets Management project, select **Integrations** from the sidebar, then open the **App Connections** tab.
+        </Step>
+        <Step>
+            Select **Add Connection** and choose **Coolify**.
+        </Step>
+        <Step>
+            Fill out the form's fields:
+
+            <ConnectionFormFields />
+
+            Then, select **Connect to Coolify**.
+        </Step>
+    </Steps>
+</View>
+
+When you submit the form, Infisical checks that Coolify accepts the token and that the token has the `write` and `delete` permissions.
+
+<Check>
+    Your Coolify app connection is ready to use.
+</Check>
+
+## Step 3: Configure integrations
+
+Now that your Coolify app connection is configured, you can use it to set up the following integration:
+
+<Card title="Coolify sync" icon="refresh-cw" href="/integrations/secret-syncs/coolify">
+    Sync secrets from Infisical to environment variables in Coolify.
+</Card>

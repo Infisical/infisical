@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-
 import * as React from "react";
 import { XIcon } from "lucide-react";
 
@@ -108,7 +106,7 @@ function DismissableAlert({
           size="xs"
           aria-label="Dismiss notice"
           onClick={handleDismiss}
-          className="absolute top-2 right-2 text-current"
+          className="absolute top-1.5 right-1.5 text-current"
         >
           <XIcon />
         </IconButton>

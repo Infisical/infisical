@@ -19,6 +19,7 @@ import {
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
 const templateNameSchema = z
   .string()
@@ -63,6 +64,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      operationId: "createIdentityAuthTemplate",
       hide: false,
       description: "Create identity auth template",
       security: [
@@ -126,6 +128,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      operationId: "updateIdentityAuthTemplate",
       hide: false,
       description: "Update identity auth template",
       security: [
@@ -152,7 +155,9 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({
@@ -179,6 +184,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      operationId: "deleteIdentityAuthTemplate",
       hide: false,
       description: "Delete identity auth template",
       security: [
@@ -201,7 +207,8 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo
       });
 
       await server.services.auditLog.createAuditLog({
@@ -228,6 +235,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
+      operationId: "getIdentityAuthTemplate",
       hide: false,
       description: "Get identity auth template by ID",
       security: [
@@ -263,6 +271,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
+      operationId: "searchIdentityAuthTemplates",
       hide: false,
       description: "List identity auth templates",
       security: [
@@ -305,6 +314,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
+      operationId: "listIdentityAuthTemplates",
       hide: false,
       description: "Get identity auth templates by authentication method",
       security: [
@@ -340,6 +350,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
+      operationId: "getIdentityAuthTemplateUsage",
       hide: false,
       description: "Get template usage by template ID",
       security: [
@@ -380,6 +391,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      operationId: "deleteIdentityAuthTemplateUsage",
       hide: false,
       description: "Unlink identity auth template usage",
       security: [
@@ -410,7 +422,8 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo
       });
 
       return templates;

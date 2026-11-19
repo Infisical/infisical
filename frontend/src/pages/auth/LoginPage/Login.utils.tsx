@@ -1,6 +1,7 @@
-import { NavigateFn, useNavigate } from "@tanstack/react-router";
+import { NavigateFn, ParsedLocation, useNavigate } from "@tanstack/react-router";
 
 import { useServerConfig } from "@app/context";
+import { getOrganizationSwitchDestination } from "@app/helpers/organizationSwitch";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { queryClient } from "@app/hooks/api/reactQuery";
 import { userKeys } from "@app/hooks/api/users";
@@ -9,23 +10,33 @@ type NavigateUserToOrgParams = {
   navigate: NavigateFn;
   organizationId?: string;
   navigateTo?: string;
+  switchFrom?: Pick<ParsedLocation<Record<string, unknown>>, "pathname" | "search">;
+  isSubOrganization?: boolean;
 };
 
-const navigateToOrg = (navigate: NavigateFn, organizationId: string, navigateTo?: string) => {
-  navigate({
+const navigateToOrg = (
+  navigate: NavigateFn,
+  organizationId: string,
+  { navigateTo, switchFrom, isSubOrganization }: NavigateUserToOrgParams
+) => {
+  if (switchFrom && !navigateTo) {
+    return navigate(
+      getOrganizationSwitchDestination(switchFrom, organizationId, isSubOrganization)
+    );
+  }
+
+  return navigate({
     to: navigateTo || ("/organizations/$orgId/projects" as const),
-    params: { orgId: organizationId }
+    params: { orgId: organizationId },
+    search: { subOrganization: undefined }
   });
 };
 
-export const navigateUserToOrg = async ({
-  navigate,
-  organizationId,
-  navigateTo
-}: NavigateUserToOrgParams) => {
+export const navigateUserToOrg = async (options: NavigateUserToOrgParams) => {
+  const { navigate, organizationId } = options;
   if (organizationId) {
     localStorage.setItem("orgData.id", organizationId);
-    navigateToOrg(navigate, organizationId, navigateTo);
+    await navigateToOrg(navigate, organizationId, options);
     return;
   }
 
@@ -34,7 +45,7 @@ export const navigateUserToOrg = async ({
   if (nonAuthEnforcedOrgs.length > 0) {
     const userOrg = nonAuthEnforcedOrgs[0] && nonAuthEnforcedOrgs[0].id;
     localStorage.setItem("orgData.id", userOrg);
-    navigateToOrg(navigate, userOrg, navigateTo);
+    await navigateToOrg(navigate, userOrg, options);
   } else {
     localStorage.removeItem("orgData.id");
     navigate({ to: "/organizations/none" });

@@ -16,7 +16,6 @@ export const AzureAdCsFields = ({ control, availableConnections, isPending }: Pr
     control={control}
     name="configuration.azureAdcsConnection"
     label="Azure ADCS Connection"
-    menuPlacement="top"
     options={availableConnections}
     isLoading={isPending}
     tooltip="Azure ADCS App Connection contains the Windows domain credentials and ADCS server URL for certificate requests."

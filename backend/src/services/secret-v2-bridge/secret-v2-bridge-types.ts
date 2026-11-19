@@ -2,29 +2,32 @@ import { MongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 
 import { SecretType, TSecretFolders, TSecretsV2, TSecretsV2Insert, TSecretsV2Update } from "@app/db/schemas";
+import { TCipherPair, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
-import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
-import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
-import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
+import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
+import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import {
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
-  SecretsOrderBy
+  type SecretsOrderBy,
+  SecretSortField
 } from "@app/services/secret/secret-types";
-import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
-import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
+import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
-import { TReminderDALFactory } from "../reminder/reminder-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
+import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
+import { TSecretBlindIndexer, TSecretValueBlindIndexes } from "./secret-blind-index-fns";
+import { TSecretEventScope } from "./secret-events";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
@@ -70,6 +73,8 @@ export type TGetSecretsDTO = {
   excludeRotatedSecrets?: boolean;
   ifNoneMatch?: string;
   abortSignal?: AbortSignal;
+  // Called with each secret in the project a reference resolved to, a personal override included.
+  onSecretReferenced?: (secretId: string) => void;
 } & TProjectPermission;
 
 export type TGetSecretsMissingReadValuePermissionDTO = Omit<
@@ -88,6 +93,8 @@ export type TGetASecretDTO = {
   version?: number;
   projectId: string;
   viewSecretValue: boolean;
+  // Called with each secret in the project a reference resolved to, a personal override included.
+  onSecretReferenced?: (secretId: string) => void;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateSecretDTO = TProjectPermission & {
@@ -192,12 +199,12 @@ export type TFnSecretBulkInsert = {
   tx?: Knex;
   commitChanges?: TCommitResourceChangeDTO[];
   inputSecrets: Array<
-    Omit<TSecretsV2Insert, "folderId" | "metadata"> & {
+    Omit<TSecretsV2Insert, "folderId" | "metadata" | "secretValueBlindIndex" | "secretValueOrgBlindIndex"> & {
       tagIds?: string[];
       references: TSecretReference[];
       secretMetadata?: { key: string; value?: string | null; encryptedValue?: Buffer | null }[];
       parentSecretVersionId?: string;
-      secretValueBlindIndex?: string | null;
+      blindIndexes: TSecretValueBlindIndexes | null;
     }
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
@@ -206,6 +213,8 @@ export type TFnSecretBulkInsert = {
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
+  eventScope: TSecretEventScope;
   actor?: {
     type: string;
     actorId?: string;
@@ -213,15 +222,15 @@ export type TFnSecretBulkInsert = {
 };
 
 type TRequireReferenceIfValue =
-  | (Omit<TSecretsV2Update, "encryptedValue" | "metadata"> & {
+  | (Omit<TSecretsV2Update, "encryptedValue" | "metadata" | "secretValueBlindIndex" | "secretValueOrgBlindIndex"> & {
       encryptedValue: Buffer | null;
       references: TSecretReference[];
-      secretValueBlindIndex?: string | null;
+      blindIndexes: TSecretValueBlindIndexes | null;
     })
-  | (Omit<TSecretsV2Update, "encryptedValue" | "metadata"> & {
+  | (Omit<TSecretsV2Update, "encryptedValue" | "metadata" | "secretValueBlindIndex" | "secretValueOrgBlindIndex"> & {
       encryptedValue?: never;
       references?: never;
-      secretValueBlindIndex?: never;
+      blindIndexes?: never;
     });
 
 export type TFnSecretBulkUpdate = {
@@ -242,6 +251,8 @@ export type TFnSecretBulkUpdate = {
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
+  eventScope: TSecretEventScope;
   actor?: {
     type: string;
     actorId?: string;
@@ -263,11 +274,18 @@ export type TFnSecretBulkDelete = {
     removeSecretReminder: (data: TRemoveSecretReminderDTO, tx?: Knex) => Promise<void>;
   };
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
+  eventScope: TSecretEventScope;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "findLatestVersionMany">;
 };
 
 // a source/destination folder resolved by folderDAL.findBySecretPath (carries id, path and environment)
 export type TMoveSecretResolvedFolder = NonNullable<Awaited<ReturnType<TSecretFolderDALFactory["findBySecretPath"]>>>;
+
+export type TSecretWriteCiphers = {
+  secretManager: TCipherPair;
+  blindIndexer: TSecretBlindIndexer;
+};
 
 // performs the two-step move (create/update at destination + delete at source) inside the caller-supplied
 // transaction. does no snapshot/sync/cache-invalidation — the caller runs those after the tx commits.
@@ -284,7 +302,7 @@ export type TFnSecretMove = {
   actorOrgId: string;
   permission: MongoAbility<ProjectPermissionSet>;
   tx: Knex;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
   secretDAL: Pick<
     TSecretV2BridgeDALFactory,
@@ -304,15 +322,12 @@ export type TFnSecretMove = {
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
-  secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
-  secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "create">;
-  secretApprovalRequestSecretDAL: Pick<
-    TSecretApprovalRequestSecretDALFactory,
-    "insertV2Bridge" | "insertApprovalSecretV2Tags"
-  >;
+  eventEmitter: TEventEmitter;
+  secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicy">;
+  secretChangeRequestService: Pick<TSecretChangeRequestServiceFactory, "createSecretApprovalRequestV2Bridge">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
-  reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
-  reminderService: Pick<TReminderServiceFactory, "batchCreateReminders">;
+  reminderService: Pick<TReminderServiceFactory, "moveReminders" | "copyReminders">;
+  secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
 };
 
 export type TFnSecretMoveResult = {
@@ -360,7 +375,7 @@ export type TCreateSecretReminderDTO = {
 
 export type TRemoveSecretReminderDTO = {
   secretId: string;
-  repeatDays: number;
+  repeatDays?: number;
   projectId: string;
 };
 
@@ -491,8 +506,9 @@ export type TGetSecretReferencesDTO = {
 export type TFindSecretsByFolderIdsFilter = {
   limit?: number;
   offset?: number;
-  orderBy?: SecretsOrderBy;
+  orderBy?: SecretsOrderBy | SecretSortField;
   orderDirection?: OrderByDirection;
+  sortFolderIds?: string[];
   search?: string;
   tagSlugs?: string[];
   metadataFilter?: { key?: string; value?: string }[];
@@ -502,6 +518,33 @@ export type TFindSecretsByFolderIdsFilter = {
   excludeRotatedSecrets?: boolean;
 };
 
+export type TGetSecretsMultiEnvDTO = Pick<
+  TGetSecretsDTO,
+  | "actorId"
+  | "actor"
+  | "path"
+  | "projectId"
+  | "actorOrgId"
+  | "actorAuthMethod"
+  | "search"
+  | "tagSlugs"
+  | "orderDirection"
+  | "limit"
+  | "offset"
+> & {
+  orderBy?: SecretSortField;
+  sortEnvironment?: string;
+  environments: string[];
+  isInternal?: boolean;
+};
+
+export type TGetSecretKeyEnvironmentsDTO = Pick<
+  TGetSecretsMultiEnvDTO,
+  "actorId" | "actor" | "path" | "projectId" | "actorOrgId" | "actorAuthMethod" | "environments"
+> & {
+  secretKey: string;
+};
+
 export type TGetSecretsRawByFolderMappingsDTO = {
   projectId: string;
   folderMappings: { folderId: string; path: string; environment: string }[];
@@ -509,14 +552,6 @@ export type TGetSecretsRawByFolderMappingsDTO = {
   filters: TFindSecretsByFolderIdsFilter;
   filterByAction?: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
 };
-
-export type TGetAccessibleSecretsDTO = {
-  environment: string;
-  projectId: string;
-  secretPath: string;
-  recursive?: boolean;
-  filterByAction: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
-} & TProjectPermission;
 
 export type TUpdateLinkedSecretReferencesDTO = {
   projectId: string;

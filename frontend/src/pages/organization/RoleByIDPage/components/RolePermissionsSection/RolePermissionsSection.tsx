@@ -13,6 +13,7 @@ import {
   EmptyTitle
 } from "@app/components/v3";
 import { OrgPermissionSubjects, useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { useGetOrgRole, useUpdateOrgRole } from "@app/hooks/api";
 import {
   GeneralPermissionPolicies,
@@ -43,6 +44,7 @@ type Props = {
 };
 
 export const RolePermissionsSection = ({ roleId }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { currentOrg, isRootOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
 
@@ -110,7 +112,7 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
       >
         <div className="mx-4 flex items-center justify-between border-b border-border pb-4">
           <div>
-            <h3 className="text-lg font-medium text-foreground">Policies</h3>
+            <h3 className="text-lg font-normal text-foreground">Policies</h3>
             <p className="text-sm leading-3 text-muted">Configure granular access policies</p>
           </div>
           {isCustomRole && (
@@ -126,7 +128,7 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                   Discard
                 </Button>
               )}
-              <Button variant="org" type="submit" disabled={isSubmitting || !isDirty}>
+              <Button variant={scopeVariant} type="submit" disabled={isSubmitting || !isDirty}>
                 <SaveIcon className="size-4" />
                 Save
               </Button>
@@ -162,6 +164,7 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                   ([subject]) =>
                     (permissions?.[subject as keyof typeof permissions] as unknown[])?.length > 0
                 )
+                .sort(([, a], [, b]) => a.title.localeCompare(b.title))
                 .map(([subject, config]) => (
                   <GeneralPermissionPolicies
                     key={`org-role-${roleId}-permission-${subject}`}

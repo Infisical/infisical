@@ -256,9 +256,14 @@ export const useTriggerPkiSyncImportCertificates = () => {
 export const useTriggerPkiSyncRemoveCertificates = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ syncId, destination }: TTriggerPkiSyncRemoveCertificatesDTO) => {
+    mutationFn: async ({
+      syncId,
+      destination,
+      removalOptions
+    }: TTriggerPkiSyncRemoveCertificatesDTO) => {
       const { data } = await apiRequest.post(
-        `/api/v1/cert-manager/syncs/${destination}/${syncId}/remove-certificates`
+        `/api/v1/cert-manager/syncs/${destination}/${syncId}/remove-certificates`,
+        removalOptions ? { removalOptions } : undefined
       );
 
       return data;

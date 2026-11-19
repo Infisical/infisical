@@ -1,30 +1,28 @@
+import "./lib/config/disable-sdk-platform-detection";
 // Note(Daniel): Do not rename this import, as it is strictly removed from FIPS standalone builds to avoid FIPS mode issues.
 // If you rename the import, update the Dockerfile.fips.standalone-infisical file as well.
 import "./lib/telemetry/instrumentation";
+import "./lib/config/snowflake-sdk-ocsp";
 
 import axios from "axios";
 import dotenv from "dotenv";
 
-import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
 import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 
 import { runMigrations } from "./auto-start-migrations";
 import { initAuditLogDbConnection, initDbConnection } from "./db";
-import { hsmServiceFactory } from "./ee/services/hsm/hsm-service";
 import { keyStoreFactory } from "./keystore/keystore";
 import { buildClickHouseFromConfig } from "./lib/config/clickhouse";
-import { formatSmtpConfig, getDatabaseCredentials, getHsmConfig, initEnvConfig } from "./lib/config/env";
+import { formatSmtpConfig, getDatabaseCredentials, initEnvConfig } from "./lib/config/env";
 import { buildRedisFromConfig } from "./lib/config/redis";
 import { axiosResponseInterceptor } from "./lib/config/request";
 import { removeTemporaryBaseDirectory } from "./lib/files";
 import { initLogger } from "./lib/logger";
 import { CustomLogger } from "./lib/logger/logger";
 import { registerInfrastructureMetrics } from "./lib/telemetry/metrics";
-import { registerSegfaultHandler } from "./lib/telemetry/segfault-handler";
 import { queueServiceFactory } from "./queue";
 import { main } from "./server/app";
 import { bootstrapCheck } from "./server/boot-strap-check";
-import { kmsRootConfigDALFactory } from "./services/kms/kms-root-config-dal";
 import { smtpServiceFactory } from "./services/smtp/smtp-service";
 import { superAdminDALFactory } from "./services/super-admin/super-admin-dal";
 
@@ -36,22 +34,9 @@ const setupAxiosResponseInterceptor = (logger: CustomLogger) => {
 
 const run = async () => {
   const logger = initLogger();
-  await registerSegfaultHandler();
   await removeTemporaryBaseDirectory();
 
   setupAxiosResponseInterceptor(logger);
-  const hsmConfig = getHsmConfig(logger);
-
-  const hsmModule = initializeHsmModule(hsmConfig);
-  hsmModule.initialize();
-
-  const hsmService = hsmServiceFactory({
-    hsmModule: hsmModule.getModule(),
-    envConfig: hsmConfig
-  });
-
-  await hsmService.startService();
-
   const databaseCredentials = getDatabaseCredentials(logger);
 
   const db = initDbConnection({
@@ -66,8 +51,7 @@ const run = async () => {
   registerInfrastructureMetrics(db);
 
   const superAdminDAL = superAdminDALFactory(db);
-  const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
-  const envConfig = await initEnvConfig(hsmService, kmsRootConfigDAL, superAdminDAL, logger);
+  const envConfig = await initEnvConfig(superAdminDAL, logger);
 
   logger.info(
     `Running Infisical ${envConfig.INFISICAL_PLATFORM_VERSION ? `v${envConfig.INFISICAL_PLATFORM_VERSION}` : "Development Mode"}`
@@ -101,8 +85,6 @@ const run = async () => {
     db,
     auditLogDb,
     superAdminDAL,
-    kmsRootConfigDAL,
-    hsmService,
     smtp,
     logger,
     queue,
@@ -120,7 +102,6 @@ const run = async () => {
     await queue.shutdown();
     await db.destroy();
     await removeTemporaryBaseDirectory();
-    hsmModule.finalize();
     process.exit(0);
   });
 
@@ -130,7 +111,6 @@ const run = async () => {
     await queue.shutdown();
     await db.destroy();
     await removeTemporaryBaseDirectory();
-    hsmModule.finalize();
     process.exit(0);
   });
 

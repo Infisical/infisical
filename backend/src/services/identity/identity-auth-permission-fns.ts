@@ -1,3 +1,5 @@
+import { ForbiddenError, subject } from "@casl/ability";
+
 import { AccessScope, ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
@@ -36,10 +38,10 @@ type TAssertIdentityAuthAccessAllowedDTO = {
   actorOrgId: string;
 };
 
-// Repointing an identity's auth trust or minting a credential for it lets you authenticate as that
-// identity, and enumerating its credential records tells you what to attack, so the actor has to
-// out-rank every role the target holds. Only bites on the legacy privilege system: on the new one
-// `assertRoleSetBoundary` reduces to the action check the caller already ran.
+// repointing an identity's auth or minting it a credential lets you log in as it, and listing its
+// credentials shows what to attack. so you need the action, and on the legacy system you also have to
+// out-rank every grant the target holds. the action check lives here because the legacy boundary alone
+// passes for any target you cover, no-access identities included
 export const assertIdentityAuthAccessAllowed = async (
   { permissionService, orgDAL }: TIdentityAuthPermissionDeps,
   {
@@ -58,18 +60,6 @@ export const assertIdentityAuthAccessAllowed = async (
     orgDAL.findById(orgId)
   );
 
-  const resolveTargetPermissions = async () => {
-    if (shouldUseNewPrivilegeSystem) return [];
-
-    return permissionService.getActorGrantAbilities({
-      scopeData: projectId
-        ? { scope: AccessScope.Project, orgId, projectId }
-        : { scope: AccessScope.Organization, orgId },
-      actorId: identityId,
-      actorType: ActorType.IDENTITY
-    });
-  };
-
   if (projectId) {
     const { permission } = await permissionService.getProjectPermission({
       actionProjectType: ActionProjectType.Any,
@@ -80,12 +70,22 @@ export const assertIdentityAuthAccessAllowed = async (
       actorOrgId
     });
 
+    ForbiddenError.from(permission).throwUnlessCan(
+      PROJECT_ACTION_BY_ORG_ACTION[action],
+      subject(ProjectPermissionSub.Identity, { identityId })
+    );
+    if (shouldUseNewPrivilegeSystem) return;
+
     assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
       opActions: PROJECT_ACTION_BY_ORG_ACTION[action],
       opSubject: ProjectPermissionSub.Identity,
       actorPermission: permission,
-      targetPermissions: await resolveTargetPermissions(),
+      targetPermissions: await permissionService.getActorGrantAbilities({
+        scopeData: { scope: AccessScope.Project, orgId, projectId },
+        actorId: identityId,
+        actorType: ActorType.IDENTITY
+      }),
       baseMessage,
       subjectFields: { identityId }
     });
@@ -101,12 +101,19 @@ export const assertIdentityAuthAccessAllowed = async (
     actorOrgId
   });
 
+  ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.Identity);
+  if (shouldUseNewPrivilegeSystem) return;
+
   assertRoleSetBoundary({
     shouldUseNewPrivilegeSystem,
     opActions: action,
     opSubject: OrgPermissionSubjects.Identity,
     actorPermission: permission,
-    targetPermissions: await resolveTargetPermissions(),
+    targetPermissions: await permissionService.getActorGrantAbilities({
+      scopeData: { scope: AccessScope.Organization, orgId },
+      actorId: identityId,
+      actorType: ActorType.IDENTITY
+    }),
     baseMessage
   });
 };

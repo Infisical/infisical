@@ -11,7 +11,7 @@ export type TResourceMetadataDALFactory = ReturnType<typeof resourceMetadataDALF
 
 // defensive cap on the number of matched secrets scanned before permission filtering.
 // full pagination is intentionally out of scope for now.
-const MAX_SECRET_METADATA_SEARCH_SECRETS = 100;
+export const MAX_SECRET_METADATA_SEARCH_SECRETS = 100;
 
 export const resourceMetadataDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ResourceMetadata);
@@ -27,7 +27,14 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
     });
   };
 
-  const buildScopedSecretMetadataQuery = (knex: Knex, orgId: string, projectId: string, tagSlugs?: string[]) => {
+  const buildScopedSecretMetadataQuery = (
+    knex: Knex,
+    orgId: string,
+    projectId: string,
+    tagSlugs?: string[],
+    folderIds?: string[],
+    environments?: string[]
+  ) => {
     const query = knex(TableName.ResourceMetadata)
       .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
       .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.SecretV2}.folderId`)
@@ -39,6 +46,42 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
       .whereNull(`${TableName.Environment}.deleteAfter`)
       .whereNull(`${TableName.Project}.deleteAfter`)
       .where(`${TableName.SecretV2}.type`, SecretType.Shared);
+
+    if (folderIds) {
+      void query.whereIn(`${TableName.SecretV2}.folderId`, folderIds);
+    } else {
+      void query
+        .withRecursive("metadata_search_folders", ["id", "envId"], (folders) => {
+          void folders
+            .select("root.id", "root.envId")
+            .from({ root: TableName.SecretFolder })
+            .join({ scope_env: TableName.Environment }, "scope_env.id", "root.envId")
+            .whereNull("root.parentId")
+            .where("scope_env.projectId", projectId)
+            .whereNull("scope_env.deleteAfter")
+            .modify((roots) => {
+              if (environments) void roots.whereIn("scope_env.slug", environments);
+            })
+            .union((children) => {
+              void children
+                .select("child.id", "child.envId")
+                .from({ child: TableName.SecretFolder })
+                .join("metadata_search_folders", (join) => {
+                  join
+                    .on("child.parentId", "metadata_search_folders.id")
+                    .andOn("child.envId", "metadata_search_folders.envId");
+                })
+                .where("child.isReserved", false);
+            });
+        })
+        .whereIn(`${TableName.SecretV2}.folderId`, (subQuery) => {
+          void subQuery.select("id").from("metadata_search_folders");
+        });
+    }
+
+    if (environments) {
+      void query.whereIn(`${TableName.Environment}.slug`, environments);
+    }
 
     // optional tag filter: keep only secrets carrying at least one of the requested tag slugs. A
     // correlated existence check keeps the candidate rows 1:1 with the secret so the later
@@ -131,6 +174,8 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
       filters,
       operator,
       tagSlugs,
+      folderIds,
+      environments,
       limit = MAX_SECRET_METADATA_SEARCH_SECRETS
     }: TSearchSecretMetadataDALDTO,
     tx?: Knex
@@ -139,7 +184,14 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
       const knex = tx || db.replicaNode();
 
       // step 1: resolve the bounded set of matching secret ids (scoping + tag filter enforced by the shared builder).
-      const matchedSecretIdsQuery = buildScopedSecretMetadataQuery(knex, orgId, projectId, tagSlugs);
+      const matchedSecretIdsQuery = buildScopedSecretMetadataQuery(
+        knex,
+        orgId,
+        projectId,
+        tagSlugs,
+        folderIds,
+        environments
+      );
 
       if (operator === SecretMetadataSearchLogicalOperator.And) {
         // and: every condition must match a row of the secret. Drive the scan from the first condition
@@ -191,7 +243,15 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
   // separate query so the common plaintext path stays untouched, and it returns early (no hydration) when
   // a project has no encrypted metadata for the requested keys.
   const searchSecretMetadataWithEncryptedValues = async (
-    { orgId, projectId, filters, tagSlugs, limit = MAX_SECRET_METADATA_SEARCH_SECRETS }: TSearchSecretMetadataDALDTO,
+    {
+      orgId,
+      projectId,
+      filters,
+      tagSlugs,
+      folderIds,
+      environments,
+      limit = MAX_SECRET_METADATA_SEARCH_SECRETS
+    }: TSearchSecretMetadataDALDTO,
     tx?: Knex
   ) => {
     try {
@@ -200,7 +260,14 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
 
       // step 1: bounded set of secrets holding at least one encrypted metadata row for a requested key
       // — narrowed by the (orgId, key) partial index, and by the optional tag filter.
-      const matchedSecretRows = await buildScopedSecretMetadataQuery(knex, orgId, projectId, tagSlugs)
+      const matchedSecretRows = await buildScopedSecretMetadataQuery(
+        knex,
+        orgId,
+        projectId,
+        tagSlugs,
+        folderIds,
+        environments
+      )
         .whereNotNull(`${TableName.ResourceMetadata}.encryptedValue`)
         .whereIn(`${TableName.ResourceMetadata}.key`, keys)
         .distinct(`${TableName.ResourceMetadata}.secretId`)

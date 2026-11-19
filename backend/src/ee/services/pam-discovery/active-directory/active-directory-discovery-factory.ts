@@ -8,10 +8,11 @@ import { BadRequestError } from "@app/lib/errors";
 import { WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
 import { buildDomainBaseDN, getLdapAttribute, getLdapAttributeBuffer, searchLdap } from "@app/lib/ldap/ldap-search-fns";
 import { logger } from "@app/lib/logger";
+import { getTlsServerNameOptions } from "@app/lib/tls";
 
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
-import { PamAccountType } from "../../pam/pam-enums";
 import { isDomainQualifiedUsername, toNetbiosUsername } from "../../pam-account/pam-account-schemas";
+import { PamAccountType } from "../../pam/pam-enums";
 import { DEFAULT_WINRM_PORT, executeWithGateway, winrmRpcWithGateway } from "../pam-discovery-fns";
 import {
   TDiscoveredAccount,
@@ -74,7 +75,7 @@ const runLdap = <T>(
       ...(conn.useLdaps && {
         tlsOptions: {
           rejectUnauthorized: conn.ldapRejectUnauthorized,
-          servername: conn.ldapTlsServerName || conn.dcAddress,
+          ...getTlsServerNameOptions(conn.ldapTlsServerName || conn.dcAddress),
           ...(conn.ldapCaCert && { ca: [conn.ldapCaCert] })
         }
       })

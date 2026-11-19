@@ -1,6 +1,8 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import {
@@ -11,13 +13,19 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
-import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
-import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
-import { TPamAccountSettingsOverrides } from "../pam-account-template/pam-account-template-schemas";
+import {
+  PamAccountSettingsOverridesSchema,
+  PamTemplateSettingsSchema,
+  TPamAccountSettingsOverrides
+} from "../pam-account-template/pam-account-template-schemas";
+import {
+  PAM_RECORDING_CONNECTION_APPS,
+  resolveS3RecordingAccess
+} from "../pam-session-recording/aws-s3/aws-s3-provider-factory";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { PAM_RECORDING_STORAGE_FACTORY_MAP } from "../pam-session-recording/pam-recording-storage-factory";
 import { normalizeKeyPrefix, TPamRecordingResolvedConfig } from "../pam-session-recording/pam-recording-storage-types";
@@ -28,18 +36,22 @@ export type TPamValidatorDeps = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne" | "findById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
 export const validateGatewayAttachment = async (
   {
     permissionService,
     gatewayV2DAL,
-    gatewayPoolService
-  }: Pick<TPamValidatorDeps, "permissionService" | "gatewayV2DAL" | "gatewayPoolService">,
+    gatewayPoolService,
+    orgDAL
+  }: Pick<TPamValidatorDeps, "permissionService" | "gatewayV2DAL" | "gatewayPoolService" | "orgDAL">,
   gwId: string | null | undefined,
   poolId: string | null | undefined,
-  ctx: TActorContext
+  ctx: TActorContext,
+  // Feeds the org's gateway pool requirement; see assertIndividualGatewayAllowed.
+  { previousGatewayId, inheritedFrom }: { previousGatewayId?: string | null; inheritedFrom?: string } = {}
 ) => {
   if (gwId) {
     const gw = await gatewayV2DAL.findOne({ id: gwId, orgId: ctx.actorOrgId });
@@ -59,6 +71,14 @@ export const validateGatewayAttachment = async (
       OrgPermissionGatewayActions.AttachGateways,
       OrgPermissionSubjects.Gateway
     );
+
+    await assertIndividualGatewayAllowed({
+      orgDAL,
+      orgId: ctx.actorOrgId,
+      gatewayId: gwId,
+      previousGatewayId,
+      inheritedFrom
+    });
   }
   if (poolId) {
     await gatewayPoolService.resolveAttachableGatewayFromPool({
@@ -79,8 +99,10 @@ const enforceAppConnectionConnect = async (
     throw new NotFoundError({ message: "Recording connection not found" });
   }
 
-  if (conn.app !== AppConnection.AWS) {
-    throw new BadRequestError({ message: "Recording connection must be an AWS connection" });
+  if (!PAM_RECORDING_CONNECTION_APPS.includes(conn.app as AppConnection)) {
+    throw new BadRequestError({
+      message: "Recording connection must be an AWS or S3-Compatible Storage connection"
+    });
   }
 
   if (conn.orgId !== ctx.actorOrgId) {
@@ -120,25 +142,20 @@ export const validateRecordingConnection = async (
 };
 
 export const validateRecordingS3Config = async (
-  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "kmsService">,
+  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "kmsDataKeyService">,
   connectionId: string,
-  s3Config: { bucket: string; region: string; keyPrefix?: string },
+  s3Config: { bucket: string; region?: string; keyPrefix?: string },
   ctx: TActorContext
 ): Promise<TPamRecordingResolvedConfig> => {
   const raw = await enforceAppConnectionConnect(deps, connectionId, ctx);
 
-  const appConnection = await decryptAppConnection(raw, deps.kmsService);
-  const awsConfig = await getAwsConnectionConfig(
-    appConnection as unknown as TAwsConnectionConfig,
-    (s3Config.region as AWSRegion) ?? AWSRegion.US_EAST_1
-  );
+  const appConnection = await decryptAppConnection(raw, deps.kmsDataKeyService);
 
   const resolvedConfig: TPamRecordingResolvedConfig = {
     backend: PamRecordingStorageBackend.AwsS3,
     bucket: s3Config.bucket,
-    region: s3Config.region as AWSRegion,
     keyPrefix: s3Config.keyPrefix ?? null,
-    awsCredentials: awsConfig.credentials
+    ...(await resolveS3RecordingAccess(appConnection, s3Config.region))
   };
 
   const provider = PAM_RECORDING_STORAGE_FACTORY_MAP[PamRecordingStorageBackend.AwsS3]();
@@ -147,21 +164,28 @@ export const validateRecordingS3Config = async (
   return resolvedConfig;
 };
 
+export const getInheritedRecordingS3Config = (settingsOverrides: unknown, templateSettings: unknown) =>
+  PamAccountSettingsOverridesSchema.safeParse(settingsOverrides).data?.recordingS3Config ??
+  PamTemplateSettingsSchema.safeParse(templateSettings).data?.recordingS3Config;
+
 export const resolveOverridesS3Config = async (
-  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "kmsService">,
+  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "kmsDataKeyService">,
   settingsOverrides: TPamAccountSettingsOverrides | null | undefined,
   effectiveConnectionId: string | null | undefined,
-  ctx: TActorContext
+  ctx: TActorContext,
+  // an account that overrides only the connection still records to the bucket it inherits
+  inheritedS3Config?: TPamAccountSettingsOverrides["recordingS3Config"]
 ): Promise<TPamRecordingResolvedConfig | null> => {
-  if (!settingsOverrides?.recordingS3Config) return null;
+  const s3Config = settingsOverrides?.recordingS3Config ?? inheritedS3Config;
+  if (!s3Config) return null;
 
   if (!effectiveConnectionId) {
     throw new BadRequestError({
-      message: "S3 recording config requires an AWS connection on the account or template"
+      message: "S3 recording config requires an AWS or S3-Compatible Storage connection on the account or template"
     });
   }
 
-  return validateRecordingS3Config(deps, effectiveConnectionId, settingsOverrides.recordingS3Config, ctx);
+  return validateRecordingS3Config(deps, effectiveConnectionId, s3Config, ctx);
 };
 
 export const mintCorsProbeUrl = async (resolvedConfig: TPamRecordingResolvedConfig): Promise<string | null> => {

@@ -1,11 +1,9 @@
 import { useRef, useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { Filter, FolderOpen, MoreHorizontal, Plus, Search, Settings, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { PageHeader } from "@app/components/v2";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -43,6 +41,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   PamAccessType,
@@ -62,6 +61,7 @@ import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { useSlashFocusSearch } from "@app/hooks/useSlashFocusSearch";
 
+import { CopyIdMenuItem } from "../../components/CopyIdMenuItem";
 import { LaunchSessionSheet } from "../../components/LaunchSessionSheet";
 import { PAM_FOLDER_TABS } from "../../components/pamResourceTabs";
 import { RequestAccessSheet } from "../../components/RequestAccessSheet";
@@ -78,7 +78,6 @@ import { ViewCredentialsModal } from "../components/ViewCredentialsModal";
 const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5"];
 
 export const PamFolderPage = () => {
-  const { t } = useTranslation();
   const { orgId, folderId } = useParams({ from: ROUTE_PATHS.Pam.FolderPage.id });
   const navigate = useNavigate();
 
@@ -124,8 +123,7 @@ export const PamFolderPage = () => {
   ] as const);
 
   const accountSheet = usePamSheetState("accountId");
-  // The folder is the page itself, so its settings sheet is local state rather than a URL param.
-  const [folderSheetTab, setFolderSheetTab] = useState<PamSheetTab | undefined>();
+  const folderSheet = usePamSheetState("folderId");
 
   const [launchAccount, setLaunchAccount] = useState<TAccessiblePamAccount | null>(null);
   const [requestAccount, setRequestAccount] = useState<TAccessiblePamAccount | null>(null);
@@ -192,29 +190,30 @@ export const PamFolderPage = () => {
 
   if (!isLoadingFolders && !folder) {
     return (
-      <div className="mx-auto mb-6 w-full max-w-8xl">
-        <Empty className="mt-4 border">
-          <EmptyHeader>
-            <EmptyTitle>Folder not found</EmptyTitle>
-            <EmptyDescription>
-              This folder no longer exists, or you don&apos;t have access to it.
-            </EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent>
-            <Button variant="outline" size="sm" asChild>
-              <Link {...accountsRoute}>Back to Accounts</Link>
-            </Button>
-          </EmptyContent>
-        </Empty>
-      </div>
+      <>
+        <PageTitle title="Folder" />
+        <div className="mx-auto mb-6 w-full max-w-8xl">
+          <Empty className="mt-4 border">
+            <EmptyHeader>
+              <EmptyTitle>Folder not found</EmptyTitle>
+              <EmptyDescription>
+                This folder no longer exists, or you don&apos;t have access to it.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button variant="outline" size="sm" asChild>
+                <Link {...accountsRoute}>Back to Accounts</Link>
+              </Button>
+            </EmptyContent>
+          </Empty>
+        </div>
+      </>
     );
   }
 
   return (
     <div className="mx-auto mb-6 w-full max-w-8xl">
-      <Helmet>
-        <title>{t("common.head-title", { title: folder?.name ?? "Folder" })}</title>
-      </Helmet>
+      <PageTitle title={folder?.name ?? "Folder"} />
 
       <PageHeader
         title="Accounts"
@@ -241,12 +240,15 @@ export const PamFolderPage = () => {
                 </IconButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" sideOffset={4} className="min-w-48">
+                <CopyIdMenuItem id={folderId} />
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div>
                       <DropdownMenuItem
                         isDisabled={!configureTab}
-                        onClick={() => configureTab && setFolderSheetTab(configureTab.value)}
+                        onClick={() =>
+                          configureTab && folderSheet.openSheet(folderId, configureTab.value)
+                        }
                       >
                         <Settings />
                         Configure
@@ -292,9 +294,8 @@ export const PamFolderPage = () => {
                   <TooltipTrigger asChild>
                     <DropdownMenuTrigger asChild>
                       <IconButton
-                        variant="outline"
+                        variant={selectedAccountType ? "pam" : "outline"}
                         aria-label="Filter by account type"
-                        className={selectedAccountType ? "text-product-pam" : undefined}
                       >
                         <Filter />
                       </IconButton>
@@ -303,12 +304,12 @@ export const PamFolderPage = () => {
                   <TooltipContent>{selectedTypeName ?? "Filter by account type"}</TooltipContent>
                 </Tooltip>
                 <DropdownMenuContent align="end" sideOffset={4} className="min-w-48">
-                  <DropdownMenuLabel>Account type</DropdownMenuLabel>
+                  <DropdownMenuLabel>Account Type</DropdownMenuLabel>
                   <DropdownMenuRadioGroup
                     value={selectedAccountType || "all"}
                     onValueChange={(val) => setSelectedAccountType(val === "all" ? "" : val)}
                   >
-                    <DropdownMenuRadioItem value="all">All types</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="all">All Types</DropdownMenuRadioItem>
                     {accountTypes.map((meta) => (
                       <DropdownMenuRadioItem key={meta.type} value={meta.type}>
                         <ProviderIcon
@@ -427,12 +428,12 @@ export const PamFolderPage = () => {
       />
 
       <FolderDetailSheet
-        isOpen={Boolean(folderSheetTab)}
-        folder={folder}
-        activeTab={folderSheetTab}
-        onTabChange={(tab) => setFolderSheetTab(tab as PamSheetTab)}
+        isOpen={folderSheet.isOpen}
+        folder={folders.find((f) => f.id === folderSheet.selectedId)}
+        activeTab={folderSheet.tab}
+        onTabChange={folderSheet.setTab}
         onOpenChange={(open) => {
-          if (!open) setFolderSheetTab(undefined);
+          if (!open) folderSheet.closeSheet();
         }}
       />
 

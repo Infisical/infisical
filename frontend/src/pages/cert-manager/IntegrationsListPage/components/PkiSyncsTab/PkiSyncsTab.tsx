@@ -29,7 +29,6 @@ export const PkiSyncsTab = () => {
     navigate({
       to: ROUTE_PATHS.CertManager.IntegrationsListPage.path,
       params: {
-        projectId: currentProject?.id,
         orgId: currentOrg.id
       },
       search: memoizedSearch
@@ -48,6 +47,10 @@ export const PkiSyncsTab = () => {
     if (storedFormData && !popUp.addSync.isOpen) {
       try {
         const parsedData = JSON.parse(storedFormData);
+        if (parsedData.returnUrl?.includes("/cert-manager/applications/")) {
+          localStorage.removeItem("pkiSyncFormData");
+          return;
+        }
         if (connectionId && connectionName) {
           const initialData = {
             ...parsedData,
@@ -56,7 +59,7 @@ export const PkiSyncsTab = () => {
           handlePopUpOpen("addSync", { destination: parsedData.destination, initialData });
           navigate({
             to: ROUTE_PATHS.CertManager.IntegrationsListPage.path,
-            params: { projectId: currentProject?.id, orgId: currentOrg.id },
+            params: { orgId: currentOrg.id },
             search: { selectedTab: IntegrationsListPageTabs.PkiSyncs },
             replace: true
           });
@@ -101,7 +104,8 @@ export const PkiSyncsTab = () => {
               </div>
             </div>
             <p className="text-sm text-label-secondary">
-              Existing project-level syncs remain editable. Create new syncs inside an Application.
+              Existing syncs created outside an Application remain editable. Create new syncs inside
+              an Application.
             </p>
           </div>
         </div>

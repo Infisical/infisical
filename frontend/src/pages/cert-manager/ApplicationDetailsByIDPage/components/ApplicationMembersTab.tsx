@@ -2,7 +2,6 @@ import { useState } from "react";
 import { MoreHorizontalIcon, Trash2Icon, UserPlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -12,6 +11,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -225,13 +225,13 @@ export const ApplicationMembersTab = ({ members, applicationId }: Props) => {
         existingMembers={members}
       />
 
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.removeMember.isOpen}
         title="Remove member?"
-        subTitle="The member loses access to this application immediately. Their access to other applications is unchanged."
-        onChange={(o) => handlePopUpToggle("removeMember", o)}
-        deleteKey="confirm"
-        onDeleteApproved={async () => {
+        description="The member loses access to this application immediately. Their access to other applications is unchanged."
+        onOpenChange={(o) => handlePopUpToggle("removeMember", o)}
+        confirmKey="confirm"
+        onConfirm={async () => {
           const m = popUp.removeMember.data as TPkiApplicationMember | undefined;
           if (!m) return;
           try {

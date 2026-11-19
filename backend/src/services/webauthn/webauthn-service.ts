@@ -13,9 +13,9 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
-import { MfaMethod } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
+import { MfaMethod } from "../auth/auth-type";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserServiceFactory } from "../user/user-service";
 import { TWebAuthnCredentialDALFactory } from "./webauthn-credential-dal";

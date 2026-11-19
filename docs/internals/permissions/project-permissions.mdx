@@ -122,9 +122,10 @@ Supports conditions and permission inversion.
 
 #### Subject: `audit-logs`
 
-| Action | Description                                             |
-| ------ | ------------------------------------------------------- |
-| `read` | View audit logs of actions performed within the project |
+| Action | Description                                                                                                                       |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `read` | View audit logs of actions performed within the project                                                                           |
+| `edit` | Choose which audit log event classes the project records. If you self-host Infisical, also set how long the project keeps its logs |
 
 #### Subject: `integrations`
 
@@ -165,7 +166,7 @@ Supports conditions and permission inversion.
 | `delete-app-connections`  | Remove app connections             | `connectionId` |
 | `connect-app-connections` | Use app connections                | `connectionId` |
 
-### Secrets management
+### Secrets Management
 
 #### Subject: `secrets`
 
@@ -313,7 +314,7 @@ Supports conditions and permission inversion.
 | ------ | ------------------------------------------------------------------------------------ |
 | `read` | View project insights dashboard, including secret access volume, access locations, auth method distribution, and rotation/reminder calendar |
 
-### Key management service (KMS)
+### Key Management Service (KMS)
 
 #### Subject: `kms`
 
@@ -337,8 +338,9 @@ Supports conditions and permission inversion.
 | `verify-mac`         | Use keys to verify message authentication codes (MACs)                      |
 | `rotate`             | Rotate key material for encryption keys                                     |
 | `export-private-key` | Export key material (private key for asymmetric, secret key for symmetric)  |
+| `publish-public-key` | Publish a key's public key at a public JWKS URL (also needs `edit`)         |
 
-### Public key infrastructure (PKI)
+### Certificate Management
 
 #### Subject: `certificate-authorities`
 
@@ -413,7 +415,7 @@ Supports conditions and permission inversion.
 | `edit`   | Modify certificate installations |
 | `delete` | Remove certificate installations |
 
-### Secret scanning
+### Secret Scanning
 
 #### Subject: `secret-scanning-data-sources`
 
@@ -441,7 +443,7 @@ Supports conditions and permission inversion.
 | `read-configs`   | View Secret Scanning Project Configuration   |
 | `update-configs` | Update Secret Scanning Project Configuration |
 
-### Privileged access management (PAM)
+### Privileged Access Management (PAM)
 
 #### Subject: `pam-resources`
 

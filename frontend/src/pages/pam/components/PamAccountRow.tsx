@@ -1,5 +1,5 @@
 import { ReactNode, useSyncExternalStore } from "react";
-import { Clock, KeyRound, Rocket } from "lucide-react";
+import { Clock, Folder, KeyRound, Rocket } from "lucide-react";
 
 import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
@@ -40,7 +40,6 @@ const useNow = () => useSyncExternalStore(subscribeToTick, () => tickNow);
 // Compact remaining time for the grant-expiry badge, e.g. "3h 41m"
 const formatRemaining = (expiresAt: string, now: number) => {
   const remainingMs = new Date(expiresAt).getTime() - now;
-  if (remainingMs <= 0) return "Expired";
   const totalMinutes = Math.floor(remainingMs / 60000);
   const days = Math.floor(totalMinutes / 1440);
   const hours = Math.floor((totalMinutes % 1440) / 60);
@@ -71,6 +70,8 @@ type Props = {
   actions?: ReactNode;
   accessibilityBadge?: ReactNode;
   indented?: boolean;
+  // Set when the list spans folders, where account names are not unique.
+  folderName?: string | null;
 };
 
 export const PamAccountRow = ({
@@ -88,13 +89,15 @@ export const PamAccountRow = ({
   onRequestAccess,
   actions,
   accessibilityBadge,
-  indented
+  indented,
+  folderName
 }: Props) => {
   const now = useNow();
   const { map } = usePamAccountTypeMap();
   const typeName = map[accountType]?.name ?? accountType;
 
   const isGranted = accessStatus === PamAccessStatus.Granted;
+  const isGrantExpired = Boolean(grantExpiresAt && new Date(grantExpiresAt).getTime() <= now);
   const isPending = accessStatus === PamAccessStatus.Pending;
 
   // Row click mirrors the primary action icon, and only fires when the user can actually act.
@@ -211,14 +214,20 @@ export const PamAccountRow = ({
           </span>
           <Badge variant="neutral">{typeName}</Badge>
           {accessibilityBadge}
+          {folderName && (
+            <span className="flex min-w-0 items-center gap-1 text-xs text-muted">
+              <Folder className="size-3.5 shrink-0" />
+              <span className="truncate">{folderName}</span>
+            </span>
+          )}
         </div>
       </TableCell>
       <TableCell className="w-40">
         <div className="flex items-center justify-end gap-2.5">
           {isGranted && grantExpiresAt && (
-            <Badge variant="success">
+            <Badge variant={isGrantExpired ? "neutral" : "success"}>
               <Clock className="mr-1 size-3" />
-              Expires in {formatRemaining(grantExpiresAt, now)}
+              {isGrantExpired ? "Expired" : `Expires in ${formatRemaining(grantExpiresAt, now)}`}
             </Badge>
           )}
           <div className="flex items-center gap-0.5">

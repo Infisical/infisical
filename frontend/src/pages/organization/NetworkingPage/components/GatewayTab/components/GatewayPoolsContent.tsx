@@ -227,6 +227,7 @@ export const GatewayPoolsContent = ({ search }: Props) => {
         pool={popUp.editPool.data as TGatewayPool}
       />
       <AlertDialog
+        isPending={deletePool.isPending}
         open={popUp.deletePool.isOpen}
         confirmationValue={(popUp.deletePool.data as TGatewayPool | undefined)?.name}
         onOpenChange={(open) => handlePopUpToggle("deletePool", open)}
@@ -245,10 +246,9 @@ export const GatewayPoolsContent = ({ search }: Props) => {
             <AlertDescription>Deleting this gateway pool cannot be undone.</AlertDescription>
           </Alert>
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={deletePool.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isPending={deletePool.isPending}
               onClick={(event) => {
                 event.preventDefault();
                 handleDeletePool();

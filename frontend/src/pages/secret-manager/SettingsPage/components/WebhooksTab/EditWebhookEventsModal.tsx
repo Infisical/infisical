@@ -1,9 +1,8 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { components, OptionProps } from "react-select";
-import { CheckIcon } from "lucide-react";
 
 import {
   Button,
+  Combobox,
   Dialog,
   DialogClose,
   DialogContent,
@@ -13,8 +12,7 @@ import {
   DialogTitle,
   Field,
   FieldDescription,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
 import {
   DEFAULT_ENABLED_EVENTS,
@@ -45,21 +43,12 @@ const EVENT_OPTIONS: TWebhookEventOption[] = WEBHOOK_EVENTS.map((event) => ({
   description: WEBHOOK_EVENT_METADATA[event].description
 }));
 
-const OptionWithDescription = (props: OptionProps<TWebhookEventOption>) => {
-  const { data, children, isSelected } = props;
-
-  return (
-    <components.Option {...props}>
-      <div className="flex flex-row items-center justify-between">
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium">{children}</p>
-          <p className="truncate text-xs leading-4 text-muted">{data.description}</p>
-        </div>
-        {isSelected && <CheckIcon className="ml-2 size-4 shrink-0" />}
-      </div>
-    </components.Option>
-  );
-};
+const renderEventOption = (option: TWebhookEventOption) => (
+  <div className="min-w-0">
+    <p className="truncate font-medium">{option.label}</p>
+    <p className="truncate text-xs leading-4 text-muted">{option.description}</p>
+  </div>
+);
 
 const buildAllEnabled = (): TWebhookEventSettings =>
   WEBHOOK_EVENTS.reduce<TWebhookEventSettings>((acc, event) => {
@@ -136,19 +125,17 @@ export const EditWebhookEventsModal = ({
         <form onSubmit={handleSave} className="flex flex-col gap-6">
           <Field>
             <FieldLabel htmlFor="webhook-events">Events</FieldLabel>
-            <FilterableSelect
-              isMulti
-              inputId="webhook-events"
+            <Combobox
+              multiple
+              id="webhook-events"
               options={EVENT_OPTIONS}
               value={selectedOptions}
-              onChange={(selected) => handleChange(selected as readonly TWebhookEventOption[])}
+              onValueChange={handleChange}
               getOptionValue={(option) => option.value}
+              getOptionKeywords={(option) => [option.value]}
               getOptionLabel={(option) => option.label}
               placeholder="Select events..."
-              menuPlacement="bottom"
-              closeMenuOnSelect={false}
-              hideSelectedOptions={false}
-              components={{ Option: OptionWithDescription }}
+              renderOption={renderEventOption}
             />
             {!hasSelection && (
               <FieldDescription>

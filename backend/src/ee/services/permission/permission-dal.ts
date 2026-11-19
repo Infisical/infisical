@@ -64,6 +64,8 @@ export interface TPermissionDALFactory {
         id: string;
         role: string;
         customRoleSlug: string;
+        customRoleId?: string | null;
+        customRoleName?: string | null;
         permissions: unknown;
         temporaryRange: string | null | undefined;
         temporaryMode: string | null | undefined;
@@ -73,6 +75,7 @@ export interface TPermissionDALFactory {
       }[];
       additionalPrivileges: {
         id: string;
+        name: string;
         permissions: unknown;
         temporaryRange: string | null | undefined;
         temporaryMode: string | null | undefined;
@@ -108,9 +111,11 @@ export interface TPermissionDALFactory {
         temporaryAccessStartTime?: Date | null | undefined;
         temporaryAccessEndTime?: Date | null | undefined;
         customRoleSlug?: string | null | undefined;
+        customRoleName?: string | null | undefined;
       }[];
       additionalPrivileges: {
         id: string;
+        name: string;
         permissions: unknown;
         temporaryRange: string | null | undefined;
         temporaryMode: string | null | undefined;
@@ -141,6 +146,8 @@ export interface TPermissionDALFactory {
         id: string;
         role: string;
         customRoleSlug: string;
+        customRoleId?: string | null;
+        customRoleName?: string | null;
         permissions: unknown;
         temporaryRange: string | null | undefined;
         temporaryMode: string | null | undefined;
@@ -155,6 +162,8 @@ export interface TPermissionDALFactory {
         id: string;
         role: string;
         customRoleSlug: string;
+        customRoleId?: string | null;
+        customRoleName?: string | null;
         permissions: unknown;
         temporaryRange: string | null | undefined;
         temporaryMode: string | null | undefined;
@@ -204,23 +213,44 @@ interface TResourceMembershipReturn extends TMemberships {
 }
 
 export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
+  const actorMembershipIds = ({
+    actorType,
+    actorId,
+    orgId,
+    projectId,
+    scopes
+  }: {
+    actorType: ActorType.IDENTITY | ActorType.USER;
+    actorId: string;
+    orgId: string;
+    projectId?: string;
+    scopes: (AccessScope | typeof RESOURCE_SCOPE)[];
+  }) => {
+    const directCol = actorType === ActorType.USER ? "actorUserId" : "actorIdentityId";
+    const groupTable = actorType === ActorType.USER ? TableName.UserGroupMembership : TableName.IdentityGroupMembership;
+    const groupActorCol = actorType === ActorType.USER ? "userId" : "identityId";
+    const actorGroupIds = () =>
+      db(TableName.Groups)
+        .join(groupTable, `${groupTable}.groupId`, `${TableName.Groups}.id`)
+        .where(`${groupTable}.${groupActorCol}`, actorId)
+        .select(db.ref("id").withSchema(TableName.Groups));
+
+    const branches = scopes.flatMap((scope) => {
+      const inScope = () => {
+        const qb = db(TableName.Membership).select("id").where("scopeOrgId", orgId).where("scope", scope);
+        return scope === AccessScope.Organization ? qb : qb.where("scopeProjectId", projectId as string);
+      };
+      // IS NOT NULL is implied by the IN, but Postgres only uses the partial group index when it is stated.
+      return [
+        inScope().where(directCol, actorId),
+        inScope().whereNotNull("actorGroupId").whereIn("actorGroupId", actorGroupIds())
+      ];
+    });
+    return branches[0].unionAll(branches.slice(1));
+  };
+
   const getPermission: TPermissionDALFactory["getPermission"] = async ({ scopeData, tx, actorId, actorType }) => {
     try {
-      const conn = tx || db;
-      const userGroupSubquery = conn(TableName.Groups)
-        .join(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
-        .where(`${TableName.UserGroupMembership}.userId`, actorId)
-        .select(db.ref("id").withSchema(TableName.Groups));
-
-      const identityGroupSubquery = conn(TableName.Groups)
-        .join(
-          TableName.IdentityGroupMembership,
-          `${TableName.IdentityGroupMembership}.groupId`,
-          `${TableName.Groups}.id`
-        )
-        .where(`${TableName.IdentityGroupMembership}.identityId`, actorId)
-        .select(db.ref("id").withSchema(TableName.Groups));
-
       const docs = await (tx || db)
         .replicaNode()(TableName.Membership)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
@@ -257,27 +287,16 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
             void queryBuilder.on(`${TableName.IdentityMetadata}.identityId`, db.raw("?", [actorId]));
           }
         })
-        .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
-        .where((qb) => {
-          if (actorType === ActorType.USER) {
-            void qb
-              .where(`${TableName.Membership}.actorUserId`, actorId)
-              .orWhereIn(`${TableName.Membership}.actorGroupId`, userGroupSubquery);
-          } else if (actorType === ActorType.IDENTITY) {
-            void qb
-              .where(`${TableName.Membership}.actorIdentityId`, actorId)
-              .orWhereIn(`${TableName.Membership}.actorGroupId`, identityGroupSubquery);
-          }
-        })
-        .where((qb) => {
-          if (scopeData.scope === AccessScope.Organization) {
-            void qb.where(`${TableName.Membership}.scope`, AccessScope.Organization);
-          } else if (scopeData.scope === AccessScope.Project) {
-            void qb
-              .where(`${TableName.Membership}.scope`, AccessScope.Project)
-              .where(`${TableName.Membership}.scopeProjectId`, scopeData.projectId);
-          }
-        })
+        .whereIn(
+          `${TableName.Membership}.id`,
+          actorMembershipIds({
+            actorType,
+            actorId,
+            orgId: scopeData.orgId,
+            projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
+            scopes: [scopeData.scope]
+          })
+        )
         .select(selectAllTableCols(TableName.Membership))
         .select(
           db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
@@ -540,6 +559,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           db.ref("id").withSchema(TableName.Groups).as("groupId"),
           db.ref("name").withSchema(TableName.Groups).as("groupName"),
           db.ref("slug").withSchema("groupCustomRoles").as("groupProjectMembershipRoleCustomRoleSlug"),
+          db.ref("name").withSchema("groupCustomRoles").as("groupProjectMembershipRoleCustomRoleName"),
           db.ref("permissions").withSchema("groupCustomRoles").as("groupProjectMembershipRolePermission"),
           db.ref("id").withSchema(TableName.MembershipRole).as("groupProjectMembershipRoleId"),
           db.ref("role").withSchema(TableName.MembershipRole).as("groupProjectMembershipRole"),
@@ -574,6 +594,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
               groupProjectMembershipRole,
               groupProjectMembershipRolePermission,
               groupProjectMembershipRoleCustomRoleSlug,
+              groupProjectMembershipRoleCustomRoleId,
+              groupProjectMembershipRoleCustomRoleName,
               groupProjectMembershipRoleIsTemporary,
               groupProjectMembershipRoleTemporaryMode,
               groupProjectMembershipRoleTemporaryAccessEndTime,
@@ -583,6 +605,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
               id: groupProjectMembershipRoleId,
               role: groupProjectMembershipRole,
               customRoleSlug: groupProjectMembershipRoleCustomRoleSlug,
+              customRoleId: groupProjectMembershipRoleCustomRoleId as string | null,
+              customRoleName: groupProjectMembershipRoleCustomRoleName as string | null,
               permissions: groupProjectMembershipRolePermission,
               temporaryRange: groupProjectMembershipRoleTemporaryRange,
               temporaryMode: groupProjectMembershipRoleTemporaryMode,
@@ -660,6 +684,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           db.ref("id").withSchema(TableName.Membership).as("membershipId"),
           db.ref("username").withSchema(TableName.Users).as("username"),
           db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
+          db.ref("name").withSchema(TableName.Role).as("roleName"),
+          db.ref("customRoleId").withSchema(TableName.MembershipRole).as("membershipRoleCustomRoleId"),
           db.ref("permissions").withSchema(TableName.Role).as("customRolePermission"),
           db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
           db.ref("role").withSchema(TableName.MembershipRole).as("membershipRole"),
@@ -714,6 +740,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
             label: "additionalPrivileges" as const,
             mapper: ({
               additionalPrivilegeId,
+              additionalPrivilegeName,
               additionalPrivilegePermissions,
               additionalPrivilegeIsTemporary,
               additionalPrivilegeTemporaryMode,
@@ -724,6 +751,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
               additionalPrivilegeUpdatedAt
             }) => ({
               id: additionalPrivilegeId,
+              name: additionalPrivilegeName,
               permissions: additionalPrivilegePermissions,
               temporaryRange: additionalPrivilegeTemporaryRange,
               temporaryMode: additionalPrivilegeTemporaryMode,
@@ -739,6 +767,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
             label: "roles" as const,
             mapper: ({
               roleSlug,
+              roleName,
+              membershipRoleCustomRoleId,
               customRolePermission,
               membershipRoleId,
               membershipRole,
@@ -754,6 +784,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
               role: membershipRole,
               permissions: customRolePermission,
               customRoleSlug: roleSlug,
+              customRoleId: membershipRoleCustomRoleId as string | null,
+              customRoleName: roleName as string | null,
               temporaryRange: membershipRoleTemporaryRange,
               temporaryMode: membershipRoleTemporaryMode,
               temporaryAccessStartTime: membershipRoleTemporaryAccessStartTime,
@@ -851,8 +883,10 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           db.ref("createdAt").withSchema(TableName.Membership).as("membershipCreatedAt"),
           db.ref("updatedAt").withSchema(TableName.Membership).as("membershipUpdatedAt"),
           db.ref("slug").withSchema(TableName.Role).as("customRoleSlug"),
+          db.ref("name").withSchema(TableName.Role).as("customRoleName"),
           db.ref("permissions").withSchema(TableName.Role),
           db.ref("id").withSchema(TableName.AdditionalPrivilege).as("identityApId"),
+          db.ref("name").withSchema(TableName.AdditionalPrivilege).as("identityApName"),
           db.ref("permissions").withSchema(TableName.AdditionalPrivilege).as("identityApPermissions"),
           db.ref("temporaryMode").withSchema(TableName.AdditionalPrivilege).as("identityApTemporaryMode"),
           db.ref("isTemporary").withSchema(TableName.AdditionalPrivilege).as("identityApIsTemporary"),
@@ -891,7 +925,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
             mapper: (data) =>
               MembershipRolesSchema.extend({
                 permissions: z.unknown(),
-                customRoleSlug: z.string().optional().nullable()
+                customRoleSlug: z.string().optional().nullable(),
+                customRoleName: z.string().optional().nullable()
               }).parse(data)
           },
           {
@@ -899,6 +934,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
             label: "additionalPrivileges" as const,
             mapper: ({
               identityApId,
+              identityApName,
               identityApPermissions,
               identityApIsTemporary,
               identityApTemporaryMode,
@@ -907,6 +943,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
               identityApTemporaryAccessStartTime
             }) => ({
               id: identityApId,
+              name: identityApName,
               permissions: identityApPermissions,
               temporaryRange: identityApTemporaryRange,
               temporaryMode: identityApTemporaryMode,
@@ -963,16 +1000,6 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
     actorType
   }) => {
     try {
-      const groupTable =
-        actorType === ActorType.USER ? TableName.UserGroupMembership : TableName.IdentityGroupMembership;
-      const groupActorField = actorType === ActorType.USER ? "userId" : "identityId";
-
-      const groupSubquery = db
-        .replicaNode()(TableName.Groups)
-        .join(groupTable, `${groupTable}.groupId`, `${TableName.Groups}.id`)
-        .where(`${groupTable}.${groupActorField}`, actorId)
-        .select(db.ref("id").withSchema(TableName.Groups));
-
       const rows = await db
         .replicaNode()(TableName.Membership)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
@@ -1001,28 +1028,16 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           }
         })
         .leftJoin(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
-        .where(`${TableName.Membership}.scopeOrgId`, orgId)
-        .where((scopeQb) => {
-          void scopeQb
-            .where((inner) => {
-              void inner
-                .where(`${TableName.Membership}.scope`, AccessScope.Project)
-                .where(`${TableName.Membership}.scopeProjectId`, projectId);
-            })
-            .orWhere((inner) => {
-              void inner
-                .where(`${TableName.Membership}.scope`, RESOURCE_SCOPE)
-                .where(`${TableName.Membership}.scopeProjectId`, projectId);
-            })
-            .orWhere(`${TableName.Membership}.scope`, AccessScope.Organization);
-        })
-        .where((qb) => {
-          const directCol =
-            actorType === ActorType.USER
-              ? `${TableName.Membership}.actorUserId`
-              : `${TableName.Membership}.actorIdentityId`;
-          void qb.where(directCol, actorId).orWhereIn(`${TableName.Membership}.actorGroupId`, groupSubquery);
-        })
+        .whereIn(
+          `${TableName.Membership}.id`,
+          actorMembershipIds({
+            actorType,
+            actorId,
+            orgId,
+            projectId,
+            scopes: [AccessScope.Project, RESOURCE_SCOPE, AccessScope.Organization]
+          })
+        )
         .select(
           db.ref("id").withSchema(TableName.Membership).as("mId"),
           // Track isActive/status rather than updatedAt: every login bumps Membership.updatedAt

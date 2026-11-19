@@ -1,3 +1,4 @@
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { TProjectPermission } from "@app/lib/types";
 import {
@@ -9,21 +10,14 @@ import {
 } from "@app/services/certificate-common/certificate-constants";
 import { TImportExternalMetadata } from "@app/services/certificate-common/external-metadata-schemas";
 
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { TProjectDALFactory } from "../project/project-dal";
 import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 
 export enum CertStatus {
   ACTIVE = "active",
   EXPIRED = "expired",
   REVOKED = "revoked",
-  RENEWED = "renewed"
-}
-
-export enum CertificateDeletionEligibility {
-  Expired = "expired",
-  Discovered = "discovered",
-  Imported = "imported"
+  RENEWED = "renewed",
+  DELETED = "deleted"
 }
 
 export enum CertKeyAlgorithm {
@@ -124,6 +118,7 @@ export enum CrlReason {
 export type TGetCertDTO = {
   id?: string;
   serialNumber?: string;
+  includeDeleted?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteCertDTO = {
@@ -131,6 +126,33 @@ export type TDeleteCertDTO = {
   serialNumber?: string;
   auditLogInfo?: AuditLogInfo;
 } & Omit<TProjectPermission, "projectId">;
+
+export enum CertificateRevocationStatus {
+  Revoked = "revoked",
+  PendingApproval = "pending_approval"
+}
+
+export enum ApprovedRevocationOutcomeKind {
+  Revoked = "revoked",
+  AlreadyRevoked = "already-revoked",
+  Failed = "failed"
+}
+
+export enum ApprovedRevocationFailureStage {
+  Infisical = "infisical",
+  Ca = "ca",
+  AfterCa = "after-ca"
+}
+
+export enum CertificateRevocationSource {
+  MicrosoftIntune = "microsoft-intune"
+}
+
+export enum PlatformRevocationOutcome {
+  Revoked = "revoked",
+  AlreadyRevoked = "already-revoked",
+  NotRevocable = "not-revocable"
+}
 
 export type TRevokeCertDTO = {
   id?: string;
@@ -160,6 +182,7 @@ export type TImportCertDTO = {
   certificatePem: string;
   privateKeyPem?: string;
   chainPem?: string;
+  csr?: string;
 
   profileId?: string;
   externalMetadata?: TImportExternalMetadata;
@@ -186,8 +209,8 @@ export type TGetCertificateCredentialsDTO = {
   certId: string;
   projectId: string;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
 };
 
 export { CertExtendedKeyUsage, CertSubjectAlternativeNameType, TAltNameType };

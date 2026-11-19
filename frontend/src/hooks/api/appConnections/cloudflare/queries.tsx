@@ -7,6 +7,8 @@ import {
   TCloudflarePagesProject,
   TCloudflarePermissionGroup,
   TCloudflareR2Bucket,
+  TCloudflareSecretsStore,
+  TCloudflareWorkersPreview,
   TCloudflareWorkersScript,
   TCloudflareZone
 } from "./types";
@@ -17,6 +19,10 @@ const cloudflareConnectionKeys = {
     [...cloudflareConnectionKeys.all, "pages-projects", connectionId] as const,
   listWorkersScripts: (connectionId: string) =>
     [...cloudflareConnectionKeys.all, "workers-scripts", connectionId] as const,
+  listWorkersPreviews: (connectionId: string, scriptId: string) =>
+    [...cloudflareConnectionKeys.all, "workers-previews", connectionId, scriptId] as const,
+  listSecretsStores: (connectionId: string) =>
+    [...cloudflareConnectionKeys.all, "secrets-stores", connectionId] as const,
   listZones: (connectionId: string, scopeToAccount: boolean) =>
     [...cloudflareConnectionKeys.all, "zones", connectionId, { scopeToAccount }] as const,
   listPermissionGroups: (connectionId: string) =>
@@ -67,6 +73,57 @@ export const useCloudflareConnectionListWorkersScripts = (
     queryFn: async () => {
       const { data } = await apiRequest.get<TCloudflareWorkersScript[]>(
         `/api/v1/app-connections/cloudflare/${connectionId}/cloudflare-workers-scripts`
+      );
+
+      return data;
+    },
+    ...options
+  });
+};
+
+export const useCloudflareConnectionListWorkersPreviews = (
+  connectionId: string,
+  scriptId: string,
+  options?: Omit<
+    UseQueryOptions<
+      TCloudflareWorkersPreview[],
+      unknown,
+      TCloudflareWorkersPreview[],
+      ReturnType<typeof cloudflareConnectionKeys.listWorkersPreviews>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: cloudflareConnectionKeys.listWorkersPreviews(connectionId, scriptId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TCloudflareWorkersPreview[]>(
+        `/api/v1/app-connections/cloudflare/${connectionId}/cloudflare-workers-scripts/${encodeURIComponent(scriptId)}/previews`
+      );
+
+      return data;
+    },
+    ...options
+  });
+};
+
+export const useCloudflareConnectionListSecretsStores = (
+  connectionId: string,
+  options?: Omit<
+    UseQueryOptions<
+      TCloudflareSecretsStore[],
+      unknown,
+      TCloudflareSecretsStore[],
+      ReturnType<typeof cloudflareConnectionKeys.listSecretsStores>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: cloudflareConnectionKeys.listSecretsStores(connectionId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TCloudflareSecretsStore[]>(
+        `/api/v1/app-connections/cloudflare/${connectionId}/cloudflare-secrets-stores`
       );
 
       return data;

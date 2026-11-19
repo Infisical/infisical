@@ -81,7 +81,7 @@ export const AddSecretTagModal = ({ popUp, handlePopUpClose, handlePopUpToggle }
         <DialogHeader>
           <DialogTitle>Add a Tag for {currentProject?.name ?? ""}</DialogTitle>
           <DialogDescription>
-            Specify your tag name, and the slug will be created automatically.
+            Tag slugs can only contain lowercase letters, numbers, and hyphens.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-6">

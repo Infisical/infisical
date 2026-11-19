@@ -1,71 +1,67 @@
 ---
 title: "MongoDB accounts"
 sidebarTitle: "MongoDB"
-description: "Add and connect to MongoDB databases."
+description: "Give people and agents access to a MongoDB database without sharing its credentials."
 ---
 
-MongoDB accounts let you manage access to your MongoDB databases. Users connect through the CLI (a local proxy), and every [session](/documentation/platform/pam/sessions/overview) is recorded.
+A MongoDB [account](/documentation/platform/pam/accounts/overview) stores the credentials for one MongoDB user. Members connect to the database through the Infisical CLI, and Infisical records every command they run.
 
-## Creating an account
+## Prerequisites
+
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
+- A [gateway](/documentation/platform/gateways/overview) that can reach the database
+- A MongoDB [account template](/documentation/platform/pam/templates/overview)
+
+## Create the account
 
 <Steps>
-  <Step title="Start adding an account">
-    Go to **Privileged Access Management → Accounts** and select **Add Account**.
+  <Step>
+    Go to **Privileged Access Management** > **Accounts** and select **Add Account**.
   </Step>
-  <Step title="Select a folder and template">
-    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select a MongoDB [template](/documentation/platform/pam/templates/overview).
+  <Step>
+    Select the **Folder** and a MongoDB **Account Template**, then select **Next**.
   </Step>
-  <Step title="Enter connection details">
-    | Field | Description |
-    |-------|-------------|
-    | **Name** | A descriptive name (e.g., `users-db`) |
-    | **Connection String** | MongoDB URI (see below) |
-    | **Database** | Database name (default: admin) |
-    | **SSL Enabled** | Enable SSL for the connection |
-    | **Reject Unauthorized** | Reject connections with invalid certificates (only if SSL enabled) |
-    | **SSL Certificate** | Custom CA certificate (only if SSL enabled) |
+  <Step>
+    Enter a **Name** and the connection details:
 
-    The connection string supports both `mongodb://` and `mongodb+srv://` URIs. Do not include credentials or database name in the URI — use the separate fields instead.
-
-    Example: `mongodb://mongo.example.com:27017` or `mongodb+srv://cluster.example.com`
-  </Step>
-  <Step title="Enter credentials">
     | Field | Description |
-    |-------|-------------|
-    | **Username** | MongoDB username |
-    | **Password** | MongoDB password |
+    | --- | --- |
+    | **Connection String** | The database's `mongodb://` or `mongodb+srv://` URI, without a username, password, or database, such as `mongodb+srv://cluster.example.com` |
+    | **Database** | The database that sessions connect to (defaults to `admin`) |
+    | **SSL Enabled** | Whether to connect over TLS |
+    | **Reject Unauthorized** | Whether to reject a server certificate that can't be verified (shown when **SSL Enabled** is on) |
+    | **SSL Certificate** | The CA certificate that signed the server's certificate (shown when **SSL Enabled** is on) |
   </Step>
-  <Step title="Save">
-    Select **Create**.
+  <Step>
+    Enter the **Username** and **Password** of the MongoDB user, then select **Create**.
   </Step>
 </Steps>
 
-## Connecting
+## Connect
 
-The CLI starts a local proxy that you connect to with your preferred MongoDB client.
+To open a session, follow [Connect to an account](/documentation/platform/pam/accounts/connect). MongoDB accounts don't support the browser, so use the CLI.
+
+Start the local proxy:
 
 ```bash
-infisical pam access my-folder/users-db
+infisical pam access backend-team/users-db
 ```
 
-The command outputs the local port to connect to. Then use `mongosh` or any MongoDB client:
+The proxy keeps running in that terminal and prints its port. In a second terminal, connect your MongoDB client, such as `mongosh`, to that port:
+
 ```bash
 mongosh "mongodb://localhost:<port>/users"
 ```
 
-No password needed since the proxy handles authentication.
-
-**Flags:**
-- `--port <port>` — use a specific local port (otherwise one is assigned automatically)
-- `--reason <reason>` — provide an access reason (if required by template)
+The proxy signs in for you, so the client doesn't need a password.
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="PostgreSQL Accounts" icon="database" href="/documentation/platform/pam/accounts/postgresql">
-    Add PostgreSQL database accounts.
-  </Card>
   <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
-    View and manage sessions.
+    Review and end the connections that people and agents make to your accounts.
+  </Card>
+  <Card title="Access requests" icon="hand" href="/documentation/platform/pam/access-requests/overview">
+    Require approval before a member can use a sensitive account.
   </Card>
 </CardGroup>

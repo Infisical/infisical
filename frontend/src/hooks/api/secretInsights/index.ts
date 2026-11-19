@@ -1,3 +1,4 @@
+export { useEnableOrgSecretValueTracking, useSearchSecretsByValue } from "./mutations";
 export {
   secretInsightsKeys,
   useGetAuthMethodDistribution,
@@ -5,13 +6,18 @@ export {
   useGetInsightsSummary,
   useGetOrgAuthMethodDistribution,
   useGetOrgSecretsAccessVolume,
+  useGetOrgSecretsDuplication,
   useGetOrgSecretsProjects,
   useGetOrgSecretsSummary,
+  useGetOrgSecretValueTrackingStatus,
   useGetOrgStaticSecretsUsage,
   // useGetSecretAccessLocations,
   useGetSecretAccessVolume,
   useGetSecretBlindIndexStatus,
-  useGetSecretsDuplication
+  useGetSecretReadActivity,
+  useGetSecretsDuplication,
+  useGetUnusedAccess,
+  useGetUnusedAccessActor
 } from "./queries";
 export type {
   TAccessLocation,
@@ -24,20 +30,38 @@ export type {
   TGetAuthMethodDistributionResponse,
   TGetCalendarInsightsDTO,
   TGetCalendarInsightsResponse,
+  TGetOrgSecretsDuplicationResponse,
   TGetOrgSecretsProjectsDTO,
+  TGetOrgSecretValueTrackingStatusResponse,
   TGetSecretAccessLocationsDTO,
   TGetSecretAccessLocationsResponse,
   TGetSecretAccessVolumeDTO,
   TGetSecretAccessVolumeResponse,
+  TGetSecretReadActivityDTO,
   TGetSecretsDuplicationDTO,
   TGetSecretsDuplicationResponse,
+  TGetUnusedAccessActorDTO,
+  TGetUnusedAccessActorResponse,
+  TGetUnusedAccessDTO,
+  TGetUnusedAccessResponse,
   TOrgAuthMethodUsage,
+  TOrgDuplicatedSecretEntry,
+  TOrgDuplicatedSecretGroup,
   TOrgProjectInsight,
   TOrgProjectInsightWarnings,
   TOrgProjectsInsights,
   TOrgSecretAccessVolume,
   TOrgSecretsSummary,
   TOrgStaticSecretUsage,
+  TSearchSecretsByValueResponse,
   TSecretAccessVolumeActor,
-  TSecretAccessVolumeDay
+  TSecretAccessVolumeDay,
+  TSecretReadActivity,
+  TSecretReadActivityActor,
+  TSecretValueMatch,
+  TUnusedAccessActor,
+  TUnusedAccessPaths,
+  TUnusedAccessRole,
+  TUnusedSecret
 } from "./types";
+export { SecretReadNotJudgedReason, SecretReadStatus, UnusedAccessActorType } from "./types";

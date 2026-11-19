@@ -8,16 +8,25 @@ import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CertKeySource } from "@app/services/signer/signer-enums";
+import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertKeySource, SIGNER_CERTIFICATE_REQUEST_STATUSES } from "@app/services/signer/signer-enums";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import {
   ApprovalPolicyBodySchema,
-  HSM_SUPPORTED_KEY_ALGORITHMS,
+  refineSignerCertificateInput,
+  SignerCertificateInputSchema,
   SignerExternalConfigurationSchema,
   SignerIdParamsSchema,
-  SignerKeyAlgorithm
+  SignerKeyAlgorithm,
+  SignerRevocationResponseSchema
 } from "./schemas";
+
+const ExternalOrderResponseSchema = z.object({
+  provider: z.string(),
+  orderId: z.number(),
+  status: z.string().nullable()
+});
 
 const SignerWithCertificateResponseSchema = PkiSignersSchema.extend({
   certificateCommonName: z.string().nullable().optional(),
@@ -27,17 +36,31 @@ const SignerWithCertificateResponseSchema = PkiSignersSchema.extend({
   certificateKeyAlgorithm: z.string().nullable().optional(),
   certificateKeySource: z.string().nullable().optional(),
   certificateHsmConnectorId: z.string().nullable().optional(),
+  certificateHsmKeyLabel: z.string().nullable().optional(),
   certificateStatus: z.string().nullable().optional(),
   certificateCaId: z.string().nullable().optional(),
-  approvalPolicyName: z.string().nullable().optional(),
-  externalOrder: z
+  caType: z.nativeEnum(CaType).nullable().optional(),
+  certificateAuthority: z
     .object({
-      provider: z.string(),
-      orderId: z.number(),
-      status: z.string().nullable()
+      id: z.string(),
+      name: z.string(),
+      status: z.nativeEnum(CaStatus),
+      type: z.nativeEnum(CaType)
     })
     .nullable()
-    .optional()
+    .optional(),
+  approvalPolicyName: z.string().nullable().optional(),
+  externalOrder: ExternalOrderResponseSchema.nullable().optional(),
+  hasOpenCertificateRequest: z.boolean().optional(),
+  certificateRequest: z
+    .object({
+      status: z.enum(SIGNER_CERTIFICATE_REQUEST_STATUSES),
+      failureReason: z.string().nullable(),
+      externalOrder: ExternalOrderResponseSchema.nullable()
+    })
+    .nullable()
+    .optional(),
+  revocation: SignerRevocationResponseSchema
 });
 
 export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) => {
@@ -61,12 +84,9 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
           certificateRenewBeforeDays: z.number().int().min(1).max(30).nullable().optional(),
           keyAlgorithm: SignerKeyAlgorithm.schema.optional(),
           certificateId: z.string().uuid().optional(),
-          certificate: z
-            .object({
-              keySource: z.nativeEnum(CertKeySource).optional().default(CertKeySource.Infisical),
-              hsmConnectorId: z.string().uuid().optional()
-            })
-            .optional(),
+          certificate: SignerCertificateInputSchema.extend({
+            keySource: z.enum([CertKeySource.Infisical, CertKeySource.Hsm]).optional().default(CertKeySource.Infisical)
+          }).optional(),
           externalConfiguration: SignerExternalConfigurationSchema.optional(),
           approvalPolicyId: z.string().uuid().optional(),
           members: z
@@ -80,23 +100,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
             .optional(),
           approvalPolicy: ApprovalPolicyBodySchema.optional()
         })
-        .superRefine((data, ctx) => {
-          if (data.certificate?.keySource !== CertKeySource.Hsm) return;
-          if (!data.certificate.hsmConnectorId) {
-            ctx.addIssue({
-              code: "custom",
-              message: `hsmConnectorId is required when keySource = '${CertKeySource.Hsm}'`,
-              path: ["certificate", "hsmConnectorId"]
-            });
-          }
-          if (!data.keyAlgorithm || !HSM_SUPPORTED_KEY_ALGORITHMS.includes(data.keyAlgorithm)) {
-            ctx.addIssue({
-              code: "custom",
-              message: `keyAlgorithm must be one of ${HSM_SUPPORTED_KEY_ALGORITHMS.join(", ")} when keySource = '${CertKeySource.Hsm}'`,
-              path: ["keyAlgorithm"]
-            });
-          }
-        }),
+        .superRefine(refineSignerCertificateInput),
       response: {
         200: PkiSignersSchema
       }
@@ -124,6 +128,8 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
             approvalPolicyId: signer.approvalPolicyId,
             keySource: req.body.certificate?.keySource,
             hsmConnectorId: req.body.certificate?.hsmConnectorId,
+            hsmKeyLabel: req.body.certificate?.hsmKeyLabel,
+            hsmKeyId: req.body.certificate?.hsmKeyId,
             externalConfiguration: req.body.externalConfiguration
           }
         }
@@ -152,7 +158,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       hide: false,
       operationId: "listSigners",
       tags: [ApiDocsTags.PkiSigners],
-      description: "List code signing signers for a project",
+      description: "List code signing signers",
       querystring: z.object({
         projectId: z.string().trim().optional().describe(openApiHidden()),
         offset: z.coerce.number().int().min(0).default(0),
@@ -166,7 +172,8 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
               certificateCommonName: z.string().nullable().optional(),
               certificateSerialNumber: z.string().nullable().optional(),
               certificateNotAfter: z.date().nullable().optional(),
-              approvalPolicyName: z.string().nullable().optional()
+              approvalPolicyName: z.string().nullable().optional(),
+              hasOpenCertificateRequest: z.boolean()
             })
           ),
           totalCount: z.number()

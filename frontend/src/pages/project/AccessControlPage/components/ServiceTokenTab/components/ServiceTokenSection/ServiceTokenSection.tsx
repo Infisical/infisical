@@ -30,7 +30,7 @@ import {
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useDeleteServiceToken } from "@app/hooks/api";
 
 import { AddServiceTokenModal } from "./AddServiceTokenModal";
@@ -40,6 +40,7 @@ type DeleteModalData = { name: string; id: string };
 
 export const ServiceTokenSection = withProjectPermission(
   () => {
+    const scopeVariant = useScopeVariant();
     const { t } = useTranslation();
 
     const deleteServiceToken = useDeleteServiceToken();
@@ -88,7 +89,7 @@ export const ServiceTokenSection = withProjectPermission(
               >
                 {(isAllowed) => (
                   <Button
-                    variant="project"
+                    variant={scopeVariant}
                     onClick={() => {
                       handlePopUpOpen("createAPIToken");
                     }}
@@ -107,9 +108,9 @@ export const ServiceTokenSection = withProjectPermission(
         </Card>
         <AddServiceTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <AlertDialog
+          isPending={deleteServiceToken.isPending}
           open={popUp.deleteAPITokenConfirmation.isOpen}
           onOpenChange={(isOpen) => {
-            if (deleteServiceToken.isPending) return;
             if (!isOpen) setDeleteConfirmation("");
             handlePopUpToggle("deleteAPITokenConfirmation", isOpen);
           }}
@@ -142,12 +143,9 @@ export const ServiceTokenSection = withProjectPermission(
               </Field>
             </AlertDialogConfirmationField>
             <AlertDialogFooter>
-              <AlertDialogCancel isDisabled={deleteServiceToken.isPending}>
-                Cancel
-              </AlertDialogCancel>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 variant="danger"
-                isPending={deleteServiceToken.isPending}
                 isDisabled={!isDeleteConfirmed}
                 onClick={(event) => {
                   event.preventDefault();

@@ -6,6 +6,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { getCaKeySourceAuditMetadata } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
   TCertificateAuthority,
   TCertificateAuthorityInput
@@ -155,7 +156,8 @@ export const registerCertificateAuthorityEndpoints = <
           type: EventType.CREATE_CA,
           metadata: {
             name: certificateAuthority.name,
-            caId: certificateAuthority.id
+            caId: certificateAuthority.id,
+            ...getCaKeySourceAuditMetadata(certificateAuthority.configuration)
           }
         }
       });
@@ -247,7 +249,8 @@ export const registerCertificateAuthorityEndpoints = <
           type: EventType.DELETE_CA,
           metadata: {
             name: certificateAuthority.name,
-            caId: certificateAuthority.id
+            caId: certificateAuthority.id,
+            ...getCaKeySourceAuditMetadata(certificateAuthority.configuration)
           }
         }
       });

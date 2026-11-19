@@ -1,5 +1,5 @@
 import { createNotification } from "@app/components/notifications";
-import { Alert, AlertDescription, DeleteConfirmDialog } from "@app/components/v3";
+import { Alert, AlertDescription, ConfirmationAlertDialog } from "@app/components/v3";
 import { useDeleteKmipClients } from "@app/hooks/api/kmip";
 import { TKmipClient } from "@app/hooks/api/kmip/types";
 
@@ -31,7 +31,7 @@ export const DeleteKmipClientModal = ({ isOpen, onOpenChange, kmipClient }: Prop
   };
 
   return (
-    <DeleteConfirmDialog
+    <ConfirmationAlertDialog
       isOpen={isOpen}
       title={`Delete KMIP Client ${name}?`}
       description={

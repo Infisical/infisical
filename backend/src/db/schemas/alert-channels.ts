@@ -17,10 +17,11 @@ export const AlertChannelsSchema = z.object({
   enabled: z.boolean().default(true),
   orgId: z.string().uuid(),
   projectId: z.string().nullable().optional(),
-  createdByActorId: z.string().uuid(),
+  createdByActorId: z.string().uuid().nullable().optional(),
   createdByActorType: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  workflowIntegrationId: z.string().uuid().nullable().optional()
 });
 
 export type TAlertChannels = z.infer<typeof AlertChannelsSchema>;

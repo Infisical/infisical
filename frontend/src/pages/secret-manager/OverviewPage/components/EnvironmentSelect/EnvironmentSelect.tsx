@@ -2,7 +2,6 @@ import { SetStateAction, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckIcon, ChevronsUpDownIcon, PlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -37,9 +36,15 @@ type Props = {
   selectedEnvs: ProjectEnv[];
   setSelectedEnvs: (value: SetStateAction<ProjectEnv[]>) => void;
   isDisabled?: boolean;
+  onUpgradePlan: () => void;
 };
 
-export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }: Props) {
+export function EnvironmentSelect({
+  selectedEnvs,
+  setSelectedEnvs,
+  isDisabled,
+  onUpgradePlan
+}: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
 
@@ -47,10 +52,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
     currentProject: { environments: projectEnvs, id: projectId }
   } = useProject();
   const { subscription } = useSubscription();
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
-    "createEnvironment",
-    "upgradePlan"
-  ] as const);
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["createEnvironment"] as const);
   const queryClient = useQueryClient();
 
   const isMoreEnvironmentsAllowed =
@@ -58,12 +60,17 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
       ? projectEnvs.length < subscription.environmentLimit
       : true;
 
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) setInputValue("");
+  };
+
   const handleAddEnvironment = () => {
-    setIsOpen(false);
+    handleOpenChange(false);
     if (isMoreEnvironmentsAllowed) {
       handlePopUpOpen("createEnvironment");
     } else {
-      handlePopUpOpen("upgradePlan");
+      onUpgradePlan();
     }
   };
 
@@ -77,7 +84,10 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
     label = "All Environments";
   }
 
-  const handleSelectAll = () => setSelectedEnvs([]);
+  const handleSelectAll = () => {
+    setSelectedEnvs([]);
+    handleOpenChange(false);
+  };
 
   const handleSwitchEnv = (envId: string) => {
     setSelectedEnvs((prev) => {
@@ -88,6 +98,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
       // switching to the sole selected environment clears back to all
       return prev.length === 1 && prev[0].id === envId ? [] : [selectedEnv];
     });
+    handleOpenChange(false);
   };
 
   const handleToggleEnv = (envId: string) => {
@@ -114,18 +125,13 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
           setSelectedEnvs([newEnv]);
         }}
       />
-      <UpgradePlanModal
-        paywallKey="secret-manager.environment-select"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(open) => handlePopUpToggle("upgradePlan", open)}
-        text="Your current plan does not include access to adding custom environments. To unlock this feature, please upgrade to Infisical Pro plan."
-      />
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <Popover open={isOpen} onOpenChange={handleOpenChange}>
         <Tooltip open={isDisabled ? undefined : false}>
           <TooltipTrigger>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
+                // oxlint-disable-next-line jsx-a11y/role-has-required-aria-props -- PopoverTrigger sets aria-controls
                 role="combobox"
                 aria-expanded={isOpen}
                 disabled={isDisabled}
@@ -176,7 +182,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
                     onSelect={handleSwitchEnv}
                     keywords={[env.name, env.slug]}
                   >
-                    <Tooltip delayDuration={500} disableHoverableContent>
+                    <Tooltip delayDuration={500}>
                       <TooltipTrigger asChild>
                         <span className="min-w-0 flex-1 truncate">{env.name}</span>
                       </TooltipTrigger>

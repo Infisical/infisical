@@ -1,0 +1,72 @@
+---
+title: "Secret scanning findings"
+sidebarTitle: "Findings"
+description: "Review the secrets Infisical finds in your repositories."
+---
+
+A finding is a secret that a scan found in one of your [data sources](/documentation/platform/secret-scanning/scan-repositories). Infisical creates one finding for each secret value in a repository. If the same value appears in several files or commits, each place is a location of that one finding, so you review the secret once. If the same value appears in another repository, it's a separate finding there.
+
+To see the findings from every data source, go to **Secret Scanning** > **Findings**.
+
+![findings](/images/platform/secret-scanning/secret-scanning-findings.png)
+
+## What a finding contains
+
+To see the details of a finding, select its row:
+
+- **Description**: What the matching rule detects, such as a type of API key
+- **Last Detected**: The last time a scan found the secret in a new place
+- **First Detected**: The first time a scan found the secret
+- **Comment**: The comment left with the finding's current status, if any
+- **Locations**: Every place Infisical found the secret, with the file and line, the commit and its author, and a link to the file at that commit on GitHub, GitLab, or Bitbucket
+
+## Finding statuses
+
+Every new finding starts as **Unresolved**. After you review a finding, change its status to one of the following:
+
+- **Resolved**: You've dealt with the leak, for example by revoking the secret
+- **False Positive**: The value isn't a secret
+- **Ignored**: The value is a secret, but you've decided it's safe to leave, such as a test credential
+
+A status applies to every location of the finding, including locations that later scans find. To stop Infisical from reporting a value at all, ignore it in the [scanning configuration](/documentation/platform/secret-scanning/configuration#ignore-one-line).
+
+## When a scan finds the secret again
+
+If a later scan finds the secret in a place Infisical already recorded, the finding doesn't change.
+
+If a later scan finds the secret in a new place, Infisical adds the location to the finding. What happens next depends on the finding's status:
+
+- **Unresolved**: Infisical sends a [notification](#notifications-about-new-findings)
+- **Resolved**: Infisical sets the finding back to **Unresolved** and sends a notification
+- **False Positive** or **Ignored**: The finding keeps its status, and Infisical doesn't send a notification
+
+## Change a finding's status
+
+<Steps>
+  <Step>
+    Go to **Secret Scanning** > **Findings**.
+  </Step>
+  <Step>
+    Select the finding's row, then select **Mark Resolved**. For another status, select the arrow next to **Mark Resolved**, then select **Mark False Positive** or **Ignore**.
+
+    To change several findings at once, select the checkbox on each finding's row, then select **Set Status** and a status.
+  </Step>
+  <Step>
+    Optionally, enter a **Comment** that explains your decision.
+  </Step>
+  <Step>
+    Select **Confirm**.
+  </Step>
+</Steps>
+
+To set a finding back to **Unresolved**, select its row, then select **Reopen**.
+
+## Notifications about new findings
+
+When a scan finds a secret in a new place and the secret's finding is **Unresolved**, Infisical sends an email and an in-app notification to every member with the **Admin** role in Secret Scanning. The notification links to the findings from that scan. If a scan fails, the same members get a notification with the error instead.
+
+If a scan of a new push finds secrets, Infisical also notifies the author of the commit if they're a member. If the push has commits from more than one author, Infisical notifies only one of them.
+
+<Note>
+  If you self-host Infisical, scan notifications need an [email service](/self-hosting/configuration/envars#email-service) configured. Without one, Infisical doesn't send the email or the in-app notification.
+</Note>

@@ -1,4 +1,3 @@
-/* eslint-disable no-param-reassign */
 import { z } from "zod";
 
 import { OrgPermissionSubjects } from "@app/context";
@@ -39,7 +38,12 @@ const generalPermissionSchema = z
   .optional();
 
 const auditLogsPermissionSchema = z
-  .array(z.object({ [OrgPermissionAuditLogsActions.Read]: z.boolean().optional() }))
+  .array(
+    z.object({
+      [OrgPermissionAuditLogsActions.Read]: z.boolean().optional(),
+      [OrgPermissionAuditLogsActions.Edit]: z.boolean().optional()
+    })
+  )
   .optional();
 
 const billingPermissionSchema = z
@@ -213,7 +217,8 @@ const secretsManagementInsightsPermissionSchema = z
     z.object({
       [OrgPermissionSecretsManagementInsightsActions.Read]: z.boolean().optional(),
       [OrgPermissionSecretsManagementInsightsActions.GenerateReport]: z.boolean().optional(),
-      [OrgPermissionSecretsManagementInsightsActions.DeleteReport]: z.boolean().optional()
+      [OrgPermissionSecretsManagementInsightsActions.DeleteReport]: z.boolean().optional(),
+      [OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues]: z.boolean().optional()
     })
   )
   .optional();
@@ -250,6 +255,7 @@ export const formSchema = z.object({
     .object({
       project: projectPermissionSchema,
       "audit-logs": auditLogsPermissionSchema,
+      "audit-log-streams": auditLogsPermissionSchema,
       member: memberPermissionSchema,
       groups: groupPermissionSchema,
       role: generalPermissionSchema,
@@ -305,7 +311,6 @@ export type TFormSchema = z.infer<typeof formSchema>;
 export type TPermissionsKey = keyof NonNullable<TFormSchema["permissions"]>;
 
 export const rolePermission2Form = (permissions: TPermission[] = []) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const formVal: Record<string, any> = {};
   permissions.forEach((permission) => {
     const actions = Array.isArray(permission.action) ? permission.action : [permission.action];
@@ -617,12 +622,33 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
   },
   [OrgPermissionSubjects.AuditLogs]: {
     title: "Audit Logs",
-    description: "View organization activity and audit trail",
+    description: "View organization activity and audit trail, and choose which events are recorded",
     actions: [
       {
         value: OrgPermissionAuditLogsActions.Read,
         label: "Read",
         description: "View organization activity and audit events"
+      },
+      {
+        value: OrgPermissionAuditLogsActions.Edit,
+        label: "Edit",
+        description: "Choose which audit log event classes the organization records"
+      }
+    ]
+  },
+  [OrgPermissionSubjects.AuditLogStreams]: {
+    title: "Audit Log Streams",
+    description: "Manage external destinations that receive the organization's audit logs",
+    actions: [
+      {
+        value: OrgPermissionAuditLogsActions.Read,
+        label: "Read",
+        description: "Read audit log streams and their alerts"
+      },
+      {
+        value: OrgPermissionAuditLogsActions.Edit,
+        label: "Edit",
+        description: "Create, update and delete audit log streams, and manage their alerts"
       }
     ]
   },
@@ -960,6 +986,12 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         value: OrgPermissionSecretsManagementInsightsActions.DeleteReport,
         label: "Delete Report",
         description: "Delete secrets management insight reports"
+      },
+      {
+        value: OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues,
+        label: "Search All Secret Values",
+        description:
+          "Locate secrets that share a value in any project, including projects the user isn't a member of"
       }
     ]
   },

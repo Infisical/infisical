@@ -1,5 +1,8 @@
 import * as x509 from "@peculiar/x509";
+import { Knex } from "knex";
 
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -7,18 +10,18 @@ import {
   DIGICERT_CS_PRODUCT_NAME_IDS,
   isDigiCertOrgValidatedForProduct
 } from "@app/services/app-connection/digicert/digicert-connection-fns";
+import { TDigiCertExternalMetadata } from "@app/services/certificate-common/external-metadata-schemas";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { extractExternallyIssuedCertificateFields } from "@app/services/certificate/certificate-fns";
+import {
+  assertCertificateNotDeleted,
+  extractExternallyIssuedCertificateFields
+} from "@app/services/certificate/certificate-fns";
 import { CertStatus } from "@app/services/certificate/certificate-types";
-import { TDigiCertExternalMetadata } from "@app/services/certificate-common/external-metadata-schemas";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import { createDigiCertApiClient } from "./digicert-api-client";
+import { createDigiCertApiClient, DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS } from "./digicert-api-client";
 import { CodeSigningOrderStatus } from "./digicert-certificate-authority-enums";
 import { DigiCertCaPurpose } from "./digicert-certificate-authority-schemas";
 import {
@@ -35,7 +38,7 @@ import {
 
 // DigiCert caps code signing order validity at 459 days (CA/Browser Forum ballot CSC-31 set a
 // 460-day ceiling effective 2026-03-01; DigiCert's API enforces 459).
-const MAX_CS_VALIDITY_DAYS = 459;
+export const MAX_CS_VALIDITY_DAYS = 459;
 
 // server_platform.id=-1 ("Other") is DigiCert's value for the customer-supplied-CSR lane.
 const CS_SERVER_PLATFORM_OTHER = -1;
@@ -43,16 +46,22 @@ const CS_SERVER_PLATFORM_OTHER = -1;
 // When a renewal_of_order_id link is rejected with one of these codes, retry as a fresh order.
 const CS_RENEWAL_INELIGIBLE_CODES = ["order_not_eligible_for_renewal", "order_renewed_already"];
 
+export type TPreparedCodeSigningCertificate =
+  | { certificatePem: string; existingCertificateId: string; insert: null }
+  | {
+      certificatePem: string;
+      existingCertificateId: null;
+      insert: (tx: Knex) => Promise<string>;
+      findConcurrentInsert: () => Promise<string | null>;
+    };
+
 type TDigiCertCodeSigningFnsDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById" | "findOne">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
-  >;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
 };
 
 export const digiCertCodeSigningFns = ({
@@ -60,8 +69,8 @@ export const digiCertCodeSigningFns = ({
   certificateAuthorityDAL,
   certificateDAL,
   certificateBodyDAL,
-  kmsService,
-  projectDAL
+  kmsDataKeyService,
+  kmsKeyService
 }: TDigiCertCodeSigningFnsDeps) => {
   const assertCsOrgValidatedOrContactProvided = async ({
     appConnectionId,
@@ -78,7 +87,11 @@ export const digiCertCodeSigningFns = ({
 
     let isValidated = false;
     try {
-      const { apiKey, baseUrl } = await getDigiCertClientCredentials(appConnectionId, appConnectionDAL, kmsService);
+      const { apiKey, baseUrl } = await getDigiCertClientCredentials(
+        appConnectionId,
+        appConnectionDAL,
+        kmsDataKeyService
+      );
       const client = createDigiCertApiClient(apiKey, baseUrl);
       const { validations } = await client.getOrganizationValidations(organizationId);
       isValidated = isDigiCertOrgValidatedForProduct(validations, productNameId);
@@ -119,7 +132,10 @@ export const digiCertCodeSigningFns = ({
     }
   };
 
-  const loadDigiCertCsContext = async (caId: string, opts?: { requireCodeSigning?: boolean }) => {
+  const loadDigiCertCsContext = async (
+    caId: string,
+    opts?: { requireCodeSigning?: boolean; requestTimeoutMs?: number }
+  ) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.DIGICERT) {
       throw new BadRequestError({ message: "CA is not a DigiCert certificate authority" });
@@ -143,9 +159,27 @@ export const digiCertCodeSigningFns = ({
     const { apiKey, baseUrl } = await getDigiCertClientCredentials(
       digicertCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService
     );
-    return { ca, digicertCa, client: createDigiCertApiClient(apiKey, baseUrl) };
+    return {
+      ca,
+      digicertCa,
+      client: createDigiCertApiClient(apiKey, baseUrl, { requestTimeoutMs: opts?.requestTimeoutMs })
+    };
+  };
+
+  const $getOwnedCodeSigningOrder = async (caId: string, orderId: number) => {
+    const context = await loadDigiCertCsContext(caId, { requireCodeSigning: true });
+    const order = await context.client.getOrder(orderId);
+    if (
+      order.organization?.id !== context.digicertCa.configuration.organizationId ||
+      order.product?.name_id !== context.digicertCa.configuration.productNameId
+    ) {
+      throw new BadRequestError({
+        message: `DigiCert order ${orderId} belongs to a different organization or product than this certificate authority.`
+      });
+    }
+    return { ...context, order };
   };
 
   const orderCodeSigningCertificate = async ({
@@ -240,17 +274,7 @@ export const digiCertCodeSigningFns = ({
     signatureHash: "sha256" | "sha384" | "sha512";
     comments?: string;
   }): Promise<{ orderId: number; certificateId: number | null }> => {
-    const { digicertCa, client } = await loadDigiCertCsContext(caId, { requireCodeSigning: true });
-
-    const targetOrder = await client.getOrder(previousOrderId);
-    if (
-      targetOrder.organization?.id !== digicertCa.configuration.organizationId ||
-      targetOrder.product?.name_id !== digicertCa.configuration.productNameId
-    ) {
-      throw new BadRequestError({
-        message: `DigiCert order ${previousOrderId} does not belong to this CA's organization/product and cannot be reissued here.`
-      });
-    }
+    const { client } = await $getOwnedCodeSigningOrder(caId, previousOrderId);
 
     const reissuePayload: TReissueCodeSigningOrderRequest = {
       certificate: {
@@ -278,20 +302,11 @@ export const digiCertCodeSigningFns = ({
   };
 
   const assertCodeSigningOrderReusable = async (caId: string, orderId: number): Promise<void> => {
-    const { digicertCa, client } = await loadDigiCertCsContext(caId, { requireCodeSigning: true });
-    const order = await client.getOrder(orderId);
-    const sameOrg = order.organization?.id === digicertCa.configuration.organizationId;
-    const sameProduct = order.product?.name_id === digicertCa.configuration.productNameId;
-    if (!sameOrg || !sameProduct) {
-      throw new BadRequestError({
-        message:
-          "That DigiCert order belongs to a different organization or product than this certificate authority and cannot be reused."
-      });
-    }
+    await $getOwnedCodeSigningOrder(caId, orderId);
   };
 
   const getCodeSigningOrderStatus = async (caId: string, orderId: number): Promise<TCodeSigningOrderInfo> => {
-    const { client } = await loadDigiCertCsContext(caId);
+    const { client } = await loadDigiCertCsContext(caId, { requestTimeoutMs: DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS });
     const order = await client.getOrder(orderId);
     return {
       id: orderId,
@@ -301,41 +316,74 @@ export const digiCertCodeSigningFns = ({
     };
   };
 
-  const downloadCodeSigningCertificate = async ({
+  const fetchIssuedCodeSigningCertificate = async (
+    caId: string,
+    orderId: number
+  ): Promise<{ pemBundle: string; certificate: x509.X509Certificate }> => {
+    const { client, order } = await $getOwnedCodeSigningOrder(caId, orderId);
+    if (normalizeCodeSigningStatus(order.status) !== CodeSigningOrderStatus.Issued || !order.certificate?.id) {
+      throw new BadRequestError({
+        message: `DigiCert order ${orderId} has no issued certificate to use (order status: '${order.status}').`
+      });
+    }
+
+    const pemBundle = await client.downloadCertificatePem(order.certificate.id);
+    const certificate = new x509.X509Certificate(extractLeafAndChain(pemBundle).leaf);
+    if (certificate.notAfter < new Date()) {
+      throw new BadRequestError({
+        message: `The certificate in DigiCert order ${orderId} expired on ${certificate.notAfter.toISOString()}.`
+      });
+    }
+    const eku = certificate.getExtension(x509.ExtendedKeyUsageExtension);
+    if (!eku?.usages.some((usage) => usage === x509.ExtendedKeyUsage.codeSigning)) {
+      throw new BadRequestError({
+        message: `The certificate in DigiCert order ${orderId} does not have the code signing extended key usage.`
+      });
+    }
+    return { pemBundle, certificate };
+  };
+
+  const prepareCodeSigningCertificateImport = async ({
     caId,
     orderId,
     digicertCertificateId,
     keyAlgorithm,
     signatureAlgorithm,
     applicationId,
-    profileId
+    profileId,
+    pemBundle: providedPemBundle
   }: {
     caId: string;
     orderId: number;
-    digicertCertificateId: number;
+    digicertCertificateId?: number;
+    pemBundle?: string;
     keyAlgorithm?: string;
     signatureAlgorithm?: string;
     applicationId?: string | null;
     profileId?: string | null;
-  }): Promise<{ certificateId: string; certificatePem: string }> => {
-    const { ca, client } = await loadDigiCertCsContext(caId);
-    const pemBundle = await client.downloadCertificatePem(digicertCertificateId);
+  }): Promise<TPreparedCodeSigningCertificate> => {
+    const { ca, client } = await loadDigiCertCsContext(caId, { requestTimeoutMs: DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS });
+    if (!providedPemBundle && !digicertCertificateId) {
+      throw new BadRequestError({ message: `DigiCert order ${orderId} has no certificate to download.` });
+    }
+    const pemBundle = providedPemBundle ?? (await client.downloadCertificatePem(digicertCertificateId as number));
     const { leaf, chain } = extractLeafAndChain(pemBundle);
 
     const certObj = new x509.X509Certificate(leaf);
     const parsedFields = extractExternallyIssuedCertificateFields(certObj);
+    const differentCaError = new BadRequestError({
+      message: `The certificate in DigiCert order ${orderId} is already in Certificate Manager under a different certificate authority, so it can't be added under this one. Request a new code signing certificate instead.`
+    });
 
-    const existingCert = await certificateDAL.findOne({ caId: ca.id, serialNumber: certObj.serialNumber });
+    const existingCert = await certificateDAL.findOne({ serialNumber: certObj.serialNumber });
     if (existingCert) {
-      return { certificateId: existingCert.id, certificatePem: leaf };
+      if (existingCert.caId !== ca.id) throw differentCaError;
+      assertCertificateNotDeleted(existingCert, "Request a new code signing certificate instead.");
+      return { certificatePem: leaf, existingCertificateId: existingCert.id, insert: null };
     }
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
     const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
       plainText: Buffer.from(new Uint8Array(certObj.rawData))
     });
@@ -343,7 +391,7 @@ export const digiCertCodeSigningFns = ({
       plainText: Buffer.from(chain)
     });
 
-    const createdCertificateId = await certificateDAL.transaction(async (tx) => {
+    const insert = async (tx: Knex) => {
       const cert = await certificateDAL.create(
         {
           ...parsedFields,
@@ -376,9 +424,40 @@ export const digiCertCodeSigningFns = ({
       );
 
       return cert.id;
+    };
+
+    return {
+      certificatePem: leaf,
+      existingCertificateId: null,
+      insert,
+      findConcurrentInsert: async () => {
+        const concurrentCert = await certificateDAL.transaction((tx) =>
+          certificateDAL.findOne({ serialNumber: certObj.serialNumber }, tx)
+        );
+        if (concurrentCert && concurrentCert.caId !== ca.id) throw differentCaError;
+        return concurrentCert?.id ?? null;
+      }
+    };
+  };
+
+  const downloadCodeSigningCertificate = async (
+    args: Parameters<typeof prepareCodeSigningCertificateImport>[0]
+  ): Promise<{ certificateId: string; certificatePem: string }> => {
+    const prepared = await prepareCodeSigningCertificateImport(args);
+    if (!prepared.insert) {
+      return { certificateId: prepared.existingCertificateId, certificatePem: prepared.certificatePem };
+    }
+    const { insert, findConcurrentInsert } = prepared;
+
+    const createdCertificateId = await certificateDAL.transaction(insert).catch(async (error: unknown) => {
+      if ((error as { error?: { code?: string } })?.error?.code === DatabaseErrorCode.UniqueViolation) {
+        const concurrentCertificateId = await findConcurrentInsert();
+        if (concurrentCertificateId) return concurrentCertificateId;
+      }
+      throw error;
     });
 
-    return { certificateId: createdCertificateId, certificatePem: leaf };
+    return { certificateId: createdCertificateId, certificatePem: prepared.certificatePem };
   };
 
   return {
@@ -388,6 +467,8 @@ export const digiCertCodeSigningFns = ({
     findCodeSigningOrderByReference,
     assertCodeSigningOrderReusable,
     getCodeSigningOrderStatus,
+    fetchIssuedCodeSigningCertificate,
+    prepareCodeSigningCertificateImport,
     downloadCodeSigningCertificate
   };
 };

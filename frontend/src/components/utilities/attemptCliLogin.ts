@@ -1,7 +1,7 @@
 import { loginV3 } from "@app/hooks/api/auth/queries";
 
-import Telemetry from "./telemetry/Telemetry";
 import SecurityClient from "./SecurityClient";
+import Telemetry from "./telemetry/Telemetry";
 
 export interface IsCliLoginSuccessful {
   loginResponse?: {

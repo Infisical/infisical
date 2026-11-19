@@ -1,75 +1,65 @@
 ---
 title: "Kubernetes accounts"
 sidebarTitle: "Kubernetes"
-description: "Add and connect to Kubernetes clusters."
+description: "Give people kubectl access to Kubernetes clusters."
 ---
 
-Kubernetes accounts let you manage access to your Kubernetes clusters. Users connect through the CLI to get a kubeconfig, and every [session](/documentation/platform/pam/sessions/overview) is recorded.
+A Kubernetes account lets people run `kubectl` against a cluster without holding a service account token. They connect through the Infisical CLI, and Infisical records each [session](/documentation/platform/pam/sessions/overview). Kubernetes accounts don't support browser access.
 
-## Creating an account
+## Prerequisites
+
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
+- A [Gateway](/documentation/platform/gateways/overview) that can reach the cluster's API server
+- [`kubectl`](https://kubernetes.io/docs/tasks/tools/) on the machine of each person who connects
+
+## Create an account
 
 <Steps>
-  <Step title="Start adding an account">
-    Go to **Privileged Access Management → Accounts** and select **Add Account**.
+  <Step>
+    Go to **Privileged Access Management** > **Accounts** and select **Add Account**.
   </Step>
-  <Step title="Select a folder and template">
-    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select a Kubernetes [template](/documentation/platform/pam/templates/overview).
+  <Step>
+    Select the **Folder** to add the account to and a Kubernetes **Account Template**, such as the default `kubernetes` [template](/documentation/platform/pam/templates/overview), then select **Next**.
   </Step>
-  <Step title="Enter connection details">
+  <Step>
+    Enter a **Name** for the account and the cluster's connection details:
+
     | Field | Description |
     |-------|-------------|
-    | **Name** | A descriptive name (e.g., `prod-cluster`) |
-    | **Kubernetes API URL** | The cluster API server URL |
-    | **Reject Unauthorized** | Reject connections with invalid certificates |
-    | **SSL Certificate** | Custom CA certificate (optional) |
+    | **Kubernetes API URL** | The URL of the cluster's API server |
+    | **Reject Unauthorized** | Whether to refuse an API server certificate that the Gateway can't verify |
+    | **SSL Certificate** | The CA certificate for the API server, if a public CA didn't issue it |
+    | **Gateway** | The Gateway that connects to the cluster (only shown if the template doesn't set one) |
   </Step>
-  <Step title="Choose authentication method">
-    <Tabs>
-      <Tab title="Service Account Token">
-        Use an existing service account token.
-
-        | Field | Description |
-        |-------|-------------|
-        | **Service Account Token** | The token for authentication |
-      </Tab>
-      <Tab title="Gateway Kubernetes Auth">
-        Let the Gateway authenticate using its own service account.
-
-        | Field | Description |
-        |-------|-------------|
-        | **Namespace** | The namespace of the service account |
-        | **Service Account Name** | The name of the service account |
-      </Tab>
-    </Tabs>
+  <Step>
+    Select an **Auth Method** and fill in its fields, as described in [Authentication methods](#authentication-methods).
   </Step>
-  <Step title="Save">
+  <Step>
     Select **Create**.
   </Step>
 </Steps>
 
-## Connecting
+## Authentication methods
 
-The CLI retrieves credentials and outputs a kubeconfig you can use with `kubectl`.
+| Method | What you enter | When to use it |
+|--------|----------------|----------------|
+| **Service Account Token** | A **Service Account Token** for the cluster | The Gateway runs outside the cluster |
+| **Gateway Kubernetes Auth** | The **Namespace** and **Service Account Name** of the service account to act as | The Gateway runs as a pod inside the cluster |
+
+With **Gateway Kubernetes Auth**, the account stores no token. The Gateway authenticates with its own pod's service account and [impersonates](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#user-impersonation) the service account you name. The Gateway's service account needs RBAC permission to `impersonate` that service account.
+
+## Connect
+
+To learn how to launch a session, see [Connect to an account](/documentation/platform/pam/accounts/connect). The CLI command for the account is:
 
 ```bash
-infisical pam access my-folder/prod-cluster
+infisical pam access <folder>/<account>
 ```
 
-Then use `kubectl` as normal:
+The CLI adds a context named `infisical-k8s-pam/<folder>/<account>` to your kubeconfig and makes it the current context, so `kubectl` works without any other setup:
+
 ```bash
 kubectl get pods
 ```
 
-**Flags:**
-- `--reason <reason>` — provide an access reason (if required by template)
-
-## Next steps
-
-<CardGroup cols={2}>
-  <Card title="SSH Accounts" icon="terminal" href="/documentation/platform/pam/accounts/ssh">
-    Add SSH server accounts.
-  </Card>
-  <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
-    View and manage sessions.
-  </Card>
-</CardGroup>
+Press `Ctrl+C` to end the session. The CLI then removes the context from your kubeconfig and switches back to the context you were using before.

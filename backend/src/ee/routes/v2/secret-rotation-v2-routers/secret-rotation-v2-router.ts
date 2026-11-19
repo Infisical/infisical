@@ -4,6 +4,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { Auth0ClientSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/auth0-client-secret";
 import { AwsIamUserSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/aws-iam-user-secret";
 import { AzureClientSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/azure-client-secret";
+import { ClickHouseCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/clickhouse-credentials";
 import { CloudflareApiTokenRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/cloudflare-api-token";
 import { CloudflareR2AccessKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/cloudflare-r2-access-key";
 import { ConvexAccessKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/convex-access-key";
@@ -12,6 +13,7 @@ import { DatadogApiKeyRotationListItemSchema } from "@app/ee/services/secret-rot
 import { DatadogApplicationKeySecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/datadog-application-key-secret";
 import { DbtServiceTokenRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/dbt-service-token";
 import { FireworksApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/fireworks-api-key";
+import { GcpServiceAccountKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/gcp-service-account-key";
 import { HpIloRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/hp-ilo-rotation";
 import { LdapPasswordRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/ldap-password";
 import { LiteLLMApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/litellm-api-key";
@@ -65,7 +67,9 @@ const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   SnowflakeUserKeyPairRotationListItemSchema,
   CloudflareApiTokenRotationListItemSchema,
   CloudflareR2AccessKeyRotationListItemSchema,
-  StripeApiKeyRotationListItemSchema
+  StripeApiKeyRotationListItemSchema,
+  GcpServiceAccountKeyRotationListItemSchema,
+  ClickHouseCredentialsRotationListItemSchema
 ]);
 
 export const registerSecretRotationV2Router = async (server: FastifyZodProvider) => {

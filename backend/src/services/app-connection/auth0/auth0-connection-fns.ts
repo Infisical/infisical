@@ -1,11 +1,10 @@
-import { request } from "@app/lib/config/request";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { encryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { Auth0ConnectionMethod } from "./auth0-connection-enums";
 import { TAuth0AccessTokenResponse, TAuth0Connection, TAuth0ConnectionConfig } from "./auth0-connection-types";
@@ -27,7 +26,7 @@ const authorizeAuth0Connection = async ({
   const instanceUrl = domain.startsWith("http") ? domain : `https://${domain}`;
   await blockLocalAndPrivateIpAddresses(instanceUrl);
 
-  const { data } = await request.request<TAuth0AccessTokenResponse>({
+  const { data } = await safeRequest.request<TAuth0AccessTokenResponse>({
     method: "POST",
     url: `${removeTrailingSlash(instanceUrl)}/oauth/token`,
     headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -53,7 +52,7 @@ const authorizeAuth0Connection = async ({
 export const getAuth0ConnectionAccessToken = async (
   { id, orgId, credentials, projectId }: TAuth0Connection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsDataKeyService: TKmsDataKeyService
 ) => {
   const { expiresAt, accessToken } = credentials;
 
@@ -72,7 +71,7 @@ export const getAuth0ConnectionAccessToken = async (
   const encryptedCredentials = await encryptAppConnectionCredentials({
     credentials: updatedCredentials,
     orgId,
-    kmsService,
+    kmsDataKeyService,
     projectId
   });
 

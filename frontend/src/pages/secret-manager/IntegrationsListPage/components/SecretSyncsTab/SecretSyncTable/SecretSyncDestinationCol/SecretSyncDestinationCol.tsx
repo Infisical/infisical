@@ -14,7 +14,10 @@ import { ChefSyncDestinationCol } from "./ChefSyncDestinationCol";
 import { CircleCISyncDestinationCol } from "./CircleCISyncDestinationCol";
 import { Cloud66SyncDestinationCol } from "./Cloud66SyncDestinationCol";
 import { CloudflarePagesSyncDestinationCol } from "./CloudflarePagesSyncDestinationCol";
+import { CloudflareSecretsStoreSyncDestinationCol } from "./CloudflareSecretsStoreSyncDestinationCol";
 import { CloudflareWorkersSyncDestinationCol } from "./CloudflareWorkersSyncDestinationCol";
+import { ConvexSyncDestinationCol } from "./ConvexSyncDestinationCol";
+import { CoolifySyncDestinationCol } from "./CoolifySyncDestinationCol";
 import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
 import { DaytonaSyncDestinationCol } from "./DaytonaSyncDestinationCol";
 import { DevinSyncDestinationCol } from "./DevinSyncDestinationCol";
@@ -28,6 +31,8 @@ import { HasuraCloudSyncDestinationCol } from "./HasuraCloudSyncDestinationCol";
 import { HCVaultSyncDestinationCol } from "./HCVaultSyncDestinationCol";
 import { HerokuSyncDestinationCol } from "./HerokuSyncDestinationCol";
 import { HumanitecSyncDestinationCol } from "./HumanitecSyncDestinationCol";
+import { JenkinsSyncDestinationCol } from "./JenkinsSyncDestinationCol";
+import { KeeperSyncDestinationCol } from "./KeeperSyncDestinationCol";
 import { LaravelForgeSyncDestinationCol } from "./LaravelForgeSyncDestinationCol";
 import { NetlifySyncDestinationCol } from "./NetlifySyncDestinationCol";
 import { NorthflankSyncDestinationCol } from "./NorthflankSyncDestinationCol";
@@ -35,6 +40,7 @@ import { OCIVaultSyncDestinationCol } from "./OCIVaultSyncDestinationCol";
 import { OctopusDeploySyncDestinationCol } from "./OctopusDeploySyncDestinationCol";
 import { OnaSyncDestinationCol } from "./OnaSyncDestinationCol";
 import { OvhSyncDestinationCol } from "./OvhSyncDestinationCol";
+import { PortainerSyncDestinationCol } from "./PortainerSyncDestinationCol";
 import { QoverySyncDestinationCol } from "./QoverySyncDestinationCol";
 import { RailwaySyncDestinationCol } from "./RailwaySyncDestinationCol";
 import { RenderSyncDestinationCol } from "./RenderSyncDestinationCol";
@@ -102,6 +108,10 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <CloudflarePagesSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.CloudflareWorkers:
       return <CloudflareWorkersSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.CloudflareSecretsStore:
+      return <CloudflareSecretsStoreSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Convex:
+      return <ConvexSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Zabbix:
       return <ZabbixSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Railway:
@@ -114,6 +124,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <SupabaseSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Rundeck:
       return <RundeckSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Portainer:
+      return <PortainerSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.DigitalOceanAppPlatform:
       return <DigitalOceanAppPlatformSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Netlify:
@@ -152,8 +164,14 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <Cloud66SyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Daytona:
       return <DaytonaSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Keeper:
+      return <KeeperSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Spacelift:
       return <SpaceliftSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Jenkins:
+      return <JenkinsSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Coolify:
+      return <CoolifySyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

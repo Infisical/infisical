@@ -53,13 +53,16 @@ export const kmipClientDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      const query = (tx || db.replicaNode())(TableName.KmipClient)
+      const filteredClients = (tx || db.replicaNode())(TableName.KmipClient)
         .where("projectId", projectId)
         .where((qb) => {
           if (search) {
             void qb.whereILike("name", `%${sanitizeSqlLikeString(search)}%`);
           }
-        })
+        });
+
+      const query = filteredClients
+        .clone()
         .select<
           (TKmipClients & {
             total_count: number;
@@ -72,6 +75,12 @@ export const kmipClientDALFactory = (db: TDbClient) => {
       }
 
       const data = await query;
+
+      // The window count rides on the page's rows, so a page past the last client has nothing to read it from.
+      if (data.length === 0 && offset > 0) {
+        const [{ count }] = await filteredClients.count<{ count: string | number }[]>("id as count");
+        return { kmipClients: data, totalCount: Number(count) };
+      }
 
       return { kmipClients: data, totalCount: Number(data?.[0]?.total_count ?? 0) };
     } catch (error) {

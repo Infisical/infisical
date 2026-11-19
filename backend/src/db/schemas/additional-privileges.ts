@@ -23,7 +23,8 @@ export const AdditionalPrivilegesSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   folderId: z.string().uuid().nullable().optional(),
-  role: z.string().nullable().optional()
+  role: z.string().nullable().optional(),
+  grantId: z.string().uuid().nullable().optional()
 });
 
 export type TAdditionalPrivileges = z.infer<typeof AdditionalPrivilegesSchema>;

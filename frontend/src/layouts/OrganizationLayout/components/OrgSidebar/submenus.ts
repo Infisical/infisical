@@ -12,6 +12,7 @@ import {
   MapPin,
   Plug,
   ScanSearch,
+  ScrollText,
   Search,
   Shield,
   Tag,
@@ -74,6 +75,16 @@ export const SM_SETTINGS_SUBMENU: Submenu = {
   ]
 };
 
+export const AGENT_VAULT_SETTINGS_SUBMENU: Submenu = {
+  title: "Settings",
+  pathSuffix: "settings",
+  defaultTab: "tab-project-general",
+  items: [
+    { label: "General", icon: Cog, tab: "tab-project-general" },
+    { label: "Session Logs", icon: ScrollText, tab: "tab-session-logs" }
+  ]
+};
+
 // --- Cert manager submenus ---
 
 export const CERT_CERTIFICATES_SUBMENU: Submenu = {
@@ -129,3 +140,16 @@ export const SECRET_SCANNING_SETTINGS_SUBMENU: Submenu = {
     { label: "Scanning Settings", icon: ScanSearch, tab: "scanning-settings" }
   ]
 };
+
+// With a single project there is no project to rename or delete, so General is left out.
+const SECRET_SCANNING_SINGLE_PROJECT_SETTINGS_SUBMENU: Submenu = {
+  title: "Settings",
+  pathSuffix: "settings",
+  defaultTab: "scanning-settings",
+  items: [{ label: "Scanning Settings", icon: ScanSearch, tab: "scanning-settings" }]
+};
+
+export const getSecretScanningSettingsSubmenu = (hasMultipleProjects: boolean): Submenu =>
+  hasMultipleProjects
+    ? SECRET_SCANNING_SETTINGS_SUBMENU
+    : SECRET_SCANNING_SINGLE_PROJECT_SETTINGS_SUBMENU;

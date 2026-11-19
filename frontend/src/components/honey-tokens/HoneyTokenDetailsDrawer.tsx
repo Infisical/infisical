@@ -6,6 +6,7 @@ import {
   BanIcon,
   CalendarIcon,
   ClockIcon,
+  CloudIcon,
   HexagonIcon,
   MapPinIcon,
   RotateCcw
@@ -44,15 +45,19 @@ import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionHoneyTokenActions } from "@app/context/ProjectPermissionContext/types";
 import { HONEY_TOKEN_CREDENTIAL_FIELDS, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
-import { HoneyTokenStatus, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
+import {
+  HoneyTokenManagedBy,
+  HoneyTokenStatus,
+  HoneyTokenType
+} from "@app/hooks/api/honeyTokens/enums";
 import { useResetHoneyToken, useRevokeHoneyToken } from "@app/hooks/api/honeyTokens/mutations";
 import {
   useGetHoneyTokenById,
   useGetHoneyTokenCredentials
 } from "@app/hooks/api/honeyTokens/queries";
 
-import { CredentialField } from "./ViewHoneyTokenCredentials/CredentialField";
 import { HoneyTokenEventsSection } from "./HoneyTokenEventsSection";
+import { CredentialField } from "./ViewHoneyTokenCredentials/CredentialField";
 
 type Props = {
   projectId: string;
@@ -200,6 +205,12 @@ const HoneyTokenDetailsContent = ({
               </Badge>
             )}
             <Badge variant="shaded" iconPosition="left">
+              <CloudIcon size={13} />
+              {honeyToken.config.managedBy === HoneyTokenManagedBy.Instance
+                ? "Infisical Managed"
+                : "Self hosted"}
+            </Badge>
+            <Badge variant="shaded" iconPosition="left">
               <HexagonIcon size={13} />
               {honeyToken.openEvents} open event{honeyToken.openEvents !== 1 && "s"}
             </Badge>
@@ -340,6 +351,7 @@ const HoneyTokenDetailsContent = ({
         </AlertDialogContent>
       </AlertDialog>
       <AlertDialog
+        isPending={isRevoking}
         open={isRevokeOpen}
         confirmationValue={honeyToken.name}
         onOpenChange={setIsRevokeOpen}
@@ -359,17 +371,16 @@ const HoneyTokenDetailsContent = ({
           </AlertDialogHeader>
           <AlertDialogConfirmationField
             onConfirm={() => {
-              if (!isRevoking) handleRevoke().catch(() => undefined);
+              handleRevoke().catch(() => undefined);
             }}
           />
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isRevoking}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isPending={isRevoking}
               onClick={(event) => {
                 event.preventDefault();
-                if (!isRevoking) handleRevoke().catch(() => undefined);
+                handleRevoke().catch(() => undefined);
               }}
             >
               Revoke

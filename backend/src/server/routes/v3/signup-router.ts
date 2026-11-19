@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
-import { ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { matchesAllowedEmailDomain, normalizeEmail } from "@app/lib/validator";
 import { PasswordPolicySchema } from "@app/lib/validator/password-policy";
@@ -142,7 +142,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const userAgent = req.headers["user-agent"];
-      if (!userAgent) throw new Error("user agent header is required");
+      if (!userAgent) throw new BadRequestError({ message: "User agent header is required" });
       const appCfg = getConfig();
 
       const { user, accessToken, refreshToken, authMethod, organizationId, invitingOrgId, isInvitedUser } =

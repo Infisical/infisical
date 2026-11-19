@@ -1,4 +1,5 @@
 export {
+  useBulkActOnSecretApprovalRequests,
   usePerformSecretApprovalRequestMerge,
   useUpdateSecretApprovalRequestStatus,
   useUpdateSecretApprovalReviewStatus
@@ -6,5 +7,6 @@ export {
 export {
   useGetSecretApprovalRequestCount,
   useGetSecretApprovalRequestDetails,
+  useGetSecretApprovalRequestDetailsList,
   useGetSecretApprovalRequests
 } from "./queries";

@@ -1,16 +1,21 @@
 import { Cable, Database, FileText, Search, Settings, Shield } from "lucide-react";
 
+import { SidebarCollapsibleGroup } from "@app/components/v3";
 import {
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission,
   useSubscription
 } from "@app/context";
 import { ProjectPermissionSecretScanningFindingActions } from "@app/context/ProjectPermissionContext/types";
-import { useGetSecretScanningUnresolvedFindingCount } from "@app/hooks/api/secretScanningV2";
+import {
+  useGetSecretScanningInstanceState,
+  useGetSecretScanningUnresolvedFindingCount
+} from "@app/hooks/api/secretScanningV2";
 
 import { ProjectNavList } from "./ProjectNavLink";
-import { PROJECT_ACCESS_CONTROL_SUBMENU, SECRET_SCANNING_SETTINGS_SUBMENU } from "./submenus";
+import { getSecretScanningSettingsSubmenu, PROJECT_ACCESS_CONTROL_SUBMENU } from "./submenus";
 import type { NavItem, Submenu } from "./types";
 
 export const SecretScanningNav = ({
@@ -19,8 +24,10 @@ export const SecretScanningNav = ({
   onSubmenuOpen: (submenu: Submenu) => void;
 }) => {
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
+  const { data: instanceState } = useGetSecretScanningInstanceState(currentOrg.id);
 
   const { data: unresolvedFindings } = useGetSecretScanningUnresolvedFindingCount(
     currentProject.id,
@@ -35,15 +42,19 @@ export const SecretScanningNav = ({
     }
   );
 
-  const items: NavItem[] = [
+  const generalItems: NavItem[] = [
     { label: "Data Sources", icon: Database, pathSuffix: "data-sources" },
     {
       label: "Findings",
       icon: Search,
       pathSuffix: "findings",
-      badgeCount: unresolvedFindings || undefined
+      badgeCount: unresolvedFindings || undefined,
+      badgeVariant: "danger" as const
     },
-    { label: "App Connections", icon: Cable, pathSuffix: "app-connections" },
+    { label: "App Connections", icon: Cable, pathSuffix: "app-connections" }
+  ];
+
+  const administrationItems: NavItem[] = [
     {
       label: "Access Control",
       icon: Shield,
@@ -56,8 +67,16 @@ export const SecretScanningNav = ({
       label: "Settings",
       icon: Settings,
       pathSuffix: "settings",
-      submenu: SECRET_SCANNING_SETTINGS_SUBMENU
+      submenu: getSecretScanningSettingsSubmenu(Boolean(instanceState?.isMultiInstance))
     }
   ];
-  return <ProjectNavList items={items} onSubmenuOpen={onSubmenuOpen} />;
+
+  return (
+    <>
+      <ProjectNavList items={generalItems} onSubmenuOpen={onSubmenuOpen} />
+      <SidebarCollapsibleGroup label="Administration">
+        <ProjectNavList items={administrationItems} onSubmenuOpen={onSubmenuOpen} />
+      </SidebarCollapsibleGroup>
+    </>
+  );
 };

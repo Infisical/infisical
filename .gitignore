@@ -58,6 +58,7 @@ yarn-error.log*
 .env.infisical
 
 # Infisical init
+.infisical.yaml
 .infisical.json
 
 .infisicalignore
@@ -73,7 +74,6 @@ frontend-build
 cli/infisical-merge
 cli/test/infisical-merge
 /backend/binary
-backend/bdd/.bdd-infisical-bootstrap-result.json
 upgrade-impact/.local-output/
 
 /npm/bin

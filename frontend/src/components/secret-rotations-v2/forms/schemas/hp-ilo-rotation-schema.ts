@@ -3,8 +3,8 @@ import { z } from "zod";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { HpIloRotationMethod } from "@app/hooks/api/secretRotationsV2/types/hp-ilo-rotation";
 
-import { PasswordRequirementsSchema } from "./shared/password-requirements-schema";
 import { BaseSecretRotationSchema } from "./base-secret-rotation-v2-schema";
+import { PasswordRequirementsSchema } from "./shared/password-requirements-schema";
 
 export const HpIloRotationSchema = z
   .object({

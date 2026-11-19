@@ -1,6 +1,4 @@
 /* eslint-disable no-bitwise */
-import { webcrypto } from "node:crypto";
-
 import { AsnConvert } from "@peculiar/asn1-schema";
 import * as asn1x509 from "@peculiar/asn1-x509";
 import * as x509 from "@peculiar/x509";
@@ -49,7 +47,7 @@ describe("decodeAsn1ChallengePasswordValue", () => {
 
   test("accepts an ArrayBuffer as well as a Uint8Array", () => {
     const u8 = derString(UTF8_STRING_TAG, "buffer-pass");
-    const ab = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
+    const ab = new Uint8Array(u8).buffer;
     expect(decodeAsn1ChallengePasswordValue(ab)).toBe("buffer-pass");
   });
 
@@ -64,11 +62,11 @@ describe("decodeAsn1ChallengePasswordValue", () => {
 
 describe("extractScepChallengePassword", () => {
   beforeAll(() => {
-    x509.cryptoProvider.set(webcrypto as Crypto);
+    x509.cryptoProvider.set(globalThis.crypto);
   });
 
   const generateCsr = async (attributes: x509.Attribute[]) => {
-    const keys = await webcrypto.subtle.generateKey(
+    const keys = await globalThis.crypto.subtle.generateKey(
       { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
       true,
       ["sign", "verify"]
@@ -458,6 +456,19 @@ describe("evaluateScepRenewalAuthorization", () => {
         signerCertSubjectName: new x509.Name("CN=device-01")
       })
     ).toEqual({ authorized: true });
+  });
+
+  test("denies when the signer certificate was deleted", () => {
+    expect(
+      evaluateScepRenewalAuthorization({
+        isValidSigner: true,
+        storedSignerCert: { profileId: PROFILE_ID, deletedAt: new Date() },
+        profileId: PROFILE_ID,
+        csrForwardedToCa: false,
+        csrSubjectName: new x509.Name("CN=device-01"),
+        signerCertSubjectName: new x509.Name("CN=device-01")
+      })
+    ).toEqual({ authorized: false, reason: ScepRenewalDenyReason.SignerDeleted });
   });
 
   test("denies when the signer certificate belongs to another profile", () => {

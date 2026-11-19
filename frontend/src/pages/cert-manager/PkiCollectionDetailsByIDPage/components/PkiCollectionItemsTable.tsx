@@ -1,23 +1,26 @@
 import { useState } from "react";
-import { faBoxesStacked, faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
+import { BoxesIcon, XIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  EmptyState,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
   IconButton,
   Pagination,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableSkeletonRows,
   Tooltip,
-  Tr
-} from "@app/components/v2";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useListPkiCollectionItems } from "@app/hooks/api";
 import { PkiItemType, pkiItemTypeToNameMap } from "@app/hooks/api/pkiCollections/constants";
@@ -47,75 +50,84 @@ export const PkiCollectionItemsTable = ({ collectionId, type, handlePopUpOpen }:
 
   return (
     <div>
-      <TableContainer>
+      {!isPending && !data?.collectionItems?.length ? (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <BoxesIcon />
+            </EmptyMedia>
+            <EmptyTitle>{`No ${pkiItemTypeToNameMap[type]}s have been added to this collection`}</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
+      ) : (
         <Table>
-          <THead>
-            <Tr>
-              <Th>Friendly Name</Th>
-              <Th>Not Before</Th>
-              <Th>Not After</Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {isPending && <TableSkeleton columns={2} innerKey="pki-collections" />}
+          <TableHeader>
+            <TableRow>
+              <TableHead>Friendly Name</TableHead>
+              <TableHead>Not Before</TableHead>
+              <TableHead>Not After</TableHead>
+              <TableHead className="w-5" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isPending && <TableSkeletonRows columns={4} />}
             {!isPending &&
               data?.collectionItems.map((collectionItem) => {
                 return (
-                  <Tr className="group" key={`pki-collection-item-${collectionItem.id}`}>
-                    <Td className="w-1/3">{collectionItem.friendlyName}</Td>
-                    <Td>{format(new Date(collectionItem.notBefore), "yyyy-MM-dd")}</Td>
-                    <Td>{format(new Date(collectionItem.notAfter), "yyyy-MM-dd")}</Td>
-                    <Td>
+                  <TableRow className="group" key={`pki-collection-item-${collectionItem.id}`}>
+                    <TableCell className="w-1/3">{collectionItem.friendlyName}</TableCell>
+                    <TableCell>
+                      {format(new Date(collectionItem.notBefore), "yyyy-MM-dd")}
+                    </TableCell>
+                    <TableCell>{format(new Date(collectionItem.notAfter), "yyyy-MM-dd")}</TableCell>
+                    <TableCell>
                       <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
                         <ProjectPermissionCan
                           I={ProjectPermissionActions.Delete}
                           a={ProjectPermissionSub.PkiCollections}
                         >
                           {(isAllowed) => (
-                            <Tooltip content="Remove">
-                              <IconButton
-                                colorSchema="danger"
-                                ariaLabel="copy icon"
-                                variant="plain"
-                                className="group relative"
-                                isDisabled={!isAllowed}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("deletePkiCollectionItem", {
-                                    collectionId,
-                                    itemId: collectionItem.id
-                                  });
-                                }}
-                              >
-                                <FontAwesomeIcon icon={faXmark} />
-                              </IconButton>
+                            <Tooltip hoverable delayDuration={50}>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex">
+                                  <IconButton
+                                    aria-label="Remove"
+                                    variant="ghost"
+                                    size="xs"
+                                    isDisabled={!isAllowed}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePopUpOpen("deletePkiCollectionItem", {
+                                        collectionId,
+                                        itemId: collectionItem.id
+                                      });
+                                    }}
+                                  >
+                                    <XIcon />
+                                  </IconButton>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>Remove</TooltipContent>
                             </Tooltip>
                           )}
                         </ProjectPermissionCan>
                       </div>
-                    </Td>
-                  </Tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-          </TBody>
+          </TableBody>
         </Table>
-        {!isPending && data?.totalCount !== undefined && data.totalCount >= PER_PAGE_INIT && (
-          <Pagination
-            count={data.totalCount}
-            page={page}
-            perPage={perPage}
-            onChangePage={(newPage) => setPage(newPage)}
-            onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
-          />
-        )}
-        {!isPending && !data?.collectionItems?.length && (
-          <EmptyState
-            title={`No ${pkiItemTypeToNameMap[type]}s have been added to this collection`}
-            icon={faBoxesStacked}
-          />
-        )}
-      </TableContainer>
+      )}
+      {!isPending && data?.totalCount !== undefined && data.totalCount >= PER_PAGE_INIT && (
+        <Pagination
+          count={data.totalCount}
+          page={page}
+          perPage={perPage}
+          onChangePage={(newPage) => setPage(newPage)}
+          onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
+        />
+      )}
     </div>
   );
 };

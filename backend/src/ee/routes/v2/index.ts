@@ -7,6 +7,7 @@ import {
   SECRET_SCANNING_REGISTER_ROUTER_MAP
 } from "@app/ee/routes/v2/secret-scanning-v2-routers";
 import { withRoutePrefix } from "@app/server/lib/with-route-prefix";
+import { injectSecretScanningProjectId } from "@app/server/plugins/inject-secret-scanning-project-id";
 
 import { registerDeprecatedProjectRoleRouter } from "./deprecated-project-role-router";
 import { registerGatewayV2Router } from "./gateway-router";
@@ -47,6 +48,8 @@ export const registerV2EERoutes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (secretScanningV2Router) => {
+      await secretScanningV2Router.register(injectSecretScanningProjectId);
+
       // register generic secret scanning endpoints
       await secretScanningV2Router.register(registerSecretScanningV2Router);
 

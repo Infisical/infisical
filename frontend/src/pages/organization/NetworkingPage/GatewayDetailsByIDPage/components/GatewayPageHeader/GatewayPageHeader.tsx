@@ -10,7 +10,6 @@ import {
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -29,6 +28,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
@@ -176,6 +176,7 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
       />
 
       <AlertDialog
+        isPending={isDeleting}
         open={popUp.deleteGateway.isOpen}
         confirmationValue={gateway.name}
         onOpenChange={(open) => handlePopUpToggle("deleteGateway", open)}
@@ -192,10 +193,9 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
             <AlertDescription>Deleting this gateway cannot be undone.</AlertDescription>
           </Alert>
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isPending={isDeleting}
               onClick={(event) => {
                 event.preventDefault();
                 onDelete();
@@ -207,6 +207,7 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
         </AlertDialogContent>
       </AlertDialog>
       <AlertDialog
+        isPending={isRevoking}
         open={popUp.revokeGateway.isOpen}
         confirmationValue={gateway.name}
         onOpenChange={(open) => handlePopUpToggle("revokeGateway", open)}
@@ -221,10 +222,9 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
           </AlertDialogHeader>
           <AlertDialogConfirmationField inputProps={{ placeholder: gateway.name }} />
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isRevoking}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isPending={isRevoking}
               onClick={(event) => {
                 event.preventDefault();
                 onRevoke();

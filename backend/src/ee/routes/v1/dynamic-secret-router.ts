@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { DynamicSecretLeasesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { DynamicSecretProviderSchema } from "@app/ee/services/dynamic-secret/providers/models";
 import { ApiDocsTags, DYNAMIC_SECRETS } from "@app/lib/api-docs";
@@ -12,7 +11,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
+import { SanitizedDynamicSecretLeaseSchema, SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -55,6 +54,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      operationId: "createDynamicSecret",
       tags: [ApiDocsTags.DynamicSecrets],
       body: z.object({
         projectSlug: z.string().min(1).describe(DYNAMIC_SECRETS.CREATE.projectSlug),
@@ -155,6 +155,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      operationId: "updateDynamicSecret",
       tags: [ApiDocsTags.DynamicSecrets],
       params: z.object({
         name: z.string().toLowerCase().describe(DYNAMIC_SECRETS.UPDATE.name)
@@ -256,6 +257,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      operationId: "deleteDynamicSecret",
       tags: [ApiDocsTags.DynamicSecrets],
       params: z.object({
         name: z.string().toLowerCase().describe(DYNAMIC_SECRETS.DELETE.name)
@@ -326,6 +328,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      operationId: "getDynamicSecret",
       tags: [ApiDocsTags.DynamicSecrets],
       params: z.object({
         name: z.string().min(1).describe(DYNAMIC_SECRETS.GET_BY_NAME.name)
@@ -382,6 +385,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      operationId: "listDynamicSecrets",
       tags: [ApiDocsTags.DynamicSecrets],
       querystring: z.object({
         projectSlug: z.string().min(1).describe(DYNAMIC_SECRETS.LIST.projectSlug),
@@ -430,6 +434,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      operationId: "listDynamicSecretLeases",
       tags: [ApiDocsTags.DynamicSecrets],
       params: z.object({
         name: z.string().min(1).describe(DYNAMIC_SECRETS.LIST_LEASES_BY_NAME.name)
@@ -446,7 +451,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       }),
       response: {
         200: z.object({
-          leases: DynamicSecretLeasesSchema.array()
+          leases: SanitizedDynamicSecretLeaseSchema.array()
         })
       }
     },
@@ -621,6 +626,7 @@ echo ""
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listDynamicSecretIbmApiConnectOrgs",
       body: z.object({
         instanceUrl: z.string().url().min(1).describe("The IBM API Connect instance URL"),
         apiKey: z.string().min(1).describe("The IBM API Connect API key"),
@@ -664,6 +670,7 @@ echo ""
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listDynamicSecretIbmApiConnectCatalogs",
       params: z.object({
         orgId: z.string().min(1).describe("The organization ID")
       }),
@@ -711,6 +718,7 @@ echo ""
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listDynamicSecretIbmApiConnectApps",
       params: z.object({
         orgId: z.string().min(1).describe("The organization ID"),
         catalogId: z.string().min(1).describe("The catalog ID")
@@ -761,6 +769,7 @@ echo ""
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listDynamicSecretEntraIdUsers",
       body: z.object({
         tenantId: z.string().min(1).describe("The tenant ID of the Azure Entra ID"),
         applicationId: z.string().min(1).describe("The application ID of the Azure Entra ID App Registration"),

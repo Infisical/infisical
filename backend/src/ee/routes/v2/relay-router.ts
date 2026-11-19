@@ -33,7 +33,6 @@ const RelayWithAuthMethodSchema = SanitizedRelaySchema.extend({
 const AwsAuthMethodInputSchema = z
   .object({
     method: z.literal(ResourceAuthMethodType.Aws),
-    stsEndpoint: z.string().trim().min(1).max(255).default("https://sts.amazonaws.com/"),
     allowedPrincipalArns: validatePrincipalArns,
     allowedAccountIds: validateAccountIds.refine(
       (val) => val.length <= 2048,
@@ -58,6 +57,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     url: "/",
     config: { rateLimit: writeLimit },
     schema: {
+      operationId: "createRelay",
       description: "Create a new relay with an initial auth method.",
       body: z.object({
         name: slugSchema({ min: 1, max: 32, field: "name" }),
@@ -76,7 +76,6 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
           ? {
               method: "aws" as const,
               config: {
-                stsEndpoint: authMethodInput.stsEndpoint,
                 allowedPrincipalArns: authMethodInput.allowedPrincipalArns,
                 allowedAccountIds: authMethodInput.allowedAccountIds
               }
@@ -132,6 +131,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     url: "/:relayId",
     config: { rateLimit: readLimit },
     schema: {
+      operationId: "getRelay",
       params: z.object({ relayId: z.string().uuid() }),
       response: {
         200: RelayWithAuthMethodSchema
@@ -161,6 +161,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     url: "/:relayId/gateways",
     config: { rateLimit: readLimit },
     schema: {
+      operationId: "listRelayGateways",
       params: z.object({ relayId: z.string().uuid() }),
       response: {
         200: z.array(
@@ -188,6 +189,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     url: "/:relayId",
     config: { rateLimit: writeLimit },
     schema: {
+      operationId: "updateRelay",
       params: z.object({ relayId: z.string().uuid() }),
       body: z.object({
         host: z.string().trim().min(1).optional(),
@@ -229,7 +231,6 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
           authMethodInput.method === ResourceAuthMethodType.Aws
             ? {
                 method: "aws" as const,
-                stsEndpoint: authMethodInput.stsEndpoint,
                 allowedPrincipalArns: authMethodInput.allowedPrincipalArns,
                 allowedAccountIds: authMethodInput.allowedAccountIds
               }
@@ -274,6 +275,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     url: "/:relayId/token-auth/generate-enrollment-token",
     config: { rateLimit: writeLimit },
     schema: {
+      operationId: "mintRelayEnrollmentToken",
       params: z.object({ relayId: z.string().uuid() }),
       response: {
         200: z.object({ token: z.string(), expiresAt: z.date() })
@@ -305,6 +307,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     url: "/:relayId/revoke",
     config: { rateLimit: writeLimit },
     schema: {
+      operationId: "revokeRelayAccess",
       params: z.object({ relayId: z.string().uuid() }),
       response: {
         200: z.object({ method: z.string() })
@@ -341,6 +344,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     url: "/login",
     config: { rateLimit: loginRateLimit },
     schema: {
+      operationId: "loginRelay",
       body: z.discriminatedUnion("method", [
         z.object({
           method: z.literal(ResourceAuthMethodType.Aws),
@@ -465,6 +469,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     url: "/connect",
     config: { rateLimit: writeLimit },
     schema: {
+      operationId: "connectRelay",
       response: {
         200: z.object({
           relayId: z.string(),
@@ -498,6 +503,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     url: "/heartbeat",
     config: { rateLimit: writeLimit },
     schema: {
+      operationId: "relayHeartbeat",
       response: {
         200: z.object({ message: z.string() })
       }

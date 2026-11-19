@@ -18,6 +18,7 @@ import {
   Input
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { useCreateRelay } from "@app/hooks/api/relays";
 import { slugSchema } from "@app/lib/schemas";
 
@@ -34,6 +35,7 @@ type Props = {
 };
 
 export const RelayDeployModal = ({ isOpen, onOpenChange }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const navigate = useNavigate();
@@ -129,7 +131,7 @@ export const RelayDeployModal = ({ isOpen, onOpenChange }: Props) => {
               </Button>
             </DialogClose>
             <Button
-              variant="org"
+              variant={scopeVariant}
               type="submit"
               isPending={isCreating || isSubmitting}
               isDisabled={isCreating || isSubmitting || !areRequiredFieldsProvided}

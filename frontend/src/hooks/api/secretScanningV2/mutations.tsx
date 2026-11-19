@@ -4,9 +4,12 @@ import { apiRequest } from "@app/config/request";
 
 import { secretScanningV2Keys } from "./queries";
 import {
+  TAddAllSecretScanningResourcesDTO,
+  TAddSecretScanningResourceDTO,
   TCreateSecretScanningDataSourceDTO,
   TDeleteSecretScanningDataSourceDTO,
   TGetSecretScanningConfigResponse,
+  TRemoveSecretScanningResourceDTO,
   TSecretScanningConfig,
   TSecretScanningDataSourceResponse,
   TSecretScanningFindingResponse,
@@ -110,6 +113,86 @@ export const useTriggerSecretScanningDataSource = () => {
       });
       queryClient.invalidateQueries({
         queryKey: secretScanningV2Keys.listScans(dataSourceId)
+      });
+    }
+  });
+};
+
+const useInvalidateAddedResources = () => {
+  const queryClient = useQueryClient();
+  return ({ projectId, dataSourceId }: { projectId: string; dataSourceId: string }) => {
+    queryClient.invalidateQueries({
+      queryKey: secretScanningV2Keys.listDataSources(projectId)
+    });
+    queryClient.invalidateQueries({
+      queryKey: secretScanningV2Keys.dataSourceById(dataSourceId)
+    });
+    queryClient.invalidateQueries({
+      queryKey: secretScanningV2Keys.listResources(dataSourceId)
+    });
+    queryClient.invalidateQueries({
+      queryKey: secretScanningV2Keys.listScans(dataSourceId)
+    });
+  };
+};
+
+export const useAddSecretScanningResource = () => {
+  const invalidate = useInvalidateAddedResources();
+  return useMutation({
+    mutationFn: async ({ type, dataSourceId, resourceName }: TAddSecretScanningResourceDTO) => {
+      const { data } = await apiRequest.post<{ resources: { id: string; name: string }[] }>(
+        `/api/v2/secret-scanning/data-sources/${type}/${dataSourceId}/resources`,
+        { resourceName }
+      );
+
+      return data.resources;
+    },
+    onSuccess: (_, dto) => invalidate(dto)
+  });
+};
+
+export const useAddAllSecretScanningResources = () => {
+  const invalidate = useInvalidateAddedResources();
+  return useMutation({
+    mutationFn: async ({ type, dataSourceId }: TAddAllSecretScanningResourcesDTO) => {
+      const { data } = await apiRequest.post<{ resources: { id: string; name: string }[] }>(
+        `/api/v2/secret-scanning/data-sources/${type}/${dataSourceId}/resources/all`
+      );
+
+      return data.resources;
+    },
+    onSuccess: (_, dto) => invalidate(dto)
+  });
+};
+
+export const useRemoveSecretScanningResource = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ type, dataSourceId, resourceId }: TRemoveSecretScanningResourceDTO) => {
+      const { data } = await apiRequest.delete<{ resource: { id: string; name: string } }>(
+        `/api/v2/secret-scanning/data-sources/${type}/${dataSourceId}/resources/${resourceId}`
+      );
+
+      return data.resource;
+    },
+    onSuccess: (_, { projectId, dataSourceId }) => {
+      queryClient.invalidateQueries({
+        queryKey: secretScanningV2Keys.listDataSources(projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretScanningV2Keys.dataSourceById(dataSourceId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretScanningV2Keys.listResources(dataSourceId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretScanningV2Keys.listScans(dataSourceId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretScanningV2Keys.listFindings(projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretScanningV2Keys.findingCount(projectId)
       });
     }
   });

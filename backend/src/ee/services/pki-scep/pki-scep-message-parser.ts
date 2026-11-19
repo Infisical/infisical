@@ -1,12 +1,26 @@
 import * as asn1js from "asn1js";
-import { Certificate, type CertificateSetItem, ContentInfo, SignedData, type SignerInfo as PkiSignerInfo } from "pkijs";
+import {
+  AlgorithmIdentifier,
+  Certificate,
+  type CertificateSetItem,
+  ContentInfo,
+  RSAESOAEPParams,
+  SignedData,
+  type SignerInfo as PkiSignerInfo
+} from "pkijs";
 
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 
 import { extractScepAttributes } from "./pki-scep-attributes";
-import { rsaPkcs1Decrypt, rsaVerify, symmetricDecrypt } from "./pki-scep-crypto";
-import { CIPHER_OID_MAP, DIGEST_OID_TO_HASH, ScepMessageType, TParsedScepMessage } from "./pki-scep-types";
+import { rsaOaepDecrypt, rsaPkcs1Decrypt, rsaVerify, symmetricDecrypt } from "./pki-scep-crypto";
+import {
+  CIPHER_OID_MAP,
+  DIGEST_OID_TO_HASH,
+  KEY_TRANSPORT_OIDS,
+  ScepMessageType,
+  TParsedScepMessage
+} from "./pki-scep-types";
 
 export const parseScepMessage = (derMessage: Buffer, raPrivateKeyDer: Buffer): TParsedScepMessage => {
   // Parse the outer ContentInfo
@@ -252,6 +266,84 @@ const extractRawBytes = (element: asn1js.BaseBlock): Buffer => {
   return extractTlvValueBytes(fullDer);
 };
 
+enum KeyTransportScheme {
+  RsaPkcs1 = "rsa-pkcs1",
+  RsaOaep = "rsa-oaep"
+}
+
+type TKeyTransport = { algorithmOid?: string } & (
+  | { scheme: KeyTransportScheme.RsaPkcs1 }
+  | { scheme: KeyTransportScheme.RsaOaep; hash: string; label?: Buffer }
+);
+
+const MAX_REPORTED_OID_LENGTH = 64;
+
+const OAEP_P_SOURCE_TAG_NUMBER = 2;
+
+const parseOaepParams = (oaepParamsSchema?: asn1js.Sequence) => {
+  try {
+    const oaepParams = oaepParamsSchema ? new RSAESOAEPParams({ schema: oaepParamsSchema }) : new RSAESOAEPParams();
+    const mgfParams: unknown = oaepParams.maskGenAlgorithm.algorithmParams;
+    const mgfHashOid =
+      oaepParams.maskGenAlgorithm.algorithmId === KEY_TRANSPORT_OIDS.mgf1 && mgfParams instanceof asn1js.Sequence
+        ? new AlgorithmIdentifier({ schema: mgfParams }).algorithmId
+        : undefined;
+    return { oaepParams, mgfHashOid };
+  } catch {
+    throw new BadRequestError({
+      message: "The SCEP client sent malformed RSA-OAEP parameters, so its request could not be decrypted."
+    });
+  }
+};
+
+const parseKeyTransportAlgorithm = (keyEncryptionAlgorithm: asn1js.BaseBlock): TKeyTransport => {
+  let algorithm: AlgorithmIdentifier;
+  try {
+    algorithm = new AlgorithmIdentifier({ schema: keyEncryptionAlgorithm });
+  } catch {
+    return { scheme: KeyTransportScheme.RsaPkcs1 };
+  }
+
+  const algorithmOid = algorithm.algorithmId.slice(0, MAX_REPORTED_OID_LENGTH);
+  if (algorithm.algorithmId !== KEY_TRANSPORT_OIDS.rsaesOaep) {
+    return { scheme: KeyTransportScheme.RsaPkcs1, algorithmOid };
+  }
+
+  const { algorithmParams } = algorithm as { algorithmParams: unknown };
+  const oaepParamsSchema = algorithmParams instanceof asn1js.Sequence ? algorithmParams : undefined;
+  const { oaepParams, mgfHashOid } = parseOaepParams(oaepParamsSchema);
+
+  const hashOid = oaepParams.hashAlgorithm.algorithmId;
+  const hash = DIGEST_OID_TO_HASH[hashOid];
+  if (!hash || mgfHashOid !== hashOid) {
+    throw new BadRequestError({
+      message: `The SCEP client used RSA-OAEP with unsupported parameters (hash OID ${hashOid}, mask generation OID ${
+        mgfHashOid ?? oaepParams.maskGenAlgorithm.algorithmId
+      }). RSA-OAEP is supported with SHA-1, SHA-256, SHA-384, or SHA-512 and MGF1 using the same hash.`
+    });
+  }
+
+  const hasExplicitPSource =
+    oaepParamsSchema?.valueBlock.value.some(
+      (paramElement) =>
+        paramElement.idBlock.tagClass === 3 && paramElement.idBlock.tagNumber === OAEP_P_SOURCE_TAG_NUMBER
+    ) ?? false;
+  if (!hasExplicitPSource) {
+    return { scheme: KeyTransportScheme.RsaOaep, hash, algorithmOid };
+  }
+
+  const { pSourceAlgorithm } = oaepParams;
+  const label: unknown = pSourceAlgorithm.algorithmParams;
+  if (pSourceAlgorithm.algorithmId !== KEY_TRANSPORT_OIDS.pSpecified || !(label instanceof asn1js.OctetString)) {
+    throw new BadRequestError({
+      message: `The SCEP client used an unsupported RSA-OAEP label source (OID ${pSourceAlgorithm.algorithmId}). Only an explicit label (pSpecified) is supported.`
+    });
+  }
+
+  const labelBytes = Buffer.from(label.getValue());
+  return { scheme: KeyTransportScheme.RsaOaep, hash, label: labelBytes.length ? labelBytes : undefined, algorithmOid };
+};
+
 const decryptEnvelopedDataRaw = (
   envelopedDataDer: Buffer,
   raPrivateKeyDer: Buffer
@@ -301,8 +393,13 @@ const decryptEnvelopedDataRaw = (
     throw new BadRequestError({ message: "No RecipientInfo found in EnvelopedData" });
   }
 
-  const firstRecipientInfo = recipientInfosSet.valueBlock.value[0] as asn1js.Sequence;
-  const ktri = firstRecipientInfo.valueBlock.value;
+  const firstRecipientInfo = recipientInfosSet.valueBlock.value[0];
+  const ktri = firstRecipientInfo instanceof asn1js.Sequence ? firstRecipientInfo.valueBlock.value : [];
+  if (ktri.length !== 4) {
+    throw new BadRequestError({
+      message: "The SCEP request's recipient info is malformed, so its request could not be decrypted."
+    });
+  }
 
   // The encryptedKey is the LAST element of KeyTransRecipientInfo
   // Per RFC 5652: version, rid, keyEncryptionAlgorithm, encryptedKey
@@ -351,10 +448,15 @@ const decryptEnvelopedDataRaw = (
     throw new BadRequestError({ message: "Failed to extract encrypted content from EncryptedContentInfo" });
   }
 
+  const keyTransport = parseKeyTransportAlgorithm(ktri[ktri.length - 2]);
+
   // Decrypt the content
   let contentEncryptionKey: Buffer;
   try {
-    const decrypted = rsaPkcs1Decrypt(encryptedKey, raPrivateKeyDer);
+    const decrypted =
+      keyTransport.scheme === KeyTransportScheme.RsaOaep
+        ? rsaOaepDecrypt(encryptedKey, raPrivateKeyDer, keyTransport)
+        : rsaPkcs1Decrypt(encryptedKey, raPrivateKeyDer);
     contentEncryptionKey =
       decrypted.length === cipherInfo.keyLength ? decrypted : crypto.randomBytes(cipherInfo.keyLength);
   } catch {
@@ -365,7 +467,9 @@ const decryptEnvelopedDataRaw = (
   try {
     plainText = symmetricDecrypt(encryptedContent, contentEncryptionKey, iv, cipherOid);
   } catch {
-    throw new BadRequestError({ message: "Failed to decrypt SCEP enveloped data" });
+    throw new BadRequestError({
+      message: `Failed to decrypt SCEP enveloped data (key encryption algorithm ${keyTransport.algorithmOid ?? "unreadable"})`
+    });
   }
 
   return { plainText, cipherOid };

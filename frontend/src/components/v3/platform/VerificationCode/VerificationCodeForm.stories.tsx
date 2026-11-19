@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 
+import { Alert, AlertDescription, AlertTitle } from "../../generic/Alert";
+import { Button } from "../../generic/Button";
 import { CardContent } from "../../generic/Card";
 import { VerificationCodeForm, VerificationCodeHeader } from "./VerificationCodeForm";
 import { VerificationCodeResend } from "./VerificationCodeResend";
@@ -11,7 +13,8 @@ const meta = {
   title: "Authentication/VerificationCodeForm",
   component: VerificationCodeForm,
   parameters: {
-    layout: "centered"
+    layout: "centered",
+    controls: { disable: true }
   },
   decorators: [
     (Story) => (
@@ -32,16 +35,40 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const VerificationExample = ({
-  fields = 6,
-  error,
-  resendState = "ready"
-}: {
-  fields?: number;
-  error?: string;
-  resendState?: "ready" | "resending" | "delayed";
-}) => {
+const VerificationDemo = ({ fields }: { fields: number }) => {
   const [value, setValue] = useState("");
+  const [submittedCode, setSubmittedCode] = useState("");
+  const [status, setStatus] = useState<"idle" | "verifying" | "invalid" | "verified">("idle");
+  const [isResending, setIsResending] = useState(false);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [formKey, setFormKey] = useState(0);
+  const validCode = fields === 6 ? "123456" : "abcdefgh";
+
+  useEffect(() => {
+    if (status !== "verifying") return undefined;
+
+    const timer = window.setTimeout(() => {
+      setStatus(submittedCode === validCode ? "verified" : "invalid");
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [status, submittedCode, validCode]);
+
+  useEffect(() => {
+    if (!isResending) return undefined;
+
+    const timer = window.setTimeout(() => {
+      setIsResending(false);
+      setRemainingSeconds(5);
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [isResending]);
+
+  useEffect(() => {
+    if (remainingSeconds === 0) return undefined;
+
+    const timer = window.setTimeout(() => setRemainingSeconds((seconds) => seconds - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [remainingSeconds]);
 
   return (
     <AuthPagePanel>
@@ -51,51 +78,76 @@ const VerificationExample = ({
         description={fields === 8 ? "Enter one of your backup recovery codes." : undefined}
       />
       <CardContent>
-        <VerificationCodeForm
-          name={`verification-story-${fields}`}
-          fields={fields}
-          value={value}
-          onChange={setValue}
-          onSubmit={() => undefined}
-          error={error}
-        >
-          {fields === 6 && (
-            <VerificationCodeResend
-              isResending={resendState === "resending"}
-              remainingSeconds={resendState === "delayed" ? 20 : 0}
-              onResend={() => undefined}
-            />
-          )}
-        </VerificationCodeForm>
+        {status === "verified" ? (
+          <Alert variant="success">
+            <AlertTitle>Code verified</AlertTitle>
+            <AlertDescription>This demo does not sign you in or contact a server.</AlertDescription>
+          </Alert>
+        ) : (
+          <VerificationCodeForm
+            key={formKey}
+            name={`verification-story-${fields}`}
+            fields={fields}
+            value={value}
+            onChange={setValue}
+            onSubmit={() => {
+              setSubmittedCode(value);
+              setStatus("verifying");
+            }}
+            isPending={status === "verifying"}
+            isDisabled={isResending}
+            error={status === "invalid" ? "That code is invalid. Try again." : undefined}
+          >
+            {fields === 6 && (
+              <VerificationCodeResend
+                isResending={isResending}
+                isDisabled={status === "verifying"}
+                remainingSeconds={remainingSeconds}
+                onResend={() => {
+                  setValue("");
+                  setStatus("idle");
+                  setFormKey((key) => key + 1);
+                  setIsResending(true);
+                }}
+              />
+            )}
+          </VerificationCodeForm>
+        )}
       </CardContent>
     </AuthPagePanel>
   );
 };
 
+const InteractiveExample = ({ initialFields = 6 }: { initialFields?: number }) => {
+  const [fields, setFields] = useState(initialFields);
+  const [session, setSession] = useState(0);
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="space-y-3 text-sm text-label">
+        <p>
+          Interactive demo. Type {fields === 6 ? "123456" : "abcdefgh"} to succeed, or any other
+          complete code to try the error and retry flow. The first complete code submits
+          automatically. No requests are sent.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => setFields(fields === 6 ? 8 : 6)}>
+            {fields === 6 ? "Use a Recovery Code" : "Use an Email Code"}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setSession((key) => key + 1)}>
+            Restart Demo
+          </Button>
+        </div>
+      </div>
+      <VerificationDemo key={`${fields}-${session}`} fields={fields} />
+    </div>
+  );
+};
+
 export const EmailCode: Story = {
-  render: () => <VerificationExample />
-};
-
-export const PartialCode: Story = {
-  args: { value: "123" }
-};
-
-export const Verifying: Story = {
-  args: { value: "123456", isPending: true }
-};
-
-export const InvalidCode: Story = {
-  render: () => <VerificationExample error="That code is invalid. Try again." />
-};
-
-export const Resending: Story = {
-  render: () => <VerificationExample resendState="resending" />
-};
-
-export const ResendDelayed: Story = {
-  render: () => <VerificationExample resendState="delayed" />
+  render: () => <InteractiveExample />
 };
 
 export const RecoveryCode: Story = {
-  render: () => <VerificationExample fields={8} />
+  render: () => <InteractiveExample initialFields={8} />
 };

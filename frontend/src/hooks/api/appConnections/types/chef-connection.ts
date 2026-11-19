@@ -12,5 +12,6 @@ export type TChefConnection = TRootAppConnection & { app: AppConnection.Chef } &
     orgName: string;
     userName: string;
     privateKey: string;
+    dataBagSecret?: string;
   };
 };

@@ -4,13 +4,16 @@ import { z } from "zod";
 import { TUsers } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { mfaRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
+import { resolveMfaChallenge } from "@app/services/auth/auth-fns";
 import { AuthModeMfaJwtTokenPayload, AuthTokenType, MfaMethod } from "@app/services/auth/auth-type";
 
 const handleMfaVerification = async (
-  req: FastifyRequest & { mfa: { userId: string; orgId?: string; user: TUsers; requiredMfaMethod: MfaMethod } },
+  req: FastifyRequest & {
+    mfa: { userId: string; orgId?: string; user: TUsers; allowedMfaMethods: MfaMethod[] };
+  },
   res: FastifyReply,
   server: FastifyZodProvider,
   mfaToken: string,
@@ -19,8 +22,8 @@ const handleMfaVerification = async (
 ) => {
   const userAgent = req.headers["user-agent"];
   const mfaJwtToken = req.headers.authorization?.replace("Bearer ", "");
-  if (!userAgent) throw new Error("user agent header is required");
-  if (!mfaJwtToken) throw new Error("authorization header is required");
+  if (!userAgent) throw new BadRequestError({ message: "User agent header is required" });
+  if (!mfaJwtToken) throw new UnauthorizedError({ message: "Authorization header is required" });
   const appCfg = getConfig();
 
   const { user, token } = await server.services.login.verifyMfaToken({
@@ -31,7 +34,7 @@ const handleMfaVerification = async (
     orgId: req.mfa.orgId,
     mfaToken,
     mfaMethod,
-    requiredMfaMethod: req.mfa.requiredMfaMethod,
+    allowedMfaMethods: req.mfa.allowedMfaMethods,
     isRecoveryCode
   });
 
@@ -69,15 +72,25 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
     }
 
     const decodedToken = crypto.jwt().verify(token, cfg.AUTH_SECRET) as AuthModeMfaJwtTokenPayload;
-    if (decodedToken.authTokenType !== AuthTokenType.MFA_TOKEN) throw new Error("Unauthorized access");
+    if (decodedToken.authTokenType !== AuthTokenType.MFA_TOKEN)
+      throw new UnauthorizedError({ message: "Unauthorized access" });
 
     const user = await server.store.user.findById(decodedToken.userId);
-    if (!user) throw new Error("User not found");
+    if (!user) throw new UnauthorizedError({ message: "Unauthorized access" });
+
+    let allowedMfaMethods = decodedToken.allowedMfaMethods ?? [];
+    if (!allowedMfaMethods.length && decodedToken.requiredMfaMethod) {
+      allowedMfaMethods = [decodedToken.requiredMfaMethod];
+    }
+
+    if (!allowedMfaMethods.length)
+      throw new UnauthorizedError({ message: "Your sign-in session expired. Sign in again." });
+
     req.mfa = {
       userId: user.id,
       user,
       orgId: decodedToken.organizationId,
-      requiredMfaMethod: decodedToken.requiredMfaMethod
+      allowedMfaMethods
     };
   });
 
@@ -96,7 +109,7 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      await server.services.login.resendMfaToken(req.mfa.userId, req.mfa.requiredMfaMethod);
+      await server.services.login.resendMfaToken(req.mfa.userId, req.mfa.allowedMfaMethods);
       return { message: "Successfully send new mfa code" };
     }
   });
@@ -191,9 +204,9 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
-      // Recovery codes are account-level; pass the method the challenge required
-      // so users on any MFA method (email, TOTP or WebAuthn) can fall back to them.
-      return handleMfaVerification(req, res, server, req.body.recoveryCode, req.mfa.requiredMfaMethod, true);
+      // A recovery code stands in for any factor. The session records an allowed method so switching orgs
+      // doesn't treat it as a changed method and ask for MFA again.
+      return handleMfaVerification(req, res, server, req.body.recoveryCode, req.mfa.allowedMfaMethods[0], true);
     }
   });
 
@@ -228,6 +241,43 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
 
         throw error;
       }
+    }
+  });
+
+  // What the login MFA step offers: the method to show first, the other set-up methods the org allows ("More
+  // options"), and, when nothing usable is set up, the allowed methods the user can enroll.
+  server.route({
+    method: "GET",
+    url: "/mfa/methods",
+    config: {
+      rateLimit: mfaRateLimit
+    },
+    schema: {
+      operationId: "getMfaMethods",
+      response: {
+        200: z.object({
+          challengeMethod: z.nativeEnum(MfaMethod),
+          usableMethods: z.nativeEnum(MfaMethod).array(),
+          enrollableMethods: z.nativeEnum(MfaMethod).array()
+        })
+      }
+    },
+    handler: async (req) => {
+      const enrolledMethods = await server.services.user.getEnrolledMfaMethods(req.mfa.user);
+      const { usableMethods, challengeMethod } = resolveMfaChallenge({
+        allowedMethods: req.mfa.allowedMfaMethods,
+        enrolledMethods,
+        preferredMethod: req.mfa.user.selectedMfaMethod
+      });
+      const enrollableMethods = usableMethods.length
+        ? []
+        : req.mfa.allowedMfaMethods.filter((method) => method !== MfaMethod.EMAIL);
+
+      return {
+        challengeMethod: challengeMethod ?? enrollableMethods[0] ?? MfaMethod.EMAIL,
+        usableMethods,
+        enrollableMethods
+      };
     }
   });
 };

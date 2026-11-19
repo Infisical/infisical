@@ -21,6 +21,7 @@ export type TOrgProductStats = {
   secretScanning: {
     dataSourcesCount: number;
     resourcesCount: number;
+    findingsCount: number;
     projectsCount: number;
   };
   pam: {
@@ -29,8 +30,8 @@ export type TOrgProductStats = {
     foldersCount: number;
   };
   agentVault: {
-    accessBundlesCount: number;
     servicesCount: number;
-    proxiesCount: number;
+    skillsCount: number;
+    projectsCount: number;
   };
 };

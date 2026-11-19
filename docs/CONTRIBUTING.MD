@@ -16,8 +16,10 @@ Vale checks roughly a third of the style guide. The rest needs a reviewer.
 
 The `docs-style` skill in `.agents/skills/docs-style/` is that reviewer. Claude loads it on its
 own for any work under `docs/`, or you can invoke it explicitly with `/docs-style`. It runs the linter,
-checks the page structure, then goes sentence by sentence and reports each finding as
-`file:line` with a rewrite before changing anything.
+cuts what the reader won't act on, checks the page structure, then goes sentence by sentence.
+It applies its fixes, reviews the edited page again, and reports each change as `file:line` with
+the text before and after. If you wrote or edited the prose yourself in the same conversation, it
+reports its findings for your sentences and asks before changing them.
 
 It's worth running on your own prose too, not only on a draft a model wrote.
 
@@ -129,6 +131,19 @@ and single-letter labels. Where it is wrong, silence it in place rather than wea
 ```
 
 `{/* vale off */}` and `{/* vale on */}` disable everything between them.
+
+## Editing the CLI reference
+
+The CLI reference is written twice. `cli/reference.mdx` renders the page people see, from
+the props of each `CLICommand`. Mintlify's Markdown export (the `.md` route and
+`llms-full.txt`) drops those props, so the page's Markdown version holds only a pointer to
+`cli/reference-agents.mdx`, a page with a plain Markdown copy. It's a separate page so the
+reference page doesn't download the copy. Agents that follow `llms.txt` to a command reach the
+reference page's Markdown, and the pointer takes them to the copy. When you add or change a command, flag, or
+example, make the same change in both files.
+
+On the agent page, give each command a heading whose anchor matches its `id` on the page, such as
+``## `sm secrets set` `` for `id="sm-secrets-set"`, so links to the page's anchors still work.
 
 ## Getting familiar with Mintlify
 

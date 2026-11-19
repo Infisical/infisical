@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck -- vendored Dice UI component, large file with complex generic types pending cleanup
-/* eslint-disable no-restricted-syntax, no-nested-ternary, no-continue, no-param-reassign, @typescript-eslint/no-shadow, jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/role-supports-aria-props */
+/* eslint-disable no-nested-ternary, no-continue, no-param-reassign, @typescript-eslint/no-shadow, jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/role-supports-aria-props */
 
 import * as React from "react";
 import { Check, Upload, X } from "lucide-react";
@@ -31,8 +31,6 @@ import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { TextArea as Textarea } from "@app/components/v3/generic/TextArea";
 import { cn } from "@app/components/v3/utils";
 
-import { useBadgeOverflow } from "./hooks/use-badge-overflow";
-import { useDebouncedCallback } from "./hooks/use-debounced-callback";
 import { DataGridCellWrapper } from "./data-grid-cell-wrapper";
 import type { DataGridCellProps, FileCellData } from "./data-grid-types";
 import {
@@ -45,6 +43,8 @@ import {
   getUrlHref,
   parseLocalDate
 } from "./data-grid-utils";
+import { useBadgeOverflow } from "./hooks/use-badge-overflow";
+import { useDebouncedCallback } from "./hooks/use-debounced-callback";
 
 export function ShortTextCell<TData>({
   cell,
@@ -171,7 +171,6 @@ export function ShortTextCell<TData>({
       }
     }
     // Only run on edit start — not on every value change (which moves cursor to end)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing]);
 
   const isNull = value === null || value === undefined;
@@ -694,7 +693,6 @@ export function UrlCell<TData>({
       }
     }
     // Only run on edit start — not on every value change (which moves cursor to end)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing]);
 
   const displayValue = !isEditing ? (value ?? "") : "";

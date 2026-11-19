@@ -10,9 +10,12 @@ import { logger } from "@app/lib/logger";
 import {
   AccessApprovalRequestTemplate,
   AccessApprovalRequestUpdatedTemplate,
+  AccessPamRequestAutoApprovedTemplate,
   AccessPamRequestBypassedTemplate,
   AccessPamRequestTemplate,
   AccountDeletionConfirmationTemplate,
+  AgentVaultFreeUsageLimitTemplate,
+  AgentVaultFreeUsageWarningTemplate,
   AlertNotificationTemplate,
   AuditLogMigrationAlertTemplate,
   AuditReportTemplate,
@@ -25,7 +28,6 @@ import {
   ExternalImportStartedTemplate,
   ExternalImportSucceededTemplate,
   HealthAlertTemplate,
-  HoneyTokenTriggeredTemplate,
   IntegrationSyncFailedTemplate,
   LegacyPkiDeprecationTemplate,
   MfaRecoveryCodeUsedTemplate,
@@ -37,6 +39,7 @@ import {
   OrgAdminProjectFolderGrantAccessTemplate,
   OrganizationAssignmentTemplate,
   OrganizationInvitationTemplate,
+  PamFolderAdminAccessTemplate,
   PasswordResetTemplate,
   PasswordSetupTemplate,
   PkiApprovalRequestNeedsReviewTemplate,
@@ -50,10 +53,8 @@ import {
   SecretLeakIncidentTemplate,
   SecretReminderTemplate,
   SecretRequestCompletedTemplate,
-  SecretRotationFailedTemplate,
   SecretScanningScanFailedTemplate,
   SecretScanningSecretsDetectedTemplate,
-  SecretSyncFailedTemplate,
   ServiceTokenExpiryNoticeTemplate,
   SignupEmailVerificationTemplate,
   SignupExistingAccountTemplate,
@@ -62,7 +63,7 @@ import {
 } from "./emails";
 import DynamicSecretLeaseRevocationFailedTemplate from "./emails/DynamicSecretLeaseRevocationFailedTemplate";
 
-export type TSmtpConfig = SMTPTransport.Options;
+export type TSmtpConfig = SMTPTransport.Options & Pick<SMTPTransport.MailOptions, "from">;
 export type TSmtpAttachment = {
   filename: string;
   content: Buffer | string;
@@ -91,6 +92,7 @@ export enum SmtpTemplates {
   AccessApprovalRequestUpdated = "accessApprovalRequestUpdated",
   AccessSecretRequestBypassed = "accessSecretRequestBypassed",
   AccessPamRequestBypassed = "accessPamRequestBypassed",
+  AccessPamRequestAutoApproved = "accessPamRequestAutoApproved",
   AccessPamRequest = "accessPamRequest",
   PkiApprovalRequestNeedsReview = "pkiApprovalRequestNeedsReview",
   SecretApprovalRequestNeedsReview = "secretApprovalRequestNeedsReview",
@@ -109,16 +111,17 @@ export enum SmtpTemplates {
   WorkspaceInvite = "workspaceInvitation",
   ScimUserProvisioned = "scimUserProvisioned",
   ScimTokenExpired = "scimTokenExpired",
+  AgentVaultFreeUsageWarning = "agentVaultFreeUsageWarning",
+  AgentVaultFreeUsageLimit = "agentVaultFreeUsageLimit",
   PkiExpirationAlert = "pkiExpirationAlert",
   IntegrationSyncFailed = "integrationSyncFailed",
-  SecretSyncFailed = "secretSyncFailed",
   ExternalImportSuccessful = "externalImportSuccessful",
   ExternalImportFailed = "externalImportFailed",
   ExternalImportStarted = "externalImportStarted",
   SecretRequestCompleted = "secretRequestCompleted",
-  SecretRotationFailed = "secretRotationFailed",
   ProjectAccessRequest = "projectAccess",
   OrgAdminProjectDirectAccess = "orgAdminProjectFolderGrantAccess",
+  PamFolderAdminAccess = "pamFolderAdminAccess",
   OrgAdminBreakglassAccess = "orgAdminBreakglassAccess",
   ServiceTokenExpired = "serviceTokenExpired",
   SecretScanningV2ScanFailed = "secretScanningV2ScanFailed",
@@ -128,7 +131,6 @@ export enum SmtpTemplates {
   DynamicSecretLeaseRevocationFailed = "dynamicSecretLeaseRevocationFailed",
   CredentialRotationFailed = "credentialRotationFailed",
   AuditLogMigrationAlert = "auditLogMigrationAlert",
-  HoneyTokenTriggered = "honeyTokenTriggered",
   AuditReport = "auditReport",
   AlertNotification = "alertNotification"
 }
@@ -165,6 +167,7 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.ExternalImportSuccessful]: ExternalImportSucceededTemplate,
   [SmtpTemplates.AccessSecretRequestBypassed]: SecretApprovalRequestBypassedTemplate,
   [SmtpTemplates.AccessPamRequestBypassed]: AccessPamRequestBypassedTemplate,
+  [SmtpTemplates.AccessPamRequestAutoApproved]: AccessPamRequestAutoApprovedTemplate,
   [SmtpTemplates.AccessPamRequest]: AccessPamRequestTemplate,
   [SmtpTemplates.PkiApprovalRequestNeedsReview]: PkiApprovalRequestNeedsReviewTemplate,
   [SmtpTemplates.IntegrationSyncFailed]: IntegrationSyncFailedTemplate,
@@ -173,13 +176,14 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.WorkspaceInvite]: ProjectInvitationTemplate,
   [SmtpTemplates.ScimUserProvisioned]: ScimUserProvisionedTemplate,
   [SmtpTemplates.ScimTokenExpired]: ScimTokenExpiryNoticeTemplate,
+  [SmtpTemplates.AgentVaultFreeUsageWarning]: AgentVaultFreeUsageWarningTemplate,
+  [SmtpTemplates.AgentVaultFreeUsageLimit]: AgentVaultFreeUsageLimitTemplate,
   [SmtpTemplates.SecretRequestCompleted]: SecretRequestCompletedTemplate,
   [SmtpTemplates.UnlockAccount]: UnlockAccountTemplate,
   [SmtpTemplates.ServiceTokenExpired]: ServiceTokenExpiryNoticeTemplate,
   [SmtpTemplates.SecretReminder]: SecretReminderTemplate,
-  [SmtpTemplates.SecretRotationFailed]: SecretRotationFailedTemplate,
-  [SmtpTemplates.SecretSyncFailed]: SecretSyncFailedTemplate,
   [SmtpTemplates.OrgAdminProjectDirectAccess]: OrgAdminProjectFolderGrantAccessTemplate,
+  [SmtpTemplates.PamFolderAdminAccess]: PamFolderAdminAccessTemplate,
   [SmtpTemplates.ProjectAccessRequest]: ProjectAccessRequestTemplate,
   [SmtpTemplates.SecretApprovalRequestNeedsReview]: SecretApprovalRequestNeedsReviewTemplate,
   [SmtpTemplates.OAuthPasswordReset]: OAuthPasswordResetTemplate,
@@ -193,7 +197,6 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.DynamicSecretLeaseRevocationFailed]: DynamicSecretLeaseRevocationFailedTemplate,
   [SmtpTemplates.CredentialRotationFailed]: CredentialRotationFailedTemplate,
   [SmtpTemplates.AuditLogMigrationAlert]: AuditLogMigrationAlertTemplate,
-  [SmtpTemplates.HoneyTokenTriggered]: HoneyTokenTriggeredTemplate,
   [SmtpTemplates.AuditReport]: AuditReportTemplate,
   [SmtpTemplates.AlertNotification]: AlertNotificationTemplate
 };

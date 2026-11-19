@@ -1,4 +1,5 @@
 import { TCertificateRequests } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -7,7 +8,10 @@ import { buildGoDaddySsoKeyHeader } from "@app/services/app-connection/godaddy/g
 import { getGoDaddyApiBaseUrl } from "@app/services/app-connection/godaddy/godaddy-connection-fns";
 import { TGoDaddyConnection } from "@app/services/app-connection/godaddy/godaddy-connection-types";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import {
+  getIssuanceAlertEvent,
+  TCertificateAlertEventEmitter
+} from "@app/services/certificate/certificate-alert-events";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 
@@ -58,7 +62,7 @@ export type TGoDaddyCertificateRequestServiceDep = {
 export type TProcessGoDaddyRequestDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "setPendingMessage">;
   certificateRequestService: TGoDaddyCertificateRequestServiceDep;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
@@ -66,6 +70,7 @@ export type TProcessGoDaddyRequestDeps = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
 };
 
 export type TProcessGoDaddyRequestResult =
@@ -76,7 +81,7 @@ export type TProcessGoDaddyRequestResult =
 
 const getOrCreateClient = async (
   request: TCertificateRequests,
-  deps: Pick<TProcessGoDaddyRequestDeps, "certificateAuthorityDAL" | "appConnectionDAL" | "kmsService">,
+  deps: Pick<TProcessGoDaddyRequestDeps, "certificateAuthorityDAL" | "appConnectionDAL" | "kmsDataKeyService">,
   clientCache?: Map<string, TGoDaddyApiClient>
 ): Promise<TGoDaddyApiClient> => {
   if (!request.caId) {
@@ -97,7 +102,7 @@ const getOrCreateClient = async (
     orgId: appConnection.orgId,
     projectId: appConnection.projectId,
     encryptedCredentials: appConnection.encryptedCredentials,
-    kmsService: deps.kmsService
+    kmsDataKeyService: deps.kmsDataKeyService
   })) as TGoDaddyConnection["credentials"];
 
   const client = createGoDaddyApiClient(
@@ -140,6 +145,8 @@ export const processGoDaddyPendingValidationRequest = async (
     await deps.certificateRequestService.updateCertificateRequestStatus({
       certificateRequestId: request.id,
       status: CertificateRequestStatus.FAILED,
+      operation: parsed.godaddy.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
+      originalCertificateId: parsed.godaddy.originalCertificateId,
       errorMessage: "Validation timed out after 24h"
     });
     logger.info(`GoDaddy validation timed out [certificateRequestId=${request.id}]`);
@@ -209,6 +216,13 @@ export const processGoDaddyPendingValidationRequest = async (
         );
       }
 
+      await deps.certificateAlertEventEmitter.notify({
+        certificateId,
+        projectId: request.projectId,
+        eventType: getIssuanceAlertEvent(parsed.godaddy.isRenewal),
+        applicationId: request.applicationId
+      });
+
       return { status: CertificateRequestStatus.ISSUED, certificateId, orderStatus };
     } catch (error) {
       // A renewal can report ISSUED/CURRENT while GoDaddy is still serving the previous certificate
@@ -226,6 +240,8 @@ export const processGoDaddyPendingValidationRequest = async (
     await deps.certificateRequestService.updateCertificateRequestStatus({
       certificateRequestId: request.id,
       status: CertificateRequestStatus.FAILED,
+      operation: parsed.godaddy.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
+      originalCertificateId: parsed.godaddy.originalCertificateId,
       errorMessage: `GoDaddy certificate ${orderStatus}`
     });
     logger.info(`GoDaddy certificate terminal state [certificateRequestId=${request.id}] [status=${orderStatus}]`);
