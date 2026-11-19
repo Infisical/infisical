@@ -5,7 +5,6 @@ import { TableName } from "@app/db/schemas";
 import { TSecretSyncs } from "@app/db/schemas/secret-syncs";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, prependTableNameToFindFilter, selectAllTableCols } from "@app/lib/knex";
-import { fromStoredAppConnectionApp } from "@app/services/app-connection/app-connection-stored-app";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 export type TSecretSyncDALFactory = ReturnType<typeof secretSyncDALFactory>;
@@ -95,7 +94,7 @@ const expandSecretSync = (
     connectionId,
     environment: envId ? { id: envId, name: envName, slug: envSlug } : null,
     connection: {
-      app: fromStoredAppConnectionApp(connectionApp),
+      app: connectionApp,
       id: connectionId,
       name: connectionName,
       orgId: connectionOrgId,
