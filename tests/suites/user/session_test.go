@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture"
@@ -189,7 +190,13 @@ func TestSession_Refresh(t *testing.T) {
 		third := cookieNamed(refresh(t, tn, s.IP, second).HTTPResponse, "jid")
 
 		// Action
-		res := refresh(t, tn, s.IP, s.JID)
+		// Inside its grace window the old token is still accepted without changing anything, so it is presented
+		// until the window closes; the first refusal is the reuse being detected.
+		var res *api.RefreshAuthTokenResponse
+		wait.Until(t, "the grace window of the reused refresh token to close", func() bool {
+			res = refresh(t, tn, s.IP, s.JID)
+			return res.StatusCode() != http.StatusOK
+		}, wait.Interval(time.Second))
 
 		// Assert
 		require.Equal(t, http.StatusUnauthorized, res.StatusCode())
@@ -213,6 +220,26 @@ func TestSession_Refresh(t *testing.T) {
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "refreshing: %s", apierr.Body(res.Body))
 		require.Nil(t, res.JSON200.RefreshToken)
 		require.Equal(t, http.StatusOK, refresh(t, tn, s.IP, second).StatusCode())
+	})
+
+	t.Run("should accept a refresh token more than one rotation behind within its grace window", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		s := signIn(t, tn, tn.NewUser(t).Email)
+		second := cookieNamed(refresh(t, tn, s.IP, s.JID).HTTPResponse, "jid")
+		third := cookieNamed(refresh(t, tn, s.IP, second).HTTPResponse, "jid")
+
+		// Action
+		res := refresh(t, tn, s.IP, s.JID)
+
+		// Assert
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "refreshing: %s", apierr.Body(res.Body))
+		require.Nil(t, res.JSON200.RefreshToken)
+		require.Nil(t, cookieNamed(res.HTTPResponse, "jid"))
+		require.Equal(t, http.StatusOK, orgStatus(t, as(t, tn, res.JSON200.Token, s.IP), tn.OrgID.String()))
+		require.Equal(t, http.StatusOK, refresh(t, tn, s.IP, third).StatusCode())
 	})
 
 	t.Run("should cap access and refresh lifetime at the org's userTokenExpiration", func(t *testing.T) {
