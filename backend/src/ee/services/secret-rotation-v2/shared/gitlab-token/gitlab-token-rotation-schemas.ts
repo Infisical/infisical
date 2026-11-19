@@ -29,7 +29,14 @@ export const GitLabTokenScopesSchema = z
   .refine((scopes) => new Set(scopes).size === scopes.length, "Scopes must be unique");
 
 export const GitLabNumericIdSchema = (field: string) =>
-  z.string().trim().min(1, `${field} required`).max(20).regex(/^\d+$/, `${field} must be a numeric GitLab ID`);
+  z
+    .string()
+    .trim()
+    .min(1, `${field} required`)
+    .max(20)
+    .regex(/^\d+$/, `${field} must be a numeric GitLab ID`)
+    // GitLab reads `012` as `12`, so IDs are stored in the form GitLab returns and compare equal to it
+    .transform((id) => id.replace(/^0+(?=\d)/, ""));
 
 export const GITLAB_TOKEN_ROTATION_INTERVAL_ERROR = `GitLab tokens can expire at most ${GITLAB_TOKEN_MAX_LIFETIME_DAYS} days after they are created, so the rotation interval cannot exceed ${GITLAB_TOKEN_MAX_ROTATION_INTERVAL_DAYS} days.`;
 

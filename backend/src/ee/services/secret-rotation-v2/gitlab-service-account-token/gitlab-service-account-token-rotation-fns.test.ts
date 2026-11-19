@@ -343,3 +343,26 @@ describe("GitLab token expiry", () => {
     });
   });
 });
+
+describe("GitLab ID input", () => {
+  it("strips leading zeros so an ID matches the one GitLab returns", () => {
+    const result = CreateGitLabServiceAccountTokenRotationSchema.parse({
+      name: "gitlab-rotation",
+      projectId: "project-id",
+      connectionId: "7d5b0c56-1f0e-4f0a-9d65-7b9b8b2a3c11",
+      environment: "prod",
+      secretPath: "/",
+      isAutoRotationEnabled: true,
+      rotationInterval: 30,
+      parameters: {
+        groupId: " 0034 ",
+        serviceAccountId: "012",
+        name: "ci-token",
+        scopes: [GitLabTokenScope.Api]
+      },
+      secretsMapping: { tokenId: "GITLAB_TOKEN_ID", token: "GITLAB_TOKEN" }
+    });
+
+    expect(result.parameters).toMatchObject({ groupId: "34", serviceAccountId: "12" });
+  });
+});
