@@ -162,7 +162,7 @@ export const secretReplicationServiceFactory = ({
         return { ...el, secretKey: decryptedSecret.key, secretValue: decryptedSecret.value };
       });
 
-    for (let i = importedSecrets.length - 1; i >= 0; i = -1) {
+    for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
       importedSecrets[i].secrets.forEach((el) => {
         const decryptedSecret = getDecryptedKeyValue(botKey, el);
         if (deDupe.has(decryptedSecret.key) || !el.secretBlindIndex) {
@@ -193,7 +193,7 @@ export const secretReplicationServiceFactory = ({
     const deDupe = new Set<string>(localSecrets.map(({ key }) => key));
     const secrets = [...localSecrets];
 
-    for (let i = importedSecrets.length - 1; i >= 0; i = -1) {
+    for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
       importedSecrets[i].secrets.forEach((el) => {
         if (deDupe.has(el.key)) {
           return;
