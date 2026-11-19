@@ -123,6 +123,7 @@ import {
   getAgentVaultPermission,
   getAgentVaultReachability,
   idsPickedOutFor,
+  readableIdentityIdsOf,
   TAgentVaultPermission,
   TAgentVaultReach,
   unionWithin,
@@ -652,6 +653,18 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
               : projected.credential,
           variableReferences: undefined
         };
+
+  // A write's answer with only the bundles the caller reaches, as a read lists them ($viewServices): someone who can edit
+  // a service may not be able to see every bundle it's in.
+  const withReachableBundles = async <T extends { accessBundles: { id: string }[] }>(
+    scoped: { projectId: string; ctx: TGetAccessBundleDTO["ctx"] },
+    service: T
+  ) => {
+    const { accessBundleIds } = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, scoped);
+    return accessBundleIds === null
+      ? service
+      : { ...service, accessBundles: service.accessBundles.filter((bundle) => accessBundleIds.includes(bundle.id)) };
+  };
 
   // A service as the caller may see it. The OAuth sign-in state is the account of whoever set up the service, and the
   // hook is part of that setup, so only those who can edit services get them.
@@ -2316,7 +2329,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     };
     return {
       service: updatedService,
-      visibleService: hideVariables(updatedService, serviceVisibilityOf(permission).canReadVariables),
+      visibleService: hideVariables(
+        await withReachableBundles(rest, updatedService),
+        serviceVisibilityOf(permission).canReadVariables
+      ),
       update: {
         hostPattern: requestedHostPattern,
         serverUrl,
@@ -2629,7 +2645,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     };
     return {
       service: deletedService,
-      visibleService: hideVariables(deletedService, serviceVisibilityOf(permission).canReadVariables)
+      visibleService: hideVariables(
+        await withReachableBundles(rest, deletedService),
+        serviceVisibilityOf(permission).canReadVariables
+      )
     };
   };
 
@@ -3103,15 +3122,31 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return readable;
   };
 
+  // The project's machine identities the role can read, null for every one (readableIdentityIdsOf).
+  const readableProjectIdentitiesOf = (
+    permission: TAgentVaultPermission["permission"],
+    actorTypes: AgentVaultMemberType[],
+    projectId: string
+  ) =>
+    actorTypes.includes(AgentVaultMemberType.MachineIdentity)
+      ? readableIdentityIdsOf(permission, async () =>
+          (await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId })).flatMap((row) =>
+            row.actorIdentityId ? [row.actorIdentityId] : []
+          )
+        )
+      : null;
+
   const listMembers = async ({ accessBundleId, actorType, search, limit, offset, ...rest }: TListMembersDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
     const actorTypes = readableGranteeTypes(permission, actorType);
     if (!bundle.grantRoleId) return { members: [], totalCount: 0 };
+    const identityIds = await readableProjectIdentitiesOf(permission, actorTypes, rest.projectId);
     return agentVaultAccessBundleDAL.findMembers({
       projectId: rest.projectId,
       orgId: rest.ctx.actorOrgId,
       roleId: bundle.grantRoleId,
       actorTypes,
+      identityIds: identityIds ?? undefined,
       search,
       limit,
       offset
@@ -3129,10 +3164,13 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     ...rest
   }: TListMembersDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
+    const actorTypes = readableGranteeTypes(permission, actorType);
+    const identityIds = await readableProjectIdentitiesOf(permission, actorTypes, rest.projectId);
     return agentVaultMemberDAL.findProductMembers({
       projectId: rest.projectId,
       orgId: rest.ctx.actorOrgId,
-      actorTypes: readableGranteeTypes(permission, actorType),
+      actorTypes,
+      identityIds: identityIds ?? undefined,
       search,
       limit,
       offset,

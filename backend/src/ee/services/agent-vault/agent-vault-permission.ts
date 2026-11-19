@@ -7,6 +7,7 @@ import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultServiceActions,
   ProjectPermissionAgentVaultSkillActions,
+  ProjectPermissionIdentityActions,
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -89,6 +90,16 @@ const idsAllowed = async (
   const ids = await loadIds();
   return ids.filter((id) => permission.can(action as never, subject(subjectType, { [field]: id }) as never));
 };
+
+// The machine identities a member list may show, null for every one: a role can limit identity read to some
+// identities, and the platform's own identity list filters by the same check. loadIds lists the candidates.
+export const readableIdentityIdsOf = (permission: TAbility, loadIds: () => Promise<string[]>) =>
+  idsAllowed(permission, {
+    action: ProjectPermissionIdentityActions.Read,
+    subjectType: ProjectPermissionSub.Identity,
+    field: "identityId",
+    loadIds
+  });
 
 /**
  * The reach a permission gives in a project. Works on any actor's permission, so a session owner's, an on-behalf-of

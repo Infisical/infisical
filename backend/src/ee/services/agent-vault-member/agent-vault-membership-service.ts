@@ -3,7 +3,7 @@ import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectType, TMemberships } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
+import { assertRoleSetBoundary, isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionGroupActions,
@@ -41,6 +41,7 @@ import {
   AgentVaultMemberType,
   TAgentVaultActorColumn
 } from "../agent-vault/agent-vault-enums";
+import { readableIdentityIdsOf } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultMemberDALFactory } from "./agent-vault-member-dal";
 import {
   AGENT_VAULT_ROLE_ASSIGNMENT,
@@ -279,6 +280,18 @@ export const agentVaultMembershipServiceFactory = ({
     forbidden.throwUnlessCan(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
   };
 
+  // The machine identities a role can read among these memberships' actors, null for every one (readableIdentityIdsOf).
+  const readableIdentitiesAmong = (
+    permission: TProjectPermission,
+    types: AgentVaultMemberType[],
+    memberships: { scope: AccessScope; scopeProjectId?: string; scopeOrgId?: string }
+  ) =>
+    types.includes(AgentVaultMemberType.MachineIdentity)
+      ? readableIdentityIdsOf(permission, async () =>
+          (await membershipDAL.find(memberships)).flatMap((row) => (row.actorIdentityId ? [row.actorIdentityId] : []))
+        )
+      : null;
+
   const listProductMembers = async ({
     projectId,
     actorType,
@@ -292,11 +305,16 @@ export const agentVaultMembershipServiceFactory = ({
     const asked = actorType ? [actorType] : ALL_ACTOR_TYPES;
     const readable = asked.filter((type) => canReadActorType(permission, type));
     if (!readable.length) assertCanReadActorType(permission, asked[0]);
+    const identityIds = await readableIdentitiesAmong(permission, readable, {
+      scope: AccessScope.Project,
+      scopeProjectId: projectId
+    });
 
     return agentVaultMemberDAL.findProductMembers({
       projectId,
       orgId: ctx.actorOrgId,
       actorTypes: readable,
+      identityIds: identityIds ?? undefined,
       search,
       limit,
       offset
@@ -322,10 +340,16 @@ export const agentVaultMembershipServiceFactory = ({
       assertCanChangeActorTypes(permission, "add", [asked[0]]);
     }
 
+    const identityIds = await readableIdentitiesAmong(permission, readable, {
+      scope: AccessScope.Organization,
+      scopeOrgId: ctx.actorOrgId
+    });
+
     return agentVaultMemberDAL.findAvailableActors({
       projectId,
       orgId: ctx.actorOrgId,
       actorTypes: readable,
+      identityIds: identityIds ?? undefined,
       search,
       limit,
       offset
@@ -592,8 +616,10 @@ export const agentVaultMembershipServiceFactory = ({
       return [
         {
           actor,
+          // An expired temporary role confers nothing, so the admin and boundary checks leave it out, as the generic
+          // routes' guards do.
           roles: roles
-            .filter((role) => role.membershipId === membership.id)
+            .filter((role) => role.membershipId === membership.id && isActiveRole(role))
             .map((role) => role.customRoleSlug || role.role)
         }
       ];

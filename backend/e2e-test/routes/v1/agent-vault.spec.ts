@@ -12358,14 +12358,57 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("a service write answers without variable keys for a role that can't read variables", async () => {
+    test("member lists show only the machine identities a role can read", async () => {
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle(`identity-scope-${unique()}`);
+      const [readable, hidden] = [
+        await createOrgIdentity(`av-readable-${unique()}`),
+        await createOrgIdentity(`av-hidden-${unique()}`)
+      ];
+      const reader = await createMemberIdentity(`identity-scoped-reader-${unique()}`);
+      const bundleMembersUrl = `/api/v1/agent-vault/access-bundles/${bundle.id}/members`;
+      try {
+        const added = await inject("POST", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [readable.id, hidden.id],
+          roles: [ProjectMembershipRole.NoAccess]
+        });
+        expect(added.statusCode, added.payload).toBe(200);
+        const granted = await inject("POST", bundleMembersUrl, { machineIdentityIds: [readable.id, hidden.id] });
+        expect(granted.statusCode, granted.payload).toBe(200);
+        const role = await createAgentVaultRole(projectId, `identity-scoped-${unique()}`, [
+          ...SESSION_RULES,
+          { subject: "agent-vault-access-bundles", action: ["read"], conditions: { accessBundleId: bundle.id } },
+          { subject: "identity", action: ["read"], conditions: { identityId: readable.id } }
+        ]);
+        await setMemberRoles({ machineIdentityIds: [reader.id] }, [role.slug]);
+
+        const idsIn = (res: { json: () => unknown }) =>
+          ((res.json() as { members: { id: string }[] }).members ?? []).map((member) => member.id);
+        const bundleMembers = await reader.as("GET", `${bundleMembersUrl}?actorType=machineIdentity`);
+        expect(bundleMembers.statusCode, bundleMembers.payload).toBe(200);
+        expect(idsIn(bundleMembers)).toEqual([readable.id]);
+        expect(bundleMembers.json().totalCount).toBe(1);
+
+        const projectMembers = await reader.as("GET", "/api/v1/agent-vault/members?actorType=machineIdentity&limit=100");
+        expect(projectMembers.statusCode, projectMembers.payload).toBe(200);
+        expect(idsIn(projectMembers)).toEqual([readable.id]);
+        expect(projectMembers.payload).not.toContain(hidden.id);
+      } finally {
+        await reader.cleanup();
+        await deleteOrgIdentity(readable.id);
+        await deleteOrgIdentity(hidden.id);
+      }
+    });
+
+    test("a service write answers without variable keys or bundles the caller can't see", async () => {
       const projectId = await getProjectId();
       const key = `HIDDEN_${unique()}`;
       const variable = await inject("POST", "/api/v1/agent-vault/variables", { scope: "global", key, value: "v" });
       expect(variable.statusCode, variable.payload).toBe(200);
+      const unseenBundle = await createAccessBundle(`hidden-bundle-${unique()}`);
       const name = `hidden-vars-${unique()}`;
       const created = await inject("POST", "/api/v1/agent-vault/services", {
-        accessBundleIds: [],
+        accessBundleIds: [unseenBundle.id],
         type: "http",
         name,
         hostPattern: `${name}.example.com`,
@@ -12389,10 +12432,14 @@ describe("Agent Vault V1 Router", async () => {
         expect(updated.statusCode, updated.payload).toBe(200);
         expect(updated.json().service).not.toHaveProperty("variableReferences");
         expect(updated.payload).not.toContain(key);
+        // The role reaches no bundle, so the bundle the service is in stays out, as on a read.
+        expect(updated.json().service.accessBundles).toEqual([]);
+        expect(updated.payload).not.toContain(unseenBundle.id);
 
         const deleted = await editor.as("DELETE", `/api/v1/agent-vault/services/${serviceId}`);
         expect(deleted.statusCode, deleted.payload).toBe(200);
         expect(deleted.payload).not.toContain(key);
+        expect(deleted.payload).not.toContain(unseenBundle.id);
       } finally {
         await editor.cleanup();
       }
@@ -12507,6 +12554,45 @@ describe("Agent Vault V1 Router", async () => {
           ])
         );
       } finally {
+        await deleteOrgIdentity(identity.id);
+      }
+    });
+
+    test("an Admin assignment that already ended doesn't stop a non-admin changing the member", async () => {
+      const projectId = await getProjectId();
+      const identity = await createOrgIdentity(`av-ended-admin-${unique()}`);
+      const editor = await createMemberIdentity(`ended-admin-editor-${unique()}`);
+      try {
+        const added = await inject("POST", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [identity.id],
+          roles: [ProjectMembershipRole.NoAccess]
+        });
+        expect(added.statusCode, added.payload).toBe(200);
+        const membership = await testDb("memberships")
+          .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorIdentityId: identity.id })
+          .first();
+        await testDb("membership_roles").insert({
+          membershipId: membership.id,
+          role: ProjectMembershipRole.Admin,
+          isTemporary: true,
+          temporaryMode: "relative",
+          temporaryRange: "1h",
+          temporaryAccessStartTime: new Date(Date.now() - 7_200_000),
+          temporaryAccessEndTime: new Date(Date.now() - 3_600_000)
+        });
+        const role = await createAgentVaultRole(projectId, `ended-admin-editor-${unique()}`, [
+          ...SESSION_RULES,
+          { subject: "identity", action: ["read", "edit", "assign-role"] }
+        ]);
+        await setMemberRoles({ machineIdentityIds: [editor.id] }, [role.slug]);
+
+        const changed = await editor.as("PATCH", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [identity.id],
+          roles: [role.slug]
+        });
+        expect(changed.statusCode, changed.payload).toBe(200);
+      } finally {
+        await editor.cleanup();
         await deleteOrgIdentity(identity.id);
       }
     });

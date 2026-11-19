@@ -333,8 +333,9 @@ export const agentVaultProjectToRecheck = async (
   return hasRole(ProjectMembershipRole.Admin) ? null : projectId;
 };
 
-// Takes the project's role-change lock, then refuses if any of these memberships holds Admin now. Call it before the
-// write locks a membership row (see lockProjectRoleChanges), with the project agentVaultProjectToRecheck returned.
+// Takes the project's role-change lock, then refuses if any of these memberships holds Admin now. An expired temporary
+// Admin confers nothing, so it doesn't count, as in the guard and the last-admin check. Call it before the write locks a
+// membership row (see lockProjectRoleChanges), with the project agentVaultProjectToRecheck returned.
 export const assertAgentVaultAdminTargetUnchanged = async (
   { projectId, membershipIds }: { projectId: string | null; membershipIds: string[] },
   tx: Knex
@@ -344,6 +345,9 @@ export const assertAgentVaultAdminTargetUnchanged = async (
   const adminRow = (await tx(TableName.MembershipRole)
     .whereIn("membershipId", membershipIds)
     .where("role", ProjectMembershipRole.Admin)
+    .where((live) => {
+      void live.where("isTemporary", false).orWhere("temporaryAccessEndTime", ">", new Date());
+    })
     .first("id")) as { id: string } | undefined;
   assertAgentVaultAdminOnlyChange({
     project: { type: ProjectType.AgentVault },

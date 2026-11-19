@@ -270,6 +270,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
       orgId,
       roleId,
       actorTypes,
+      identityIds,
       search,
       limit,
       offset
@@ -279,6 +280,8 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
       roleId: string;
       // The kinds of member to list. Omit for every kind.
       actorTypes?: AgentVaultMemberType[];
+      // Set to list only these machine identities.
+      identityIds?: string[];
       search?: string;
       limit: number;
       offset: number;
@@ -304,6 +307,13 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
             actorTypes.forEach((type) => {
               void ofType.orWhereNotNull(`${TableName.Membership}.${AGENT_VAULT_ACTOR_COLUMN[type]}`);
             });
+          });
+        }
+        if (identityIds) {
+          void query.where((ofIdentity) => {
+            void ofIdentity
+              .whereNull(`${TableName.Membership}.actorIdentityId`)
+              .orWhereIn(`${TableName.Membership}.actorIdentityId`, identityIds);
           });
         }
 

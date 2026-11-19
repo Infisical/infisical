@@ -312,6 +312,26 @@ describe("Agent Vault through the generic membership routes", () => {
       expect(await roleSlugsOf(membership.id)).toEqual(["membership-manager"]);
     });
 
+    test("an Admin assignment that already ended doesn't stop a manager changing the member", async () => {
+      const target = await createOrgIdentity("av-generic-ended-admin");
+      const added = await asAdmin("POST", identityPath(target), { roles: [{ role: "membership-manager" }] });
+      expect(added.statusCode, added.payload).toBe(200);
+      const membership = await projectMembershipOf({ actorIdentityId: target });
+      await testDb(TableName.MembershipRole).insert({
+        membershipId: membership.id,
+        role: ProjectMembershipRole.Admin,
+        isTemporary: true,
+        temporaryMode: "relative",
+        temporaryRange: "1h",
+        temporaryAccessStartTime: new Date(Date.now() - 7_200_000),
+        temporaryAccessEndTime: new Date(Date.now() - 3_600_000)
+      });
+
+      const updated = await asManager("PATCH", identityPath(target), { roles: [{ role: ProjectMembershipRole.NoAccess }] });
+      expect(updated.statusCode, updated.payload).toBe(200);
+      expect(await roleSlugsOf(membership.id)).toEqual([ProjectMembershipRole.NoAccess]);
+    });
+
     test("member is refused on a project without a Member role", async () => {
       const bare = await createAgentVaultProject({ authToken: adminToken, name: `av-generic-bare-${Date.now()}` });
       try {

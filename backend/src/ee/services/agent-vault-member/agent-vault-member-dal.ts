@@ -89,13 +89,25 @@ type TFindProductMembersDTO = {
   excludeRoleId?: string;
   // Set to list the members who could still be added to that delegation.
   excludeDelegationId?: string;
+  // Set to list only these machine identities.
+  identityIds?: string[];
 };
 
 type TFindAvailableActorsDTO = Omit<TFindProductMembersDTO, "excludeRoleId" | "excludeDelegationId">;
 
 export const agentVaultMemberDALFactory = (db: TDbClient) => {
   const findProductMembers = async (
-    { projectId, orgId, actorTypes, search, limit, offset, excludeRoleId, excludeDelegationId }: TFindProductMembersDTO,
+    {
+      projectId,
+      orgId,
+      actorTypes,
+      search,
+      limit,
+      offset,
+      excludeRoleId,
+      excludeDelegationId,
+      identityIds
+    }: TFindProductMembersDTO,
     tx?: Knex
   ): Promise<{ members: TAgentVaultProductMember[]; totalCount: number }> => {
     if (!actorTypes.length) return { members: [], totalCount: 0 };
@@ -131,6 +143,9 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
               // NULL NOT IN (...) as NULL for the other two types and drop every one of their rows.
               if (excludeRoleId) {
                 void typeQb.whereNotIn(`${TableName.Membership}.${column}`, alreadyGranted(column));
+              }
+              if (identityIds && type === AgentVaultMemberType.MachineIdentity) {
+                void typeQb.whereIn(`${TableName.Membership}.${column}`, identityIds);
               }
             });
           });
@@ -244,7 +259,7 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
   // path would then refuse. Group-only users and identities get a synthetic row shaped and aliased like
   // the memberships table, so the same filters cover them.
   const findAvailableActors = async (
-    { projectId, orgId, actorTypes, search, limit, offset }: TFindAvailableActorsDTO,
+    { projectId, orgId, actorTypes, search, limit, offset, identityIds }: TFindAvailableActorsDTO,
     tx?: Knex
   ): Promise<{ actors: TAgentVaultProductActor[]; totalCount: number }> => {
     if (!actorTypes.length) return { actors: [], totalCount: 0 };
@@ -344,6 +359,7 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
               // delete it.
               if (type === AgentVaultMemberType.MachineIdentity) {
                 void typeQb.whereNull(`${TableName.Identity}.projectId`);
+                if (identityIds) void typeQb.whereIn(`${TableName.Membership}.${column}`, identityIds);
               }
             });
           });
