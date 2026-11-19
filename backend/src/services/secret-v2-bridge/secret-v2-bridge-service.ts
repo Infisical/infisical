@@ -27,7 +27,6 @@ import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-chang
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
-import { withCache } from "@app/lib/cache/with-cache";
 import { compressZstd, decompressZstd } from "@app/lib/compression";
 import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { utcDayStamp } from "@app/lib/dates";
@@ -152,7 +151,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   kmsDataKeyService: TKmsDataKeyService;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretTagDAL: TSecretTagDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionFingerprint">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionCacheFingerprint">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   eventEmitter: TEventEmitter;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
@@ -1406,22 +1405,15 @@ export const secretV2BridgeServiceFactory = ({
     let permissionFingerprint = "";
 
     if (actor === ActorType.USER || actor === ActorType.IDENTITY) {
-      // Cache the fingerprint for the marker window so repeated polls skip the per-request DB query.
-      // Same 10s TTL as getProjectPermission's marker, so no new staleness. This gates only the Etag
-      // cache, the real permission check is still done on the getProjectPermission call. It is the same
-      // fingerprint that validates the permission cache, so folder grants are covered here too — at the
-      // cost of its project-wide folder-version half churning this ETag on any folder change.
-      permissionFingerprint = await withCache({
-        keyStore,
-        key: KeyStorePrefixes.SecretPermissionFingerprint(projectId, actor, actorId),
-        ttlSeconds: KeyStoreTtls.ProjectPermissionMarkerTtlSeconds,
-        fetcher: () =>
-          permissionService.getProjectPermissionFingerprint({
-            projectId,
-            orgId: actorOrgId,
-            actorId,
-            actorType: actor
-          })
+      // The fingerprint of the permission this request is answered with, read from the permission cache's own
+      // marker. It gates only the ETag cache; the real check is still getProjectPermission below. It includes the
+      // project's folder version, so folder grants are covered, at the cost of any folder change churning the ETag.
+      permissionFingerprint = await permissionService.getProjectPermissionCacheFingerprint({
+        actor,
+        actorId,
+        projectId,
+        actorOrgId,
+        actionProjectType: ActionProjectType.SecretManager
       });
     }
 
