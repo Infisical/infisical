@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { CertStatus } from "@app/hooks/api/certificates/enums";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import {
   canRenewOnExistingKeyPair,
@@ -9,6 +10,7 @@ import {
   getCertificateDeletedBySummary,
   getCertificateDeletionWarning,
   getCertificateDisplayStatus,
+  getPendingRevocationRequestLink,
   getPendingRevocationState,
   isRemovedFromSyncDestination,
   PENDING_REVOCATION_REASON,
@@ -161,6 +163,18 @@ describe("getApplicationCertificateAccess", () => {
         expect(access.revokeBlockedReason).toBeUndefined();
       });
     });
+  });
+});
+
+describe("getPendingRevocationRequestLink", () => {
+  it("opens the request from the Approval Requests inbox, not the legacy Approvals page", () => {
+    const link = getPendingRevocationRequestLink(
+      { id: "project-1", orgId: "org-1", type: ProjectType.CertificateManager },
+      "request-1"
+    );
+
+    expect(link).toMatchObject({ params: { _splat: "approvals/request-1" } });
+    expect(link.search).toEqual({ policyType: "cert-revocation", from: "root-requests" });
   });
 });
 
