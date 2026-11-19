@@ -170,7 +170,7 @@ describe("checkMicrosoftAutoenrollmentRequestBeforeSigning", () => {
     readDirectoryComputerGroupSids.mockResolvedValue([]);
 
     await expect(check()).rejects.toThrow(
-      "The LDAP connection's account cannot read tokenGroups for computer LAPTOP01$, so its group membership is unknown."
+      "The LDAP connection's account cannot read tokenGroups for computer LAPTOP01$, so its group membership is unknown. Allow that account to read tokenGroups on computer objects."
     );
   });
 
@@ -191,12 +191,10 @@ describe("checkMicrosoftAutoenrollmentRequestBeforeSigning", () => {
       expect(deps.certificateDAL.findById).toHaveBeenCalledWith("cert-old");
     });
 
-    test("issues as a new enrollment, dropping the renewal link, when the certificate it renews expired while waiting for approval", async () => {
+    test("keeps the renewal when the certificate it renews expired while waiting for approval", async () => {
       deps.certificateDAL.findById.mockResolvedValue({ ...renewed, notAfter: new Date(Date.now() - 1000) });
 
-      await expect(check({ renewedFromCertificateId: "cert-old" })).resolves.toEqual({
-        renewedFromCertificateId: null
-      });
+      await expect(check({ renewedFromCertificateId: "cert-old" })).resolves.toBeUndefined();
     });
 
     test("still refuses an expired original that was revoked", async () => {

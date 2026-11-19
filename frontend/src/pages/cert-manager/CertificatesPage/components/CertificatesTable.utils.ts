@@ -28,13 +28,30 @@ export const DELETED_CERTIFICATE_NO_ACTIONS = "No actions are available for a de
 export const RENEWAL_UNAVAILABLE_NO_PROFILE =
   "Renewal is unavailable because the certificate profile this certificate was issued from no longer exists.";
 
-export const getEnrollmentRenewalBlockedReason = (certificate: {
-  isClientRenewed?: boolean;
+type TRenewNowCertificate = {
+  profileId?: string | null;
+  isRenewedByClient?: boolean;
   enrollmentType?: string | null;
-}) =>
-  certificate.isClientRenewed && certificate.enrollmentType
-    ? `${getEnrollmentTypeName(certificate.enrollmentType)} certificates can't be renewed here. The client that requested the certificate renews it.`
-    : undefined;
+};
+
+export const getRenewNowState = ({
+  certificate,
+  canRenew,
+  permissionBlockedReason
+}: {
+  certificate: TRenewNowCertificate;
+  canRenew: boolean;
+  permissionBlockedReason?: string;
+}): { isDisabled: boolean; reason?: string } => {
+  if (!certificate.profileId) return { isDisabled: true, reason: RENEWAL_UNAVAILABLE_NO_PROFILE };
+  if (certificate.isRenewedByClient && certificate.enrollmentType) {
+    return {
+      isDisabled: true,
+      reason: `${getEnrollmentTypeName(certificate.enrollmentType)} certificates can't be renewed here. The client that requested the certificate renews it.`
+    };
+  }
+  return { isDisabled: !canRenew, reason: permissionBlockedReason };
+};
 
 type TApplicationAbility = {
   can: (action: string, subjectType: string) => boolean;

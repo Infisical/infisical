@@ -22,7 +22,6 @@ export type TPkiApplicationProfile = {
   acmeConfigId?: string | null;
   scepConfigId?: string | null;
   microsoftAutoenrollmentConfigId?: string | null;
-  microsoftAutoenrollmentKeytabMismatch: boolean;
   createdAt: Date;
   updatedAt: Date;
 };

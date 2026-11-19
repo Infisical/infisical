@@ -179,12 +179,12 @@ export const hasServerChannelBindingLearningFailed = async (
 
 export const describeUnverifiableChannelBinding = (endpoint: TInstanceTlsEndpoint | null) => {
   if (crypto.isFipsModeEnabled()) {
-    return "This instance runs in FIPS mode, which does not allow the MD5 hash Windows uses for TLS channel bindings, so it cannot check them.";
+    return "FIPS mode blocks the MD5 hash Windows uses for channel bindings.";
   }
   if (!endpoint) {
-    return "SITE_URL is not an https URL, so this instance cannot tell which TLS certificate computers see and cannot check their TLS channel bindings.";
+    return "SITE_URL isn't an https URL.";
   }
-  return `This instance cannot read the TLS certificate it serves at ${describeEndpoint(endpoint)}, so it cannot check the TLS channel bindings computers send.`;
+  return `This instance can't read the TLS certificate it serves at ${describeEndpoint(endpoint)}.`;
 };
 
 const CHANNEL_BINDING_NOT_CHECKED_REASON = "This instance checks its TLS certificate at the first enrollment request.";

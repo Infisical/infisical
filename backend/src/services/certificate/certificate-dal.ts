@@ -49,30 +49,25 @@ export type TCertificateDALFactory = ReturnType<typeof certificateDALFactory>;
 
 const CA_TYPES_WITHOUT_CSR_ISSUANCE = Object.values(CaType).filter((caType) => !caIssuesFromCsr(caType));
 
+const ORIGINATING_REQUEST_SUBQUERY = (column: string) => `(
+  SELECT originating."${column}" FROM certificate_requests originating
+  WHERE originating."certificateId" = certificates.id
+  ORDER BY originating."createdAt" ASC LIMIT 1
+)`;
+
 // Whether renewal can reuse the key pair from a CSR Infisical holds, by the same rules renewal enforces:
 // a CSR on the originating request or from import, an API-enrolled certificate (ACME, EST and SCEP
 // clients renew themselves), and a profile CA that issues from a CSR. One definition, so responses, the
 // auto-renewal toggle and the daily job can't disagree.
-const CAN_RENEW_FROM_CSR_CONDITION = `(
+const buildCanRenewFromCsrCondition = (originatingCsr: string, originatingEnrollmentType: string) => `(
   (
-    (
-      SELECT originating."csr" FROM certificate_requests originating
-      WHERE originating."certificateId" = certificates.id
-      ORDER BY originating."createdAt" ASC LIMIT 1
-    ) IS NOT NULL
+    ${originatingCsr} IS NOT NULL
     OR EXISTS (
       SELECT 1 FROM certificate_bodies body
       WHERE body."certId" = certificates.id AND body."importedCsr" IS NOT NULL
     )
   )
-  AND COALESCE(
-    (
-      SELECT originating."enrollmentType" FROM certificate_requests originating
-      WHERE originating."certificateId" = certificates.id
-      ORDER BY originating."createdAt" ASC LIMIT 1
-    ),
-    '${EnrollmentType.API}'
-  ) = '${EnrollmentType.API}'
+  AND COALESCE(${originatingEnrollmentType}, '${EnrollmentType.API}') = '${EnrollmentType.API}'
   AND EXISTS (
     SELECT 1 FROM pki_certificate_profiles profile
     LEFT JOIN external_certificate_authorities external_ca ON external_ca."caId" = profile."caId"
@@ -86,6 +81,11 @@ const CAN_RENEW_FROM_CSR_CONDITION = `(
   )
 )`;
 
+const CAN_RENEW_FROM_CSR_CONDITION = buildCanRenewFromCsrCondition(
+  ORIGINATING_REQUEST_SUBQUERY("csr"),
+  ORIGINATING_REQUEST_SUBQUERY("enrollmentType")
+);
+
 const CAN_RENEW_FROM_CSR_SELECT = `${CAN_RENEW_FROM_CSR_CONDITION} as "canRenewFromCsr"`;
 
 const toLegacyExtendedKeyUsageForQuery = (usage: string): string => {
@@ -96,29 +96,24 @@ const toLegacyExtendedKeyUsageForQuery = (usage: string): string => {
   }
 };
 
-const IS_CLIENT_RENEWED_SELECT = `COALESCE(
-  (
-    SELECT originating."enrollmentType" FROM certificate_requests originating
-    WHERE originating."certificateId" = certificates.id
-    ORDER BY originating."createdAt" ASC LIMIT 1
-  ),
-  '${EnrollmentType.API}'
-) <> '${EnrollmentType.API}' as "isClientRenewed"`;
+const ORIGINATING_REQUEST_LATERAL_JOIN = `LEFT JOIN LATERAL (
+  SELECT originating."csr", originating."enrollmentType" FROM certificate_requests originating
+  WHERE originating."certificateId" = certificates.id
+  ORDER BY originating."createdAt" ASC LIMIT 1
+) originating_request ON true`;
 
-const ENROLLMENT_TYPE_SELECT = `COALESCE(
-  (
-    SELECT certificate_requests."enrollmentType"
-    FROM certificate_requests
-    WHERE certificate_requests."certificateId" = certificates.id
-    ORDER BY certificate_requests."createdAt" ASC
-    LIMIT 1
-  ),
-  pki_certificate_profiles."enrollmentType",
-  CASE
-    WHEN certificates."caId" IS NULL AND certificates.source IN ('imported', 'discovered') THEN NULL
-    ELSE 'api'
-  END
-) as "enrollmentType"`;
+const INVENTORY_RENEWAL_SELECTS = [
+  `${buildCanRenewFromCsrCondition('originating_request."csr"', 'originating_request."enrollmentType"')} as "canRenewFromCsr"`,
+  `COALESCE(
+    originating_request."enrollmentType",
+    pki_certificate_profiles."enrollmentType",
+    CASE
+      WHEN certificates."caId" IS NULL AND certificates.source IN ('imported', 'discovered') THEN NULL
+      ELSE '${EnrollmentType.API}'
+    END
+  ) as "enrollmentType"`,
+  `COALESCE(originating_request."enrollmentType", '${EnrollmentType.API}') <> '${EnrollmentType.API}' as "isRenewedByClient"`
+];
 
 export type TOriginatingCertificateRequest = {
   exists: boolean;
@@ -979,7 +974,7 @@ export const certificateDALFactory = (db: TDbClient) => {
   type TCertificateWithInventoryFields = TCertificates & {
     hasPrivateKey: boolean;
     canRenewFromCsr: boolean;
-    isClientRenewed: boolean;
+    isRenewedByClient: boolean;
     caName?: string | null;
     profileName?: string | null;
     enrollmentType?: string | null;
@@ -1006,13 +1001,12 @@ export const certificateDALFactory = (db: TDbClient) => {
           `${TableName.PkiCertificateProfile}.id`
         )
         .leftJoin(TableName.PkiApplication, `${TableName.Certificate}.applicationId`, `${TableName.PkiApplication}.id`)
+        .joinRaw(ORIGINATING_REQUEST_LATERAL_JOIN)
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref(`${TableName.CertificateSecret}.certId`).as("privateKeyRef"))
-        .select(db.raw(CAN_RENEW_FROM_CSR_SELECT))
         .select(db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
-        .select(db.raw(ENROLLMENT_TYPE_SELECT))
-        .select(db.raw(IS_CLIENT_RENEWED_SELECT))
+        .select(INVENTORY_RENEWAL_SELECTS.map((select) => db.raw(select)))
         .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"));
 
       const {
@@ -1095,7 +1089,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         ...row,
         hasPrivateKey: row.privateKeyRef !== null,
         canRenewFromCsr: Boolean((row as { canRenewFromCsr?: boolean }).canRenewFromCsr),
-        isClientRenewed: Boolean((row as { isClientRenewed?: boolean }).isClientRenewed)
+        isRenewedByClient: Boolean((row as { isRenewedByClient?: boolean }).isRenewedByClient)
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificates with private key info" });
@@ -1110,7 +1104,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     hasPrivateKey: boolean;
     canRenewFromCsr: boolean;
     enrollmentType?: string | null;
-    isClientRenewed: boolean;
+    isRenewedByClient: boolean;
   };
 
   type TCertificateLookupFilter = { id: string; serialNumber?: never } | { id?: never; serialNumber: string };
@@ -1170,15 +1164,14 @@ export const certificateDALFactory = (db: TDbClient) => {
         )
         .leftJoin(TableName.PkiApplication, `${TableName.Certificate}.applicationId`, `${TableName.PkiApplication}.id`)
         .leftJoin(TableName.CertificateSecret, `${TableName.Certificate}.id`, `${TableName.CertificateSecret}.certId`)
+        .joinRaw(ORIGINATING_REQUEST_LATERAL_JOIN)
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
         .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"))
         .select(db.ref("id").withSchema(TableName.InternalCertificateAuthority).as("internalCaId"))
         .select(db.ref("certId").withSchema(TableName.CertificateSecret).as("privateKeyRef"))
-        .select(db.raw(CAN_RENEW_FROM_CSR_SELECT))
-        .select(db.raw(ENROLLMENT_TYPE_SELECT))
-        .select(db.raw(IS_CLIENT_RENEWED_SELECT));
+        .select(INVENTORY_RENEWAL_SELECTS.map((select) => db.raw(select)));
 
       if (filter.id) {
         query = query.where(`${TableName.Certificate}.id`, filter.id);
@@ -1206,7 +1199,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         caType,
         hasPrivateKey: Boolean(privateKeyRef),
         canRenewFromCsr: Boolean(rest.canRenewFromCsr),
-        isClientRenewed: Boolean(rest.isClientRenewed)
+        isRenewedByClient: Boolean(rest.isRenewedByClient)
       } as TCertificateWithRequestDetails;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificate with full details" });

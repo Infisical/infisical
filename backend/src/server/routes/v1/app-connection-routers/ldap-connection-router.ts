@@ -72,4 +72,42 @@ export const registerLdapConnectionRouter = async (server: FastifyZodProvider) =
       return { machines };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/groups`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listLdapDirectoryGroups",
+      params: z.object({
+        connectionId: z.string().uuid().describe("The ID of the LDAP Connection to search groups in.")
+      }),
+      querystring: z.object({
+        search: z
+          .string()
+          .trim()
+          .max(64)
+          .optional()
+          .describe("Text the group name contains. Up to 50 groups are returned.")
+      }),
+      response: {
+        200: z.object({
+          groups: z
+            .object({ sid: z.string(), name: z.string() })
+            .array()
+            .describe("Active Directory security groups, with their security identifier (SID) and name."),
+          isTruncated: z.boolean().describe("Whether more groups match than were returned.")
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) =>
+      server.services.appConnection.ldap.listGroups(
+        req.params.connectionId,
+        { search: req.query.search },
+        req.permission
+      )
+  });
 };

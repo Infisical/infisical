@@ -20,11 +20,6 @@ export const pkiApplicationProfileDALFactory = (db: TDbClient) => {
           `${TableName.PkiApplicationProfile}.profileId`,
           `${TableName.PkiCertificateProfile}.id`
         )
-        .leftJoin(
-          TableName.PkiMicrosoftAutoenrollmentConfig,
-          `${TableName.PkiApplicationProfile}.microsoftAutoenrollmentConfigId`,
-          `${TableName.PkiMicrosoftAutoenrollmentConfig}.id`
-        )
         .where(`${TableName.PkiApplicationProfile}.applicationId`, applicationId)
         .select(
           `${TableName.PkiApplicationProfile}.applicationId`,
@@ -36,10 +31,6 @@ export const pkiApplicationProfileDALFactory = (db: TDbClient) => {
           `${TableName.PkiApplicationProfile}.acmeConfigId`,
           `${TableName.PkiApplicationProfile}.scepConfigId`,
           `${TableName.PkiApplicationProfile}.microsoftAutoenrollmentConfigId`,
-          db.raw(`?? IS NOT NULL AS ??`, [
-            `${TableName.PkiMicrosoftAutoenrollmentConfig}.mismatchedServicePrincipalName`,
-            "microsoftAutoenrollmentKeytabMismatch"
-          ]),
           `${TableName.PkiApplicationProfile}.createdAt`,
           `${TableName.PkiApplicationProfile}.updatedAt`
         )

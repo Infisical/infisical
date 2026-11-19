@@ -6,7 +6,7 @@ import { TableName, TPkiMicrosoftAutoenrollmentConfigs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-const MicrosoftAutoenrollmentAllowedGroupsSchema = z.array(z.object({ sid: z.string(), name: z.string().nullable() }));
+const MicrosoftAutoenrollmentAllowedGroupsSchema = z.array(z.object({ sid: z.string(), name: z.string() }));
 
 export type TMicrosoftAutoenrollmentAllowedGroup = z.infer<typeof MicrosoftAutoenrollmentAllowedGroupsSchema>[number];
 
@@ -87,26 +87,6 @@ export const microsoftAutoenrollmentEnrollmentConfigDALFactory = (db: TDbClient)
     }
   };
 
-  const recordKeytabMismatch = async (configId: string, servicePrincipalName: string) => {
-    try {
-      await db(TableName.PkiMicrosoftAutoenrollmentConfig)
-        .where({ id: configId })
-        .update({
-          mismatchedServicePrincipalName: servicePrincipalName,
-          mismatchFirstSeenAt: db.raw(
-            `CASE WHEN "mismatchedServicePrincipalName" IS NOT DISTINCT FROM ? THEN "mismatchFirstSeenAt" ELSE NOW() END`,
-            [servicePrincipalName]
-          ),
-          mismatchRequestCount: db.raw(
-            `CASE WHEN "mismatchedServicePrincipalName" IS NOT DISTINCT FROM ? THEN "mismatchRequestCount" + 1 ELSE 1 END`,
-            [servicePrincipalName]
-          )
-        } as never);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Record Microsoft Autoenrollment keytab mismatch" });
-    }
-  };
-
   const primaryNode = () => db.primaryNode();
 
   return {
@@ -114,7 +94,6 @@ export const microsoftAutoenrollmentEnrollmentConfigDALFactory = (db: TDbClient)
     primaryNode,
     findById,
     findByApplicationId,
-    findKeytabByApplicationAndProfile,
-    recordKeytabMismatch
+    findKeytabByApplicationAndProfile
   };
 };

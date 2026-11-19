@@ -1,5 +1,3 @@
-import RE2 from "re2";
-
 import { getConfig } from "@app/lib/config/env";
 import { followCnameChain } from "@app/lib/dns";
 import { BadRequestError } from "@app/lib/errors";
@@ -21,7 +19,6 @@ import {
 
 const CNAME_END_OF_CHAIN_CODES = ["ENODATA", "ENOTFOUND"];
 const HTTP_SERVICE_PRINCIPAL_PREFIX = "HTTP/";
-const HTTP_SERVICE_PRINCIPAL_PATTERN = new RE2("^http/[a-z0-9.-]{1,253}$");
 
 export const buildPolicyUrl = (applicationId: string, profileId: string) =>
   `${getConfig().SITE_URL ?? ""}/cep/applications/${applicationId}/profiles/${profileId}`;
@@ -30,12 +27,6 @@ export const buildCesUrl = (applicationId: string, profileId: string) =>
   `${getConfig().SITE_URL ?? ""}/ces/applications/${applicationId}/profiles/${profileId}`;
 
 export const stripKerberosRealm = (principalName: string) => principalName.split("@")[0];
-
-export const normalizeHttpServicePrincipalName = (serviceName: string | undefined) => {
-  const lowerCaseName = serviceName?.toLowerCase();
-  if (!lowerCaseName || !HTTP_SERVICE_PRINCIPAL_PATTERN.test(lowerCaseName)) return null;
-  return `${HTTP_SERVICE_PRINCIPAL_PREFIX}${lowerCaseName.slice(HTTP_SERVICE_PRINCIPAL_PREFIX.length)}`;
-};
 
 export const isComputerInAllowedGroups = (
   allowedGroups: TMicrosoftAutoenrollmentAllowedGroup[],
@@ -97,15 +88,18 @@ export const readUploadedKeytab = (keytabFile: Buffer) => {
   return { servicePrincipalName: `${newestEntry.principal}@${newestEntry.realm}`, keyVersion: newestEntry.keyVersion };
 };
 
+export const describeUnreadableUserAccountControl = (samAccountName: string) =>
+  `The LDAP connection's account cannot read userAccountControl for computer ${samAccountName}, so it is unknown whether the computer is disabled. Allow that account to read userAccountControl on computer objects.`;
+
 export const mergeAllowedGroups = (
   allowedGroupSids: string[],
   resolvedNames: Record<string, string | null> | null,
   storedGroups: TMicrosoftAutoenrollmentAllowedGroup[]
 ): TMicrosoftAutoenrollmentAllowedGroup[] =>
-  allowedGroupSids.map((sid) => ({
-    sid,
-    name: resolvedNames?.[sid] ?? storedGroups.find((group) => group.sid === sid)?.name ?? null
-  }));
+  allowedGroupSids.flatMap((sid) => {
+    const name = resolvedNames?.[sid] ?? storedGroups.find((group) => group.sid === sid)?.name;
+    return name ? [{ sid, name }] : [];
+  });
 
 type TProfileCaCompatibilityInput = {
   profileSlug: string;

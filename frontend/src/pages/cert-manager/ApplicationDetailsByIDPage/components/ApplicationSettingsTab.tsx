@@ -12,8 +12,7 @@ import {
   PencilIcon,
   PlusIcon,
   Settings2Icon,
-  Trash2Icon,
-  TriangleAlertIcon
+  Trash2Icon
 } from "lucide-react";
 
 import {
@@ -111,43 +110,6 @@ const methodBadges = (p: TPkiApplicationProfile) => {
   if (p.scepConfigId) methods.push("scep");
   if (p.microsoftAutoenrollmentConfigId) methods.push("microsoft-autoenrollment");
   return methods;
-};
-
-const KeytabMismatchBadge = ({
-  profileSlug,
-  onOpen
-}: {
-  profileSlug: string;
-  onOpen?: () => void;
-}) => {
-  const content = (
-    <>
-      <TriangleAlertIcon />
-      Keytab Name Mismatch
-    </>
-  );
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        {onOpen ? (
-          <Badge variant="warning" asChild>
-            <button
-              type="button"
-              onClick={onOpen}
-              aria-label={`Keytab name mismatch on ${profileSlug}`}
-            >
-              {content}
-            </button>
-          </Badge>
-        ) : (
-          <Badge variant="warning">{content}</Badge>
-        )}
-      </TooltipTrigger>
-      <TooltipContent>
-        Computers ask for a different service name than the one in the keytab.
-      </TooltipContent>
-    </Tooltip>
-  );
 };
 
 const getPolicyProfileNames = (policy: TApprovalPolicy): string[] => {
@@ -619,12 +581,6 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                                 Configure
                               </button>
                             )}
-                            {p.microsoftAutoenrollmentKeytabMismatch ? (
-                              <KeytabMismatchBadge
-                                profileSlug={p.profileSlug}
-                                onOpen={() => openEnrollment(p, "microsoft-autoenrollment")}
-                              />
-                            ) : null}
                           </div>
                         ) : hasMethods ? (
                           <div className="flex flex-wrap gap-1.5">
@@ -633,9 +589,6 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                                 {enrollmentTypeToNameMap[m]}
                               </Badge>
                             ))}
-                            {p.microsoftAutoenrollmentKeytabMismatch ? (
-                              <KeytabMismatchBadge profileSlug={p.profileSlug} />
-                            ) : null}
                           </div>
                         ) : (
                           <span className="text-xs text-accent">—</span>

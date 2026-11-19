@@ -8,7 +8,6 @@ import {
   getMicrosoftAutoenrollmentUnsupportedReason,
   isComputerInAllowedGroups,
   mergeAllowedGroups,
-  normalizeHttpServicePrincipalName,
   resolveCanonicalHostname
 } from "./microsoft-autoenrollment-fns";
 
@@ -21,7 +20,7 @@ describe("isComputerInAllowedGroups", () => {
     ["a group the computer is in", [SERVERS_SID, DOMAIN_COMPUTERS_SID], true],
     ["only groups the computer is not in", [SERVERS_SID], false]
   ])("%s", (_name, allowedGroupSids, expected) => {
-    const allowedGroups = allowedGroupSids.map((sid) => ({ sid, name: null }));
+    const allowedGroups = allowedGroupSids.map((sid) => ({ sid, name: sid }));
     expect(isComputerInAllowedGroups(allowedGroups, [DOMAIN_COMPUTERS_SID])).toBe(expected);
   });
 });
@@ -36,10 +35,6 @@ describe("mergeAllowedGroups", () => {
       { sid: SERVERS_SID, name: "Servers" },
       { sid: DOMAIN_COMPUTERS_SID, name: "Domain Computers" }
     ]);
-  });
-
-  test("leaves a group the directory and the stored list cannot name without a name", () => {
-    expect(mergeAllowedGroups([SERVERS_SID], null, [])).toEqual([{ sid: SERVERS_SID, name: null }]);
   });
 });
 
@@ -104,23 +99,6 @@ describe("getMicrosoftAutoenrollmentUnsupportedReason", () => {
       );
     }
   );
-});
-
-describe("normalizeHttpServicePrincipalName", () => {
-  test.each([
-    [
-      "an HTTP service principal, lowercasing the hostname",
-      "HTTP/Infisical.Corp.Example.com",
-      "HTTP/infisical.corp.example.com"
-    ],
-    ["another service class", "HOST/infisical.corp.example.com", null],
-    ["a name with markup", "HTTP/infisical.example.com<script>", null],
-    ["a name with spaces", "HTTP/infisical.example.com && calc", null],
-    ["a hostname longer than 253 characters", `HTTP/${"a".repeat(254)}`, null],
-    ["no name", undefined, null]
-  ])("%s", (_name, serviceName, expected) => {
-    expect(normalizeHttpServicePrincipalName(serviceName)).toBe(expected);
-  });
 });
 
 describe("resolveCanonicalHostname", () => {

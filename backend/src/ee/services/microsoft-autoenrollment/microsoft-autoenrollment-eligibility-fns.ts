@@ -14,7 +14,11 @@ import { TMicrosoftAutoenrollmentEnrollmentConfigDALFactory } from "@app/service
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
-import { isComputerInAllowedGroups, loadLdapConnectionConfig } from "./microsoft-autoenrollment-fns";
+import {
+  describeUnreadableUserAccountControl,
+  isComputerInAllowedGroups,
+  loadLdapConnectionConfig
+} from "./microsoft-autoenrollment-fns";
 import { MicrosoftAutoenrollmentMetadataKey } from "./microsoft-autoenrollment-types";
 
 type TMicrosoftAutoenrollmentEligibilityDeps = {
@@ -30,7 +34,7 @@ const refuse = (reason: string): never => {
   throw new BadRequestError({ message: `${reason} The certificate was not issued.` });
 };
 
-const resolveRenewalLink = async (
+const assertRenewedCertificateUsable = async (
   renewedFromCertificateId: string,
   certificateDAL: TMicrosoftAutoenrollmentEligibilityDeps["certificateDAL"]
 ) => {
@@ -41,7 +45,6 @@ const resolveRenewalLink = async (
   if (renewedCertificate.status === CertStatus.REVOKED) {
     return refuse("The certificate this request renews was revoked after the request was submitted.");
   }
-  return new Date(renewedCertificate.notAfter) <= new Date() ? { renewedFromCertificateId: null } : undefined;
 };
 
 export const checkMicrosoftAutoenrollmentRequestBeforeSigning = async (
@@ -110,19 +113,19 @@ export const checkMicrosoftAutoenrollmentRequestBeforeSigning = async (
     return refuse(
       computer.isDisabled
         ? `Computer ${computer.samAccountName} was disabled in Active Directory after the request was submitted.`
-        : `The LDAP connection's account cannot read userAccountControl for computer ${computer.samAccountName}, so it is unknown whether the computer is disabled.`
+        : describeUnreadableUserAccountControl(computer.samAccountName)
     );
   }
   if (config.allowedGroups.length && !groupSids.length) {
     return refuse(
-      `The LDAP connection's account cannot read tokenGroups for computer ${computer.samAccountName}, so its group membership is unknown.`
+      `The LDAP connection's account cannot read tokenGroups for computer ${computer.samAccountName}, so its group membership is unknown. Allow that account to read tokenGroups on computer objects.`
     );
   }
   if (!isComputerInAllowedGroups(config.allowedGroups, groupSids)) {
     return refuse(`Computer ${computer.samAccountName} is no longer in a group allowed to enroll for this profile.`);
   }
 
-  return certificateRequest.renewedFromCertificateId
-    ? resolveRenewalLink(certificateRequest.renewedFromCertificateId, certificateDAL)
-    : undefined;
+  if (certificateRequest.renewedFromCertificateId) {
+    await assertRenewedCertificateUsable(certificateRequest.renewedFromCertificateId, certificateDAL);
+  }
 };

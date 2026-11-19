@@ -20,9 +20,6 @@ export const PkiMicrosoftAutoenrollmentConfigsSchema = z.object({
   keyVersion: z.number(),
   encryptedKeytab: zodBuffer,
   appConnectionId: z.string().uuid(),
-  mismatchedServicePrincipalName: z.string().nullable().optional(),
-  mismatchFirstSeenAt: z.date().nullable().optional(),
-  mismatchRequestCount: z.number().default(0),
   allowAnyChannelBinding: z.boolean().default(false),
   createdAt: z.date(),
   updatedAt: z.date()

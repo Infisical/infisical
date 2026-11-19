@@ -12,8 +12,7 @@ import {
   MICROSOFT_AUTOENROLLMENT_DEFAULT_RENEW_BEFORE_DAYS,
   resolveMicrosoftAutoenrollmentAllowedGroups,
   resolveMicrosoftAutoenrollmentConnection,
-  resolveMicrosoftAutoenrollmentKeytab,
-  searchMicrosoftAutoenrollmentGroups
+  resolveMicrosoftAutoenrollmentKeytab
 } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-enrollment-fns";
 import {
   assertProfileCaSupportsMicrosoftAutoenrollment,
@@ -145,15 +144,6 @@ type TSetMicrosoftAutoenrollmentEnrollmentDTO = {
     reuseKeytab?: { profileId: string };
     allowAnyChannelBinding?: boolean;
   };
-  actorRootOrgId: string;
-  actorParentOrgId: string;
-} & TProjectPermission;
-
-type TListMicrosoftAutoenrollmentGroupsDTO = {
-  applicationId: string;
-  profileId: string;
-  connectionId: string;
-  search?: string;
   actorRootOrgId: string;
   actorParentOrgId: string;
 } & TProjectPermission;
@@ -424,7 +414,10 @@ export const pkiApplicationEnrollmentServiceFactory = ({
                   defaults: profile.defaults as TCertificateProfileDefaults | null
                 },
                 certificatePolicyDAL
-              ),
+              ).catch((error: unknown) => {
+                if (error instanceof BadRequestError) return null;
+                throw error;
+              }),
               channelBinding: await readChannelBindingStatus(keyStore)
             })
           : null,
@@ -1139,6 +1132,13 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       certificateAuthorityDAL
     );
     await $assertPolicyAllowsTemplateKey(profile);
+    const microsoftAutoenrollmentTtl = await resolveMicrosoftAutoenrollmentTtl(
+      {
+        certificatePolicyId: profile.certificatePolicyId,
+        defaults: profile.defaults as TCertificateProfileDefaults | null
+      },
+      certificatePolicyDAL
+    );
 
     const storedGroups = existingConfig?.allowedGroups ?? [];
     const allowedGroupSids =
@@ -1193,7 +1193,8 @@ export const pkiApplicationEnrollmentServiceFactory = ({
         profileId,
         projectId,
         keytab: config.keytab,
-        reuseKeytab: config.reuseKeytab
+        reuseKeytab: config.reuseKeytab,
+        storedEncryptedKeytab: existingConfig?.encryptedKeytab
       },
       { microsoftAutoenrollmentEnrollmentConfigDAL, kmsService, projectDAL }
     );
@@ -1212,8 +1213,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       appConnectionId: connection.id,
       renewBeforeDays:
         config.renewBeforeDays ?? existingConfig?.renewBeforeDays ?? MICROSOFT_AUTOENROLLMENT_DEFAULT_RENEW_BEFORE_DAYS,
-      allowAnyChannelBinding: config.allowAnyChannelBinding ?? existingConfig?.allowAnyChannelBinding ?? false,
-      ...(newKeytab && { mismatchedServicePrincipalName: null, mismatchFirstSeenAt: null, mismatchRequestCount: 0 })
+      allowAnyChannelBinding: config.allowAnyChannelBinding ?? existingConfig?.allowAnyChannelBinding ?? false
     };
     const storedAllowedGroups = allowedGroups.length ? JSON.stringify(allowedGroups) : null;
     const isConfigChanged =
@@ -1272,13 +1272,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
         applicationProfileId: junction.id,
         profileName: profile.slug,
         config: { ...savedConfig, allowedGroups },
-        ttl: await resolveMicrosoftAutoenrollmentTtl(
-          {
-            certificatePolicyId: profile.certificatePolicyId,
-            defaults: profile.defaults as TCertificateProfileDefaults | null
-          },
-          certificatePolicyDAL
-        ),
+        ttl: microsoftAutoenrollmentTtl,
         channelBinding: await readChannelBindingStatus(keyStore)
       }),
       isChanged: !existingConfig || isConfigChanged,
@@ -1355,36 +1349,6 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     };
   };
 
-  const listMicrosoftAutoenrollmentGroups = async ({
-    applicationId,
-    profileId,
-    connectionId,
-    search,
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    actorRootOrgId,
-    actorParentOrgId
-  }: TListMicrosoftAutoenrollmentGroupsDTO) => {
-    await $assertEditEnrollment(applicationId, profileId, projectId, actor, actorId, actorAuthMethod, actorOrgId);
-    const connection = await resolveMicrosoftAutoenrollmentConnection(
-      {
-        connectionId,
-        projectId,
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId,
-        actorRootOrgId,
-        actorParentOrgId
-      },
-      { appConnectionService }
-    );
-    return searchMicrosoftAutoenrollmentGroups(connection, search, { gatewayV2Service, gatewayPoolService });
-  };
-
   const getMicrosoftAutoenrollmentServicePrincipal = async ({
     applicationId,
     profileId,
@@ -1414,7 +1378,6 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     setMicrosoftAutoenrollmentEnrollment,
     clearMicrosoftAutoenrollmentEnrollment,
     reenrollMicrosoftAutoenrollmentComputers,
-    listMicrosoftAutoenrollmentGroups,
     getMicrosoftAutoenrollmentServicePrincipal
   };
 };

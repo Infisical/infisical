@@ -1687,7 +1687,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
               caName: z.string().nullable().optional(),
               profileName: z.string().nullable().optional(),
               enrollmentType: z.string().nullable().optional(),
-              isClientRenewed: z.boolean().optional().describe(CERTIFICATES.GET.isClientRenewed),
+              isRenewedByClient: z.boolean().optional().describe(CERTIFICATES.GET.isRenewedByClient),
               applicationName: z.string().nullable().optional()
             })
           ),

@@ -180,7 +180,7 @@ describe("SOAP response builders", () => {
     );
   });
 
-  test("an RSA profile asks for a schema 3 software KSP key of the profile's size, so the SHA-256 reference is allowed", () => {
+  test("an RSA profile asks for a schema 2 SChannel CryptoAPI key of the profile's size, signed with SHA-256", () => {
     const xml = buildGetPoliciesResponse({
       relatesTo: MESSAGE_ID,
       policyId: "{ABC}",
@@ -188,9 +188,9 @@ describe("SOAP response builders", () => {
       template: buildTemplate({ minimalKeyLength: 4096, ellipticCurve: null })
     });
 
-    expect(xml).toContain("<policySchema>3</policySchema>");
+    expect(xml).toContain("<policySchema>2</policySchema>");
     expect(xml).toContain(
-      '<privateKeyAttributes><minimalKeyLength>4096</minimalKeyLength><keySpec>1</keySpec><keyUsageProperty xsi:nil="true"/><permissions xsi:nil="true"/><algorithmOIDReference xsi:nil="true"/><cryptoProviders><provider>Microsoft Software Key Storage Provider</provider></cryptoProviders></privateKeyAttributes>'
+      '<privateKeyAttributes><minimalKeyLength>4096</minimalKeyLength><keySpec>1</keySpec><keyUsageProperty xsi:nil="true"/><permissions xsi:nil="true"/><algorithmOIDReference xsi:nil="true"/><cryptoProviders><provider>Microsoft RSA SChannel Cryptographic Provider</provider></cryptoProviders></privateKeyAttributes>'
     );
     expect(xml).toContain("<hashAlgorithmOIDReference>1</hashAlgorithmOIDReference>");
     expect(xml).not.toContain("<group>3</group>");

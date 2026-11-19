@@ -23,7 +23,6 @@ import { CertStatus } from "@app/services/certificate/certificate-types";
 import { channelBindingCacheFactory } from "./microsoft-autoenrollment-channel-binding-cache";
 import { learnServerChannelBindings, readChannelBindingStatus } from "./microsoft-autoenrollment-channel-binding-fns";
 import { parseEnrollmentRequestToken } from "./microsoft-autoenrollment-cmc-fns";
-import { resolveInstanceServicePrincipalName } from "./microsoft-autoenrollment-fns";
 import { microsoftAutoenrollmentServiceFactory } from "./microsoft-autoenrollment-service";
 import { buildSidSecurityExtension, buildTemplateOid } from "./microsoft-autoenrollment-template-fns";
 import {
@@ -58,8 +57,7 @@ vi.mock("@app/ee/services/pki-scep/pki-scep-fns", () => ({ isSignerCertIssuedByC
 
 vi.mock("./microsoft-autoenrollment-fns", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./microsoft-autoenrollment-fns")>()),
-  loadLdapConnectionConfig: vi.fn().mockResolvedValue({}),
-  resolveInstanceServicePrincipalName: vi.fn().mockResolvedValue("HTTP/app.example.com")
+  loadLdapConnectionConfig: vi.fn().mockResolvedValue({})
 }));
 
 vi.mock("./microsoft-autoenrollment-channel-binding-fns", async (importOriginal) => ({
@@ -170,8 +168,7 @@ describe("microsoftAutoenrollmentService", () => {
     pkiApplicationProfileDAL: { findOneByApplicationAndProfile: vi.fn() },
     pkiApplicationDAL: { findById: vi.fn().mockResolvedValue({ id: APPLICATION_ID, name: "Windows fleet" }) },
     microsoftAutoenrollmentEnrollmentConfigDAL: {
-      findById: vi.fn(),
-      recordKeytabMismatch: vi.fn()
+      findById: vi.fn()
     },
     microsoftAutoenrollmentRequestDAL: {
       createRequestNumber: vi.fn(),
@@ -362,45 +359,13 @@ describe("microsoftAutoenrollmentService", () => {
       expect(refusalReasons()).toEqual([KerberosFailureReason.Replay]);
     });
 
-    test("records a keytab mismatch when computers ask for the instance's name and the keytab is for another", async () => {
-      vi.mocked(resolveInstanceServicePrincipalName).mockResolvedValueOnce("HTTP/infisical.example.com");
-      const response = await service.getPolicies(
-        request(GET_POLICIES_BODY, buildAuthorization({ serviceName: "HTTP/infisical.example.com" }))
-      );
+    test.each([
+      ["another service name", { serviceName: "HTTP/infisical.example.com" }],
+      ["another key version", { keyVersion: 4 }]
+    ])("refuses and audits a ticket for %s", async (_name, options) => {
+      const response = await service.getPolicies(request(GET_POLICIES_BODY, buildAuthorization(options)));
 
       expect(response.statusCode).toBe(401);
-      expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.recordKeytabMismatch).toHaveBeenCalledWith(
-        config.id,
-        "HTTP/infisical.example.com"
-      );
-      expect(refusalReasons()).toEqual([KerberosFailureReason.NoMatchingKey]);
-    });
-
-    test("does not record a mismatch for a ticket that asks for a name other than the instance's", async () => {
-      const response = await service.getPolicies(
-        request(GET_POLICIES_BODY, buildAuthorization({ serviceName: "HTTP/attacker.example.com" }))
-      );
-
-      expect(response.statusCode).toBe(401);
-      expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.recordKeytabMismatch).not.toHaveBeenCalled();
-      expect(refusalReasons()).toEqual([KerberosFailureReason.NoMatchingKey]);
-    });
-
-    test("does not record a mismatch for a ticket service name that is not an HTTP host name", async () => {
-      const response = await service.getPolicies(
-        request(GET_POLICIES_BODY, buildAuthorization({ serviceName: "HTTP/x.example.com -mapuser evil" }))
-      );
-
-      expect(response.statusCode).toBe(401);
-      expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.recordKeytabMismatch).not.toHaveBeenCalled();
-      expect(refusalReasons()).toEqual([KerberosFailureReason.NoMatchingKey]);
-    });
-
-    test("does not record a mismatch for the right service principal with another key version", async () => {
-      const response = await service.getPolicies(request(GET_POLICIES_BODY, buildAuthorization({ keyVersion: 4 })));
-
-      expect(response.statusCode).toBe(401);
-      expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.recordKeytabMismatch).not.toHaveBeenCalled();
       expect(refusalReasons()).toEqual([KerberosFailureReason.NoMatchingKey]);
     });
 
@@ -625,7 +590,7 @@ describe("microsoftAutoenrollmentService", () => {
       expect(response.statusCode).toBe(401);
       expect(learnServerChannelBindings).not.toHaveBeenCalled();
       expect(refusalReasons()).toEqual([MicrosoftAutoenrollmentFailureReason.ChannelBindingUnverifiable]);
-      expect(refusalMessage()).toContain("SITE_URL is not an https URL");
+      expect(refusalMessage()).toContain("SITE_URL isn't an https URL");
     });
 
     test("refuses when the instance's certificate cannot be read, naming the host, and reads it once", async () => {
@@ -763,6 +728,32 @@ describe("microsoftAutoenrollmentService", () => {
       const response = await service.getPolicies(request(GET_POLICIES_BODY));
 
       expect(response.body).toContain(`<validityPeriodSeconds>${30 * 86400}</validityPeriodSeconds>`);
+    });
+
+    test("reads a policy maximum in months as months", async () => {
+      deps.certificateProfileDAL.findByIdWithConfigs.mockResolvedValue({
+        id: PROFILE_ID,
+        projectId: "project-id",
+        caId: CA_ID,
+        slug: "web-servers",
+        certificatePolicyId: "policy-id",
+        defaults: {}
+      });
+      deps.certificatePolicyDAL.findById.mockResolvedValue({ validity: { max: "6m" } });
+
+      const response = await service.getPolicies(request(GET_POLICIES_BODY));
+
+      expect(response.body).toContain(`<validityPeriodSeconds>${180 * 86400}</validityPeriodSeconds>`);
+    });
+
+    test("refuses with an audited reason when the profile's TTL exceeds its policy's maximum", async () => {
+      deps.certificatePolicyDAL.findById.mockResolvedValue({ validity: { max: "10d" } });
+
+      const response = await service.getPolicies(request(GET_POLICIES_BODY));
+
+      expect(response.statusCode).toBe(500);
+      expect(response.body).toContain("exceeds the policy&apos;s maximum validity");
+      expect(refusalReasons()).toEqual([MicrosoftAutoenrollmentFailureReason.ProfileMisconfigured]);
     });
 
     test("answers a failure it did not expect with a generic SOAP fault and logs the cause", async () => {

@@ -367,6 +367,17 @@ export const findDirectoryComputerBySid = async (
   };
 };
 
+export const withActiveDirectoryErrors =
+  (connection: { id: string; name: string }) =>
+  (err: unknown): never => {
+    if (err instanceof LdapTargetConfigurationError) throw err;
+    logger.warn({ err }, `Unable to search Active Directory [connectionId=${connection.id}]`);
+    const details = err instanceof BadRequestError ? ` Details: ${err.message}` : "";
+    throw new BadRequestError({
+      message: `Could not search Active Directory with the LDAP connection '${connection.name}'. Check that the directory is reachable and the connection's credentials are valid.${details}`
+    });
+  };
+
 export const searchDirectoryGroups = async (
   { config, search }: { config: TLdapConnectionConfig; search?: string },
   gatewayServices: TLdapDirectoryGatewayServices
@@ -386,12 +397,17 @@ export const searchDirectoryGroups = async (
   };
 };
 
-export const resolveDirectorySidNames = async (
+export const resolveDirectorySecurityGroupNames = async (
   { config, sids }: { config: TLdapConnectionConfig; sids: string[] },
   gatewayServices: TLdapDirectoryGatewayServices
 ): Promise<Record<string, string | null>> => {
   const entries = await searchDomain(config, gatewayServices, {
-    filter: new ldap.OrFilter({ filters: sids.map(buildSidEqualityFilter) }),
+    filter: new ldap.AndFilter({
+      filters: [
+        ldap.parseFilter(`(&${SECURITY_GROUP_FILTER})`),
+        new ldap.OrFilter({ filters: sids.map(buildSidEqualityFilter) })
+      ]
+    }),
     attributes: ["cn", "objectSid"],
     sizeLimit: sids.length
   });

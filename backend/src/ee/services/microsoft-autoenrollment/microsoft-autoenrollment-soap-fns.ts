@@ -42,9 +42,9 @@ const CA_CLIENT_AUTHENTICATION_KERBEROS = 2;
 const SHA256_OID = "2.16.840.1.101.3.4.2.1";
 
 const RSA_KEY_POLICY = {
-  policySchema: 3,
+  policySchema: 2,
   keySpec: 1,
-  cryptoProvider: "Microsoft Software Key Storage Provider"
+  cryptoProvider: "Microsoft RSA SChannel Cryptographic Provider"
 };
 const ELLIPTIC_CURVE_KEY_POLICY = {
   policySchema: 3,

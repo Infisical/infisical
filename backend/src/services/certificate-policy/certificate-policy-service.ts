@@ -36,6 +36,7 @@ import {
   isDomainComponentRule,
   isWildcardPattern,
   matchesNormalizedPattern,
+  parsePolicyTtlMs,
   validateDomainComponentsAgainstRule
 } from "./certificate-policy-fns";
 import {
@@ -72,30 +73,6 @@ export const certificatePolicyServiceFactory = ({
     });
 
     return Array.from(consolidated.values());
-  };
-
-  const parseTTL = (ttl: string): number => {
-    const regex = new RE2("^(\\d+)([dmyh])$");
-    const match = regex.exec(ttl);
-    if (!match) {
-      throw new Error(`Invalid TTL format: ${ttl}`);
-    }
-
-    const value = parseInt(match[1], 10);
-    const unit = match[2];
-
-    switch (unit) {
-      case "h":
-        return value * 60 * 60 * 1000;
-      case "d":
-        return value * 24 * 60 * 60 * 1000;
-      case "m":
-        return value * 30 * 24 * 60 * 60 * 1000;
-      case "y":
-        return value * 365 * 24 * 60 * 60 * 1000;
-      default:
-        throw new Error(`Unsupported TTL unit: ${unit}`);
-    }
   };
 
   const validateSubjectAttributePolicy = (subjectAttributes: TSubjectRule[]) => {
@@ -648,11 +625,11 @@ export const certificatePolicyServiceFactory = ({
 
     // Validate TTL against template validity constraints
     if (request.validity?.ttl && template.validity) {
-      const requestDurationMs = parseTTL(request.validity.ttl);
+      const requestDurationMs = parsePolicyTtlMs(request.validity.ttl);
 
       // Check maximum duration using max field
       if (template.validity.max) {
-        const maxDurationMs = parseTTL(template.validity.max);
+        const maxDurationMs = parsePolicyTtlMs(template.validity.max);
 
         if (requestDurationMs > maxDurationMs) {
           errors.push("Requested validity period exceeds maximum allowed duration");
@@ -666,7 +643,7 @@ export const certificatePolicyServiceFactory = ({
 
       if (notAfter && notBefore && notAfter instanceof Date && notBefore instanceof Date) {
         const requestDuration = notAfter.getTime() - notBefore.getTime();
-        const maxDurationMs = parseTTL(template.validity.max);
+        const maxDurationMs = parsePolicyTtlMs(template.validity.max);
 
         if (requestDuration > maxDurationMs) {
           errors.push(

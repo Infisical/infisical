@@ -8,12 +8,13 @@ import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-c
 import { TLdapConnection } from "@app/services/app-connection/ldap/ldap-connection-types";
 import {
   assertLdapProviderIsSupported,
-  LdapTargetConfigurationError,
-  resolveDirectorySidNames,
+  resolveDirectorySecurityGroupNames,
   searchDirectoryGroups,
-  TLdapDirectoryGatewayServices
+  TLdapDirectoryGatewayServices,
+  withActiveDirectoryErrors
 } from "@app/services/app-connection/ldap/ldap-directory-fns";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
+import { parsePolicyTtlMs } from "@app/services/certificate-policy/certificate-policy-fns";
 import { resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
 import {
   TMicrosoftAutoenrollmentAllowedGroup,
@@ -28,8 +29,6 @@ import { buildPolicyUrl, mergeAllowedGroups, readUploadedKeytab } from "./micros
 import { buildPolicyId, buildTemplateOid, resolveRenewalPeriodSeconds } from "./microsoft-autoenrollment-template-fns";
 import { MicrosoftAutoenrollmentKeytabSource } from "./microsoft-autoenrollment-types";
 
-type TDirectoryConnection = { id: string; name: string };
-
 type TMicrosoftAutoenrollmentConnection = TLdapConnection & { id: string };
 
 type TMicrosoftAutoenrollmentConfigWithGroups = Omit<TPkiMicrosoftAutoenrollmentConfigs, "allowedGroups"> & {
@@ -38,8 +37,12 @@ type TMicrosoftAutoenrollmentConfigWithGroups = Omit<TPkiMicrosoftAutoenrollment
 
 export const MICROSOFT_AUTOENROLLMENT_DEFAULT_RENEW_BEFORE_DAYS = 42;
 
-const MICROSOFT_AUTOENROLLMENT_DEFAULT_TTL = "365d";
-const SECONDS_PER_HOUR = 3600;
+const MICROSOFT_AUTOENROLLMENT_DEFAULT_TTL_DAYS = 365;
+const MS_PER_HOUR = 60 * 60 * 1000;
+const MS_PER_DAY = 24 * MS_PER_HOUR;
+
+const toWholeUnitTtl = (durationMs: number) =>
+  durationMs % MS_PER_DAY === 0 ? `${durationMs / MS_PER_DAY}d` : `${Math.floor(durationMs / MS_PER_HOUR)}h`;
 
 export const resolveMicrosoftAutoenrollmentTtl = async (
   profile: { certificatePolicyId: string; defaults?: { ttlDays?: number } | null },
@@ -47,14 +50,15 @@ export const resolveMicrosoftAutoenrollmentTtl = async (
 ) => {
   const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
   const policyMaxValidity = policy?.validity?.max;
+  const policyMaxMs = policyMaxValidity ? parsePolicyTtlMs(policyMaxValidity) : null;
   return resolveEffectiveTtl({
     requestTtl: undefined,
     profileDefaultTtlDays: profile.defaults?.ttlDays,
     policyMaxValidity,
     flowDefaultTtl:
-      policyMaxValidity && ms(policyMaxValidity) < ms(MICROSOFT_AUTOENROLLMENT_DEFAULT_TTL)
-        ? policyMaxValidity
-        : MICROSOFT_AUTOENROLLMENT_DEFAULT_TTL
+      policyMaxMs && policyMaxMs < MICROSOFT_AUTOENROLLMENT_DEFAULT_TTL_DAYS * MS_PER_DAY
+        ? toWholeUnitTtl(policyMaxMs)
+        : `${MICROSOFT_AUTOENROLLMENT_DEFAULT_TTL_DAYS}d`
   });
 };
 
@@ -72,7 +76,7 @@ export const buildMicrosoftAutoenrollmentState = ({
   applicationProfileId: string;
   profileName: string;
   config: TMicrosoftAutoenrollmentConfigWithGroups;
-  ttl: string;
+  ttl: string | null;
   channelBinding: Awaited<ReturnType<typeof readChannelBindingStatus>>;
 }) => ({
   id: config.id,
@@ -82,34 +86,13 @@ export const buildMicrosoftAutoenrollmentState = ({
   templateOid: buildTemplateOid(applicationProfileId),
   allowedGroups: config.allowedGroups,
   renewBeforeDays: config.renewBeforeDays,
-  effectiveRenewBeforeHours: Math.floor(
-    resolveRenewalPeriodSeconds(config.renewBeforeDays, ms(ttl) / 1000) / SECONDS_PER_HOUR
-  ),
+  effectiveRenewBeforeSeconds: ttl ? resolveRenewalPeriodSeconds(config.renewBeforeDays, ms(ttl) / 1000) : null,
   servicePrincipalName: config.servicePrincipalName,
   keyVersion: config.keyVersion,
   connectionId: config.appConnectionId,
   allowAnyChannelBinding: config.allowAnyChannelBinding,
-  channelBinding,
-  keytabMismatch:
-    config.mismatchedServicePrincipalName && config.mismatchFirstSeenAt
-      ? {
-          servicePrincipalName: config.mismatchedServicePrincipalName,
-          firstSeenAt: config.mismatchFirstSeenAt,
-          requestCount: config.mismatchRequestCount
-        }
-      : null
+  channelBinding
 });
-
-const withActiveDirectoryErrors =
-  (connection: TDirectoryConnection) =>
-  (err: unknown): never => {
-    if (err instanceof LdapTargetConfigurationError) throw err;
-    logger.warn({ err }, `Unable to search Active Directory [connectionId=${connection.id}]`);
-    const details = err instanceof BadRequestError ? ` Details: ${err.message}` : "";
-    throw new BadRequestError({
-      message: `Could not search Active Directory with the LDAP connection '${connection.name}'. Check that the directory is reachable and the connection's credentials are valid.${details}`
-    });
-  };
 
 export const resolveMicrosoftAutoenrollmentConnection = async (
   {
@@ -151,13 +134,6 @@ export const resolveMicrosoftAutoenrollmentConnection = async (
   return connection;
 };
 
-export const searchMicrosoftAutoenrollmentGroups = (
-  connection: TMicrosoftAutoenrollmentConnection,
-  search: string | undefined,
-  gatewayServices: TLdapDirectoryGatewayServices
-) =>
-  searchDirectoryGroups({ config: connection, search }, gatewayServices).catch(withActiveDirectoryErrors(connection));
-
 export const resolveMicrosoftAutoenrollmentAllowedGroups = async (
   {
     connection,
@@ -173,15 +149,20 @@ export const resolveMicrosoftAutoenrollmentAllowedGroups = async (
   gatewayServices: TLdapDirectoryGatewayServices
 ): Promise<TMicrosoftAutoenrollmentAllowedGroup[]> => {
   if (!allowedGroupSids.length) {
-    if (isConnectionChanged) await searchMicrosoftAutoenrollmentGroups(connection, undefined, gatewayServices);
+    if (isConnectionChanged) {
+      await searchDirectoryGroups({ config: connection, search: undefined }, gatewayServices).catch(
+        withActiveDirectoryErrors(connection)
+      );
+    }
     return [];
   }
 
-  const resolvedNames = await resolveDirectorySidNames(
+  const hasNewGroups = allowedGroupSids.some((sid) => !storedGroups.some((group) => group.sid === sid));
+  const resolvedNames = await resolveDirectorySecurityGroupNames(
     { config: connection, sids: allowedGroupSids },
     gatewayServices
   ).catch(
-    isConnectionChanged
+    isConnectionChanged || hasNewGroups
       ? withActiveDirectoryErrors(connection)
       : (err: unknown) => {
           logger.warn(
@@ -191,16 +172,16 @@ export const resolveMicrosoftAutoenrollmentAllowedGroups = async (
           return null;
         }
   );
-  if (isConnectionChanged) {
+  if (resolvedNames) {
     const unresolvedGroups = allowedGroupSids
-      .filter((sid) => !resolvedNames?.[sid])
+      .filter((sid) => !resolvedNames[sid])
       .map((sid) => {
         const storedName = storedGroups.find((group) => group.sid === sid)?.name;
         return storedName ? `'${storedName}' (${sid})` : sid;
       });
     if (unresolvedGroups.length) {
       throw new BadRequestError({
-        message: `The LDAP connection '${connection.name}' does not find the allowed groups ${unresolvedGroups.join(", ")} in its directory. Remove those groups, or choose groups from the directory of '${connection.name}'.`
+        message: `The LDAP connection '${connection.name}' does not find ${unresolvedGroups.join(", ")} as security groups in its directory. Only security groups appear in a computer's Kerberos ticket, so remove those groups or choose security groups from the directory of '${connection.name}'.`
       });
     }
   }
@@ -223,7 +204,8 @@ export const resolveMicrosoftAutoenrollmentKeytab = async (
     profileId,
     projectId,
     keytab,
-    reuseKeytab
+    reuseKeytab,
+    storedEncryptedKeytab
   }: {
     applicationId: string;
     applicationName: string;
@@ -231,6 +213,7 @@ export const resolveMicrosoftAutoenrollmentKeytab = async (
     projectId: string;
     keytab?: string;
     reuseKeytab?: { profileId: string };
+    storedEncryptedKeytab?: Buffer;
   },
   {
     microsoftAutoenrollmentEnrollmentConfigDAL,
@@ -241,7 +224,7 @@ export const resolveMicrosoftAutoenrollmentKeytab = async (
       TMicrosoftAutoenrollmentEnrollmentConfigDALFactory,
       "findKeytabByApplicationAndProfile"
     >;
-    kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey">;
+    kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
     projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   }
 ) => {
@@ -249,6 +232,10 @@ export const resolveMicrosoftAutoenrollmentKeytab = async (
     const keytabFile = Buffer.from(keytab, "base64");
     const { servicePrincipalName, keyVersion } = readUploadedKeytab(keytabFile);
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
+    if (storedEncryptedKeytab) {
+      const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
+      if (keytabFile.equals(await kmsDecryptor({ cipherTextBlob: storedEncryptedKeytab }))) return null;
+    }
     const { cipherTextBlob } = await encryptKeytab(kmsService, certificateManagerKmsId, keytabFile);
     return {
       source: MicrosoftAutoenrollmentKeytabSource.Uploaded,
@@ -276,6 +263,7 @@ export const resolveMicrosoftAutoenrollmentKeytab = async (
         message: `Profile '${reuseKeytab.profileId}' has no Microsoft Autoenrollment keytab in application '${applicationName}'. Choose a profile in this application that has Microsoft Autoenrollment turned on, or upload the keytab file instead.`
       });
     }
+    if (storedEncryptedKeytab && source.encryptedKeytab.equals(storedEncryptedKeytab)) return null;
     return {
       source: MicrosoftAutoenrollmentKeytabSource.Reused,
       encryptedKeytab: source.encryptedKeytab,

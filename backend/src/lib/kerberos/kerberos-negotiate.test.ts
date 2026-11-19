@@ -213,6 +213,40 @@ describe("verifyNegotiateToken", () => {
     });
   });
 
+  test("names the encryption type the keytab lacks when it has the ticket's key version", async () => {
+    const { authorizationHeader } = buildTestNegotiateHeader({
+      serviceKey: crypto.randomBytes(16),
+      encryptionType: KerberosEncryptionType.Aes128CtsHmacSha196
+    });
+
+    await expect(
+      verifyNegotiateToken({
+        negotiateToken: parseNegotiateToken(readAuthorizationHeader(authorizationHeader)),
+        keytabEntries: [keytabEntry],
+        checkReplay: vi.fn().mockResolvedValue(true),
+        expectedChannelBindings: null
+      })
+    ).rejects.toThrow("The keytab has this key version but not AES128.");
+  });
+
+  test("tells the admin to turn on AES when the ticket uses RC4", async () => {
+    const negotiateToken = {
+      ...parseNegotiateToken(
+        readAuthorizationHeader(buildTestNegotiateHeader({ serviceKey: keytabEntry.key }).authorizationHeader)
+      ),
+      ticketEncryptionType: 23
+    };
+
+    await expect(
+      verifyNegotiateToken({
+        negotiateToken,
+        keytabEntries: [keytabEntry],
+        checkReplay: vi.fn().mockResolvedValue(true),
+        expectedChannelBindings: null
+      })
+    ).rejects.toThrow("The ticket uses RC4: turn on AES for the service account");
+  });
+
   test("refuses a ticket for another service name and names it", async () => {
     await expectFailure(verifyToken({ serviceName: "HTTP/old.example.com" }), KerberosFailureReason.NoMatchingKey, {
       serviceName: "HTTP/old.example.com",
@@ -375,17 +409,27 @@ describe("assertTicketIsForServicePrincipal", () => {
   });
 
   test.each([
-    ["another service principal", { serviceName: "HTTP/other.example.com" }, "HTTP/other.example.com", 3],
-    ["a newer key version", { keyVersion: 4 }, TEST_SERVICE_NAME, 4],
-    ["no key version", { keyVersion: null }, TEST_SERVICE_NAME, null]
-  ])("refuses a ticket for %s and names the ticket's key", (_name, options, serviceName, keyVersion) => {
-    let error: unknown;
-    try {
-      assertTicketIsForServicePrincipal(parse(options), { principal: TEST_SERVICE_NAME, newestKeyVersion: 3 });
-    } catch (caught) {
-      error = caught;
+    [
+      "another service principal",
+      { serviceName: "HTTP/other.example.com" },
+      "HTTP/other.example.com",
+      3,
+      `The keytab is for ${TEST_SERVICE_NAME}. Upload a keytab for HTTP/other.example.com`
+    ],
+    ["a newer key version", { keyVersion: 4 }, TEST_SERVICE_NAME, 4, "Upload a keytab that holds this key version"],
+    ["no key version", { keyVersion: null }, TEST_SERVICE_NAME, null, "The ticket carries no key version"]
+  ])(
+    "refuses a ticket for %s, naming the ticket's key and the fix",
+    (_name, options, serviceName, keyVersion, nextStep) => {
+      let error: unknown;
+      try {
+        assertTicketIsForServicePrincipal(parse(options), { principal: TEST_SERVICE_NAME, newestKeyVersion: 3 });
+      } catch (caught) {
+        error = caught;
+      }
+      expect(error).toBeInstanceOf(KerberosError);
+      expect(error).toMatchObject({ reason: KerberosFailureReason.NoMatchingKey, serviceName, keyVersion });
+      expect((error as Error).message).toContain(nextStep);
     }
-    expect(error).toBeInstanceOf(KerberosError);
-    expect(error).toMatchObject({ reason: KerberosFailureReason.NoMatchingKey, serviceName, keyVersion });
-  });
+  );
 });

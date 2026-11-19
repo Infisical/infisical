@@ -238,45 +238,6 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
 
   server.route({
     method: "GET",
-    url: "/:applicationId/profiles/:profileId/enrollment/microsoft-autoenrollment/groups",
-    config: { rateLimit: readLimit },
-    schema: {
-      hide: false,
-      operationId: "listPkiApplicationMicrosoftAutoenrollmentGroups",
-      description:
-        "Search the Active Directory groups that can be allowed to enroll, through an LDAP connection. Requires permission to edit the application's enrollment and to connect the LDAP connection.",
-      tags: [ApiDocsTags.PkiApplications],
-      params: MicrosoftAutoenrollmentParamsSchema,
-      querystring: z.object({
-        connectionId: z.string().uuid().describe(MICROSOFT_AUTOENROLLMENT.LIST_GROUPS.connectionId),
-        search: z.string().trim().max(64).optional().describe(MICROSOFT_AUTOENROLLMENT.LIST_GROUPS.search)
-      }),
-      response: {
-        200: z.object({
-          groups: z.array(z.object({ sid: z.string(), name: z.string() })),
-          isTruncated: z.boolean()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) =>
-      server.services.pkiApplicationEnrollment.listMicrosoftAutoenrollmentGroups({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        actorRootOrgId: req.permission.rootOrgId,
-        actorParentOrgId: req.permission.parentOrgId,
-        projectId: req.internalCertManagerProjectId,
-        applicationId: req.params.applicationId,
-        profileId: req.params.profileId,
-        connectionId: req.query.connectionId,
-        search: req.query.search
-      })
-  });
-
-  server.route({
-    method: "GET",
     url: "/:applicationId/profiles/:profileId/enrollment/microsoft-autoenrollment/service-principal",
     config: { rateLimit: readLimit },
     schema: {

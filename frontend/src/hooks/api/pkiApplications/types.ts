@@ -67,7 +67,6 @@ export type TPkiApplicationProfile = {
   acmeConfigId?: string | null;
   scepConfigId?: string | null;
   microsoftAutoenrollmentConfigId?: string | null;
-  microsoftAutoenrollmentKeytabMismatch?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -97,7 +96,7 @@ export { ScepChallengeType };
 
 export type TMicrosoftAutoenrollmentGroup = {
   sid: string;
-  name: string | null;
+  name: string;
 };
 
 export enum MicrosoftAutoenrollmentChannelBindingStatus {
@@ -114,7 +113,7 @@ export type TMicrosoftAutoenrollmentEnrollment = {
   templateOid: string;
   allowedGroups: TMicrosoftAutoenrollmentGroup[];
   renewBeforeDays: number;
-  effectiveRenewBeforeHours: number;
+  effectiveRenewBeforeSeconds: number | null;
   servicePrincipalName: string;
   keyVersion: number;
   connectionId: string;
@@ -123,11 +122,6 @@ export type TMicrosoftAutoenrollmentEnrollment = {
     status: MicrosoftAutoenrollmentChannelBindingStatus;
     reason: string | null;
   };
-  keytabMismatch: {
-    servicePrincipalName: string;
-    firstSeenAt: string;
-    requestCount: number;
-  } | null;
 };
 
 export type TMicrosoftAutoenrollmentOtherProfile = {
@@ -299,18 +293,6 @@ export type TSetMicrosoftAutoenrollmentEnrollmentDTO = {
     profileId: string;
   };
   allowAnyChannelBinding?: boolean;
-};
-
-export type TListMicrosoftAutoenrollmentGroupsDTO = {
-  applicationId: string;
-  profileId: string;
-  connectionId?: string;
-  search?: string;
-};
-
-export type TMicrosoftAutoenrollmentGroupSearch = {
-  groups: TMicrosoftAutoenrollmentGroup[];
-  isTruncated: boolean;
 };
 
 export type TMicrosoftAutoenrollmentServicePrincipal = {

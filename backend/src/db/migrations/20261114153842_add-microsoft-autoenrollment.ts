@@ -21,9 +21,6 @@ const createMicrosoftAutoenrollmentTables = async (knex: Knex) => {
       t.uuid("appConnectionId").notNullable();
       t.foreign("appConnectionId").references("id").inTable(TableName.AppConnection).deferrable("deferred");
       t.index("appConnectionId");
-      t.text("mismatchedServicePrincipalName").nullable();
-      t.timestamp("mismatchFirstSeenAt", { useTz: true }).nullable();
-      t.integer("mismatchRequestCount").notNullable().defaultTo(0);
       t.boolean("allowAnyChannelBinding").notNullable().defaultTo(false);
       t.timestamps(true, true, true);
     });

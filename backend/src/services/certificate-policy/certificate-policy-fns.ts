@@ -132,3 +132,27 @@ export const validateDomainComponentsAgainstRule = ({
 
   return errors;
 };
+
+export const parsePolicyTtlMs = (ttl: string): number => {
+  const regex = new RE2("^(\\d+)([dmyh])$");
+  const match = regex.exec(ttl);
+  if (!match) {
+    throw new Error(`Invalid TTL format: ${ttl}`);
+  }
+
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
+
+  switch (unit) {
+    case "h":
+      return value * 60 * 60 * 1000;
+    case "d":
+      return value * 24 * 60 * 60 * 1000;
+    case "m":
+      return value * 30 * 24 * 60 * 60 * 1000;
+    case "y":
+      return value * 365 * 24 * 60 * 60 * 1000;
+    default:
+      throw new Error(`Unsupported TTL unit: ${unit}`);
+  }
+};

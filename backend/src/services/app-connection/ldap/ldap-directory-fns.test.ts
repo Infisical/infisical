@@ -14,6 +14,7 @@ import {
   parseLdapBindIdentity,
   readAccountDisabledFlag,
   readDirectoryComputerGroupSids,
+  resolveDirectorySecurityGroupNames,
   searchDirectoryGroups
 } from "./ldap-directory-fns";
 
@@ -160,6 +161,20 @@ describe("directory searches", () => {
       "(&(objectCategory=group)(groupType:1.2.840.113556.1.4.803:=2147483648)(|(cn=*web\\2a*)(sAMAccountName=*web\\2a*)))"
     );
     expect(filters).toContain("(&(objectCategory=group)(groupType:1.2.840.113556.1.4.803:=2147483648))");
+  });
+
+  test("resolves allowed group SIDs among security groups only", async () => {
+    const filters = useDirectory(answerEmpty);
+
+    await resolveDirectorySecurityGroupNames(
+      { config, sids: ["S-1-5-21-1111111111-2222222222-3333333333-1200"] },
+      gatewayServices
+    );
+
+    const groupFilter = filters.find((filter) => filter.includes("objectSid="));
+    expect(
+      groupFilter?.startsWith("(&(&(objectCategory=group)(groupType:1.2.840.113556.1.4.803:=2147483648))(|(objectSid=")
+    ).toBe(true);
   });
 
   test.each([

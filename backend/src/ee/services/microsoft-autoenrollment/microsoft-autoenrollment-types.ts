@@ -6,7 +6,8 @@ export enum MicrosoftAutoenrollmentFailureReason {
   DirectoryUnreachable = "directory-unreachable",
   DirectoryLookupFailed = "directory-lookup-failed",
   RenewalRefused = "renewal-refused",
-  ChannelBindingUnverifiable = "channel-binding-unverifiable"
+  ChannelBindingUnverifiable = "channel-binding-unverifiable",
+  ProfileMisconfigured = "profile-misconfigured"
 }
 
 export enum MicrosoftAutoenrollmentChannelBindingStatus {

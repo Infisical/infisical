@@ -63,10 +63,9 @@ import { parseEnrollmentRequestToken } from "./microsoft-autoenrollment-cmc-fns"
 import { resolveMicrosoftAutoenrollmentTtl } from "./microsoft-autoenrollment-enrollment-fns";
 import {
   buildCesUrl,
+  describeUnreadableUserAccountControl,
   isComputerInAllowedGroups,
   loadLdapConnectionConfig,
-  normalizeHttpServicePrincipalName,
-  resolveInstanceServicePrincipalName,
   stripKerberosRealm
 } from "./microsoft-autoenrollment-fns";
 import { TMicrosoftAutoenrollmentRequestDALFactory } from "./microsoft-autoenrollment-request-dal";
@@ -101,10 +100,7 @@ import {
 type TMicrosoftAutoenrollmentServiceFactoryDep = {
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
-  microsoftAutoenrollmentEnrollmentConfigDAL: Pick<
-    TMicrosoftAutoenrollmentEnrollmentConfigDALFactory,
-    "findById" | "recordKeytabMismatch"
-  >;
+  microsoftAutoenrollmentEnrollmentConfigDAL: Pick<TMicrosoftAutoenrollmentEnrollmentConfigDALFactory, "findById">;
   microsoftAutoenrollmentRequestDAL: TMicrosoftAutoenrollmentRequestDALFactory;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
@@ -275,11 +271,6 @@ export const microsoftAutoenrollmentServiceFactory = ({
     });
   };
 
-  const $resolveInstanceServicePrincipalName = () =>
-    resolveInstanceServicePrincipalName()
-      .then(normalizeHttpServicePrincipalName)
-      .catch(() => null);
-
   const $loadChannelBindingCheck = async (allowAnyChannelBinding: boolean): Promise<TChannelBindingCheck> => {
     if (allowAnyChannelBinding) return { expected: null };
     const expected = await channelBindingCache.loadExpected();
@@ -361,30 +352,17 @@ export const microsoftAutoenrollmentServiceFactory = ({
         await $recordRefusal(profileContext, clientIp, {
           reason: MicrosoftAutoenrollmentFailureReason.ChannelBindingUnverifiable,
           computerName: identity.clientName,
-          message: `${channelBindingCheck.unverifiableReason} ${CHANNEL_BINDING_OPT_OUT_HINT}`.slice(
-            0,
-            MAX_REFUSAL_MESSAGE_LENGTH
-          )
+          message:
+            `TLS channel bindings can't be checked: ${channelBindingCheck.unverifiableReason} ${CHANNEL_BINDING_OPT_OUT_HINT}`.slice(
+              0,
+              MAX_REFUSAL_MESSAGE_LENGTH
+            )
         });
         return { refusal: $challenge() };
       }
       return { context, identity };
     } catch (error) {
       if (!(error instanceof KerberosError)) throw error;
-
-      const ticketServicePrincipalName = normalizeHttpServicePrincipalName(error.serviceName);
-      if (
-        error.reason === KerberosFailureReason.NoMatchingKey &&
-        ticketServicePrincipalName &&
-        ticketServicePrincipalName.toLowerCase() !==
-          stripKerberosRealm(profileContext.config.servicePrincipalName).toLowerCase() &&
-        ticketServicePrincipalName === (await $resolveInstanceServicePrincipalName())
-      ) {
-        await microsoftAutoenrollmentEnrollmentConfigDAL.recordKeytabMismatch(
-          profileContext.config.id,
-          ticketServicePrincipalName
-        );
-      }
 
       const message =
         error.reason === KerberosFailureReason.ChannelBindingMismatch && channelBindings
@@ -405,7 +383,19 @@ export const microsoftAutoenrollmentServiceFactory = ({
   const $buildTemplateInfoExtension = (context: TContext, templateOid = buildTemplateOid(context.junction.id)) =>
     buildTemplateInfoExtension(templateOid, context.config.templateMajorRevision, context.config.templateMinorRevision);
 
-  const $buildPolicyTemplate = async (context: TContext) => {
+  const $resolveTtl = (context: TContext, clientIp: string, computerName: string) =>
+    resolveMicrosoftAutoenrollmentTtl(context.profile, certificatePolicyDAL).catch(async (error: unknown) => {
+      if (error instanceof BadRequestError) {
+        await $recordRefusal(context, clientIp, {
+          reason: MicrosoftAutoenrollmentFailureReason.ProfileMisconfigured,
+          computerName,
+          message: error.message
+        });
+      }
+      throw error;
+    });
+
+  const $buildPolicyTemplate = async (context: TContext, ttl: string) => {
     const { profile, config, applicationId } = context;
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(context.caId);
     if (ca) assertCaInProfileProject(ca, profile);
@@ -414,16 +404,13 @@ export const microsoftAutoenrollmentServiceFactory = ({
         message: `The certificate authority of profile '${profile.slug}' has no active certificate, so it cannot issue certificates.`
       });
     }
-    const [{ caCert }, ttl] = await Promise.all([
-      getCaCertChain({
-        caCertId: ca.internalCa.activeCaCertId,
-        certificateAuthorityDAL,
-        certificateAuthorityCertDAL,
-        projectDAL,
-        kmsService
-      }),
-      resolveMicrosoftAutoenrollmentTtl(profile, certificatePolicyDAL)
-    ]);
+    const { caCert } = await getCaCertChain({
+      caCertId: ca.internalCa.activeCaCertId,
+      certificateAuthorityDAL,
+      certificateAuthorityCertDAL,
+      projectDAL,
+      kmsService
+    });
 
     const templateOid = buildTemplateOid(context.junction.id);
     const validitySeconds = ms(ttl) / 1000;
@@ -479,7 +466,7 @@ export const microsoftAutoenrollmentServiceFactory = ({
     if (computer.isDisabled === null) {
       return refuse(
         MicrosoftAutoenrollmentFailureReason.DirectoryLookupFailed,
-        `The LDAP connection's account cannot read userAccountControl for computer ${computer.samAccountName}, so it is unknown whether the computer is disabled. Allow that account to read userAccountControl on computer objects.`
+        describeUnreadableUserAccountControl(computer.samAccountName)
       );
     }
     if (computer.isDisabled) {
@@ -736,7 +723,7 @@ export const microsoftAutoenrollmentServiceFactory = ({
       profileId: profile.id,
       applicationId,
       csr: x509.PemConverter.encode(asNonSharedBuffer(Buffer.from(csr.rawData)), "CERTIFICATE REQUEST"),
-      validity: { ttl: await resolveMicrosoftAutoenrollmentTtl(profile, certificatePolicyDAL) },
+      validity: { ttl: await $resolveTtl(context, clientIp, identity.clientName) },
       enrollmentType: EnrollmentType.MICROSOFT_AUTOENROLLMENT,
       issuerNameOverride: {
         commonName: dnsHostName,
@@ -865,7 +852,9 @@ export const microsoftAutoenrollmentServiceFactory = ({
         relatesTo: envelope.messageId,
         policyId: buildPolicyId(context.junction.id),
         policyFriendlyName: context.profile.slug,
-        template: isAllowed ? await $buildPolicyTemplate(context) : null
+        template: isAllowed
+          ? await $buildPolicyTemplate(context, await $resolveTtl(context, dto.clientIp, identity.clientName))
+          : null
       });
     });
 

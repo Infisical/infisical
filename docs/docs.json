@@ -4196,7 +4196,6 @@
                               "api-reference/endpoints/pki/applications/enrollment/set-microsoft-autoenrollment",
                               "api-reference/endpoints/pki/applications/enrollment/clear-microsoft-autoenrollment",
                               "api-reference/endpoints/pki/applications/enrollment/reenroll-microsoft-autoenrollment",
-                              "api-reference/endpoints/pki/applications/enrollment/list-microsoft-autoenrollment-groups",
                               "api-reference/endpoints/pki/applications/enrollment/get-microsoft-autoenrollment-service-principal"
                             ]
                           }

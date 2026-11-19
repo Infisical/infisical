@@ -16,6 +16,7 @@ import {
 import { KerberosError } from "./kerberos-error";
 import { parsePacLogonInfo, verifyPacServerSignature } from "./kerberos-pac";
 import {
+  KerberosEncryptionType,
   KerberosFailureReason,
   KerberosKeyUsage,
   TKerberosIdentity,
@@ -539,10 +540,22 @@ export const parseNegotiateToken = (rawToken: Buffer): TNegotiateToken => {
   return { isSpnego: token.isSpnego, mechanismOid: token.mechanismOid, ...apRequest };
 };
 
-const noMatchingKeyError = (negotiateToken: TNegotiateToken) =>
+const RC4_HMAC_ENCRYPTION_TYPE = 23;
+const ENCRYPTION_TYPE_NAMES: Record<number, string> = {
+  [KerberosEncryptionType.Aes128CtsHmacSha196]: "AES128",
+  [KerberosEncryptionType.Aes256CtsHmacSha196]: "AES256",
+  [RC4_HMAC_ENCRYPTION_TYPE]: "RC4"
+};
+
+const noMatchingKeyError = (negotiateToken: TNegotiateToken, nextStep?: string) =>
   new KerberosError({
     reason: KerberosFailureReason.NoMatchingKey,
-    message: `The keytab has no key for ${negotiateToken.serviceName} with key version ${negotiateToken.ticketKeyVersion ?? "none"} and encryption type ${negotiateToken.ticketEncryptionType}`,
+    message: `The keytab has no key for ${negotiateToken.serviceName} with key version ${negotiateToken.ticketKeyVersion ?? "none"} and encryption type ${ENCRYPTION_TYPE_NAMES[negotiateToken.ticketEncryptionType] ?? negotiateToken.ticketEncryptionType}. ${
+      nextStep ??
+      (negotiateToken.ticketEncryptionType === RC4_HMAC_ENCRYPTION_TYPE
+        ? "The ticket uses RC4: turn on AES for the service account, then export and upload a new keytab."
+        : "Upload a keytab that holds this key version, exported after the service account's last password change.")
+    }`,
     serviceName: negotiateToken.serviceName,
     keyVersion: negotiateToken.ticketKeyVersion
   });
@@ -551,11 +564,19 @@ export const assertTicketIsForServicePrincipal = (
   negotiateToken: TNegotiateToken,
   { principal, newestKeyVersion }: { principal: string; newestKeyVersion: number }
 ) => {
-  if (
-    negotiateToken.serviceName.toLowerCase() !== principal.toLowerCase() ||
-    negotiateToken.ticketKeyVersion === null ||
-    negotiateToken.ticketKeyVersion > newestKeyVersion
-  ) {
+  if (negotiateToken.serviceName.toLowerCase() !== principal.toLowerCase()) {
+    throw noMatchingKeyError(
+      negotiateToken,
+      `The keytab is for ${principal}. Upload a keytab for ${negotiateToken.serviceName}, or have computers use the host name the keytab was created for.`
+    );
+  }
+  if (negotiateToken.ticketKeyVersion === null) {
+    throw noMatchingKeyError(
+      negotiateToken,
+      "The ticket carries no key version, so it can't be matched to a keytab key. Check that the service principal is mapped to one domain account."
+    );
+  }
+  if (negotiateToken.ticketKeyVersion > newestKeyVersion) {
     throw noMatchingKeyError(negotiateToken);
   }
 };
@@ -576,7 +597,19 @@ export const verifyNegotiateToken = async ({
       entry.keyVersion === negotiateToken.ticketKeyVersion &&
       entry.principal.toLowerCase() === negotiateToken.serviceName.toLowerCase()
   );
-  if (!keytabEntry) throw noMatchingKeyError(negotiateToken);
+  if (!keytabEntry) {
+    const hasKeyVersion = keytabEntries.some(
+      (entry) =>
+        entry.keyVersion === negotiateToken.ticketKeyVersion &&
+        entry.principal.toLowerCase() === negotiateToken.serviceName.toLowerCase()
+    );
+    throw noMatchingKeyError(
+      negotiateToken,
+      hasKeyVersion && negotiateToken.ticketEncryptionType !== RC4_HMAC_ENCRYPTION_TYPE
+        ? `The keytab has this key version but not ${ENCRYPTION_TYPE_NAMES[negotiateToken.ticketEncryptionType] ?? `encryption type ${negotiateToken.ticketEncryptionType}`}. Export the keytab again with that encryption type and upload it.`
+        : undefined
+    );
+  }
 
   const ticket = asMalformed(
     () =>

@@ -4235,7 +4235,7 @@ interface SetPkiApplicationMicrosoftAutoenrollmentEnrollment {
     keyVersion: number;
     connectionId: string;
     connectionName: string;
-    allowedGroups: { sid: string; name: string | null }[];
+    allowedGroups: { sid: string; name: string }[];
     renewBeforeDays: number;
     allowAnyChannelBinding: boolean;
     keytabSource: MicrosoftAutoenrollmentKeytabSource;

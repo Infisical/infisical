@@ -344,44 +344,6 @@ describe("certificateApprovalService issuing an approved request", () => {
       });
     });
 
-    test("issues a renewal whose original expired as a new enrollment, unlinked, when the check drops the link", async () => {
-      preSignCheck.mockResolvedValue({ renewedFromCertificateId: null });
-      deps.certificateDAL = {
-        updateById: vi.fn(),
-        findById: vi.fn().mockResolvedValue({ id: "cert-old", orderId: null })
-      };
-      deps.resourceMetadataDAL = { find: vi.fn().mockResolvedValue([]), insertMany: vi.fn() };
-      deps.certificateAlertEventEmitter = { emit: vi.fn() };
-      deps.internalCaService.signCertFromCa.mockImplementation(
-        async ({ onPersisted }: { onPersisted: (cert: unknown, tx: unknown) => Promise<void> }) => {
-          await onPersisted({ id: "cert-new", notAfter: new Date(Date.now() + 86400000) }, "issuance-tx");
-          throw SIGNING_STOPPED;
-        }
-      );
-
-      await expect(
-        issueWithCheck(
-          storedRequest({
-            enrollmentType: EnrollmentType.MICROSOFT_AUTOENROLLMENT,
-            csr: await buildCsrPem(),
-            commonName: AD_NAME,
-            altNames: [{ type: "dns_name", value: AD_NAME }],
-            renewedFromCertificateId: "cert-old"
-          })
-        )
-      ).rejects.toThrow(SIGNING_STOPPED);
-
-      expect(deps.certificateRequestDAL.updateById).toHaveBeenCalledWith("request-id", {
-        renewedFromCertificateId: null
-      });
-      expect(deps.certificateDAL.updateById).toHaveBeenCalledWith(
-        "cert-new",
-        expect.not.objectContaining({ renewedFromCertificateId: expect.any(String) as string }),
-        "issuance-tx"
-      );
-      expect(deps.certificateDAL.updateById).not.toHaveBeenCalledWith("cert-old", expect.anything(), expect.anything());
-    });
-
     test("does not run another method's check", async () => {
       await expect(
         issueWithCheck(

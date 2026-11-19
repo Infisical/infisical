@@ -4,7 +4,6 @@ import { faCheck, faCopy, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AxiosError } from "axios";
-import { format } from "date-fns";
 import {
   AlertTriangleIcon,
   EyeIcon,
@@ -96,17 +95,18 @@ import {
 } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { downloadFile } from "@app/helpers/download";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { bytesToBase64 } from "@app/helpers/string";
 import { useDebounce, useDiscardChangesGuard, useToggle } from "@app/hooks";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { useLdapConnectionListGroups } from "@app/hooks/api/appConnections/ldap";
 import { isScepRaCaSigningSupported } from "@app/hooks/api/ca/capabilities";
 import { CaType } from "@app/hooks/api/ca/enums";
 import { enrollmentTypeToNameMap } from "@app/hooks/api/certificates/constants";
 import {
   useGetMicrosoftAutoenrollmentServicePrincipal,
-  useGetPkiApplicationEnrollment,
-  useListMicrosoftAutoenrollmentGroups
+  useGetPkiApplicationEnrollment
 } from "@app/hooks/api/pkiApplications";
 import {
   useClearPkiApplicationAcmeEnrollment,
@@ -1532,8 +1532,30 @@ type MicrosoftAutoenrollmentForm = z.infer<
   ReturnType<typeof createMicrosoftAutoenrollmentFormSchema>
 >;
 
-const formatRenewBeforeHours = (hours: number) =>
-  hours >= 48 ? `${Math.floor(hours / 24)} days` : `${hours} hours`;
+const SECONDS_PER_HOUR = 3600;
+const SECONDS_PER_DAY = 86400;
+
+const formatRenewalPeriod = (seconds: number) => {
+  const days = Math.floor(seconds / SECONDS_PER_DAY);
+  const hours = Math.floor((seconds % SECONDS_PER_DAY) / SECONDS_PER_HOUR);
+  const parts = [
+    days ? `${days} ${days === 1 ? "day" : "days"}` : null,
+    hours ? `${hours} ${hours === 1 ? "hour" : "hours"}` : null
+  ].filter(Boolean);
+  return parts.length ? parts.join(" ") : "less than an hour";
+};
+
+const MIN_WINDOWS_RENEWAL_PERIOD_SECONDS = 8 * SECONDS_PER_HOUR;
+
+const getRenewalPeriodNote = (initial: TMicrosoftAutoenrollmentEnrollment | null) => {
+  const seconds = initial?.effectiveRenewBeforeSeconds;
+  if (seconds == null || !initial) return null;
+  if (seconds <= MIN_WINDOWS_RENEWAL_PERIOD_SECONDS) {
+    return " Windows never renews certificates this short-lived, so computers request a new one instead.";
+  }
+  if (seconds === initial.renewBeforeDays * SECONDS_PER_DAY) return null;
+  return ` For this profile, Windows renews ${formatRenewalPeriod(seconds)} before expiry.`;
+};
 
 const getMicrosoftAutoenrollmentFormValues = (
   initial: TMicrosoftAutoenrollmentEnrollment | null
@@ -1623,6 +1645,7 @@ const MicrosoftAutoenrollmentPanel = ({
   const reuseFrom = watch("reuseFrom");
   const allowAnyChannelBinding = watch("allowAnyChannelBinding");
   const channelBindingStatus = initial?.channelBinding.status;
+  const isCloud = isInfisicalCloud();
 
   const { data: ldapConnections, isPending: isLdapConnectionsLoading } =
     useListAvailableAppConnections(AppConnection.LDAP, currentProject.id);
@@ -1634,12 +1657,10 @@ const MicrosoftAutoenrollmentPanel = ({
     isFetching: isGroupsFetching,
     isError: isGroupsError,
     error: groupsError
-  } = useListMicrosoftAutoenrollmentGroups({
-    applicationId,
-    profileId,
-    connectionId: connectionId ?? undefined,
-    search: debouncedGroupSearch.trim().slice(0, MAX_GROUP_SEARCH_LENGTH) || undefined
-  });
+  } = useLdapConnectionListGroups(
+    connectionId ?? undefined,
+    debouncedGroupSearch.trim().slice(0, MAX_GROUP_SEARCH_LENGTH) || undefined
+  );
 
   const isPending =
     setMutation.isPending || clearMutation.isPending || reenrollMutation.isPending || isSubmitting;
@@ -1692,12 +1713,14 @@ const MicrosoftAutoenrollmentPanel = ({
         !initial || dirtyFields.allowedGroups
           ? values.allowedGroups.map((group) => group.sid)
           : undefined,
-      renewBeforeDays: values.renewBeforeDays ?? undefined,
+      renewBeforeDays:
+        !initial || dirtyFields.renewBeforeDays ? (values.renewBeforeDays ?? undefined) : undefined,
       keytab: values.keytabFile
         ? bytesToBase64(new Uint8Array(await values.keytabFile.arrayBuffer()))
         : undefined,
       reuseKeytab: values.reuseFrom ? { profileId: values.reuseFrom.profileId } : undefined,
-      allowAnyChannelBinding: values.allowAnyChannelBinding
+      allowAnyChannelBinding:
+        !initial || dirtyFields.allowAnyChannelBinding ? values.allowAnyChannelBinding : undefined
     });
     reset({ ...values, keytabFile: null, reuseFrom: null });
     setIsReplacingKeytab(false);
@@ -1733,7 +1756,6 @@ const MicrosoftAutoenrollmentPanel = ({
   const savedKeytabServicePrincipalName = initial?.servicePrincipalName.split("@")[0];
   const isSavedKeytabForOtherHost =
     Boolean(initial && instanceServicePrincipalName) &&
-    !initial?.keytabMismatch &&
     !isReplacingKeytab &&
     !reuseFrom &&
     savedKeytabServicePrincipalName?.toLowerCase() !== instanceServicePrincipalName;
@@ -1759,41 +1781,6 @@ const MicrosoftAutoenrollmentPanel = ({
         disabled={isPending}
         className="min-h-0 thin-scrollbar min-w-0 flex-1 space-y-5 overflow-y-auto p-4"
       >
-        {initial?.keytabMismatch ? (
-          <Alert variant="warning">
-            <TriangleAlertIcon />
-            <AlertTitle>The keytab doesn&apos;t match this instance&apos;s name</AlertTitle>
-            <AlertDescription>
-              <p>
-                Since {format(new Date(initial.keytabMismatch.firstSeenAt), "MMM d, h:mm a")},{" "}
-                {initial.keytabMismatch.requestCount}{" "}
-                {initial.keytabMismatch.requestCount === 1 ? "request" : "requests"} asked for{" "}
-                <span className="font-mono">{initial.keytabMismatch.servicePrincipalName}</span>,
-                but this keytab is for{" "}
-                <span className="font-mono">{initial.servicePrincipalName.split("@")[0]}</span>.
-                Select <span className="font-medium">Replace</span> under Kerberos Keytab, then{" "}
-                <span className="font-medium">Use This Keytab</span> if another profile in this
-                application has a keytab for this host name. Otherwise, run the{" "}
-                <span className="font-mono">ktpass</span> command shown there and upload the new
-                keytab.
-              </p>
-            </AlertDescription>
-          </Alert>
-        ) : null}
-        {!allowAnyChannelBinding &&
-        channelBindingStatus === MicrosoftAutoenrollmentChannelBindingStatus.Unverifiable ? (
-          <Alert variant="warning">
-            <TriangleAlertIcon />
-            <AlertTitle>TLS channel bindings can&apos;t be checked</AlertTitle>
-            <AlertDescription>
-              <p>
-                {initial?.channelBinding.reason} Computers&apos; requests are refused until this is
-                fixed. If this deployment can&apos;t support the check, turn on{" "}
-                <span className="font-medium">Accept any TLS channel binding</span> below.
-              </p>
-            </AlertDescription>
-          </Alert>
-        ) : null}
         {enabled && initial ? (
           <SectionCard title="Endpoint">
             <CopyableField
@@ -1836,16 +1823,12 @@ const MicrosoftAutoenrollmentPanel = ({
           {isSavedKeytabForOtherHost ? (
             <Alert variant="warning">
               <TriangleAlertIcon />
-              <AlertTitle>This keytab is for another host name</AlertTitle>
+              <AlertTitle>Keytab is for another host name</AlertTitle>
               <AlertDescription>
                 <p>
-                  Computers ask for a ticket for{" "}
-                  <span className="font-mono">{servicePrincipal?.servicePrincipalName}</span>, but
-                  this keytab is for{" "}
-                  <span className="font-mono">{savedKeytabServicePrincipalName}</span>. If no proxy
-                  or CNAME maps one name to the other, computers can&apos;t sign in. Select{" "}
-                  <span className="font-medium">Replace</span> and upload a keytab for this
-                  instance&apos;s host name.
+                  Computers ask for{" "}
+                  <span className="font-mono">{servicePrincipal?.servicePrincipalName}</span>.
+                  Replace the keytab with one for that name.
                 </p>
               </AlertDescription>
             </Alert>
@@ -1942,10 +1925,10 @@ const MicrosoftAutoenrollmentPanel = ({
                     value={field.value}
                     onValueChange={field.onChange}
                     getOptionValue={(option) => option.sid}
-                    getOptionLabel={(option) => option.name ?? option.sid}
+                    getOptionLabel={(option) => option.name}
                     renderOption={(option) => (
                       <div className="flex min-w-0 items-center justify-between gap-4">
-                        <span className="truncate">{option.name ?? option.sid}</span>
+                        <span className="truncate">{option.name}</span>
                         <span className="shrink-0 font-mono text-xs text-muted">{option.sid}</span>
                       </div>
                     )}
@@ -1982,6 +1965,17 @@ const MicrosoftAutoenrollmentPanel = ({
           />
         </SectionCard>
         <SectionCard title="TLS Channel Binding">
+          {!allowAnyChannelBinding &&
+          channelBindingStatus === MicrosoftAutoenrollmentChannelBindingStatus.Unverifiable ? (
+            <Alert variant="warning">
+              <TriangleAlertIcon />
+              <AlertTitle>Channel bindings can&apos;t be checked</AlertTitle>
+              <AlertDescription>
+                {initial?.channelBinding.reason} Requests are refused. If this can&apos;t be fixed,
+                turn on Accept any TLS channel binding below.
+              </AlertDescription>
+            </Alert>
+          ) : null}
           <Controller
             control={control}
             name="allowAnyChannelBinding"
@@ -1992,17 +1986,14 @@ const MicrosoftAutoenrollmentPanel = ({
                     Accept any TLS channel binding
                   </Label>
                   <FieldDescription>
-                    Turn on only when computers reach Infisical through a proxy that inspects HTTPS,
-                    or when this instance can&apos;t read its own certificate, such as in FIPS mode.
-                    It also accepts a Kerberos ticket relayed through another HTTPS site.
+                    {isCloud
+                      ? "Turn on only when a proxy inspects HTTPS between your computers and Infisical."
+                      : "Turn on only when a proxy inspects HTTPS or bindings can't be checked."}{" "}
+                    While on, a site that gets a computer to sign in to it can enroll as that
+                    computer.
                   </FieldDescription>
-                  {allowAnyChannelBinding &&
-                  channelBindingStatus === MicrosoftAutoenrollmentChannelBindingStatus.Enforced ? (
-                    <FieldDescription>
-                      This instance can now check TLS channel bindings, so you can turn this off.
-                    </FieldDescription>
-                  ) : null}
-                  {!allowAnyChannelBinding &&
+                  {!isCloud &&
+                  !allowAnyChannelBinding &&
                   channelBindingStatus ===
                     MicrosoftAutoenrollmentChannelBindingStatus.NotChecked ? (
                     <FieldDescription>{initial?.channelBinding.reason}</FieldDescription>
@@ -2043,14 +2034,8 @@ const MicrosoftAutoenrollmentPanel = ({
                 </FieldContent>
                 {error ? <FieldError>{error.message}</FieldError> : null}
                 <FieldDescription>
-                  Windows renews the certificate this many days before it expires. 42 days matches
-                  the AD CS default. Windows only renews a certificate when this is more than 8
-                  hours and less than 20% of the certificate&apos;s validity, so a value outside
-                  that range is moved into it. Certificates valid for 40 hours or less can&apos;t be
-                  renewed, and computers request a new one instead.
-                  {initial && initial.effectiveRenewBeforeHours !== initial.renewBeforeDays * 24
-                    ? ` For this profile's validity, Windows renews ${formatRenewBeforeHours(initial.effectiveRenewBeforeHours)} before expiry.`
-                    : null}
+                  Days before expiry that Windows renews the certificate.
+                  {getRenewalPeriodNote(initial)}
                 </FieldDescription>
               </Field>
             )}
@@ -2059,9 +2044,8 @@ const MicrosoftAutoenrollmentPanel = ({
             <Field>
               <FieldLabel>Re-enroll computers</FieldLabel>
               <FieldDescription>
-                Saving changes doesn&apos;t replace certificates computers already hold. To make
-                every computer request a new certificate the next time it fetches the enrollment
-                policy, re-enroll them.
+                Makes every computer request a new certificate the next time it fetches the
+                enrollment policy.
               </FieldDescription>
               <div>
                 <ConfirmActionButton

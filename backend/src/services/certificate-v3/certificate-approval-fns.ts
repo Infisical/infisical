@@ -104,7 +104,7 @@ import { TAltNameEntry, TCertificateIssuanceResponse, TIssuerNameOverride } from
 
 export type TCertificateRequestPreSignHook = (
   certificateRequest: NonNullable<Awaited<ReturnType<TCertificateRequestDALFactory["findById"]>>>
-) => Promise<{ renewedFromCertificateId: null } | undefined>;
+) => Promise<void>;
 
 export type TIssueCertificateFromApprovedRequestDeps = {
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
@@ -1196,7 +1196,7 @@ export const certificateApprovalServiceFactory = (
   };
 
   const issueCertificate = async (certificateRequestId: string): Promise<TCertificateIssuanceResponse> => {
-    let certRequest = await certificateRequestDAL.findById(certificateRequestId);
+    const certRequest = await certificateRequestDAL.findById(certificateRequestId);
     if (!certRequest) {
       throw new NotFoundError({ message: "Certificate request not found" });
     }
@@ -1226,11 +1226,7 @@ export const certificateApprovalServiceFactory = (
         isInternal: true
       });
 
-      const preSignChanges = await enrollmentPreSignHooks?.[enrollmentType]?.(certRequest);
-      if (preSignChanges) {
-        await certificateRequestDAL.updateById(certificateRequestId, preSignChanges);
-        certRequest = { ...certRequest, ...preSignChanges };
-      }
+      await enrollmentPreSignHooks?.[enrollmentType]?.(certRequest);
 
       const externalCaResult = await $processExternalCARequest(
         certRequest,

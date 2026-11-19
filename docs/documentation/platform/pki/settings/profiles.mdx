@@ -68,7 +68,7 @@ Set default values for custom X.509 extensions. The [certificate policy](/docume
 
 Set a value and Infisical uses it whenever the request doesn't supply one. Leave the value empty and the request supplies it, which suits a per-principal value such as an Active Directory security identifier. Either way, Infisical checks the value against the policy's rule for that OID.
 
-[Microsoft Autoenrollment](/documentation/platform/pki/applications/enrollment-methods/microsoft-autoenrollment) always adds the computer's security identifier (SID) extension, checked only against a policy rule for its OID, and the certificate template information extension, and both replace any value the profile sets for those OIDs.
+[Microsoft Autoenrollment](/documentation/platform/pki/applications/enrollment-methods/microsoft-autoenrollment) always adds two extensions, even if you don't list their OIDs: the computer's security identifier (SID) and the certificate template information. Both replace any value the profile sets for those OIDs. If the policy has a rule for the SID extension's OID, the SID is checked against it. The template information extension isn't checked.
 
 Mark an extension **Critical** when a client that can't process it must reject the certificate rather than ignore it. Leave it clear otherwise, which is the usual choice. Where an extension's own specification fixes criticality, or the certificate policy pins it for that OID, the checkbox is read only.
 

@@ -103,13 +103,12 @@ import {
   canRevokeAfterDeletion,
   DELETED_CERTIFICATE_NO_ACTIONS,
   getApplicationCertificateAccess,
-  getEnrollmentRenewalBlockedReason,
+  getRenewNowState,
   getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails,
   isExpiringWithinOneDay,
-  isManagedCertificate,
-  RENEWAL_UNAVAILABLE_NO_PROFILE
+  isManagedCertificate
 } from "./CertificatesTable.utils";
 import { ColumnVisibilityToggle, getDefaultVisibleColumns } from "./ColumnVisibilityToggle";
 import { certificatesToCSV, downloadCSV } from "./csvExport";
@@ -1302,27 +1301,20 @@ export const CertificatesTable = ({
 
                                 if (!isRenewable) return null;
 
-                                const profileMissing = !certificate.profileId;
-                                if (profileMissing && !isManagedCertificate(certificate))
+                                if (!certificate.profileId && !isManagedCertificate(certificate))
                                   return null;
 
-                                const enrollmentRenewalBlockedReason =
-                                  getEnrollmentRenewalBlockedReason(certificate);
-                                let renewBlockedReason = rowApplicationAccess?.renewBlockedReason;
-                                if (profileMissing)
-                                  renewBlockedReason = RENEWAL_UNAVAILABLE_NO_PROFILE;
-                                else if (enrollmentRenewalBlockedReason)
-                                  renewBlockedReason = enrollmentRenewalBlockedReason;
+                                const renewNow = getRenewNowState({
+                                  certificate,
+                                  canRenew: canRenewCertificate,
+                                  permissionBlockedReason: rowApplicationAccess?.renewBlockedReason
+                                });
 
                                 return (
-                                  <BlockedActionTooltip reason={renewBlockedReason}>
+                                  <BlockedActionTooltip reason={renewNow.reason}>
                                     <DropdownMenuItem
-                                      isDisabled={
-                                        !canRenewCertificate ||
-                                        profileMissing ||
-                                        Boolean(enrollmentRenewalBlockedReason)
-                                      }
-                                      isDisabledFocusable={Boolean(renewBlockedReason)}
+                                      isDisabled={renewNow.isDisabled}
+                                      isDisabledFocusable={Boolean(renewNow.reason)}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handlePopUpOpen("renewCertificate", {
