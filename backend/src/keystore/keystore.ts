@@ -219,9 +219,6 @@ export const KeyStorePrefixes = {
     `signing-activity-trend:${projectId}:${range}:${signerId ?? "all"}` as const,
   RefreshTokenGrace: (sessionId: string, refreshVersion: number) =>
     `refresh-token-grace:${sessionId}:${refreshVersion}` as const,
-  // The single per-session key servers before per-version grace read and write; kept in step so a rolling
-  // upgrade does not revoke sessions refreshed across old and new servers.
-  RefreshTokenGraceLegacy: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
   EmailSignupOtpHash: (hash: string) => `email-signup-otp:${hash}:hash` as const,
   EmailSignupOtpLock: (hash: string) => `email-signup-otp:${hash}:lock` as const,
   EmailDispatchCooldown: (purpose: string, mailboxHash: string) =>

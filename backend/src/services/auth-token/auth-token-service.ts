@@ -323,15 +323,6 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
         return { decodedToken, tokenVersion, isGraceHit: true };
       }
 
-      const legacyGraceValue = await keyStore.getItemPrimary(KeyStorePrefixes.RefreshTokenGraceLegacy(tokenVersion.id));
-      if (
-        legacyGraceValue !== null &&
-        Number(legacyGraceValue) === decodedToken.refreshVersion &&
-        tokenVersion.refreshVersion === decodedToken.refreshVersion + 1
-      ) {
-        return { decodedToken, tokenVersion, isGraceHit: true };
-      }
-
       // An old token used outside the grace window is treated as stolen.
       await tokenDAL.deleteTokenSession({ id: tokenVersion.id, userId: decodedToken.userId });
 
@@ -355,18 +346,14 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     const oldRefreshVersion = tokenVersion.refreshVersion;
 
     const graceKey = KeyStorePrefixes.RefreshTokenGrace(tokenVersion.id, oldRefreshVersion);
-    const legacyGraceKey = KeyStorePrefixes.RefreshTokenGraceLegacy(tokenVersion.id);
-    const writeGraceEntries = (ttlInSeconds: number) =>
-      Promise.all([
-        keyStore.setItemWithExpiry(graceKey, ttlInSeconds, String(tokenVersion.accessVersion)),
-        keyStore.setItemWithExpiry(legacyGraceKey, ttlInSeconds, String(oldRefreshVersion))
-      ]);
+    const writeGraceEntry = (ttlInSeconds: number) =>
+      keyStore.setItemWithExpiry(graceKey, ttlInSeconds, String(tokenVersion.accessVersion));
     // Brings the window back to the grace period from now. A failure is only logged: the pending entry still
     // covers the window, for longer, and failing the request after the version moved would leave the client
     // holding only its old token.
-    const settleGraceEntries = async () => {
+    const settleGraceEntry = async () => {
       try {
-        await writeGraceEntries(KeyStoreTtls.RefreshTokenGraceInSeconds);
+        await writeGraceEntry(KeyStoreTtls.RefreshTokenGraceInSeconds);
       } catch (error) {
         logger.warn(error, `Failed to shorten the refresh token grace entry [sessionId=${tokenVersion.id}]`);
       }
@@ -374,7 +361,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
 
     // Written before the increment, with a TTL that outlives it: a concurrent request holding the old token
     // that reads the new version must find the entry, or it would revoke the session as reuse.
-    await writeGraceEntries(KeyStoreTtls.RefreshTokenGracePendingInSeconds);
+    await writeGraceEntry(KeyStoreTtls.RefreshTokenGracePendingInSeconds);
 
     let updatedSession: Awaited<ReturnType<typeof tokenDAL.incrementRefreshVersion>>;
     try {
@@ -398,11 +385,11 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
       );
       if (!current || current.accessVersion !== tokenVersion.accessVersion) throw sessionNoLongerValid();
       // This request's pending write may have landed after the winner settled the entry.
-      await settleGraceEntries();
+      await settleGraceEntry();
       return { isGraceHit: true };
     }
 
-    await settleGraceEntries();
+    await settleGraceEntry();
 
     // Determine refresh token expiry
     let refreshTokenExpiresIn: string | number = appCfg.JWT_REFRESH_LIFETIME;
