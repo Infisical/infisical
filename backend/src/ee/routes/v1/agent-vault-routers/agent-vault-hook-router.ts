@@ -54,7 +54,6 @@ export const registerAgentVaultHookRouter = async (server: FastifyZodProvider) =
             hookId: hook.id,
             hookName: hook.name,
             url: hook.url,
-            mode: hook.mode,
             ruleCount: hook.rules.length
           }
         }
@@ -155,7 +154,6 @@ export const registerAgentVaultHookRouter = async (server: FastifyZodProvider) =
             name: req.body.name,
             description: req.body.description,
             url: req.body.url,
-            mode: req.body.mode,
             ruleCount: req.body.rules?.length,
             secretReplaced
           }

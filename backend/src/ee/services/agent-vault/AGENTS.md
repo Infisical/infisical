@@ -638,14 +638,14 @@ resolve.
   every request to the hook. Names aren't validated on save (inline names differ per session), and a name the session
   lacks matches nothing. **A narrowing that doesn't fit the matched service's type is ignored and the rule matches the
   whole service**: the type isn't known at save, and failing closed sends more traffic to the hook, never less.
-- **`mode` is `gate` only**, an enum so `notify` can come later without a breaking change.
-- **Permissions are flat CRUD on `agent-vault-hooks`**: admin all, member `read`. Read returns name, URL, rules and
-  mode, never the secret. Minting with `hookId` takes `read` on hooks; minting with an inline hook takes
+- **A hook has one behavior, gate, and no `mode` field** in the API, the table or the resolve payload.
+- **Permissions are flat CRUD on `agent-vault-hooks`**: admin all, member `read`. Read returns name, URL and rules,
+  never the secret. Minting with `hookId` takes `read` on hooks; minting with an inline hook takes
   `create-with-inline-hook` on sessions (admin only, separate from `create-with-inline-services` so a custom role can
   let an orchestrator inline a hook without opening hosts), because an inline URL is a new destination the proxy POSTs
   to from inside the customer's network. Both are checked at mint only, never on resolve: a hook only adds checks, so
   dropping it on a demotion would widen access.
-- **Session reads return `hook: { id, name, isInline }`, plus `url`, `mode` and `rules` only for callers with `read` on
+- **Session reads return `hook: { id, name, isInline }`, plus `url` and `rules` only for callers with `read` on
   hooks** (`toSessionHookView`).
 - **The secret is the admin's, write-only.** Sealed under the project data key as `{ value }` in `encryptedSecret`,
   never returned, audited only as `secretReplaced`. A PATCH without `secret` keeps it. The URL refuses a query string,
@@ -659,7 +659,7 @@ resolve.
 - **The plan flag gates writes only** (`agentVaultHooks`, `assertAgentVaultHooksOnPlan`): saved hook create, an edit of
   URL, secret or rules, and an inline hook at mint. Rename, delete, reads and resolve never check it, so a downgrade
   keeps hooks running.
-- **Resolve sends one top-level `hook: { id, name, url, secret, mode, rules } | null`** as stored (`findSessionHook`,
+- **Resolve sends one top-level `hook: { id, name, url, secret, rules } | null`** as stored (`findSessionHook`,
   kept to the session's project and, for an inline hook, the session). It also sends each service's `accessBundleId`
   (null when not from a bundle) and a top-level `session` (`label`, `metadata`, `actor` with the `actorType` fallback,
   `onBehalfOf`), which the proxy puts in the hook payload with `hook: { id, name }`. A hook row without a secret fails

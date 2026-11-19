@@ -12721,7 +12721,6 @@ describe("Agent Vault V1 Router", async () => {
       name: string | null;
       url: string;
       secret: string;
-      mode: string;
       rules: { service: string; methods?: string[]; paths?: string[]; tools?: string[] }[];
     } | null;
 
@@ -12787,7 +12786,6 @@ describe("Agent Vault V1 Router", async () => {
       expect(created.json().hook).toMatchObject({
         name: "approvals",
         url: hookUrl,
-        mode: "gate",
         rules: [
           { service: "github", methods: ["PUT"], paths: ["/repos"] },
           { service: "linear", tools: ["delete_issue"] }
@@ -12833,7 +12831,6 @@ describe("Agent Vault V1 Router", async () => {
         name: "resolve-hook",
         url: hookUrl,
         secret,
-        mode: "gate",
         rules: [{ service: service.name, methods: ["POST"] }]
       });
       expect(resolved.services[0]).not.toHaveProperty("hook");

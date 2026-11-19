@@ -7048,7 +7048,6 @@ interface AgentVaultHookCreateEvent {
     hookId: string;
     hookName: string;
     url: string;
-    mode: string;
     // An empty rule list sends every request of a session using the hook to it.
     ruleCount: number;
   };
@@ -7064,7 +7063,6 @@ interface AgentVaultHookUpdateEvent {
     // Null when the update removed it.
     description?: string | null;
     url?: string;
-    mode?: string;
     // Set when the update replaced the rules, with the new count.
     ruleCount?: number;
     // Whether a new secret was saved. The secret itself is never recorded.

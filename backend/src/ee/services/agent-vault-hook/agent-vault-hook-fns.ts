@@ -15,10 +15,6 @@ import { refineNoDuplicates } from "../agent-vault/agent-vault-list-schema-fns";
 import { pathPrefixSchema } from "../agent-vault/agent-vault-path-prefix-schemas";
 import { toolNameSchema } from "../agent-vault/agent-vault-tool-name-schemas";
 
-export enum AgentVaultHookMode {
-  Gate = "gate"
-}
-
 export const AGENT_VAULT_MAX_HOOK_URL_LENGTH = 2048;
 export const AGENT_VAULT_MIN_HOOK_SECRET_LENGTH = 32;
 export const AGENT_VAULT_MAX_HOOK_SECRET_LENGTH = 512;
@@ -98,8 +94,6 @@ export const AgentVaultHookSecretSchema = z.string().superRefine((value, ctx) =>
   }
   if (message) ctx.addIssue({ code: z.ZodIssueCode.custom, message });
 });
-
-export const AgentVaultHookModeSchema = z.nativeEnum(AgentVaultHookMode);
 
 const ruleListLimitMessage = (what: string) => `A rule can list at most ${AGENT_VAULT_MAX_HOOK_RULE_ENTRIES} ${what}.`;
 

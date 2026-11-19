@@ -149,10 +149,6 @@ export enum AgentVaultSessionLogStorageType {
   External = "external"
 }
 
-export enum AgentVaultHookMode {
-  Gate = "gate"
-}
-
 // The `error` the API gives a refused service or skill when a session is created, which the session form shows under
 // that field rather than in a toast.
 export enum AgentVaultSessionErrorCode {

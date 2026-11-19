@@ -1,7 +1,6 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { AgentVaultHookModeSchema } from "@app/ee/services/agent-vault-hook/agent-vault-hook-fns";
 import {
   MAX_OAUTH_SCOPE_LENGTH,
   OAUTH_SCOPE_TOKEN_PATTERN
@@ -268,7 +267,6 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
               name: z.string().nullable(),
               url: z.string(),
               secret: z.string(),
-              mode: AgentVaultHookModeSchema,
               rules: z
                 .object({
                   service: z.string(),

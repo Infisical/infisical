@@ -18,7 +18,6 @@ const HOOK_COLUMNS = [
   "name",
   "description",
   "url",
-  "mode",
   "rules",
   "secretsDeletedAt",
   "createdAt",
@@ -204,14 +203,13 @@ export const agentVaultHookDALFactory = (db: TDbClient) => {
       sessionId,
       url,
       encryptedSecret,
-      mode,
       rules
-    }: { projectId: string; sessionId: string; url: string; encryptedSecret: Buffer; mode: string; rules: unknown[] },
+    }: { projectId: string; sessionId: string; url: string; encryptedSecret: Buffer; rules: unknown[] },
     tx: Knex
   ): Promise<TAgentVaultHookRow> => {
     try {
       const [row] = (await tx(TableName.AgentVaultHook)
-        .insert({ projectId, sessionId, url, encryptedSecret, mode, rules: JSON.stringify(rules) })
+        .insert({ projectId, sessionId, url, encryptedSecret, rules: JSON.stringify(rules) })
         .returning(HOOK_COLUMNS)) as TAgentVaultHookRow[];
       return row;
     } catch (error) {

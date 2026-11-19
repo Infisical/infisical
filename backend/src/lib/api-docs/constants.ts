@@ -5243,7 +5243,6 @@ export const AGENT_VAULT = {
       "The key the proxy signs each check with, so your server can tell the check came from the proxy. 32 to 512 printable ASCII characters with no spaces, used exactly as given. Never returned once saved.",
     updateSecret:
       "A new key for the proxy to sign each check with. 32 to 512 printable ASCII characters with no spaces, used exactly as given. Leave it out to keep the saved one. Never returned once saved.",
-    mode: "What the hook does with each request it is asked about. `gate`, the only mode, means the proxy sends the request on only if the hook allows it.",
     rules:
       "Which of a session's requests the proxy asks the hook about. Leave it empty to ask about every request. A request is asked about when any rule matches it.",
     updateRules:

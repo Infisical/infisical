@@ -37,7 +37,7 @@ const inlineCredentialOf = (service: TAgentVaultSessionServiceSummary) => {
 const buildService = ({
   hooksOnPlan = true,
   rules = [{ action: "manage", subject: "all" }],
-  savedHook = { id: SAVED_HOOK_ID, name: "approvals", sessionId: null, url: HOOK_URL, mode: "gate", rules: [] }
+  savedHook = { id: SAVED_HOOK_ID, name: "approvals", sessionId: null, url: HOOK_URL, rules: [] }
 }: {
   hooksOnPlan?: boolean;
   rules?: RawRuleOf<MongoAbility>[];
@@ -160,7 +160,6 @@ describe("mintSession, a saved hook", () => {
       name: "approvals",
       isInline: false,
       url: HOOK_URL,
-      mode: "gate",
       rules: []
     });
     expect(result.hookAudit).toEqual({ hookId: SAVED_HOOK_ID, hookName: "approvals" });
@@ -204,7 +203,6 @@ describe("mintSession, an inline hook", () => {
         sessionId: result.session.id,
         url: HOOK_URL,
         encryptedSecret: Buffer.concat([Buffer.from("sealed:"), Buffer.from(JSON.stringify({ value: SECRET }))]),
-        mode: "gate",
         rules: inlineHook.rules
       },
       expect.anything()
@@ -554,7 +552,6 @@ describe("updateSession", () => {
       name: "approvals",
       isInline: false,
       url: HOOK_URL,
-      mode: "gate",
       rules: [{ service: "github", methods: ["PUT"], extra: true }]
     }
   };
@@ -657,7 +654,6 @@ describe("updateSession", () => {
       name: "approvals",
       isInline: false,
       url: HOOK_URL,
-      mode: "gate",
       rules: [{ service: "github", methods: ["PUT"] }]
     });
 

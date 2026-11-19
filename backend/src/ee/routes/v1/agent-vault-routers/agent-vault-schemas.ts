@@ -6,7 +6,6 @@ import {
   OAUTH_NEEDS_AUTHORIZATION_OR_MEMBERS_MESSAGE
 } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
 import {
-  AgentVaultHookModeSchema,
   AgentVaultHookRulesSchema,
   AgentVaultHookSecretSchema,
   AgentVaultHookUrlSchema
@@ -2239,7 +2238,6 @@ export const AgentVaultHookSchema = z.object({
   name: z.string().describe(AGENT_VAULT.HOOK.name),
   description: z.string().nullable().describe(AGENT_VAULT.HOOK.descriptionRead),
   url: z.string().describe(AGENT_VAULT.HOOK.url),
-  mode: AgentVaultHookModeSchema.describe(AGENT_VAULT.HOOK.mode),
   rules: hookRuleResponseSchema.array().describe(AGENT_VAULT.HOOK.rules),
   createdAt: z.date().describe(AGENT_VAULT.HOOK.createdAt),
   updatedAt: z.date().describe(AGENT_VAULT.HOOK.updatedAt)
@@ -2250,7 +2248,6 @@ export const AgentVaultCreateHookBodySchema = z.object({
   description: AgentVaultDescriptionSchema.optional().describe(AGENT_VAULT.HOOK.description),
   url: AgentVaultHookUrlSchema.describe(AGENT_VAULT.HOOK.url),
   secret: AgentVaultHookSecretSchema.describe(AGENT_VAULT.HOOK.secret),
-  mode: AgentVaultHookModeSchema.optional().describe(AGENT_VAULT.HOOK.mode),
   rules: AgentVaultHookRulesSchema.optional().describe(AGENT_VAULT.HOOK.rules)
 });
 
@@ -2260,7 +2257,6 @@ export const AgentVaultUpdateHookBodySchema = z
     description: AgentVaultDescriptionSchema.nullable().optional().describe(AGENT_VAULT.HOOK.updateDescription),
     url: AgentVaultHookUrlSchema.optional().describe(AGENT_VAULT.HOOK.url),
     secret: AgentVaultHookSecretSchema.optional().describe(AGENT_VAULT.HOOK.updateSecret),
-    mode: AgentVaultHookModeSchema.optional().describe(AGENT_VAULT.HOOK.mode),
     rules: AgentVaultHookRulesSchema.optional().describe(AGENT_VAULT.HOOK.updateRules)
   })
   .refine((fields) => Object.values(fields).some((value) => value !== undefined), {
@@ -2271,7 +2267,6 @@ export const AgentVaultInlineHookInputSchema = z
   .object({
     url: AgentVaultHookUrlSchema.describe(AGENT_VAULT.HOOK.url),
     secret: AgentVaultHookSecretSchema.describe(AGENT_VAULT.HOOK.secret),
-    mode: AgentVaultHookModeSchema.optional().describe(AGENT_VAULT.HOOK.mode),
     rules: AgentVaultHookRulesSchema.optional().describe(AGENT_VAULT.HOOK.rules)
   })
   .describe(AGENT_VAULT.SESSION.inlineHook);
@@ -2282,7 +2277,6 @@ export const AgentVaultSessionHookSchema = z
     name: z.string().nullable().describe(AGENT_VAULT.SESSION.hookNameRead),
     isInline: z.boolean().describe(AGENT_VAULT.SESSION.hookIsInline),
     url: z.string().optional().describe(AGENT_VAULT.HOOK.url),
-    mode: AgentVaultHookModeSchema.optional().describe(AGENT_VAULT.HOOK.mode),
     rules: hookRuleResponseSchema.array().optional().describe(AGENT_VAULT.HOOK.rules)
   })
   .nullable()

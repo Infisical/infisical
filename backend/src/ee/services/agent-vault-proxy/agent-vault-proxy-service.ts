@@ -29,7 +29,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
 import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
-import { AgentVaultHookMode, toHookRules } from "../agent-vault-hook/agent-vault-hook-fns";
+import { toHookRules } from "../agent-vault-hook/agent-vault-hook-fns";
 import { TResolvedSessionHook } from "../agent-vault-hook/agent-vault-hook-types";
 import {
   AGENT_VAULT_SERVICE_MOVED_MESSAGE,
@@ -1427,7 +1427,6 @@ export const agentVaultProxyServiceFactory = ({
           name: hookRow.name ?? null,
           url: hookRow.url,
           secret: $decryptValue(hookRow.encryptedSecret),
-          mode: hookRow.mode as AgentVaultHookMode,
           rules: toHookRules(hookRow.rules)
         }
       : null;

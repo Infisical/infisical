@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import { AgentVaultHttpMethod, AgentVaultServiceType } from "@app/hooks/api/agentVault";
-import { AgentVaultHookMode } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultHook } from "@app/hooks/api/agentVault/types";
 
 import { UNCHANGED_SECRET } from "../service-sheet/serviceSchema";
@@ -27,7 +26,6 @@ const storedHook: TAgentVaultHook = {
   name: "approvals",
   description: null,
   url: HOOK_URL,
-  mode: AgentVaultHookMode.Gate,
   rules: [{ service: "github", methods: [AgentVaultHttpMethod.Put] }],
   createdAt: "2026-11-19T00:00:00.000Z",
   updatedAt: "2026-11-19T00:00:00.000Z"

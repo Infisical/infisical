@@ -1,6 +1,6 @@
 import { TGenericPermission } from "@app/lib/types";
 
-import { AgentVaultHookMode, TAgentVaultHookRule } from "./agent-vault-hook-fns";
+import { TAgentVaultHookRule } from "./agent-vault-hook-fns";
 
 export type TAgentVaultHookScoped = { projectId: string; ctx: TGenericPermission };
 
@@ -9,7 +9,6 @@ export type TCreateHookDTO = TAgentVaultHookScoped & {
   description?: string | null;
   url: string;
   secret: string;
-  mode?: AgentVaultHookMode;
   rules?: TAgentVaultHookRule[];
 };
 
@@ -23,7 +22,6 @@ export type TUpdateHookDTO = THookByIdDTO & {
   description?: string | null;
   url?: string;
   secret?: string;
-  mode?: AgentVaultHookMode;
   rules?: TAgentVaultHookRule[];
 };
 
@@ -33,20 +31,18 @@ export type TAgentVaultHook = {
   name: string;
   description: string | null;
   url: string;
-  mode: AgentVaultHookMode;
   rules: TAgentVaultHookRule[];
   createdAt: Date;
   updatedAt: Date;
 };
 
-/** A session's hook as session reads return it. URL, mode and rules only for callers who can read hooks. */
+/** A session's hook as session reads return it. URL and rules only for callers who can read hooks. */
 export type TAgentVaultSessionHookSummary = {
   id: string;
   // Null for a hook sent inline with the session.
   name: string | null;
   isInline: boolean;
   url?: string;
-  mode?: AgentVaultHookMode;
   rules?: TAgentVaultHookRule[];
 };
 
@@ -56,6 +52,5 @@ export type TResolvedSessionHook = {
   name: string | null;
   url: string;
   secret: string;
-  mode: AgentVaultHookMode;
   rules: TAgentVaultHookRule[];
 };

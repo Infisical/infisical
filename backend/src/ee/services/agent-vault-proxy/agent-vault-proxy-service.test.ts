@@ -897,7 +897,6 @@ describe("hooks on resolve", () => {
     url: "https://hooks.example.com/agent-vault",
     // The test's decryptor hands the sealed bytes back as they are.
     encryptedSecret: Buffer.from(JSON.stringify({ value: "s".repeat(32) })),
-    mode: "gate",
     rules: [
       { service: "stripe", methods: ["POST"], paths: ["/v1/refunds"] },
       { service: "linear", tools: ["x"] }
@@ -918,7 +917,6 @@ describe("hooks on resolve", () => {
       name: "approvals",
       url: "https://hooks.example.com/agent-vault",
       secret: "s".repeat(32),
-      mode: "gate",
       rules: savedHook.rules
     });
     expect(resolved.services[0]).not.toHaveProperty("hook");

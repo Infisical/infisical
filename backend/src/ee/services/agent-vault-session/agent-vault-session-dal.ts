@@ -40,7 +40,6 @@ export type TAgentVaultSessionListRow = {
     name: string | null;
     isInline: boolean;
     url: string;
-    mode: string;
     rules: unknown;
   } | null;
 };
@@ -364,7 +363,6 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.AgentVaultHook).as("hookName"),
           db.ref("sessionId").withSchema(TableName.AgentVaultHook).as("hookSessionId"),
           db.ref("url").withSchema(TableName.AgentVaultHook).as("hookUrl"),
-          db.ref("mode").withSchema(TableName.AgentVaultHook).as("hookMode"),
           db.ref("rules").withSchema(TableName.AgentVaultHook).as("hookRules")
         )
         .orderBy(`${TableName.AgentVaultSession}.createdAt`, "desc")) as {
@@ -400,7 +398,6 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         hookName: string | null;
         hookSessionId: string | null;
         hookUrl: string | null;
-        hookMode: string | null;
         hookRules: unknown;
       }[];
 
@@ -448,7 +445,6 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
                   name: row.hookName,
                   isInline: row.hookSessionId !== null,
                   url: row.hookUrl!,
-                  mode: row.hookMode!,
                   rules: row.hookRules
                 }
         };

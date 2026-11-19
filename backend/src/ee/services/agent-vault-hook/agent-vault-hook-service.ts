@@ -12,7 +12,7 @@ import { ConflictError, NotFoundError } from "@app/lib/errors";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { getAgentVaultPermission } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultHookDALFactory, TAgentVaultHookRow } from "./agent-vault-hook-dal";
-import { AgentVaultHookMode, assertAgentVaultHooksOnPlan, toHookRules } from "./agent-vault-hook-fns";
+import { assertAgentVaultHooksOnPlan, toHookRules } from "./agent-vault-hook-fns";
 import {
   TAgentVaultHook,
   TAgentVaultHookScoped,
@@ -36,7 +36,6 @@ export const toAgentVaultHook = (row: TAgentVaultHookRow): TAgentVaultHook => ({
   name: row.name!,
   description: row.description ?? null,
   url: row.url,
-  mode: row.mode as AgentVaultHookMode,
   rules: toHookRules(row.rules),
   createdAt: row.createdAt,
   updatedAt: row.updatedAt
@@ -83,15 +82,7 @@ export const agentVaultHookServiceFactory = ({
     return { hook: toAgentVaultHook(hook) };
   };
 
-  const createHook = async ({
-    name,
-    description,
-    url,
-    secret,
-    mode = AgentVaultHookMode.Gate,
-    rules = [],
-    ...scoped
-  }: TCreateHookDTO) => {
+  const createHook = async ({ name, description, url, secret, rules = [], ...scoped }: TCreateHookDTO) => {
     await $authorize(scoped, ProjectPermissionAgentVaultHookActions.Create);
     await assertAgentVaultHooksOnPlan(licenseService, scoped.ctx.actorOrgId);
 
@@ -107,7 +98,6 @@ export const agentVaultHookServiceFactory = ({
         description: description ?? null,
         url,
         encryptedSecret,
-        mode,
         rules: JSON.stringify(rules)
       });
     } catch (error) {
@@ -119,7 +109,7 @@ export const agentVaultHookServiceFactory = ({
   };
 
   // Changes reach every session using the hook on the proxy's next resolve, since a session references the hook.
-  const updateHook = async ({ hookId, name, description, url, secret, mode, rules, ...scoped }: TUpdateHookDTO) => {
+  const updateHook = async ({ hookId, name, description, url, secret, rules, ...scoped }: TUpdateHookDTO) => {
     await $authorize(scoped, ProjectPermissionAgentVaultHookActions.Edit);
 
     const current = await agentVaultHookDAL.findSavedByIdInProject({ id: hookId, projectId: scoped.projectId });
@@ -152,7 +142,6 @@ export const agentVaultHookServiceFactory = ({
             ...(description === undefined ? {} : { description }),
             ...(url === undefined ? {} : { url }),
             ...(encryptedSecret === undefined ? {} : { encryptedSecret }),
-            ...(mode === undefined ? {} : { mode }),
             ...(rules === undefined ? {} : { rules: JSON.stringify(rules) })
           },
           tx

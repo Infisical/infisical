@@ -42,7 +42,6 @@ export type TResolveHookRow = {
   name: string | null;
   url: string;
   encryptedSecret: Buffer | null;
-  mode: string;
   rules: unknown;
 };
 
@@ -437,7 +436,7 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
         .where((qb) => {
           void qb.whereNull("sessionId").orWhere("sessionId", sessionId);
         })
-        .first("id", "name", "url", "encryptedSecret", "mode", "rules")) as TResolveHookRow | undefined;
+        .first("id", "name", "url", "encryptedSecret", "rules")) as TResolveHookRow | undefined;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault session hook" });
     }

@@ -26,7 +26,7 @@ import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent
 import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
 import { findCallerDelegation, resolveOnBehalfOfUser } from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
 import { TAgentVaultHookDALFactory, TAgentVaultHookRow } from "../agent-vault-hook/agent-vault-hook-dal";
-import { AgentVaultHookMode, assertAgentVaultHooksOnPlan, toHookRules } from "../agent-vault-hook/agent-vault-hook-fns";
+import { assertAgentVaultHooksOnPlan, toHookRules } from "../agent-vault-hook/agent-vault-hook-fns";
 import { TAgentVaultSessionHookSummary } from "../agent-vault-hook/agent-vault-hook-types";
 import { TAgentVaultResolveDALFactory } from "../agent-vault-proxy/agent-vault-resolve-dal";
 import { generateSessionLogKey, wrapSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
@@ -170,7 +170,7 @@ export const agentVaultSessionServiceFactory = ({
     if (permission.cannot(ProjectPermissionAgentVaultHookActions.Read, ProjectPermissionSub.AgentVaultHooks)) {
       return summary;
     }
-    return { ...summary, url: hook.url, mode: hook.mode as AgentVaultHookMode, rules: toHookRules(hook.rules) };
+    return { ...summary, url: hook.url, rules: toHookRules(hook.rules) };
   };
 
   const toSessionView = (
@@ -903,7 +903,6 @@ export const agentVaultSessionServiceFactory = ({
               sessionId: created.id,
               url: inlineHook.url,
               encryptedSecret: encryptedInlineHookSecret!,
-              mode: inlineHook.mode ?? AgentVaultHookMode.Gate,
               rules: inlineHook.rules ?? []
             },
             tx
@@ -935,7 +934,6 @@ export const agentVaultSessionServiceFactory = ({
                 name: sessionHook.name ?? null,
                 isInline: Boolean(sessionHook.sessionId),
                 url: sessionHook.url,
-                mode: sessionHook.mode,
                 rules: sessionHook.rules
               }
             : null,

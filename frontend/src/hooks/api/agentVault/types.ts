@@ -1,7 +1,6 @@
 import {
   AgentVaultCredentialType,
   AgentVaultDelegationScope,
-  AgentVaultHookMode,
   AgentVaultHttpMethod,
   AgentVaultMcpTransport,
   AgentVaultMemberType,
@@ -1189,21 +1188,19 @@ export type TAgentVaultHook = {
   name: string;
   description: string | null;
   url: string;
-  mode: AgentVaultHookMode;
   /** Empty sends every request of the session to the hook. */
   rules: TAgentVaultHookRule[];
   createdAt: string;
   updatedAt: string;
 };
 
-/** The hook a session was started with. URL, mode and rules only for callers who can read hooks. */
+/** The hook a session was started with. URL and rules only for callers who can read hooks. */
 export type TAgentVaultSessionHook = {
   id: string;
   /** Null for a hook sent inline with the session. */
   name: string | null;
   isInline: boolean;
   url?: string;
-  mode?: AgentVaultHookMode;
   rules?: TAgentVaultHookRule[];
 };
 

@@ -32,7 +32,6 @@ export async function up(knex: Knex): Promise<void> {
       // Text rather than a varchar: the API holds the 2048 limit.
       t.text("url").notNullable();
       t.binary("encryptedSecret").nullable();
-      t.string("mode", 16).notNullable().defaultTo("gate");
       t.jsonb("rules").notNullable();
       t.timestamp("secretsDeletedAt", { useTz: true }).nullable();
 

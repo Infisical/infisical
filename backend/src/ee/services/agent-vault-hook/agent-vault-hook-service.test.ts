@@ -28,7 +28,6 @@ const storedHook = {
   name: "approvals",
   description: null,
   url: HOOK_URL,
-  mode: "gate",
   rules: [{ service: "github", methods: ["PUT"] }],
   secretsDeletedAt: null,
   createdAt: new Date(),
@@ -114,7 +113,6 @@ describe("createHook", () => {
       description: null,
       url: HOOK_URL,
       encryptedSecret: sealed(SECRET),
-      mode: "gate",
       rules: JSON.stringify([{ service: "linear", tools: ["delete_issue"] }])
     });
     expect(result.hook).toMatchObject({ name: "approvals", rules: [{ service: "linear", tools: ["delete_issue"] }] });
