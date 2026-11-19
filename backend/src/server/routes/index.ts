@@ -2576,7 +2576,8 @@ export const registerRoutes = async (
     secretQueueService,
     secretV2BridgeDAL,
     kmsDataKeyService: secretsKmsDataKeyService,
-    secretDecryptReservations
+    secretDecryptReservations,
+    keyStore
   });
   const projectFolderGrantService = projectFolderGrantServiceFactory({
     projectFolderGrantDAL,

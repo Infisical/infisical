@@ -18,9 +18,20 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-fns";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { compressZstd, decompressZstd } from "@app/lib/compression";
+import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/crypto/cache";
+import { utcDayStamp } from "@app/lib/dates";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import {
+  recordSecretCacheAccessMetric,
+  recordSecretCacheWriteMetric,
+  SecretCacheAccessResult,
+  SecretEtagMissReason
+} from "@app/lib/telemetry/metrics";
 
 import { EventModificationType } from "../event-outbox/event-definition";
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
@@ -31,8 +42,15 @@ import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-f
 import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { FolderModifiedEventV1 } from "../secret-folder/secret-folder-events";
-import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
-import { recursivelyGetSecretPaths } from "../secret-v2-bridge/secret-v2-bridge-fns";
+import {
+  MAX_SECRET_CACHE_BYTES,
+  SECRET_DAL_TTL,
+  TSecretV2BridgeDALFactory
+} from "../secret-v2-bridge/secret-v2-bridge-dal";
+import {
+  getSecretEtagPermissionFingerprint,
+  recursivelyGetSecretPaths
+} from "../secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { decryptSecretRaw } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
@@ -43,6 +61,7 @@ import {
   TCreateSecretImportDTO,
   TDeleteSecretImportDTO,
   TGetSecretImportByIdDTO,
+  TGetRawSecretsFromImportDTO,
   TGetSecretImportsDTO,
   TGetSecretsFromImportDTO,
   TResyncSecretImportReplicationDTO,
@@ -60,12 +79,25 @@ type TSecretImportServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "findOne" | "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionFingerprint">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
   licenseService: TLicenseService;
   kmsDataKeyService: TKmsDataKeyService;
   secretDecryptReservations: TSecretDecryptReservations;
+  keyStore: Pick<
+    TKeyStoreFactory,
+    | "getItem"
+    | "getItemBuffer"
+    | "setExpiry"
+    | "setItemWithExpiry"
+    | "deleteItem"
+    | "pgGetIntItem"
+    | "hashGet"
+    | "hashSet"
+  >;
 };
+
+type TRawSecretsV2FromImports = Awaited<ReturnType<typeof fnSecretsV2FromImports>>;
 
 const ERR_SEC_IMP_NOT_FOUND = new BadRequestError({ message: "Secret import not found" });
 
@@ -86,7 +118,8 @@ export const secretImportServiceFactory = ({
   projectBotService,
   secretV2BridgeDAL,
   kmsDataKeyService,
-  secretDecryptReservations
+  secretDecryptReservations,
+  keyStore
 }: TSecretImportServiceFactoryDep) => {
   const $annotateCrossProjectImports = async <
     T extends { id: string; importEnv: { id: string; projectId?: string | null }; importPath: string }
@@ -902,15 +935,158 @@ export const secretImportServiceFactory = ({
     return fnSecretsFromImports({ allowedImports, folderDAL, secretDAL, secretImportDAL });
   };
 
-  const getRawSecretsFromImports = async ({
+  const $getRawSecretsV2FromImports = async ({
     path: secretPath,
     environment,
     projectId,
     actor,
     actorAuthMethod,
     actorId,
-    actorOrgId
-  }: TGetSecretsFromImportDTO) => {
+    actorOrgId,
+    ifNoneMatch
+  }: TGetRawSecretsFromImportDTO): Promise<{
+    secrets: TRawSecretsV2FromImports;
+    etag?: string;
+    notModified?: boolean;
+  }> => {
+    const permissionFingerprint = await getSecretEtagPermissionFingerprint({
+      keyStore,
+      permissionService,
+      projectId,
+      actor,
+      actorId,
+      actorOrgId
+    });
+
+    const etagRedisKey = KeyStorePrefixes.SecretEtag(projectId, utcDayStamp());
+    const requestParamsHash = generateCacheKeyFromData({
+      operation: "get-raw-secrets-from-imports",
+      environment,
+      secretPath
+    });
+    const etagField = `${actorId}:${permissionFingerprint}:${requestParamsHash}`;
+
+    const hasIfNoneMatch = ifNoneMatch !== undefined;
+    let etagMissReason: SecretEtagMissReason | undefined;
+
+    if (ifNoneMatch) {
+      const storedEtag = await keyStore.hashGet(etagRedisKey, etagField);
+      if (storedEtag && storedEtag === ifNoneMatch) {
+        recordSecretCacheAccessMetric(SecretCacheAccessResult.NOT_MODIFIED, { hasIfNoneMatch: true });
+        return { notModified: true, etag: ifNoneMatch, secrets: [] };
+      }
+      etagMissReason = storedEtag ? SecretEtagMissReason.VALUE_DIFFERS : SecretEtagMissReason.FIELD_ABSENT;
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
+    );
+
+    const cachedSecretDalVersion = await keyStore.pgGetIntItem(KeyStorePrefixes.SecretDalVersion(projectId));
+    const cacheKey = KeyStorePrefixes.SecretsServiceLayerCache({
+      projectId,
+      version: Number(cachedSecretDalVersion || 0),
+      actorId,
+      permissionFingerprint,
+      permissionHash: generateCacheKeyFromData(permission.rules),
+      requestParamsHash
+    });
+
+    const { decryptor: secretManagerDecryptor, encryptor: secretManagerEncryptor } =
+      await kmsDataKeyService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+
+    const storeEtag = async (etag: string) => {
+      await keyStore.hashSet(etagRedisKey, etagField, etag);
+      await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
+    };
+
+    const encryptedCachedSecrets = await keyStore.getItemBuffer(cacheKey);
+    if (encryptedCachedSecrets) {
+      try {
+        await keyStore.setExpiry(cacheKey, SECRET_DAL_TTL());
+        const cachedSecrets = await decompressZstd(secretManagerDecryptor({ cipherTextBlob: encryptedCachedSecrets }));
+        const cachedEtag = `"${generateCacheKeyFromBuffer(cachedSecrets)}"`;
+        const { secrets } = JSON.parse(cachedSecrets.toString("utf8")) as { secrets: TRawSecretsV2FromImports };
+        for (const importedFolder of secrets) {
+          for (const secret of importedFolder.secrets) {
+            secret.createdAt = new Date(secret.createdAt);
+            secret.updatedAt = new Date(secret.updatedAt);
+          }
+        }
+        await storeEtag(cachedEtag);
+        recordSecretCacheAccessMetric(SecretCacheAccessResult.HIT, { hasIfNoneMatch, etagMissReason });
+        return { secrets, etag: cachedEtag };
+      } catch (err) {
+        logger.error(err, "Secret imports service layer cache miss");
+        await keyStore.deleteItem(cacheKey);
+      }
+    }
+
+    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+    if (!folder) return { secrets: [] };
+    const secretImports = (
+      await $annotateCrossProjectImports(
+        await secretImportDAL.find({ folderId: folder.id, isReplication: false }),
+        projectId,
+        actorOrgId
+      )
+    ).filter((imp) => !imp.isAccessRevoked);
+
+    const importedSecrets = await fnSecretsV2FromImports({
+      secretImports,
+      folderDAL,
+      viewSecretValue: true,
+      secretDAL: secretV2BridgeDAL,
+      secretImportDAL,
+      decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
+      reserveDecrypts: secretDecryptReservations.reserveDecrypts,
+      importAccessScopeByFolderId: new Map([[folder.id, { environment, secretPath }]]),
+      hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
+        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+          environment: expandEnvironment,
+          secretPath: expandSecretPath,
+          secretName: expandSecretKey,
+          secretTags: expandSecretTags
+        }),
+      projectId,
+      projectFolderGrantDAL,
+      actorOrgId,
+      orgDAL,
+      kmsDataKeyService
+    });
+
+    const serializedPayload = Buffer.from(JSON.stringify({ secrets: importedSecrets }));
+    const computedEtag = `"${generateCacheKeyFromBuffer(serializedPayload)}"`;
+    const encryptedPayload = secretManagerEncryptor({
+      plainText: await compressZstd(serializedPayload)
+    }).cipherTextBlob;
+    const cacheBytes = encryptedPayload.byteLength;
+    const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;
+    if (stored) {
+      await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedPayload);
+    }
+    recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
+    recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
+    await storeEtag(computedEtag);
+    return { secrets: importedSecrets, etag: computedEtag };
+  };
+
+  const $getRawSecretsV1FromImports = async (
+    { path: secretPath, environment, projectId, actor, actorAuthMethod, actorId, actorOrgId }: TGetSecretsFromImportDTO,
+    botKey?: string
+  ) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -925,8 +1101,6 @@ export const secretImportServiceFactory = ({
     );
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) return [];
-    // this will already order by position
-    // so anything based on this order will also be in right position
     const secretImports = (
       await $annotateCrossProjectImports(
         await secretImportDAL.find({ folderId: folder.id, isReplication: false }),
@@ -934,38 +1108,6 @@ export const secretImportServiceFactory = ({
         actorOrgId
       )
     ).filter((imp) => !imp.isAccessRevoked);
-
-    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
-    if (shouldUseSecretV2Bridge) {
-      const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
-      const importedSecrets = await fnSecretsV2FromImports({
-        secretImports,
-        folderDAL,
-        viewSecretValue: true,
-        secretDAL: secretV2BridgeDAL,
-        secretImportDAL,
-        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
-        reserveDecrypts: secretDecryptReservations.reserveDecrypts,
-        importAccessScopeByFolderId: new Map([[folder.id, { environment, secretPath }]]),
-        hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
-          hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-            environment: expandEnvironment,
-            secretPath: expandSecretPath,
-            secretName: expandSecretKey,
-            secretTags: expandSecretTags
-          }),
-        projectId,
-        projectFolderGrantDAL,
-        actorOrgId,
-        orgDAL,
-        kmsDataKeyService
-      });
-
-      return importedSecrets;
-    }
 
     if (!botKey)
       throw new NotFoundError({
@@ -994,6 +1136,18 @@ export const secretImportServiceFactory = ({
         )
       )
     }));
+  };
+
+  const getRawSecretsFromImports = async (
+    dto: TGetRawSecretsFromImportDTO
+  ): Promise<{
+    secrets: TRawSecretsV2FromImports | Awaited<ReturnType<typeof $getRawSecretsV1FromImports>>;
+    etag?: string;
+    notModified?: boolean;
+  }> => {
+    const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(dto.projectId);
+    if (shouldUseSecretV2Bridge) return $getRawSecretsV2FromImports(dto);
+    return { secrets: await $getRawSecretsV1FromImports(dto, botKey) };
   };
 
   const getImportsMultiEnv = async ({

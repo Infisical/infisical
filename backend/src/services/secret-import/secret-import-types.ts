@@ -47,6 +47,10 @@ export type TGetSecretsFromImportDTO = {
   path: string;
 } & TProjectPermission;
 
+export type TGetRawSecretsFromImportDTO = TGetSecretsFromImportDTO & {
+  ifNoneMatch?: string;
+};
+
 export type FolderResult = {
   envName: string;
   folderName: string;

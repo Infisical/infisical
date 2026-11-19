@@ -27,7 +27,6 @@ import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-chang
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
-import { withCache } from "@app/lib/cache/with-cache";
 import { compressZstd, decompressZstd } from "@app/lib/compression";
 import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { utcDayStamp } from "@app/lib/dates";
@@ -95,6 +94,7 @@ import {
   fnSecretBulkUpdate,
   fnSecretMoveInTransaction,
   fnUpdateSecretLinkedReferences,
+  getSecretEtagPermissionFingerprint,
   recursivelyGetSecretPaths,
   reshapeBridgeSecret
 } from "./secret-v2-bridge-fns";
@@ -1405,27 +1405,14 @@ export const secretV2BridgeServiceFactory = ({
       ...params
     } = dto;
 
-    let permissionFingerprint = "";
-
-    if (actor === ActorType.USER || actor === ActorType.IDENTITY) {
-      // Cache the fingerprint for the marker window so repeated polls skip the per-request DB query.
-      // Same 10s TTL as getProjectPermission's marker, so no new staleness. This gates only the Etag
-      // cache, the real permission check is still done on the getProjectPermission call. It is the same
-      // fingerprint that validates the permission cache, so folder grants are covered here too — at the
-      // cost of its project-wide folder-version half churning this ETag on any folder change.
-      permissionFingerprint = await withCache({
-        keyStore,
-        key: KeyStorePrefixes.SecretPermissionFingerprint(projectId, actor, actorId),
-        ttlSeconds: KeyStoreTtls.ProjectPermissionMarkerTtlSeconds,
-        fetcher: () =>
-          permissionService.getProjectPermissionFingerprint({
-            projectId,
-            orgId: actorOrgId,
-            actorId,
-            actorType: actor
-          })
-      });
-    }
+    const permissionFingerprint = await getSecretEtagPermissionFingerprint({
+      keyStore,
+      permissionService,
+      projectId,
+      actor,
+      actorId,
+      actorOrgId
+    });
 
     const etagRedisKey = KeyStorePrefixes.SecretEtag(projectId, utcDayStamp());
     // Hash of only the request inputs that change the response body, shared by the ETag field and the

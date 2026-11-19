@@ -14,12 +14,15 @@ import {
   TSecretVersionsV2
 } from "@app/db/schemas";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { shouldApplyPolicy } from "@app/ee/services/secret-change-policy/secret-change-policy-fns";
 import {
   InternalMetadataType,
   TInternalMetadata
 } from "@app/ee/services/secret-change-request/secret-change-request-types";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { withCache } from "@app/lib/cache/with-cache";
 import { BadRequestError, NotFoundError, throwIfAnySettledClientClosed } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -716,6 +719,37 @@ export const recursivelyGetSecretPaths = async ({
   const pathsInCurrentDirectory = paths.filter((folder) => !path.relative(currentPath, folder.path).startsWith(".."));
 
   return pathsInCurrentDirectory;
+};
+
+export const getSecretEtagPermissionFingerprint = async ({
+  keyStore,
+  permissionService,
+  projectId,
+  actor,
+  actorId,
+  actorOrgId
+}: {
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermissionFingerprint">;
+  projectId: string;
+  actor: ActorType;
+  actorId: string;
+  actorOrgId: string;
+}) => {
+  if (actor !== ActorType.USER && actor !== ActorType.IDENTITY) return "";
+
+  return withCache({
+    keyStore,
+    key: KeyStorePrefixes.SecretPermissionFingerprint(projectId, actor, actorId),
+    ttlSeconds: KeyStoreTtls.ProjectPermissionMarkerTtlSeconds,
+    fetcher: () =>
+      permissionService.getProjectPermissionFingerprint({
+        projectId,
+        orgId: actorOrgId,
+        actorId,
+        actorType: actor
+      })
+  });
 };
 
 export type TSecretReferenceTraceNode = {

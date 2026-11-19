@@ -488,7 +488,8 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
               secrets: secretRawSchema.array()
             })
             .array()
-        })
+        }),
+        304: z.void()
       }
     },
     onRequest: verifyAuth([
@@ -498,15 +499,26 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       AuthMode.IDENTITY_ACCESS_TOKEN,
       AuthMode.OAUTH
     ]),
-    handler: async (req) => {
-      const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
+    handler: async (req, reply) => {
+      const { secrets, etag, notModified } = await server.services.secretImport.getRawSecretsFromImports({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        ...req.query
+        ...req.query,
+        ifNoneMatch: req.headers["if-none-match"]
       });
-      return { secrets: importedSecrets };
+
+      if (etag) {
+        void reply.header("ETag", etag);
+      }
+
+      if (notModified) {
+        void reply.code(304).send();
+        return;
+      }
+
+      return { secrets };
     }
   });
 };

@@ -2113,7 +2113,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
+      const { secrets: importedSecrets } = await server.services.secretImport.getRawSecretsFromImports({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
