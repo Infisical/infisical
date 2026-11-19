@@ -29,7 +29,14 @@ const otpKey = KeyStorePrefixes.EmailSignupOtpHash(emailHash);
 
 type KeyStoreSlice = Pick<
   TKeyStoreFactory,
-  "setItemWithExpiry" | "setItemWithExpiryNX" | "getItem" | "deleteItem" | "acquireLock" | "deleteItemsByKeyIn" | "ttl"
+  | "setItemWithExpiry"
+  | "setItemWithExpiryNX"
+  | "getItem"
+  | "getItemPrimary"
+  | "deleteItem"
+  | "acquireLock"
+  | "deleteItemsByKeyIn"
+  | "ttl"
 >;
 
 type MockedKeyStore = Mocked<KeyStoreSlice>;
@@ -39,6 +46,7 @@ const makeKeyStore = (patch: Partial<MockedKeyStore> = {}): MockedKeyStore =>
     setItemWithExpiry: vi.fn().mockResolvedValue("OK"),
     setItemWithExpiryNX: vi.fn().mockResolvedValue("OK"),
     getItem: vi.fn().mockResolvedValue(null),
+    getItemPrimary: vi.fn().mockResolvedValue(null),
     deleteItem: vi.fn().mockResolvedValue(1),
     acquireLock: vi.fn().mockResolvedValue({ release: vi.fn().mockResolvedValue(undefined) }),
     deleteItemsByKeyIn: vi.fn().mockResolvedValue(2),
@@ -535,8 +543,9 @@ describe("tokenServiceFactory — refresh token rotation", () => {
       if (entry && entry.expiresAt <= clock) store.delete(key);
       return store.get(key);
     };
+    // getItem stands for a read replica that has not received anything yet; the data is on the primary.
     const keyStore = makeKeyStore({
-      getItem: vi.fn(async (key: string) => live(key)?.value ?? null),
+      getItemPrimary: vi.fn(async (key: string) => live(key)?.value ?? null),
       setItemWithExpiry: vi.fn(async (key: string, ttl: string | number, value: string | number | Buffer) => {
         store.set(key, { value: String(value), expiresAt: clock + Number(ttl) });
         return "OK";
@@ -599,6 +608,16 @@ describe("tokenServiceFactory — refresh token rotation", () => {
     expect(tokenDAL.findOneTokenSession).toHaveBeenCalledWith({ id: SESSION_ID, userId: USER_ID }, undefined, {
       readFromPrimary: true
     });
+  });
+
+  test("grace entries are read from the Redis primary, not a read replica that may lag", async () => {
+    const { refresh, tokenAt, keyStore, row } = build();
+    const original = tokenAt(1);
+    await refresh(original);
+
+    expect(await refresh(original)).toBeUndefined();
+    expect(keyStore.getItem).not.toHaveBeenCalled();
+    expect(row()).toBeDefined();
   });
 
   test("two requests holding the same token rotate it once; the loser is a grace hit", async () => {
@@ -777,16 +796,25 @@ describe("tokenServiceFactory — refresh token rotation", () => {
       expect(row()).toBeUndefined();
     });
 
-    test("signing out drops their entry, which carries no session generation to check", async () => {
+    test("after a sign-out their entry no longer covers the rotated-away token", async () => {
       const { service, refresh, tokenAt, store } = build();
       await refresh(tokenAt(1));
-      expect(store.has(legacyKey)).toBe(true);
+      await service.clearTokenSessionById(USER_ID, SESSION_ID);
+      store.delete(KeyStorePrefixes.RefreshTokenGrace(SESSION_ID, 1));
+      expect(store.get(legacyKey)?.value).toBe("1");
+
+      const err = await expectRejected(service.validateRefreshToken(tokenAt(1)), UnauthorizedError);
+
+      expect(err.name).toBe("TokenReuse");
+    });
+
+    test("signing out needs no Redis", async () => {
+      const { service, keyStore } = build();
 
       await service.clearTokenSessionById(USER_ID, SESSION_ID);
 
-      expect(store.has(legacyKey)).toBe(false);
-      const err = await expectRejected(service.validateRefreshToken(tokenAt(1)), UnauthorizedError);
-      expect(err.name).toBe("InvalidToken");
+      expect(keyStore.deleteItem).not.toHaveBeenCalled();
+      expect(keyStore.setItemWithExpiry).not.toHaveBeenCalled();
     });
   });
 });

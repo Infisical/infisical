@@ -39,7 +39,7 @@ type TAuthTokenServiceFactoryDep = {
   membershipUserDAL: Pick<TMembershipUserDALFactory, "findOne">;
   keyStore: Pick<
     TKeyStoreFactory,
-    "setItemWithExpiry" | "setItemWithExpiryNX" | "getItem" | "deleteItem" | "acquireLock" | "ttl"
+    "setItemWithExpiry" | "setItemWithExpiryNX" | "getItem" | "getItemPrimary" | "deleteItem" | "acquireLock" | "ttl"
   >;
 };
 
@@ -253,11 +253,8 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     return session;
   };
 
-  const clearTokenSessionById = async (userId: string, sessionId: string): Promise<TAuthTokenSessions | undefined> => {
-    const session = await tokenDAL.incrementTokenSessionVersion(userId, sessionId);
-    await keyStore.deleteItem(KeyStorePrefixes.RefreshTokenGraceLegacy(sessionId));
-    return session;
-  };
+  const clearTokenSessionById = async (userId: string, sessionId: string): Promise<TAuthTokenSessions | undefined> =>
+    tokenDAL.incrementTokenSessionVersion(userId, sessionId);
 
   const getUserTokenSessionById = async (id: string, userId: string) => tokenDAL.findOneTokenSession({ id, userId });
 
@@ -318,7 +315,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     if (decodedToken.refreshVersion !== tokenVersion.refreshVersion) {
       // Every version rotated away within the grace window keeps its own entry, so several tabs (or a slow
       // request more than one rotation behind) still present an accepted token.
-      const graceValue = await keyStore.getItem(
+      const graceValue = await keyStore.getItemPrimary(
         KeyStorePrefixes.RefreshTokenGrace(tokenVersion.id, decodedToken.refreshVersion)
       );
       if (graceValue !== null) {
@@ -326,8 +323,12 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
         return { decodedToken, tokenVersion, isGraceHit: true };
       }
 
-      const legacyGraceValue = await keyStore.getItem(KeyStorePrefixes.RefreshTokenGraceLegacy(tokenVersion.id));
-      if (legacyGraceValue !== null && Number(legacyGraceValue) === decodedToken.refreshVersion) {
+      const legacyGraceValue = await keyStore.getItemPrimary(KeyStorePrefixes.RefreshTokenGraceLegacy(tokenVersion.id));
+      if (
+        legacyGraceValue !== null &&
+        Number(legacyGraceValue) === decodedToken.refreshVersion &&
+        tokenVersion.refreshVersion === decodedToken.refreshVersion + 1
+      ) {
         return { decodedToken, tokenVersion, isGraceHit: true };
       }
 
