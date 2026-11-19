@@ -40,8 +40,10 @@ export type TAgentVaultCredentialInput =
   | { type: AgentVaultCredentialType.Passthrough }
   | {
       type: AgentVaultCredentialType.OAuth;
-      // The admin's own sign-in. Absent when the sign-in is left to each member.
+      // The admin's own sign-in. Absent when the sign-in is left to each member or comes from an OAuth variable.
       authorizationId?: string;
+      // The key of the global OAuth variable whose sign-in the service sends.
+      variable?: string;
       memberProvidedFields?: TAgentVaultBearerMemberField[];
       // The client every member signs in with, only when the sign-in is left to them.
       clientId?: string;
@@ -60,12 +62,19 @@ export type TAgentVaultCredentialInput =
 
 export type TAgentVaultCredentialUpdate = TAgentVaultCredentialInput;
 
+// Where the tokens a service sends come from: its own sign-in, each member's, or an OAuth variable's.
+export type TAgentVaultOauthCredentialSource = "service" | "member" | "variable";
+
 export type TAgentVaultOauthCredentialSummary = {
   type: AgentVaultCredentialType.OAuth;
+  source: TAgentVaultOauthCredentialSource;
   memberProvidedFields: TAgentVaultBearerMemberField[];
+  // The OAuth variable, when the source is one. Left out for those who can't read variables.
+  variable?: { id: string; key: string };
   // Absent when each member signs in: there is no shared connection to describe, and each member reads their own.
   status?: AgentVaultOauthStatus;
-  issuer: string;
+  // Absent for an OAuth variable that hasn't been signed in to yet.
+  issuer?: string;
   // Only when each member signs in.
   registration?: AgentVaultOauthRegistration;
   clientId?: string | null;
@@ -126,7 +135,11 @@ export type TAgentVaultServiceSummary = {
       credential: Extract<
         TAgentVaultCredentialSummary,
         {
-          type: AgentVaultCredentialType.Bearer | AgentVaultCredentialType.Basic | AgentVaultCredentialType.Passthrough;
+          type:
+            | AgentVaultCredentialType.Bearer
+            | AgentVaultCredentialType.Basic
+            | AgentVaultCredentialType.Passthrough
+            | AgentVaultCredentialType.OAuth;
         }
       >;
       customHeaders: TAgentVaultCustomHeaderSummary[];

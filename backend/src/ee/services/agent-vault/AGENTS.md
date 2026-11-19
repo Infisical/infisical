@@ -18,14 +18,14 @@ never in anything the agent holds.
 ```
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
 agent-vault-access-bundle/   bundles, services, credential encryption, grants
-agent-vault-variable/        global and personal variables and the reads behind Used By
+agent-vault-variable/        global and personal variables, OAuth variables, and the reads behind Used By
 agent-vault-member/          project membership (list, add, role, remove)
 agent-vault-delegation/      which users a machine identity may start sessions on behalf of
 agent-vault-personal-value/  each actor's own values for the fields a service leaves to members
 agent-vault-skill/           the skill library, versions, bundle links, file validation and hashing
 agent-vault-session/         mint, revoke, list, get, edit label and metadata
 agent-vault-proxy/           create/rotate (proxy token + CA), bootstrap, heartbeat, resolve, credential refresh, session skills
-agent-vault-oauth/           OAuth for MCP services: discovery, client registration, authorizations, refresh
+agent-vault-oauth/           OAuth sign-ins for services and OAuth variables: discovery, registration, authorizations, refresh
 agent-vault-session-log/     storage settings, chunk ingest, playback
 agent-vault-project/         project resolver: projectId lookup and the temporary fallback
 ```
@@ -357,8 +357,8 @@ that holds its own credentials and needs a host for one session only. The API se
 beside the services it lists by name (`isInline` tells the two apart on reads and in the mint audit event's `services`); the code and the Sessions page say inline services, which is what tells them apart from a bundle's. They are rows of `agent_vault_services` with `sessionId` set, sharing every column and
 child table with a project's services so the two can't drift, and only `agent-vault-session-inline-service-dal.ts`
 reads or writes them. They belong to that session alone: nothing edits them, no bundle or other session reads them, and
-only resolve opens their secrets. The `agent_vault_services_inline_only_check` keeps member fields and OAuth off them in
-the database too.
+only resolve opens their secrets. The `agent_vault_services_inline_only_check` keeps member fields off them in the
+database too; the OAuth shapes below are checked in code.
 
 - **They take `create-with-inline-services` on sessions, at mint and on every resolve, and only the admin role holds it.**
   Whoever starts the session decides which hosts it reaches and with which credentials, the same call as writing a
@@ -370,10 +370,22 @@ the database too.
   hosts, so a variable reference would let them send any variable's value to a host of their choosing, and the stored
   `{{<uuid>}}` form is refused by the same rule (`acceptsNoVariableReferences` on every value field). Resolve adds
   inline services after `$expandVariableReferences` and `$applyPersonalValues`, so the rule doesn't rest on the refusal
-  alone.
-- **No member-provided fields and no OAuth.** Every value arrives with the mint, and an OAuth service needs a sign-in in
-  the UI and a refresh that writes the service row. The schema accepts both, hidden, so `prepareInlineServices` refuses
-  them by name, as a bundle service's create refuses fields its type doesn't take.
+  alone. The one exception is an OAuth credential naming an OAuth variable (④ below): only admins mint inline services,
+  and admins are trusted to decide where tokens go, as they are when a bundle service names one. It still takes
+  `read-value` on variables, as a bundle service's does.
+- **No member-provided fields.** Every value arrives with the mint. The schema accepts them, hidden, so
+  `prepareInlineServices` refuses them by name, as a bundle service's create refuses fields its type doesn't take.
+- **OAuth comes in two shapes, and neither has a sign-in** (no `authorizationId`, no sign-in link on sessions).
+  ④ `{ type: "oauth", variable: "KEY" }` names a global OAuth variable. Mint checks `read-value` before the key lookup,
+  so a missing key can't be told from an unreadable one, and `bindInlineOauthVariables` stores
+  `{ source: "variable", variableId }` with no reference row, so the variable can be deleted while the session is live.
+  Resolve then sends the service with `credentialRemoved` and `personalValuesMissing`, so a current proxy refuses it by
+  name and an older one fails closed with a 403. ⑤ sends `accessToken` (and optionally `refreshToken`, `expiresAt`,
+  `clientSecret`) with the provider's `authorizationEndpoint`, `tokenEndpoint`, `clientId` and `scopes`. They are
+  checked like an OAuth variable's import and stored as sent, sealed in `encryptedCredential`, deleted with the
+  session's other secrets, and refreshed in place by `inlineTokenHolder`. Its reads and writes
+  (`findOauthTokensByIdPrimary`, `compareAndSwapOauthTokens`, `addOauthRequiredScopes`) live in
+  `agent-vault-session-inline-service-dal.ts`, the only code that touches inline rows; `serviceTokenHolder` skips them.
 - **The name is optional.** An unnamed service goes by its first host (`inlineServiceDisplayName`), worked out on the
   server only: resolve (so the proxy's messages and session logs), the audit log and the session responses all send
   that name, so `name` is never null on the wire and the frontend shows it as is. Mint refuses a name, given or
@@ -393,8 +405,8 @@ the database too.
   session keeps its secrets until it is revoked or its owner is deleted.
 - **Resolve opens an inline service's values with `openInlineServiceSecrets`**, which returns none once
   `secretsDeletedAt` is set or any value it needs is missing, so resolve leaves the service out rather than send a
-  half-built one. Only a pass-through service with no custom headers, substitutions or hook goes out with nothing
-  sealed.
+  half-built one. Only a pass-through service, or one using an OAuth variable, with no custom headers, substitutions or
+  hook goes out with nothing sealed.
 
 ## Services a session lists by name
 
@@ -658,7 +670,8 @@ header" is the name in every layer; unqualified "header" means the credential's 
 A global variable is a key and a sealed value on the Agent Vault project, so every bundle's services share one set
 and global keys are unique per project (personal variables are covered under Member-provided values). A service uses
 one as `{{KEY}}` in its token, username, password, a custom header value or a substitution value. Nothing else takes
-one: a host pattern, method or path decides what a service can reach, so it stays literal.
+one: a host pattern, method or path decides what a service can reach, so it stays literal. An OAuth variable holds a
+sign-in rather than text and is never expanded into a field; see [OAuth variables](#oauth-variables).
 
 - **Sealed text names a variable by id, `{{<uuid>}}`, never by key.** The key form exists only at the API
   boundary: a service write maps keys to ids before it seals (`toStoredVariableReferences`), reading the
@@ -672,7 +685,8 @@ one: a host pattern, method or path decides what a service can reach, so it stay
   project's own variables, which is exactly what resolve expands. Nothing in the database can compare the
   rows with sealed text, and an id with no row is a variable the delete refusal lets go while a service still
   sends it. Any new path that seals a service field derives its rows the same way. Resolve expands only the
-  session project's variables.
+  session project's variables. The one row not read off text is an OAuth variable credential's, which has no sealed
+  text (see [OAuth variables](#oauth-variables)).
 - **A variable delete and a service save meet on the variable row**: the delete locks it `FOR UPDATE`, a save
   locks what it references `FOR SHARE` (`insertReferenceRows`). Create serialises on a per-project advisory lock;
   the global-key partial unique index is the backstop.
@@ -811,7 +825,7 @@ set and how its connection is doing come from the same row.
 - **The service row keeps no tokens.** Its `credentialConfig` is a `TAgentVaultOauthMemberConfig` (server URL, issuer,
   `registration`, and an admin-entered `clientId`), and `encryptedCredential` is `{ clientSecret }` for an admin-entered
   client with a secret, NULL otherwise. Anything that reads an OAuth service's sealed credential as tokens checks
-  `isMemberProvidedOauth` first: resolve, refresh, scope reports, tool loading and the admin's reauthorization all do.
+  `isMemberProvidedOauth` first (and `isVariableOauth`, see [OAuth variables](#oauth-variables)): resolve, refresh, scope reports, tool loading and the admin's reauthorization all do.
 - **The save runs discovery and keeps no client** (`prepareMemberOauth`): a server with no OAuth, or with no
   registration and no admin-entered client, fails the save. A guessed `/register` is probed by registering a client
   that is then left unused, so a save can create clients at the provider. Each member's sign-in registers its own
@@ -922,8 +936,10 @@ an installed copy.
 
 ## OAuth credentials
 
-`agent-vault-oauth/`. MCP services only. Infisical is the OAuth client and does discovery, registration, the
-code exchange and refresh; the proxy only ever receives the access token.
+`agent-vault-oauth/`. Infisical is the OAuth client and does discovery, registration, the code exchange and refresh;
+the proxy only ever receives the access token. A service's own sign-in and a member's are MCP only. An HTTP service
+gets OAuth only through an OAuth variable (`HTTP_OAUTH_NEEDS_VARIABLE_MESSAGE`), which an MCP service can use too;
+see [OAuth variables](#oauth-variables).
 
 - **The tokens live on the service row**, like every other credential, unless the sign-in is left to members (see
   [An OAuth sign-in left to members](#an-oauth-sign-in-left-to-members)): the non-secret half (endpoints, client,
@@ -953,12 +969,14 @@ code exchange and refresh; the proxy only ever receives the access token.
   write. Refresh serializes per service on a Redis lock, not a row lock.
 - **A pending authorization is Redis only** (10 minutes), with the PKCE verifier and tokens sealed by the project
   cipher. Only its creator can read or complete it (anyone else gets a 404), so an authorize link sent to someone
-  else can't capture their account. It is single use: a save validates it, then claims it by deleting the Redis
+  else can't capture their account. The creator is the record's `actor { type, id }`, matched on both; a record
+  without one reads as the user in `actorUserId`. Service and personal sign-ins still need a user, since they need a
+  browser; only an OAuth variable's sign-in may be started by a machine identity. It is single use: a save validates it, then claims it by deleting the Redis
   record, and only the save whose delete removed it proceeds. A save that fails after the claim puts the exact
   stored value back with its remaining TTL, so it can be retried; nothing runs after commit.
 - **Resolve sends an OAuth token in the bearer shape** with `source: "oauth"`, so a proxy that predates OAuth
   injects it unchanged. The header is always `Authorization: Bearer` (the MCP authorization spec), so an OAuth
-  credential stores no header name or prefix and its input is `authorizationId`, or, when members sign in, `memberProvidedFields` with an optional admin-entered `clientId`, `clientSecret` or `registration: "dynamic"`. Resolve refreshes a token that expires before the next poll; the proxy calls
+  credential stores no header name or prefix and its input is `authorizationId`, `variable` (an OAuth variable's key), or, when members sign in, `memberProvidedFields` with an optional admin-entered `clientId`, `clientSecret` or `registration: "dynamic"`. Resolve refreshes a token that expires before the next poll; the proxy calls
   `credential-refresh` after an upstream 401. A failing provider never fails resolve for other services: it costs
   that service a stale token and a `lastError`. A refresh error that means the login is dead (`invalid_grant`, a
   dropped client, providers' own revoked or expired refresh token codes: `isDeadLoginError`) moves the service
@@ -973,11 +991,13 @@ code exchange and refresh; the proxy only ever receives the access token.
   the rejected one. Either then answers with what is stored, and a waiter whose holder failed spends only the time
   left before 13 seconds on its own request. Keep that under the proxy's timeout.
 - **Neither refreshes nor resolve are audited.** Connect and reauthorize are recorded by the service create and
-  update events, which carry `oauthIssuer` and `oauthScopes`.
+  update events, which carry `oauthIssuer` and `oauthScopes`, or `oauthVariable { id, key }` instead for a service
+  using an OAuth variable. A variable that gets tokens records `agent-vault-oauth-variable-connect` (`method`
+  `sign-in`, `reconnect` or `import`, success only).
 - **Non-conforming servers are supported through fallbacks**, each recorded in `compatibility`. A fallback may
   relax what a server must advertise, never a check that stops mix-up or token theft: the issuer must match (a
   trailing slash aside), the protected resource must be the server's own origin, and `iss` is checked whenever it
-  arrives. Parameters added to every request for a known provider are not fallbacks and are not recorded:
+  arrives (by origin only for an OAuth variable set up by hand with no issuer; see [OAuth variables](#oauth-variables)). Parameters added to every request for a known provider are not fallbacks and are not recorded:
   `buildAuthorizeUrl` sends Google (`accounts.google.com`) `access_type=offline` and `prompt=consent`, since Google
   ignores `offline_access` and issues a refresh token only for those.
 - **Every scope is an RFC 6749 scope-token** (`isOauthScopeToken`): the proxy's reports are refused otherwise, and
@@ -999,6 +1019,100 @@ code exchange and refresh; the proxy only ever receives the access token.
   502 so the agent doesn't start its own sign-in, but a `403 insufficient_scope` reaches the agent unchanged, as
   for HTTP services, and an MCP client may start its own OAuth on it (the TypeScript SDK's `onInsufficientScope`
   defaults to `reauthorize`).
+
+## OAuth variables
+
+A global variable with `type: "oauth"` holds an OAuth sign-in instead of text, so one sign-in can serve any number of
+HTTP and MCP services, and a customer's backend can keep one per end user of its own app. A service names it with the
+credential `{ type: "oauth", variable: "KEY" }`. The variable gets tokens from a sign-in (the dashboard popup, or a link
+from `POST /variables/:variableId/authorizations` that the customer's own callback finishes through
+`.../authorizations/complete`) or from an import (`tokens` on create or PATCH). Pure helpers live in
+`agent-vault-variable/agent-vault-oauth-variable-fns.ts`.
+
+- **`oauthConfig` is `{ settings, connection }`** (`TAgentVaultOauthVariableConfig`). `settings` is what the caller set:
+  a `serverUrl` to discover from, or `authorizationEndpoint` and `tokenEndpoint` set by hand, plus client, scopes,
+  `resource`, `clientName` and `redirectUri`. `connection` is the non-secret half of the last sign-in or import, in the
+  `TAgentVaultOauthConfig` shape the refresh code already reads. `encryptedValue` holds the sealed
+  `{ accessToken, refreshToken?, clientSecret? }` and is **NULL until the variable is signed in**: not connected means a
+  NULL value, never a status written beside it. The `agent_vault_variables_*_check` constraints keep `oauthConfig` on
+  exactly the OAuth rows, a value on every text row, and OAuth rows global. The client secret is sealed with the tokens,
+  so it arrives only with a sign-in start or an import.
+- **Global only, and the type is fixed at create.** A personal OAuth variable is a 400, and personal values can only use
+  their owner's personal variables, so they never reach one. A string `value` on an OAuth variable is a 400: its tokens
+  change only by a sign-in, an import, or a disconnect (`value: null`). A text variable refuses `oauth`, `tokens` and
+  `value: null`. Renames are allowed, since services hold the id.
+- **It counts toward the 500 global variables** and is created through `createVariable` (advisory lock and cap).
+- **Never in text.** A service field's `{{KEY}}` naming an OAuth variable is refused at save with a 400 that points to
+  the OAuth credential. Resolve's text expansion reads text variables only (`findValuesForResolve`), so an id naming
+  an OAuth variable stays unresolved even if one got through. The sheet's autocomplete asks `GET /variables?type=text`.
+- **Tokens are write-only.** `GET /variables/:id/value` on an OAuth variable is a 400, after the 404 and permission
+  checks so it reveals nothing more. Responses carry `toOauthVariableView` only.
+- **Any sign-in field change disconnects** (`OAUTH_VARIABLE_SIGN_IN_FIELDS`: server URL, issuer, either endpoint, client
+  ID and so registration mode, auth method, resource). The update sets `encryptedValue` and `connection` to NULL, client
+  secret included, so the secret must be sent again with the next sign-in. Scopes, `clientName` and `redirectUri` only
+  shape the next sign-in. An edit that keeps the tokens leaves `encryptedValue` alone and writes the connection the
+  locked row holds (`oauthUpdateOf`), so it never undoes a refresh.
+- **Imports are stored as given**: no validation refresh, which would rotate the caller's own copy (GitHub then revokes
+  both). The first use tells whether the provider accepts them. Only a variable set up by hand takes an import
+  (`describeOauthVariableImportProblem`), since refresh needs its endpoints and client.
+- **A sign-in record carries `variableId`**, the redirect URI it was started with (the variable's `redirectUri`, else
+  Infisical's callback page; a machine identity must have a `redirectUri`, since the dashboard callback completes as a user), the actor, and `variableSettingsFingerprint` (`oauthVariableSettingsFingerprintOf` over
+  the sign-in fields). Starting needs `edit` and `read` on variables (the completion returns the variable), or `create` when it starts with the variable's create
+  (`signIn`). With `edit` and no `read` it is a 403 before any registration or link. Discovery that only guessed the endpoints, or found metadata naming another issuer, sends nothing to them
+  (no registration, no authorize URL) and answers `manualSetupRequired` with a `prefill` for the caller to confirm. A
+  variable set up by hand with no `issuer` records only its authorization endpoint's origin as the issuer, so its record
+  carries `issuerOriginOnly` and a callback's `iss` must have that origin (Keycloak issues from a path under it); no
+  `iss` passes. Records from before the rename carry `issuerUnchecked`, read the same way. A variable that names no
+  scopes asks for what the server's challenge or protected resource lists, never the authorization server's whole
+  `scopes_supported` (that list covers every API it protects, admin scopes included), and with none of those it signs
+  in with no `scope` parameter, as a service's own does;
+  a variable set up by hand must name a scope. A dynamic registration happens on every sign-in,
+  as for a service's own, and sends the variable's `clientName` (default: the project's name) and the record's redirect
+  URI.
+- **Every finished sign-in writes straight into its variable**, from the public complete route and the dashboard's
+  hidden `/oauth/authorizations/:id/complete` alike, and a service save refuses a variable record. The code exchange
+  runs first, outside any transaction, under `AgentVaultOauthAuthorizationCompleteLock` (a second caller gets a 409).
+  `writeVariableSignIn` then re-checks `edit` and `read` on variables, locks the variable row, and compares the fingerprint (409
+  `AGENT_VAULT_OAUTH_VARIABLE_CHANGED_MESSAGE` on a mismatch) before writing the tokens. The record is kept with its
+  sealed fields cleared (`settleVariableRecord`), so completing it again returns 200 and the variable. Right after the
+  exchange, before the variable is written, the record is saved authorized with its sealed tokens
+  (`keepUnwrittenVariableSignIn`; `isUnwrittenVariableSignIn`, read as pending), so a completion that fails after the
+  code was redeemed, its own final record save included, is retried without a second exchange. A `state` whose
+  record names another variable is a 400. The public route's statuses are part of its contract: 200 done or already
+  done, 400 provider refusal or mismatch with the reason, 404 missing, expired or not yours, 409 in progress or
+  settings changed. A failed record keeps the class of its refusal (`errorStatus`), so completing it again answers with
+  the same status; a record without one answers 400.
+- **The dashboard hides Reauthorize for a variable with an API `redirectUri`**, whose sign-in has to finish at the
+  customer's callback. That is UI only: the API lets anyone who can edit variables start one.
+- **A service using a variable stores `{ type: "oauth", source: "variable", variableId }`** with `encryptedCredential`
+  NULL, so every path that reads an OAuth service's sealed credential as tokens checks `isVariableOauth` (and
+  `isInlineTokensOauth` for a session's own service) beside `isMemberProvidedOauth`. The credential can't be combined
+  with `authorizationId` or `memberProvidedFields`, and naming the variable takes `read-value` on variables, checked
+  before the key lookup (`findOauthVariableForCredential`), since it sends the tokens to the service's hosts as a typed
+  `{{KEY}}` sends a value.
+- **Every save of that credential rebuilds its reference row from the chosen `variableId`** (`oauthVariableReferenceRow`,
+  field `credential-value`, through `insertReferenceRows` and its `FOR SHARE` lock), after checking the variable is
+  OAuth. It is the one reference row not read off sealed text, and it is what makes the delete refusal and Used By see
+  the service.
+- **Refresh runs on `variableTokenHolder(variableId, { serviceId })`**: tokens and connection from the variable row
+  (compare-and-swap on `encryptedValue`, merge into `oauthConfig.connection` only), destination from the service row
+  (host pattern, server URL, and a 409 `AGENT_VAULT_SERVICE_VARIABLE_CHANGED_MESSAGE` once it no longer names this
+  variable, after a status write too). A service that is gone or in another project is a 409
+  `AGENT_VAULT_SERVICE_MOVED_MESSAGE`; only a missing or unsigned variable is a 404. The lock is per variable (`AgentVaultOauthVariableRefreshLock`). Resolve reads the session's OAuth
+  variables once and refreshes each at most once, through the first service still pointing where its snapshot says,
+  trying the next on a 409. Its dead-login and not-signed-in texts name the variable but no page, since a variable
+  with an API `redirectUri` is signed in outside the dashboard; a refused OAuth app of the caller's own asks for its new
+  client secret. Loading tools sends the token to a URL the admin typed, so when no saved service points there it
+  refreshes through `refreshVariableToken` (`variableTokenHolder(variableId, { projectId })`: the same lock and swap,
+  no destination), retrying once on a 401 only when no custom header could be the one refused. A rejection reported
+  there never marks the variable dead on its own (`rejectionUnvouched`), since a wrong URL would cut off every service
+  sharing it.
+- **A service whose variable isn't signed in goes out with `credentialNotConnected`** beside `personalValuesMissing`
+  (bundle and session services alike), so a current proxy names the cause and an older one still refuses it. The
+  services list reads the same variables (`findOauthForResolve`, never decrypted, `oauthVariableSignedInOf`) and marks
+  such a service `needs-personal-values` with text that sends it to an admin, not to the member.
+- **A shared variable lives and dies together.** A 401 on any service using it refreshes it for all of them, and a
+  dead sign-in is dead for all of them. Accepted: the docs say so.
 
 ## Session logs
 
@@ -1213,3 +1327,4 @@ input: nothing it sends may erase or hide its own records, so the proxy logs eve
 - **Raw passthrough over SOCKS5.** Non-HTTP TCP to hosts no service names could be spliced through untouched,
   so SSH and databases work for SOCKS5 clients other than E2B. That traffic would carry no credential and
   produce no request logs.
+- **OAuth Client Credentials grant (machine-to-machine, also called two-legged or app-only OAuth; RFC 6749 section 4.4).** OAuth variables support only the Authorization Code grant, where a person signs in. A Client Credentials variable would hold a token URL, client ID, secret and scopes, and Infisical would fetch a new token when the old one expires, under the same variable lock and swap. The token request and client authentication (`client_secret_basic`, `client_secret_post`) already exist in the dynamic secret OAuth2 provider (`ee/services/dynamic-secret/providers/oauth2.ts`).

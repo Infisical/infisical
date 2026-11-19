@@ -193,7 +193,7 @@ Here's how the four primitives connect:
 A service represents one external system that an agent can reach, such as GitHub's REST API or Linear's MCP server. Each service holds:
 
 - **Target**: Where the system is, such as the host `api.github.com`, the server URL `https://mcp.linear.app/mcp`, or a database's host and port
-- **Credential**: The real token, username and password, SSH key, or OAuth authorization that the proxy attaches to the agent's requests or logs in with, if the service uses one
+- **Credential**: The real token, username and password, SSH key, or OAuth sign-in (the service's own, or an [OAuth variable](/documentation/platform/agent-vault/oauth-variables) that several services share) that the proxy attaches to the agent's requests or logs in with, if the service uses one
 - **Rules** (HTTP APIs): The HTTP methods and paths the service allows
 - **Custom headers** (HTTP APIs and MCP servers): Extra headers the proxy adds to each request
 - **Substitutions** (HTTP APIs): Placeholders the proxy replaces with real values

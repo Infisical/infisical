@@ -84,6 +84,10 @@ export const hostPatternOf = (service: TAgentVaultService | TAgentVaultSessionIn
 export const serverUrlOf = (service?: TAgentVaultService | null) =>
   service?.type === AgentVaultServiceType.Mcp ? service.serverUrl : null;
 
+const OAUTH_CALLBACK_PATH = "/agent-vault/oauth/callback";
+
+export const defaultOAuthRedirectUri = () => `${window.location.origin}${OAUTH_CALLBACK_PATH}`;
+
 export const hostOf = (serverUrl: string) => {
   try {
     return new URL(serverUrl.trim()).host;
@@ -133,13 +137,15 @@ export const NATIVE_CREDENTIAL_TYPES: Record<
 export const HTTP_CREDENTIAL_TYPES = [
   AgentVaultCredentialType.Bearer,
   AgentVaultCredentialType.Basic,
+  AgentVaultCredentialType.OAuth,
   AgentVaultCredentialType.Passthrough
 ];
 
 export const OAUTH_STATUS_LABELS: Record<AgentVaultOauthStatus, string> = {
   [AgentVaultOauthStatus.Connected]: "Authorized",
   [AgentVaultOauthStatus.NeedsReauthorization]: "Needs Reauthorization",
-  [AgentVaultOauthStatus.NeedsAdditionalScopes]: "Missing Scopes"
+  [AgentVaultOauthStatus.NeedsAdditionalScopes]: "Missing Scopes",
+  [AgentVaultOauthStatus.NotConnected]: "Not Connected"
 };
 
 export const SERVICE_TYPE_LABELS: Record<AgentVaultServiceType, string> = {
@@ -494,6 +500,7 @@ export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "username",
     "secret",
     "memberProvidedFields",
+    "oauthVariableKey",
     "customHeaders",
     "substitutions"
   ],
@@ -539,6 +546,7 @@ export const MCP_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "oauthAuthorizationId",
     "oauthClientId",
     "oauthClientSecret",
+    "oauthVariableKey",
     "customHeaders"
   ],
   [ServiceStep.Tools]: ["toolScope", "allowedTools"],
@@ -555,9 +563,48 @@ type TOAuthFormState = {
 };
 
 /** For an MCP service, credential-value stands for the whole credential: the bearer token or the OAuth sign-in. */
+/**
+ * Who provides the credential after the credential type switches: the stored setting of the new type, or off. An OAuth
+ * variable's sign-in is shared, so a switch back to OAuth while one is chosen stays off, and saving then asks before it
+ * removes the members' connections.
+ */
+export const memberFieldsAfterTypeSwitch = (
+  type: AgentVaultCredentialType,
+  service: TAgentVaultService | null | undefined,
+  oauthUsesVariable: boolean
+): TAgentVaultMemberProvidedField[] => {
+  if (type !== service?.credential.type) return [];
+  if (type === AgentVaultCredentialType.OAuth && oauthUsesVariable) return [];
+  return storedMemberFields(service);
+};
+
 export const isCredentialMemberProvided = (form: {
   memberProvidedFields: TAgentVaultMemberProvidedField[];
 }) => form.memberProvidedFields.includes(AgentVaultVariableReferenceField.CredentialValue);
+
+/** A service whose OAuth credential is an OAuth variable's sign-in rather than one of its own. */
+export const isOAuthVariableService = (service?: TAgentVaultService | null) =>
+  service?.credential.type === AgentVaultCredentialType.OAuth &&
+  service.credential.source === "variable";
+
+/** The key of the OAuth variable a service uses, when the caller can see it. */
+export const storedOAuthVariableKey = (service?: TAgentVaultService | null) =>
+  isOAuthVariableService(service) && service?.credential.type === AgentVaultCredentialType.OAuth
+    ? (service.credential.variable?.key ?? "")
+    : "";
+
+/**
+ * Whether the form's OAuth credential is an OAuth variable. An HTTP API has no sign-in of its own, so its OAuth
+ * credential always is one; an MCP server's is one when the admin chose it over connecting here.
+ */
+export const isOAuthVariableCredential = (form: {
+  serviceType: AgentVaultServiceType;
+  credentialType: AgentVaultCredentialType;
+  oauthUsesVariable: boolean;
+}) =>
+  form.credentialType === AgentVaultCredentialType.OAuth &&
+  (form.serviceType === AgentVaultServiceType.Http ||
+    (form.serviceType === AgentVaultServiceType.Mcp && form.oauthUsesVariable));
 
 // Reusing an authorization after the server URL changes could attach its tokens to another host.
 export const newOAuthAuthorizationId = (
@@ -576,6 +623,7 @@ export const storedOAuthCredential = (
   service.credential.type === AgentVaultCredentialType.OAuth &&
   service.credential.status !== undefined &&
   !isMemberProvidedOAuthService(service) &&
+  !isOAuthVariableService(service) &&
   service.serverUrl === serverUrl.trim()
     ? (service.credential as TAgentVaultSharedOauthCredentialSummary)
     : null;
@@ -584,12 +632,14 @@ export const isOAuthAuthorizationMissing = (
   form: TOAuthFormState & {
     serviceType: AgentVaultServiceType;
     credentialType: AgentVaultCredentialType;
+    oauthUsesVariable: boolean;
   },
   service?: TAgentVaultService | null
 ) => {
   if (
     form.serviceType !== AgentVaultServiceType.Mcp ||
     form.credentialType !== AgentVaultCredentialType.OAuth ||
+    form.oauthUsesVariable ||
     isCredentialMemberProvided(form)
   ) {
     return false;
@@ -597,7 +647,19 @@ export const isOAuthAuthorizationMissing = (
   return !newOAuthAuthorizationId(form) && !storedOAuthCredential(service, form.serverUrl);
 };
 
-export const oauthStatusLabel = (form: TOAuthFormState, service?: TAgentVaultService | null) => {
+export const oauthStatusLabel = (
+  form: TOAuthFormState & {
+    serviceType: AgentVaultServiceType;
+    credentialType: AgentVaultCredentialType;
+    oauthUsesVariable: boolean;
+    oauthVariableKey: string;
+  },
+  service?: TAgentVaultService | null
+) => {
+  if (isOAuthVariableCredential(form)) {
+    const key = form.oauthVariableKey || storedOAuthVariableKey(service);
+    return key ? `Uses the ${key} variable` : "Uses an OAuth variable";
+  }
   if (isCredentialMemberProvided(form)) return "Each member connects their own account";
   const stored = storedOAuthCredential(service, form.serverUrl);
   if (newOAuthAuthorizationId(form)) return stored ? "Reauthorized" : "Authorized";
@@ -605,12 +667,14 @@ export const oauthStatusLabel = (form: TOAuthFormState, service?: TAgentVaultSer
 };
 
 /**
- * Missing keys are read when the form validates rather than when the schema is built, since they arrive as each
- * lookup answers. A key still being checked passes here; the API refuses it on save if it doesn't exist.
+ * Missing keys, and keys of OAuth variables, are read when the form validates rather than when the schema is built,
+ * since they arrive as each lookup answers. A key still being checked passes here; the API refuses it on save if it
+ * doesn't exist.
  */
 export const buildServiceSchema = (
   service?: TAgentVaultService | null,
-  getMissingKeys?: () => ReadonlySet<string>
+  getMissingKeys?: () => ReadonlySet<string>,
+  getOAuthKeys?: () => ReadonlySet<string>
 ) =>
   z
     .object({
@@ -656,6 +720,11 @@ export const buildServiceSchema = (
       oauthClientSecret: z.string().optional(),
       // The admin chose automatic setup over the service's own OAuth app. Kept in the form so it survives Back.
       oauthAutomaticSetup: z.boolean().optional(),
+      // An MCP server's OAuth credential comes from an OAuth variable rather than a sign-in here. Kept while the
+      // admin switches, so going back restores the pick.
+      oauthUsesVariable: z.boolean(),
+      // The key of the OAuth variable. Empty on edit when the caller can't read variables.
+      oauthVariableKey: z.string(),
       // Each member sets these for themselves, so the form holds no value for them.
       memberProvidedFields: z.array(
         z.enum([
@@ -726,6 +795,12 @@ export const buildServiceSchema = (
           );
         }
       }
+      if (isOAuthVariableCredential(data) && !data.oauthVariableKey) {
+        // A variable the caller can't see is kept as it is.
+        const isHiddenVariableKept =
+          isOAuthVariableService(service) && !storedOAuthVariableKey(service);
+        if (!isHiddenVariableKept) issue("oauthVariableKey", "Choose an OAuth variable.");
+      }
       if (isMcp) {
         const urlError = serverUrlError(data.serverUrl);
         if (urlError) {
@@ -741,7 +816,7 @@ export const buildServiceSchema = (
             message: "An MCP server takes OAuth or a bearer token."
           });
         }
-        if (data.credentialType === AgentVaultCredentialType.OAuth) {
+        if (data.credentialType === AgentVaultCredentialType.OAuth && !data.oauthUsesVariable) {
           if (isCredentialMemberProvided(data)) {
             if (data.oauthClientSecret && !data.oauthClientId?.trim()) {
               ctx.addIssue({
@@ -981,9 +1056,10 @@ export const buildServiceSchema = (
       });
 
       const missingKeys = getMissingKeys?.();
+      const oauthKeys = getOAuthKeys?.();
       const addReferenceIssue = (value: string | undefined, path: (string | number)[]) => {
         if (!value || value === UNCHANGED_SECRET) return;
-        const message = variableReferenceError(value, missingKeys);
+        const message = variableReferenceError(value, missingKeys, { oauthKeys });
         if (message) ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
       };
 

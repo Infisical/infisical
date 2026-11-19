@@ -416,6 +416,10 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                     service.credential.type === AgentVaultCredentialType.Bearer
                       ? service.credential.headerName
                       : undefined,
+                  ...(service.credential.type === AgentVaultCredentialType.OAuth &&
+                    service.credential.variable && { oauthVariable: service.credential.variable }),
+                  ...(service.credential.type === AgentVaultCredentialType.OAuth &&
+                    service.credential.issuer && { oauthIssuer: service.credential.issuer }),
                   // Present on every service, null outside HTTP, as this event has always sent them.
                   allowedMethods: allowedMethods ?? null,
                   allowedPathPrefixes: allowedPathPrefixes ?? null,

@@ -4912,18 +4912,18 @@ export const AGENT_VAULT = {
       "The MCP server's URL, such as `https://mcp.example.com/mcp`. Must use `https`, with no username, password, query string or fragment.",
     transport: "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport.",
     mcpCredential:
-      "The credential the proxy attaches to requests to the MCP server, a bearer token. To use OAuth instead, connect the service in the Infisical UI.",
+      "The credential the proxy attaches to requests to the MCP server: a bearer token, or OAuth through an OAuth variable (`variable`). To use the service's own OAuth sign-in instead, connect the service in the Infisical UI.",
     authorizationId:
       "The ID of a completed OAuth authorization for this service's server URL, started by the same user. Each authorization can be used once.",
     updateAuthorizationId:
       "The ID of a completed OAuth authorization, to reauthorize the service or switch it to OAuth. To keep the stored tokens, leave `credential` out.",
     oauthStatus:
-      "Whether the OAuth connection works: `connected`, `needs-reauthorization` (the tokens can no longer be refreshed), or `needs-additional-scopes` (the MCP server asked for scopes the connection lacks).",
+      "Whether the OAuth connection works: `connected`, `needs-reauthorization` (the tokens can no longer be refreshed), or `needs-additional-scopes` (the server asked for scopes the connection lacks).",
     oauthSummaryStatus:
-      "Whether the OAuth connection works: `connected`, `needs-reauthorization` (the tokens can no longer be refreshed), or `needs-additional-scopes` (the MCP server asked for scopes the connection lacks). Absent when each member signs in for themselves.",
+      "Whether the OAuth connection works: `connected`, `needs-reauthorization` (the tokens can no longer be refreshed), or `needs-additional-scopes` (the server asked for scopes the connection lacks). Absent when each member signs in for themselves.",
     oauthIssuer: "The OAuth authorization server that issued the tokens.",
     oauthGrantedScopes: "The scopes the authorization server granted.",
-    oauthRequiredScopes: "Scopes the MCP server asked for that the connection lacks. Reauthorize to request them.",
+    oauthRequiredScopes: "Scopes the server asked for that the connection lacks. Reauthorize to request them.",
     oauthExpiresAt:
       "When the current access token expires, or null if the server didn't say. Not returned to Agent Vault members.",
     oauthAuthorizedAt: "When the connection was last authorized. Not returned to Agent Vault members.",
@@ -5009,7 +5009,13 @@ export const AGENT_VAULT = {
       "With the sign-in left to members: send `dynamic` to stop using your own OAuth app and have each member's sign-in register its own client. Removes every member's connection.",
     oauthRegistrationMode:
       "With the sign-in left to members: `manual` when every member signs in with your own OAuth app, `dynamic` when each sign-in registers its own client.",
-    oauthSummaryClientId: "With the sign-in left to members and your own OAuth app: its client ID."
+    oauthSummaryClientId: "With the sign-in left to members and your own OAuth app: its client ID.",
+    oauthVariable:
+      "The key of a global OAuth variable whose sign-in the service sends, such as `GDRIVE_U123`. Takes `read-value` on variables. Works for HTTP and MCP services, and can't be combined with `authorizationId` or `memberProvidedFields`. Every service using the variable shares its tokens, so a refresh or a revoked sign-in affects them all.",
+    oauthSource:
+      "Where the tokens come from: `service` (the service's own sign-in), `member` (each member's) or `variable` (an OAuth variable's).",
+    oauthVariableRead:
+      "The OAuth variable whose sign-in the service sends. Present only when `source` is `variable` and you can read variables."
   },
   PERSONAL_VALUE: {
     credentialType:
@@ -5088,7 +5094,80 @@ export const AGENT_VAULT = {
       "global creates a variable services can use, which needs the admin role. personal creates one of your own, which only your personal values can use.",
     key: "The name values use to refer to the variable, as `{{KEY}}`. Starts with a letter and uses only upper case letters, numbers and underscores.",
     value: "The value the proxy puts in place of each `{{KEY}}`.",
-    updateValue: "The value the proxy puts in place of each `{{KEY}}`. Omit to keep the stored value.",
+    updateValue:
+      "The value the proxy puts in place of each `{{KEY}}`. Omit to keep the stored value. On an OAuth variable only `null` is accepted, which disconnects it: its tokens and client secret are deleted until the next sign-in or import.",
+    type: "`text` for a value services put in place of `{{KEY}}`, or `oauth` for a sign-in whose access token a service sends as its credential. Fixed when the variable is created.",
+    createType:
+      "`text` (the default) for a value services put in place of `{{KEY}}`. `oauth` for a sign-in with an OAuth provider, which needs `oauth`. OAuth variables are always global and count toward the project's limit of 500 global variables.",
+    typeFilter: "Return only the variables of this type.",
+    createValue:
+      "The value the proxy puts in place of each `{{KEY}}`. Required for a `text` variable; leave it out for an `oauth` one.",
+    oauthSettings:
+      "The OAuth provider. Send `serverUrl` for Infisical to discover its endpoints at each sign-in, or `authorizationEndpoint`, `tokenEndpoint`, `clientId` and `scopes` to set it up by hand.",
+    oauthSettingsUpdate:
+      "The OAuth settings to change. Send `null` to clear a setting. Changing any setting but `scopes`, `clientName` or `redirectUri` disconnects the variable, since its tokens belong to the old provider or client.",
+    oauth: "The variable's OAuth provider and connection. Null for a text variable. Tokens are never returned.",
+    oauthStatus:
+      "`not-connected` until a sign-in or token import, or after an edit disconnected it. Then `connected`, `needs-reauthorization` once the provider stopped accepting the sign-in, or `needs-additional-scopes` when a service needs scopes the sign-in didn't grant.",
+    oauthServerUrl:
+      "An https URL Infisical discovers the provider's endpoints from at each sign-in, such as an MCP server's URL or the provider's issuer URL.",
+    oauthIssuer:
+      "The provider's issuer, checked against the `iss` of each sign-in. Only with endpoints set up by hand; defaults to the origin of `authorizationEndpoint`.",
+    oauthAuthorizationEndpoint: "The provider's authorization endpoint, an https URL. Send it with `tokenEndpoint`.",
+    oauthTokenEndpoint: "The provider's token endpoint, an https URL. Send it with `authorizationEndpoint`.",
+    oauthClientId:
+      "The client ID of your own OAuth app. Required with endpoints set up by hand. Leave it out to register a new client at each sign-in, for a provider that supports dynamic client registration.",
+    oauthRegistration:
+      "`manual` when the variable uses your own OAuth app, `dynamic` when each sign-in registers a client.",
+    oauthTokenEndpointAuthMethod:
+      "How your OAuth app authenticates at the token endpoint: `client_secret_basic`, `client_secret_post` or `none`. Leave it out to pick one at sign-in.",
+    oauthScopes: "The scopes each sign-in asks for. At least one is required with endpoints set up by hand.",
+    oauthResource:
+      "The resource indicator (RFC 8707) to send with each request, an https URL. Only with endpoints set up by hand.",
+    oauthClientName:
+      "The name a registered client shows on the provider's consent screen. Defaults to the project's name. Not used with your own OAuth app.",
+    oauthRedirectUri:
+      "Your own callback for sign-in links made through the API, an https URL. Register it with your OAuth app. Leave it out to use Infisical's callback page.",
+    oauthConnection: "What the last sign-in or token import got. Null while the variable is not connected.",
+    oauthConnectionIssuer: "The issuer the tokens came from.",
+    oauthGrantedScopes: "The scopes the provider granted.",
+    oauthRequiredScopes: "Scopes a service reported it needs that the sign-in didn't grant.",
+    oauthExpiresAt: "When the access token expires, if the provider said. Infisical refreshes it before then.",
+    oauthAuthorizedAt: "When the variable was last signed in or given tokens.",
+    oauthLastError: "Why the last refresh failed, when it did.",
+    oauthAccessToken: "The access token to store. It is stored as sent, and first checked when a service uses it.",
+    oauthRefreshToken:
+      "The refresh token Infisical uses to get new access tokens. Without one, the variable stops working when the access token expires.",
+    oauthTokenExpiresAt: "When the access token expires, as an ISO 8601 date and time.",
+    oauthClientSecret:
+      "The client secret of your own OAuth app, if it has one. Stored with the tokens and never returned.",
+    tokens:
+      "Tokens you already hold, for an OAuth variable set up by hand. They are stored as sent, replacing any the variable held, and first checked when a service uses them.",
+    signIn:
+      "Start a sign-in as the variable is created. The response then carries `signIn`, with the link to send the user to. Leave it out to start one later.",
+    signInClientSecret:
+      "The client secret of your own OAuth app, for a variable with a `clientId`. Leave it out on a reconnect to keep the stored one, or for an app with no secret.",
+    signInStart:
+      "The sign-in started with the variable, or null when none was asked for. Its `authorization` is null when the variable needs more settings first.",
+    signInError:
+      "Present only when `signIn` was sent and the variable was created but its sign-in couldn't be started. `signIn` is then null: start a new sign-in for the variable.",
+    signInAuthorization:
+      "The sign-in, or null when the variable needs `clientId` (`registrationRequired`) or endpoints set by hand (`manualSetupRequired`) first.",
+    signInAuthorizationId: "The ID of the sign-in.",
+    signInAuthorizeUrl:
+      "Send the user to this URL to sign in with the provider. The provider then redirects to `redirectUri` with `state` and `code`, for your callback to send to the complete endpoint.",
+    signInExpiresAt: "When the sign-in link stops working, 10 minutes after it was made.",
+    signInRegistrationRequired:
+      "True when the provider can't register a client by itself, or refused to. Set `clientId` on the variable to your own OAuth app, then start the sign-in again.",
+    signInManualSetupRequired:
+      "True when discovery found no endpoints Infisical can trust: it only guessed them, or the provider's metadata names another issuer. Nothing was sent to them. Check `prefill`, set the endpoints on the variable by hand, then start the sign-in again.",
+    signInPrefill: "What discovery found, as a starting point for the endpoints to set by hand. Null otherwise.",
+    signInPrefillIssuer: "The issuer the provider's metadata names, if any.",
+    signInPrefillScopes: "Scopes the provider lists.",
+    signInRedirectUri:
+      "Where the provider sends the user back after signing in: the variable's `redirectUri`, or Infisical's callback page. Register it with your OAuth app.",
+    completeState:
+      "The `state` value from the provider's redirect. It names the sign-in, which must have been started for this variable by you.",
     revealedValue: "The variable's value.",
     orderBy: "What to sort variables by: key, or serviceCount for how many services use each one.",
     orderDirection: "Which way to sort: asc or desc.",
@@ -5366,7 +5445,20 @@ export const AGENT_VAULT = {
       "The user the proxy logs in as, sent exactly as given. Services sent with a session can't use variables, so it can't wrap text in double braces. Never returned.",
     inlineNativePassword:
       "The password the proxy logs in with, sent exactly as given. Services sent with a session can't use variables, so it can't wrap text in double braces. Never returned.",
-    inlineMcpCredential: "The credential the proxy attaches to requests to the MCP server, a bearer token.",
+    inlineMcpCredential:
+      "The credential the proxy attaches to requests to the MCP server: a bearer token, or OAuth from an OAuth variable or tokens you send.",
+    inlineOauthVariable:
+      "The key of a global OAuth variable whose sign-in the service sends. Takes `read-value` on variables. Leave out the token and provider fields when you send it. If the variable is deleted while the session is live, the proxy refuses requests to the service.",
+    inlineOauthAccessToken:
+      "An OAuth access token you already hold, sent with the provider's `authorizationEndpoint`, `tokenEndpoint`, `clientId` and `scopes` instead of `variable`. Infisical refreshes it in place while the session lasts and deletes it with the session's other secrets. Never returned.",
+    inlineOauthRefreshToken:
+      "The refresh token for `accessToken`, if you have one. Without it, the token can't be refreshed. Never returned.",
+    inlineOauthExpiresAt:
+      "When `accessToken` expires, as an ISO 8601 date. Without it, the token is refreshed only after the server rejects it.",
+    inlineOauthSource:
+      "Where the tokens come from: `variable` (an OAuth variable's sign-in) or `inline` (sent with the session).",
+    inlineOauthVariableRead:
+      "The OAuth variable whose sign-in the service sends. Absent once the variable is deleted, and for callers without `read` on variables.",
     inlineCustomHeaders:
       "Additional headers the proxy attaches to every request to this service, on top of the credential. Up to 20.",
     inlineSubstitutions: "Placeholders the proxy swaps for a real secret before forwarding. Up to 20.",

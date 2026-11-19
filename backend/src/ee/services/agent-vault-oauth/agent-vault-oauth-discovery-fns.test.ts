@@ -438,6 +438,110 @@ describe("discovering an MCP server's authorization server", () => {
     await expect(discoverOauthServer(http, "https://mcp.example.com/mcp")).rejects.toThrow(/different issuer/);
   });
 
+  test("asked to allow it, an issuer mismatch is reported with the issuer named instead of thrown", async () => {
+    const { http } = stubHttp({
+      json: {
+        "https://mcp.example.com/.well-known/oauth-authorization-server": {
+          ...LINEAR_AS,
+          issuer: "https://evil.example"
+        }
+      }
+    });
+    const discovery = await discoverOauthServer(http, "https://mcp.example.com/mcp", undefined, {
+      allowIssuerMismatch: true
+    });
+    expect(discovery.issuerMismatch).toEqual({ advertisedIssuer: "https://evil.example" });
+    expect(discovery.issuer).toBe("https://mcp.example.com");
+  });
+
+  describe("an issuer under the server URL's path", () => {
+    const KEYCLOAK_URL = "https://sso.example.com/realms/acme";
+    const KEYCLOAK_AS = {
+      issuer: KEYCLOAK_URL,
+      authorization_endpoint: `${KEYCLOAK_URL}/protocol/openid-connect/auth`,
+      token_endpoint: `${KEYCLOAK_URL}/protocol/openid-connect/token`,
+      registration_endpoint: `${KEYCLOAK_URL}/clients-registrations/openid-connect`,
+      scopes_supported: ["openid", "profile", "offline_access"],
+      code_challenge_methods_supported: ["S256"]
+    };
+
+    test("asked to, the server URL is tried as the issuer before its origin (Keycloak)", async () => {
+      const { http, fetched } = stubHttp({
+        json: { [`${KEYCLOAK_URL}/.well-known/openid-configuration`]: KEYCLOAK_AS }
+      });
+
+      const discovery = await discoverOauthServer(http, `${KEYCLOAK_URL}/`, undefined, { issuerFromServerPath: true });
+
+      expect(discovery).toMatchObject({
+        issuer: KEYCLOAK_URL,
+        authorizationEndpoint: KEYCLOAK_AS.authorization_endpoint,
+        tokenEndpoint: KEYCLOAK_AS.token_endpoint,
+        endpointsGuessed: false
+      });
+      expect(discovery.issuerMismatch).toBeUndefined();
+      expect(fetched).toEqual(
+        expect.arrayContaining([
+          "https://sso.example.com/.well-known/oauth-authorization-server/realms/acme",
+          "https://sso.example.com/.well-known/openid-configuration/realms/acme",
+          `${KEYCLOAK_URL}/.well-known/openid-configuration`
+        ])
+      );
+    });
+
+    test("asked to, the origin is still used when the path has no metadata", async () => {
+      const { http } = stubHttp({
+        json: {
+          "https://mcp.example.com/.well-known/oauth-authorization-server": {
+            ...LINEAR_AS,
+            issuer: "https://mcp.example.com"
+          }
+        }
+      });
+
+      const discovery = await discoverOauthServer(http, "https://mcp.example.com/mcp", undefined, {
+        issuerFromServerPath: true
+      });
+
+      expect(discovery.issuer).toBe("https://mcp.example.com");
+      expect(discovery.endpointsGuessed).toBe(false);
+    });
+
+    test("the path's metadata must name the path as its issuer", async () => {
+      const { http } = stubHttp({
+        json: {
+          [`${KEYCLOAK_URL}/.well-known/openid-configuration`]: { ...KEYCLOAK_AS, issuer: "https://sso.example.com" }
+        }
+      });
+
+      await expect(discoverOauthServer(http, KEYCLOAK_URL, undefined, { issuerFromServerPath: true })).rejects.toThrow(
+        /different issuer/
+      );
+    });
+
+    test("an MCP server's discovery doesn't look under its path", async () => {
+      const { http, fetched } = stubHttp({
+        json: { [`${KEYCLOAK_URL}/.well-known/openid-configuration`]: KEYCLOAK_AS }
+      });
+
+      const discovery = await discoverOauthServer(http, KEYCLOAK_URL);
+
+      expect(discovery).toMatchObject({ issuer: "https://sso.example.com", endpointsGuessed: true });
+      expect(fetched.filter((url) => url.includes("realms"))).toEqual([
+        "https://sso.example.com/.well-known/oauth-protected-resource/realms/acme"
+      ]);
+    });
+
+    test("the authorization server's scopes are never asked for, only offline_access when it lists it", async () => {
+      const { http } = stubHttp({
+        json: { [`${KEYCLOAK_URL}/.well-known/openid-configuration`]: KEYCLOAK_AS }
+      });
+
+      const discovery = await discoverOauthServer(http, KEYCLOAK_URL, undefined, { issuerFromServerPath: true });
+
+      expect(discovery.scopes).toEqual(["offline_access"]);
+    });
+  });
+
   test("an issuer differing by a trailing slash is accepted", async () => {
     const { http } = stubHttp({
       json: {

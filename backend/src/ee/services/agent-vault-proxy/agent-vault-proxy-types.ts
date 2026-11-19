@@ -139,6 +139,12 @@ export type TResolvedService = {
   // The service takes part of its credential from each member and the member whose values the session uses (its owner,
   // or the user it acts for) hasn't set them, so the proxy refuses its requests rather than sending them without one.
   personalValuesMissing: boolean;
+  // The OAuth variable a session's own service used was deleted. Sent with personalValuesMissing, so a proxy that
+  // predates this flag refuses the service too.
+  credentialRemoved?: boolean;
+  // The OAuth variable the service sends isn't signed in. Sent with personalValuesMissing, so a proxy that predates
+  // this flag refuses the service too.
+  credentialNotConnected?: boolean;
   // Some of the credential is each member's own, so a rejection is theirs to fix, not the admin's.
   memberProvided: boolean;
   // The bundle the service came from. Null for a service sent inline with the session and for one it lists by name.
