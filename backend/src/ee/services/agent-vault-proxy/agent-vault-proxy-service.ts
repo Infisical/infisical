@@ -133,11 +133,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultProxyDAL: TAgentVaultProxyDALFactory;
   agentVaultResolveDAL: Pick<
     TAgentVaultResolveDALFactory,
-    | "findResolvableServices"
-    | "findSessionSkills"
-    | "findReachableBundles"
-    | "findSessionHook"
-    | "findSessionMetadata"
+    "findResolvableServices" | "findSessionSkills" | "findReachableBundles" | "findSessionHook" | "findSessionMetadata"
   >;
   agentVaultServiceCustomHeaderDAL: Pick<TAgentVaultServiceCustomHeaderDALFactory, "findByServiceIds">;
   agentVaultServiceSubstitutionDAL: Pick<TAgentVaultServiceSubstitutionDALFactory, "findByServiceIds">;
