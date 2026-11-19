@@ -907,6 +907,13 @@ audit log with the `PLATFORM` actor, and calls `rebuildCrlsAfterPlatformRevocati
 `revokeCertAsPlatform` never rebuilds the CRL itself. A sync that mirrors a revocation the CA already made (the
 DigiCert revocation sync) keeps writing `status` directly.
 
+**A revoke someone asks for goes through `certificateService.revokeCert`**, never straight to
+`$performRevocation` or a CA's revoke call, because `revokeCert` is where an Application's revocation
+approval policy holds the request (`cert-revocation` type). Only an approved request revokes through
+`revokeApprovedCertificate`. Not gated, by decision: revocations that come with another action (signer
+delete, DigiCert reissue), ones that record an upstream fact (the DigiCert revocation sync), and ones an
+outside system asks for through `revokeCertAsPlatform` (the Microsoft Intune revocation sync).
+
 ### Internal CA key sources
 
 An internal CA's signing key lives in Infisical (`keySource: infisical`, encrypted private key) or

@@ -3,6 +3,7 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 export enum ApprovalPolicyType {
   PamAccess = "pam-access",
   CertRequest = "cert-request",
+  CertRevocation = "cert-revocation",
   CertCodeSigning = "cert-code-signing"
 }
 
@@ -209,6 +210,7 @@ export type TApprovalPolicy = {
   id: string;
   projectId: string;
   name: string;
+  isActive?: boolean | null;
   maxRequestTtl?: string | null;
   type: ApprovalPolicyType;
   conditions: {
