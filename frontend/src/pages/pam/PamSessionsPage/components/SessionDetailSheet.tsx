@@ -43,6 +43,7 @@ import { TPamSession, TPamSessionLog } from "@app/hooks/api/pam/types";
 import { LiveDot } from "../../components/LiveDot";
 import { PamDetailSheet } from "../../components/PamDetailSheet";
 import { capitalize, formatDuration, STATUS_BADGE } from "../constants";
+import { WebSessionLogView } from "./WebSessionLogView/WebSessionLogView";
 
 const RdpReplayView = lazy(() => import("./RdpReplayView/RdpReplayView"));
 
@@ -448,7 +449,36 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
     session.accountType === PamAccountType.Windows ||
     session.accountType === PamAccountType.WindowsAd;
 
-  const tabs = isRdpSession
+  const webActivityTab = {
+    value: "activity",
+    label: "Session Activity",
+    icon: <ClipboardListIcon className="mr-1.5 size-4" />,
+    content: (
+      <div className="flex flex-1 flex-col gap-4 p-4">
+        <Card>
+          <CardHeader className="flex items-center justify-between border-b">
+            <CardTitle className="text-base">Session Activity</CardTitle>
+            {isActive && (
+              <Badge variant="pam">
+                <LiveDot className="bg-product-pam" />
+                Live
+              </Badge>
+            )}
+          </CardHeader>
+          <CardContent>
+            <WebSessionLogView
+              events={events}
+              isActive={isActive}
+              isLoading={isLogsLoading}
+              error={logsError}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  };
+
+  const defaultTabs = isRdpSession
     ? [
         {
           value: "recording",
@@ -527,6 +557,8 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
           )
         }
       ];
+
+  const tabs = session.accountType === PamAccountType.WebApp ? [webActivityTab] : defaultTabs;
 
   return (
     <PamDetailSheet

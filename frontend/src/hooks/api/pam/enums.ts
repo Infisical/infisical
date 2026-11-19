@@ -144,7 +144,8 @@ export enum SessionChannelType {
   Terminal = "terminal",
   Exec = "exec",
   Sftp = "sftp",
-  Rdp = "rdp"
+  Rdp = "rdp",
+  Web = "web"
 }
 
 export enum PamSessionStatus {

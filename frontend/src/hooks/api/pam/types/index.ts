@@ -323,6 +323,75 @@ export type THttpEvent = THttpRequestEvent | THttpResponseEvent;
 
 export type TPamSessionLog = TPamCommandLog | TSessionEvent | THttpEvent;
 
+type TWebEventBase = {
+  timestamp: string;
+  channelType: SessionChannelType.Web;
+  elapsedTime: number;
+};
+
+export type TWebHttpEvent = TWebEventBase & {
+  eventType: "http";
+  method: string;
+  url: string;
+  status: number;
+  mimeType?: string;
+  resourceType?: string;
+  respBytes?: number;
+  durationMs?: number;
+  blocked?: boolean;
+  error?: string;
+};
+
+export type TWebNavigationEvent = TWebEventBase & {
+  eventType: "navigation";
+  url: string;
+};
+
+export type TWebSessionActionEvent = TWebEventBase & {
+  eventType: "session";
+  action: string;
+  detail?: string;
+};
+
+export type TWebInputTarget = {
+  tag?: string;
+  role?: string;
+  name?: string;
+  text?: string;
+};
+
+export type TWebInputEvent = TWebEventBase & {
+  eventType: "input";
+  action: "click" | "submit" | "paste" | "scroll" | "navigate" | "back" | "forward" | "reload";
+  x?: number;
+  y?: number;
+  scrollX?: number;
+  scrollY?: number;
+  length?: number;
+  target?: TWebInputTarget;
+};
+
+export type TWebScreenshotEvent = TWebEventBase & {
+  eventType: "screenshot";
+  trigger: string;
+  width: number;
+  height: number;
+  bytes: number;
+  jpeg: string;
+};
+
+export type TWebSessionEvent =
+  | TWebHttpEvent
+  | TWebNavigationEvent
+  | TWebSessionActionEvent
+  | TWebInputEvent
+  | TWebScreenshotEvent;
+
+export const isWebSessionEvent = (event: unknown): event is TWebSessionEvent =>
+  typeof event === "object" &&
+  event !== null &&
+  (event as { channelType?: unknown }).channelType === SessionChannelType.Web;
+
 export type TPamSessionAiInsights = {
   summary: string;
   warnings: { text: string; logIndex?: number }[];
