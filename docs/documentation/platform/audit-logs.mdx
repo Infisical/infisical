@@ -691,6 +691,60 @@ Here are a few common patterns for filtering audit logs, grouped by product.
       --data-urlencode "eventMetadata=approvalRequestId=<approval-request-id>"
     ```
   </Accordion>
+  <Accordion title="Who deleted a certificate" id="certificate-deletions">
+    Find who deleted each certificate, including deletions that needed [approval](/documentation/platform/pki/applications/approvals#deletion). [Certificate cleanup](/documentation/platform/pki/settings/certificate-cleanup) doesn't record a `delete-cert` event for each certificate it deletes. It records `certificate-cleanup-completed` events instead, which list the deleted certificates' serial numbers in `event.metadata.certificateSerialNumbers`.
+
+    <Tabs>
+      <Tab title="Infisical UI">
+        <Steps>
+          <Step>
+            Go to **Certificate Manager** and open **Audit Logs**.
+          </Step>
+          <Step>
+            Select **Search audit logs** and add:
+            - `event`: `delete-cert`, `request-cert-deletion`, `cert-deletion-failed`, `certificate-cleanup-completed`
+          </Step>
+        </Steps>
+
+        Select a result to see its `event.metadata`.
+      </Tab>
+      <Tab title="API">
+        ```bash
+        curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+          -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "projectId=<project-id>" \
+          --data-urlencode "eventType=delete-cert,request-cert-deletion,cert-deletion-failed,certificate-cleanup-completed"
+        ```
+      </Tab>
+    </Tabs>
+
+    The actor of a `delete-cert` event shows how the certificate was deleted:
+
+    - A user or machine identity: that actor deleted the certificate right away
+    - `platform`, with the approval request's ID in `event.metadata.approvalRequestId`: Infisical deleted the certificate once the request was approved, and `requesterName` and `requesterEmail` name the requester
+
+    A deletion request can also end in one of these events, with `platform` as the actor:
+
+    - `cert-deletion-failed`: the request was approved but the deletion failed, with the reason in `event.metadata.error`
+    - `approval-request-cancel`: a new deletion request replaced this one because too few of its approvers could still approve it
+
+    If the certificate was already deleted when the request was approved, Infisical records neither `delete-cert` nor `cert-deletion-failed` for the request.
+
+    To find who requested and who reviewed a deletion request, look for events with the same `approvalRequestId`:
+
+    - `request-cert-deletion`: the actor requested the deletion, and `approvalPolicyName` names the policy that required approval
+    - `approval-request-approve` and `approval-request-reject`: the actor approved or rejected the request
+
+    Through the API, add `eventMetadata` to return every event for one approval request:
+
+    ```bash
+    curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+      -H "Authorization: Bearer <your-access-token>" \
+      --data-urlencode "projectId=<project-id>" \
+      --data-urlencode "eventType=request-cert-deletion,approval-request-approve,approval-request-reject,approval-request-cancel,delete-cert,cert-deletion-failed" \
+      --data-urlencode "eventMetadata=approvalRequestId=<approval-request-id>"
+    ```
+  </Accordion>
 </AccordionGroup>
 
 ### Key Management Service (KMS)

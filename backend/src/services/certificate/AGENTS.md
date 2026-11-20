@@ -2,13 +2,15 @@
 
 Read before changing certificate deletion, the expiry cleanup job, renewal, or certificate syncs.
 
-Deleting a certificate goes through `softDeleteCertificates` (`certificate-fns.ts`), which both the delete
-endpoint and the expiry cleanup job (`certificate-cleanup-queue.ts`) call: it stamps `deletedAt`,
+Deleting a certificate goes through `softDeleteCertificates` (`certificate-fns.ts`), which `deleteCert` (the
+delete endpoints), `deleteApprovedCertificate` (an approved deletion request) and the expiry cleanup job
+(`certificate-cleanup-queue.ts`) call: it stamps `deletedAt`,
 `deletedByActorType` and `deletedByActorId` on the row and, in the same transaction, removes its
 `certificate_bodies`, `certificate_secrets` and PKI collection items and clears the private key copy on
 `certificate_requests.encryptedPrivateKey`. The row itself stays, so the inventory, audit trail and renewal
-chain keep pointing at something. Nothing hard deletes certificates any more, so deleted rows accumulate.
-Things that rely on that:
+chain keep pointing at something. No code path hard deletes a certificate, so deleted rows accumulate. Rows
+leave only when their CA or project is deleted, through the `ON DELETE CASCADE` foreign keys
+`certificates.caId` and `certificates.projectId`. Things that rely on that:
 
 - **`certificate_syncs` rows are kept.** Linux, Windows and Azure (free-text naming) find what they delivered
   only through those rows (`syncMetadata.files`, `externalIdentifier`), so the delete queues the auto-sync
@@ -36,7 +38,9 @@ Things that rely on that:
 - **A sync can still write a link for a certificate deleted mid-run.** `certificate_syncs` inserts are not
   filtered on `deletedAt`, so a provider that uploads and then records the link leaves a tracking row, and the
   sync the delete queued removes that copy from the destination through it.
-- **Cleanup skips certificates a code signing signer uses**, the same rule the delete endpoint enforces.
+- **Cleanup skips certificates a code signing signer uses**, the same rule the delete endpoint enforces. An
+  approved deletion request checks it again in `$deleteForApproval`, because a signer can take the certificate
+  while the request waits, so a new rule that refuses a delete goes in `deleteCert` and `$deleteForApproval`.
 - **Deleted certificates are not restored.** Serial numbers stay globally unique
   (`certificates_serialnumber_unique`), so re-importing a deleted certificate into the same project fails with
   the deleted message (any other project gets the generic serial conflict, so nothing about it leaks), and
