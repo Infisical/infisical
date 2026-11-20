@@ -49,7 +49,7 @@ import { Dash } from "../../access/org/detail-parts";
 import { useProjectPermission } from "../../access/permissions";
 import { formatDateTime } from "../../access/roles";
 import { failed, saved } from "../../access/toast";
-import { RESTRICTED } from "../../access/ui";
+import { EditDetailsButton } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { TruncatedValue } from "../../networking/truncated-value";
@@ -260,17 +260,7 @@ const BundleDetailsCard = ({
   <Card
     variant="framed"
     title="Details"
-    action={
-      <Button
-        variant="ghost"
-        size="sm"
-        aria-label="Edit access bundle"
-        disabledReason={canEdit ? undefined : RESTRICTED}
-        onClick={onEdit}
-      >
-        Edit
-      </Button>
-    }
+    action={<EditDetailsButton label="Edit access bundle" allowed={canEdit} onClick={onEdit} />}
   >
     <DataList
       variant="props"

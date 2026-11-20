@@ -45,7 +45,7 @@ import type { TRelayWithAuthMethod } from "@app/hooks/api/relays/types";
 import { Dash } from "../../access/org/detail-parts";
 import { useOrgId, useOrgPermission } from "../../access/permissions";
 import { saved, toast } from "../../access/toast";
-import { AccessRestricted, RESTRICTED } from "../../access/ui";
+import { AccessRestricted, EditDetailsButton, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
@@ -428,15 +428,11 @@ export const RelayDetailsByIDPage = () => {
             variant="framed"
             title="Details"
             action={
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-label="Edit relay host"
-                disabledReason={canEdit ? undefined : RESTRICTED}
+              <EditDetailsButton
+                label="Edit relay host"
+                allowed={canEdit}
                 onClick={() => setDialog("host")}
-              >
-                Edit
-              </Button>
+              />
             }
           >
             <DataList

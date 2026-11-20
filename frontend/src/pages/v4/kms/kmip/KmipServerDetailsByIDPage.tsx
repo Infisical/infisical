@@ -30,7 +30,7 @@ import { Dash } from "../../access/org/detail-parts";
 import { useOrgId, useOrgPermission } from "../../access/permissions";
 import { formatDateTime } from "../../access/roles";
 import { failed, toast } from "../../access/toast";
-import { AccessRestricted, RESTRICTED } from "../../access/ui";
+import { AccessRestricted, EditDetailsButton, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import type { KmipEnrollment } from "../../data/kmip/contract";
@@ -48,26 +48,6 @@ import { errorStatus, KMIP_SERVER_DOCS, keyAlgorithmName, kmipLinks } from "./sh
 import css from "./kmip.module.css";
 
 const methodLabel = { aws: "AWS auth", token: "Token auth", identity: "Machine identity" };
-
-const EditButton = ({
-  label,
-  allowed,
-  onClick
-}: {
-  label: string;
-  allowed: boolean;
-  onClick: () => void;
-}) => (
-  <Button
-    variant="ghost"
-    size="sm"
-    aria-label={label}
-    disabledReason={allowed ? undefined : RESTRICTED}
-    onClick={onClick}
-  >
-    Edit
-  </Button>
-);
 
 const useEnrollment = (server: TKmipServerWithAuthMethod | undefined) => {
   const generate = useV4Adapter("kmip").useGenerateEnrollmentToken();
@@ -242,7 +222,7 @@ export const KmipServerDetailsByIDPage = () => {
                   variant="framed"
                   title="Certificate configuration"
                   action={
-                    <EditButton
+                    <EditDetailsButton
                       label="Edit certificate configuration"
                       allowed={canEdit}
                       onClick={() => setDialog("cert")}
@@ -265,7 +245,7 @@ export const KmipServerDetailsByIDPage = () => {
                 title="Authentication"
                 action={
                   isIdentity ? undefined : (
-                    <EditButton
+                    <EditDetailsButton
                       label="Edit auth method"
                       allowed={canEdit}
                       onClick={() => setDialog("auth")}
