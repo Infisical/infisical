@@ -104,12 +104,14 @@ Supports conditions and permission inversion.
 | `edit`   | Modify existing tags                     |
 | `delete` | Remove tags from the project             |
 
-#### Subject: `project`
+#### Subject: `workspace`
 
-| Action   | Description               |
-| -------- | ------------------------- |
-| `edit`   | Modify workspace settings |
-| `delete` | Delete the workspace      |
+This subject covers the project itself.
+
+| Action   | Description                   |
+| -------- | ----------------------------- |
+| `edit`   | Change the project's settings |
+| `delete` | Delete the project            |
 
 #### Subject: `ip-allowlist`
 
@@ -572,7 +574,7 @@ A role in an Agent Vault project also uses these subjects from [core platform an
 | [`app-connections`](#subject-app-connections) | Every action, for the app connection that [stores session logs externally](/documentation/platform/agent-vault/external-log-storage) |
 | [`settings`](#subject-settings)               | `read` and `edit`, for [session log settings](/documentation/platform/agent-vault/session-logs#managing-session-logs)               |
 | [`audit-logs`](#subject-audit-logs)           | Every action                                                                                                                        |
-| [`project`](#subject-project)                 | Every action                                                                                                                        |
+| [`workspace`](#subject-workspace)             | Every action                                                                                                                        |
 
 An Agent Vault project gives access through roles only, so `assign-additional-privileges` has no effect there.
 
