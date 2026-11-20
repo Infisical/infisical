@@ -16,11 +16,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { fastJsonSerializerCompiler } from "@app/server/plugins/fastify-zod";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
-import {
-  getBatchSecretLimitMessage,
-  getMaxSecretsPerBatchRequest,
-  SecretUpdateMode
-} from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import { limitSecretBatchSize, SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import {
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
@@ -1120,23 +1116,23 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .default("/")
           .transform(removeTrailingSlash)
           .describe(RAW_SECRETS.CREATE.secretPath),
-        secrets: z
-          .object({
-            secretKey: SecretNameSchema.describe(RAW_SECRETS.CREATE.secretName),
-            secretValue: z
-              .string()
-              .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
-              .describe(RAW_SECRETS.CREATE.secretValue),
-            secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
-            skipMultilineEncoding: z.boolean().nullish().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
-            metadata: z.record(z.string()).optional(),
-            secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
-            tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds)
-          })
-          .array()
-          .min(1)
-          .max(getMaxSecretsPerBatchRequest(), getBatchSecretLimitMessage())
-          .describe(`At most ${getMaxSecretsPerBatchRequest()} secrets per request.`)
+        secrets: limitSecretBatchSize(
+          z
+            .object({
+              secretKey: SecretNameSchema.describe(RAW_SECRETS.CREATE.secretName),
+              secretValue: z
+                .string()
+                .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
+                .describe(RAW_SECRETS.CREATE.secretValue),
+              secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
+              skipMultilineEncoding: z.boolean().nullish().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
+              metadata: z.record(z.string()).optional(),
+              secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
+              tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds)
+            })
+            .array()
+            .min(1)
+        )
       }),
       response: {
         200: z.union([
@@ -1259,41 +1255,41 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .optional()
           .default(SecretUpdateMode.FailOnNotFound)
           .describe(RAW_SECRETS.UPDATE.mode),
-        secrets: z
-          .object({
-            secretKey: SecretNameSchema.describe(RAW_SECRETS.UPDATE.secretName),
-            secretValue: z
-              .string()
-              .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
-              .optional()
-              .describe(RAW_SECRETS.UPDATE.secretValue),
-            secretPath: z
-              .string()
-              .trim()
-              .transform(removeTrailingSlash)
-              .optional()
-              .describe(RAW_SECRETS.UPDATE.secretPath),
-            secretComment: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.secretComment),
-            skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.UPDATE.skipMultilineEncoding),
-            newSecretName: SecretNameSchema.optional().describe(RAW_SECRETS.UPDATE.newSecretName),
-            tagIds: z.string().array().optional().describe(RAW_SECRETS.UPDATE.tagIds),
-            secretReminderNote: z
-              .string()
-              .max(1024, "Secret reminder note cannot exceed 1024 characters")
-              .optional()
-              .nullable()
-              .describe(RAW_SECRETS.UPDATE.secretReminderNote),
-            secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
-            secretReminderRepeatDays: z
-              .number()
-              .optional()
-              .nullable()
-              .describe(RAW_SECRETS.UPDATE.secretReminderRepeatDays)
-          })
-          .array()
-          .min(1)
-          .max(getMaxSecretsPerBatchRequest(), getBatchSecretLimitMessage())
-          .describe(`At most ${getMaxSecretsPerBatchRequest()} secrets per request.`)
+        secrets: limitSecretBatchSize(
+          z
+            .object({
+              secretKey: SecretNameSchema.describe(RAW_SECRETS.UPDATE.secretName),
+              secretValue: z
+                .string()
+                .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
+                .optional()
+                .describe(RAW_SECRETS.UPDATE.secretValue),
+              secretPath: z
+                .string()
+                .trim()
+                .transform(removeTrailingSlash)
+                .optional()
+                .describe(RAW_SECRETS.UPDATE.secretPath),
+              secretComment: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.secretComment),
+              skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.UPDATE.skipMultilineEncoding),
+              newSecretName: SecretNameSchema.optional().describe(RAW_SECRETS.UPDATE.newSecretName),
+              tagIds: z.string().array().optional().describe(RAW_SECRETS.UPDATE.tagIds),
+              secretReminderNote: z
+                .string()
+                .max(1024, "Secret reminder note cannot exceed 1024 characters")
+                .optional()
+                .nullable()
+                .describe(RAW_SECRETS.UPDATE.secretReminderNote),
+              secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
+              secretReminderRepeatDays: z
+                .number()
+                .optional()
+                .nullable()
+                .describe(RAW_SECRETS.UPDATE.secretReminderRepeatDays)
+            })
+            .array()
+            .min(1)
+        )
       }),
       response: {
         200: z.union([

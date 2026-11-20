@@ -1,5 +1,6 @@
 import { MongoAbility } from "@casl/ability";
 import { Knex } from "knex";
+import { z } from "zod";
 
 import { SecretType, TSecretFolders, TSecretsV2, TSecretsV2Insert, TSecretsV2Update } from "@app/db/schemas";
 import { TCipherPair, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
@@ -44,10 +45,14 @@ export type TSecretReferenceDTO = {
   secretKey: string;
 };
 
-export const getMaxSecretsPerBatchRequest = () => getConfig().MAX_SECRETS_PER_BATCH_REQUEST;
+export const limitSecretBatchSize = <T extends z.ZodTypeAny>(secrets: z.ZodArray<T>) => {
+  const max = getConfig().MAX_SECRETS_PER_BATCH_REQUEST;
+  if (!max) return secrets;
 
-export const getBatchSecretLimitMessage = () =>
-  `A batch request can include at most ${getMaxSecretsPerBatchRequest()} secrets. Split the secrets into multiple requests.`;
+  return secrets
+    .max(max, `A batch request can include at most ${max} secrets. Split the secrets into multiple requests.`)
+    .describe(`At most ${max} secrets per request.`);
+};
 
 export enum SecretUpdateMode {
   Ignore = "ignore",

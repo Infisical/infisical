@@ -215,8 +215,8 @@ Example values:
   Each instance holds at most this many requests to list secrets at the same time. The count includes requests that are running and requests that are waiting for a turn. A request past this number fails with a `429` response. Only used when `SECRET_READ_CONCURRENCY_LIMIT_ENABLED` is `true`.
 </ParamField>
 
-<ParamField query="MAX_SECRETS_PER_BATCH_REQUEST" type="int" default="1000" optional>
-  Maximum number of secrets in one batch request. Infisical rejects a batch that includes more secrets than this. Split the secrets into multiple requests.
+<ParamField query="MAX_SECRETS_PER_BATCH_REQUEST" type="int" optional>
+  Maximum number of secrets in one batch request. Infisical rejects a batch that includes more secrets than this. Split the secrets into multiple requests. When unset, batch requests have no limit.
 </ParamField>
 
 ## CORS

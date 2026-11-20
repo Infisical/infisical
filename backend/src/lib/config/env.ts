@@ -359,12 +359,14 @@ const envSchema = z
       .describe(
         "Most requests to list secrets an instance will accept at once, running or waiting, before it refuses further ones"
       ),
-    MAX_SECRETS_PER_BATCH_REQUEST: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .default(1000)
-      .describe("Most secrets one batch request may include"),
+    MAX_SECRETS_PER_BATCH_REQUEST: zpStr(
+      z.coerce
+        .number()
+        .int()
+        .min(1)
+        .optional()
+        .describe("Most secrets one batch request may include. Unset, batch requests have no limit")
+    ),
     SECRETS_RATE_LIMIT_ENABLED: zodStrBool
       .default("false")
       .describe(

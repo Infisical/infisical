@@ -13,10 +13,7 @@ import { booleanSchema, secretRawSchema } from "@app/server/routes/sanitizedSche
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { commitChangesResponseSchema, resourceChangeSchema } from "@app/services/folder-commit/folder-commit-schemas";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
-import {
-  getBatchSecretLimitMessage,
-  getMaxSecretsPerBatchRequest
-} from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import { limitSecretBatchSize } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const commitChangeSummarySchema = z.object({
@@ -593,8 +590,8 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         message: z.string().trim().max(255).optional(),
         changes: z.object({
           secrets: z.object({
-            create: z
-              .array(
+            create: limitSecretBatchSize(
+              z.array(
                 z.object({
                   secretKey: SecretNameSchema,
                   secretValue: z.string().transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
@@ -605,8 +602,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
                   tagIds: z.string().array().optional()
                 })
               )
-              .max(getMaxSecretsPerBatchRequest(), getBatchSecretLimitMessage())
-              .optional(),
+            ).optional(),
             update: z
               .array(
                 z.object({
