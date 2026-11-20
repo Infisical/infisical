@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type ComponentProps, useMemo, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -69,9 +69,247 @@ import { VaultImportSheet } from "./vault-import-sheet";
 
 const BUILT_IN = "Built-in roles are read only";
 const ADMIN_OR_MEMBER_PRODUCTS = new Set<ProjectType>([ProjectType.PAM, ProjectType.AgentVault]);
+const BACK_LABEL: Record<RoleScope, string> = { org: "Roles", project: "Project roles" };
 const DEFAULT_ROLE = "This is the default role for new members. Set another default to delete it.";
 
 type Overlay = "edit" | "duplicate" | "delete" | "discard" | "template" | "vault";
+
+const RoleOptions = ({
+  role,
+  isCustom,
+  isDefault,
+  can,
+  onOpen
+}: Pick<RoleEditorProps, "role" | "isCustom" | "isDefault" | "can"> & {
+  onOpen: (overlay: Overlay) => void;
+}) => {
+  const builtInNote = isCustom ? undefined : BUILT_IN;
+  const copy = async (value: string, title: string) => {
+    if (await copyText(value)) toast({ tone: "neutral", title });
+  };
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" iconRight="more">
+          Options
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onSelect={() => copy(role.id, "Copied ID to clipboard")}>
+          <Icon name="copy" />
+          Copy ID
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => copy(role.slug, "Copied slug to clipboard")}>
+          <Icon name="copy" />
+          Copy slug
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!isCustom || !can.edit}
+          description={builtInNote}
+          onSelect={() => onOpen("edit")}
+        >
+          <Icon name="pencil" />
+          Edit role
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!isCustom || !can.create}
+          description={builtInNote}
+          onSelect={() => onOpen("duplicate")}
+        >
+          <Icon name="copy" />
+          Duplicate role
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={!isCustom || !can.delete || isDefault}
+          description={isDefault ? DEFAULT_ROLE : builtInNote}
+          onSelect={() => onOpen("delete")}
+        >
+          <Icon name="trash" />
+          Delete role
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
+const RoleForm = ({
+  scope,
+  mode,
+  role,
+  taken,
+  withDescription,
+  ...props
+}: { scope: RoleScope; mode: "edit" | "duplicate" } & Omit<
+  ComponentProps<typeof ProjectRoleSheet>,
+  "open" | "mode"
+>) => {
+  const shared = {
+    ...props,
+    role,
+    mode: mode === "edit" ? ("update" as const) : ("duplicate" as const),
+    taken: mode === "edit" ? taken.filter((slug) => slug !== role.slug) : taken,
+    open: true
+  };
+  return scope === "org" ? (
+    <OrgRoleDialog {...shared} />
+  ) : (
+    <ProjectRoleSheet {...shared} withDescription={withDescription} />
+  );
+};
+
+const ImportSheets = ({
+  overlay,
+  onOverlay,
+  projectType,
+  connections,
+  permissions,
+  onApply
+}: {
+  overlay?: Overlay;
+  onOverlay: (overlay?: Overlay) => void;
+  projectType?: ProjectType;
+  connections: readonly { id: string; name: string }[];
+  permissions: RolePermissions;
+  onApply: (next: RolePermissions) => void;
+}) => (
+  <>
+    <PolicyTemplateSheet
+      projectType={projectType}
+      open={overlay === "template"}
+      onOpenChange={(next) => onOverlay(next ? "template" : undefined)}
+      permissions={permissions}
+      onApply={onApply}
+    />
+    {overlay === "vault" && (
+      <VaultImportSheet
+        open
+        onOpenChange={(next) => onOverlay(next ? "vault" : undefined)}
+        connections={connections}
+        permissions={permissions}
+        onApply={onApply}
+      />
+    )}
+  </>
+);
+
+const ImportMenu = ({
+  editable,
+  reason,
+  withVault,
+  onOpen
+}: {
+  editable: boolean;
+  reason: string;
+  withVault: boolean;
+  onOpen: (overlay: Overlay) => void;
+}) => (
+  <Gate allowed={editable} reason={reason}>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button layout="trigger" type="button" variant="outline" disabled={!editable}>
+          Import
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem disabled={!editable} onSelect={() => onOpen("template")}>
+          <Icon name="layers" />
+          Add from template
+        </DropdownMenuItem>
+        {withVault && (
+          <DropdownMenuItem disabled={!editable} onSelect={() => onOpen("vault")}>
+            <Icon name="download" />
+            Add from HashiCorp Vault
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  </Gate>
+);
+
+const DeleteRoleDialog = ({
+  scope,
+  name,
+  open,
+  onOpenChange,
+  onDelete
+}: {
+  scope: RoleScope;
+  name: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDelete: () => Promise<void>;
+}) => (
+  <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialogContent tone="danger" confirmText="confirm">
+      <AlertDialogHeader>
+        <AlertDialogTitle>
+          {scope === "org"
+            ? `Are you sure you want to delete the organization role ${name}?`
+            : `Delete "${name}"?`}
+        </AlertDialogTitle>
+        <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel>Cancel</AlertDialogCancel>
+        <AlertDialogAction variant="destructive" onClick={onDelete}>
+          {scope === "org" ? "Delete" : "Delete role"}
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+);
+
+const useRoleDraft = (
+  scope: RoleScope,
+  role: TOrgRole | TProjectRole,
+  savePermissions: (permissions: RolePermissions) => Promise<void>
+) => {
+  const stored = useMemo(
+    () => permissionsFromApi(scope, role.permissions),
+    [scope, role.permissions]
+  );
+  const [draft, setDraft] = useState<RolePermissions>();
+  const [errors, setErrors] = useState<PermissionErrors>();
+  const [saving, setSaving] = useState(false);
+  const current = draft ?? stored;
+  const dirty =
+    draft !== undefined &&
+    JSON.stringify(permissionsToApi(scope, draft)) !==
+      JSON.stringify(permissionsToApi(scope, stored));
+
+  const change = (next: RolePermissions) => {
+    setDraft(next);
+    if (errors) setErrors(validatePermissions(scope, next));
+  };
+
+  const save = async () => {
+    const found = validatePermissions(scope, current);
+    if (Object.keys(found).length) {
+      setErrors(found);
+      return;
+    }
+    setErrors(undefined);
+    setSaving(true);
+    try {
+      await savePermissions(current);
+      setDraft(undefined);
+      saved(scope === "org" ? "Successfully updated role" : `Project role "${role.name}" updated`);
+    } catch (error) {
+      failed("Failed to update role", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const discard = () => {
+    setDraft(undefined);
+    setErrors(undefined);
+  };
+
+  return { current, errors, saving, dirty, change, save, discard };
+};
 
 export type RoleEditorProps = {
   scope: RoleScope;
@@ -117,99 +355,41 @@ export const RoleEditor = ({
   remove
 }: RoleEditorProps) => {
   const go = useGo();
-  const stored = useMemo(
-    () => permissionsFromApi(scope, role.permissions),
-    [scope, role.permissions]
-  );
-  const [draft, setDraft] = useState<RolePermissions>();
-  const [errors, setErrors] = useState<PermissionErrors>();
   const [overlay, setOverlay] = useState<Overlay>();
-  const [saving, setSaving] = useState(false);
-  const current = draft ?? stored;
+  const { current, errors, saving, dirty, change, save, discard } = useRoleDraft(
+    scope,
+    role,
+    savePermissions
+  );
   const editable = isCustom && can.edit && !readOnlyReason;
   const reason = readOnlyReason ?? (isCustom ? RESTRICTED : BUILT_IN);
-  const dirty =
-    draft !== undefined &&
-    JSON.stringify(permissionsToApi(scope, draft)) !==
-      JSON.stringify(permissionsToApi(scope, stored));
-  const builtInNote = isCustom ? undefined : BUILT_IN;
-
-  const change = (next: RolePermissions) => {
-    setDraft(next);
-    if (errors) setErrors(validatePermissions(scope, next));
-  };
-
-  const save = async () => {
-    const found = validatePermissions(scope, current);
-    if (Object.keys(found).length) {
-      setErrors(found);
-      return;
-    }
-    setErrors(undefined);
-    setSaving(true);
-    try {
-      await savePermissions(current);
-      setDraft(undefined);
-      saved(scope === "org" ? "Successfully updated role" : `Project role "${role.name}" updated`);
-    } catch (error) {
-      failed("Failed to update role", error);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const discard = () => {
-    setDraft(undefined);
-    setErrors(undefined);
-  };
-
-  const copy = async (value: string, title: string) => {
-    if (await copyText(value)) toast({ tone: "neutral", title });
-  };
 
   const closeOverlay = (next: boolean) => !next && setOverlay(undefined);
   const submitWith = (run: (draft: RoleDraft) => Promise<boolean>) => async (next: RoleDraft) => {
     if (await run(next)) setOverlay(undefined);
   };
 
-  const importMenu = scope === "project" && (
-    <Gate allowed={editable} reason={reason}>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button layout="trigger" type="button" variant="outline" disabled={!editable}>
-            Import
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem disabled={!editable} onSelect={() => setOverlay("template")}>
-            <Icon name="layers" />
-            Add from template
-          </DropdownMenuItem>
-          {vaultConnections.length > 0 && (
-            <DropdownMenuItem disabled={!editable} onSelect={() => setOverlay("vault")}>
-              <Icon name="download" />
-              Add from HashiCorp Vault
-            </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </Gate>
-  );
-
   return (
     <Stack gap={24}>
       <PageHeader
         breadcrumb={[
           {
-            label: backLabel ?? (scope === "org" ? "Roles" : "Project roles"),
+            label: backLabel ?? BACK_LABEL[scope],
             link: go.link(backHref)
           }
         ]}
         title={role.name}
-        description={`${role.slug}${role.description ? ` - ${role.description}` : ""}`}
+        description={role.description || undefined}
         actions={
           <Inline gap={8}>
-            {importMenu}
+            {scope === "project" && (
+              <ImportMenu
+                editable={editable}
+                reason={reason}
+                withVault={vaultConnections.length > 0}
+                onOpen={setOverlay}
+              />
+            )}
             <Button
               type="button"
               variant="ghost"
@@ -230,49 +410,13 @@ export const RoleEditor = ({
                 Save
               </Button>
             </Gate>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" iconRight="more">
-                  Options
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => copy(role.id, "Copied ID to clipboard")}>
-                  <Icon name="copy" />
-                  Copy ID
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => copy(role.slug, "Copied slug to clipboard")}>
-                  <Icon name="copy" />
-                  Copy slug
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={!isCustom || !can.edit}
-                  description={builtInNote}
-                  onSelect={() => setOverlay("edit")}
-                >
-                  <Icon name="pencil" />
-                  Edit role
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={!isCustom || !can.create}
-                  description={builtInNote}
-                  onSelect={() => setOverlay("duplicate")}
-                >
-                  <Icon name="copy" />
-                  Duplicate role
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  disabled={!isCustom || !can.delete || isDefault}
-                  description={isDefault ? DEFAULT_ROLE : builtInNote}
-                  onSelect={() => setOverlay("delete")}
-                >
-                  <Icon name="trash" />
-                  Delete role
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <RoleOptions
+              role={role}
+              isCustom={isCustom}
+              isDefault={isDefault}
+              can={can}
+              onOpen={setOverlay}
+            />
           </Inline>
         }
       />
@@ -287,66 +431,24 @@ export const RoleEditor = ({
         visualizeProjectId={visualizeProjectId}
         onChange={change}
       />
-      {overlay === "edit" &&
-        (scope === "org" ? (
-          <OrgRoleDialog
-            role={role}
-            mode="update"
-            taken={taken.filter((slug) => slug !== role.slug)}
-            open
-            onOpenChange={closeOverlay}
-            onSubmit={submitWith(update)}
-          />
-        ) : (
-          <ProjectRoleSheet
-            role={role}
-            mode="update"
-            withDescription={describable}
-            taken={taken.filter((slug) => slug !== role.slug)}
-            open
-            onOpenChange={closeOverlay}
-            onSubmit={submitWith(update)}
-          />
-        ))}
-      {overlay === "duplicate" &&
-        (scope === "org" ? (
-          <OrgRoleDialog
-            role={role}
-            mode="duplicate"
-            taken={taken}
-            open
-            onOpenChange={closeOverlay}
-            onSubmit={submitWith(duplicate)}
-          />
-        ) : (
-          <ProjectRoleSheet
-            role={role}
-            mode="duplicate"
-            withDescription={describable}
-            taken={taken}
-            open
-            onOpenChange={closeOverlay}
-            onSubmit={submitWith(duplicate)}
-          />
-        ))}
-      <AlertDialog open={overlay === "delete"} onOpenChange={closeOverlay}>
-        <AlertDialogContent tone="danger" confirmText="confirm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {scope === "org"
-                ? `Are you sure you want to delete the organization role ${role.name}?`
-                : `Delete "${role.name}"?`}
-            </AlertDialogTitle>
-            <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={remove}>
-              {scope === "org" ? "Delete" : "Delete role"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {(overlay === "edit" || overlay === "duplicate") && (
+        <RoleForm
+          scope={scope}
+          role={role}
+          mode={overlay}
+          withDescription={describable}
+          taken={taken}
+          onOpenChange={closeOverlay}
+          onSubmit={submitWith(overlay === "edit" ? update : duplicate)}
+        />
+      )}
+      <DeleteRoleDialog
+        scope={scope}
+        name={role.name}
+        open={overlay === "delete"}
+        onOpenChange={closeOverlay}
+        onDelete={remove}
+      />
       <AlertDialog open={overlay === "discard"} onOpenChange={closeOverlay}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -364,24 +466,14 @@ export const RoleEditor = ({
         </AlertDialogContent>
       </AlertDialog>
       {scope === "project" && (
-        <>
-          <PolicyTemplateSheet
-            projectType={projectType}
-            open={overlay === "template"}
-            onOpenChange={(next) => setOverlay(next ? "template" : undefined)}
-            permissions={current}
-            onApply={change}
-          />
-          {overlay === "vault" && (
-            <VaultImportSheet
-              open
-              onOpenChange={(next) => setOverlay(next ? "vault" : undefined)}
-              connections={vaultConnections}
-              permissions={current}
-              onApply={change}
-            />
-          )}
-        </>
+        <ImportSheets
+          overlay={overlay}
+          onOverlay={setOverlay}
+          projectType={projectType}
+          connections={vaultConnections}
+          permissions={current}
+          onApply={change}
+        />
       )}
     </Stack>
   );
@@ -391,7 +483,6 @@ const NotFound = ({ backHref }: { backHref: string }) => (
   <EmptyState
     icon="id-badge"
     title="Role not found"
-    description="This role may have been deleted."
     actions={
       <Button variant="outline" icon="chev-left" asChild>
         <a href={backHref}>Back to roles</a>
