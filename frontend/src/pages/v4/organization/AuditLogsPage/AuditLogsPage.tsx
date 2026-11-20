@@ -578,6 +578,7 @@ const LogsTable = ({ project, actorId }: { project?: AuditLogsProject; actorId?:
           variant="framed"
           title="Audit logs"
           flush
+          footerPlacement="frame"
           footer={
             rows.length > 0 ? (
               <Inline gap={12} align="center" justify="between" style={{ width: "100%" }}>
