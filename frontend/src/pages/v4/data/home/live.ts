@@ -236,6 +236,18 @@ const votedOnCurrentStep = (request: TApprovalRequest, userId: string) =>
     .find((step) => step.status === ApprovalRequestStepStatus.InProgress)
     ?.approvals.some((approval) => approval.approverUserId === userId) ?? false;
 
+const isExpired = (request: { expiresAt?: Date | string | null }) =>
+  Boolean(request.expiresAt && new Date(request.expiresAt) < new Date());
+
+const awaitsReview = (request: TApprovalRequest | undefined, userId: string) =>
+  Boolean(
+    request &&
+    request.status === ApprovalRequestStatus.Pending &&
+    request.canReview &&
+    !isExpired(request) &&
+    !votedOnCurrentStep(request, userId)
+  );
+
 const useToday = () => useState(() => new Date(new Date().setHours(0, 0, 0, 0)))[0];
 
 export const homeLive: HomeAdapter = {
@@ -472,6 +484,7 @@ export const homeLive: HomeAdapter = {
           !list ||
           !request ||
           request.status !== ApprovalStatus.PENDING ||
+          isExpired(request) ||
           reviewed ||
           ownBlocked
         )
@@ -480,18 +493,12 @@ export const homeLive: HomeAdapter = {
       }
       const request =
         policyRequests[policyEntries.findIndex((item) => item.parsed === entry)]?.data;
-      if (
-        !request ||
-        request.status !== ApprovalRequestStatus.Pending ||
-        !request.canReview ||
-        votedOnCurrentStep(request, user.id)
-      )
-        return [];
+      if (!request || !awaitsReview(request, user.id)) return [];
       return [policyRow(base, request)];
     });
     const pamApprovals = pamRequests.flatMap((request, index): HomeApproval[] => {
       const detail = pamDetails[index]?.data;
-      if (!detail || !detail.canReview || votedOnCurrentStep(detail, user.id)) return [];
+      if (!awaitsReview(detail, user.id)) return [];
       return [
         pamRow(request, `/organizations/${orgId}/pam/approval-requests?requestId=${request.id}`)
       ];
@@ -567,14 +574,16 @@ export const homeLive: HomeAdapter = {
     const reads = homeLive.useSecretReads(orgId);
     const members = useGetOrgUserAccess(orgId);
     return {
-      data: stats.data &&
-        members.data && {
-          hasProject: projects.length > 0,
-          hasSecrets: stats.data.secretManager.secretsCount > 0,
-          hasReads: reads.data === null ? null : Boolean(reads.data?.total),
-          members: members.data.length
-        },
-      isPending: stats.isPending || members.isPending,
+      data:
+        stats.data && members.data && !reads.isPending
+          ? {
+              hasProject: projects.length > 0,
+              hasSecrets: stats.data.secretManager.secretsCount > 0,
+              hasReads: reads.data == null ? null : reads.data.total > 0,
+              members: members.data.length
+            }
+          : undefined,
+      isPending: stats.isPending || members.isPending || reads.isPending,
       error: stats.error ?? members.error
     };
   }
