@@ -360,6 +360,11 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const expectedAccountIdSuffix = currentOrg.id.split("-").slice(0, 2).join("-");
 
   const { handleSubmit, control, watch } = form;
+  // The shared hint gives way to an error under either input, as a field's own hint does
+  const credentialErrors = form.formState.errors.credentials as
+    | { poolId?: unknown; providerId?: unknown }
+    | undefined;
+  const hasPoolOrProviderError = Boolean(credentialErrors?.poolId || credentialErrors?.providerId);
 
   const selectedMethod = watch("method");
   const watchedCredentials = watch("credentials") as
@@ -571,7 +576,7 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     <FieldDescription>
                       The number of the GCP project that holds the workload identity pool. Find it
                       with{" "}
-                      <span className="font-mono break-all">
+                      <span className="font-mono whitespace-nowrap">
                         gcloud projects describe &lt;PROJECT_ID&gt;
                         --format=&quot;value(projectNumber)&quot;
                       </span>
@@ -582,57 +587,59 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 </Field>
               )}
             />
-            <div className="mb-4 grid grid-cols-2 gap-3">
-              <Controller
-                name="credentials.poolId"
-                control={control}
-                shouldUnregister
-                defaultValue={suggestedIds.poolId}
-                render={({ field, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel htmlFor="gcp-pool-id">Pool ID</FieldLabel>
-                    <Input
-                      {...field}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        setHasVerifyFailed(false);
-                      }}
-                      id="gcp-pool-id"
-                      disabled={isNewConnection}
-                      isError={Boolean(error)}
-                    />
-                    <FieldError errors={[error]} />
-                  </Field>
-                )}
-              />
-              <Controller
-                name="credentials.providerId"
-                control={control}
-                shouldUnregister
-                defaultValue={suggestedIds.providerId}
-                render={({ field, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel htmlFor="gcp-provider-id">Provider ID</FieldLabel>
-                    <Input
-                      {...field}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        setHasVerifyFailed(false);
-                      }}
-                      id="gcp-provider-id"
-                      disabled={isNewConnection}
-                      isError={Boolean(error)}
-                    />
-                    <FieldError errors={[error]} />
-                  </Field>
-                )}
-              />
-              <FieldDescription className="col-span-2">
+            <Field className="mb-4 gap-0">
+              <div className="grid grid-cols-2 gap-3">
+                <Controller
+                  name="credentials.poolId"
+                  control={control}
+                  shouldUnregister
+                  defaultValue={suggestedIds.poolId}
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="gcp-pool-id">Pool ID</FieldLabel>
+                      <Input
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          setHasVerifyFailed(false);
+                        }}
+                        id="gcp-pool-id"
+                        disabled={isNewConnection}
+                        isError={Boolean(error)}
+                      />
+                      <FieldError errors={[error]} />
+                    </Field>
+                  )}
+                />
+                <Controller
+                  name="credentials.providerId"
+                  control={control}
+                  shouldUnregister
+                  defaultValue={suggestedIds.providerId}
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="gcp-provider-id">Provider ID</FieldLabel>
+                      <Input
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          setHasVerifyFailed(false);
+                        }}
+                        id="gcp-provider-id"
+                        disabled={isNewConnection}
+                        isError={Boolean(error)}
+                      />
+                      <FieldError errors={[error]} />
+                    </Field>
+                  )}
+                />
+              </div>
+              <FieldDescription isOpen={!hasPoolOrProviderError}>
                 {isUpdate
                   ? "The workload identity pool and provider that trust this connection."
                   : "Suggested IDs for a new pool and provider, which the setup commands create after you create the connection. To use an existing pool and provider, enter their IDs instead."}
               </FieldDescription>
-            </div>
+            </Field>
             <Controller
               name="credentials.serviceAccountEmail"
               control={control}
