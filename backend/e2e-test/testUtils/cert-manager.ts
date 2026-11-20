@@ -4,7 +4,11 @@ import { LightMyRequestResponse } from "fastify";
 
 import { ProjectType } from "@app/db/schemas";
 import { ResourceMembershipRole } from "@app/db/schemas/models";
-import { ApprovalPolicyScope, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
+import {
+  ApprovalPolicyScope,
+  ApprovalPolicyType,
+  ApproverType
+} from "@app/services/approval-policy/approval-policy-enums";
 import { CaStatus, InternalCaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertKeyAlgorithm, CrlReason } from "@app/services/certificate/certificate-types";
 
@@ -254,6 +258,11 @@ export const issueApplicationCertificate = (dto: {
     (res) => ok<{ certificate: { certificateId: string } }>(res).certificate.certificateId
   );
 
+const pendingApprovalRequestId = (res: LightMyRequestResponse) => {
+  expect(res.statusCode, res.payload).toBe(202);
+  return res.json<{ approvalRequestId: string }>().approvalRequestId;
+};
+
 export const revokeCertificate = (dto: { certificateId: string; authToken: string }) =>
   request(
     {
@@ -262,135 +271,171 @@ export const revokeCertificate = (dto: { certificateId: string; authToken: strin
       headers: auth(dto.authToken),
       body: { revocationReason: CrlReason.KEY_COMPROMISE }
     },
-    (res) => {
-      expect(res.statusCode, res.payload).toBe(202);
-      return res.json<{ approvalRequestId: string }>().approvalRequestId;
-    }
+    pendingApprovalRequestId
   );
 
-export type TRevocationPolicyStep = {
+export const deleteCertificate = (dto: { certificateId: string; authToken: string }) =>
+  request(
+    {
+      method: "DELETE",
+      url: `/api/v1/cert-manager/certificates/${dto.certificateId}`,
+      headers: auth(dto.authToken)
+    },
+    pendingApprovalRequestId
+  );
+
+export const deleteCertificateBySerialNumber = (dto: { serialNumber: string; authToken: string }) =>
+  request(
+    {
+      method: "DELETE",
+      url: `/api/v1/pki/certificates/${dto.serialNumber}`,
+      headers: auth(dto.authToken)
+    },
+    pendingApprovalRequestId
+  );
+
+export type TApplicationApprovalStep = {
   requiredApprovals: number;
   approvers: { type: ApproverType; id: string }[];
   notifyApprovers?: boolean;
 };
 
-const revocationPoliciesUrl = "/api/v1/approval-policies/cert-revocation";
+// Revocation and deletion policies take the same body and are served by the same generic approval-policy endpoints.
+const applicationApprovalPolicyHelpers = (
+  policyType: ApprovalPolicyType.CertRevocation | ApprovalPolicyType.CertDeletion
+) => {
+  const policiesUrl = `/api/v1/approval-policies/${policyType}`;
 
-export const createRevocationApprovalPolicy = (dto: {
-  applicationId: string;
-  profileSlug: string;
-  steps: TRevocationPolicyStep[];
-  maxRequestTtl?: string;
-  authToken: string;
-}) =>
-  request(
-    {
-      method: "POST",
-      url: revocationPoliciesUrl,
-      headers: auth(dto.authToken),
-      body: {
-        scope: ApprovalPolicyScope.PkiApplication,
-        scopeId: dto.applicationId,
-        name: `revocation-${randomUUID().slice(0, 8)}`,
-        maxRequestTtl: dto.maxRequestTtl ?? null,
-        conditions: [{ profileNames: [dto.profileSlug] }],
-        steps: dto.steps
-      }
-    },
-    (res) => ok<{ policy: { id: string; name: string } }>(res).policy
-  );
+  return {
+    createPolicy: (dto: {
+      applicationId: string;
+      profileSlug: string;
+      steps: TApplicationApprovalStep[];
+      maxRequestTtl?: string;
+      authToken: string;
+    }) =>
+      request(
+        {
+          method: "POST",
+          url: policiesUrl,
+          headers: auth(dto.authToken),
+          body: {
+            scope: ApprovalPolicyScope.PkiApplication,
+            scopeId: dto.applicationId,
+            name: `${policyType}-${randomUUID().slice(0, 8)}`,
+            maxRequestTtl: dto.maxRequestTtl ?? null,
+            conditions: [{ profileNames: [dto.profileSlug] }],
+            steps: dto.steps
+          }
+        },
+        (res) => ok<{ policy: { id: string; name: string } }>(res).policy
+      ),
 
-export const updateRevocationApprovalPolicy = (dto: {
-  policyId: string;
-  steps: TRevocationPolicyStep[];
-  authToken: string;
-}) =>
-  request(
-    {
-      method: "PATCH",
-      url: `${revocationPoliciesUrl}/${dto.policyId}`,
-      headers: auth(dto.authToken),
-      body: { steps: dto.steps }
-    },
-    (res) => ok<{ policy: { id: string } }>(res).policy
-  );
+    updatePolicy: (dto: { policyId: string; steps: TApplicationApprovalStep[]; authToken: string }) =>
+      request(
+        {
+          method: "PATCH",
+          url: `${policiesUrl}/${dto.policyId}`,
+          headers: auth(dto.authToken),
+          body: { steps: dto.steps }
+        },
+        (res) => ok<{ policy: { id: string } }>(res).policy
+      ),
 
-export const getRevocationApprovalPolicy = (dto: { policyId: string; authToken: string }) =>
-  request(
-    {
-      method: "GET",
-      url: `${revocationPoliciesUrl}/${dto.policyId}`,
-      headers: auth(dto.authToken)
-    },
-    (res) => ok<{ policy: { id: string; steps: TRevocationPolicyStep[] } }>(res).policy
-  );
+    getPolicy: (dto: { policyId: string; authToken: string }) =>
+      request(
+        {
+          method: "GET",
+          url: `${policiesUrl}/${dto.policyId}`,
+          headers: auth(dto.authToken)
+        },
+        (res) => ok<{ policy: { id: string; steps: TApplicationApprovalStep[] } }>(res).policy
+      ),
 
-// The query the Certificate Manager requests page and its sidebar count send.
-export const listProjectRevocationRequests = (dto: { projectId: string; authToken: string }) =>
-  request(
-    {
-      method: "GET",
-      url: `${revocationPoliciesUrl}/requests`,
-      headers: auth(dto.authToken),
-      query: { scope: ApprovalPolicyScope.Project, id: dto.projectId }
-    },
-    (res) => ok<{ requests: { id: string }[] }>(res).requests
-  );
+    // The query the Certificate Manager requests page and its sidebar count send.
+    listProjectRequests: (dto: { projectId: string; authToken: string }) =>
+      request(
+        {
+          method: "GET",
+          url: `${policiesUrl}/requests`,
+          headers: auth(dto.authToken),
+          query: { scope: ApprovalPolicyScope.Project, id: dto.projectId }
+        },
+        (res) => ok<{ requests: { id: string }[] }>(res).requests
+      ),
 
-export const listApplicationRevocationRequests = (dto: { applicationId: string; authToken: string }) =>
-  request(
-    {
-      method: "GET",
-      url: `${revocationPoliciesUrl}/requests`,
-      headers: auth(dto.authToken),
-      query: { scope: ApprovalPolicyScope.PkiApplication, id: dto.applicationId }
-    },
-    (res) => ok<{ requests: { id: string; approversCanNoLongerApprove: boolean }[] }>(res).requests
-  );
+    listApplicationRequests: (dto: { applicationId: string; authToken: string }) =>
+      request(
+        {
+          method: "GET",
+          url: `${policiesUrl}/requests`,
+          headers: auth(dto.authToken),
+          query: { scope: ApprovalPolicyScope.PkiApplication, id: dto.applicationId }
+        },
+        (res) => ok<{ requests: { id: string; approversCanNoLongerApprove: boolean }[] }>(res).requests
+      ),
 
-export const cancelRevocationRequest = (dto: { requestId: string; authToken: string }) =>
-  request(
-    {
-      method: "POST",
-      url: `${revocationPoliciesUrl}/requests/${dto.requestId}/cancel`,
-      headers: auth(dto.authToken)
-    },
-    (res) => ok<{ request: { id: string; status: string } }>(res).request
-  );
+    cancelRequest: (dto: { requestId: string; authToken: string }) =>
+      request(
+        {
+          method: "POST",
+          url: `${policiesUrl}/requests/${dto.requestId}/cancel`,
+          headers: auth(dto.authToken)
+        },
+        (res) => ok<{ request: { id: string; status: string } }>(res).request
+      ),
 
-export const getRevocationRequest = (dto: { requestId: string; authToken: string }) =>
-  request(
-    {
-      method: "GET",
-      url: `${revocationPoliciesUrl}/requests/${dto.requestId}`,
-      headers: auth(dto.authToken)
-    },
-    (res) =>
-      ok<{
-        request: {
-          id: string;
-          status: string;
-          canReview: boolean;
-          approversCanNoLongerApprove: boolean;
-          steps: { stepNumber: number; approvers: { type: ApproverType; id: string }[] }[];
-        };
-      }>(res).request
-  );
+    getRequest: (dto: { requestId: string; authToken: string }) =>
+      request(
+        {
+          method: "GET",
+          url: `${policiesUrl}/requests/${dto.requestId}`,
+          headers: auth(dto.authToken)
+        },
+        (res) =>
+          ok<{
+            request: {
+              id: string;
+              status: string;
+              canReview: boolean;
+              approversCanNoLongerApprove: boolean;
+              steps: { stepNumber: number; approvers: { type: ApproverType; id: string }[] }[];
+            };
+          }>(res).request
+      ),
 
-export const decideRevocationRequest = (dto: {
-  requestId: string;
-  decision: "approve" | "reject";
-  authToken: string;
-}) =>
-  request(
-    {
-      method: "POST",
-      url: `${revocationPoliciesUrl}/requests/${dto.requestId}/${dto.decision}`,
-      headers: auth(dto.authToken),
-      body: {}
-    },
-    (res) => ok<{ request: { id: string; status: string } }>(res).request
-  );
+    decideRequest: (dto: { requestId: string; decision: "approve" | "reject"; authToken: string }) =>
+      request(
+        {
+          method: "POST",
+          url: `${policiesUrl}/requests/${dto.requestId}/${dto.decision}`,
+          headers: auth(dto.authToken),
+          body: {}
+        },
+        (res) => ok<{ request: { id: string; status: string } }>(res).request
+      )
+  };
+};
+
+export const {
+  createPolicy: createRevocationApprovalPolicy,
+  updatePolicy: updateRevocationApprovalPolicy,
+  getPolicy: getRevocationApprovalPolicy,
+  listProjectRequests: listProjectRevocationRequests,
+  listApplicationRequests: listApplicationRevocationRequests,
+  cancelRequest: cancelRevocationRequest,
+  getRequest: getRevocationRequest,
+  decideRequest: decideRevocationRequest
+} = applicationApprovalPolicyHelpers(ApprovalPolicyType.CertRevocation);
+
+export const {
+  createPolicy: createDeletionApprovalPolicy,
+  updatePolicy: updateDeletionApprovalPolicy,
+  listProjectRequests: listProjectDeletionRequests,
+  listApplicationRequests: listApplicationDeletionRequests,
+  getRequest: getDeletionRequest,
+  decideRequest: decideDeletionRequest
+} = applicationApprovalPolicyHelpers(ApprovalPolicyType.CertDeletion);
 
 export const detachApplicationProfile = (dto: { applicationId: string; profileId: string; authToken: string }) =>
   request(

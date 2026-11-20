@@ -34,7 +34,7 @@ import {
   listProjectRevocationRequests,
   removeApplicationMember,
   revokeCertificate,
-  TRevocationPolicyStep,
+  TApplicationApprovalStep,
   updateApplicationMemberRole,
   updateRevocationApprovalPolicy
 } from "../../testUtils/cert-manager";
@@ -104,7 +104,7 @@ describe("Revocation approval when a saved approver's access changes", { timeout
   }: {
     approverVia: "user" | "group";
     approverRole?: ResourceMembershipRole;
-    steps: (ids: { approver: { type: ApproverType; id: string }; otherId: string }) => TRevocationPolicyStep[];
+    steps: (ids: { approver: { type: ApproverType; id: string }; otherId: string }) => TApplicationApprovalStep[];
     maxRequestTtl?: string;
   }) => {
     const caId = await createInternalRootCa({ projectId, authToken: adminToken });
