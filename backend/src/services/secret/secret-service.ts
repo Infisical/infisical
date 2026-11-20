@@ -33,7 +33,7 @@ import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName, SymmetricKeySize } from "@app/lib/crypto";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, throwIfClientDisconnected } from "@app/lib/errors";
-import { groupBy, pick } from "@app/lib/fn";
+import { canonicalizeSecretPath, groupBy, pick } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -131,7 +131,10 @@ type TSecretServiceFactoryDep = {
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
-  secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicy">;
+  secretChangePolicyService: Pick<
+    TSecretChangePolicyServiceFactory,
+    "getSecretApprovalPolicy" | "getSecretApprovalPolicyByPaths"
+  >;
   secretChangeRequestService: Pick<TSecretChangeRequestServiceFactory, "generateSecretApprovalRequestV2Bridge">;
   licenseService: TLicenseService;
   reminderService: Pick<TReminderServiceFactory, "createReminder">;
@@ -2339,7 +2342,28 @@ export const secretServiceFactory = ({
 
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
-      const policy = await secretChangePolicyService.getSecretApprovalPolicy(projectId, environment, secretPath);
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.SecretManager
+      });
+
+      // Entries can name their own folder, so the policy has to be resolved for every folder the batch writes to.
+      const targetSecretPaths = [
+        ...new Set(inputSecrets.map((el) => canonicalizeSecretPath(el.secretPath || secretPath)))
+      ];
+      const policyBySecretPath = await secretChangePolicyService.getSecretApprovalPolicyByPaths(
+        projectId,
+        environment,
+        targetSecretPaths
+      );
+      const governedSecretPath = targetSecretPaths.find((path) =>
+        shouldApplyPolicy(policyBySecretPath.get(path), actor)
+      );
+      const policy = governedSecretPath ? policyBySecretPath.get(governedSecretPath) : undefined;
       const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
         projectDAL.findById(projectId)
       );
@@ -2357,11 +2381,20 @@ export const secretServiceFactory = ({
         }
       }
 
-      if (shouldApplyPolicy(policy, actor)) {
+      if (governedSecretPath && shouldApplyPolicy(policy, actor)) {
+        if (targetSecretPaths.length > 1) {
+          ForbiddenError.from(permission).throwUnlessCan(
+            ProjectPermissionSecretActions.Edit,
+            subject(ProjectPermissionSub.Secrets, { environment, secretPath: governedSecretPath })
+          );
+          throw new BadRequestError({
+            message: `Secrets in '${governedSecretPath}' need approval under change policy '${policy.name}', so they can't be updated in the same request as secrets in other folders. Send the secrets in '${governedSecretPath}' in a request of their own.`
+          });
+        }
         try {
           const approval = await secretChangeRequestService.generateSecretApprovalRequestV2Bridge({
             policy,
-            secretPath,
+            secretPath: governedSecretPath,
             environment,
             projectId,
             actor,
@@ -2376,6 +2409,7 @@ export const secretServiceFactory = ({
                 secretComment: el.secretComment,
                 skipMultilineEncoding: el.skipMultilineEncoding,
                 secretKey: el.secretKey,
+                newSecretName: el.newSecretName,
                 secretMetadata: el.secretMetadata
               }))
             }

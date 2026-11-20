@@ -1044,3 +1044,43 @@ describe("Validate Permission Boundary: inverted (deny) rule overlap", () => {
     expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeFalsy();
   });
 });
+
+describe("validatePermissionBoundary with non-canonical secret paths", () => {
+  test("refuses a child rule that names a parent's denied folder with extra slashes", () => {
+    const parentPermission = createMongoAbility([
+      {
+        action: ["read"],
+        subject: "secrets",
+        conditions: { environment: "dev", secretPath: { [PermissionConditionOperators.$NEQ]: "/locked" } }
+      }
+    ]);
+    const childPermission = createMongoAbility([
+      {
+        action: ["read"],
+        subject: "secrets",
+        conditions: { environment: "dev", secretPath: { [PermissionConditionOperators.$EQ]: "//locked" } }
+      }
+    ]);
+
+    expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBe(false);
+  });
+
+  test("accepts a child rule that names the parent's folder with extra slashes", () => {
+    const parentPermission = createMongoAbility([
+      {
+        action: ["read"],
+        subject: "secrets",
+        conditions: { environment: "dev", secretPath: { [PermissionConditionOperators.$EQ]: "/app" } }
+      }
+    ]);
+    const childPermission = createMongoAbility([
+      {
+        action: ["read"],
+        subject: "secrets",
+        conditions: { environment: "dev", secretPath: { [PermissionConditionOperators.$EQ]: "//app/" } }
+      }
+    ]);
+
+    expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBe(true);
+  });
+});

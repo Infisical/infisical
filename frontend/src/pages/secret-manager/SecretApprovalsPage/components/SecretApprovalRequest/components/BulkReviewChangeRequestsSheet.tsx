@@ -14,12 +14,16 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   ButtonGroup,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Field,
   FieldLabel,
   IconButton,
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
@@ -54,7 +58,8 @@ type Outcome =
   | { status: "merged"; reviewError?: string }
   | { status: "rejected" }
   | { status: "awaiting" }
-  | { status: "approved"; message: string }
+  | { status: "approved" }
+  | { status: "unmerged"; message: string }
   | { status: "failed"; message: string };
 
 const PENDING_APPROVALS_PATTERN = /needs \d+ approval\(s\)/;
@@ -78,6 +83,7 @@ type Props = {
   requests: TSecretApprovalRequest[];
   environmentNamesBySlug: Record<string, string>;
   onComplete: (results: TBulkChangeRequestResult[]) => void;
+  onOutcomeUnknown: () => void;
 };
 
 type ContentProps = Omit<Props, "isOpen" | "onOpenChange"> & {
@@ -91,6 +97,7 @@ const BulkReviewChangeRequestsSheetContent = ({
   requests: selectedRequests,
   environmentNamesBySlug,
   onComplete,
+  onOutcomeUnknown,
   onClose,
   isSubmitting,
   setIsSubmitting
@@ -167,7 +174,18 @@ const BulkReviewChangeRequestsSheetContent = ({
     setCollapsed((prev) => ({ ...prev, [requestId]: true }));
   };
 
-  const handleSubmit = async () => {
+  const remainingCount = requests.length - decidedCount;
+
+  const decideAll = (decision: Decision, { onlyRemaining }: { onlyRemaining: boolean }) => {
+    setDecisions((prev) =>
+      Object.fromEntries(
+        requests.map(({ id }) => [id, onlyRemaining ? (prev[id] ?? decision) : decision])
+      )
+    );
+  };
+
+  const handleSubmit = async (shouldMerge: boolean) => {
+    if (!isReadyToSubmit || isSubmitting) return;
     setIsSubmitting(true);
     try {
       const reviewComment = comment.trim() || undefined;
@@ -191,34 +209,43 @@ const BulkReviewChangeRequestsSheetContent = ({
               decision,
               requestCount: count,
               entryPoint: "bulk-review-sheet",
-              mergeRequested: decision === "approved"
+              mergeRequested: decision === "approved" && shouldMerge
             }
           )
         );
 
-      const approveResults = approveIds.length
-        ? await bulkAct({
-            projectId,
-            action: BulkChangeRequestAction.Approve,
-            comment: reviewComment,
-            requestIds: approveIds
-          })
-        : [];
-      const rejectResults = rejectIds.length
-        ? await bulkAct({
-            projectId,
-            action: BulkChangeRequestAction.Reject,
-            comment: reviewComment,
-            requestIds: rejectIds
-          })
-        : [];
-      const mergeResults = approveIds.length
-        ? await bulkAct({
-            projectId,
-            action: BulkChangeRequestAction.Merge,
-            requestIds: approveIds
-          })
-        : [];
+      let approveResults: TBulkChangeRequestResult[];
+      let rejectResults: TBulkChangeRequestResult[];
+      let mergeResults: TBulkChangeRequestResult[];
+      try {
+        approveResults = approveIds.length
+          ? await bulkAct({
+              projectId,
+              action: BulkChangeRequestAction.Approve,
+              comment: reviewComment,
+              requestIds: approveIds
+            })
+          : [];
+        rejectResults = rejectIds.length
+          ? await bulkAct({
+              projectId,
+              action: BulkChangeRequestAction.Reject,
+              comment: reviewComment,
+              requestIds: rejectIds
+            })
+          : [];
+        mergeResults =
+          shouldMerge && approveIds.length
+            ? await bulkAct({
+                projectId,
+                action: BulkChangeRequestAction.Merge,
+                requestIds: approveIds
+              })
+            : [];
+      } catch {
+        onOutcomeUnknown();
+        return;
+      }
 
       const nextOutcomes: Record<string, Outcome> = {};
       rejectResults.forEach(({ id, isSuccess, errorMessage }) => {
@@ -226,6 +253,12 @@ const BulkReviewChangeRequestsSheetContent = ({
           ? { status: "rejected" }
           : { status: "failed", message: errorMessage ?? "Review failed" };
       });
+      if (!shouldMerge)
+        approveResults.forEach(({ id, isSuccess, errorMessage }) => {
+          nextOutcomes[id] = isSuccess
+            ? { status: "approved" }
+            : { status: "failed", message: errorMessage ?? "Review failed" };
+        });
       mergeResults.forEach(({ id, isSuccess, errorMessage }) => {
         const review = approveResults.find((result) => result.id === id);
         if (isSuccess) {
@@ -240,19 +273,19 @@ const BulkReviewChangeRequestsSheetContent = ({
           return;
         }
         nextOutcomes[id] = review?.isSuccess
-          ? { status: "approved", message: errorMessage ?? "Could not be merged" }
+          ? { status: "unmerged", message: errorMessage ?? "Could not be merged" }
           : { status: "failed", message: review?.errorMessage ?? errorMessage ?? "Review failed" };
       });
       setOutcomes(nextOutcomes);
 
       const listResults: TBulkChangeRequestResult[] = requests.map(({ id }) => {
         const outcome = nextOutcomes[id];
-        if (outcome.status === "approved" || outcome.status === "failed")
+        if (outcome.status === "unmerged" || outcome.status === "failed")
           return {
             id,
             isSuccess: false,
             errorMessage:
-              outcome.status === "approved"
+              outcome.status === "unmerged"
                 ? `Approved, but not merged: ${outcome.message}`
                 : outcome.message
           };
@@ -275,6 +308,14 @@ const BulkReviewChangeRequestsSheetContent = ({
   const renderOutcome = (requestId: string) => {
     const outcome = outcomes?.[requestId];
     if (!outcome) return <Spinner size="xs" />;
+
+    if (outcome.status === "approved")
+      return (
+        <span className="inline-flex items-center gap-1.5 text-sm text-success">
+          <CheckIcon className="size-4" />
+          Approved
+        </span>
+      );
 
     if (outcome.status === "awaiting")
       return (
@@ -324,7 +365,7 @@ const BulkReviewChangeRequestsSheetContent = ({
       <span
         className={cn(
           "inline-flex items-center gap-1.5 text-sm",
-          outcome.status === "approved" ? "text-warning" : "text-danger"
+          outcome.status === "unmerged" ? "text-warning" : "text-danger"
         )}
       >
         <Tooltip>
@@ -336,7 +377,7 @@ const BulkReviewChangeRequestsSheetContent = ({
               aria-label={outcome.message}
               className="inline-flex rounded-sm outline-0 focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {outcome.status === "approved" ? (
+              {outcome.status === "unmerged" ? (
                 <TriangleAlertIcon className="size-4" />
               ) : (
                 <CircleXIcon className="size-4" />
@@ -345,7 +386,7 @@ const BulkReviewChangeRequestsSheetContent = ({
           </TooltipTrigger>
           <TooltipContent className="max-w-sm">{outcome.message}</TooltipContent>
         </Tooltip>
-        {outcome.status === "approved" ? "Approved, Not Merged" : "Failed"}
+        {outcome.status === "unmerged" ? "Approved, Not Merged" : "Failed"}
       </span>
     );
   };
@@ -386,8 +427,9 @@ const BulkReviewChangeRequestsSheetContent = ({
   const summary = (
     [
       ["merged", "merged"],
+      ["approved", "approved"],
       ["awaiting", "approved and awaiting other reviewers"],
-      ["approved", "approved but not merged"],
+      ["unmerged", "approved but not merged"],
       ["rejected", "rejected"],
       ["failed", "failed"]
     ] as const
@@ -400,7 +442,7 @@ const BulkReviewChangeRequestsSheetContent = ({
     .map(({ count, label }) => `${count} ${label}`)
     .join(", ");
   const hasUnfinished = outcomeValues.some(
-    ({ status }) => status === "approved" || status === "failed"
+    ({ status }) => status === "unmerged" || status === "failed"
   );
 
   return (
@@ -409,9 +451,6 @@ const BulkReviewChangeRequestsSheetContent = ({
         <SheetTitle>
           Review {requests.length} Change Request{requests.length === 1 ? "" : "s"}
         </SheetTitle>
-        <SheetDescription>
-          Approve or reject each request. Approved requests merge once they meet their policy.
-        </SheetDescription>
       </SheetHeader>
 
       <div className="flex min-h-0 thin-scrollbar flex-1 flex-col gap-6 overflow-y-auto p-4">
@@ -554,23 +593,104 @@ const BulkReviewChangeRequestsSheetContent = ({
                   disabled={isSubmitting}
                 />
               </Field>
-              <div className="flex items-center gap-3">
-                <p className="flex-1 text-sm text-muted">
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                <p className="flex-1 text-sm whitespace-nowrap text-muted">
                   {decidedCount} of {requests.length} reviewed
                 </p>
                 <Button variant="ghost" size="sm" isDisabled={isSubmitting} onClick={onClose}>
                   Cancel
                 </Button>
-                <Button
-                  variant="project"
-                  size="sm"
-                  isDisabled={!isReadyToSubmit}
-                  isPending={isSubmitting}
-                  onClick={handleSubmit}
-                >
-                  <GitMergeIcon />
-                  {approveCount ? `Submit & Merge ${approveCount}` : "Submit Reviews"}
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild disabled={isSubmitting}>
+                    <Button variant="outline" size="sm">
+                      Decide All
+                      <ChevronDownIcon />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80">
+                    <DropdownMenuItem
+                      variant="success"
+                      isDisabled={!remainingCount}
+                      onClick={() => decideAll("approve", { onlyRemaining: true })}
+                    >
+                      <CheckIcon className="mt-0.5 self-start" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">Approve Remaining ({remainingCount})</span>
+                        <span className="text-xs text-accent">
+                          Keeps the decisions you already made.
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="danger"
+                      isDisabled={!remainingCount}
+                      onClick={() => decideAll("reject", { onlyRemaining: true })}
+                    >
+                      <XIcon className="mt-0.5 self-start" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">Reject Remaining ({remainingCount})</span>
+                        <span className="text-xs text-accent">
+                          Keeps the decisions you already made.
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="success"
+                      onClick={() => decideAll("approve", { onlyRemaining: false })}
+                    >
+                      <CheckIcon className="mt-0.5 self-start" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">Approve All {requests.length}</span>
+                        <span className="text-xs text-accent">
+                          Replaces every decision, including rejections.
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="danger"
+                      onClick={() => decideAll("reject", { onlyRemaining: false })}
+                    >
+                      <XIcon className="mt-0.5 self-start" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">Reject All {requests.length}</span>
+                        <span className="text-xs text-accent">
+                          Replaces every decision, including approvals.
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild disabled={!isReadyToSubmit || isSubmitting}>
+                    <Button variant="project" size="sm" isPending={isSubmitting}>
+                      <span className="tabular-nums opacity-70">
+                        {approveCount}/{requests.length} Approved
+                      </span>
+                      <span aria-hidden className="h-3.5 w-px bg-current opacity-30" />
+                      Submit
+                      <ChevronDownIcon />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-72">
+                    <DropdownMenuItem onClick={() => handleSubmit(false)}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">Submit Reviews</span>
+                        <span className="text-xs text-accent">
+                          Record your approvals and rejections without merging.
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem isDisabled={!approveCount} onClick={() => handleSubmit(true)}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">Submit & Merge</span>
+                        <span className="text-xs text-accent">
+                          Also merge approved requests that meet their policy.
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </>
           )}
@@ -591,7 +711,11 @@ export const BulkReviewChangeRequestsSheet = ({ isOpen, onOpenChange, ...content
         onOpenChange(open);
       }}
     >
-      <SheetContent size="wide" className="flex h-full flex-col gap-0 overflow-hidden">
+      <SheetContent
+        size="wide"
+        aria-describedby={undefined}
+        className="flex h-full flex-col gap-0 overflow-hidden"
+      >
         {isOpen && (
           <BulkReviewChangeRequestsSheetContent
             {...contentProps}

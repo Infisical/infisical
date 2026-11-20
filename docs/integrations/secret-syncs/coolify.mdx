@@ -1,0 +1,158 @@
+---
+title: "Coolify sync"
+sidebarTitle: "Coolify"
+description: "Learn how to configure a Coolify sync for Infisical."
+---
+
+import CreateApiToken from "/snippets/app-connections/coolify/create-api-token.mdx";
+import ConnectionFormFields from "/snippets/app-connections/coolify/form-fields.mdx";
+
+A Coolify Secret Sync pushes secrets from Infisical into the environment variables of a Coolify application, service, or database, where Coolify passes them to the resource's containers. Each Infisical secret becomes an environment variable with the same name, unless you customize key names to add a prefix or suffix.
+
+<Note>
+    The Coolify Secret Sync requires a [Coolify app connection](/integrations/app-connections/coolify). This guide walks you through creating a project-scoped app connection.
+</Note>
+
+## Prerequisites
+
+- A [project with secrets configured](/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret)
+- The Owner or Admin role in the Coolify team that owns the resource you plan to sync to
+- If you self-host Coolify, API access turned on under **Settings** > **Advanced** in Coolify
+- If your Coolify instance isn't reachable from the internet, a [Gateway](/documentation/platform/gateways/overview) with network access to it
+
+## Step 1: Create a Coolify API token
+
+Infisical needs a Coolify API token that can read, write, and delete environment variables.
+
+<CreateApiToken />
+
+## Step 2: Set up the sync in Infisical
+
+<Tip>
+    To create the sync using the API, use the Coolify [Create](/api-reference/endpoints/secret-syncs/coolify/create) endpoint.
+</Tip>
+
+<Steps>
+    <Step>
+        In your project, go to **Integrations** and open the **Secret Syncs** tab. Select **+ Add Sync**.
+
+        ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
+
+        Then, select the **Coolify** sync.
+    </Step>
+    <Step>
+        Under **Source**, choose which secrets to sync from Infisical:
+
+        - **Environment**: The project environment to retrieve secrets from
+        - **Secret Path**: The folder path to retrieve secrets from
+        - **Include secrets from all subfolders**: Also syncs the secrets in every folder beneath the path
+
+        <Note>
+            Coolify environment variable names must start with a letter or underscore, and can only contain letters, numbers, underscores (`_`), and periods (`.`). Names that start with `SERVICE_` are reserved for the variables Coolify generates, such as a service's database password. If a secret's name breaks either rule, the sync fails with an error that names the secret.
+        </Note>
+
+        <Tip>
+            If you need to sync secrets from multiple folder locations, use [secret imports](/documentation/platform/secret-reference#secret-imports).
+        </Tip>
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Under **Destination**, create or select the Coolify app connection the sync will use, then choose the resource that receives the environment variables.
+
+        <Tabs>
+            <Tab title="Create a new app connection">
+                Under **Coolify Connection**, select **Create Connection** in the dropdown, then fill in:
+
+                <ConnectionFormFields />
+
+                Select **Connect to Coolify**. Infisical returns you to the sync form with the new connection selected.
+
+                <Note>
+                    This creates a connection scoped to the current project. To share the connection across other projects, [create it at the organization level](/integrations/app-connections/coolify#step-2-create-the-app-connection) first, then select it here.
+                </Note>
+            </Tab>
+            <Tab title="Use an existing connection">
+                Under **Coolify Connection**, select the app connection you'd like to use.
+            </Tab>
+        </Tabs>
+
+        - **Resource**: The Coolify application, service, or database to sync to, listed under its project and environment
+        - **Scope** (applications only): **Production** for the application's production variables, or **Preview Deployments** for the variables Coolify gives preview deployments of pull requests
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Under **Initial Sync Behavior**, choose how Infisical handles environment variables that already exist on the resource on the first sync:
+
+        - **Overwrite Destination Secrets**: Infisical writes its secrets to the resource without importing anything first
+        - **Import Destination Secrets - Prioritize Infisical Values**: Infisical first imports the resource's environment variables; if a name exists in both places, Infisical keeps its own value
+        - **Import Destination Secrets - Prioritize Coolify Values**: Infisical first imports the resource's environment variables; if a name exists in both places, the Coolify value replaces the Infisical value
+
+        <Note>
+            Coolify never returns the value of a locked environment variable, so an import fails if the resource has one. For that resource, choose **Overwrite Destination Secrets** instead.
+        </Note>
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Under **Sync Options**, choose how secrets are synced:
+
+        - **Prevent secret deletion**: When enabled, Infisical adds and updates environment variables in Coolify but never deletes them; enable this if you manage some of the resource's environment variables outside of Infisical
+        - **Auto-sync on changes**: When enabled, secrets sync to Coolify automatically as the source changes; turn it off to sync manually only
+        - **Customize key names**: Adds a prefix or suffix to every environment variable name, using `{{secretKey}}` for the original name and `{{environment}}` for the environment slug
+
+        <Warning>
+            A Coolify resource also holds environment variables that people and other tools create, so a sync can change variables that were created outside Infisical. If you don't customize key names, the sync treats every environment variable on the resource as one it manages, except the ones whose names start with `SERVICE_`:
+
+            - If a variable has the same name as an Infisical secret, the sync overwrites the variable's value
+            - If **Prevent secret deletion** is off, every variable that isn't in Infisical is deleted
+
+            With customized key names, the sync writes only names with your prefix or suffix, and deletes only variables whose names match it.
+
+            Before the first sync, customize key names or keep **Prevent secret deletion** on. **Prevent secret deletion** is on by default when you create the sync in the UI, but off unless you set `disableSecretDeletion` when you create it through the API.
+        </Warning>
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Give the sync a **Name** and an optional **Description**. The name must be slug-friendly.
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Review your Coolify Sync configuration, then select **Create Sync**.
+
+        <Check>
+            The sync is created. If **Auto-sync on changes** is enabled, it begins syncing secrets to Coolify right away.
+        </Check>
+    </Step>
+</Steps>
+
+## Step 3: Restart the resource in Coolify
+
+Coolify passes environment variables to a resource's containers when they start, so the containers keep the old values until the resource restarts. After each sync that changes a value, open the resource in Coolify and restart it. If an application reads the variable while it builds, redeploy the application instead.
+
+## FAQ
+
+<AccordionGroup>
+    <Accordion title="Does the sync update preview deployments?">
+        Only if you choose the **Preview Deployments** scope. A sync with the **Production** scope writes only the application's production variables and keeps them out of preview deployments. It doesn't touch preview variables that you or other tools created.
+
+        To give preview deployments their own values, create a second sync with the **Preview Deployments** scope from a non-production environment, such as `staging`.
+    </Accordion>
+    <Accordion title="What happens to a value that starts with $?">
+        Coolify keeps the value as written. The sync marks every variable it writes as literal, so Coolify doesn't replace a value such as `$DATABASE_URL` with another variable's value.
+    </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+    <Card title="Coolify" icon="plug" href="/integrations/app-connections/coolify">
+        Create an organization-level Coolify connection to share across projects.
+    </Card>
+    <Card title="Secret syncs" icon="refresh-cw" href="/integrations/secret-syncs/overview">
+        Learn how secret syncs work and how to manage them.
+    </Card>
+</CardGroup>

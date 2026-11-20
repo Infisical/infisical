@@ -21,6 +21,7 @@ import { TClickHouseConnection } from "./clickhouse-connection";
 import { TCloud66Connection } from "./cloud-66-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TConvexConnection } from "./convex-connection";
+import { TCoolifyConnection } from "./coolify-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TDatadogConnection } from "./datadog-connection";
 import { TDaytonaConnection } from "./daytona-connection";
@@ -143,6 +144,7 @@ export * from "./humanitec-connection";
 export * from "./imperva-connection";
 export * from "./incident-io-connection";
 export * from "./jenkins-connection";
+export * from "./coolify-connection";
 export * from "./jira-connection";
 export * from "./keeper-connection";
 export * from "./kemp-loadmaster-connection";
@@ -293,7 +295,8 @@ export type TAppConnection =
   | TJiraConnection
   | TClickHouseConnection
   | TIncidentIoConnection
-  | TJenkinsConnection;
+  | TJenkinsConnection
+  | TCoolifyConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId"> & {
   gatewayId?: string | null;

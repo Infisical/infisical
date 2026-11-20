@@ -63,6 +63,12 @@ import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns"
 import { CLOUDFLARE_SECRETS_STORE_SYNC_LIST_OPTION, CloudflareSecretsStoreSyncFns } from "./cloudflare-secrets-store";
 import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";
 import { CONVEX_ENV_VAR_NAME_RULE, CONVEX_SYNC_LIST_OPTION, ConvexSyncFns, isValidConvexEnvVarName } from "./convex";
+import {
+  COOLIFY_ENV_VAR_NAME_RULE,
+  COOLIFY_SYNC_LIST_OPTION,
+  CoolifySyncFns,
+  isValidCoolifyEnvVarName
+} from "./coolify";
 import { DAYTONA_SYNC_LIST_OPTION, DaytonaSyncFns } from "./daytona";
 import { DEVIN_SYNC_LIST_OPTION, DevinSyncFns } from "./devin";
 import {
@@ -161,7 +167,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Spacelift]: SPACELIFT_SYNC_LIST_OPTION,
   [SecretSync.Daytona]: DAYTONA_SYNC_LIST_OPTION,
   [SecretSync.Keeper]: KEEPER_SYNC_LIST_OPTION,
-  [SecretSync.Jenkins]: JENKINS_SYNC_LIST_OPTION
+  [SecretSync.Jenkins]: JENKINS_SYNC_LIST_OPTION,
+  [SecretSync.Coolify]: COOLIFY_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -184,7 +191,8 @@ const PRE_SAVE_TRANSFORM_DESTINATION_CONFIG_MAP: Partial<Record<SecretSync, TPre
 const SECRET_SYNC_KEY_NAME_RULES: Partial<
   Record<SecretSync, { isValidName: (name: string) => boolean; rule: string }>
 > = {
-  [SecretSync.Convex]: { isValidName: isValidConvexEnvVarName, rule: CONVEX_ENV_VAR_NAME_RULE }
+  [SecretSync.Convex]: { isValidName: isValidConvexEnvVarName, rule: CONVEX_ENV_VAR_NAME_RULE },
+  [SecretSync.Coolify]: { isValidName: isValidCoolifyEnvVarName, rule: COOLIFY_ENV_VAR_NAME_RULE }
 };
 
 export const assertKeySchemaProducesValidNames = ({
@@ -428,6 +436,8 @@ export const SecretSyncFns = {
         return PortainerSyncFns.syncSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
       case SecretSync.Jenkins:
         return JenkinsSyncFns.syncSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
+      case SecretSync.Coolify:
+        return CoolifySyncFns.syncSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Netlify:
@@ -605,6 +615,9 @@ export const SecretSyncFns = {
       case SecretSync.Jenkins:
         secretMap = await JenkinsSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Coolify:
+        secretMap = await CoolifySyncFns.getSecrets(secretSync, gatewayV2Service, gatewayPoolService);
+        break;
       case SecretSync.DigitalOceanAppPlatform:
         secretMap = await DigitalOceanAppPlatformSyncFns.getSecrets(secretSync);
         break;
@@ -780,6 +793,8 @@ export const SecretSyncFns = {
         return PortainerSyncFns.removeSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
       case SecretSync.Jenkins:
         return JenkinsSyncFns.removeSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
+      case SecretSync.Coolify:
+        return CoolifySyncFns.removeSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Netlify:

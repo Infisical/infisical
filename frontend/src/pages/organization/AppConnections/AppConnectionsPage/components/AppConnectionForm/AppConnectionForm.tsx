@@ -37,6 +37,7 @@ import { ClickHouseConnectionForm } from "./ClickHouseConnectionForm";
 import { Cloud66ConnectionForm } from "./Cloud66ConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { ConvexConnectionForm } from "./ConvexConnectionForm";
+import { CoolifyConnectionForm } from "./CoolifyConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { DatadogConnectionForm } from "./DatadogConnectionForm";
 import { DaytonaConnectionForm } from "./DaytonaConnectionForm";
@@ -423,6 +424,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <PortainerConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Jenkins:
         return <JenkinsConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Coolify:
+        return <CoolifyConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NutanixPrismCentral:
         return <NutanixPrismCentralConnectionForm onSubmit={onSubmit} />;
       case AppConnection.PowerDns:
@@ -747,6 +750,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <PortainerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Jenkins:
         return <JenkinsConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Coolify:
+        return <CoolifyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NutanixPrismCentral:
         return (
           <NutanixPrismCentralConnectionForm onSubmit={onSubmit} appConnection={appConnection} />

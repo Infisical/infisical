@@ -142,6 +142,21 @@ describe("getPullRequestScanCheckRunResult", () => {
     expect(result.offerSkipActions).toBe(true);
   });
 
+  test("counts a secret found in several places once, and lists each place", () => {
+    const result = getPullRequestScanCheckRunResult({
+      findings: [
+        { ...makeFinding(0), id: "0a1b2c3d-0000", status: SecretScanningFindingStatus.Unresolved },
+        { ...makeFinding(1), id: "0a1b2c3d-0000", status: SecretScanningFindingStatus.Unresolved }
+      ],
+      scannedCommitCount: 1,
+      totalCommitCount: 1
+    });
+
+    expect(result.title).toBe("1 secret(s) found");
+    expect(result.summary).toContain("config\\|0.ts:1");
+    expect(result.summary).toContain("config\\|1.ts:2");
+  });
+
   test("passes as neutral and lists the files it couldn't scan", () => {
     const result = getPullRequestScanCheckRunResult({
       findings: [],
@@ -370,7 +385,7 @@ describe("scanGitHubCommitsAndGetFindings", () => {
 
     expect(scanContents.mock.calls.map(([contents]) => contents.length)).toEqual([50, 10]);
     expect(findings).toHaveLength(1);
-    expect(findings[0].fingerprint).toBe(`${secondCommit.sha}:file-52.txt:rule:1:1`);
+    expect(findings[0].fingerprint).toBe(`${secondCommit.sha}:file-52.txt:rule:1:2`);
   });
 
   test("scans the files GitHub lists for a commit with more, and returns the commit", async () => {
@@ -419,7 +434,7 @@ describe("scanGitHubCommitsAndGetFindings", () => {
     expect(scanContents).toHaveBeenCalledTimes(1);
     expect(scannedContents()).toHaveLength(4);
     expect(findings).toHaveLength(1);
-    expect(findings[0].fingerprint).toBe(`${secondCommit.sha}:d-two.txt:rule:2:1`);
+    expect(findings[0].fingerprint).toBe(`${secondCommit.sha}:d-two.txt:rule:2:2`);
     expect(findings[0].details).toEqual(
       expect.objectContaining({ file: "d-two.txt", commit: secondCommit.sha, author: "b", startLine: 2 })
     );

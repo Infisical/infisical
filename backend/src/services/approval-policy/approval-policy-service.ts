@@ -26,6 +26,7 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -192,6 +193,7 @@ export const approvalPolicyServiceFactory = ({
     actorId?: string;
     comment?: string;
     bypassReason?: string;
+    failureReason?: string;
   }) =>
     dispatchApprovalNotification(
       { ...args, approvers: args.approvers ?? [], resource: $resource(args.request.type as ApprovalPolicyType) },
@@ -229,6 +231,77 @@ export const approvalPolicyServiceFactory = ({
     return actor.type === ActorType.IDENTITY
       ? request.machineIdentityId === actor.id
       : request.requesterId === actor.id;
+  };
+
+  const $namesApprover = (approvers: { type: string; id: string }[], actorId: string, userGroupIds: Set<string>) =>
+    approvers.some(
+      (approver) =>
+        (approver.type === ApproverType.User && approver.id === actorId) ||
+        (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
+    );
+
+  const $assertNotScopeNarrowed = () => {
+    if (isScopeNarrowedRequest()) {
+      throw new ForbiddenRequestError({
+        message:
+          "An OAuth application with scoped access cannot approve, reject, or bypass approval requests. Sign in to Infisical to review this request."
+      });
+    }
+  };
+
+  // Approve, reject and the request page's canReview all ask whether this actor may decide the step in progress, so
+  // they share one check. Callers read group memberships from the primary, as the decision itself must.
+  const $assertCanReviewStep = async ({
+    request,
+    step,
+    actor,
+    userGroupIds,
+    decision,
+    tx
+  }: {
+    request: TApprovalRequests;
+    step: { approvers: { type: ApproverType; id: string }[] };
+    actor: TApprovalActor;
+    userGroupIds: Set<string>;
+    decision: ApprovalRequestApprovalDecision;
+    tx?: Knex;
+  }) => {
+    $assertNotScopeNarrowed();
+    if (!$namesApprover(step.approvers, actor.id, userGroupIds)) {
+      throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
+    }
+    const assertDomainCanReview = resources[request.type as ApprovalPolicyType]?.assertCanReview;
+    if (assertDomainCanReview) {
+      await assertDomainCanReview({ request, decision, actor, userGroupIds, stepApprovers: step.approvers, tx });
+    }
+  };
+
+  // The check before the transaction only refuses early. A concurrent approval can advance the step, and a group
+  // removal or demotion can land, between it and the lock, so the check runs again on the locked request's step with
+  // group memberships read through the transaction. A type whose own check doesn't read through tx gets only the
+  // named-approver check here, since its reads would take a second connection while this transaction holds one.
+  const $assertCanReviewLockedStep = async ({
+    locked,
+    lockedStep,
+    actor,
+    decision,
+    tx
+  }: {
+    locked: TApprovalRequests;
+    lockedStep: { approvers: { type: ApproverType; id: string }[] };
+    actor: TApprovalActor;
+    decision: ApprovalRequestApprovalDecision;
+    tx: Knex;
+  }) => {
+    const lockedGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId, tx);
+    const userGroupIds = new Set(lockedGroups.map((g) => g.groupId));
+    if (!resources[locked.type as ApprovalPolicyType]?.assertCanReviewReadsThroughTx) {
+      if (!$namesApprover(lockedStep.approvers, actor.id, userGroupIds)) {
+        throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
+      }
+      return;
+    }
+    await $assertCanReviewStep({ request: locked, step: lockedStep, actor, userGroupIds, decision, tx });
   };
 
   const $isBreakGlassEligible = async ({
@@ -662,6 +735,13 @@ export const approvalPolicyServiceFactory = ({
     const resolved = await $resolveScope(scope, inputScopeId, policyType);
     const { projectId, scopeType: dbScopeType, scopeId: dbScopeId } = resolved;
 
+    // $resolveScope enforces a type's scope only for domain scopes it resolves through the resource, so a
+    // type pinned to a built-in scope (an Application) is checked here.
+    const requiredScope = resources[policyType]?.scopeType;
+    if (requiredScope && !resources[policyType]?.resolveScope && dbScopeType !== requiredScope) {
+      throw new BadRequestError({ message: `${policyType} policies must use the ${requiredScope} scope` });
+    }
+
     await $assertCanManagePolicy(
       projectId,
       dbScopeType,
@@ -671,8 +751,9 @@ export const approvalPolicyServiceFactory = ({
       policyType
     );
 
-    // CertRequest only: code signing follows pkiCodeSigning and PAM has its own product entitlement.
-    if (policyType === ApprovalPolicyType.CertRequest) {
+    // Certificate issuance and revocation only: code signing follows pkiCodeSigning and PAM has its own
+    // product entitlement.
+    if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertRevocation) {
       const plan = await licenseService.getPlan(actor.orgId);
       if (!plan.has(PlanFeature.PkiApprovals)) {
         throw new BadRequestError({
@@ -1461,6 +1542,40 @@ export const approvalPolicyServiceFactory = ({
       actorAuthMethod: actor.authMethod
     });
 
+  // Reads through the caller's transaction, which holds the lock that keeps a replacement request from racing this one.
+  // Without a transaction, pass the primary: the flag on a listed or fetched request must agree with what revoking does.
+  const findUndecidablePendingRequestIds = async (requestIds: string[], tx: Knex) => {
+    const undecidable = new Set<string>();
+    if (requestIds.length === 0) return undecidable;
+    const pending = (await approvalRequestDAL.find({ $in: { id: requestIds } }, { tx })).filter(
+      (request) =>
+        request.status === ApprovalRequestStatus.Pending &&
+        !isApprovalRequestExpired(request) &&
+        resources[request.type as ApprovalPolicyType]?.findUndecidableRequestIds
+    );
+    if (pending.length === 0) return undecidable;
+
+    const stepsByRequestId = await approvalRequestDAL.findStepsByRequestIds(
+      pending.map((request) => request.id),
+      tx
+    );
+    const types = [...new Set(pending.map((request) => request.type as ApprovalPolicyType))];
+    for (const type of types) {
+      // eslint-disable-next-line no-await-in-loop
+      const ids = await resources[type]!.findUndecidableRequestIds!({
+        requests: pending
+          .filter((request) => request.type === type)
+          .map((request) => ({ request, steps: stepsByRequestId[request.id] ?? [] })),
+        tx
+      });
+      ids.forEach((id) => undecidable.add(id));
+    }
+    return undecidable;
+  };
+
+  const isPendingRequestUndecidable = async (requestId: string, tx: Knex) =>
+    (await findUndecidablePendingRequestIds([requestId], tx)).has(requestId);
+
   const getRequestById = async (requestId: string, actor: TApprovalActor) => {
     const request = await approvalRequestDAL.findById(requestId);
     if (!request) {
@@ -1473,17 +1588,11 @@ export const approvalPolicyServiceFactory = ({
 
     const isRequester = $isRequester(request, actor);
 
-    // Check if user is an eligible approver for any step
-    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId);
+    // Read from the primary, as approve and reject do, so canReview never hides a decision they would accept.
+    const primaryDb = approvalPolicyDAL.primaryNode();
+    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId, primaryDb);
     const userGroupIds = new Set(userGroups.map((g) => g.groupId));
-
-    const isSnapshotApprover = steps.some((step) =>
-      step.approvers.some(
-        (approver) =>
-          (approver.type === ApproverType.User && approver.id === actor.id) ||
-          (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
-      )
-    );
+    const isSnapshotApprover = steps.some((step) => $namesApprover(step.approvers, actor.id, userGroupIds));
 
     const checkLiveApprover = resources[request.type as ApprovalPolicyType]?.isLiveApprover;
     const checkScopeRead = resources[request.type as ApprovalPolicyType]?.canReadScope;
@@ -1535,17 +1644,33 @@ export const approvalPolicyServiceFactory = ({
       }
     }
 
-    const decorated = await $decorateRequest({ ...request, steps }, actor);
-    return { request: decorated };
-  };
-
-  const $assertNotScopeNarrowed = () => {
-    if (isScopeNarrowedRequest()) {
-      throw new ForbiddenRequestError({
-        message:
-          "An OAuth application with scoped access cannot approve, reject, or bypass approval requests. Sign in to Infisical to review this request."
-      });
+    // The saved approver list outlives a removal or demotion, so canReview runs the same check as approve and reject on
+    // the step in progress. It asks as a rejection: approving can also depend on the resource itself (self-approval,
+    // a moved PAM account), which the approve call reports.
+    const currentStep = steps.find((step) => step.stepNumber === request.currentStep);
+    let canReview = false;
+    if (request.status === ApprovalRequestStatus.Pending && !isApprovalRequestExpired(request) && currentStep) {
+      try {
+        await $assertCanReviewStep({
+          request,
+          step: currentStep,
+          actor,
+          userGroupIds,
+          decision: ApprovalRequestApprovalDecision.Rejected
+        });
+        canReview = true;
+      } catch (error) {
+        if (!(error instanceof ForbiddenRequestError || error instanceof BadRequestError)) throw error;
+      }
     }
+
+    const decorated = await $decorateRequest({ ...request, steps }, actor);
+    // Only types whose saved approvers can go stale say whether they still can approve, so other types' responses
+    // don't carry the field at all.
+    const approversCanNoLongerApprove = resources[request.type as ApprovalPolicyType]?.findUndecidableRequestIds
+      ? { approversCanNoLongerApprove: await isPendingRequestUndecidable(request.id, primaryDb) }
+      : {};
+    return { request: { ...decorated, canReview, ...approversCanNoLongerApprove } };
   };
 
   const approveRequest = async (
@@ -1594,7 +1719,12 @@ export const approvalPolicyServiceFactory = ({
         ? await approvalPolicyDAL.findBypassersByPolicyId(request.policyId)
         : [];
 
-    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId);
+    // Group membership decides who may approve, so a replica that hasn't seen a removal or an addition answers wrong.
+    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(
+      actor.id,
+      actor.orgId,
+      approvalPolicyDAL.primaryNode()
+    );
     const userGroupIds = new Set(userGroups.map((g) => g.groupId));
 
     if (bypassReason !== undefined) {
@@ -1639,29 +1769,17 @@ export const approvalPolicyServiceFactory = ({
 
     const currentStep = steps[currentStepIndex];
 
-    const isEligible = currentStep.approvers.some(
-      (approver) =>
-        (approver.type === ApproverType.User && approver.id === actor.id) ||
-        (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
-    );
-
-    if (!isEligible) {
-      throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
-    }
-
     if (policyType === ApprovalPolicyType.CertCodeSigning && request.requesterId === actor.id) {
       throw new ForbiddenRequestError({ message: "You cannot approve your own signing request" });
     }
 
-    const assertDomainCanApprove = resources[policyType]?.assertCanReview;
-    if (assertDomainCanApprove) {
-      await assertDomainCanApprove({
-        request,
-        decision: ApprovalRequestApprovalDecision.Approved,
-        actor,
-        userGroupIds
-      });
-    }
+    await $assertCanReviewStep({
+      request,
+      step: currentStep,
+      actor,
+      userGroupIds,
+      decision: ApprovalRequestApprovalDecision.Approved
+    });
 
     const hasApproved = currentStep.approvals.some((a) => a.approverUserId === actor.id);
     if (hasApproved) {
@@ -1684,15 +1802,13 @@ export const approvalPolicyServiceFactory = ({
         throw new BadRequestError({ message: "Current step not found" });
       }
 
-      // The step may have advanced since the pre-transaction check.
-      const isEligibleForLockedStep = lockedStep.approvers.some(
-        (approver) =>
-          (approver.type === ApproverType.User && approver.id === actor.id) ||
-          (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
-      );
-      if (!isEligibleForLockedStep) {
-        throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
-      }
+      await $assertCanReviewLockedStep({
+        locked,
+        lockedStep,
+        actor,
+        decision: ApprovalRequestApprovalDecision.Approved,
+        tx
+      });
 
       const stepApprovals = await approvalRequestApprovalsDAL.find({ stepId: lockedStep.id }, { tx });
       if (stepApprovals.some((approval) => approval.approverUserId === actor.id)) {
@@ -1823,28 +1939,20 @@ export const approvalPolicyServiceFactory = ({
       throw new BadRequestError({ message: "Current step not found" });
     }
 
-    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId);
+    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(
+      actor.id,
+      actor.orgId,
+      approvalPolicyDAL.primaryNode()
+    );
     const userGroupIds = new Set(userGroups.map((g) => g.groupId));
 
-    const isEligible = currentStep.approvers.some(
-      (approver) =>
-        (approver.type === ApproverType.User && approver.id === actor.id) ||
-        (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
-    );
-
-    if (!isEligible) {
-      throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
-    }
-
-    const assertDomainCanReject = resources[request.type as ApprovalPolicyType]?.assertCanReview;
-    if (assertDomainCanReject) {
-      await assertDomainCanReject({
-        request,
-        decision: ApprovalRequestApprovalDecision.Rejected,
-        actor,
-        userGroupIds
-      });
-    }
+    await $assertCanReviewStep({
+      request,
+      step: currentStep,
+      actor,
+      userGroupIds,
+      decision: ApprovalRequestApprovalDecision.Rejected
+    });
 
     await approvalRequestDAL.transaction(async (tx) => {
       const locked = await approvalRequestDAL.findByIdForUpdate(requestId, tx);
@@ -1857,14 +1965,13 @@ export const approvalPolicyServiceFactory = ({
         throw new BadRequestError({ message: "Current step not found" });
       }
 
-      const isEligibleForLockedStep = lockedStep.approvers.some(
-        (approver) =>
-          (approver.type === ApproverType.User && approver.id === actor.id) ||
-          (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
-      );
-      if (!isEligibleForLockedStep) {
-        throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
-      }
+      await $assertCanReviewLockedStep({
+        locked,
+        lockedStep,
+        actor,
+        decision: ApprovalRequestApprovalDecision.Rejected,
+        tx
+      });
 
       await approvalRequestApprovalsDAL.create(
         {
@@ -1952,30 +2059,78 @@ export const approvalPolicyServiceFactory = ({
 
     const ctx = $buildDecorationContext(actor);
 
+    // Opening a request checks Read on its own Application (getRequestById), so a Project-scope list of a type whose
+    // policies live on Applications does too: project-wide read doesn't reach into an Application the actor isn't a
+    // member of.
+    const readsPerApplication =
+      scope === ApprovalPolicyScope.Project && resources[policyType]?.scopeType === ApprovalPolicyScope.PkiApplication;
+    const applicationScopeIds = readsPerApplication
+      ? [
+          ...new Set(
+            requests.flatMap((request) =>
+              request.scopeType === ApprovalPolicyScope.PkiApplication && request.scopeId ? [request.scopeId] : []
+            )
+          )
+        ]
+      : [];
+    const readableApplicationIds = new Set<string>();
+    await Promise.all(
+      applicationScopeIds.map(async (applicationId) => {
+        try {
+          const { permission: resourcePermission } = await permissionService.getResourcePermission({
+            actor: actor.type,
+            actorId: actor.id,
+            projectId,
+            resourceType: ResourceType.CertificateApplication,
+            resourceId: applicationId,
+            actorAuthMethod: actor.authMethod,
+            actorOrgId: actor.orgId
+          });
+          if (
+            resourcePermission.can(ProjectPermissionApprovalRequestActions.Read, ResourcePermissionSub.ApprovalRequests)
+          ) {
+            readableApplicationIds.add(applicationId);
+          }
+        } catch (error) {
+          if (!(error instanceof ForbiddenRequestError)) throw error;
+        }
+      })
+    );
+    const canRead = (request: (typeof requests)[number]) =>
+      readsPerApplication && request.scopeType === ApprovalPolicyScope.PkiApplication
+        ? Boolean(request.scopeId && readableApplicationIds.has(request.scopeId))
+        : hasReadPermission;
+
     const visibleRequests = await (async () => {
-      if (hasReadPermission) return requests;
+      const unreadable = requests.filter((request) => !canRead(request));
+      if (unreadable.length === 0) return requests;
 
       const userGroupIds = await ctx.getUserGroupIds();
+      const named = unreadable.filter(
+        (request) =>
+          !$isRequester(request, actor) &&
+          request.steps.some((step) => $namesApprover(step.approvers, actor.id, userGroupIds))
+      );
 
+      // A Project-scope list spans Applications, so each request's own scope decides whether its saved approver
+      // still counts.
       const checkLiveApprover = resources[policyType]?.isLiveApprover;
-      if (
-        checkLiveApprover &&
-        dbScopeId &&
-        !(await checkLiveApprover({ projectId, scopeId: dbScopeId, actor, userGroupIds }))
-      ) {
-        return requests.filter((request) => $isRequester(request, actor));
-      }
-
-      return requests.filter((request) => {
-        if ($isRequester(request, actor)) return true;
-        return request.steps.some((step) =>
-          step.approvers.some(
-            (approver) =>
-              (approver.type === ApproverType.User && approver.id === actor.id) ||
-              (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
-          )
+      const liveScopeIds = new Set<string>();
+      if (checkLiveApprover) {
+        const scopeIds = [...new Set(named.flatMap((request) => (request.scopeId ? [request.scopeId] : [])))];
+        const liveness = await Promise.all(
+          scopeIds.map((id) => checkLiveApprover({ projectId, scopeId: id, actor, userGroupIds }))
         );
-      });
+        scopeIds.forEach((id, index) => {
+          if (liveness[index]) liveScopeIds.add(id);
+        });
+      }
+      const isLive = (request: (typeof requests)[number]) =>
+        !checkLiveApprover || !request.scopeId || liveScopeIds.has(request.scopeId);
+
+      return requests.filter(
+        (request) => canRead(request) || $isRequester(request, actor) || (named.includes(request) && isLive(request))
+      );
     })();
 
     if (visibleRequests.length > 0) {
@@ -2007,7 +2162,18 @@ export const approvalPolicyServiceFactory = ({
       ctx.bypassersByPolicyId = new Map(Object.entries(bypassersByPolicyId));
     }
 
-    const decorated = await Promise.all(visibleRequests.map((r) => $decorateRequest(r, actor, ctx)));
+    const undecidableIds = resources[policyType]?.findUndecidableRequestIds
+      ? await findUndecidablePendingRequestIds(
+          visibleRequests.filter((r) => r.status === ApprovalRequestStatus.Pending).map((r) => r.id),
+          approvalPolicyDAL.primaryNode()
+        )
+      : null;
+    const decorated = await Promise.all(
+      visibleRequests.map(async (r) => ({
+        ...(await $decorateRequest(r, actor, ctx)),
+        ...(undecidableIds ? { approversCanNoLongerApprove: undecidableIds.has(r.id) } : {})
+      }))
+    );
     return { requests: decorated, projectId };
   };
 
@@ -2569,13 +2735,6 @@ export const approvalPolicyServiceFactory = ({
     });
   };
 
-  const $namesActor = (entries: { type: string; id: string }[], userId: string, userGroupIds: Set<string>) =>
-    entries.some(
-      (entry) =>
-        (entry.type === ApproverType.User && entry.id === userId) ||
-        (entry.type === ApproverType.Group && userGroupIds.has(entry.id))
-    );
-
   const $userGroupIds = (actor: TApprovalActor) =>
     userGroupMembershipDAL
       .findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId)
@@ -2632,7 +2791,7 @@ export const approvalPolicyServiceFactory = ({
       if (isApprovalRequestExpired(request)) return false;
 
       const currentStep = request.steps.find((step) => step.stepNumber === request.currentStep);
-      return Boolean(currentStep && $namesActor(currentStep.approvers, actor.id, userGroupIds));
+      return Boolean(currentStep && $namesApprover(currentStep.approvers, actor.id, userGroupIds));
     });
 
     const resource = $resource(policyType);
@@ -2841,6 +3000,25 @@ export const approvalPolicyServiceFactory = ({
     bypassReason?: string;
   }) => (await $resource(args.request.type as ApprovalPolicyType).buildAuditEvent?.(args)) ?? null;
 
+  // For a caller whose post-approval routine failed after the approval committed. Nothing waits on it,
+  // so it logs instead of throwing.
+  const notifyApprovedActionFailed = async (request: TApprovalRequests, failureReason: string) => {
+    try {
+      const steps = await approvalRequestDAL.findStepsByRequestId(request.id);
+      await $notify({
+        event: ApprovalNotificationEvent.ApprovedActionFailed,
+        request,
+        approvers: steps.flatMap((step) => step.approvers),
+        failureReason
+      });
+    } catch (err) {
+      logger.error(
+        err,
+        `Failed to notify that an approved action failed [requestId=${request.id}] [type=${request.type}]`
+      );
+    }
+  };
+
   const buildTelemetryEvent = async (args: {
     action: ApprovalAuditAction;
     request: TApprovalRequests;
@@ -2853,6 +3031,7 @@ export const approvalPolicyServiceFactory = ({
     buildTelemetryEvent,
     matchPolicy: (policyType: ApprovalPolicyType, projectId: string, inputs: TApprovalPolicyInputs) =>
       $resource(policyType).matchPolicy(projectId, inputs),
+    isPendingRequestUndecidable,
     getActiveGrant,
     getAccessStatuses,
     getRequestableScopes,
@@ -2877,6 +3056,7 @@ export const approvalPolicyServiceFactory = ({
     approveRequest,
     rejectRequest,
     cancelRequest,
+    notifyApprovedActionFailed,
     listGrants,
     getGrantById,
     revokeGrant,
