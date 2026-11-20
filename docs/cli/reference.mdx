@@ -179,7 +179,7 @@ Run the agent in the foreground, as [infisical agent](/cli/reference#agent) does
   command="agent-vault"
 >
 
-Run [Agent Vault](/documentation/platform/agent-vault/overview), which lets AI agents call services such as LLM providers, GitHub, and Slack without holding the credentials. A proxy adds the real credential to each request the agent sends. Run the proxy with [infisical agent-vault proxy](/cli/reference#agent-vault-proxy), usually where agent traffic leaves your network, and launch agents through it with [infisical agent-vault run](/cli/reference#agent-vault-run). Create and revoke sessions on their own with [infisical agent-vault sessions create](/cli/reference#agent-vault-sessions-create) and [infisical agent-vault sessions revoke](/cli/reference#agent-vault-sessions-revoke). Upload skills for those agents with [infisical agent-vault skills push](/cli/reference#agent-vault-skills-push). Reach database and SSH services from an agent with [infisical agent-vault connect](/cli/reference#agent-vault-connect).
+Run [Agent Vault](/documentation/platform/agent-vault/overview), which lets AI agents call services such as LLM providers, GitHub, and Slack without holding the credentials. A proxy adds the real credential to each request the agent sends. Run the proxy with [infisical agent-vault proxy](/cli/reference#agent-vault-proxy), usually where agent traffic leaves your network, and launch agents through it with [infisical agent-vault run](/cli/reference#agent-vault-run). Create and revoke sessions on their own with [infisical agent-vault sessions create](/cli/reference#agent-vault-sessions-create) and [infisical agent-vault sessions revoke](/cli/reference#agent-vault-sessions-revoke). Upload skills for those agents with [infisical agent-vault skills push](/cli/reference#agent-vault-skills-push), and list, download, and delete them with the other [infisical agent-vault skills](/cli/reference#agent-vault-skills) commands. Reach database and SSH services from an agent with [infisical agent-vault connect](/cli/reference#agent-vault-connect).
 
 `av` is an alias, so `infisical av run` works wherever `infisical agent-vault run` does.
 
@@ -430,7 +430,12 @@ If the session is already revoked or expired, the command still succeeds.
   command="agent-vault skills"
 >
 
-Manage the [skills](/documentation/platform/agent-vault/skills) that Agent Vault installs for agents. [infisical agent-vault skills push](/cli/reference#agent-vault-skills-push) adds a skill from a folder or publishes a new version of it.
+Manage the [skills](/documentation/platform/agent-vault/skills) that Agent Vault installs for agents:
+
+- [infisical agent-vault skills push](/cli/reference#agent-vault-skills-push) adds a skill from a folder or publishes a new version of it
+- [infisical agent-vault skills get](/cli/reference#agent-vault-skills-get) lists the skills in a project, or shows one skill and its files
+- [infisical agent-vault skills pull](/cli/reference#agent-vault-skills-pull) downloads a skill's files to a folder, so you can edit them and push them again
+- [infisical agent-vault skills delete](/cli/reference#agent-vault-skills-delete) deletes a skill
 
 </CLICommand>
 
@@ -469,6 +474,143 @@ Upload a skill folder to an Agent Vault project. Each command pushes one folder,
 The command skips hidden files and folders, such as `.DS_Store`, and refuses a folder that holds a symbolic link. To push as a machine identity from a script or CI, pass `--client-id` and `--client-secret`, or set `INFISICAL_TOKEN` to the identity's access token. The user or machine identity needs the Admin role in the Agent Vault project.
 
 The command reads the project the same way as [infisical agent-vault sessions create](/cli/reference#agent-vault-sessions-create): from `--project-id`, then `INFISICAL_AGENT_VAULT_PROJECT_ID`, then `INFISICAL_PROJECT_ID`. It stops with an error if none is set.
+
+</CLICommand>
+
+<CLICommand
+  id="agent-vault-skills-get"
+  command="agent-vault skills get"
+  usage="[name] [flags]"
+  args={[
+    { name: "name", usage: "[name]", description: "The name of the skill to show. Without it, the command lists every skill in the project." },
+  ]}
+  flags={[
+    { name: "--client-id", value: "<string>", type: "string", description: "The client ID of the machine identity to get the skills as. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`." },
+    { name: "--client-secret", value: "<string>", type: "string", description: "The client secret of the machine identity to get the skills as. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`." },
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the skills, or the one skill and its files, as `json` or `yaml` instead of a table." },
+    { name: "--project-id", value: "<string>", type: "string", description: "The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects) that holds the skills. If you leave it out, the CLI reads `INFISICAL_AGENT_VAULT_PROJECT_ID`, then `INFISICAL_PROJECT_ID`." },
+  ]}
+  env={[
+    { name: "INFISICAL_AGENT_VAULT_PROJECT_ID", description: "The ID of the Agent Vault project that holds the skills. Used if `--project-id` isn't passed." },
+    { name: "INFISICAL_PROJECT_ID", description: "The ID of the Agent Vault project that holds the skills. Used if `--project-id` and `INFISICAL_AGENT_VAULT_PROJECT_ID` aren't set." },
+    { name: "INFISICAL_UNIVERSAL_AUTH_CLIENT_ID", description: "The client ID of the machine identity to get the skills as. Used if `--client-id` isn't passed." },
+    { name: "INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET", description: "The client secret of the machine identity to get the skills as. Used if `--client-secret` isn't passed." },
+    { name: "INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN", description: "A machine identity access token to get the skills as. Used if no client ID and client secret are set." },
+    { name: "INFISICAL_TOKEN", description: "A machine identity access token to get the skills as. Used if no client ID and client secret are set and `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN` isn't set." },
+  ]}
+  examples={[
+    { title: "List the skills in a project", code: "infisical agent-vault skills get --project-id=<project-id>" },
+    { title: "Show one skill as JSON", code: "infisical agent-vault skills get code-review --project-id=<project-id> --output=json" },
+  ]}
+>
+
+List the skills in an Agent Vault project, or pass a skill's name to show one skill. Without a name, the command prints each skill's name, its latest version, and the access bundles it's in (for a member, only the ones granted to them):
+
+```text
+NAME             VERSION  ACCESS BUNDLES
+code-review      v4       code-review, release
+incident-triage  v1       -
+```
+
+With a name, the command prints the same details for that skill, followed by the paths of the files in its latest version:
+
+```text
+NAME         VERSION  ACCESS BUNDLES
+code-review  v4       code-review, release
+
+FILES
+  SKILL.md
+  checklist.md
+```
+
+To download the files, run [infisical agent-vault skills pull](/cli/reference#agent-vault-skills-pull).
+
+An admin of the project sees every skill. A member sees only the skills on the access bundles they've been granted. To run as a machine identity from a script or CI, pass `--client-id` and `--client-secret`, or set `INFISICAL_TOKEN` to the identity's access token. Without them, the command runs as your logged-in user.
+
+The command reads the project the same way as [infisical agent-vault skills push](/cli/reference#agent-vault-skills-push): from `--project-id`, then `INFISICAL_AGENT_VAULT_PROJECT_ID`, then `INFISICAL_PROJECT_ID`.
+
+</CLICommand>
+
+<CLICommand
+  id="agent-vault-skills-pull"
+  command="agent-vault skills pull"
+  usage="<name> [folder] [flags]"
+  args={[
+    { name: "name", usage: "<name>", required: true, description: "The name of the skill to download." },
+    { name: "folder", usage: "[folder]", description: "The folder to save the skill's files in. Defaults to a folder with the skill's name in the current directory." },
+  ]}
+  flags={[
+    { name: "--client-id", value: "<string>", type: "string", description: "The client ID of the machine identity to pull as. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`." },
+    { name: "--client-secret", value: "<string>", type: "string", description: "The client secret of the machine identity to pull as. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`." },
+    { name: "--force", type: "bool", description: "Replace the folder if it already exists. The folder then holds only the skill's files, so the command deletes every other file in it, including hidden files such as `.git`." },
+    { name: "--project-id", value: "<string>", type: "string", description: "The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects) that holds the skill. If you leave it out, the CLI reads `INFISICAL_AGENT_VAULT_PROJECT_ID`, then `INFISICAL_PROJECT_ID`." },
+    { name: "--version", value: "<int>", type: "int", description: "The version of the skill to download, instead of the latest. Only an admin of the project can download a version other than the latest." },
+  ]}
+  env={[
+    { name: "INFISICAL_AGENT_VAULT_PROJECT_ID", description: "The ID of the Agent Vault project that holds the skill. Used if `--project-id` isn't passed." },
+    { name: "INFISICAL_PROJECT_ID", description: "The ID of the Agent Vault project that holds the skill. Used if `--project-id` and `INFISICAL_AGENT_VAULT_PROJECT_ID` aren't set." },
+    { name: "INFISICAL_UNIVERSAL_AUTH_CLIENT_ID", description: "The client ID of the machine identity to pull as. Used if `--client-id` isn't passed." },
+    { name: "INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET", description: "The client secret of the machine identity to pull as. Used if `--client-secret` isn't passed." },
+    { name: "INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN", description: "A machine identity access token to pull as. Used if no client ID and client secret are set." },
+    { name: "INFISICAL_TOKEN", description: "A machine identity access token to pull as. Used if no client ID and client secret are set and `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN` isn't set." },
+  ]}
+  examples={[
+    { title: "Pull the latest version of a skill", code: "infisical agent-vault skills pull code-review ./skills/code-review --project-id=<project-id>" },
+    { title: "Pull an earlier version over an existing folder", code: "infisical agent-vault skills pull code-review ./skills/code-review \\\n  --project-id=<project-id> \\\n  --version=3 \\\n  --force" },
+  ]}
+>
+
+Download a skill's files to a folder, so you can edit them and upload them again with [infisical agent-vault skills push](/cli/reference#agent-vault-skills-push). The command downloads the latest version unless you pass `--version`, and prints the version and the folder:
+
+```text
+code-review: v4 -> ./skills/code-review
+```
+
+If the folder already exists, the command stops without downloading anything, unless you pass `--force`.
+
+`pull` and `push` skip hidden files, so a skill's hidden files are lost if you pull it and push it again.
+
+<Warning>
+`--force` deletes everything in the folder that isn't part of the skill, including hidden files and folders such as `.git`.
+</Warning>
+
+An admin of the project can pull any version of any skill. A member can pull only the latest version of the skills on the access bundles they've been granted. To pull a skill, edit it, and push it again, you need the Admin role, because `skills push` needs it. To run as a machine identity from a script or CI, pass `--client-id` and `--client-secret`, or set `INFISICAL_TOKEN` to the identity's access token. Without them, the command runs as your logged-in user.
+
+The command reads the project the same way as [infisical agent-vault skills push](/cli/reference#agent-vault-skills-push): from `--project-id`, then `INFISICAL_AGENT_VAULT_PROJECT_ID`, then `INFISICAL_PROJECT_ID`.
+
+</CLICommand>
+
+<CLICommand
+  id="agent-vault-skills-delete"
+  command="agent-vault skills delete"
+  usage="<name> [flags]"
+  args={[
+    { name: "name", usage: "<name>", required: true, description: "The name of the skill to delete." },
+  ]}
+  flags={[
+    { name: "--client-id", value: "<string>", type: "string", description: "The client ID of the machine identity to delete as. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`." },
+    { name: "--client-secret", value: "<string>", type: "string", description: "The client secret of the machine identity to delete as. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`." },
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the deleted skill as `json` or `yaml`." },
+    { name: "--project-id", value: "<string>", type: "string", required: true, description: "The ID of the [Agent Vault project](/documentation/platform/agent-vault/projects) that holds the skill." },
+    { name: "--yes", short: "-y", type: "bool", description: "Delete without asking for confirmation. Required when there's no terminal to ask in, such as in a script or an agent." },
+  ]}
+  env={[
+    { name: "INFISICAL_UNIVERSAL_AUTH_CLIENT_ID", description: "The client ID of the machine identity to delete as. Used if `--client-id` isn't passed." },
+    { name: "INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET", description: "The client secret of the machine identity to delete as. Used if `--client-secret` isn't passed." },
+    { name: "INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN", description: "A machine identity access token to delete as. Used if no client ID and client secret are set." },
+    { name: "INFISICAL_TOKEN", description: "A machine identity access token to delete as. Used if no client ID and client secret are set and `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN` isn't set." },
+  ]}
+  examples={[
+    { title: "Delete a skill", code: "infisical agent-vault skills delete code-review --project-id=<project-id>" },
+    { title: "Delete a skill from a script", code: "infisical agent-vault skills delete code-review --project-id=<project-id> --yes" },
+  ]}
+>
+
+Delete a skill and every version of it from an Agent Vault project. Infisical removes the skill from every access bundle, so agents don't get the skill the next time they start. Copies of the skill that the CLI already installed on agents' hosts stay until you delete them. The user or machine identity needs the Admin role in the Agent Vault project.
+
+The command asks you to type the skill's name before it deletes anything. To skip the question, pass `--yes`. If there's no terminal to ask in, such as in a script or an agent, and you don't pass `--yes`, the command deletes nothing, fails with `confirmation_required`, and prints the command to run again with `--yes`.
+
+The command needs `--project-id`, even if you've set the project in an environment variable.
 
 </CLICommand>
 

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
+import { isAxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
 
@@ -13,6 +13,7 @@ import {
   TBulkActOnSecretApprovalRequestsDTO,
   TBulkChangeRequestResult,
   TPerformSecretApprovalRequestMerge,
+  TSecretApprovalRequest,
   TUpdateSecretApprovalRequestStatusDTO,
   TUpdateSecretApprovalReviewStatusDTO
 } from "./types";
@@ -96,56 +97,106 @@ export const usePerformSecretApprovalRequestMerge = () => {
   });
 };
 
+type TBatchFailure = { approvalRequestId: string; message: string };
+type TBatchResponse = {
+  failures: TBatchFailure[];
+  approvals?: Pick<TSecretApprovalRequest, "id" | "hasMerged" | "conflicts">[];
+  reviews?: {
+    requestId: string;
+    reviewerUserId: string;
+    status: ApprovalStatus;
+    comment?: string | null;
+  }[];
+};
+
 export const useBulkActOnSecretApprovalRequests = () => {
   const queryClient = useQueryClient();
 
   return useMutation<TBulkChangeRequestResult[], object, TBulkActOnSecretApprovalRequestsDTO>({
     mutationFn: async ({ action, comment, requestIds }) => {
-      const results: TBulkChangeRequestResult[] = [];
-
-      for (const id of requestIds) {
-        try {
-          if (action === BulkChangeRequestAction.Merge) {
-            // eslint-disable-next-line no-await-in-loop
-            await apiRequest.post(`/api/v1/secret-approval-requests/${id}/merge`, {
-              requireApprovals: true
-            });
-          } else {
-            // eslint-disable-next-line no-await-in-loop
-            await apiRequest.post(`/api/v1/secret-approval-requests/${id}/review`, {
-              status:
-                action === BulkChangeRequestAction.Approve
-                  ? ApprovalStatus.APPROVED
-                  : ApprovalStatus.REJECTED,
-              comment
-            });
-          }
-          results.push({ id, isSuccess: true });
-        } catch (error) {
-          const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
-          results.push({
-            id,
-            isSuccess: false,
-            errorMessage:
-              typeof message === "string"
-                ? message
-                : "Could not update this change request. Try again or open it for details."
-          });
-        }
+      let failures: TBatchFailure[];
+      try {
+        const { data } =
+          action === BulkChangeRequestAction.Merge
+            ? await apiRequest.post<TBatchResponse>(
+                "/api/v1/secret-approval-requests/batch/merge",
+                { approvalRequestIds: requestIds }
+              )
+            : await apiRequest.post<TBatchResponse>(
+                "/api/v1/secret-approval-requests/batch/review",
+                {
+                  approvalRequestIds: requestIds,
+                  status:
+                    action === BulkChangeRequestAction.Approve
+                      ? ApprovalStatus.APPROVED
+                      : ApprovalStatus.REJECTED,
+                  comment
+                }
+              );
+        failures = data.failures;
+        data.approvals?.forEach(({ id, hasMerged, conflicts }) =>
+          queryClient.setQueryData<TSecretApprovalRequest>(
+            secretApprovalRequestKeys.detail({ id }),
+            (details) => details && { ...details, hasMerged, conflicts }
+          )
+        );
+        data.reviews?.forEach(({ requestId, reviewerUserId, status, comment: reviewComment }) =>
+          queryClient.setQueryData<TSecretApprovalRequest>(
+            secretApprovalRequestKeys.detail({ id: requestId }),
+            (details) => {
+              if (!details) return details;
+              const reviewer =
+                details.reviewers.find(({ userId }) => userId === reviewerUserId) ??
+                details.policy.approvers.find(({ userId }) => userId === reviewerUserId);
+              if (!reviewer) return details;
+              return {
+                ...details,
+                reviewers: [
+                  ...details.reviewers.filter(({ userId }) => userId !== reviewerUserId),
+                  { createdAt: new Date(), ...reviewer, status, comment: reviewComment ?? "" }
+                ]
+              };
+            }
+          )
+        );
+      } catch (error) {
+        const status = isAxiosError(error) ? error.response?.status : undefined;
+        if (!status || status >= 500) throw error;
+        const message = isAxiosError(error) ? error.response?.data?.message : undefined;
+        return requestIds.map((id) => ({
+          id,
+          isSuccess: false,
+          errorMessage:
+            typeof message === "string"
+              ? message
+              : "Could not update this change request. Try again or open it for details."
+        }));
       }
-
-      return results;
+      const failureById = new Map(
+        failures.map(({ approvalRequestId, message }) => [approvalRequestId, message])
+      );
+      return requestIds.map((id) =>
+        failureById.has(id)
+          ? { id, isSuccess: false, errorMessage: failureById.get(id) }
+          : { id, isSuccess: true }
+      );
     },
-    onSuccess: (results, { projectId, action }) => {
+    onSettled: (results, error, { projectId, action, requestIds }) => {
       queryClient.invalidateQueries({
         queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
       });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
-      results.forEach(({ id }) =>
-        queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.detail({ id }) })
+      requestIds.forEach((id) =>
+        queryClient.invalidateQueries({
+          queryKey: secretApprovalRequestKeys.detail({ id }),
+          refetchType: error ? "active" : "none"
+        })
       );
 
-      if (action !== BulkChangeRequestAction.Merge || !results.some(({ isSuccess }) => isSuccess))
+      if (
+        action !== BulkChangeRequestAction.Merge ||
+        !(error || results?.some(({ isSuccess }) => isSuccess))
+      )
         return;
 
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all() });
