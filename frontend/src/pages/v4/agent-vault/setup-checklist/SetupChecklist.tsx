@@ -5,6 +5,8 @@ import type { SidebarProps } from "@infisical/cipher/ui/sidebar";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { Gauge } from "lucide-react";
 
+import type { TAgentVaultAccess } from "@app/hooks/api/agentVault/types";
+
 import { useV4Adapter } from "../../data/adapters";
 import type { ShellLocation } from "../../shell/location";
 import { formatFreeUsageSummary } from "../free-usage/free-usage-format";
@@ -143,10 +145,18 @@ const SetupChecklist = ({
   );
 };
 
+const usageIndicator = (access?: TAgentVaultAccess): SidebarProps["footerIndicator"] => {
+  if (access?.state === "limit-reached") return "bad";
+  return access?.warn ? "warn" : undefined;
+};
+
 export const useAgentVaultSetupSidebar = (
   orgId: string,
   at: ShellLocation
-): Pick<SidebarProps, "footer" | "footerIcon" | "footerLabel" | "footerItems"> => {
+): Pick<
+  SidebarProps,
+  "footer" | "footerIcon" | "footerLabel" | "footerIndicator" | "footerItems"
+> => {
   const projectId = at.level === "agent-vault" ? at.projectId : undefined;
   const progress = useAgentVaultSetupProgress(orgId, projectId ?? "");
   const { data: access } = useV4Adapter("agentVaultSettings").useAccess(orgId, Boolean(projectId));
@@ -182,6 +192,7 @@ export const useAgentVaultSetupSidebar = (
       </div>
     ),
     footerIcon: steps ? "list-checks" : Gauge,
+    footerIndicator: usageIndicator(access),
     footerLabel: steps
       ? [`${TITLE}, ${progress.completedCount} of ${steps.length} done`, usageLabel]
           .filter(Boolean)
