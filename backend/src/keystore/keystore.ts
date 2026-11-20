@@ -61,6 +61,7 @@ export const SECRET_MANAGER_CACHE_PREFIX = "secret-manager";
 // all the key prefixes used must be set here to avoid conflict
 export const KeyStorePrefixes = {
   SecretReplication: "secret-replication-import-lock",
+  GoSidecarForwardingDisabled: "go-sidecar-forwarding-disabled",
   FolderTreeCheckpoint: (envId: string) => `folder-tree-checkpoint-${envId}`,
 
   WaitUntilReadyProjectEnvironmentOperation: (projectId: string) =>

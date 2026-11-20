@@ -107,3 +107,11 @@ func DatabaseErr(format string, args ...any) *Error {
 func GatewayTimeout(format string, args ...any) *Error {
 	return &Error{Name: "GatewayTimeoutError", Status: 504, Message: fmt.Sprintf(format, args...)}
 }
+
+// ValidationFailureName is the Name of the error ValidationFailure creates.
+const ValidationFailureName = "ValidationFailure"
+
+// ValidationFailure creates a 422 error whose issues are sent as the response message, as Node's Zod validation does.
+func ValidationFailure(issues any) *Error {
+	return &Error{Name: ValidationFailureName, Status: 422, Message: "Validation failed", Details: issues}
+}
