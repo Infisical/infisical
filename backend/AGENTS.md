@@ -499,6 +499,8 @@ Built-in roles: `Admin`, `Member`, `Viewer`, `NoAccess`. For PAM and Agent Vault
 - **Membership teardowns must not call it**: the membership row they delete is already in the fingerprint. This holds only while a teardown reaps grants in exactly the projects the actor is losing.
 - `buildFolderScopedPrivilegeRules` emits a deny of every secretPath-capable subject at the granted path followed by the folder role's allows. Adding a secretPath-scoped subject or action fails `folder-scoped-privilege-rules.test.ts` until you extend `FOLDER_SCOPED_DENY_RULES`.
 
+**Secret cache and cross-project grants**: `secretV2BridgeDAL.invalidateSecretCacheByProjectId` also invalidates the projects that import this project's folders, and finds them through `project_folder_grants`. Deleting a folder or an environment cascades those grants, so **a path that deletes either reads `findGrantTargetProjectIds` in its transaction before the delete and passes the result as `grantTargetProjectIds`**, or the importing projects keep serving the deleted secrets from cache.
+
 ### Request-Scoped Memoization
 
 A per-request in-memory cache that eliminates redundant DB reads within a single HTTP request. Defined in `src/lib/request-context/request-memoizer.ts`, attached to Fastify's `@fastify/request-context` as the `memoizer` field (initialized in `src/server/app.ts`). Cache is automatically garbage-collected when the request ends — zero staleness risk, zero infrastructure.
