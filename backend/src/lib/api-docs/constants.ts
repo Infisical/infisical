@@ -4598,7 +4598,7 @@ export const SECRET_SHARING = {
 } as const;
 
 export const GATEWAYS = {
-  GET: {
+  RESPONSE: {
     cliVersion:
       "Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.",
     cliVersionReportedAt:

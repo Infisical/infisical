@@ -46,8 +46,8 @@ const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   directAddress: true,
   directHeartbeat: true
 }).extend({
-  cliVersion: GatewaysV2Schema.shape.cliVersion.describe(GATEWAYS.GET.cliVersion),
-  cliVersionReportedAt: GatewaysV2Schema.shape.cliVersionReportedAt.describe(GATEWAYS.GET.cliVersionReportedAt),
+  cliVersion: GatewaysV2Schema.shape.cliVersion.describe(GATEWAYS.RESPONSE.cliVersion),
+  cliVersionReportedAt: GatewaysV2Schema.shape.cliVersionReportedAt.describe(GATEWAYS.RESPONSE.cliVersionReportedAt),
   canRevoke: z.boolean()
 });
 

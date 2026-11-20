@@ -101,6 +101,14 @@ type TGatewayV2ServiceFactoryDep = {
 
 // Written on every connect, register and heartbeat, nulls included, so a downgrade or a non-CLI caller clears
 // a stale version instead of leaving it on display.
+//
+// cliVersionReportedAt is its own column because the Last Seen timestamps (heartbeat, directHeartbeat) can't
+// stand in: $checkGatewayHealth writes them only when Infisical's health check reaches the gateway, so using
+// them on the gateway detail page would
+// - date the version tooltip from a stale health check, or not at all after Revoke Access clears them,
+// - show a dash, not "Older than v0.43.131", for an old CLI whose health check fails,
+// - show "Older than v0.43.131" for a current gateway behind a proxy that rewrites its User-Agent,
+// - show "Older than v0.43.131" for every healthy gateway until its next heartbeat (up to 3 minutes).
 const getCliVersionFields = (userAgent?: string) => {
   const { cliVersion, fromCli } = getReportedCliVersion(userAgent);
   return { cliVersion, cliVersionReportedAt: fromCli ? new Date() : null };

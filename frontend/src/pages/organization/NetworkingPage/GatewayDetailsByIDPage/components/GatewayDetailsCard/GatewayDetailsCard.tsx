@@ -67,25 +67,23 @@ const HealthBadge = ({ gateway }: { gateway: TGatewayV2 }) => {
 };
 
 const GatewayCliVersion = ({ gateway }: { gateway: TGatewayV2 }) => {
-  if (gateway.cliVersion) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="cursor-default font-mono text-xs">
-            {formatGatewayCliVersion(gateway.cliVersion)}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent className="max-w-xs">
-          {gateway.cliVersionReportedAt
-            ? `Reported by the gateway on ${format(new Date(gateway.cliVersionReportedAt), "PPpp")}.`
-            : "Reported by the gateway."}
-        </TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  // A report with no version comes only from a CLI release too old to send one.
   if (gateway.cliVersionReportedAt) {
+    if (gateway.cliVersion) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="cursor-default font-mono text-xs">
+              {formatGatewayCliVersion(gateway.cliVersion)}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs">
+            {`Reported by the gateway on ${format(new Date(gateway.cliVersionReportedAt), "PPpp")}.`}
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    // A report with no version comes only from a CLI release too old to send one.
     return (
       <Tooltip>
         <TooltipTrigger asChild>
@@ -107,8 +105,7 @@ const GatewayCliVersion = ({ gateway }: { gateway: TGatewayV2 }) => {
         <span className="cursor-default text-muted">—</span>
       </TooltipTrigger>
       <TooltipContent className="max-w-xs">
-        No version reported. Gateways running Infisical CLI v0.43.131 or later report theirs when
-        they connect and with each heartbeat.
+        No version reported yet. Gateways on Infisical CLI v0.43.131 or later report theirs.
       </TooltipContent>
     </Tooltip>
   );
@@ -218,7 +215,7 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
             </DetailValue>
           </Detail>
           <Detail>
-            <DetailLabel>Version</DetailLabel>
+            <DetailLabel>CLI Version</DetailLabel>
             <DetailValue>
               <GatewayCliVersion gateway={gateway} />
             </DetailValue>

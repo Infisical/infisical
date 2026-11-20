@@ -23,8 +23,8 @@ const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   heartbeatTTL: true,
   capabilities: true
 }).extend({
-  cliVersion: GatewaysV2Schema.shape.cliVersion.describe(GATEWAYS.GET.cliVersion),
-  cliVersionReportedAt: GatewaysV2Schema.shape.cliVersionReportedAt.describe(GATEWAYS.GET.cliVersionReportedAt)
+  cliVersion: GatewaysV2Schema.shape.cliVersion.describe(GATEWAYS.RESPONSE.cliVersion),
+  cliVersionReportedAt: GatewaysV2Schema.shape.cliVersionReportedAt.describe(GATEWAYS.RESPONSE.cliVersionReportedAt)
 });
 
 export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
