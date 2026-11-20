@@ -481,6 +481,15 @@ export const SelectOrgPage = () => {
           }}
           method={requiredMfaMethod as MfaMethod}
           onChangeAccount={handleLogout}
+          onSessionExpired={async () => {
+            toggleShowMfa.off();
+            if (!mfaOrgInfo.current) return;
+            createNotification({
+              text: "Your verification session expired. Enter the new code to continue.",
+              type: "info"
+            });
+            await handleSelectOrganization(mfaOrgInfo.current.rootOrg, mfaOrgInfo.current.subOrgId);
+          }}
         />
       </>
     );
