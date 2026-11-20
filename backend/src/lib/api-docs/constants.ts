@@ -4604,6 +4604,12 @@ export const SECRET_SHARING = {
 } as const;
 
 export const GATEWAYS = {
+  RESPONSE: {
+    cliVersion:
+      "Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.",
+    cliVersionReportedAt:
+      "When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified."
+  },
   METRICS_REPORT: {
     activeChannels:
       "Number of channels the gateway is currently serving. Used to route new work to the least busy member of a gateway pool.",
