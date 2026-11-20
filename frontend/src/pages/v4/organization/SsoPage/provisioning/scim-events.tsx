@@ -9,7 +9,6 @@ import { formatDateTime } from "@app/helpers/datetime";
 import { ScimEvent, type ScimEventData } from "@app/hooks/api/scim/types";
 
 import { useOrgId } from "../../../access/permissions";
-import { ShowMoreFooter } from "../../../components/show-more-footer";
 import { useV4Adapter } from "../../../data/adapters";
 
 import styles from "./provisioning.module.css";
@@ -92,24 +91,17 @@ export const ScimEvents = () => {
   const rows = scimEvents?.pages.flat() ?? [];
 
   return (
-    <Card
-      variant="framed"
-      title="SCIM events"
-      footerPlacement="frame"
-      footer={
-        <ShowMoreFooter
-          status={
-            rows.length > 0
-              ? `${rows.length.toLocaleString("en-US")}${hasNextPage ? "+" : ""} events in the last 30 days`
-              : "Last 30 days"
-          }
-          loading={isFetchingNextPage}
-          onShowMore={hasNextPage ? () => fetchNextPage() : undefined}
-        />
-      }
-    >
+    <Card variant="framed" title="SCIM events" footerPlacement="frame">
       <DataTable
         label="SCIM events"
+        persistentStatus={
+          rows.length > 0
+            ? `${rows.length.toLocaleString("en-US")}${hasNextPage ? "+" : ""} events in the last 30 days`
+            : "Last 30 days"
+        }
+        loadMore={
+          hasNextPage ? { loading: isFetchingNextPage, onClick: () => fetchNextPage() } : undefined
+        }
         rows={rows}
         columns={columns}
         loading={isPending}

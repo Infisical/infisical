@@ -52,14 +52,11 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { useOrgPermission } from "../../access/permissions";
 import { AccessRestricted } from "../../access/ui";
-import { ShowMoreFooter } from "../../components/show-more-footer";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, v4Path } from "../../links";
 import { EventClassesCard } from "./event-classes";
 import { AuditLogStreamsTab } from "./streams/streams";
-
-import styles from "./audit-logs.module.css";
 
 const PAGE_SIZE = 500;
 const EMBEDDED_PAGE_SIZE = 10;
@@ -535,14 +532,13 @@ const LogsTable = ({ project, actorId }: { project?: AuditLogsProject; actorId?:
       onRowActivate={setOpened}
       rowHeight={rowHeight}
       virtual={!actorId}
-      loadMore={
-        canLoadMore && !actorId
-          ? {
-              label: "Show more",
-              loading: isFetchingNextPage,
-              onClick: () => fetchNextPage()
-            }
+      persistentStatus={
+        actorId && rows.length > 0
+          ? `Showing ${rows.length.toLocaleString("en-US")}${canLoadMore ? "+" : ""} events`
           : undefined
+      }
+      loadMore={
+        canLoadMore ? { loading: isFetchingNextPage, onClick: () => fetchNextPage() } : undefined
       }
       end={isPending || rows.length === 0 || actorId ? undefined : "End of logs"}
       empty={empty}
@@ -575,22 +571,7 @@ const LogsTable = ({ project, actorId }: { project?: AuditLogsProject; actorId?:
         </Alert>
       )}
       {actorId ? (
-        <Card
-          variant="framed"
-          title="Audit logs"
-          flush
-          footerPlacement="frame"
-          footer={
-            rows.length > 0 ? (
-              <ShowMoreFooter
-                status={`Showing ${rows.length.toLocaleString("en-US")}${canLoadMore ? "+" : ""} events`}
-                loading={isFetchingNextPage}
-                onShowMore={canLoadMore ? () => fetchNextPage() : undefined}
-              />
-            ) : undefined
-          }
-        >
-          <div className={styles.toolbar}>{filterBar}</div>
+        <Card variant="framed" title="Audit logs" flush footerPlacement="frame" toolbar={filterBar}>
           {table}
         </Card>
       ) : (
