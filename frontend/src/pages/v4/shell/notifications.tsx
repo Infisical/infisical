@@ -20,6 +20,7 @@ import { formatDistanceToNow } from "date-fns";
 import { isCriticalNotification, type TUserNotification } from "@app/hooks/api/notifications/types";
 
 import { failed } from "../access/toast";
+import { ShowMoreFooter } from "../components/show-more-footer";
 import { useV4Adapter } from "../data/adapters";
 import { useGo } from "../links";
 
@@ -162,9 +163,12 @@ const InboxPanel = ({
         empty={<EmptyState size="sm" icon="bell" title="No notifications" />}
         footer={
           notifications.length > shownCount && (
-            <Button variant="ghost" size="sm" onClick={() => setShownCount(shownCount + PAGE_SIZE)}>
-              Show more
-            </Button>
+            <div className={styles.inboxMore}>
+              <ShowMoreFooter
+                status={`Showing ${shownCount.toLocaleString()} of ${notifications.length.toLocaleString()}`}
+                onShowMore={() => setShownCount(shownCount + PAGE_SIZE)}
+              />
+            </div>
           )
         }
       >

@@ -38,6 +38,7 @@ import { useProjectScope } from "../../access/project/scope";
 import { formatDateTime } from "../../access/roles";
 import { AccessRestricted } from "../../access/ui";
 import { useAlertMembers } from "../../cert-manager/SettingsPage/alert-members";
+import { ShowMoreFooter } from "../../components/show-more-footer";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, useGo, v4Path } from "../../links";
@@ -156,9 +157,24 @@ const LogsCard = ({ sync }: { sync: TSecretSync }) => {
       </Card>
     );
   const rows = logs.error ? [] : (logs.data?.pages ?? []).flat();
-  const lastPage = logs.data?.pages.at(-1);
+  const canLoadMore = logs.hasNextPage && logs.data?.pages.at(-1)?.length === LOG_PAGE_SIZE;
   return (
-    <Card variant="framed" title="Sync logs" footer={`Last ${days} days`}>
+    <Card
+      variant="framed"
+      title="Sync logs"
+      footerPlacement="frame"
+      footer={
+        <ShowMoreFooter
+          status={
+            rows.length > 0
+              ? `${rows.length.toLocaleString("en-US")}${canLoadMore ? "+" : ""} events in the last ${days} days`
+              : `Last ${days} days`
+          }
+          loading={logs.isFetchingNextPage}
+          onShowMore={canLoadMore ? () => logs.fetchNextPage() : undefined}
+        />
+      }
+    >
       <DataTable
         label="Sync logs"
         rows={rows}
@@ -167,15 +183,6 @@ const LogsCard = ({ sync }: { sync: TSecretSync }) => {
         loadingRows={3}
         getRowId={(log) => log.id}
         rowLabel={(log) => `${log.event.type} at ${formatDateTime(log.createdAt)}`}
-        loadMore={
-          logs.hasNextPage && lastPage?.length === LOG_PAGE_SIZE
-            ? {
-                label: `Load ${LOG_PAGE_SIZE} more`,
-                loading: logs.isFetchingNextPage,
-                onClick: () => logs.fetchNextPage()
-              }
-            : undefined
-        }
         empty={
           logs.error ? (
             <EmptyState

@@ -40,6 +40,7 @@ import { formatDateTime } from "../../access/roles";
 import { toast } from "../../access/toast";
 import { AccessRestricted, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
+import { ShowMoreFooter } from "../../components/show-more-footer";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, useGo, v4Path } from "../../links";
@@ -246,9 +247,24 @@ const LogsCard = ({
       </Card>
     );
   const rows = logs.error ? [] : (logs.data?.pages ?? []).flat();
-  const lastPage = logs.data?.pages.at(-1);
+  const canLoadMore = logs.hasNextPage && logs.data?.pages.at(-1)?.length === LOG_PAGE_SIZE;
   return (
-    <Card variant="framed" title="Integration logs" footer={`Last ${days} days`}>
+    <Card
+      variant="framed"
+      title="Integration logs"
+      footerPlacement="frame"
+      footer={
+        <ShowMoreFooter
+          status={
+            rows.length > 0
+              ? `${rows.length.toLocaleString("en-US")}${canLoadMore ? "+" : ""} events in the last ${days} days`
+              : `Last ${days} days`
+          }
+          loading={logs.isFetchingNextPage}
+          onShowMore={canLoadMore ? () => logs.fetchNextPage() : undefined}
+        />
+      }
+    >
       <DataTable
         label="Integration logs"
         rows={rows}
@@ -257,15 +273,6 @@ const LogsCard = ({
         loadingRows={3}
         getRowId={(log) => log.id}
         rowLabel={(log) => `${log.event.type} at ${formatDateTime(log.createdAt)}`}
-        loadMore={
-          logs.hasNextPage && lastPage?.length === LOG_PAGE_SIZE
-            ? {
-                label: `Load ${LOG_PAGE_SIZE} more`,
-                loading: logs.isFetchingNextPage,
-                onClick: () => logs.fetchNextPage()
-              }
-            : undefined
-        }
         empty={
           logs.error ? (
             <EmptyState

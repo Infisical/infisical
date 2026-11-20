@@ -24,6 +24,7 @@ import { useV4Session } from "../data/session/contract";
 import { orgHref } from "../links";
 import { V4_DEMO_ORG_ID } from "../mode";
 import { useResolveV4Href } from "../resolveV4Href";
+import { usePendingApprovals } from "../secret-manager/pending-approvals";
 import { type ShellBannerContext, type ShellBannerScope, PageFrame, ShellBanners } from "./banners";
 import { useShellChrome } from "./chrome";
 import { CommandPalette } from "./command-palette";
@@ -199,13 +200,17 @@ export const V4Shell = ({
   const projectName = useProjectName(at.projectId ?? "");
   const agentVaultSetup = useAgentVaultSetupSidebar(orgId, at);
   const blocked = useBlockedProducts(orgId);
+  const approvals = usePendingApprovals(
+    at.product === ProjectType.SecretManager ? (at.projectId ?? "") : ""
+  );
   const trail = shellTrail({
     at,
     projectName: projectName.name,
     isSubOrganization: session.organization.isSubOrganization,
     blocked,
     nested: nav?.levels,
-    linkTo: (path, search) => ({ to: resolve(`${base}${path}`), search }) as LinkOptions
+    linkTo: (path, search) => ({ to: resolve(`${base}${path}`), search }) as LinkOptions,
+    projectCounts: { approvals: approvals.changesToReview + approvals.accessToReview }
   });
   const shown = trail[trail.length - 1];
   const parent = trail[trail.length - 2];

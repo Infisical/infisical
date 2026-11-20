@@ -17,6 +17,7 @@ import { Meta, StatusText } from "@infisical/cipher/ui/text";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { ChevronUpIcon } from "lucide-react";
 
 import {
   BulkChangeRequestAction,
@@ -27,7 +28,9 @@ import { formatReservedPaths } from "@app/lib/fn/string";
 import { toast } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
 import { ChangeItem } from "./ChangeItem";
-import { approvedCount, type ChangeRequest, ChangeSummary, plural } from "./parts";
+import { approvedCount, authorName, type ChangeRequest, changeTitle, plural } from "./parts";
+
+import styles from "./bulk-review.module.css";
 
 type Decision = "approve" | "reject";
 type Outcome =
@@ -39,9 +42,6 @@ type Outcome =
 type Overlap = { secretKey: string; slug: string; mergesFirst: boolean };
 
 const PENDING_APPROVALS = /needs \d+ approval\(s\)/;
-
-const authorOf = ({ committerUser, committerIdentity }: ChangeRequest) =>
-  committerUser?.username ?? committerIdentity?.name ?? "Deleted user";
 
 const OutcomeText = ({ outcome }: { outcome?: Outcome }) => {
   if (!outcome) return <Meta mono={false}>Working</Meta>;
@@ -288,7 +288,9 @@ const ReviewContent = ({
               <Stack key={`${environment}-${folderId}`} gap={12}>
                 <Inline gap={8}>
                   <strong>{environmentName(environment)}</strong>
-                  <Meta>{formatReservedPaths(folderPath)}</Meta>
+                  {formatReservedPaths(folderPath) !== "/" && (
+                    <Meta>{formatReservedPaths(folderPath)}</Meta>
+                  )}
                 </Inline>
                 {group.map((request, index) => {
                   const detail = details[request.id];
@@ -298,29 +300,19 @@ const ReviewContent = ({
                   return (
                     <Stack key={request.id} gap={8}>
                       {index > 0 && <Separator />}
-                      <Inline gap={12}>
-                        <Button
-                          variant="ghost"
-                          size="icon-xs"
-                          iconOnly
-                          icon={isCollapsed ? "chev-right" : "chev-down"}
-                          onClick={() =>
-                            setCollapsed((current) => ({ ...current, [request.id]: !isCollapsed }))
-                          }
-                        >
-                          {isCollapsed ? "Expand changes" : "Collapse changes"}
-                        </Button>
-                        <ChangeSummary
-                          commits={source.commits}
-                          isReplicated={request.isReplicated}
-                        />
-                        <Meta>{`#${request.slug}`}</Meta>
-                        <span>{authorOf(request)}</span>
-                        <Meta mono={false}>
-                          {`${approvedCount(source)}/${source.policy.approvals} approvals`}
-                        </Meta>
-                        {overlapNote(request.id)}
-                        <span style={{ marginInlineStart: "auto" }}>
+                      <div className={styles.requestHead}>
+                        <div className={styles.requestText}>
+                          <span className={styles.requestTitle}>{changeTitle(source)}</span>
+                          <span className={styles.requestMeta}>
+                            <span>{authorName(request)}</span>
+                            <span>
+                              {`${approvedCount(source)} of ${source.policy.approvals} approvals`}
+                            </span>
+                            <span className={styles.slug}>{`#${request.slug}`}</span>
+                            {overlapNote(request.id)}
+                          </span>
+                        </div>
+                        <span className={styles.requestActions}>
                           {outcomes || submitting ? (
                             <OutcomeText outcome={outcomes?.[request.id]} />
                           ) : (
@@ -342,17 +334,34 @@ const ReviewContent = ({
                               <ToggleGroupItem value="reject">Reject</ToggleGroupItem>
                             </ToggleGroup>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            iconOnly
+                            icon={isCollapsed ? "chev-down" : ChevronUpIcon}
+                            onClick={() =>
+                              setCollapsed((current) => ({
+                                ...current,
+                                [request.id]: !isCollapsed
+                              }))
+                            }
+                          >
+                            {isCollapsed ? "Show changes" : "Hide changes"}
+                          </Button>
                         </span>
-                      </Inline>
-                      {!isCollapsed &&
-                        detail?.commits.map((commit, commitIndex) => (
-                          <ChangeItem
-                            key={`${commit.op}-${commitIndex + 1}-${commit.secretVersion?.id}`}
-                            commit={commit}
-                            conflicts={detail.conflicts}
-                            hasMerged={detail.hasMerged}
-                          />
-                        ))}
+                      </div>
+                      {!isCollapsed && detail && (
+                        <Stack gap={8}>
+                          {detail.commits.map((commit) => (
+                            <ChangeItem
+                              key={commit.id}
+                              commit={commit}
+                              conflicts={detail.conflicts}
+                              hasMerged={detail.hasMerged}
+                            />
+                          ))}
+                        </Stack>
+                      )}
                       {!isCollapsed && !detail && query?.isError && (
                         <Inline gap={8}>
                           <StatusText tone="bad" icon="alert-c">
@@ -431,7 +440,7 @@ export const BulkReviewSheet = ({
   const [submitting, setSubmitting] = useState(false);
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent size="lg" pending={submitting}>
+      <SheetContent size="lg" pending={submitting} className={styles.sheet}>
         {open && (
           <ReviewContent
             {...props}

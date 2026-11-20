@@ -6,13 +6,13 @@ import { EmptyState } from "@infisical/cipher/ui/empty";
 import { DetailLayout, Inline, Stack } from "@infisical/cipher/ui/layout";
 import { DataList } from "@infisical/cipher/ui/list";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
-import { Heading, Meta, StatusText } from "@infisical/cipher/ui/text";
+import { Meta, StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { format, formatDistanceToNowStrict } from "date-fns";
 
 import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { ApprovalStatus, CommitType } from "@app/hooks/api/secretApprovalRequest/types";
+import { ApprovalStatus } from "@app/hooks/api/secretApprovalRequest/types";
 import { parsePathFromReplicatedPath } from "@app/lib/fn/string";
 
 import { useV4Adapter } from "../../../data/adapters";
@@ -20,11 +20,12 @@ import { useV4Session } from "../../../data/session/contract";
 import { useGo } from "../../../links";
 import { PageLoader } from "../../../shell/project-gate";
 import { ChangeItem } from "./ChangeItem";
+import { ChangeSummary } from "./ChangeSummary";
 import { MergeButtons, ReopenButton } from "./MergeButtons";
 import {
   approvedCount,
   type ChangeRequest,
-  ChangeSummary,
+  changeTitle,
   pathOf,
   personName,
   plural,
@@ -32,39 +33,7 @@ import {
 } from "./parts";
 import { ReviewPopover } from "./ReviewPopover";
 
-const verbs: Record<CommitType, string> = {
-  [CommitType.CREATE]: "add",
-  [CommitType.ADD]: "add",
-  [CommitType.UPDATE]: "update",
-  [CommitType.DELETE]: "delete"
-};
-
 const stamp = (value: string | Date) => format(new Date(value), "MMM d, yyyy h:mm aa");
-
-const RequestTitle = ({
-  request,
-  environment
-}: {
-  request: ChangeRequest;
-  environment: string;
-}) => {
-  const found = [...new Set(request.commits.map((commit) => verbs[commit.op]))];
-  const verb = found.length === 1 ? found[0] : "change";
-  const keys = request.commits.map((commit) => commit.secretKey);
-  const shown = keys.slice(0, 2);
-  return (
-    <>
-      {shown.map((key, index) => (
-        <span key={key}>
-          {index > 0 && " and "}
-          <code>{key}</code>
-        </span>
-      ))}
-      {keys.length > shown.length && ` and ${keys.length - shown.length} more`}
-      {` ${verb} in ${environment}`}
-    </>
-  );
-};
 
 type ReviewerRow = {
   userId: string;
@@ -266,8 +235,7 @@ export const RequestDetail = ({
       header: "Comment",
       grow: true,
       text: (row) => row.review?.comment ?? "",
-      render: (row) =>
-        row.review?.comment ? <span>{row.review.comment}</span> : <Meta mono={false}>None</Meta>
+      render: (row) => (row.review?.comment ? <span>{row.review.comment}</span> : null)
     }
   ];
 
@@ -300,7 +268,7 @@ export const RequestDetail = ({
       <PageHeader
         size="md"
         breadcrumb={breadcrumb}
-        title={<RequestTitle request={request} environment={environment} />}
+        title={`${changeTitle(request)} in ${environment}`}
         description={`Opened by ${committer} ${formatDistanceToNowStrict(new Date(request.createdAt), { addSuffix: true })}`}
         badges={
           <>
@@ -354,7 +322,7 @@ export const RequestDetail = ({
                 ],
                 ["Environment", environment, { span: "half" }],
                 ["Secret path", <code key="path">{pathOf(request)}</code>, { span: "half" }],
-                ["Policy", policy.name, { span: "half" }],
+                ...(policy.name ? [["Policy", policy.name, { span: "half" }] as const] : []),
                 ["Approvals", `${approvals} of ${policy.approvals} required`, { span: "half" }],
                 ["Enforcement", isSoft ? "Soft, can be bypassed" : "Hard", { span: "half" }],
                 ["Opened", stamp(request.createdAt), { span: "half" }],
@@ -376,19 +344,18 @@ export const RequestDetail = ({
               empty={<EmptyState size="sm" media="bare" icon="user" title="No reviewers" />}
             />
           </Card>
-          <Stack gap={12}>
-            <Heading level={2} size="subsection">
-              {`Secrets (${request.commits.length})`}
-            </Heading>
-            {request.commits.map((commit, index) => (
-              <ChangeItem
-                key={`${commit.op}-${index + 1}-${commit.secretVersion?.id}`}
-                commit={commit}
-                conflicts={request.conflicts}
-                hasMerged={request.hasMerged}
-              />
-            ))}
-          </Stack>
+          <Card variant="framed" title="Secrets">
+            <Stack gap={8}>
+              {request.commits.map((commit) => (
+                <ChangeItem
+                  key={commit.id}
+                  commit={commit}
+                  conflicts={request.conflicts}
+                  hasMerged={request.hasMerged}
+                />
+              ))}
+            </Stack>
+          </Card>
         </Stack>
       </DetailLayout>
     </Stack>

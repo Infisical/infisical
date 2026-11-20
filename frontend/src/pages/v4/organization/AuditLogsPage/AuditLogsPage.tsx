@@ -52,6 +52,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { useOrgPermission } from "../../access/permissions";
 import { AccessRestricted } from "../../access/ui";
+import { ShowMoreFooter } from "../../components/show-more-footer";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, v4Path } from "../../links";
@@ -537,7 +538,7 @@ const LogsTable = ({ project, actorId }: { project?: AuditLogsProject; actorId?:
       loadMore={
         canLoadMore && !actorId
           ? {
-              label: `Load ${pageSize} more`,
+              label: "Show more",
               loading: isFetchingNextPage,
               onClick: () => fetchNextPage()
             }
@@ -578,23 +579,14 @@ const LogsTable = ({ project, actorId }: { project?: AuditLogsProject; actorId?:
           variant="framed"
           title="Audit logs"
           flush
+          footerPlacement="frame"
           footer={
             rows.length > 0 ? (
-              <Inline gap={12} align="center" justify="between" style={{ width: "100%" }}>
-                <Meta mono={false}>
-                  Showing {rows.length.toLocaleString("en-US")}
-                  {canLoadMore ? "+" : ""} events
-                </Meta>
-                {canLoadMore && (
-                  <Button
-                    variant="outline"
-                    loading={isFetchingNextPage}
-                    onClick={() => fetchNextPage()}
-                  >
-                    Load {pageSize} more
-                  </Button>
-                )}
-              </Inline>
+              <ShowMoreFooter
+                status={`Showing ${rows.length.toLocaleString("en-US")}${canLoadMore ? "+" : ""} events`}
+                loading={isFetchingNextPage}
+                onShowMore={canLoadMore ? () => fetchNextPage() : undefined}
+              />
             ) : undefined
           }
         >
