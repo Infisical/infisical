@@ -105,7 +105,7 @@ const GatewayCliVersion = ({ gateway }: { gateway: TGatewayV2 }) => {
         <span className="cursor-default text-muted">—</span>
       </TooltipTrigger>
       <TooltipContent className="max-w-xs">
-        No version reported yet. Gateways on Infisical CLI v0.43.131 or later report theirs.
+        The gateway hasn&apos;t reported its Infisical CLI version yet.
       </TooltipContent>
     </Tooltip>
   );
