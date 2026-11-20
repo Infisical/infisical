@@ -23,7 +23,14 @@ SSH accounts run the command on the server. Database, Redis, Snowflake, Kubernet
 
 AWS IAM accounts with a gateway work the same way: the gateway signs each AWS request, and the agent only holds placeholder credentials. For an AWS IAM account without a gateway, the CLI runs the command with temporary AWS credentials in its environment, and the agent can read them until they expire. To keep credentials away from the agent, set a gateway on the account's template.
 
-Windows accounts open a remote desktop, so they don't support a command after `--`.
+### Windows accounts
+
+Windows accounts open a remote desktop, so they don't run a command after `--`. An agent that can control desktop apps uses them through an RDP client instead:
+
+1. The agent starts the RDP proxy in the background, such as with `infisical pam access <folder/account> > infisical-rdp.log 2>&1 &`. The proxy runs until it's stopped or the session expires.
+2. The agent opens the `.rdp` file named in the log with an RDP client, such as `mstsc` on Windows, the Windows App on macOS, or `xfreerdp` on Linux. The password stays blank, because the gateway adds the credential.
+3. The agent works in the remote desktop. Infisical records the session like any other.
+4. When it's done, the agent stops the CLI with `kill`, which ends the session.
 
 ### Accounts that need approval
 
@@ -93,6 +100,8 @@ look for credentials.
 - Before you use an account, run infisical pam accounts get <folder/account>. Copy its
   Connect command and change only the command after --. Some clients need the sh -c
   wrapper it shows to reach the account.
+- For a Windows account, the Connect command starts an RDP proxy in the background. Open
+  the .rdp file named in its log with an RDP client, and kill the CLI when you're done.
 - If a command says an account is waiting for approval or needs MFA, tell me and wait.
 ```
 
