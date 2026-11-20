@@ -155,6 +155,7 @@ import {
   TruncatedLabel,
   useStableHandlers
 } from "./secrets/overview-cells";
+import { PendingApprovalsLine } from "./secrets/pending-approvals-line";
 import { usePlanGateHost } from "./secrets/plan-gates";
 import { ProjectUpgradeState } from "./secrets/project-upgrade";
 import { FolderRow, ImportRow, KindRow } from "./secrets/resource-rows";
@@ -2078,6 +2079,9 @@ export const OverviewPage = () => {
                       }
                       report={report}
                     />
+                    {!unavailableState && (
+                      <PendingApprovalsLine orgId={orgId} projectId={projectId} />
+                    )}
                     {unavailableState ?? (
                       <Table
                         className={styles.table}
