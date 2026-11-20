@@ -148,11 +148,6 @@ type TSetMicrosoftAutoenrollmentEnrollmentDTO = {
   actorParentOrgId: string;
 } & TProjectPermission;
 
-type TGetMicrosoftAutoenrollmentServicePrincipalDTO = {
-  applicationId: string;
-  profileId: string;
-} & TProjectPermission;
-
 const sortedSids = (sids: string[]) => [...sids].sort().join(",");
 
 type TPkiApplicationEnrollmentServiceFactoryDep = {
@@ -1402,7 +1397,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId
-  }: TGetMicrosoftAutoenrollmentServicePrincipalDTO) => {
+  }: TGetEnrollmentDTO) => {
     await $assertReadEnrollment(applicationId, profileId, projectId, actor, actorId, actorAuthMethod, actorOrgId);
 
     return { servicePrincipalName: await resolveInstanceServicePrincipalName() };

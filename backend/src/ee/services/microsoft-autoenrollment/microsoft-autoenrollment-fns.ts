@@ -10,6 +10,7 @@ import { TAppConnectionServiceFactoryDep } from "@app/services/app-connection/ap
 import { TLdapConnectionConfig } from "@app/services/app-connection/ldap/ldap-connection-types";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
+import { isSignatureAlgorithmCompatibleWithCaKey } from "@app/services/certificate-common/certificate-issuance-utils";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { TMicrosoftAutoenrollmentAllowedGroup } from "@app/services/enrollment-config/microsoft-autoenrollment-enrollment-config-dal";
 
@@ -17,6 +18,7 @@ import {
   getKeyAlgorithmDisplayName,
   isTemplateKeyAlgorithmSupported,
   resolveTemplatePrivateKey,
+  resolveTemplateSignatureAlgorithm,
   TEMPLATE_DEFAULT_KEY_ALGORITHM
 } from "./microsoft-autoenrollment-template-fns";
 
@@ -131,9 +133,10 @@ const checkProfileCaCompatibility = async (
   const isEllipticCurveProfile = Boolean(resolveTemplatePrivateKey(keyAlgorithm).ellipticCurve);
   const keyFamily = isEllipticCurveProfile ? "an elliptic curve" : "an RSA";
   const isInternalCa = Boolean(ca && !ca.externalCa?.type);
-  const isCompatibleCaKey = isEllipticCurveProfile
-    ? caKeyAlgorithm.startsWith("EC_")
-    : caKeyAlgorithm.startsWith("RSA_");
+  const isCompatibleCaKey = isSignatureAlgorithmCompatibleWithCaKey(
+    resolveTemplateSignatureAlgorithm({ keyAlgorithm }).signatureAlgorithm,
+    caKeyAlgorithm
+  );
 
   if (keyAlgorithm && !isTemplateKeyAlgorithmSupported(keyAlgorithm)) {
     return {
