@@ -85,6 +85,7 @@ const ReviewContent = ({
   requests: selected,
   environmentName,
   onComplete,
+  onOutcomeUnknown,
   onClose,
   submitting,
   setSubmitting
@@ -93,6 +94,7 @@ const ReviewContent = ({
   requests: ChangeRequest[];
   environmentName: (slug: string) => string;
   onComplete: (results: TBulkChangeRequestResult[]) => void;
+  onOutcomeUnknown: () => void;
   onClose: () => void;
   submitting: boolean;
   setSubmitting: (submitting: boolean) => void;
@@ -239,6 +241,13 @@ const ReviewContent = ({
             }
           : { tone: "ok", title: `${plural(requests.length, "change request")} reviewed` }
       );
+    } catch {
+      toast({
+        tone: "bad",
+        title: "Couldn't confirm the review results",
+        description: "Some requests may have changed. Check the list before reviewing again."
+      });
+      onOutcomeUnknown();
     } finally {
       setSubmitting(false);
     }
@@ -417,6 +426,7 @@ export const BulkReviewSheet = ({
   requests: ChangeRequest[];
   environmentName: (slug: string) => string;
   onComplete: (results: TBulkChangeRequestResult[]) => void;
+  onOutcomeUnknown: () => void;
 }) => {
   const [submitting, setSubmitting] = useState(false);
   return (

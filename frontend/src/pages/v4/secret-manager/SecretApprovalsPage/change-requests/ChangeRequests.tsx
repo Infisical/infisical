@@ -439,6 +439,10 @@ export const ChangeRequests = ({
         requests={selectedList}
         environmentName={environmentName}
         onComplete={handleBulkComplete}
+        onOutcomeUnknown={() => {
+          clearSelection();
+          setReviewing(false);
+        }}
       />
     </Stack>
   );
