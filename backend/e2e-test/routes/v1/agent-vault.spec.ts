@@ -12774,12 +12774,24 @@ describe("Agent Vault V1 Router", async () => {
     };
 
     test("a saved hook is created, read without its secret, updated and deleted", async () => {
+      await createService("hk-saved-github");
+      const mcp = await inject("POST", servicesUrl, {
+        type: "mcp",
+        name: "hk-saved-linear",
+        serverUrl: "https://hk-saved-linear.example.com/mcp",
+        transport: "streamable-http",
+        credential: { type: "bearer", value: "mcp-token" }
+      });
+      expect(mcp.statusCode, mcp.payload).toBe(200);
       const created = await inject("POST", hooksUrl, {
         name: "approvals",
         description: "Asks the approvals service",
         url: hookUrl,
         secret,
-        rules: [{ service: "github", methods: ["PUT"], paths: ["/repos/"] }, { service: "linear", tools: ["delete_issue"] }]
+        rules: [
+          { service: "hk-saved-github", methods: ["PUT"], paths: ["/repos/"] },
+          { service: "hk-saved-linear", tools: ["delete_issue"] }
+        ]
       });
       expect(created.statusCode, created.payload).toBe(200);
       const hook = created.json().hook as { id: string };
@@ -12787,8 +12799,8 @@ describe("Agent Vault V1 Router", async () => {
         name: "approvals",
         url: hookUrl,
         rules: [
-          { service: "github", methods: ["PUT"], paths: ["/repos"] },
-          { service: "linear", tools: ["delete_issue"] }
+          { service: "hk-saved-github", methods: ["PUT"], paths: ["/repos"] },
+          { service: "hk-saved-linear", tools: ["delete_issue"] }
         ]
       });
       expect(created.payload).not.toContain(secret);
