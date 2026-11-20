@@ -322,7 +322,14 @@ export const homeLive: HomeAdapter = {
       const timer = window.setInterval(
         () =>
           queryClient.invalidateQueries({
-            predicate: (query) => query.queryKey[1] === "secret-approval-request-detail"
+            predicate: (query) => {
+              const request = query.state.data as TSecretApprovalRequest | undefined;
+              return (
+                query.queryKey[1] === "secret-approval-request-detail" &&
+                request?.status === "open" &&
+                !request.hasMerged
+              );
+            }
           }),
         30_000
       );
@@ -353,7 +360,12 @@ export const homeLive: HomeAdapter = {
     const accessLists = useQueries({
       queries: accessProjects.map((projectId) => ({
         queryKey: ["v4-home", "access-requests", projectId],
-        refetchInterval: 30_000,
+        refetchInterval: (query: { state: { data?: { requests: TAccessApprovalRequest[] } } }) =>
+          query.state.data?.requests.some(
+            (request) => request.status === ApprovalStatus.PENDING
+          ) === false
+            ? false
+            : 30_000,
         queryFn: async () => {
           const project = await fetchProjectById(projectId);
           const { data } = await apiRequest.get<{
@@ -375,7 +387,10 @@ export const homeLive: HomeAdapter = {
           requestId: entry.parsed.requestId,
           policyType: (entry.parsed as Extract<Parsed, { kind: "policy" }>).policyType
         }),
-        refetchInterval: 30_000
+        refetchInterval: (query: { state: { data?: TApprovalRequest } }) =>
+          query.state.data && query.state.data.status !== ApprovalRequestStatus.Pending
+            ? false
+            : 30_000
       }))
     });
     const pamProjectId = useGetOrganizationById(orgId).data?.pamProjectId;
@@ -400,7 +415,10 @@ export const homeLive: HomeAdapter = {
           requestId: request.id,
           policyType: ApprovalPolicyType.PamAccess
         }),
-        refetchInterval: 30_000
+        refetchInterval: (query: { state: { data?: TApprovalRequest } }) =>
+          query.state.data && query.state.data.status !== ApprovalRequestStatus.Pending
+            ? false
+            : 30_000
       }))
     });
     const bypasses = all.filter(
