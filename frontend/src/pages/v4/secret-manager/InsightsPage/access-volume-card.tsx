@@ -6,13 +6,14 @@ import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { format, parseISO } from "date-fns";
 
+import { errorMessage } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { AccessVolumeChart } from "./shared/access-volume-chart";
 
 type Actor = { name: string; type: string; count: number };
 
 export const AccessVolumeCard = ({ projectId }: { projectId: string }) => {
-  const { data, isPending } = useV4Adapter("secretInsights").useAccessVolume(projectId);
+  const { data, isPending, error } = useV4Adapter("secretInsights").useAccessVolume(projectId);
   const days = data?.days ?? [];
   const chartData = days.map((day) => ({
     label: format(parseISO(day.date), "EEE"),
@@ -34,6 +35,15 @@ export const AccessVolumeCard = ({ projectId }: { projectId: string }) => {
 
   let body;
   if (isPending) body = <Skeleton height={280} />;
+  else if (error)
+    body = (
+      <EmptyState
+        size="sm"
+        icon="alert-c"
+        title="Couldn't load access volume"
+        description={errorMessage(error) ?? "Try again in a moment."}
+      />
+    );
   else if (totalRequests === 0)
     body = <EmptyState size="sm" icon="activity" title="No secret reads in the past 7 days" />;
   else
