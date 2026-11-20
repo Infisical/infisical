@@ -2,6 +2,7 @@ import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
 import { DataList } from "@infisical/cipher/ui/list";
+import { format } from "date-fns";
 
 import { caTypeToNameMap } from "@app/hooks/api/ca/constants";
 import { CaStatus, InternalCaType } from "@app/hooks/api/ca/enums";
@@ -9,6 +10,7 @@ import type { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants";
 import { CertKeySource } from "@app/hooks/api/signers/types";
 
+import { TruncatedValue } from "../../networking/truncated-value";
 import { CaStatusBadge } from "../CertificateAuthoritiesPage/shared";
 
 type Configuration = TInternalCertificateAuthority["configuration"];
@@ -67,6 +69,18 @@ const parentItems = (ca: TInternalCertificateAuthority, org: string, parentName?
   ];
 };
 
+const subjectItems = (ca: TInternalCertificateAuthority) =>
+  (
+    [
+      ["Common name (CN)", ca.configuration.commonName],
+      ["Organization (O)", ca.configuration.organization],
+      ["Organizational unit (OU)", ca.configuration.ou],
+      ["Country (C)", ca.configuration.country],
+      ["State or province (ST)", ca.configuration.province],
+      ["Locality (L)", ca.configuration.locality]
+    ] as const
+  ).filter(([, value]) => Boolean(value));
+
 export const CaDetailsCard = ({
   ca,
   org,
@@ -83,15 +97,14 @@ export const CaDetailsCard = ({
         variant="props"
         density="compact"
         items={[
-          ["CA type", caTypeToNameMap[ca.configuration.type], { span: "half" }],
-          ["Status", <CaStatusBadge key="status" status={ca.status} />, { span: "half" }],
-          ["CA ID", <code key="id">{ca.id}</code>],
+          ["CA type", caTypeToNameMap[ca.configuration.type]],
+          ["Status", <CaStatusBadge key="status" status={ca.status} />],
+          ["CA ID", <TruncatedValue key="id" value={ca.id} copyLabel="Copy CA ID to clipboard" />],
           ...parentItems(ca, org, parentName),
           [
             "Key algorithm",
             certKeyAlgorithmToNameMap[ca.configuration.keyAlgorithm] ??
-              ca.configuration.keyAlgorithm,
-            { span: "half" }
+              ca.configuration.keyAlgorithm
           ],
           [
             "Key source",
@@ -101,31 +114,15 @@ export const CaDetailsCard = ({
               tone={keySource === CertKeySource.Infisical ? "outline" : "info"}
             >
               {KEY_SOURCE_LABELS[keySource]}
-            </Badge>,
-            { span: "half" }
+            </Badge>
           ],
-          ...keyLocationItems(ca.configuration, keySource)
+          ...keyLocationItems(ca.configuration, keySource),
+          ...(ca.configuration.notAfter
+            ? [["Expires", format(new Date(ca.configuration.notAfter), "MMM d, yyyy")] as const]
+            : []),
+          ...subjectItems(ca)
         ]}
       />
-    </Card>
-  );
-};
-
-export const SubjectCard = ({ ca }: { ca: TInternalCertificateAuthority }) => {
-  const items = (
-    [
-      ["Common name (CN)", ca.configuration.commonName],
-      ["Organization (O)", ca.configuration.organization],
-      ["Organizational unit (OU)", ca.configuration.ou],
-      ["Country (C)", ca.configuration.country],
-      ["State or province (ST)", ca.configuration.province],
-      ["Locality (L)", ca.configuration.locality]
-    ] as const
-  ).filter(([, value]) => Boolean(value));
-  if (!items.length) return null;
-  return (
-    <Card variant="framed" title="Subject">
-      <DataList variant="props" density="compact" items={items} />
     </Card>
   );
 };

@@ -1,15 +1,12 @@
 import { useCallback } from "react";
-import { Icon } from "@infisical/cipher/ui/icon";
-import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Grid, Stack } from "@infisical/cipher/ui/layout";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
-import { SmallText } from "@infisical/cipher/ui/text";
 import { useParams } from "@tanstack/react-router";
 
 import { SecretAccessInsightsUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
 import { PageTitle } from "@app/components/PageTitle";
 import {
-  ProjectPermissionHoneyTokenActions,
   ProjectPermissionInsightsActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
@@ -38,7 +35,6 @@ const Insights = () => {
   const { data: subscription, isPending: isSubscriptionPending } = insights.useSubscription(orgId);
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const hasInsightsPlan = Boolean(subscription?.secretAccessInsights);
-  const { data: counts } = insights.useCounts(projectId, { enabled: hasInsightsPlan });
 
   const handleUpgrade = useCallback(
     () =>
@@ -57,56 +53,23 @@ const Insights = () => {
   const environments = project?.environments ?? [];
   const environmentName = (slug: string) =>
     environments.find((environment) => environment.slug === slug)?.name ?? slug;
-  const canReadHoneyTokens = permission.can(
-    ProjectPermissionHoneyTokenActions.Read,
-    ProjectPermissionSub.HoneyTokens
-  );
-  const stats = counts
-    ? [
-        { icon: "key" as const, label: "secrets", value: counts.secretCount },
-        { icon: "layout-grid" as const, label: "environments", value: environments.length },
-        { icon: "folder" as const, label: "folders", value: counts.folderCount },
-        { icon: "sync" as const, label: "rotations", value: counts.secretRotationCount },
-        { icon: "zap" as const, label: "dynamic secrets", value: counts.dynamicSecretCount },
-        ...(counts.honeyTokenCount !== null && canReadHoneyTokens
-          ? [{ icon: "honey" as const, label: "honey tokens", value: counts.honeyTokenCount }]
-          : [])
-      ]
-    : [];
 
   return (
     <Stack gap={24}>
-      <PageHeader
-        title="Secret Insights"
-        actions={
-          stats.length > 0 && (
-            <Inline gap={16} justify="end">
-              {stats.map((stat) => (
-                <Inline key={stat.label} gap={6} align="center" wrap={false}>
-                  <Icon name={stat.icon} />
-                  <span>{stat.value.toLocaleString()}</span>
-                  <SmallText muted>{stat.label}</SmallText>
-                </Inline>
-              ))}
-            </Inline>
-          )
-        }
-      />
+      <PageHeader title="Secret Insights" />
       {hasInsightsPlan ? (
         <>
           <InsightsSummaryCards orgId={orgId} projectId={projectId} />
-          <AuditReportsCard projectId={projectId} />
           <UnusedAccessCard orgId={orgId} projectId={projectId} environmentName={environmentName} />
-          <Grid gap={24} columns={2}>
-            <Stack gap={24}>
-              <DuplicatedSecretsCard orgId={orgId} projectId={projectId} />
-              <CalendarCard orgId={orgId} projectId={projectId} />
-            </Stack>
+          <CalendarCard orgId={orgId} projectId={projectId} />
+          <Grid gap={24} min="card">
+            <DuplicatedSecretsCard orgId={orgId} projectId={projectId} />
             <Stack gap={24}>
               <AccessVolumeCard projectId={projectId} />
               <AuthMethodCard projectId={projectId} />
             </Stack>
           </Grid>
+          <AuditReportsCard projectId={projectId} />
         </>
       ) : (
         <InsightsUpgradePreview onUpgrade={handleUpgrade} />

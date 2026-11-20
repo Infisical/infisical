@@ -113,34 +113,10 @@ export const ProjectsInsightsCard = ({
 
   const empty = () => {
     if (isSearching)
-      return (
-        <EmptyState
-          size="sm"
-          icon="search"
-          title="No projects match your search"
-          description={`No project name or slug matches "${search.trim()}".`}
-        />
-      );
+      return <EmptyState size="sm" icon="search" title="No projects match your search" />;
     if (data.totalProjects === 0)
-      return (
-        <EmptyState
-          size="sm"
-          icon="folder"
-          title="No secrets management projects"
-          description="Create a secrets management project to see its insights here."
-        />
-      );
-    return (
-      <EmptyState
-        size="sm"
-        icon="check-c"
-        title="All projects are healthy"
-        description={`No failed rotations, failed syncs, stale or duplicated secrets across your ${counted(
-          data.totalProjects,
-          "project"
-        )}. New issues appear here as they are detected.`}
-      />
-    );
+      return <EmptyState size="sm" icon="folder" title="No secrets management projects" />;
+    return <EmptyState size="sm" icon="check-c" title="All projects are healthy" />;
   };
 
   const columns: DataTableColumn<TOrgProjectInsight>[] = [
@@ -179,20 +155,13 @@ export const ProjectsInsightsCard = ({
         ) : (
           <StatusText>0</StatusText>
         )
-    },
-    {
-      id: "total",
-      header: "Total Secrets",
-      align: "end",
-      width: 140,
-      render: (project) => project.totalSecrets.toLocaleString()
     }
   ];
 
   return (
     <Card
       variant="framed"
-      title="Insights"
+      title="Projects"
       action={
         <Inline gap={8} wrap={false}>
           <Tabs
@@ -222,11 +191,6 @@ export const ProjectsInsightsCard = ({
         rowLabel={(project) => project.projectName}
         empty={empty()}
         loadMore={loadMore()}
-        persistentStatus={
-          data.projectsWithIssues > 0
-            ? `${data.projectsWithIssues.toLocaleString()} of ${counted(data.totalProjects, "project")} have outstanding issues, ordered by severity.`
-            : undefined
-        }
       />
     </Card>
   );

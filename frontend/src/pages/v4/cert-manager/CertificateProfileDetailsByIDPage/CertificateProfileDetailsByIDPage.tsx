@@ -39,6 +39,7 @@ import { AccessRestricted, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
+import { TruncatedValue } from "../../networking/truncated-value";
 import { CertManagerNotSetUp, useCertManagerProjectId } from "../components/certificate";
 import { DeleteProfileDialog } from "../components/delete-dialogs";
 import {
@@ -301,50 +302,45 @@ const ProfileDetail = ({
       <DetailLayout
         asideLabel="Certificate profile details"
         aside={
-          <Stack gap={16}>
-            <Card variant="framed" title="Details">
-              <DataList
-                variant="props"
-                density="compact"
-                items={[
-                  ["Profile ID", <code key="id">{profile.id}</code>],
-                  ...(profile.description ? ([["Description", profile.description]] as const) : []),
-                  ...(profile.createdAt
-                    ? ([["Created", timestamp(profile.createdAt)]] as const)
-                    : []),
-                  ...(profile.updatedAt
-                    ? ([["Last updated", timestamp(profile.updatedAt)]] as const)
-                    : [])
-                ]}
-              />
-            </Card>
-            <Card variant="framed" title="Issuer">
-              <DataList variant="props" density="compact" items={issuerItems} />
-            </Card>
-            <Card variant="framed" title="Certificate policy">
-              <DataList
-                variant="props"
-                density="compact"
-                items={[
-                  [
-                    "Policy",
-                    <a
-                      key="policy"
-                      href={orgHref(
-                        orgId,
-                        `/cert-manager/certificate-policies/${profile.certificatePolicyId}?${backQuery}`
-                      )}
-                    >
-                      {profile.certificatePolicy?.name ?? profile.certificatePolicyId}
-                    </a>
-                  ],
-                  ...(profile.certificatePolicy?.description
-                    ? ([["Description", profile.certificatePolicy.description]] as const)
-                    : [])
-                ]}
-              />
-            </Card>
-          </Stack>
+          <Card variant="framed" title="Details">
+            <DataList
+              variant="props"
+              density="compact"
+              items={[
+                [
+                  "Profile ID",
+                  <TruncatedValue
+                    key="id"
+                    value={profile.id}
+                    copyLabel="Copy profile ID to clipboard"
+                  />
+                ],
+                ...(profile.description ? ([["Description", profile.description]] as const) : []),
+                ...issuerItems,
+                [
+                  "Certificate policy",
+                  <a
+                    key="policy"
+                    href={orgHref(
+                      orgId,
+                      `/cert-manager/certificate-policies/${profile.certificatePolicyId}?${backQuery}`
+                    )}
+                  >
+                    {profile.certificatePolicy?.name ?? profile.certificatePolicyId}
+                  </a>
+                ],
+                ...(profile.certificatePolicy?.description
+                  ? ([["Policy description", profile.certificatePolicy.description]] as const)
+                  : []),
+                ...(profile.createdAt
+                  ? ([["Created", timestamp(profile.createdAt)]] as const)
+                  : []),
+                ...(profile.updatedAt
+                  ? ([["Last updated", timestamp(profile.updatedAt)]] as const)
+                  : [])
+              ]}
+            />
+          </Card>
         }
       >
         <Stack gap={16}>

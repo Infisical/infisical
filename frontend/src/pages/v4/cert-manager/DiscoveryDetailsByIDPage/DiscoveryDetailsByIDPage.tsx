@@ -68,16 +68,16 @@ const targetItems = (discovery: TPkiDiscovery) => {
   );
   if (discovery.discoveryType === PkiDiscoveryType.LinuxServer)
     return [
-      ["SSH connections", <BadgeList key="hosts" items={connections} max={3} />],
+      ["SSH connections", <BadgeList wrap key="hosts" items={connections} max={3} />],
       [
         "Search folders",
-        <BadgeList key="search" items={targetConfig.searchFolderPaths ?? []} max={3} mono />
+        <BadgeList wrap key="search" items={targetConfig.searchFolderPaths ?? []} max={3} mono />
       ],
       ...(targetConfig.skipFolderPaths?.length
         ? [
             [
               "Skip folders",
-              <BadgeList key="skip" items={targetConfig.skipFolderPaths} max={3} mono />
+              <BadgeList wrap key="skip" items={targetConfig.skipFolderPaths} max={3} mono />
             ] as const
           ]
         : []),
@@ -86,10 +86,11 @@ const targetItems = (discovery: TPkiDiscovery) => {
     ] as const;
   if (discovery.discoveryType === PkiDiscoveryType.WindowsServer)
     return [
-      ["Windows (WinRM) connections", <BadgeList key="hosts" items={connections} max={3} />],
+      ["Windows (WinRM) connections", <BadgeList wrap key="hosts" items={connections} max={3} />],
       [
         "Certificate stores",
         <BadgeList
+          wrap
           key="stores"
           items={(targetConfig.certificateStores ?? []).map(
             (store) => WindowsCertificateStoreLabels[store] ?? store
@@ -105,14 +106,19 @@ const targetItems = (discovery: TPkiDiscovery) => {
       ? [
           [
             "Domains",
-            <BadgeList key="domains" items={targetConfig.domains} max={3} mono />
+            <BadgeList wrap key="domains" items={targetConfig.domains} max={3} mono />
           ] as const
         ]
       : []),
     ...(targetConfig.ipRanges?.length
-      ? [["IP ranges", <BadgeList key="ips" items={targetConfig.ipRanges} max={3} mono />] as const]
+      ? [
+          [
+            "IP ranges",
+            <BadgeList wrap key="ips" items={targetConfig.ipRanges} max={3} mono />
+          ] as const
+        ]
       : []),
-    ["Ports", <BadgeList key="ports" items={ports.length ? ports : ["443"]} max={5} mono />]
+    ["Ports", <BadgeList wrap key="ports" items={ports.length ? ports : ["443"]} max={5} mono />]
   ] as const;
 };
 
@@ -235,14 +241,7 @@ const ScanRuns = ({
         loadingRows={3}
         getRowId={(scan) => scan.id}
         rowLabel={(scan) => timestamp(scan.startedAt)}
-        empty={
-          <EmptyState
-            size="sm"
-            icon="history"
-            title="No scans yet"
-            description="Run a scan to see its results here."
-          />
-        }
+        empty={<EmptyState size="sm" icon="history" title="No scans yet" />}
         pagination={
           total > pageSize ? (
             <Pagination
@@ -332,14 +331,7 @@ const FoundInstallations = ({
         loadingRows={3}
         getRowId={(installation) => installation.id}
         rowLabel={(installation) => installationName(installation)}
-        empty={
-          <EmptyState
-            size="sm"
-            icon="server"
-            title="No installations found"
-            description="Run a scan to find certificate installations."
-          />
-        }
+        empty={<EmptyState size="sm" icon="server" title="No installations found" />}
         pagination={
           total > pageSize ? (
             <Pagination
@@ -386,10 +378,9 @@ const DiscoveryDetail = ({
       <PageHeader
         breadcrumb={[{ label: "Discovery jobs", link: go.link(listHref) }]}
         title={discovery.name}
-        description={discovery.description || undefined}
         badges={
           discovery.isAutoScanEnabled ? (
-            <Badge tone="info" dot>
+            <Badge tone="info" dot size="control-sm" collapse>
               Auto-scan
             </Badge>
           ) : undefined
@@ -435,47 +426,46 @@ const DiscoveryDetail = ({
       <DetailLayout
         asideLabel="Discovery job details"
         aside={
-          <Stack gap={16}>
-            <Card variant="framed" title="Details">
-              <DataList
-                variant="props"
-                density="compact"
-                items={[
-                  [
-                    "Type",
-                    PKI_DISCOVERY_TYPE_MAP[discovery.discoveryType]?.name ?? discovery.discoveryType
-                  ],
-                  [
-                    "Status",
-                    <DiscoveryStatusBadge key="status" discovery={discovery} showWarnings={false} />
-                  ],
-                  ...(discovery.lastScanMessage
-                    ? ([["Last scan result", discovery.lastScanMessage]] as const)
-                    : []),
-                  ...(discovery.gatewayName ? ([["Gateway", discovery.gatewayName]] as const) : []),
-                  ...(discovery.gatewayPoolName
-                    ? ([["Gateway pool", discovery.gatewayPoolName]] as const)
-                    : []),
-                  [
-                    "Last scanned",
-                    discovery.lastScannedAt ? timestamp(discovery.lastScannedAt) : "Never"
-                  ],
-                  ["Auto-scan", enabled(discovery.isAutoScanEnabled)],
-                  ...(discovery.isAutoScanEnabled && discovery.scanIntervalDays
-                    ? ([
-                        [
-                          "Scan interval",
-                          `Every ${discovery.scanIntervalDays} day${discovery.scanIntervalDays > 1 ? "s" : ""}`
-                        ]
-                      ] as const)
-                    : [])
-                ]}
-              />
-            </Card>
-            <Card variant="framed" title="Targets">
-              <DataList variant="props" density="compact" items={targetItems(discovery)} />
-            </Card>
-          </Stack>
+          <Card variant="framed" title="Details">
+            <DataList
+              variant="props"
+              density="compact"
+              items={[
+                ...(discovery.description
+                  ? ([["Description", discovery.description]] as const)
+                  : []),
+                [
+                  "Type",
+                  PKI_DISCOVERY_TYPE_MAP[discovery.discoveryType]?.name ?? discovery.discoveryType
+                ],
+                [
+                  "Status",
+                  <DiscoveryStatusBadge key="status" discovery={discovery} showWarnings={false} />
+                ],
+                ...(discovery.lastScanMessage
+                  ? ([["Last scan result", discovery.lastScanMessage]] as const)
+                  : []),
+                ...(discovery.gatewayName ? ([["Gateway", discovery.gatewayName]] as const) : []),
+                ...(discovery.gatewayPoolName
+                  ? ([["Gateway pool", discovery.gatewayPoolName]] as const)
+                  : []),
+                [
+                  "Last scanned",
+                  discovery.lastScannedAt ? timestamp(discovery.lastScannedAt) : "Never"
+                ],
+                ["Auto-scan", enabled(discovery.isAutoScanEnabled)],
+                ...(discovery.isAutoScanEnabled && discovery.scanIntervalDays
+                  ? ([
+                      [
+                        "Scan interval",
+                        `Every ${discovery.scanIntervalDays} day${discovery.scanIntervalDays > 1 ? "s" : ""}`
+                      ]
+                    ] as const)
+                  : []),
+                ...targetItems(discovery)
+              ]}
+            />
+          </Card>
         }
       >
         <ScanRuns discovery={discovery} projectId={projectId} isScanRunning={isScanRunning} />

@@ -1,3 +1,4 @@
+import { Badge } from "@infisical/cipher/ui/badge";
 import type { IconName } from "@infisical/cipher/ui/icon";
 import { StatusText } from "@infisical/cipher/ui/text";
 import { formatDistanceToNow } from "date-fns";
@@ -26,8 +27,27 @@ const statusView: Record<
   [ApprovalRequestStatus.Expired]: { label: "Expired", tone: "neutral", icon: "clock" }
 };
 
-export const RequestStatus = ({ status }: { status: ApprovalRequestStatus }) => {
+const BADGE_TONES = { neutral: "outline", ok: "ok", warn: "warn", bad: "bad" } as const;
+
+export const RequestStatus = ({
+  status,
+  badge
+}: {
+  status: ApprovalRequestStatus;
+  badge?: "sm" | "control-sm";
+}) => {
   const view = statusView[status] ?? { label: status, tone: "neutral", icon: "info" };
+  if (badge)
+    return (
+      <Badge
+        tone={BADGE_TONES[view.tone]}
+        icon={view.icon}
+        size={badge}
+        collapse={badge === "control-sm"}
+      >
+        {view.label}
+      </Badge>
+    );
   return (
     <StatusText tone={view.tone} icon={view.icon}>
       {view.label}

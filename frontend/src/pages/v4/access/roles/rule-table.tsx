@@ -289,9 +289,10 @@ export const RuleTable = (props: RuleTableProps) => {
   );
   const rows = useMemo(() => {
     const needle = search.trim().toLowerCase();
+    const policies = new Set(filter);
     return all.filter(
       (row) =>
-        (!filter.length || filter.includes(row.config.subject)) &&
+        (!policies.size || policies.has(row.config.subject)) &&
         [
           row.config.title,
           actionsText(scope, row.config.subject, row.rule.actions),
@@ -423,6 +424,9 @@ export const RuleTable = (props: RuleTableProps) => {
 
   const policyCount = subjects.filter((config) => draft[config.subject]?.length).length;
   const filtering = Boolean(search || filter.length);
+  const ruleCount = filtering
+    ? `${rows.length} of ${plural(all.length, "rule", "rules")}`
+    : `${plural(all.length, "rule", "rules")} across ${plural(policyCount, "policy", "policies")}`;
   return (
     <>
       <Card
@@ -467,9 +471,11 @@ export const RuleTable = (props: RuleTableProps) => {
           </Inline>
         }
         footer={
-          <span
-            className={styles.legend}
-          >{`${plural(all.length, "rule", "rules")} across ${plural(policyCount, "policy", "policies")}. Rules on the same policy combine, and a Forbid wins over an Allow.`}</span>
+          all.length > 0 ? (
+            <span
+              className={styles.legend}
+            >{`${ruleCount}. Rules on the same policy combine, and a Forbid wins over an Allow.`}</span>
+          ) : undefined
         }
       >
         <DataTable
@@ -503,6 +509,7 @@ export const RuleTable = (props: RuleTableProps) => {
             />
           }
           selectionDisabledReason={() => (editable ? undefined : reason)}
+          filtered={filtering}
           empty={
             <EmptyState
               size="sm"

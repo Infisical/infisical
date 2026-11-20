@@ -1,13 +1,10 @@
 import { type ReactNode, useCallback, useState } from "react";
 import { Button } from "@infisical/cipher/ui/button";
-import { Icon } from "@infisical/cipher/ui/icon";
-import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Grid, Stack } from "@infisical/cipher/ui/layout";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
-import { SmallText } from "@infisical/cipher/ui/text";
 import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
-import { format } from "date-fns";
 
 import { SecretAccessInsightsUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
 import { PageTitle } from "@app/components/PageTitle";
@@ -29,37 +26,11 @@ import { InsightsUpgradePreview } from "./components/insights-upgrade-preview";
 import { NewSecretsCard } from "./components/new-secrets-card";
 import { ProjectsInsightsCard } from "./components/projects-insights-card";
 import { MAX_REPORT_RECIPIENTS, reportOptions } from "./components/report-types";
-import { SummaryCards } from "./components/summary-cards";
 
-const SENT_REPORT_STATUSES = new Set([AuditReportStatus.Completed, AuditReportStatus.Partial]);
 const IN_FLIGHT_REPORT_STATUSES = new Set([
   AuditReportStatus.Pending,
   AuditReportStatus.Processing
 ]);
-
-const ReportActions = ({
-  lastSentAt,
-  disabledReason,
-  onGenerate
-}: {
-  lastSentAt?: string;
-  disabledReason?: string;
-  onGenerate: () => void;
-}) => (
-  <Inline gap={12} wrap={false}>
-    {lastSentAt && (
-      <Inline gap={6} wrap={false}>
-        <Icon name="file-text" size={14} />
-        <SmallText
-          muted
-        >{`Last report sent ${format(new Date(lastSentAt), "MMM d, yyyy")}`}</SmallText>
-      </Inline>
-    )}
-    <Button variant="primary" disabledReason={disabledReason} onClick={onGenerate}>
-      Generate Report
-    </Button>
-  </Inline>
-);
 
 const generateDisabledReason = (canGenerate: boolean, hasInFlightReport: boolean) => {
   if (!canGenerate) return "You don't have permission to generate reports";
@@ -85,7 +56,6 @@ const InsightsCards = ({
 }) => {
   const insights = useV4Adapter("secretInsights");
   const withAnalytics = { enabled: isAuditLogAnalyticsEnabled };
-  const summary = insights.useOrgSummary(orgId);
   const projects = insights.useOrgProjects(orgId);
   const authMethods = insights.useOrgAuthMethods(orgId, withAnalytics);
   const staticSecrets = insights.useOrgStaticSecrets(orgId);
@@ -96,7 +66,6 @@ const InsightsCards = ({
 
   return (
     <Stack gap={16}>
-      <SummaryCards summary={summary.data} />
       {loadable(projects, 320, (data) => (
         <ProjectsInsightsCard
           data={data}
@@ -106,7 +75,7 @@ const InsightsCards = ({
         />
       ))}
       <DuplicatedSecretsCard />
-      <Grid gap={16} columns={authMethodsCard ? 2 : undefined}>
+      <Grid gap={16} min="card">
         {authMethodsCard}
         {loadable(staticSecrets, 320, (data) => (
           <NewSecretsCard data={data} />
@@ -145,7 +114,6 @@ const SecretInsightsContent = ({ orgId }: { orgId: string }) => {
 
   if (isPlanPending) return <Loader size="page" label="Loading insights" />;
 
-  const lastSentReport = reports?.reports.find((report) => SENT_REPORT_STATUSES.has(report.status));
   const hasInFlightReport = Boolean(
     reports?.reports.some((report) => IN_FLIGHT_REPORT_STATUSES.has(report.status))
   );
@@ -160,11 +128,13 @@ const SecretInsightsContent = ({ orgId }: { orgId: string }) => {
         <PageHeader
           title="Insights"
           actions={
-            <ReportActions
-              lastSentAt={lastSentReport?.createdAt}
+            <Button
+              variant="primary"
               disabledReason={generateDisabledReason(canGenerateReport, hasInFlightReport)}
-              onGenerate={() => (hasPlan ? setIsReportOpen(true) : handleUpgrade())}
-            />
+              onClick={() => (hasPlan ? setIsReportOpen(true) : handleUpgrade())}
+            >
+              Generate Report
+            </Button>
           }
         />
         {hasPlan ? (

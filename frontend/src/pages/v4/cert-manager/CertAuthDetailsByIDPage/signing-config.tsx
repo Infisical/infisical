@@ -356,9 +356,8 @@ export const SigningConfigCard = ({
         EDITABLE.has(config.type) && (
           <Button
             variant="ghost"
-            size="icon"
-            icon="pencil"
-            iconOnly
+            size="sm"
+            aria-label="Edit signing configuration"
             disabledReason={caBlock(
               permission,
               ProjectPermissionCertificateAuthorityActions.Edit,
@@ -366,7 +365,7 @@ export const SigningConfigCard = ({
             )}
             onClick={() => setEditing(true)}
           >
-            Edit signing configuration
+            Edit
           </Button>
         )
       }
