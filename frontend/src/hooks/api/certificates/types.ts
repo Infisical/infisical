@@ -97,6 +97,22 @@ export type TDeleteCertDTO = {
   id: string;
 };
 
+export enum CertificateDeletionStatus {
+  PendingApproval = "pending_approval"
+}
+
+export type TDeleteCertResponse =
+  | {
+      status?: never;
+      certificate: TCertificate;
+    }
+  | {
+      message: string;
+      status: CertificateDeletionStatus.PendingApproval;
+      serialNumber: string;
+      approvalRequestId: string;
+    };
+
 export type TRevokeCertDTO = {
   id: string;
   revocationReason: string;

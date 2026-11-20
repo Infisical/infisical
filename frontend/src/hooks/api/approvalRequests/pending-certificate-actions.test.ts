@@ -1,32 +1,34 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
-import { getPendingRevocations } from "./pending-revocations";
+import { CERTIFICATE_ACTION_POLICY_TYPES } from "../approvalPolicies/types";
+import { getPendingCertificateActions } from "./pending-certificate-actions";
 import { ApprovalRequestStatus, TApprovalRequest } from "./types";
 
 const now = Date.parse("2026-11-12T12:00:00.000Z");
 
-const revocationRequest = (
-  id: string,
-  certificateId: string,
-  overrides: Partial<TApprovalRequest> = {}
-) =>
-  ({
-    id,
-    status: ApprovalRequestStatus.Pending,
-    expiresAt: null,
-    approversCanNoLongerApprove: false,
-    requestData: { version: 1, requestData: { certificateId } },
-    ...overrides
-  }) as TApprovalRequest;
+describe.each(CERTIFICATE_ACTION_POLICY_TYPES)("getPendingCertificateActions for %s", (type) => {
+  const actionRequest = (
+    id: string,
+    certificateId: string,
+    overrides: Partial<TApprovalRequest> = {}
+  ) =>
+    ({
+      id,
+      type,
+      status: ApprovalRequestStatus.Pending,
+      expiresAt: null,
+      approversCanNoLongerApprove: false,
+      requestData: { version: 1, requestData: { certificateId } },
+      ...overrides
+    }) as TApprovalRequest;
 
-describe("getPendingRevocations", () => {
   it("maps each certificate to its pending request and reports the earliest future expiry", () => {
-    const result = getPendingRevocations(
+    const result = getPendingCertificateActions(
       [
-        revocationRequest("req-1", "cert-1", { expiresAt: "2026-11-12T15:00:00.000Z" }),
-        revocationRequest("req-2", "cert-2", { expiresAt: "2026-11-12T13:00:00.000Z" }),
-        revocationRequest("req-3", "cert-3")
+        actionRequest("req-1", "cert-1", { expiresAt: "2026-11-12T15:00:00.000Z" }),
+        actionRequest("req-2", "cert-2", { expiresAt: "2026-11-12T13:00:00.000Z" }),
+        actionRequest("req-3", "cert-3")
       ],
       now
     );
@@ -43,10 +45,10 @@ describe("getPendingRevocations", () => {
   });
 
   it("tells which pending requests their approvers can no longer approve", () => {
-    const result = getPendingRevocations(
+    const result = getPendingCertificateActions(
       [
-        revocationRequest("req-1", "cert-1", { approversCanNoLongerApprove: true }),
-        revocationRequest("req-2", "cert-2")
+        actionRequest("req-1", "cert-1", { approversCanNoLongerApprove: true }),
+        actionRequest("req-2", "cert-2")
       ],
       now
     );
@@ -62,8 +64,8 @@ describe("getPendingRevocations", () => {
   });
 
   it("drops a request the list still calls pending once its expiry has passed", () => {
-    const result = getPendingRevocations(
-      [revocationRequest("req-1", "cert-1", { expiresAt: "2026-11-12T11:59:59.000Z" })],
+    const result = getPendingCertificateActions(
+      [actionRequest("req-1", "cert-1", { expiresAt: "2026-11-12T11:59:59.000Z" })],
       now
     );
 
@@ -72,8 +74,8 @@ describe("getPendingRevocations", () => {
   });
 
   it("keeps a request expiring at this instant, as the server still treats it as pending", () => {
-    const result = getPendingRevocations(
-      [revocationRequest("req-1", "cert-1", { expiresAt: "2026-11-12T12:00:00.000Z" })],
+    const result = getPendingCertificateActions(
+      [actionRequest("req-1", "cert-1", { expiresAt: "2026-11-12T12:00:00.000Z" })],
       now
     );
 
@@ -81,27 +83,25 @@ describe("getPendingRevocations", () => {
   });
 
   it("keeps a request whose expiry is still ahead and drops it once the clock passes it", () => {
-    const requests = [
-      revocationRequest("req-1", "cert-1", { expiresAt: "2026-11-12T12:30:00.000Z" })
-    ];
+    const requests = [actionRequest("req-1", "cert-1", { expiresAt: "2026-11-12T12:30:00.000Z" })];
 
     assert.equal(
-      getPendingRevocations(requests, now).requestByCertificateId.get("cert-1")?.id,
+      getPendingCertificateActions(requests, now).requestByCertificateId.get("cert-1")?.id,
       "req-1"
     );
     assert.equal(
-      getPendingRevocations(requests, Date.parse("2026-11-12T12:30:00.001Z")).requestByCertificateId
-        .size,
+      getPendingCertificateActions(requests, Date.parse("2026-11-12T12:30:00.001Z"))
+        .requestByCertificateId.size,
       0
     );
   });
 
   it("ignores requests that are no longer pending", () => {
-    const result = getPendingRevocations(
+    const result = getPendingCertificateActions(
       [
-        revocationRequest("req-1", "cert-1", { status: ApprovalRequestStatus.Approved }),
-        revocationRequest("req-2", "cert-2", { status: ApprovalRequestStatus.Rejected }),
-        revocationRequest("req-3", "cert-3", {
+        actionRequest("req-1", "cert-1", { status: ApprovalRequestStatus.Approved }),
+        actionRequest("req-2", "cert-2", { status: ApprovalRequestStatus.Rejected }),
+        actionRequest("req-3", "cert-3", {
           status: ApprovalRequestStatus.Cancelled,
           expiresAt: "2026-11-12T13:00:00.000Z"
         })
@@ -114,7 +114,7 @@ describe("getPendingRevocations", () => {
   });
 
   it("reports no expiry when no pending request has one", () => {
-    const result = getPendingRevocations([revocationRequest("req-1", "cert-1")], now);
+    const result = getPendingCertificateActions([actionRequest("req-1", "cert-1")], now);
 
     assert.equal(result.requestByCertificateId.get("cert-1")?.id, "req-1");
     assert.equal(result.nextExpiresAt, null);

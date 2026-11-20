@@ -4,8 +4,10 @@ export {
   useDeleteApprovalPolicy,
   useUpdateApprovalPolicy
 } from "./mutations";
-export { approvalPolicyQuery, useRevocationPolicyProfileNames } from "./queries";
+export { approvalPolicyQuery, useCertificateActionPolicyProfileNames } from "./queries";
 export {
+  APPLICATION_POLICY_TYPE_LABELS,
+  APPLICATION_POLICY_TYPES,
   ApprovalPolicyScope,
   type ApprovalPolicyStep,
   ApprovalPolicyType,
@@ -14,9 +16,12 @@ export {
   AUTO_APPROVAL_AI_SUBJECT,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AutoApprovalConstraintValue,
+  CERTIFICATE_ACTION_POLICY_TYPES,
   type CertRequestPolicyConditions,
   type CodeSigningPolicyConstraints,
   EnforcementLevel,
+  isApplicationPolicyType,
+  isCertificateActionPolicyType,
   type PamAccessPolicyConditions,
   type PamAccessPolicyConstraints,
   type PolicyBypasser,
@@ -35,6 +40,8 @@ export {
   type TAutoApprovalInputValue,
   type TAutoApprovalOption,
   type TAutoApprovalOutcome,
+  type TApplicationPolicyType,
+  type TCertificateActionPolicyType,
   type TCheckPolicyMatchDTO,
   type TCheckPolicyMatchResult,
   type TCreateApprovalPolicyDTO,

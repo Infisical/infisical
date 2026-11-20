@@ -18,7 +18,13 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import {
+  APPLICATION_POLICY_TYPE_LABELS,
+  APPLICATION_POLICY_TYPES,
+  ApprovalPolicyType,
+  isCertificateActionPolicyType,
+  TApplicationPolicyType
+} from "@app/hooks/api/approvalPolicies";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import {
   PkiApplicationResourceActions,
@@ -41,9 +47,18 @@ type Props = {
   isEditing?: boolean;
 };
 
+const PROFILES_DESCRIPTION: Record<TApplicationPolicyType, string> = {
+  [ApprovalPolicyType.CertRequest]:
+    "Policy applies to certificates issued from these selected profiles",
+  [ApprovalPolicyType.CertRevocation]:
+    "Revoking a certificate issued from these selected profiles requires approval",
+  [ApprovalPolicyType.CertDeletion]:
+    "Deleting a certificate issued from these selected profiles requires approval"
+};
+
 export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
   const { control, getValues, setValue, watch } = useFormContext<TPolicyForm>();
-  const isRevocationPolicy = watch("policyType") === ApprovalPolicyType.CertRevocation;
+  const policyType = watch("policyType");
 
   const { data: profilesData, isPending: isProfilesLoading } = useListCertificateProfiles({
     enabled: !applicationId
@@ -198,14 +213,17 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ApprovalPolicyType.CertRequest}>Issuance</SelectItem>
-                    <SelectItem value={ApprovalPolicyType.CertRevocation}>Revocation</SelectItem>
+                    {APPLICATION_POLICY_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {APPLICATION_POLICY_TYPE_LABELS[type]}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FieldDescription>
                   {isEditing
                     ? "A policy's type can't be changed after it's created."
-                    : "Issuance covers new certificates and renewals. Revocation covers revoking certificates."}
+                    : "Issuance covers new certificates and renewals, Revocation covers revoking certificates, and Deletion covers deleting them."}
                 </FieldDescription>
               </FieldContent>
             </Field>
@@ -249,9 +267,7 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
                 }
               />
               <FieldDescription isOpen={!error}>
-                {isRevocationPolicy
-                  ? "Revoking a certificate issued from these selected profiles requires approval"
-                  : "Policy applies to certificates issued from these selected profiles"}
+                {PROFILES_DESCRIPTION[policyType]}
               </FieldDescription>
               <FieldError errors={[error]} />
             </FieldContent>
@@ -259,7 +275,7 @@ export const PolicyDetailsStep = ({ applicationId, isEditing }: Props) => {
         )}
       />
 
-      {!isRevocationPolicy && (
+      {!isCertificateActionPolicyType(policyType) && (
         <Controller
           control={control}
           name="bypassForMachineIdentities"

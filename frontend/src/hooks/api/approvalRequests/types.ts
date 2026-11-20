@@ -95,6 +95,19 @@ export type CertRevocationRequestData = {
   revocationReason: CrlReason;
 };
 
+export type CertDeletionRequestData = {
+  certificateId: string;
+  serialNumber: string;
+  commonName: string;
+  friendlyName?: string | null;
+  altNames?: string | null;
+  profileId: string;
+  profileName: string;
+  applicationId: string;
+};
+
+export type TCertificateActionRequestData = CertRevocationRequestData | CertDeletionRequestData;
+
 export type CodeSigningRequestData = {
   signerId: string;
   approvalPolicyId: string;
@@ -124,12 +137,13 @@ export type TApprovalRequest = {
       | PamAccessRequestData
       | CertRequestRequestData
       | CertRevocationRequestData
+      | CertDeletionRequestData
       | CodeSigningRequestData;
   };
   steps: ApprovalRequestStep[];
   canBreakGlass: boolean;
   canReview: boolean;
-  // Only revocation requests carry this.
+  // Only revocation and deletion requests carry this.
   approversCanNoLongerApprove?: boolean;
   isBreakGlass: boolean;
   bypassReason?: string | null;

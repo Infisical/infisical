@@ -730,6 +730,9 @@ interface DeleteCert {
     deletionAllowedReason?: string;
     applicationId?: string | null;
     applicationName?: string | null;
+    approvalRequestId?: string;
+    requesterName?: string;
+    requesterEmail?: string;
   };
 }
 
@@ -774,6 +777,39 @@ interface CertRevocationFailed {
     applicationId: string;
     applicationName?: string | null;
     revocationReason: CrlReason;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
+    error: string;
+  };
+}
+
+interface RequestCertDeletion {
+  type: EventType.REQUEST_CERT_DELETION;
+  metadata: {
+    certId: string;
+    cn: string;
+    friendlyName?: string | null;
+    serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
+    approvalPolicyId: string;
+    approvalPolicyName: string;
+  };
+}
+
+interface CertDeletionFailed {
+  type: EventType.CERT_DELETION_FAILED;
+  metadata: {
+    certId: string;
+    cn: string;
+    friendlyName?: string | null;
+    serialNumber: string;
+    applicationId: string;
+    applicationName?: string | null;
     approvalRequestId: string;
     requesterName: string;
     requesterEmail: string;
@@ -1177,6 +1213,8 @@ export type Event =
   | RevokeCert
   | RequestCertRevocation
   | CertRevocationFailed
+  | RequestCertDeletion
+  | CertDeletionFailed
   | GetCertBody
   | GetCertPrivateKey
   | GetCertBundle

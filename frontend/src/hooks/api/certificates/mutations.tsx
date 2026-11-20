@@ -10,10 +10,12 @@ import { pkiSyncKeys } from "../pkiSyncs/queries";
 import { projectKeys } from "../projects";
 import { certKeys } from "./queries";
 import {
+  CertificateDeletionStatus,
   CertificateRevocationStatus,
   TCancelCertificateRequestResponse,
   TCertificate,
   TDeleteCertDTO,
+  TDeleteCertResponse,
   TDownloadPkcs12DTO,
   TImportCertificateDTO,
   TImportCertificateResponse,
@@ -30,7 +32,7 @@ import {
   TUpdateRenewalConfigDTO
 } from "./types";
 
-export const invalidateRevokedCertificate = (queryClient: QueryClient, certificateId: string) => {
+export const invalidateCertificate = (queryClient: QueryClient, certificateId: string) => {
   queryClient.invalidateQueries({
     queryKey: certKeys.getCertificateById(certificateId)
   });
@@ -48,34 +50,26 @@ export const invalidateRevokedCertificate = (queryClient: QueryClient, certifica
   });
 };
 
+export const invalidateDeletedCertificate = (queryClient: QueryClient, certificateId: string) => {
+  invalidateCertificate(queryClient, certificateId);
+  queryClient.invalidateQueries({ queryKey: pkiSyncKeys.all });
+};
+
 export const useDeleteCert = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCertificate, object, TDeleteCertDTO>({
+  return useMutation<TDeleteCertResponse, object, TDeleteCertDTO>({
     mutationFn: async ({ id }) => {
-      const {
-        data: { certificate }
-      } = await apiRequest.delete<{ certificate: TCertificate }>(
+      const { data } = await apiRequest.delete<TDeleteCertResponse>(
         `/api/v1/cert-manager/certificates/${id}`
       );
-      return certificate;
+      return data;
     },
-    onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({
-        queryKey: certKeys.getCertificateById(id)
-      });
-      queryClient.invalidateQueries({
-        queryKey: certificateProfileKeys.lists()
-      });
-      queryClient.invalidateQueries({
-        queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
-      });
-      queryClient.invalidateQueries({
-        queryKey: projectKeys.allProjectCertificates()
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["cert-dashboard-stats"]
-      });
-      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.all });
+    onSuccess: ({ status }, { id }) => {
+      if (status === CertificateDeletionStatus.PendingApproval) {
+        queryClient.invalidateQueries({ queryKey: approvalRequestQuery.allKey() });
+      } else {
+        invalidateDeletedCertificate(queryClient, id);
+      }
     }
   });
 };
@@ -96,7 +90,7 @@ export const useRevokeCert = () => {
       if (status === CertificateRevocationStatus.PendingApproval) {
         queryClient.invalidateQueries({ queryKey: approvalRequestQuery.allKey() });
       } else {
-        invalidateRevokedCertificate(queryClient, id);
+        invalidateCertificate(queryClient, id);
       }
     }
   });

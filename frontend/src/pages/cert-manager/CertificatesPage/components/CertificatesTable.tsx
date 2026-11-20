@@ -65,8 +65,11 @@ import {
 } from "@app/context";
 import { useSlashFocusSearch } from "@app/hooks";
 import { useUpdateRenewalConfig } from "@app/hooks/api";
-import { useRevocationPolicyProfileNames } from "@app/hooks/api/approvalPolicies";
-import { usePendingCertificateRevocations } from "@app/hooks/api/approvalRequests";
+import {
+  ApprovalPolicyType,
+  useCertificateActionPolicyProfileNames
+} from "@app/hooks/api/approvalPolicies";
+import { usePendingCertificateActions } from "@app/hooks/api/approvalRequests";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability, CaType } from "@app/hooks/api/ca/enums";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
@@ -101,13 +104,15 @@ import {
   canRevokeAfterDeletion,
   DELETED_CERTIFICATE_NO_ACTIONS,
   getApplicationCertificateAccess,
+  getCertificateActionApproval,
+  getCertificateActionMenuState,
   getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails,
-  getPendingRevocationState,
   isExpiringWithinOneDay,
   isManagedCertificate,
-  RENEWAL_UNAVAILABLE_NO_PROFILE
+  RENEWAL_UNAVAILABLE_NO_PROFILE,
+  TCertificateActionApproval
 } from "./CertificatesTable.utils";
 import { ColumnVisibilityToggle, getDefaultVisibleColumns } from "./ColumnVisibilityToggle";
 import { certificatesToCSV, downloadCSV } from "./csvExport";
@@ -146,6 +151,7 @@ type Props = {
       canRevoke?: boolean;
       isRevocableAfterDeletion?: boolean;
       isRevocationApprovalRequired?: boolean;
+      isDeletionApprovalRequired?: boolean;
       applicationId?: string | null;
     }
   ) => void;
@@ -171,6 +177,21 @@ const getEnrollmentMethodBadge = (enrollmentType: string | null | undefined) => 
   if (!enrollmentType) return <EmptyCell />;
   const label = enrollmentType.toUpperCase();
   return <Badge variant="ghost">{label}</Badge>;
+};
+
+const PendingActionBadge = ({
+  approval: { pendingLabel, replacesRequestReason }
+}: {
+  approval: TCertificateActionApproval;
+}) => {
+  const badge = <Badge variant="warning">{pendingLabel}</Badge>;
+  if (!replacesRequestReason) return badge;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{badge}</TooltipTrigger>
+      <TooltipContent className="max-w-72">{replacesRequestReason}</TooltipContent>
+    </Tooltip>
+  );
 };
 
 const SortIcon = ({
@@ -204,8 +225,22 @@ export const CertificatesTable = ({
   const [appliedSearch, setAppliedSearch] = useState(externalFilter?.search || "");
 
   const { data: appPermissionData } = useGetPkiApplicationPermissions(applicationId ?? "");
-  const { data: pendingRevocations } = usePendingCertificateRevocations(applicationId);
-  const { data: revocationPolicyProfileNames } = useRevocationPolicyProfileNames(applicationId);
+  const { data: pendingRevocations } = usePendingCertificateActions(
+    ApprovalPolicyType.CertRevocation,
+    applicationId
+  );
+  const { data: revocationPolicyProfileNames } = useCertificateActionPolicyProfileNames(
+    ApprovalPolicyType.CertRevocation,
+    applicationId
+  );
+  const { data: pendingDeletions } = usePendingCertificateActions(
+    ApprovalPolicyType.CertDeletion,
+    applicationId
+  );
+  const { data: deletionPolicyProfileNames } = useCertificateActionPolicyProfileNames(
+    ApprovalPolicyType.CertDeletion,
+    applicationId
+  );
   const canReadAtApplication = Boolean(
     appPermissionData?.permission?.can(
       PkiApplicationResourceActions.Read,
@@ -921,16 +956,28 @@ export const CertificatesTable = ({
                   const canReadCertificate =
                     permission.can(ProjectPermissionCertificateActions.Read, certSubject) ||
                     canReadAtApplication;
-                  const isRevocationApprovalRequired = Boolean(
-                    certificate.profileName &&
-                    revocationPolicyProfileNames?.has(certificate.profileName)
+                  const revocation = getCertificateActionApproval({
+                    policyType: ApprovalPolicyType.CertRevocation,
+                    certificate,
+                    pendingRequest: pendingRevocations?.get(certificate.id),
+                    policyProfileNames: revocationPolicyProfileNames
+                  });
+                  const deletion = getCertificateActionApproval({
+                    policyType: ApprovalPolicyType.CertDeletion,
+                    certificate,
+                    pendingRequest: pendingDeletions?.get(certificate.id),
+                    policyProfileNames: deletionPolicyProfileNames
+                  });
+                  const pendingActions = [revocation, deletion].filter(
+                    (approval) => approval.isPending
                   );
                   const rowApplicationAccess =
                     applicationId && certificate.applicationId
                       ? getApplicationCertificateAccess({
                           applicationName: applicationName ?? "this application",
                           permission: appPermissionData?.permission,
-                          isRevocationApprovalRequired
+                          isRevocationApprovalRequired: revocation.isApprovalRequired,
+                          isDeletionApprovalRequired: deletion.isApprovalRequired
                         })
                       : undefined;
                   const canEditCertificate = rowApplicationAccess
@@ -939,12 +986,20 @@ export const CertificatesTable = ({
                   const canRenewCertificate = rowApplicationAccess
                     ? rowApplicationAccess.canRenew
                     : canEditCertificate;
+                  const hasDeletePermission = rowApplicationAccess
+                    ? rowApplicationAccess.hasDeletePermission
+                    : permission.can(ProjectPermissionCertificateActions.Delete, certSubject);
                   const canDeleteCertificate = rowApplicationAccess
                     ? rowApplicationAccess.canDelete
-                    : permission.can(ProjectPermissionCertificateActions.Delete, certSubject);
+                    : hasDeletePermission;
                   const hasRevokePermission = rowApplicationAccess
                     ? rowApplicationAccess.canRevoke
-                    : canDeleteCertificate;
+                    : hasDeletePermission;
+                  const deleteMenu = getCertificateActionMenuState({
+                    canAct: canDeleteCertificate,
+                    approval: deletion,
+                    accessBlockedReason: rowApplicationAccess?.deleteBlockedReason
+                  });
                   const certificateCaType = caCapabilityMap[certificate.caId];
                   const canRevokeCertificate =
                     Boolean(certificate.caId) &&
@@ -954,11 +1009,6 @@ export const CertificatesTable = ({
                     certificate,
                     certificateCaType
                   );
-                  const pendingRevocation = getPendingRevocationState({
-                    pendingRequest: pendingRevocations?.get(certificate.id),
-                    isRevoked,
-                    isRevocationApprovalRequired
-                  });
                   const canOfferRevoke =
                     canRevokeCertificate &&
                     !isRevoked &&
@@ -1023,24 +1073,13 @@ export const CertificatesTable = ({
                         <TableCell>
                           <div className="flex flex-wrap items-center gap-1.5">
                             {!(
-                              pendingRevocation.isPending &&
-                              displayStatus.status === CertStatus.ACTIVE
+                              pendingActions.length && displayStatus.status === CertStatus.ACTIVE
                             ) && (
                               <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
                             )}
-                            {pendingRevocation.isPending &&
-                              (pendingRevocation.revokeReplacesRequestReason ? (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Badge variant="warning">Revocation Pending</Badge>
-                                  </TooltipTrigger>
-                                  <TooltipContent className="max-w-72">
-                                    {pendingRevocation.revokeReplacesRequestReason}
-                                  </TooltipContent>
-                                </Tooltip>
-                              ) : (
-                                <Badge variant="warning">Revocation Pending</Badge>
-                              ))}
+                            {pendingActions.map((approval) => (
+                              <PendingActionBadge key={approval.pendingLabel} approval={approval} />
+                            ))}
                           </div>
                         </TableCell>
                       )}
@@ -1353,7 +1392,7 @@ export const CertificatesTable = ({
                                         handlePopUpOpen("renewCertificate", {
                                           certificateId: certificate.id,
                                           commonName: certificate.commonName,
-                                          canRevoke: canDeleteCertificate
+                                          canRevoke: hasDeletePermission
                                         });
                                       }}
                                     >
@@ -1404,29 +1443,24 @@ export const CertificatesTable = ({
                                 )}
                               {(() => {
                                 if (!canOfferRevoke) return null;
-                                const revokeBlockedReason =
-                                  pendingRevocation.revokeBlockedReason ??
-                                  rowApplicationAccess?.revokeBlockedReason;
+                                const revokeMenu = getCertificateActionMenuState({
+                                  canAct: hasRevokePermission,
+                                  approval: revocation,
+                                  accessBlockedReason: rowApplicationAccess?.revokeBlockedReason
+                                });
 
                                 return (
-                                  <BlockedActionTooltip
-                                    reason={
-                                      revokeBlockedReason ??
-                                      pendingRevocation.revokeReplacesRequestReason
-                                    }
-                                  >
+                                  <BlockedActionTooltip reason={revokeMenu.reason}>
                                     <DropdownMenuItem
                                       variant="danger"
-                                      isDisabled={
-                                        !hasRevokePermission ||
-                                        Boolean(pendingRevocation.revokeBlockedReason)
-                                      }
-                                      isDisabledFocusable={Boolean(revokeBlockedReason)}
+                                      isDisabled={revokeMenu.isDisabled}
+                                      isDisabledFocusable={revokeMenu.isDisabledFocusable}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handlePopUpOpen("revokeCertificate", {
                                           certificateId: certificate.id,
-                                          isRevocationApprovalRequired
+                                          isRevocationApprovalRequired:
+                                            revocation.isApprovalRequired
                                         });
                                       }}
                                     >
@@ -1437,15 +1471,11 @@ export const CertificatesTable = ({
                                 );
                               })()}
                               {!isDeleted && !(isInventoryView && certificate.applicationId) && (
-                                <BlockedActionTooltip
-                                  reason={rowApplicationAccess?.deleteBlockedReason}
-                                >
+                                <BlockedActionTooltip reason={deleteMenu.reason}>
                                   <DropdownMenuItem
                                     variant="danger"
-                                    isDisabled={!canDeleteCertificate}
-                                    isDisabledFocusable={Boolean(
-                                      rowApplicationAccess?.deleteBlockedReason
-                                    )}
+                                    isDisabled={deleteMenu.isDisabled}
+                                    isDisabledFocusable={deleteMenu.isDisabledFocusable}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handlePopUpOpen("deleteCertificate", {
@@ -1456,7 +1486,8 @@ export const CertificatesTable = ({
                                         notAfter: certificate.notAfter,
                                         hasPrivateKey: certificate.hasPrivateKey,
                                         canRevoke: canRevokeCertificate,
-                                        isRevocableAfterDeletion
+                                        isRevocableAfterDeletion,
+                                        isDeletionApprovalRequired: deletion.isApprovalRequired
                                       });
                                     }}
                                   >

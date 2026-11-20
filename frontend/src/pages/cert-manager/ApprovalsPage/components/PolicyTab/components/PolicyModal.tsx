@@ -20,9 +20,12 @@ import {
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
+  APPLICATION_POLICY_TYPE_LABELS,
   ApprovalPolicyScope,
   ApprovalPolicyType,
   CertRequestPolicyConditions,
+  isApplicationPolicyType,
+  isCertificateActionPolicyType,
   TApprovalPolicy,
   useCreateApprovalPolicy,
   useUpdateApprovalPolicy
@@ -102,7 +105,9 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
       const conditions = policyData.policy.conditions.conditions as CertRequestPolicyConditions;
       reset({
         name: policyData.policy.name,
-        policyType: policyData.policy.type,
+        policyType: isApplicationPolicyType(policyData.policy.type)
+          ? policyData.policy.type
+          : ApprovalPolicyType.CertRequest,
         maxRequestTtl: policyData.policy.maxRequestTtl,
         conditions,
         constraints: {},
@@ -138,8 +143,9 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
 
     const policyFields = {
       ...data,
-      bypassForMachineIdentities:
-        policyType === ApprovalPolicyType.CertRevocation ? false : data.bypassForMachineIdentities
+      bypassForMachineIdentities: isCertificateActionPolicyType(policyType)
+        ? false
+        : data.bypassForMachineIdentities
     };
 
     try {
@@ -227,9 +233,8 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
               : "Create Certificate Approval Policy"}
           </SheetTitle>
           <SheetDescription>
-            {selectedPolicyType === ApprovalPolicyType.CertRevocation
-              ? "Configure a certificate approval policy requiring approval for certificate revocation."
-              : "Configure a certificate approval policy requiring approval for certificate issuance."}
+            Configure a certificate approval policy requiring approval for certificate{" "}
+            {APPLICATION_POLICY_TYPE_LABELS[selectedPolicyType].toLowerCase()}.
           </SheetDescription>
         </SheetHeader>
         <FormProvider {...formMethods}>
@@ -272,7 +277,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
                 <TabsContent value="approvals">
                   <PolicyApprovalSteps
                     applicationId={applicationId}
-                    excludeAuditors={selectedPolicyType === ApprovalPolicyType.CertRevocation}
+                    excludeAuditors={isCertificateActionPolicyType(selectedPolicyType)}
                   />
                 </TabsContent>
                 <TabsContent value="review">
