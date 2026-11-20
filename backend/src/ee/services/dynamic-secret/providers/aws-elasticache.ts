@@ -108,6 +108,14 @@ const ElastiCacheUserManager = (credentials: TBasicAWSCredentials, region: strin
   // on every lease, which is asked to retry until the group is ready.
   const ensureClusterUserGroupExists = async (clusterName: string) => {
     const userGroupId = getClusterUserGroupId(clusterName);
+    const otherUserGroupId = (await $getReplicationGroupUserGroupIds(clusterName)).find(
+      (id) => id !== userGroupId && id !== LEGACY_SHARED_USER_GROUP_ID
+    );
+    if (otherUserGroupId) {
+      throw new BadRequestError({
+        message: `The ElastiCache cluster already uses the user group '${otherUserGroupId}'. A cluster can use only one user group, and Infisical needs its own to issue leases. Remove that user group from the cluster, or use a different cluster.`
+      });
+    }
     if (await $getUserGroup(userGroupId)) return;
 
     await $ensureDisabledDefaultUserExists();
