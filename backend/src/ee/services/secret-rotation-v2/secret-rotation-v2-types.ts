@@ -100,6 +100,13 @@ import {
   TGcpServiceAccountKeyRotationWithConnection
 } from "./gcp-service-account-key";
 import {
+  TGitLabGroupAccessTokenRotation,
+  TGitLabGroupAccessTokenRotationGeneratedCredentials,
+  TGitLabGroupAccessTokenRotationInput,
+  TGitLabGroupAccessTokenRotationListItem,
+  TGitLabGroupAccessTokenRotationWithConnection
+} from "./gitlab-group-access-token";
+import {
   TGitLabServiceAccountTokenRotation,
   TGitLabServiceAccountTokenRotationGeneratedCredentials,
   TGitLabServiceAccountTokenRotationInput,
@@ -262,7 +269,8 @@ export type TSecretRotationV2 =
   | TStripeApiKeyRotation
   | TGcpServiceAccountKeyRotation
   | TClickHouseCredentialsRotation
-  | TGitLabServiceAccountTokenRotation;
+  | TGitLabServiceAccountTokenRotation
+  | TGitLabGroupAccessTokenRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -296,7 +304,8 @@ export type TSecretRotationV2WithConnection =
   | TStripeApiKeyRotationWithConnection
   | TGcpServiceAccountKeyRotationWithConnection
   | TClickHouseCredentialsRotationWithConnection
-  | TGitLabServiceAccountTokenRotationWithConnection;
+  | TGitLabServiceAccountTokenRotationWithConnection
+  | TGitLabGroupAccessTokenRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -325,7 +334,8 @@ export type TSecretRotationV2GeneratedCredentials =
   | TCloudflareR2AccessKeyRotationGeneratedCredentials
   | TStripeApiKeyRotationGeneratedCredentials
   | TGcpServiceAccountKeyRotationGeneratedCredentials
-  | TGitLabServiceAccountTokenRotationGeneratedCredentials;
+  | TGitLabServiceAccountTokenRotationGeneratedCredentials
+  | TGitLabGroupAccessTokenRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
@@ -359,7 +369,8 @@ export type TSecretRotationV2Input =
   | TStripeApiKeyRotationInput
   | TGcpServiceAccountKeyRotationInput
   | TClickHouseCredentialsRotationInput
-  | TGitLabServiceAccountTokenRotationInput;
+  | TGitLabServiceAccountTokenRotationInput
+  | TGitLabGroupAccessTokenRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -393,7 +404,8 @@ export type TSecretRotationV2ListItem =
   | TStripeApiKeyRotationListItem
   | TGcpServiceAccountKeyRotationListItem
   | TClickHouseCredentialsRotationListItem
-  | TGitLabServiceAccountTokenRotationListItem;
+  | TGitLabServiceAccountTokenRotationListItem
+  | TGitLabGroupAccessTokenRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters =
   | TLdapPasswordRotationInput["temporaryParameters"]

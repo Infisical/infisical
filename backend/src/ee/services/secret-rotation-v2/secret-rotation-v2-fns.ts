@@ -23,6 +23,10 @@ import { DBT_SERVICE_TOKEN_ROTATION_LIST_OPTION } from "./dbt-service-token";
 import { FIREWORKS_API_KEY_ROTATION_LIST_OPTION } from "./fireworks-api-key";
 import { GCP_SERVICE_ACCOUNT_KEY_ROTATION_LIST_OPTION, TGcpServiceAccountKeyRotation } from "./gcp-service-account-key";
 import {
+  GITLAB_GROUP_ACCESS_TOKEN_ROTATION_LIST_OPTION,
+  TGitLabGroupAccessTokenRotation
+} from "./gitlab-group-access-token";
+import {
   GITLAB_SERVICE_ACCOUNT_TOKEN_ROTATION_LIST_OPTION,
   TGitLabServiceAccountTokenRotation
 } from "./gitlab-service-account-token";
@@ -95,7 +99,8 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
   [SecretRotation.StripeApiKey]: STRIPE_API_KEY_ROTATION_LIST_OPTION,
   [SecretRotation.GcpServiceAccountKey]: GCP_SERVICE_ACCOUNT_KEY_ROTATION_LIST_OPTION,
   [SecretRotation.ClickHouseCredentials]: CLICKHOUSE_CREDENTIALS_ROTATION_LIST_OPTION,
-  [SecretRotation.GitLabServiceAccountToken]: GITLAB_SERVICE_ACCOUNT_TOKEN_ROTATION_LIST_OPTION
+  [SecretRotation.GitLabServiceAccountToken]: GITLAB_SERVICE_ACCOUNT_TOKEN_ROTATION_LIST_OPTION,
+  [SecretRotation.GitLabGroupAccessToken]: GITLAB_GROUP_ACCESS_TOKEN_ROTATION_LIST_OPTION
 };
 
 export const listSecretRotationOptions = () => {
@@ -483,6 +488,20 @@ export const throwOnImmutableParameterUpdate = (
         throw new BadRequestError({
           message:
             "Cannot update the GitLab group or service account of an existing rotation. Create a new rotation to rotate tokens for a different service account."
+        });
+      }
+      break;
+    case SecretRotation.GitLabGroupAccessToken:
+      if (
+        haveUnequalProperties(
+          updatePayload.parameters as TGitLabGroupAccessTokenRotation["parameters"],
+          secretRotation.parameters as TGitLabGroupAccessTokenRotation["parameters"],
+          ["groupId"]
+        )
+      ) {
+        throw new BadRequestError({
+          message:
+            "Cannot update the GitLab group of an existing rotation. Create a new rotation to rotate tokens for a different group."
         });
       }
       break;

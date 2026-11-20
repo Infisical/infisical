@@ -13,6 +13,7 @@ import { registerDatadogApplicationKeySecretRotationRouter } from "./datadog-app
 import { registerDbtServiceTokenRotationRouter } from "./dbt-service-token-rotation-router";
 import { registerFireworksApiKeyRotationRouter } from "./fireworks-api-key-rotation-router";
 import { registerGcpServiceAccountKeyRotationRouter } from "./gcp-service-account-key-rotation-router";
+import { registerGitLabGroupAccessTokenRotationRouter } from "./gitlab-group-access-token-rotation-router";
 import { registerGitLabServiceAccountTokenRotationRouter } from "./gitlab-service-account-token-rotation-router";
 import { registerHpIloRotationRouter } from "./hp-ilo-rotation-router";
 import { registerLdapPasswordRotationRouter } from "./ldap-password-rotation-router";
@@ -70,5 +71,6 @@ export const SECRET_ROTATION_REGISTER_ROUTER_MAP: Record<
   [SecretRotation.StripeApiKey]: registerStripeApiKeyRotationRouter,
   [SecretRotation.GcpServiceAccountKey]: registerGcpServiceAccountKeyRotationRouter,
   [SecretRotation.ClickHouseCredentials]: registerClickHouseCredentialsRotationRouter,
-  [SecretRotation.GitLabServiceAccountToken]: registerGitLabServiceAccountTokenRotationRouter
+  [SecretRotation.GitLabServiceAccountToken]: registerGitLabServiceAccountTokenRotationRouter,
+  [SecretRotation.GitLabGroupAccessToken]: registerGitLabGroupAccessTokenRotationRouter
 };

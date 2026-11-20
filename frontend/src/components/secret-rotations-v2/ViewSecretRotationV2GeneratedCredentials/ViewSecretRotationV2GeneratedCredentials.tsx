@@ -28,7 +28,10 @@ import {
   useViewSecretRotationV2GeneratedCredentials
 } from "@app/hooks/api/secretRotationsV2";
 
-import { ViewSqlCredentialsRotationGeneratedCredentials } from "./shared";
+import {
+  ViewGitLabTokenRotationGeneratedCredentials,
+  ViewSqlCredentialsRotationGeneratedCredentials
+} from "./shared";
 import { ViewAwsIamUserSecretRotationGeneratedCredentials } from "./ViewAwsIamUserSecretRotationGeneratedCredentials";
 import { ViewCloudflareApiTokenRotationGeneratedCredentials } from "./ViewCloudflareApiTokenRotationGeneratedCredentials";
 import { ViewCloudflareR2AccessKeyRotationGeneratedCredentials } from "./ViewCloudflareR2AccessKeyRotationGeneratedCredentials";
@@ -37,7 +40,6 @@ import { ViewDatadogApplicationKeySecretRotationGeneratedCredentials } from "./V
 import { ViewDbtServiceTokenRotationGeneratedCredentials } from "./ViewDbtSeviceTokenRotationGeneratedCredentials";
 import { ViewFireworksApiKeyRotationGeneratedCredentials } from "./ViewFireworksApiKeyRotationGeneratedCredentials";
 import { ViewGcpServiceAccountKeyRotationGeneratedCredentials } from "./ViewGcpServiceAccountKeyRotationGeneratedCredentials";
-import { ViewGitLabServiceAccountTokenRotationGeneratedCredentials } from "./ViewGitLabServiceAccountTokenRotationGeneratedCredentials";
 import { ViewHpIloRotationGeneratedCredentials } from "./ViewHpIloRotationGeneratedCredentials";
 import { ViewLiteLLMApiKeyRotationGeneratedCredentials } from "./ViewLiteLLMApiKeyRotationGeneratedCredentials";
 import { ViewOktaClientSecretRotationGeneratedCredentials } from "./ViewOktaClientSecretRotationGeneratedCredentials";
@@ -277,8 +279,9 @@ const Content = ({ secretRotation }: ContentProps) => {
       );
       break;
     case SecretRotation.GitLabServiceAccountToken:
+    case SecretRotation.GitLabGroupAccessToken:
       Component = (
-        <ViewGitLabServiceAccountTokenRotationGeneratedCredentials
+        <ViewGitLabTokenRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );

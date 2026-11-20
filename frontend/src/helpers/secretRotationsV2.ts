@@ -164,6 +164,11 @@ export const SECRET_ROTATION_MAP: Record<
     name: "GitLab Service Account Token",
     image: "GitLab.png",
     size: 50
+  },
+  [SecretRotation.GitLabGroupAccessToken]: {
+    name: "GitLab Group Access Token",
+    image: "GitLab.png",
+    size: 50
   }
 };
 
@@ -199,7 +204,8 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.StripeApiKey]: AppConnection.Stripe,
   [SecretRotation.GcpServiceAccountKey]: AppConnection.GCP,
   [SecretRotation.ClickHouseCredentials]: AppConnection.ClickHouse,
-  [SecretRotation.GitLabServiceAccountToken]: AppConnection.GitLab
+  [SecretRotation.GitLabServiceAccountToken]: AppConnection.GitLab,
+  [SecretRotation.GitLabGroupAccessToken]: AppConnection.GitLab
 };
 
 const SECRET_ROTATION_ADDITIONAL_CONNECTION_MAP: Partial<Record<SecretRotation, AppConnection[]>> =
@@ -245,7 +251,8 @@ export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.StripeApiKey]: true,
   [SecretRotation.GcpServiceAccountKey]: true,
   [SecretRotation.ClickHouseCredentials]: true,
-  [SecretRotation.GitLabServiceAccountToken]: true
+  [SecretRotation.GitLabServiceAccountToken]: true,
+  [SecretRotation.GitLabGroupAccessToken]: true
 };
 
 export const getRotateAtLocal = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"]) => {

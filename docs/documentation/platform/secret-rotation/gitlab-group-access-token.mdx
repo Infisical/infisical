@@ -1,0 +1,163 @@
+---
+title: "GitLab group access token rotation"
+sidebarTitle: "GitLab group access token"
+description: "Learn how to automatically rotate GitLab group access tokens."
+---
+
+Rotate a GitLab [group access token](https://docs.gitlab.com/user/group/settings/group_access_tokens/) on a schedule. A group access token gives access to the group's projects and subgroups without belonging to a person. On each rotation, Infisical revokes the token it created two rotations earlier, creates a new token with the scopes and role you choose, and stores the new token in a secret.
+
+<Info>
+  **Rotation Type: Dual-Phase**
+
+  This rotation maintains two active credential sets with overlapping validity, ensuring zero-downtime during rotation cycles.
+</Info>
+
+<Note>
+    This rotation needs a [GitLab app connection](/integrations/app-connections/gitlab). This guide walks you through creating a project-scoped app connection.
+</Note>
+
+## Prerequisites
+
+- A [project with secrets configured](/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret)
+- A GitLab user with the Owner role on the group, to create the token the connection uses
+- On GitLab.com, a Premium or Ultimate subscription for the group
+- Group access token creation allowed in the top-level group's **Settings** > **General** > **Permissions and group features** (allowed by default)
+
+<Warning>
+    GitLab creates a new bot user for every group access token, so each rotation's token belongs to a different bot user. If you grant access to a bot user by name, such as on a protected branch's list of users allowed to push, the grant doesn't carry over to the next token. Grant access through the token's role on the group instead.
+
+    GitLab deletes a bot user 30 days after its last token is revoked or expires.
+</Warning>
+
+## Step 1: Create a personal access token for Infisical
+
+Infisical needs a GitLab connection whose user has the Owner role on the group, so that Infisical can create and revoke the group's access tokens.
+
+<Steps>
+    <Step>
+        Create a personal access token with the `api` scope for a user that has the Owner role on the group. To keep the connection independent of a person, give a dedicated [service account](https://docs.gitlab.com/user/profile/service_accounts/) the Owner role on the group and [create a token for it](https://docs.gitlab.com/api/service_accounts/#create-a-personal-access-token-for-a-group-service-account).
+    </Step>
+    <Step>
+        When you create the GitLab connection in [Step 2](#step-2-set-up-the-rotation-in-infisical), use this token with **Personal Access Token** as the access token type.
+    </Step>
+</Steps>
+
+<Note>
+    GitLab doesn't let group or project access tokens create other tokens, so the rotation fails with a connection that uses one. A connection that uses OAuth works if its user has the Owner role on the group.
+</Note>
+
+## Step 2: Set up the rotation in Infisical
+
+<Tip>
+    To create the rotation using the API, use the [Create GitLab Group Access Token Rotation](/api-reference/endpoints/secret-rotations/gitlab-group-access-token/create) endpoint.
+</Tip>
+
+<Steps>
+    <Step>
+        In your Secrets Management project, open the dashboard, select **Add New**, then select **Add Secret Rotation**.
+
+        ![Add Secret Rotation](/images/secret-rotations-v2/generic/add-secret-rotation.png)
+
+        Then, select the **GitLab Group Access Token** option.
+    </Step>
+    <Step>
+        Under **Configuration**, choose the app connection and when the rotation runs:
+
+        - **Environment**: The project environment the rotated secrets are stored in
+        - **GitLab Connection**: The app connection the rotation uses
+        - **Rotation Interval (In Days)**: The number of days between rotations, up to 180
+        - **Rotate At (Local Time)**: The time of day the rotation runs
+        - **Auto-Rotation Enabled**: When enabled, the token rotates on the schedule; turn it off to rotate manually only
+
+        <Tabs>
+            <Tab title="Create a new app connection">
+                Under **GitLab Connection**, select **Create GitLab Connection** in the dropdown, then fill in:
+
+                - **Name**: A name for the connection
+                - **Description** (optional): What the connection is for
+                - **Self-hosted URL** (optional): The URL of your GitLab Self-Managed or GitLab Dedicated instance; leave empty for GitLab.com
+                - **Method**: **Access Token**
+                - **Access Token Type**: **Personal Access Token**
+                - **Access Token**: The token from [Step 1](#step-1-create-a-personal-access-token-for-infisical)
+
+                Select **Connect to GitLab**. Infisical returns you to the rotation form with the new connection selected.
+
+                <Note>
+                    This creates a connection scoped to the current project. To share the connection across other projects, [create it at the organization level](/integrations/app-connections/gitlab) first, then select it here.
+                </Note>
+            </Tab>
+            <Tab title="Use an existing connection">
+                Under **GitLab Connection**, select the app connection you'd like to use.
+            </Tab>
+        </Tabs>
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Under **Parameters**, choose the group and the token Infisical creates for it:
+
+        - **Group**: The group the token belongs to; the list shows groups where the connection's user has the Owner role (you can't change it after you create the rotation)
+        - **Token Name**: The name of each generated token; Infisical appends a timestamp so each rotated token has a distinct name
+        - **Token Description** (optional): A description shown on each generated token in GitLab
+        - **Scopes**: The [scopes](https://docs.gitlab.com/security/tokens/access_token_scopes/) granted to each generated token; `read_user` isn't listed because GitLab only grants it to personal access tokens
+        - **Role**: The token's [role](https://docs.gitlab.com/user/permissions/) in the group, which defaults to Maintainer
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Under **Mappings**, choose the names of the Infisical secrets that hold the rotated values:
+
+        - **Token ID**: The name of the secret that holds the ID of the token in GitLab
+        - **Token**: The name of the secret that holds the token
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Give the rotation a **Name** and an optional **Description**. The name must be slug-friendly.
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Under **Alerts**, choose who Infisical notifies if a scheduled rotation fails. [Rotation failure alerts](/documentation/platform/secret-rotation/overview#get-alerted-when-a-rotation-fails) are on by default.
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Review your GitLab Group Access Token Rotation configuration, then select **Create secret rotation**.
+
+        <Check>
+            The token is now available through the mapped secrets. If auto-rotation is enabled, the token rotates on your configured schedule.
+        </Check>
+    </Step>
+</Steps>
+
+## Frequently asked questions
+
+<AccordionGroup>
+    <Accordion title="When do the generated tokens expire?">
+        Each token expires two rotation intervals plus three days after Infisical creates it, so the token is still valid when the next rotation revokes it. GitLab limits token lifetimes to 365 days by default, so the rotation interval can be at most 180 days.
+
+        A token's expiry is fixed when Infisical creates it. When you change the rotation interval, Infisical rotates the token right away so the new token's expiry matches the new interval, and later rotations follow the new schedule.
+
+        If an administrator set a shorter [maximum token lifetime](https://docs.gitlab.com/administration/settings/account_and_limit_settings/#limit-the-lifetime-of-access-tokens) on your instance, keep the rotation interval under half of that limit. Otherwise GitLab rejects the new token and the rotation fails with GitLab's error.
+    </Accordion>
+    <Accordion title="Does Infisical change tokens it didn't create?">
+        No. Infisical only revokes the tokens it created for the rotation, so it never revokes the connection's own token or group access tokens you created by hand.
+
+        After your applications read the token from Infisical, revoke any group access tokens you created by hand so they stop working.
+    </Accordion>
+    <Accordion title="Which permissions does the generated token have?">
+        The token's role decides what the token can do in the group's projects and subgroups, and its scopes decide which parts of GitLab it can reach. To change either, edit the rotation; the next rotation creates its token with the new role and scopes.
+    </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+    <Card title="GitLab" icon="plug" href="/integrations/app-connections/gitlab">
+        Set up the GitLab connection that Infisical uses to manage group access tokens.
+    </Card>
+    <Card title="Overview" icon="refresh-cw" href="/documentation/platform/secret-rotation/overview">
+        Learn how dual-phase and single-phase rotations work.
+    </Card>
+</CardGroup>

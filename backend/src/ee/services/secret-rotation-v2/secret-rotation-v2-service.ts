@@ -25,6 +25,7 @@ import { datadogApiKeyRotationFactory } from "@app/ee/services/secret-rotation-v
 import { datadogApplicationKeySecretRotationFactory } from "@app/ee/services/secret-rotation-v2/datadog-application-key-secret/datadog-application-key-secret-rotation-fns";
 import { fireworksApiKeyRotationFactory } from "@app/ee/services/secret-rotation-v2/fireworks-api-key/fireworks-api-key-rotation-fns";
 import { gcpServiceAccountKeyRotationFactory } from "@app/ee/services/secret-rotation-v2/gcp-service-account-key/gcp-service-account-key-rotation-fns";
+import { gitLabGroupAccessTokenRotationFactory } from "@app/ee/services/secret-rotation-v2/gitlab-group-access-token/gitlab-group-access-token-rotation-fns";
 import { gitLabServiceAccountTokenRotationFactory } from "@app/ee/services/secret-rotation-v2/gitlab-service-account-token/gitlab-service-account-token-rotation-fns";
 import { ldapPasswordRotationFactory } from "@app/ee/services/secret-rotation-v2/ldap-password/ldap-password-rotation-fns";
 import { salesforceOauthCredentialsRotationFactory } from "@app/ee/services/secret-rotation-v2/salesforce-oauth-credentials/salesforce-oauth-credentials-rotation-fns";
@@ -237,7 +238,9 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.StripeApiKey]: stripeApiKeyRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.GcpServiceAccountKey]: gcpServiceAccountKeyRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.ClickHouseCredentials]: clickhouseCredentialsRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.GitLabServiceAccountToken]: gitLabServiceAccountTokenRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.GitLabServiceAccountToken]:
+    gitLabServiceAccountTokenRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.GitLabGroupAccessToken]: gitLabGroupAccessTokenRotationFactory as TRotationFactoryImplementation
 };
 
 export class SecretRotationInProgressError extends BadRequestError {

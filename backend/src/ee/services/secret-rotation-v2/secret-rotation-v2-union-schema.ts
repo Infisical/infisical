@@ -28,6 +28,7 @@ import { ConvexAccessKeyRotationSchema } from "./convex-access-key";
 import { DbtServiceTokenRotationSchema } from "./dbt-service-token";
 import { FireworksApiKeyRotationSchema } from "./fireworks-api-key";
 import { GcpServiceAccountKeyRotationSchema } from "./gcp-service-account-key";
+import { GitLabGroupAccessTokenRotationSchema } from "./gitlab-group-access-token";
 import { GitLabServiceAccountTokenRotationSchema } from "./gitlab-service-account-token";
 import { HpIloRotationSchema } from "./hp-ilo-rotation";
 import { SnowflakeUserKeyPairRotationSchema } from "./snowflake-user-key-pair";
@@ -66,5 +67,6 @@ export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   StripeApiKeyRotationSchema,
   GcpServiceAccountKeyRotationSchema,
   ClickHouseCredentialsRotationSchema,
-  GitLabServiceAccountTokenRotationSchema
+  GitLabServiceAccountTokenRotationSchema,
+  GitLabGroupAccessTokenRotationSchema
 ]);

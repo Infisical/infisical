@@ -79,6 +79,7 @@ export const createGitLabToken = async ({
   name,
   description,
   scopes,
+  accessLevel,
   rotationInterval,
   resourceLabel
 }: {
@@ -88,6 +89,8 @@ export const createGitLabToken = async ({
   name: string;
   description?: string;
   scopes: string[];
+  /** the role of a group or project access token; personal access tokens have none */
+  accessLevel?: number;
   rotationInterval: number;
   /** what the token belongs to, for error messages, e.g. `service account '12' in group '34'` */
   resourceLabel: string;
@@ -99,6 +102,7 @@ export const createGitLabToken = async ({
         name: `${name}-${Date.now()}`,
         ...(description ? { description } : {}),
         scopes,
+        ...(accessLevel ? { access_level: accessLevel } : {}),
         expires_at: getGitLabTokenExpiresAt(rotationInterval)
       },
       {

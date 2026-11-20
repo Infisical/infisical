@@ -14,6 +14,7 @@ import { DatadogApplicationKeySecretRotationListItemSchema } from "@app/ee/servi
 import { DbtServiceTokenRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/dbt-service-token";
 import { FireworksApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/fireworks-api-key";
 import { GcpServiceAccountKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/gcp-service-account-key";
+import { GitLabGroupAccessTokenRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/gitlab-group-access-token";
 import { GitLabServiceAccountTokenRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/gitlab-service-account-token";
 import { HpIloRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/hp-ilo-rotation";
 import { LdapPasswordRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/ldap-password";
@@ -71,7 +72,8 @@ const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   StripeApiKeyRotationListItemSchema,
   GcpServiceAccountKeyRotationListItemSchema,
   ClickHouseCredentialsRotationListItemSchema,
-  GitLabServiceAccountTokenRotationListItemSchema
+  GitLabServiceAccountTokenRotationListItemSchema,
+  GitLabGroupAccessTokenRotationListItemSchema
 ]);
 
 export const registerSecretRotationV2Router = async (server: FastifyZodProvider) => {

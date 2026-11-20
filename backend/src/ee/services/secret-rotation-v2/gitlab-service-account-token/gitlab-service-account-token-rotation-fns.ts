@@ -1,23 +1,6 @@
-import {
-  TRotationFactory,
-  TRotationFactoryCheckActiveCredentials,
-  TRotationFactoryGetSecretsPayload,
-  TRotationFactoryIssueCredentials,
-  TRotationFactoryRevokeCredentials,
-  TRotationFactoryRotateCredentials,
-  TSecretRotationV2Raw
-} from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
-import {
-  assertGitLabConnectionCanCreateTokens,
-  createGitLabToken,
-  getGitLabTokenApiContext,
-  revokeGitLabToken,
-  TGitLabTokenApiContext,
-  TGitLabTokenCredentials,
-  verifyGitLabToken
-} from "@app/ee/services/secret-rotation-v2/shared/gitlab-token";
+import { TRotationFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import { gitLabTokenRotationFactory } from "@app/ee/services/secret-rotation-v2/shared/gitlab-token/gitlab-token-rotation-factory";
 import { BadRequestError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import {
   getGitLabCurrentUserId,
   getGitLabErrorMessage
@@ -39,132 +22,34 @@ export const gitLabServiceAccountTokenRotationFactory: TRotationFactory<
     secretsMapping
   } = secretRotation;
 
-  const tokensPath = `/groups/${encodeURIComponent(groupId)}/service_accounts/${encodeURIComponent(serviceAccountId)}/personal_access_tokens`;
   const resourceLabel = `service account '${serviceAccountId}' in group '${groupId}'`;
 
-  const $getContext = () => {
-    assertGitLabConnectionCanCreateTokens(connection);
-    return getGitLabTokenApiContext({ connection, appConnectionDAL, kmsDataKeyService });
-  };
-
-  // A token for the connection's own identity would give whoever reads the rotated secret the
-  // connection's access (Owner on the group), outliving their access to Infisical.
-  const $getTokenIssuingContext = async () => {
-    const context = await $getContext();
-
-    let connectionUserId: string;
-    try {
-      connectionUserId = await getGitLabCurrentUserId(context);
-    } catch (error: unknown) {
-      throw new BadRequestError({
-        message: `Failed to look up the GitLab user of the connection: ${getGitLabErrorMessage(error)}`
-      });
-    }
-
-    if (connectionUserId === serviceAccountId) {
-      throw new BadRequestError({
-        message: `The GitLab connection authenticates as ${resourceLabel}, so this rotation can't create tokens for it. Use a connection whose token belongs to a different GitLab user.`
-      });
-    }
-
-    return context;
-  };
-
-  // A token Infisical fails to save is one nothing tracks, so a retry or a delete can never revoke it.
-  const $saveOrRevoke = async (
-    context: TGitLabTokenApiContext,
-    credentials: TGitLabTokenCredentials,
-    save: (credentials: TGitLabTokenCredentials) => Promise<TSecretRotationV2Raw>
-  ) => {
-    try {
-      return await save(credentials);
-    } catch (error: unknown) {
+  return gitLabTokenRotationFactory({
+    connection,
+    rotationInterval,
+    secretsMapping,
+    appConnectionDAL,
+    kmsDataKeyService,
+    tokensPath: `/groups/${encodeURIComponent(groupId)}/service_accounts/${encodeURIComponent(serviceAccountId)}/personal_access_tokens`,
+    resourceLabel,
+    token: { name, description, scopes },
+    // A token for the connection's own identity would give whoever reads the rotated secret the
+    // connection's access (Owner on the group), outliving their access to Infisical.
+    assertCanCreateToken: async (context) => {
+      let connectionUserId: string;
       try {
-        await revokeGitLabToken({ context, tokensPath, tokenId: credentials.tokenId, resourceLabel });
-      } catch (revokeError: unknown) {
-        logger.error(
-          revokeError,
-          `Failed to revoke an unsaved GitLab token [tokenId=${credentials.tokenId}] [groupId=${groupId}] [serviceAccountId=${serviceAccountId}]`
-        );
+        connectionUserId = await getGitLabCurrentUserId(context);
+      } catch (error: unknown) {
+        throw new BadRequestError({
+          message: `Failed to look up the GitLab user of the connection: ${getGitLabErrorMessage(error)}`
+        });
       }
 
-      throw error;
+      if (connectionUserId === serviceAccountId) {
+        throw new BadRequestError({
+          message: `The GitLab connection authenticates as ${resourceLabel}, so this rotation can't create tokens for it. Use a connection whose token belongs to a different GitLab user.`
+        });
+      }
     }
-  };
-
-  const issueCredentials: TRotationFactoryIssueCredentials<
-    TGitLabServiceAccountTokenRotationGeneratedCredentials
-  > = async (callback) => {
-    const context = await $getTokenIssuingContext();
-    const credentials = await createGitLabToken({
-      context,
-      tokensPath,
-      name,
-      description,
-      scopes,
-      rotationInterval,
-      resourceLabel
-    });
-
-    return $saveOrRevoke(context, credentials, callback);
-  };
-
-  const revokeCredentials: TRotationFactoryRevokeCredentials<
-    TGitLabServiceAccountTokenRotationGeneratedCredentials
-  > = async (generatedCredentials, callback) => {
-    if (!generatedCredentials?.length) return callback();
-
-    const context = await $getContext();
-    await Promise.all(
-      generatedCredentials.map(({ tokenId }) => revokeGitLabToken({ context, tokensPath, tokenId, resourceLabel }))
-    );
-
-    return callback();
-  };
-
-  // The inactive token is revoked before the new one is created: the callback overwrites the inactive
-  // slot, so revoking afterwards would lose its id if the revoke failed. A failed create leaves a revoked
-  // token in the inactive slot, and the retry's revoke gets a 404, which counts as done.
-  const rotateCredentials: TRotationFactoryRotateCredentials<
-    TGitLabServiceAccountTokenRotationGeneratedCredentials
-  > = async (credentialsToRevoke, callback) => {
-    const context = await $getTokenIssuingContext();
-
-    if (credentialsToRevoke?.tokenId) {
-      await revokeGitLabToken({ context, tokensPath, tokenId: credentialsToRevoke.tokenId, resourceLabel });
-    }
-
-    const newCredentials = await createGitLabToken({
-      context,
-      tokensPath,
-      name,
-      description,
-      scopes,
-      rotationInterval,
-      resourceLabel
-    });
-
-    return $saveOrRevoke(context, newCredentials, callback);
-  };
-
-  const getSecretsPayload: TRotationFactoryGetSecretsPayload<TGitLabServiceAccountTokenRotationGeneratedCredentials> = (
-    generatedCredentials
-  ) => [
-    { key: secretsMapping.tokenId, value: generatedCredentials.tokenId },
-    { key: secretsMapping.token, value: generatedCredentials.token }
-  ];
-
-  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
-    TGitLabServiceAccountTokenRotationGeneratedCredentials
-  > = async (activeCredentials) => {
-    await verifyGitLabToken({ instanceUrl: connection.credentials.instanceUrl, token: activeCredentials.token });
-  };
-
-  return {
-    issueCredentials,
-    revokeCredentials,
-    rotateCredentials,
-    getSecretsPayload,
-    checkActiveCredentials
-  };
+  });
 };

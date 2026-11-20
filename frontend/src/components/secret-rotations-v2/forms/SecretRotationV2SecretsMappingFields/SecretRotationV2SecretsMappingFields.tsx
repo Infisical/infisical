@@ -15,7 +15,6 @@ import { DatadogApplicationKeySecretRotationSecretsMappingFields } from "./Datad
 import { DbtServiceTokenRotationSecretsMappingFields } from "./DbtServiceTokenRotationSecretsMappingFields";
 import { FireworksApiKeyRotationSecretsMappingFields } from "./FireworksApiKeyRotationSecretsMappingFields";
 import { GcpServiceAccountKeyRotationSecretsMappingFields } from "./GcpServiceAccountKeyRotationSecretsMappingFields";
-import { GitLabServiceAccountTokenRotationSecretsMappingFields } from "./GitLabServiceAccountTokenRotationSecretsMappingFields";
 import { HpIloRotationSecretsMappingFields } from "./HpIloRotationSecretsMappingFields";
 import { LdapPasswordRotationSecretsMappingFields } from "./LdapPasswordRotationSecretsMappingFields";
 import { LiteLLMApiKeyRotationSecretsMappingFields } from "./LiteLLMApiKeyRotationSecretsMappingFields";
@@ -24,7 +23,10 @@ import { OpenAIServiceAccountRotationSecretsMappingFields } from "./OpenAIServic
 import { OpenRouterApiKeyRotationSecretsMappingFields } from "./OpenRouterApiKeyRotationSecretsMappingFields";
 import { RedisCredentialsRotationSecretsMappingFields } from "./RedisCredentialsRotationSecretsMappingFields";
 import { SalesforceOauthCredentialsRotationSecretsMappingFields } from "./SalesforceOauthCredentialsRotationSecretsMappingFields";
-import { SqlCredentialsRotationSecretsMappingFields } from "./shared";
+import {
+  GitLabTokenRotationSecretsMappingFields,
+  SqlCredentialsRotationSecretsMappingFields
+} from "./shared";
 import { SnowflakeUserKeyPairRotationSecretsMappingFields } from "./SnowflakeUserKeyPairRotationSecretsMappingFields";
 import { StripeApiKeyRotationSecretsMappingFields } from "./StripeApiKeyRotationSecretsMappingFields";
 import { SupabaseApiKeyRotationSecretsMappingFields } from "./SupabaseApiKeyRotationSecretsMappingFields";
@@ -66,7 +68,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.StripeApiKey]: StripeApiKeyRotationSecretsMappingFields,
   [SecretRotation.GcpServiceAccountKey]: GcpServiceAccountKeyRotationSecretsMappingFields,
   [SecretRotation.ClickHouseCredentials]: SqlCredentialsRotationSecretsMappingFields,
-  [SecretRotation.GitLabServiceAccountToken]: GitLabServiceAccountTokenRotationSecretsMappingFields
+  [SecretRotation.GitLabServiceAccountToken]: GitLabTokenRotationSecretsMappingFields,
+  [SecretRotation.GitLabGroupAccessToken]: GitLabTokenRotationSecretsMappingFields
 };
 
 export const SecretRotationV2SecretsMappingFields = () => {

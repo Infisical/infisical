@@ -1,13 +1,15 @@
 import { CredentialDisplay } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/shared/CredentialDisplay";
+import { ViewRotationGeneratedCredentialsDisplay } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/shared/ViewRotationGeneratedCredentialsDisplay";
+import { TGitLabGroupAccessTokenRotationGeneratedCredentialsResponse } from "@app/hooks/api/secretRotationsV2/types/gitlab-group-access-token-rotation";
 import { TGitLabServiceAccountTokenRotationGeneratedCredentialsResponse } from "@app/hooks/api/secretRotationsV2/types/gitlab-service-account-token-rotation";
 
-import { ViewRotationGeneratedCredentialsDisplay } from "./shared";
-
 type Props = {
-  generatedCredentialsResponse: TGitLabServiceAccountTokenRotationGeneratedCredentialsResponse;
+  generatedCredentialsResponse:
+    | TGitLabServiceAccountTokenRotationGeneratedCredentialsResponse
+    | TGitLabGroupAccessTokenRotationGeneratedCredentialsResponse;
 };
 
-export const ViewGitLabServiceAccountTokenRotationGeneratedCredentials = ({
+export const ViewGitLabTokenRotationGeneratedCredentials = ({
   generatedCredentialsResponse: { generatedCredentials, activeIndex }
 }: Props) => {
   const inactiveIndex = activeIndex === 0 ? 1 : 0;

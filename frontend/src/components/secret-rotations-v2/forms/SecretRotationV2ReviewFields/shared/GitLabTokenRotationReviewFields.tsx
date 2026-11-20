@@ -8,24 +8,30 @@ import {
   useGitLabConnectionListGroupServiceAccounts
 } from "@app/hooks/api/appConnections/gitlab";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
+import { GITLAB_TOKEN_ACCESS_LEVEL_LABELS } from "@app/hooks/api/secretRotationsV2/types/gitlab-group-access-token-rotation";
 
-import { SecretRotationReviewSection } from "./shared";
+import { SecretRotationReviewSection } from "./SecretRotationReviewSection";
 
 // matches the parameters step, so the review reads the groups it already loaded
 const GITLAB_GROUP_LIST_LIMIT = 20;
 
-export const GitLabServiceAccountTokenRotationReviewFields = () => {
+export const GitLabTokenRotationReviewFields = () => {
   const { watch } = useFormContext<
     TSecretRotationV2Form & {
-      type: SecretRotation.GitLabServiceAccountToken;
+      type: SecretRotation.GitLabServiceAccountToken | SecretRotation.GitLabGroupAccessToken;
     }
   >();
 
-  const [connectionId, parameters, { tokenId, token }] = watch([
+  const [type, connectionId, parameters, { tokenId, token }] = watch([
+    "type",
     "connection.id",
     "parameters",
     "secretsMapping"
   ]);
+
+  const serviceAccountId =
+    "serviceAccountId" in parameters ? parameters.serviceAccountId : undefined;
+  const accessLevel = "accessLevel" in parameters ? parameters.accessLevel : undefined;
 
   const { data: groups } = useGitLabConnectionListGroups(
     connectionId,
@@ -38,21 +44,27 @@ export const GitLabServiceAccountTokenRotationReviewFields = () => {
   const { data: serviceAccounts } = useGitLabConnectionListGroupServiceAccounts(
     connectionId,
     parameters.groupId,
-    { enabled: Boolean(connectionId && parameters.groupId) }
+    {
+      enabled: Boolean(
+        type === SecretRotation.GitLabServiceAccountToken && connectionId && parameters.groupId
+      )
+    }
   );
 
   const group = groups?.find(({ id }) => id === parameters.groupId);
-  const serviceAccount = serviceAccounts?.find(({ id }) => id === parameters.serviceAccountId);
+  const serviceAccount = serviceAccounts?.find(({ id }) => id === serviceAccountId);
 
   return (
     <>
       <SecretRotationReviewSection label="Parameters">
         <ReviewField label="Group">{group?.fullPath ?? parameters.groupId}</ReviewField>
-        <ReviewField label="Service Account">
-          {serviceAccount
-            ? `${serviceAccount.name} (@${serviceAccount.username})`
-            : parameters.serviceAccountId}
-        </ReviewField>
+        {serviceAccountId && (
+          <ReviewField label="Service Account">
+            {serviceAccount
+              ? `${serviceAccount.name} (@${serviceAccount.username})`
+              : serviceAccountId}
+          </ReviewField>
+        )}
         <ReviewField label="Token Name">{parameters.name}</ReviewField>
         {parameters.description && (
           <ReviewField label="Token Description">{parameters.description}</ReviewField>
@@ -66,6 +78,9 @@ export const GitLabServiceAccountTokenRotationReviewFields = () => {
             ))}
           </div>
         </ReviewField>
+        {accessLevel && (
+          <ReviewField label="Role">{GITLAB_TOKEN_ACCESS_LEVEL_LABELS[accessLevel]}</ReviewField>
+        )}
       </SecretRotationReviewSection>
       <SecretRotationReviewSection label="Secrets Mapping">
         <ReviewField label="Token ID">{tokenId}</ReviewField>

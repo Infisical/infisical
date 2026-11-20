@@ -69,9 +69,14 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
         onChange={() => {
           // GitLab IDs are only unique per instance, so a selection made with another connection can name a
           // different group or service account
-          if (type !== SecretRotation.GitLabServiceAccountToken) return;
+          if (
+            type !== SecretRotation.GitLabServiceAccountToken &&
+            type !== SecretRotation.GitLabGroupAccessToken
+          )
+            return;
           setValue("parameters.groupId", "");
-          setValue("parameters.serviceAccountId", "");
+          if (type === SecretRotation.GitLabServiceAccountToken)
+            setValue("parameters.serviceAccountId", "");
         }}
       />
       <Controller

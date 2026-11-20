@@ -30,7 +30,8 @@ export enum SecretRotation {
   StripeApiKey = "stripe-api-key",
   GcpServiceAccountKey = "gcp-service-account-key",
   ClickHouseCredentials = "clickhouse-credentials",
-  GitLabServiceAccountToken = "gitlab-service-account-token"
+  GitLabServiceAccountToken = "gitlab-service-account-token",
+  GitLabGroupAccessToken = "gitlab-group-access-token"
 }
 
 export enum SecretRotationStatus {

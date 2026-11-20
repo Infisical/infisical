@@ -28,3 +28,17 @@ export enum GitLabTokenScope {
   K8sProxy = "k8s_proxy",
   SelfRotate = "self_rotate"
 }
+
+// the role of a group or project access token: https://docs.gitlab.com/api/group_access_tokens/
+export enum GitLabTokenAccessLevel {
+  Guest = 10,
+  Planner = 15,
+  Reporter = 20,
+  SecurityManager = 25,
+  Developer = 30,
+  Maintainer = 40,
+  Owner = 50
+}
+
+// scopes GitLab grants only to personal access tokens
+export const GITLAB_PERSONAL_ACCESS_TOKEN_ONLY_SCOPES: string[] = [GitLabTokenScope.ReadUser];

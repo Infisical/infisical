@@ -15,6 +15,7 @@ import { DatadogApplicationKeySecretRotationParametersFields } from "./DatadogAp
 import { DbtServiceTokenRotationParametersFields } from "./DbtServiceTokenRotationParametersFields";
 import { FireworksApiKeyRotationParametersFields } from "./FireworksApiKeyRotationParametersFields";
 import { GcpServiceAccountKeyRotationParametersFields } from "./GcpServiceAccountKeyRotationParametersFields";
+import { GitLabGroupAccessTokenRotationParametersFields } from "./GitLabGroupAccessTokenRotationParametersFields";
 import { GitLabServiceAccountTokenRotationParametersFields } from "./GitLabServiceAccountTokenRotationParametersFields";
 import { HpIloRotationParametersFields } from "./HpIloRotationParametersFields";
 import { LdapPasswordRotationParametersFields } from "./LdapPasswordRotationParametersFields";
@@ -65,7 +66,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.StripeApiKey]: StripeApiKeyRotationParametersFields,
   [SecretRotation.GcpServiceAccountKey]: GcpServiceAccountKeyRotationParametersFields,
   [SecretRotation.ClickHouseCredentials]: MongoRotationParametersFields,
-  [SecretRotation.GitLabServiceAccountToken]: GitLabServiceAccountTokenRotationParametersFields
+  [SecretRotation.GitLabServiceAccountToken]: GitLabServiceAccountTokenRotationParametersFields,
+  [SecretRotation.GitLabGroupAccessToken]: GitLabGroupAccessTokenRotationParametersFields
 };
 
 export const SecretRotationV2ParametersFields = () => {

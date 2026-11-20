@@ -4143,6 +4143,15 @@ export const SecretRotations = {
       description: "An optional description for the generated GitLab token.",
       scopes: "The scopes to grant the generated GitLab token, for example 'api', 'read_api', or 'read_repository'."
     },
+    GITLAB_GROUP_ACCESS_TOKEN: {
+      groupId: "The ID of the GitLab group to create group access tokens for.",
+      name: "The name for the generated group access token. Infisical appends a timestamp so each rotated token is distinct.",
+      description: "An optional description for the generated group access token.",
+      scopes:
+        "The scopes to grant the generated group access token, for example 'api', 'read_api', or 'read_repository'. The 'read_user' scope is not available to group access tokens.",
+      accessLevel:
+        "The role of the generated group access token in the group: 10 (Guest), 15 (Planner), 20 (Reporter), 25 (Security Manager), 30 (Developer), 40 (Maintainer), or 50 (Owner). Defaults to 40."
+    },
     GCP_SERVICE_ACCOUNT_KEY: {
       serviceAccountEmail:
         "The email of the GCP service account whose keys will be rotated, e.g. my-app@my-project.iam.gserviceaccount.com. The connection's service account needs the Service Account Key Admin role (roles/iam.serviceAccountKeyAdmin) on it."
@@ -4260,6 +4269,10 @@ export const SecretRotations = {
     GITLAB_SERVICE_ACCOUNT_TOKEN: {
       tokenId: "The name of the secret that the rotated GitLab token ID will be mapped to.",
       token: "The name of the secret that the rotated GitLab token value will be mapped to."
+    },
+    GITLAB_GROUP_ACCESS_TOKEN: {
+      tokenId: "The name of the secret that the rotated group access token ID will be mapped to.",
+      token: "The name of the secret that the rotated group access token value will be mapped to."
     }
   }
 };

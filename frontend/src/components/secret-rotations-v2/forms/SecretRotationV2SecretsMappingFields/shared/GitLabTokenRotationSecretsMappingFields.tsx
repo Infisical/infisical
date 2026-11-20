@@ -4,16 +4,18 @@ import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms
 import { Field, FieldError, Input } from "@app/components/v3";
 import { SecretRotation, useSecretRotationV2Option } from "@app/hooks/api/secretRotationsV2";
 
-import { SecretsMappingTable } from "./shared";
+import { SecretsMappingTable } from "./SecretsMappingTable";
 
-export const GitLabServiceAccountTokenRotationSecretsMappingFields = () => {
-  const { control } = useFormContext<
+export const GitLabTokenRotationSecretsMappingFields = () => {
+  const { control, watch } = useFormContext<
     TSecretRotationV2Form & {
-      type: SecretRotation.GitLabServiceAccountToken;
+      type: SecretRotation.GitLabServiceAccountToken | SecretRotation.GitLabGroupAccessToken;
     }
   >();
 
-  const { rotationOption } = useSecretRotationV2Option(SecretRotation.GitLabServiceAccountToken);
+  const type = watch("type");
+
+  const { rotationOption } = useSecretRotationV2Option(type);
 
   const items = [
     {

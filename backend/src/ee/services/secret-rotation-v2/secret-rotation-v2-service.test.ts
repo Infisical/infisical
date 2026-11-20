@@ -72,6 +72,10 @@ vi.mock("./gitlab-service-account-token/gitlab-service-account-token-rotation-fn
   gitLabServiceAccountTokenRotationFactory: () => ({ rotateCredentials, getSecretsPayload: () => [] })
 }));
 
+vi.mock("./gitlab-group-access-token/gitlab-group-access-token-rotation-fns", () => ({
+  gitLabGroupAccessTokenRotationFactory: () => ({ rotateCredentials, getSecretsPayload: () => [] })
+}));
+
 vi.mock("./unix-linux-local-account-rotation/unix-linux-local-account-rotation-fns", () => ({
   unixLinuxLocalAccountRotationFactory: () => ({
     issueCredentials: async (callback: TRotationCallback) => callback({ username: "app", password: "reconciled" })
@@ -98,9 +102,11 @@ const rotation = (rotationStatus: SecretRotationStatus, type = SecretRotation.St
       id: "connection-1",
       orgId: "org-1",
       app:
-        { [SecretRotation.StripeApiKey]: "stripe", [SecretRotation.GitLabServiceAccountToken]: "gitlab" }[
-          type as string
-        ] ?? "ssh"
+        {
+          [SecretRotation.StripeApiKey]: "stripe",
+          [SecretRotation.GitLabServiceAccountToken]: "gitlab",
+          [SecretRotation.GitLabGroupAccessToken]: "gitlab"
+        }[type as string] ?? "ssh"
     },
     folder: { id: "folder-1", path: "/" },
     environment: { id: "env-1", slug: "dev", name: "Development" }
@@ -501,66 +507,65 @@ describe("rotation alert cleanup", () => {
   });
 });
 
-describe("updating the rotation interval", () => {
-  const update = (
-    service: ReturnType<typeof createService>["service"],
-    payload: { rotationInterval?: number; description?: string }
-  ) =>
-    service.updateSecretRotation(
-      { type: SecretRotation.GitLabServiceAccountToken, rotationId: "rotation-1", ...payload } as never,
-      actor as never
-    );
+describe.each([SecretRotation.GitLabServiceAccountToken, SecretRotation.GitLabGroupAccessToken])(
+  "updating the rotation interval of a %s rotation",
+  (type) => {
+    const update = (
+      service: ReturnType<typeof createService>["service"],
+      payload: { rotationInterval?: number; description?: string }
+    ) => service.updateSecretRotation({ type, rotationId: "rotation-1", ...payload } as never, actor as never);
 
-  const createGitLabService = () => {
-    const created = createService({
-      storedStatus: SecretRotationStatus.Success,
-      type: SecretRotation.GitLabServiceAccountToken
+    const createGitLabService = () => {
+      const created = createService({
+        storedStatus: SecretRotationStatus.Success,
+        type
+      });
+      created.deps.secretRotationV2DAL.transaction.mockImplementation(async (callback) =>
+        callback({ ...TX, raw: vi.fn(async () => undefined) })
+      );
+      return created;
+    };
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      rotateCredentials.mockImplementation(runCallback);
     });
-    created.deps.secretRotationV2DAL.transaction.mockImplementation(async (callback) =>
-      callback({ ...TX, raw: vi.fn(async () => undefined) })
-    );
-    return created;
-  };
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    rotateCredentials.mockImplementation(runCallback);
-  });
+    test("rotates GitLab credentials right away so the new token's expiry follows the new interval", async () => {
+      const { service, deps } = createGitLabService();
 
-  test("rotates GitLab credentials right away so the new token's expiry follows the new interval", async () => {
-    const { service, deps } = createGitLabService();
+      await update(service, { rotationInterval: 30 });
 
-    await update(service, { rotationInterval: 30 });
+      expect(rotateCredentials).toHaveBeenCalledTimes(1);
+      expect(deps.secretRotationV2DAL.findById).toHaveBeenCalledTimes(2);
+      expect(deps.secretRotationV2DAL.updateById).toHaveBeenLastCalledWith(
+        "rotation-1",
+        expect.objectContaining({ isLastRotationManual: true, rotationStatus: SecretRotationStatus.Success }),
+        expect.anything()
+      );
+      expect(deps.queueService.queue).not.toHaveBeenCalled();
+    });
 
-    expect(rotateCredentials).toHaveBeenCalledTimes(1);
-    expect(deps.secretRotationV2DAL.findById).toHaveBeenCalledTimes(2);
-    expect(deps.secretRotationV2DAL.updateById).toHaveBeenLastCalledWith(
-      "rotation-1",
-      expect.objectContaining({ isLastRotationManual: true, rotationStatus: SecretRotationStatus.Success }),
-      expect.anything()
-    );
-    expect(deps.queueService.queue).not.toHaveBeenCalled();
-  });
+    test("does not rotate when the interval is unchanged", async () => {
+      const { service } = createGitLabService();
 
-  test("does not rotate when the interval is unchanged", async () => {
-    const { service } = createGitLabService();
+      await update(service, { rotationInterval: 1, description: "same interval" });
 
-    await update(service, { rotationInterval: 1, description: "same interval" });
+      expect(rotateCredentials).not.toHaveBeenCalled();
+    });
 
-    expect(rotateCredentials).not.toHaveBeenCalled();
-  });
+    test("reports that the interval was saved when the immediate rotation fails", async () => {
+      const { service, deps } = createGitLabService();
+      rotateCredentials.mockRejectedValue(new Error("GitLab is down"));
 
-  test("reports that the interval was saved when the immediate rotation fails", async () => {
-    const { service, deps } = createGitLabService();
-    rotateCredentials.mockRejectedValue(new Error("GitLab is down"));
-
-    await expect(update(service, { rotationInterval: 30 })).rejects.toThrow(
-      "The rotation interval was updated, but rotating the credentials for the new interval failed"
-    );
-    expect(deps.secretRotationV2DAL.updateById).toHaveBeenCalledWith(
-      "rotation-1",
-      expect.objectContaining({ rotationInterval: 30 }),
-      expect.anything()
-    );
-  });
-});
+      await expect(update(service, { rotationInterval: 30 })).rejects.toThrow(
+        "The rotation interval was updated, but rotating the credentials for the new interval failed"
+      );
+      expect(deps.secretRotationV2DAL.updateById).toHaveBeenCalledWith(
+        "rotation-1",
+        expect.objectContaining({ rotationInterval: 30 }),
+        expect.anything()
+      );
+    });
+  }
+);
