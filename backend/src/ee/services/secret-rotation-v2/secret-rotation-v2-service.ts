@@ -81,7 +81,6 @@ import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -449,7 +448,7 @@ export const secretRotationV2ServiceFactory = ({
         message: `Could not find ${SECRET_ROTATION_NAME_MAP[type]} Rotation with ID "${rotationId}"`
       });
 
-    const { projectId, connection } = secretRotation;
+    const { projectId } = secretRotation;
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -465,7 +464,7 @@ export const secretRotationV2ServiceFactory = ({
       getSecretRotationSubject(secretRotation)
     );
 
-    if (!getSecretRotationConnectionApps(type).includes(connection.app as AppConnection))
+    if (secretRotation.type !== type)
       throw new BadRequestError({
         message: `Secret Rotation with ID "${rotationId}" is not configured for ${SECRET_ROTATION_NAME_MAP[type]}`
       });
@@ -492,7 +491,7 @@ export const secretRotationV2ServiceFactory = ({
         message: `Could not find ${SECRET_ROTATION_NAME_MAP[type]} Rotation with ID "${rotationId}"`
       });
 
-    const { projectId, connection, encryptedGeneratedCredentials } = secretRotation;
+    const { projectId, encryptedGeneratedCredentials } = secretRotation;
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -508,7 +507,7 @@ export const secretRotationV2ServiceFactory = ({
       getSecretRotationSubject(secretRotation)
     );
 
-    if (!getSecretRotationConnectionApps(type).includes(connection.app as AppConnection))
+    if (secretRotation.type !== type)
       throw new BadRequestError({
         message: `Secret Rotation with ID "${rotationId}" is not configured for ${SECRET_ROTATION_NAME_MAP[type]}`
       });
@@ -554,7 +553,7 @@ export const secretRotationV2ServiceFactory = ({
         message: `Could not find ${SECRET_ROTATION_NAME_MAP[type]} Rotation with name "${rotationName}"`
       });
 
-    const { connection, id: rotationId } = secretRotation;
+    const { id: rotationId } = secretRotation;
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -570,7 +569,7 @@ export const secretRotationV2ServiceFactory = ({
       getSecretRotationSubject(secretRotation)
     );
 
-    if (!getSecretRotationConnectionApps(type).includes(connection.app as AppConnection))
+    if (secretRotation.type !== type)
       throw new BadRequestError({
         message: `Secret Rotation with ID "${rotationId}" is not configured for ${SECRET_ROTATION_NAME_MAP[type]}`
       });
@@ -850,7 +849,7 @@ export const secretRotationV2ServiceFactory = ({
       getSecretRotationSubject(secretRotation)
     );
 
-    if (!getSecretRotationConnectionApps(type).includes(connection.app as AppConnection))
+    if (secretRotation.type !== type)
       throw new BadRequestError({
         message: `Secret Rotation with ID "${rotationId}" is not configured for ${SECRET_ROTATION_NAME_MAP[type]}`
       });
@@ -945,8 +944,10 @@ export const secretRotationV2ServiceFactory = ({
         payload.rotationInterval !== secretRotation.rotationInterval
       ) {
         try {
-          // reloaded so a rotation that finished while this update ran isn't overwritten with older credentials
-          const currentSecretRotation = await secretRotationV2DAL.findById(rotationId);
+          // reloaded from the primary so the new interval is seen and a rotation that finished while this update ran isn't overwritten with older credentials
+          const currentSecretRotation = await secretRotationV2DAL.transaction((tx) =>
+            secretRotationV2DAL.findById(rotationId, tx)
+          );
           if (!currentSecretRotation)
             throw new NotFoundError({ message: `Could not find secret rotation with ID ${rotationId}` });
 
@@ -1028,7 +1029,7 @@ export const secretRotationV2ServiceFactory = ({
       getSecretRotationSubject(secretRotation)
     );
 
-    if (!getSecretRotationConnectionApps(type).includes(connection.app as AppConnection))
+    if (secretRotation.type !== type)
       throw new BadRequestError({
         message: `Secret Rotation with ID "${rotationId}" is not configured for ${SECRET_ROTATION_NAME_MAP[type]}`
       });
@@ -1131,7 +1132,7 @@ export const secretRotationV2ServiceFactory = ({
 
     const { projectId, folderId: sourceFolderId, secretsMapping, folder, environment, connection } = secretRotation;
 
-    if (!getSecretRotationConnectionApps(type).includes(connection.app as AppConnection))
+    if (secretRotation.type !== type)
       throw new BadRequestError({
         message: `Secret Rotation with ID "${rotationId}" is not configured for ${SECRET_ROTATION_NAME_MAP[type]}`
       });
@@ -1708,7 +1709,7 @@ export const secretRotationV2ServiceFactory = ({
         message: `Could not find ${SECRET_ROTATION_NAME_MAP[type]} Rotation with ID "${rotationId}"`
       });
 
-    const { projectId, connection } = secretRotation;
+    const { projectId } = secretRotation;
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -1724,7 +1725,7 @@ export const secretRotationV2ServiceFactory = ({
       getSecretRotationSubject(secretRotation)
     );
 
-    if (!getSecretRotationConnectionApps(type).includes(connection.app as AppConnection))
+    if (secretRotation.type !== type)
       throw new BadRequestError({
         message: `Secret Rotation with ID "${rotationId}" is not configured for ${SECRET_ROTATION_NAME_MAP[type]}`
       });
@@ -1784,7 +1785,7 @@ export const secretRotationV2ServiceFactory = ({
       getSecretRotationSubject(secretRotation)
     );
 
-    if (!getSecretRotationConnectionApps(type).includes(connection.app as AppConnection))
+    if (secretRotation.type !== type)
       throw new BadRequestError({
         message: `Secret Rotation with ID "${rotationId}" is not configured for ${SECRET_ROTATION_NAME_MAP[type]}`
       });

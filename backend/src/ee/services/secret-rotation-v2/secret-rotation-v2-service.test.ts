@@ -538,6 +538,7 @@ describe.each([SecretRotation.GitLabServiceAccountToken, SecretRotation.GitLabGr
 
       expect(rotateCredentials).toHaveBeenCalledTimes(1);
       expect(deps.secretRotationV2DAL.findById).toHaveBeenCalledTimes(2);
+      expect(deps.secretRotationV2DAL.findById).toHaveBeenLastCalledWith("rotation-1", expect.anything());
       expect(deps.secretRotationV2DAL.updateById).toHaveBeenLastCalledWith(
         "rotation-1",
         expect.objectContaining({ isLastRotationManual: true, rotationStatus: SecretRotationStatus.Success }),
@@ -566,6 +567,22 @@ describe.each([SecretRotation.GitLabServiceAccountToken, SecretRotation.GitLabGr
         expect.objectContaining({ rotationInterval: 30 }),
         expect.anything()
       );
+    });
+
+    test("refuses an update sent to the other GitLab rotation's endpoint", async () => {
+      const { service, deps } = createGitLabService();
+      const otherType =
+        type === SecretRotation.GitLabServiceAccountToken
+          ? SecretRotation.GitLabGroupAccessToken
+          : SecretRotation.GitLabServiceAccountToken;
+
+      await expect(
+        service.updateSecretRotation(
+          { type: otherType, rotationId: "rotation-1", rotationInterval: 30 } as never,
+          actor as never
+        )
+      ).rejects.toThrow("is not configured for");
+      expect(deps.secretRotationV2DAL.updateById).not.toHaveBeenCalled();
     });
   }
 );
