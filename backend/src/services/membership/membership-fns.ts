@@ -13,6 +13,7 @@ import {
 import { PlanProduct, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   agentVaultNoSuchRoleMessage,
+  assertAgentVaultKeptRolesWithinLimit,
   assertAgentVaultRoleSetLimits,
   findAgentVaultMemberRole
 } from "@app/ee/services/agent-vault-member/agent-vault-member-role-fns";
@@ -166,10 +167,10 @@ export const assertProductWillRetainAdmin = async ({
 const isAgentVaultLegacyRole = (role: string) =>
   role === ProjectMembershipRole.Member || role === ProjectMembershipRole.Viewer;
 
-// Agent Vault retired its built-in Member role, and `member` now names the Member role the role migration made in a
-// project that had Member rows, as on Agent Vault's own members routes, so a client that still sends it keeps working
-// there. Viewer resolved to Member's rules too, so it gets the same role. A project without one, as every project
-// created since, refuses both like any role it doesn't have. Drop with the Agent Vault alias after 2027-01-04.
+// In an Agent Vault project `member` names the Member role the role migration made in a project that had Member rows, as
+// on Agent Vault's own members routes, so a client that still sends it keeps working there. `viewer` names it too, since
+// a client that sends it expects the same access. A project without that role refuses both like any role it doesn't
+// have. Drop with the Agent Vault alias after 2027-01-04.
 export const withAgentVaultMemberAlias = async <T extends { role: string }>(
   {
     projectDAL,
@@ -202,8 +203,8 @@ export const withAgentVaultMemberAlias = async <T extends { role: string }>(
 
 /**
  * The Agent Vault project whose access bundle roles this role change keeps, if any. A client that still sends `member`
- * or `viewer` to an Agent Vault project predates its custom roles and knows nothing of access bundle roles, which took
- * the place of grants kept apart from a member's role, so its change keeps the ones the member holds
+ * or `viewer` to an Agent Vault project predates its custom roles and knows nothing of access bundle roles, which carry
+ * the access bundle grants it manages apart from a member's role, so its change keeps the ones the member holds
  * (replaceMembershipRoles), as the deprecated `role` on Agent Vault's own members routes does. Ask before
  * withAgentVaultMemberAlias rewrites the aliases. Drop with the alias after 2027-01-04.
  */
@@ -229,8 +230,8 @@ export const lockProjectRoleChanges = async (projectId: string, tx: Knex) => {
 
 /**
  * Replaces a membership's roles with these. With keepBundleRolesInProjectId (see findProjectKeepingBundleRoles), the
- * access bundle roles the membership holds stay as they are, temporary access included, and are never given twice. The
- * caller holds lockProjectRoleChanges for that project.
+ * access bundle roles the membership holds stay as they are and are never given twice, and they count toward the most
+ * roles a member can hold. The caller holds lockProjectRoleChanges for that project.
  */
 export const replaceMembershipRoles = async (
   { membershipRoleDAL }: { membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find" | "delete" | "insertMany"> },
@@ -255,12 +256,14 @@ export const replaceMembershipRoles = async (
         .select("grantRoleId")) as { grantRoleId: string }[]
     ).map((row) => row.grantRoleId)
   );
-  const kept = current.filter((row) => row.customRoleId && bundleRoleIds.has(row.customRoleId));
-  const replaced = current.filter((row) => !kept.includes(row));
-  if (replaced.length) await membershipRoleDAL.delete({ $in: { id: replaced.map((row) => row.id) } }, tx);
+  // A role whose time limit has ended grants nothing, so it is replaced like the rest.
+  const kept = current.filter((row) => row.customRoleId && bundleRoleIds.has(row.customRoleId) && isActiveRole(row));
   const added = roleDocs.filter(
     (doc) => !kept.some((row) => Boolean(doc.customRoleId) && row.customRoleId === doc.customRoleId)
   );
+  assertAgentVaultKeptRolesWithinLimit(kept.length + added.length);
+  const replaced = current.filter((row) => !kept.includes(row));
+  if (replaced.length) await membershipRoleDAL.delete({ $in: { id: replaced.map((row) => row.id) } }, tx);
   return [...kept, ...(added.length ? await membershipRoleDAL.insertMany(added, tx) : [])];
 };
 
@@ -320,7 +323,13 @@ export const agentVaultProjectToRecheck = async (
     projectDAL: Pick<TProjectDALFactory, "findById">;
     permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   },
-  { scopeData, actor }: { scopeData: { scope: AccessScope; projectId?: string }; actor: OrgServiceActor }
+  {
+    scopeData,
+    actor
+  }: {
+    scopeData: { scope: AccessScope; projectId?: string };
+    actor: Pick<OrgServiceActor, "type" | "id" | "authMethod" | "orgId">;
+  }
 ) => {
   if (scopeData.scope !== AccessScope.Project || !scopeData.projectId) return null;
   const { projectId } = scopeData;

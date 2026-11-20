@@ -120,10 +120,9 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   `resolveAgentVaultProjectRoleRules` (`permission-service.ts`) gives admin `buildAgentVaultProjectAdminPermissionRules`,
   unpacks a custom role, and gives any other slug nothing, a leftover `member` row included.
   So a new action goes into the admin rule set and nowhere else built in; anything narrower is a custom role, never a
-  branch in a service. Before it every role but admin resolved to Member's rules, so the role migration
-  (`20261118120000_agent-vault-roles-replace-bundle-grants.ts`) moved Member and Viewer rows onto a per-project custom
-  role, slug `member-role`, with Member's rules, and gave it to holders of custom roles that existed then, whose own
-  rules had taken no effect.
+  branch in a service. The role migration (`20261118120000_agent-vault-roles-replace-bundle-grants.ts`) moves a
+  project's Member, Viewer and custom-role rows onto a per-project custom role, slug `member-role`, with Member's rules,
+  so nobody's access changes.
 - **Roles are the only thing that grants access.** `getProjectPermission` leaves a member's additional privileges out of an
   Agent Vault project's permission, and the project additional privilege factory refuses to create or update one there
   (`assertProjectTakesAdditionalPrivileges`), so the Who Can Use lists stay complete. A role takes no time limit either:
@@ -142,18 +141,23 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
 - **Members take a list of roles** (`roles`, at most `AGENT_VAULT_MAX_MEMBER_ROLES`, resolved by
   `resolveAgentVaultMemberRoles`): admin, no-access or a custom role's slug, and No Access only alone. The generic
   membership routes apply the same limits (`assertAgentVaultRoleLimits`), so neither can save a set the other refuses.
-  A role change keeps the row of every role it names again, temporary access included. A non-admin's change or removal
-  re-reads the targets' roles under the project's `LastAdminGuard` lock and answers 409 if they changed since its admin
-  and boundary checks, which an admin passes whatever the targets hold. The generic user, group and identity routes
-  repeat the admin rule under the same lock for an Agent Vault project (`agentVaultProjectToRecheck` before the
-  transaction, `assertAgentVaultAdminTargetUnchanged` first inside it).
+  A role change keeps the row of every role it names again, time limit included, but a row whose time limit has ended
+  counts as not held, so naming its role again gives it afresh. A non-admin's change or removal reads the targets' roles
+  on the primary, re-reads them under the project's `LastAdminGuard` lock, and answers 409 if they changed since its
+  admin and boundary checks, which an admin passes whatever the targets hold. The generic user, group and identity
+  routes, the bulk user removal (`deleteProjectMemberships`) included, repeat the admin rule under the same lock for an
+  Agent Vault project (`agentVaultProjectToRecheck` before the transaction, `assertAgentVaultAdminTargetUnchanged` first
+  inside it).
   The deprecated `role` field still takes admin or member, where member is the Member role the migration made, and keeps
-  the member's bundle roles (`keepBundleRoles`), since it never touched grants. Responses carry `roles` and the
+  the member's bundle roles (`keepBundleRoles`), since it never touched grants. The kept roles count toward
+  `AGENT_VAULT_MAX_MEMBER_ROLES` (`assertAgentVaultKeptRolesWithinLimit`), as a grant does. Responses carry `roles` and the
   deprecated `role` (`withDeprecatedRole`), which reads admin or member whenever the member holds one of them so old
   clients keep working. It finds the Member role by its derived id (`findMemberRoleSlug`), never by slug: the migration
   may have suffixed it, an admin may rename it, and a project made since can hold an unrelated `member-role`.
   The generic project membership routes read `member` and `viewer` for an Agent Vault project as the Member role too
-  (`withAgentVaultMemberAlias` in `membership-fns.ts`): a raw `member` row grants nothing there now.
+  (`withAgentVaultMemberAlias` in `membership-fns.ts`), and keep bundle roles the same way: a raw `member` row grants
+  nothing there. The deprecated `POST /api/v1/workspace/:workspaceId/memberships` can only give that raw row, so it
+  refuses an Agent Vault project.
 - **`create-with-inline-skills` on sessions is held by admin and the migrated Member role.** A skill sent with a
   session carries instructions, not credentials or hosts, so Member always could send one; it is an action so a role can
   be denied it, and the skills fetch checks it like resolve checks `create-with-inline-services`.

@@ -9,8 +9,8 @@ import {
 } from "@app/ee/services/permission/project-permission";
 
 /**
- * For tests: the rules of the "Member" role the role migration makes from the retired built-in Member, plus the bundle
- * roles that replace grants, as one role set. `accessBundleIds` are the bundles the actor used to be granted.
+ * For tests: the rules of the "Member" role the role migration makes, plus the role of each bundle in `accessBundleIds`,
+ * which lets its holder use that bundle, as one role set.
  */
 export const agentVaultMemberTestRules = (
   accessBundleIds: string[] = []

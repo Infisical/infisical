@@ -2,6 +2,7 @@ import { packRules } from "@casl/ability/extra";
 import { Knex } from "knex";
 
 import { AccessScope, ProjectMembershipRole, TAgentVaultAccessBundles } from "@app/db/schemas";
+import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionSub
@@ -14,10 +15,10 @@ import { AGENT_VAULT_MAX_MEMBER_ROLES } from "../agent-vault-member/agent-vault-
 import { TAgentVaultAccessBundleDALFactory } from "./agent-vault-access-bundle-dal";
 
 /**
- * Access bundle grants were replaced by roles. Each bundle can have one role that can use it, recorded on the bundle
- * (`grantRoleId`): the migration made one for every bundle that had grants, and the deprecated grant endpoints make one
- * the first time they need it. Granting the bundle gives that role, revoking takes it away, and listing grantees lists
- * who holds it. Drop these with the endpoints after 2027-01-04.
+ * The deprecated grant endpoints work on a role. Each bundle can have one role that can use it, recorded on the bundle
+ * (`grantRoleId`): the role migration made one for every bundle that had grants, and the grant endpoints make one the
+ * first time they need it. Granting the bundle gives that role, revoking takes it away, and listing grantees lists who
+ * holds it. Drop these with the endpoints after 2027-01-04.
  */
 
 export type TBundleRoleActorColumn = "actorUserId" | "actorIdentityId" | "actorGroupId";
@@ -109,9 +110,10 @@ export const giveBundleRole = async (
 ) => {
   const membershipByActor = await projectMembershipsOf(deps, { projectId, actors }, tx);
   const membershipIds = [...new Set(membershipByActor.values())];
-  const rows = membershipIds.length
-    ? await deps.membershipRoleDAL.find({ $in: { membershipId: membershipIds } }, { tx })
-    : [];
+  // A role whose time limit has ended grants nothing, so it counts as not held, and giving the role replaces it.
+  const rows = (
+    membershipIds.length ? await deps.membershipRoleDAL.find({ $in: { membershipId: membershipIds } }, { tx }) : []
+  ).filter(isActiveRole);
   const holding = new Set(rows.filter((row) => row.customRoleId === roleId).map((row) => row.membershipId));
   // No Access doesn't count: the bundle's role takes its place.
   const roleCountOf = (membershipId: string) =>
@@ -139,6 +141,7 @@ export const giveBundleRole = async (
       { role: ProjectMembershipRole.NoAccess, $in: { membershipId: addedMembershipIds } },
       tx
     );
+    await deps.membershipRoleDAL.delete({ customRoleId: roleId, $in: { membershipId: addedMembershipIds } }, tx);
     await deps.membershipRoleDAL.insertMany(
       addedMembershipIds.map((membershipId) => ({
         membershipId,

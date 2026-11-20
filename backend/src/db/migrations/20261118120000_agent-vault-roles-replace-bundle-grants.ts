@@ -260,7 +260,9 @@ export async function up(knex: Knex): Promise<void> {
 
 // Best effort: grants come back from each bundle's role and the roles go, and every row on a Member role returns to the
 // built-in role, Viewer rows and the rows moved off custom roles included, which the old rules read the same way.
-// Anything else given to those roles since is lost with them.
+// Anything else given to those roles since is lost with them. A membership whose only role was a bundle's gets Member,
+// since a membership needs a role. The old rules read every role but admin as Member, so No Access and the custom roles
+// left in place read as Member too.
 export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasColumn(TableName.AgentVaultAccessBundle, "grantRoleId")) {
     // Any grant here was written after up() by an instance on the previous release. The roles say who has access now, so
@@ -280,6 +282,7 @@ export async function down(knex: Knex): Promise<void> {
         knex.ref("orgId").withSchema(TableName.Project)
       )) as { id: string; projectId: string; grantRoleId: string; orgId: string }[];
 
+    const bundleRoleMembershipIds = new Set<string>();
     for await (const bundle of bundles) {
       // A grant can't carry a time limit, so a temporary assignment isn't restored: as a grant it would never end.
       const holders = (await knex(TableName.MembershipRole)
@@ -309,8 +312,29 @@ export async function down(knex: Knex): Promise<void> {
         await knex(TableName.MembershipRole).insert({ membershipId: grant.id, role: "consumer" });
       }
 
+      (
+        (await knex(TableName.MembershipRole).where({ customRoleId: bundle.grantRoleId }).select("membershipId")) as {
+          membershipId: string;
+        }[]
+      ).forEach((row) => bundleRoleMembershipIds.add(row.membershipId));
       await knex(TableName.MembershipRole).where({ customRoleId: bundle.grantRoleId }).delete();
       await knex(TableName.Role).where({ id: bundle.grantRoleId }).delete();
+    }
+
+    if (bundleRoleMembershipIds.size) {
+      const roleless = (await knex(TableName.Membership)
+        .whereIn("id", [...bundleRoleMembershipIds])
+        .whereNotExists(
+          knex(TableName.MembershipRole)
+            .whereRaw(`"${TableName.MembershipRole}"."membershipId" = "${TableName.Membership}"."id"`)
+            .select("id")
+        )
+        .select("id")) as { id: string }[];
+      if (roleless.length) {
+        await knex(TableName.MembershipRole).insert(
+          roleless.map((membership) => ({ membershipId: membership.id, role: ProjectMembershipRole.Member }))
+        );
+      }
     }
 
     await knex.schema.alterTable(TableName.AgentVaultAccessBundle, (t) => {

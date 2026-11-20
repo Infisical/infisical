@@ -606,6 +606,129 @@ describe("agentVaultMembership guards", () => {
     );
   });
 
+  test("the deprecated role counts the access bundle roles it keeps toward the limit", async () => {
+    const { service, deps } = buildService({
+      productMemberships: [{ id: "mem-identity" }],
+      adminMembershipIds: ["mem-other-admin"]
+    });
+    const bundleRoleIds = Array.from({ length: 10 }, (_, index) => `role-bundle-${index}`);
+    vi.mocked(deps.membershipRoleDAL.find).mockResolvedValue(
+      bundleRoleIds.map((customRoleId) => ({
+        id: `row-${customRoleId}`,
+        membershipId: "mem-identity",
+        role: ProjectMembershipRole.Custom,
+        customRoleId
+      })) as never
+    );
+    vi.mocked(deps.agentVaultAccessBundleDAL.find).mockResolvedValue(
+      bundleRoleIds.map((grantRoleId) => ({ grantRoleId })) as never
+    );
+    vi.mocked(deps.roleDAL.find).mockResolvedValue(bundleRoleIds.map((id) => ({ id, slug: `${id}-users` })) as never);
+
+    await expect(
+      service.updateProductMemberRoles({
+        projectId: PROJECT_ID,
+        userIds: [],
+        groupIds: [],
+        machineIdentityIds: [IDENTITY_ID],
+        roles: [ProjectMembershipRole.Member],
+        keepBundleRoles: true,
+        ctx
+      })
+    ).rejects.toThrow("A member can have at most 10 roles.");
+
+    expect(deps.membershipRoleDAL.delete).not.toHaveBeenCalled();
+    expect(deps.membershipRoleDAL.insertMany).not.toHaveBeenCalled();
+  });
+
+  test("a role whose time limit has ended is given afresh when named again", async () => {
+    const { service, deps } = buildService({
+      productMemberships: [{ id: "mem-identity" }],
+      adminMembershipIds: ["mem-other-admin"]
+    });
+    vi.mocked(deps.membershipRoleDAL.find).mockResolvedValue([
+      {
+        id: "row-ended",
+        membershipId: "mem-identity",
+        role: ProjectMembershipRole.Custom,
+        customRoleId: "role-member",
+        isTemporary: true,
+        temporaryAccessEndTime: new Date(Date.now() - 60_000)
+      }
+    ] as never);
+
+    const { members, skipped } = await service.updateProductMemberRoles({
+      projectId: PROJECT_ID,
+      userIds: [],
+      groupIds: [],
+      machineIdentityIds: [IDENTITY_ID],
+      roles: [ProjectMembershipRole.Member],
+      ctx
+    });
+
+    expect(skipped).toEqual([]);
+    expect(members).toMatchObject([{ id: IDENTITY_ID, roles: ["member-role"] }]);
+    expect(deps.membershipRoleDAL.delete).toHaveBeenCalledWith({ $in: { id: ["row-ended"] } }, expect.anything());
+    expect(deps.membershipRoleDAL.insertMany).toHaveBeenCalledWith(
+      [{ membershipId: "mem-identity", role: ProjectMembershipRole.Custom, customRoleId: "role-member" }],
+      expect.anything()
+    );
+  });
+
+  test("a time-limited role named again keeps its row and its time limit", async () => {
+    const { service, deps } = buildService({
+      productMemberships: [{ id: "mem-identity" }],
+      adminMembershipIds: ["mem-other-admin"]
+    });
+    vi.mocked(deps.membershipRoleDAL.find).mockResolvedValue([
+      {
+        id: "row-live",
+        membershipId: "mem-identity",
+        role: ProjectMembershipRole.Custom,
+        customRoleId: "role-member",
+        isTemporary: true,
+        temporaryAccessEndTime: new Date(Date.now() + 3_600_000)
+      }
+    ] as never);
+
+    await service.updateProductMemberRoles({
+      projectId: PROJECT_ID,
+      userIds: [],
+      groupIds: [],
+      machineIdentityIds: [IDENTITY_ID],
+      roles: [ProjectMembershipRole.Member, ProjectMembershipRole.Admin],
+      ctx
+    });
+
+    expect(deps.membershipRoleDAL.delete).not.toHaveBeenCalled();
+    expect(deps.membershipRoleDAL.insertMany).toHaveBeenCalledWith(
+      [{ membershipId: "mem-identity", role: ProjectMembershipRole.Admin }],
+      expect.anything()
+    );
+  });
+
+  test("reads the members' roles on the primary before the write's transaction too", async () => {
+    const { service, deps, txs } = buildService({
+      productMemberships: [{ id: "mem-identity" }],
+      adminMembershipIds: ["mem-other-admin"]
+    });
+
+    await service.updateProductMemberRoles({
+      projectId: PROJECT_ID,
+      userIds: [],
+      groupIds: [],
+      machineIdentityIds: [IDENTITY_ID],
+      roles: [ProjectMembershipRole.Member],
+      ctx
+    });
+    await service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx });
+
+    // Only a read without a tx goes to a replica.
+    const { calls } = vi.mocked(deps.membershipRoleDAL.findRolesByMembershipIds).mock;
+    expect(calls.length).toBeGreaterThanOrEqual(2);
+    calls.forEach(([, tx]) => expect(txs).toContain(tx));
+  });
+
   test("refuses one batch that would demote every remaining admin", async () => {
     const { service, deps, txs } = buildService({
       productMemberships: [{ id: "mem-identity" }, { id: "mem-group", actorIdentityId: null, actorGroupId: GROUP_ID }]
@@ -622,7 +745,8 @@ describe("agentVaultMembership guards", () => {
       })
     ).rejects.toThrow("must keep at least one admin");
 
-    expect(txs[0].chain.whereNotIn).toHaveBeenCalledWith(
+    // The last transaction is the write's; the first only read the members' roles.
+    expect(txs.at(-1)!.chain.whereNotIn).toHaveBeenCalledWith(
       expect.any(String),
       expect.arrayContaining(["mem-identity", "mem-group"])
     );

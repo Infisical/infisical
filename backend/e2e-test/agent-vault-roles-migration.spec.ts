@@ -203,13 +203,14 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
     expect(await grantRoleIdOf(granted)).toBe(grantRoleId);
     expect(await testDb(TableName.Role).where({ projectId, slug: "member-role" })).toHaveLength(1);
   });
-  test("down() turns bundle roles back into grants for who holds them for good now", async () => {
-    const [active, revoked, ended, timed, assigned] = [
+  test("down() turns bundle roles back into grants for who holds them for good now, leaving each member a role", async () => {
+    const [active, revoked, ended, timed, assigned, bundleOnly] = [
       await addIdentity(ProjectMembershipRole.Member),
       await addIdentity(ProjectMembershipRole.Member),
       await addIdentity(ProjectMembershipRole.Member),
       await addIdentity(ProjectMembershipRole.Member),
-      await addIdentity(ProjectMembershipRole.Member)
+      await addIdentity(ProjectMembershipRole.Member),
+      await addIdentity(ProjectMembershipRole.NoAccess)
     ];
     const bundle = await addBundle(`round-trip-${randomUUID().slice(0, 8)}`);
     await Promise.all(
@@ -237,6 +238,13 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
       role: ProjectMembershipRole.Custom,
       customRoleId: grantRoleId
     });
+    // Given after the upgrade to a member with No Access, which the bundle role takes the place of.
+    await testDb(TableName.MembershipRole).where({ membershipId: bundleOnly.membershipId }).delete();
+    await testDb(TableName.MembershipRole).insert({
+      membershipId: bundleOnly.membershipId,
+      role: ProjectMembershipRole.Custom,
+      customRoleId: grantRoleId
+    });
 
     await down(testDb);
     const grantedTo = (
@@ -244,10 +252,14 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
         .where({ scope: "resource", scopeResourceId: bundle })
         .select("actorIdentityId")) as { actorIdentityId: string }[]
     ).map((row) => row.actorIdentityId);
-    expect(grantedTo.sort()).toEqual([active.identityId, assigned.identityId].sort());
+    expect(grantedTo.sort()).toEqual([active.identityId, assigned.identityId, bundleOnly.identityId].sort());
+    // A membership needs a role, and Member is what the old rules read every role but admin as.
+    expect(await rolesOf(bundleOnly.membershipId)).toMatchObject([
+      { role: ProjectMembershipRole.Member, customRoleId: null }
+    ]);
 
     // Back to the migrated shape, which the specs after this one run on.
     await up(testDb);
-    expect(await testDb(TableName.MembershipRole).where({ customRoleId: await grantRoleIdOf(bundle) })).toHaveLength(2);
+    expect(await testDb(TableName.MembershipRole).where({ customRoleId: await grantRoleIdOf(bundle) })).toHaveLength(3);
   });
 });

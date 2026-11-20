@@ -131,7 +131,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
       const pageIds = ((await pageQuery) as { id: string }[]).map((row) => row.id);
       if (!pageIds.length) return { accessBundles: [], totalCount };
 
-      // How many hold the bundle's role (see agent-vault-bundle-role-fns), what the grant count used to be.
+      // How many hold the bundle's role (see agent-vault-bundle-role-fns): the members the deprecated grant endpoints list.
       const memberCounts = conn(TableName.MembershipRole)
         .join(TableName.Membership, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .where(`${TableName.Membership}.scope`, AccessScope.Project)

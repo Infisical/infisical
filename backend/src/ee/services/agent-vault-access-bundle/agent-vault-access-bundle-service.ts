@@ -1166,6 +1166,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     };
   };
 
+  const ACCESS_BUNDLE_NAME_UNIQUE = "agent_vault_access_bundles_projectid_name_unique";
+
   const createAccessBundle = async ({ projectId, ctx, name, description }: TCreateAccessBundleDTO) => {
     const { permission } = await getAgentVaultReachability(
       { permissionService, agentVaultReachDAL },
@@ -1185,8 +1187,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     if (ctx.actor === ActorType.USER) creatorColumn = "actorUserId";
     else if (ctx.actor === ActorType.IDENTITY) creatorColumn = "actorIdentityId";
 
-    // A creator whose roles don't already let them use the new bundle gets its role, the way creating one used to grant
-    // it to them, so whoever builds a bundle can try it. One who already holds the most roles a member can goes without.
+    // A creator whose roles don't already let them use the new bundle gets its role, so whoever builds a bundle can try
+    // it. One who already holds the most roles a member can goes without.
     const create = () =>
       agentVaultAccessBundleDAL.transaction(async (tx) => {
         const bundle = await agentVaultAccessBundleDAL.create({ projectId, name, description }, tx);
@@ -1218,8 +1220,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     try {
       return await create();
     } catch (err) {
-      if (isUniqueViolation(err)) {
+      if (hasPostgresConstraintViolation(err, DatabaseErrorCode.UniqueViolation, ACCESS_BUNDLE_NAME_UNIQUE)) {
         throw new BadRequestError({ message: `An access bundle named '${name}' already exists` });
+      }
+      // The creator's bundle role can lose its slug to a role made at the same moment.
+      if (isUniqueViolation(err)) {
+        throw new ConflictError({
+          message: "Another change to this project's roles happened at the same time. Try again."
+        });
       }
       throw err;
     }
@@ -3072,7 +3080,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
   /**
    * The roles that let someone use the bundle, with how many members hold each: who can use a bundle is decided by giving
-   * these roles. Admin first, then the project's roles by name. The bundle's own role, if it has one, is marked.
+   * these roles. Admin first, then the project's roles by name.
    */
   const listBundleRoles = async ({ accessBundleId, ...rest }: TGetAccessBundleDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });

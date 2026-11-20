@@ -1804,10 +1804,12 @@ export const AgentVaultPersonalValueInputSchema = z.discriminatedUnion("field", 
     .describe(JSON.stringify({ title: "Token or Password" }))
 ]);
 
+// Lowercase, as the database returns them: a role's conditions compare ids exactly, so an id in another case would get
+// past a rule that names it, and wouldn't match the member it names either.
 const memberIdsShape = (docs: { userIds: string; machineIdentityIds: string; groupIds: string }) => ({
-  userIds: z.string().uuid().array().default([]).describe(docs.userIds),
-  machineIdentityIds: z.string().uuid().array().default([]).describe(docs.machineIdentityIds),
-  groupIds: z.string().uuid().array().default([]).describe(docs.groupIds)
+  userIds: z.string().toLowerCase().uuid().array().default([]).describe(docs.userIds),
+  machineIdentityIds: z.string().toLowerCase().uuid().array().default([]).describe(docs.machineIdentityIds),
+  groupIds: z.string().toLowerCase().uuid().array().default([]).describe(docs.groupIds)
 });
 
 const namedCount = (body: {

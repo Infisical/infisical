@@ -10,7 +10,7 @@ import {
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, ConflictError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, DatabaseError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { hashAccessToken } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
@@ -1120,5 +1120,41 @@ describe("an OAuth credential from an OAuth variable", () => {
         credential: { type: AgentVaultCredentialType.OAuth, variable: "GDRIVE_A" }
       })
     ).rejects.toThrow("The OAuth variable 'GDRIVE_A' isn't connected");
+  });
+});
+
+describe("createAccessBundle, a write that loses a race", () => {
+  const createWith = (error: unknown) => {
+    const service = agentVaultAccessBundleServiceFactory({
+      agentVaultAccessBundleDAL: {
+        findOne: vi.fn().mockResolvedValue(undefined),
+        transaction: vi.fn().mockRejectedValue(error)
+      },
+      permissionService: {
+        getProjectPermission: vi.fn().mockResolvedValue({
+          permission: createMongoAbility([{ action: "manage", subject: "all" }]),
+          hasRole: () => true,
+          memberships: []
+        })
+      },
+      agentVaultReachDAL: agentVaultTestReachDAL({ accessBundleIds: [], serviceIds: [] })
+    } as unknown as Parameters<typeof agentVaultAccessBundleServiceFactory>[0]);
+    return service.createAccessBundle({ projectId: PROJECT_ID, ctx, name: "deploy" } as never);
+  };
+  const uniqueViolation = (constraint: string) =>
+    new DatabaseError({ error: Object.assign(new Error("duplicate key value"), { code: "23505", constraint }) });
+
+  test("to a bundle with the same name says the name is taken", async () => {
+    await expect(createWith(uniqueViolation("agent_vault_access_bundles_projectid_name_unique"))).rejects.toThrow(
+      new BadRequestError({ message: "An access bundle named 'deploy' already exists" })
+    );
+  });
+
+  test("to a role made with the bundle role's slug asks to try again", async () => {
+    const result = createWith(uniqueViolation("role_name_project_id_unique"));
+    await expect(result).rejects.toBeInstanceOf(ConflictError);
+    await expect(result).rejects.toThrow(
+      "Another change to this project's roles happened at the same time. Try again."
+    );
   });
 });

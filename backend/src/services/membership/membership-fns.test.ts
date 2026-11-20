@@ -1,12 +1,13 @@
 import knex, { Knex } from "knex";
 import { vi } from "vitest";
 
-import { ProjectType } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 
 import {
   assertAgentVaultAdminOnlyChange,
   assertProductWillRetainAdmin,
+  replaceMembershipRoles,
   resolveMembershipRoleSlugs
 } from "./membership-fns";
 
@@ -186,5 +187,75 @@ describe("assertAgentVaultAdminOnlyChange", () => {
       })
     ).not.toThrow();
     expect(hasRole).not.toHaveBeenCalled();
+  });
+});
+
+describe("replaceMembershipRoles keeping access bundle roles", () => {
+  const MEMBERSHIP_ID = "membership-1";
+  const memberRoleDoc = {
+    membershipId: MEMBERSHIP_ID,
+    role: ProjectMembershipRole.Custom,
+    customRoleId: "role-member"
+  };
+
+  // The bundles' roles are read off the transaction itself, the membership's rows through the DAL.
+  const build = (rows: Record<string, unknown>[], bundleRoleIds: string[]) => {
+    const tx = vi.fn(() => ({
+      where: () => ({
+        whereNotNull: () => ({ select: async () => bundleRoleIds.map((grantRoleId) => ({ grantRoleId })) })
+      })
+    })) as unknown as Knex;
+    const membershipRoleDAL = {
+      find: vi.fn().mockResolvedValue(rows),
+      delete: vi.fn().mockResolvedValue([]),
+      insertMany: vi.fn(async (docs: Record<string, unknown>[]) => docs.map((doc) => ({ ...doc, id: "row-new" })))
+    };
+    const replace = () =>
+      replaceMembershipRoles(
+        { membershipRoleDAL } as unknown as Parameters<typeof replaceMembershipRoles>[0],
+        { membershipId: MEMBERSHIP_ID, roleDocs: [memberRoleDoc], keepBundleRolesInProjectId: "project-1" },
+        tx
+      );
+    return { membershipRoleDAL, replace };
+  };
+  const bundleRow = (customRoleId: string, extra: Record<string, unknown> = {}) => ({
+    id: `row-${customRoleId}`,
+    membershipId: MEMBERSHIP_ID,
+    role: ProjectMembershipRole.Custom,
+    customRoleId,
+    isTemporary: false,
+    ...extra
+  });
+
+  test("counts the kept roles toward the most a member can hold", async () => {
+    const bundleRoleIds = Array.from({ length: 10 }, (_, index) => `role-bundle-${index}`);
+    const { membershipRoleDAL, replace } = build(
+      bundleRoleIds.map((id) => bundleRow(id)),
+      bundleRoleIds
+    );
+
+    await expect(replace()).rejects.toThrow("A member can have at most 10 roles.");
+    expect(membershipRoleDAL.delete).not.toHaveBeenCalled();
+    expect(membershipRoleDAL.insertMany).not.toHaveBeenCalled();
+  });
+
+  test("keeps a live bundle role and replaces one whose time limit has ended", async () => {
+    const { membershipRoleDAL, replace } = build(
+      [
+        bundleRow("role-bundle-live"),
+        bundleRow("role-bundle-ended", { isTemporary: true, temporaryAccessEndTime: new Date(Date.now() - 60_000) }),
+        { id: "row-viewer", membershipId: MEMBERSHIP_ID, role: ProjectMembershipRole.Viewer, isTemporary: false }
+      ],
+      ["role-bundle-live", "role-bundle-ended"]
+    );
+
+    const result = await replace();
+
+    expect(membershipRoleDAL.delete).toHaveBeenCalledWith(
+      { $in: { id: ["row-role-bundle-ended", "row-viewer"] } },
+      expect.anything()
+    );
+    expect(membershipRoleDAL.insertMany).toHaveBeenCalledWith([memberRoleDoc], expect.anything());
+    expect(result.map((row) => row.customRoleId)).toEqual(["role-bundle-live", "role-member"]);
   });
 });

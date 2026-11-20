@@ -45,9 +45,8 @@ export const isAgentVaultSelf = (actor: { type: AgentVaultMemberType; id: string
   (actor.type === AgentVaultMemberType.User && ctx.actor === ActorType.USER && actor.id === ctx.actorId) ||
   (actor.type === AgentVaultMemberType.MachineIdentity && ctx.actor === ActorType.IDENTITY && actor.id === ctx.actorId);
 
-// The built-in Member role was retired. `member` still names the project's custom "Member" role, the one the role
-// migration made from it, so older clients that add members as `member` keep working. Drop with the alias after
-// 2027-01-04.
+// `member` names the project's custom "Member" role, the one the role migration made, so older clients that add members
+// as `member` keep working. Drop with the alias after 2027-01-04.
 export const AGENT_VAULT_MEMBER_ROLE_ALIAS = ProjectMembershipRole.Member as string;
 export const AGENT_VAULT_MEMBER_ROLE_SLUG = "member-role";
 
@@ -79,6 +78,16 @@ export const assertAgentVaultRoleSetLimits = (slugs: string[]) => {
   }
   if (unique.includes(ProjectMembershipRole.NoAccess) && unique.length > 1) {
     throw new BadRequestError({ message: "No Access can't be given together with another role." });
+  }
+};
+
+// A change that keeps a member's access bundle roles beside the roles it names, as an older client's does, counts the
+// kept ones toward the limit too, like a grant that gives one.
+export const assertAgentVaultKeptRolesWithinLimit = (roleCount: number) => {
+  if (roleCount > AGENT_VAULT_MAX_MEMBER_ROLES) {
+    throw new BadRequestError({
+      message: `A member can have at most ${AGENT_VAULT_MAX_MEMBER_ROLES} roles. With the access bundle roles they already hold, this change would give them more. Remove one of their access bundle roles first.`
+    });
   }
 };
 

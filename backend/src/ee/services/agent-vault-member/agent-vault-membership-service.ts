@@ -45,6 +45,7 @@ import { readableIdentityIdsOf } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultMemberDALFactory } from "./agent-vault-member-dal";
 import {
   AGENT_VAULT_ROLE_ASSIGNMENT,
+  assertAgentVaultKeptRolesWithinLimit,
   findAgentVaultMemberRole,
   isAgentVaultSelf,
   resolveAgentVaultMemberRoles,
@@ -604,9 +605,11 @@ export const agentVaultMembershipServiceFactory = ({
     });
   };
 
-  // Read outside the write's transaction: the boundary check reads roles and the org, and the write reads them again
-  // under its lock (assertRolesUnchanged). Custom roles by their slug, the way the boundary check names them.
-  const currentRolesOf = async (projectId: string, actors: TAgentVaultActorRef[], tx?: Knex) => {
+  // Read once before the write's transaction, for the admin and boundary checks, and again under its lock
+  // (assertRolesUnchanged). Both take a tx so they read the primary: a replica behind a change made a moment ago would
+  // make the two reads disagree and refuse a valid request. Custom roles by their slug, the way the boundary check names
+  // them.
+  const currentRolesOf = async (projectId: string, actors: TAgentVaultActorRef[], tx: Knex) => {
     const memberships = await findMembershipsForActors(projectId, actors, tx);
     const membershipIds = [...memberships.values()].map((membership) => membership.id);
     const roles = membershipIds.length ? await membershipRoleDAL.findRolesByMembershipIds(membershipIds, tx) : [];
@@ -770,7 +773,7 @@ export const agentVaultMembershipServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You cannot change your own role" });
     }
 
-    const current = await currentRolesOf(projectId, actors);
+    const current = await membershipDAL.transaction((tx) => currentRolesOf(projectId, actors, tx));
     assertAdminOnlyChange({
       isAdmin,
       givesAdmin,
@@ -811,6 +814,9 @@ export const agentVaultMembershipServiceFactory = ({
       const currentRoles = heldMembershipIds.length
         ? await membershipRoleDAL.find({ $in: { membershipId: heldMembershipIds } }, { tx })
         : [];
+      // A role whose time limit has ended grants nothing and no member list shows it, so it counts as not held, and
+      // naming it again gives it afresh.
+      const liveRoles = currentRoles.filter(isActiveRole);
       // Slug by role id, for every access bundle's role in the project.
       const bundleRoles = new Map<string, string>();
       if (keepBundleRoles) {
@@ -828,16 +834,16 @@ export const agentVaultMembershipServiceFactory = ({
       const requestedKeys = new Set(resolved.map(keyOfRole));
       const isKeptBundleRole = (row: { customRoleId?: string | null }) =>
         Boolean(row.customRoleId && bundleRoles.has(row.customRoleId));
-      // A role the request names again keeps its row as it is, temporary access included, so resending a member's roles
-      // to add one never makes an expired or time-limited role permanent. A bundle's role stays too when it's kept.
+      // A role the request names again keeps its row as it is, time limit included, so resending a member's roles to add
+      // one never makes a time-limited role permanent. A bundle's role stays too when it's kept.
       const keptOf = (membershipId: string) =>
-        currentRoles.filter(
+        liveRoles.filter(
           (row) => row.membershipId === membershipId && (requestedKeys.has(keyOfRole(row)) || isKeptBundleRole(row))
         );
       const wantedOf = (membershipId: string) => new Set([...requestedKeys, ...keptOf(membershipId).map(keyOfRole)]);
       const alreadyInRole = new Set(
         heldMembershipIds.filter((membershipId) => {
-          const heldRoles = new Set(currentRoles.filter((el) => el.membershipId === membershipId).map(keyOfRole));
+          const heldRoles = new Set(liveRoles.filter((el) => el.membershipId === membershipId).map(keyOfRole));
           const wanted = wantedOf(membershipId);
           return heldRoles.size === wanted.size && [...wanted].every((key) => heldRoles.has(key));
         })
@@ -849,6 +855,7 @@ export const agentVaultMembershipServiceFactory = ({
       if (!toChange.length) return { updated: [], skipped };
 
       const membershipIds = toChange.map((actor) => existing.get(actorKey(actor))!.id);
+      membershipIds.forEach((membershipId) => assertAgentVaultKeptRolesWithinLimit(wantedOf(membershipId).size));
 
       // One check for the whole batch: per actor, two admins each pass on the other still standing.
       if (!givesAdmin) {
@@ -913,7 +920,7 @@ export const agentVaultMembershipServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You cannot remove your own access" });
     }
 
-    const current = await currentRolesOf(projectId, actors);
+    const current = await membershipDAL.transaction((tx) => currentRolesOf(projectId, actors, tx));
     assertAdminOnlyChange({
       isAdmin,
       givesAdmin: false,
