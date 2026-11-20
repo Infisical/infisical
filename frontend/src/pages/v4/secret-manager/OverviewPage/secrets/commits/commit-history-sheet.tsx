@@ -445,11 +445,13 @@ function HistoryToolbar({
 function HistoryGroups({
   groups,
   remaining,
+  filtered,
   onSelect,
   onLoadMore
 }: {
   groups: CommitGroup[];
   remaining: number;
+  filtered: boolean;
   onSelect: (id: string) => void;
   onLoadMore: () => void;
 }) {
@@ -472,7 +474,11 @@ function HistoryGroups({
       ))}
       {remaining > 0 && (
         <ShowMoreFooter
-          status={`Showing ${shown.toLocaleString()} of ${(shown + remaining).toLocaleString()} commits`}
+          status={
+            filtered
+              ? `Showing ${shown.toLocaleString()} matching commits`
+              : `Showing ${shown.toLocaleString()} of ${(shown + remaining).toLocaleString()} commits`
+          }
           onShowMore={onLoadMore}
         />
       )}
@@ -879,6 +885,7 @@ export function CommitHistorySheet({
         <HistoryGroups
           groups={groups}
           remaining={remaining}
+          filtered={Boolean(author)}
           onSelect={openDetails}
           onLoadMore={() => history.fetchNextPage()}
         />

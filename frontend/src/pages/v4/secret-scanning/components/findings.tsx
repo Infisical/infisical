@@ -331,7 +331,7 @@ const FindingLocations = ({
       )}
       {data && hasNextPage && (
         <ShowMoreFooter
-          status={`Showing ${data.locations.length.toLocaleString()} of ${locationCount.toLocaleString()} locations`}
+          status={`Showing ${data.locations.length.toLocaleString()} of ${data.totalCount.toLocaleString()} locations`}
           loading={isFetchingNextPage}
           onShowMore={() => fetchNextPage()}
         />
