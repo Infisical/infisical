@@ -7,13 +7,15 @@ import {
   PackageIcon,
   PencilIcon,
   TrashIcon,
-  TriangleAlertIcon
+  TriangleAlertIcon,
+  UsersIcon
 } from "lucide-react";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
 import { PersonalValuesDialog } from "@app/components/agent-vault/PersonalValuesDialog";
 import { ServiceSheet } from "@app/components/agent-vault/service-sheet";
 import { ServicesCard } from "@app/components/agent-vault/ServicesCard";
+import { WhoCanUseDialog } from "@app/components/agent-vault/WhoCanUseDialog";
 import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
@@ -56,7 +58,6 @@ import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent"
 import { DeleteAccessBundleDialog } from "@app/pages/agent-vault/AgentVaultAccessBundlesPage/components/DeleteAccessBundleDialog";
 
 import { AddBundleServiceDialog } from "./components/AddBundleServiceDialog";
-import { BundleRolesCard } from "./components/BundleRolesCard";
 import { SkillsCard } from "./components/SkillsCard";
 
 export const AgentVaultAccessBundleDetailPage = () => {
@@ -109,6 +110,7 @@ export const AgentVaultAccessBundleDetailPage = () => {
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isWhoCanUseOpen, setIsWhoCanUseOpen] = useState(false);
   const [isServiceSheetOpen, setIsServiceSheetOpen] = useState(false);
   const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
   const [serviceToEdit, setServiceToEdit] = useState<TAgentVaultService | null>(null);
@@ -170,7 +172,7 @@ export const AgentVaultAccessBundleDetailPage = () => {
           </Link>
         }
       >
-        {(canEditBundle || canDeleteBundle) && (
+        {(canReadRoles || canEditBundle || canDeleteBundle) && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
@@ -183,6 +185,12 @@ export const AgentVaultAccessBundleDetailPage = () => {
                 <DropdownMenuItem onClick={() => setIsEditOpen(true)}>
                   <PencilIcon />
                   Edit Access Bundle
+                </DropdownMenuItem>
+              )}
+              {canReadRoles && (
+                <DropdownMenuItem onClick={() => setIsWhoCanUseOpen(true)}>
+                  <UsersIcon />
+                  Who Can Use
                 </DropdownMenuItem>
               )}
               {canDeleteBundle && (
@@ -261,7 +269,6 @@ export const AgentVaultAccessBundleDetailPage = () => {
           accessBundleName={accessBundle.name}
           canManage={canEditBundle}
         />
-        {canReadRoles && <BundleRolesCard accessBundleId={accessBundle.id} />}
       </div>
 
       <PersonalValuesDialog
@@ -291,6 +298,12 @@ export const AgentVaultAccessBundleDetailPage = () => {
         onOpenChange={setIsServiceSheetOpen}
         accessBundleId={accessBundle.id}
         service={serviceToEdit}
+      />
+
+      <WhoCanUseDialog
+        isOpen={isWhoCanUseOpen}
+        onOpenChange={setIsWhoCanUseOpen}
+        target={{ kind: "accessBundle", id: accessBundle.id, name: accessBundle.name }}
       />
 
       <AccessBundleFormDialog

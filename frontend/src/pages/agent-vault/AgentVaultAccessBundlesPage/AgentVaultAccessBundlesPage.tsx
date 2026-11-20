@@ -9,13 +9,15 @@ import {
   PlusIcon,
   SearchIcon,
   TrashIcon,
-  TriangleAlertIcon
+  TriangleAlertIcon,
+  UsersIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
 import { AgentVaultRestrictedPage } from "@app/components/agent-vault/AgentVaultRestrictedPage";
 import { ServiceIconStack } from "@app/components/agent-vault/ServiceIconStack";
+import { TWhoCanUseTarget, WhoCanUseDialog } from "@app/components/agent-vault/WhoCanUseDialog";
 import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
@@ -57,6 +59,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import {
+  ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionSub,
   useOrganization,
@@ -112,6 +115,7 @@ const AgentVaultAccessBundlesPageContent = () => {
       ProjectPermissionAgentVaultAccessBundleActions.Delete,
       accessBundleId
     );
+  const canReadRoles = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
@@ -127,6 +131,8 @@ const AgentVaultAccessBundlesPageContent = () => {
   const [bundleToDelete, setBundleToDelete] = useState<TAgentVaultAccessBundleListItem | null>(
     null
   );
+  const [whoCanUse, setWhoCanUse] = useState<TWhoCanUseTarget | null>(null);
+  const [isWhoCanUseOpen, setIsWhoCanUseOpen] = useState(false);
 
   const { data, isPending } = useListAgentVaultAccessBundles(projectId, {
     search: debouncedSearch.trim() || undefined,
@@ -376,7 +382,7 @@ const AgentVaultAccessBundlesPageContent = () => {
                       </div>
                     </TableCell>
                     <TableCell variant="action">
-                      {(canEditBundle(bundle.id) || canDeleteBundle(bundle.id)) && (
+                      {(canReadRoles || canEditBundle(bundle.id) || canDeleteBundle(bundle.id)) && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton
@@ -398,6 +404,22 @@ const AgentVaultAccessBundlesPageContent = () => {
                               >
                                 <PencilIcon />
                                 Edit
+                              </DropdownMenuItem>
+                            )}
+                            {canReadRoles && (
+                              <DropdownMenuItem
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setWhoCanUse({
+                                    kind: "accessBundle",
+                                    id: bundle.id,
+                                    name: bundle.name
+                                  });
+                                  setIsWhoCanUseOpen(true);
+                                }}
+                              >
+                                <UsersIcon />
+                                Who Can Use
                               </DropdownMenuItem>
                             )}
                             {canDeleteBundle(bundle.id) && (
@@ -465,6 +487,11 @@ const AgentVaultAccessBundlesPageContent = () => {
         onOpenChange={(isOpen) => {
           if (!isOpen) setBundleToDelete(null);
         }}
+      />
+      <WhoCanUseDialog
+        isOpen={isWhoCanUseOpen}
+        onOpenChange={setIsWhoCanUseOpen}
+        target={whoCanUse}
       />
     </div>
   );
