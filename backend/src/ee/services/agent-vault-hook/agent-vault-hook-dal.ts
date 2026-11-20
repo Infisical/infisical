@@ -314,6 +314,15 @@ export const agentVaultHookDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countHookServiceLinks = async (hookId: string, tx: Knex) => {
+    try {
+      const row = (await tx(LINK).where({ hookId }).count("* as count").first()) as { count: string | number };
+      return Number(row.count);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count agent vault hook services" });
+    }
+  };
+
   // Appended after the hook's last rule. The hook row is locked, so two adds can't take the same position.
   const insertHookServiceLink = async (
     { hookId, link }: { hookId: string; link: Omit<THookServiceLinkInsert, "position"> },
@@ -386,6 +395,7 @@ export const agentVaultHookDALFactory = (db: TDbClient) => {
     findSavedForMint,
     insertInlineForSession,
     lockHookServiceLink,
+    countHookServiceLinks,
     insertHookServiceLink,
     updateHookServiceLink,
     deleteHookServiceLink,

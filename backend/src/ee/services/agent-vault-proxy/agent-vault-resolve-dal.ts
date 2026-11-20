@@ -433,21 +433,24 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
     TResolveHookRow | undefined
   > => {
     try {
-      const conn = onPrimary ? db : db.replicaNode();
-      const hook = (await conn(TableName.AgentVaultHook)
+      // One statement, so an edit that commits between two reads can't pair the old appliesToAllServices with the new
+      // links.
+      return (await (onPrimary ? db : db.replicaNode())(TableName.AgentVaultHook)
         .where({ id: hookId, projectId })
         .where((qb) => {
           void qb.whereNull("sessionId").orWhere("sessionId", sessionId);
         })
-        .first("id", "name", "url", "encryptedSecret", "appliesToAllServices")) as
-        | Omit<TResolveHookRow, "links">
-        | undefined;
-      if (!hook) return undefined;
-      const links = (await conn(TableName.AgentVaultHookService)
-        .where({ hookId: hook.id })
-        .orderBy("position", "asc")
-        .select("serviceId", "methods", "paths", "tools")) as TResolveHookRow["links"];
-      return { ...hook, links };
+        .first(
+          "id",
+          "name",
+          "url",
+          "encryptedSecret",
+          "appliesToAllServices",
+          db.raw(
+            `COALESCE((SELECT jsonb_agg(jsonb_build_object('serviceId', l."serviceId", 'methods', l.methods, 'paths', l.paths, 'tools', l.tools) ORDER BY l.position) FROM ?? AS l WHERE l."hookId" = ??.id), '[]'::jsonb) AS links`,
+            [TableName.AgentVaultHookService, TableName.AgentVaultHook]
+          )
+        )) as TResolveHookRow | undefined;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault session hook" });
     }

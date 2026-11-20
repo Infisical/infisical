@@ -8,13 +8,14 @@ import {
   ProjectPermissionAgentVaultHookActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { ConflictError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { AgentVaultServiceType } from "../agent-vault/agent-vault-enums";
 import { getAgentVaultPermission } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultHookDALFactory, TAgentVaultHookRow } from "./agent-vault-hook-dal";
 import {
+  AGENT_VAULT_MAX_HOOK_RULES,
   assertAgentVaultHooksOnPlan,
   assertHookNarrowingFitsService,
   groupHookRuleViews,
@@ -220,14 +221,15 @@ export const agentVaultHookServiceFactory = ({
     return { hook: view };
   };
 
-  // The service sheet's edits: one service of a hook at a time. Each changes what the hook checks, so each is
-  // plan-gated like an edit of the rule list.
+  // The service sheet's edits: one service of a hook at a time. Adding and narrowing are plan-gated like an edit of the
+  // rule list; removing is not, like deleting the hook.
   const $editHookService = async <T>(
     { hookId, ...scoped }: THookByIdDTO,
-    edit: (hook: TAgentVaultHookRow, tx: Knex) => Promise<T>
+    edit: (hook: TAgentVaultHookRow, tx: Knex) => Promise<T>,
+    { requiresPlan = true }: { requiresPlan?: boolean } = {}
   ) => {
     await $authorize(scoped, ProjectPermissionAgentVaultHookActions.Edit);
-    await assertAgentVaultHooksOnPlan(licenseService, scoped.ctx.actorOrgId);
+    if (requiresPlan) await assertAgentVaultHooksOnPlan(licenseService, scoped.ctx.actorOrgId);
     return agentVaultHookDAL.transaction(async (tx) => {
       const hook = await agentVaultHookDAL.lockSavedByIdInProject({ id: hookId, projectId: scoped.projectId }, tx);
       if (!hook) throw hookNotFound(hookId);
@@ -253,6 +255,11 @@ export const agentVaultHookServiceFactory = ({
       if (await agentVaultHookDAL.lockHookServiceLink({ hookId: hook.id, serviceId: service.id }, tx)) {
         throw new ConflictError({
           message: `'${service.name}' is already in hook '${hook.name}'. Change what it checks instead of adding it again.`
+        });
+      }
+      if ((await agentVaultHookDAL.countHookServiceLinks(hook.id, tx)) >= AGENT_VAULT_MAX_HOOK_RULES) {
+        throw new BadRequestError({
+          message: `Hook '${hook.name}' already checks ${AGENT_VAULT_MAX_HOOK_RULES} services, the most a hook can have. Remove one before adding '${service.name}'.`
         });
       }
       await agentVaultHookDAL.insertHookServiceLink(
@@ -293,12 +300,16 @@ export const agentVaultHookServiceFactory = ({
 
   // Removing a hook's last service leaves it checking nothing, as deleting that service would.
   const removeHookService = async ({ serviceId, ...byId }: THookServiceByIdDTO) =>
-    $editHookService(byId, async (hook, tx) => {
-      const link = await agentVaultHookDAL.lockHookServiceLink({ hookId: hook.id, serviceId }, tx);
-      if (!link) throw serviceNotInHook(serviceId, hook.name);
-      await agentVaultHookDAL.deleteHookServiceLink({ hookId: hook.id, serviceId }, tx);
-      return { service: { id: link.serviceId, name: link.serviceName }, ...pickHookRuleNarrowing(link) };
-    });
+    $editHookService(
+      byId,
+      async (hook, tx) => {
+        const link = await agentVaultHookDAL.lockHookServiceLink({ hookId: hook.id, serviceId }, tx);
+        if (!link) throw serviceNotInHook(serviceId, hook.name);
+        await agentVaultHookDAL.deleteHookServiceLink({ hookId: hook.id, serviceId }, tx);
+        return { service: { id: link.serviceId, name: link.serviceName }, ...pickHookRuleNarrowing(link) };
+      },
+      { requiresPlan: false }
+    );
 
   // Undefined for a caller who can't read hooks, whose service reads leave hooks out.
   const listServiceHooks = async ({ serviceId, ...scoped }: TListServiceHooksDTO) => {

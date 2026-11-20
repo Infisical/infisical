@@ -645,7 +645,7 @@ resolve.
   `/hooks/:hookId/services/:serviceId`, keeps `appliesToAllServices = false` and checks nothing; never derive "all
   traffic" from an empty rule list alone, or deleting a service would widen what the hook checks.
 - **The service sheet edits one link at a time** through `POST /hooks/:hookId/services` and `PATCH`/`DELETE
-  /hooks/:hookId/services/:serviceId`: Edit on hooks plus the plan flag, audited as `agent-vault-hook-update` with
+  /hooks/:hookId/services/:serviceId`: Edit on hooks (plus the plan flag, except DELETE), audited as `agent-vault-hook-update` with
   `serviceChange`. Each sets `appliesToAllServices = false`. `GET /services/:serviceId` adds `hooks: [{ id, name,
   methods?, paths?, tools? }]` for callers with `read` on hooks (`listServiceHooks`); the list doesn't.
 - **A hook has one behavior, gate, and no `mode` field** in the API, the table or the resolve payload.
@@ -667,7 +667,8 @@ resolve.
   as if no hook was given; nothing tracks usage. The FK update moves those sessions' `updatedAt`, which for a session
   that already lost its owner reopens its 24 hour late-log window; accepted.
 - **The plan flag gates writes only** (`agentVaultHooks`), through `assertAgentVaultHooksOnPlan`: saved hook create,
-  an edit of URL, secret or rules (including one service's link), and an inline hook at mint. Rename, delete, reads and a mint with a saved `hookId`
+  an edit of URL, secret or rules (including adding or narrowing one service's link), and an inline hook at mint.
+  Rename, delete (of a hook or one service's link), reads and a mint with a saved `hookId`
   never check it. Resolve never checks it, so a downgrade keeps existing hooks running: a hook only adds checks, and
   dropping it would widen access.
 - **Resolve sends one top-level `hook: { id, name, url, secret, rules } | null`** (`findSessionHook`, kept to the

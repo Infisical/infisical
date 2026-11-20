@@ -100,6 +100,7 @@ const buildService = ({
       const link = links.find((candidate) => candidate.hookId === hookId && candidate.serviceId === serviceId);
       return link ? withService(link) : undefined;
     }),
+    countHookServiceLinks: vi.fn(async () => 1),
     insertHookServiceLink: vi.fn(),
     updateHookServiceLink: vi.fn(),
     deleteHookServiceLink: vi.fn(),
@@ -390,13 +391,34 @@ describe("a hook's services, one at a time", () => {
     });
   });
 
-  test("each edit needs Edit on hooks and the plan", async () => {
+  test("adding past the hook's service limit is refused", async () => {
+    const { service, agentVaultHookDAL } = buildService();
+    agentVaultHookDAL.countHookServiceLinks.mockResolvedValue(50);
+
+    await expect(service.addHookService({ ...byId, service: "linear" })).rejects.toThrow(
+      "Hook 'approvals' already checks 50 services, the most a hook can have. Remove one before adding 'linear'."
+    );
+    expect(agentVaultHookDAL.insertHookServiceLink).not.toHaveBeenCalled();
+  });
+
+  test("each edit needs Edit on hooks, and adding or narrowing needs the plan", async () => {
     await expect(
       buildService({ rules: memberRules }).service.removeHookService({ ...byId, serviceId: GITHUB_ID })
     ).rejects.toBeInstanceOf(ForbiddenError);
     await expect(
-      buildService({ hooksOnPlan: false }).service.removeHookService({ ...byId, serviceId: GITHUB_ID })
+      buildService({ hooksOnPlan: false }).service.addHookService({ ...byId, service: "linear" })
     ).rejects.toThrow(AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE);
+    await expect(
+      buildService({ hooksOnPlan: false }).service.updateHookService({ ...byId, serviceId: GITHUB_ID, methods: null })
+    ).rejects.toThrow(AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE);
+  });
+
+  test("removing a service works off-plan", async () => {
+    const { service, agentVaultHookDAL } = buildService({ hooksOnPlan: false });
+
+    await service.removeHookService({ ...byId, serviceId: GITHUB_ID });
+
+    expect(agentVaultHookDAL.deleteHookServiceLink).toHaveBeenCalled();
   });
 
   test("a service's hooks are read only by callers who can read hooks", async () => {

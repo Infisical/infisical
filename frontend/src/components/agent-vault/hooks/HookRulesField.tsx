@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useState } from "react";
 import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { PlusIcon, TrashIcon } from "lucide-react";
 
@@ -12,13 +12,17 @@ import {
   FieldLabel,
   IconButton
 } from "@app/components/v3";
-import { AgentVaultServiceType } from "@app/hooks/api/agentVault";
+import { useProject } from "@app/context";
+import { useDebounce } from "@app/hooks";
+import { AgentVaultServiceType, useListAgentVaultServices } from "@app/hooks/api/agentVault";
 import { TAgentVaultProjectService } from "@app/hooks/api/agentVault/types";
 
 import { hostPatternOf } from "../service-sheet/serviceSchema";
 import { ServiceIcon } from "../ServiceIconStack";
 import { HookNarrowingFields } from "./HookNarrowingFields";
 import { blankHookNarrowing, blankHookRule, MAX_HOOK_RULES, THookForm } from "./hookSchema";
+
+export const SERVICE_PICKER_LIMIT = 100;
 
 type TServiceOption = {
   name: string;
@@ -34,20 +38,29 @@ const toOption = (service: TAgentVaultProjectService): TServiceOption => ({
 
 const RuleRow = ({
   index,
-  services,
   isDisabled,
   onRemove
 }: {
   index: number;
-  services: TServiceOption[];
   isDisabled: boolean;
   onRemove: () => void;
 }) => {
   const baseId = useId();
+  const { projectId } = useProject();
   const { control, getValues, setValue, clearErrors } = useFormContext<THookForm>();
   const service = useWatch({ control, name: `rules.${index}.service` });
   const serviceType = useWatch({ control, name: `rules.${index}.serviceType` });
-  // The picker lists only the first page of services, so a saved rule's service can be missing from it.
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search);
+  // Searched on the server, since a project can have more services than one page.
+  const { data: servicePage, isFetching } = useListAgentVaultServices(projectId, {
+    search: debouncedSearch.trim() || undefined,
+    orderBy: "name",
+    orderDirection: "asc",
+    limit: SERVICE_PICKER_LIMIT
+  });
+  const services = (servicePage?.services ?? []).map(toOption);
+  // A saved rule's service can be missing from the page shown.
   const selected =
     services.find((option) => option.name === service) ??
     (service ? { name: service, type: serviceType, hostPattern: null } : null);
@@ -78,6 +91,8 @@ const RuleRow = ({
                   )}
                   placeholder="Pick a service"
                   searchAriaLabel="Search services"
+                  isLoading={isFetching}
+                  onSearchChange={setSearch}
                   emptyMessage="No service matches."
                   modal
                   isDisabled={isDisabled}
@@ -121,18 +136,15 @@ const RuleRow = ({
 };
 
 export const HookRulesField = ({
-  services,
   isDisabled = false,
   isLeftWithoutServices = false
 }: {
-  services: TAgentVaultProjectService[];
   isDisabled?: boolean;
   /** A saved hook whose services were all deleted or removed, which checks nothing rather than everything. */
   isLeftWithoutServices?: boolean;
 }) => {
   const { control, formState } = useFormContext<THookForm>();
   const rules = useFieldArray({ control, name: "rules" });
-  const options = services.map(toOption);
 
   let description =
     "All traffic: every request of a session using this hook goes to it. Add a rule to send only some.";
@@ -152,7 +164,6 @@ export const HookRulesField = ({
             <RuleRow
               key={rule.id}
               index={index}
-              services={options}
               isDisabled={isDisabled}
               onRemove={() => rules.remove(index)}
             />

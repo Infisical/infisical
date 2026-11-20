@@ -1012,7 +1012,8 @@ export const useRemoveAgentVaultAccessBundleSkill = (projectId: string) => {
   });
 };
 
-// Sessions are refetched too: they show the hook they run with, and an edit or delete reaches them live.
+// Sessions are refetched too: they show the hook they run with, and an edit or delete reaches them live. So are
+// services, whose own read lists the hooks they're in.
 const invalidateHookChange = (
   queryClient: ReturnType<typeof useQueryClient>,
   orgId: string,
@@ -1020,7 +1021,8 @@ const invalidateHookChange = (
 ) =>
   Promise.all([
     queryClient.invalidateQueries({ queryKey: agentVaultKeys.hooks(orgId, projectId) }),
-    queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(orgId, projectId) })
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(orgId, projectId) }),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.services(orgId, projectId) })
   ]);
 
 export const useCreateAgentVaultHook = (projectId: string) => {
@@ -1034,8 +1036,7 @@ export const useCreateAgentVaultHook = (projectId: string) => {
       );
       return data.hook;
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.hooks(currentOrg.id, projectId) })
+    onSuccess: () => invalidateHookChange(queryClient, currentOrg.id, projectId)
   });
 };
 
@@ -1054,18 +1055,6 @@ export const useUpdateAgentVaultHook = (projectId: string) => {
   });
 };
 
-// The service's own read lists its hooks, so it is refetched with them.
-const invalidateHookServiceChange = (
-  queryClient: ReturnType<typeof useQueryClient>,
-  orgId: string,
-  projectId: string,
-  serviceId: string
-) =>
-  Promise.all([
-    invalidateHookChange(queryClient, orgId, projectId),
-    queryClient.invalidateQueries({ queryKey: agentVaultKeys.service(orgId, projectId, serviceId) })
-  ]);
-
 export const useAddAgentVaultHookService = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
@@ -1077,8 +1066,7 @@ export const useAddAgentVaultHookService = (projectId: string) => {
       );
       return data.link;
     },
-    onSuccess: (link) =>
-      invalidateHookServiceChange(queryClient, currentOrg.id, projectId, link.serviceId)
+    onSuccess: () => invalidateHookChange(queryClient, currentOrg.id, projectId)
   });
 };
 
@@ -1093,8 +1081,7 @@ export const useUpdateAgentVaultHookService = (projectId: string) => {
       );
       return data.link;
     },
-    onSuccess: (link) =>
-      invalidateHookServiceChange(queryClient, currentOrg.id, projectId, link.serviceId)
+    onSuccess: () => invalidateHookChange(queryClient, currentOrg.id, projectId)
   });
 };
 
@@ -1108,8 +1095,7 @@ export const useRemoveAgentVaultHookService = (projectId: string) => {
       );
       return data.link;
     },
-    onSuccess: (link) =>
-      invalidateHookServiceChange(queryClient, currentOrg.id, projectId, link.serviceId)
+    onSuccess: () => invalidateHookChange(queryClient, currentOrg.id, projectId)
   });
 };
 

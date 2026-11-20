@@ -32,7 +32,7 @@ import {
 import { TAgentVaultHook, TAgentVaultProjectService } from "@app/hooks/api/agentVault/types";
 
 import { UNCHANGED_SECRET } from "../service-sheet/serviceSchema";
-import { HookRulesField } from "./HookRulesField";
+import { HookRulesField, SERVICE_PICKER_LIMIT } from "./HookRulesField";
 import {
   buildCreateHookRequest,
   buildUpdateHookRequest,
@@ -41,8 +41,6 @@ import {
   isPlainHttpUrl,
   THookForm
 } from "./hookSchema";
-
-const SERVICE_PICKER_LIMIT = 100;
 
 type Props = {
   hook?: TAgentVaultHook | null;
@@ -254,7 +252,6 @@ const HookFormBody = ({
             />
           )}
           <HookRulesField
-            services={services}
             isDisabled={isReadOnly}
             isLeftWithoutServices={Boolean(
               hook && !hook.appliesToAllServices && !hook.rules.length
@@ -291,7 +288,7 @@ const HookFormBody = ({
 /** Header, body and footer of the hook sheet, to go inside a `SheetContent`. */
 export const HookForm = (props: Props) => {
   const { projectId } = useProject();
-  // Rules name the project's services, so the picker lists them and a saved rule takes its service's type from it.
+  // A saved rule takes its service's type from this page, the same one the rule picker shows before a search.
   const { data: servicePage, isPending } = useListAgentVaultServices(projectId, {
     orderBy: "name",
     orderDirection: "asc",
