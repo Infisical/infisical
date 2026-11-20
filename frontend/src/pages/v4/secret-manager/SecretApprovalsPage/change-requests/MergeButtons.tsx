@@ -76,7 +76,7 @@ export const MergeButtons = ({
         Close request
       </Button>
       <Button
-        variant={mergeBlocked ? "outline" : "primary"}
+        variant="success"
         loading={merging && !bypassOpen}
         disabledReason={mergeBlocked}
         onClick={() => (bypass ? setBypassOpen(true) : run())}

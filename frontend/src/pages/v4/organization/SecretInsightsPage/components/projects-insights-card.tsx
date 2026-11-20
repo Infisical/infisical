@@ -16,7 +16,6 @@ import type {
 } from "@app/hooks/api/secretInsights/types";
 
 import { useOrgId } from "../../../access/permissions";
-import { ShowMoreFooter } from "../../../components/show-more-footer";
 import { v4Path } from "../../../links";
 
 const COLLAPSED_ROW_COUNT = 4;
@@ -94,29 +93,8 @@ export const ProjectsInsightsCard = ({
   const isSearching = search.trim().length > 0;
   const rows = showAll || isSearching ? filtered : filtered.slice(0, COLLAPSED_ROW_COUNT);
 
-  const footer = () => {
-    if (isSearching || filtered.length === 0) return undefined;
-    const status = `Showing ${rows.length.toLocaleString()} of ${filtered.length.toLocaleString()}${hasMore ? "+" : ""} projects`;
-    if (hasMore)
-      return (
-        <ShowMoreFooter
-          status={status}
-          loading={isLoadingMore}
-          onShowMore={() => {
-            setShowAll(true);
-            onLoadMore();
-          }}
-        />
-      );
-    if (filtered.length <= COLLAPSED_ROW_COUNT) return undefined;
-    return (
-      <ShowMoreFooter
-        status={status}
-        label={showAll ? "Show fewer" : "Show more"}
-        onShowMore={() => setShowAll((current) => !current)}
-      />
-    );
-  };
+  const paged = !isSearching && (hasMore || filtered.length > COLLAPSED_ROW_COUNT);
+  const canShowMore = paged && (hasMore || !showAll);
 
   const empty = () => {
     if (isSearching)
@@ -169,7 +147,6 @@ export const ProjectsInsightsCard = ({
     <Card
       variant="framed"
       title="Projects"
-      footer={footer()}
       footerPlacement="frame"
       action={
         <Inline gap={8} wrap={false}>
@@ -199,6 +176,23 @@ export const ProjectsInsightsCard = ({
         getRowId={(project) => project.projectId}
         rowLabel={(project) => project.projectName}
         empty={empty()}
+        persistentStatus={
+          paged
+            ? `Showing ${rows.length.toLocaleString()} of ${filtered.length.toLocaleString()}${hasMore ? "+" : ""} projects`
+            : undefined
+        }
+        loadMore={
+          canShowMore
+            ? {
+                loading: isLoadingMore,
+                onClick: () => {
+                  setShowAll(true);
+                  if (hasMore) onLoadMore();
+                }
+              }
+            : undefined
+        }
+        showFewer={paged && showAll ? { onClick: () => setShowAll(false) } : undefined}
       />
     </Card>
   );
