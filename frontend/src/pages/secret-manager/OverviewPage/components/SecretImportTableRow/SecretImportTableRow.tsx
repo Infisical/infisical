@@ -68,6 +68,7 @@ type ImportedSecretData = {
   environment: string;
   secretPath: string;
   importId?: string;
+  isReplication?: boolean;
   sourceEnv: string;
   secrets: Pick<SecretV3RawSanitized, "id" | "key" | "env" | "isEmpty" | "version">[];
 };
@@ -146,15 +147,20 @@ export const SecretImportTableRow = ({
 
   const allEnvImportedSecrets = useMemo(() => {
     if (isSingleEnvView) {
-      // A folder can import the same source twice, once directly and once as a replication import, and both
-      // report the source's environment and path, so the import's own ID tells them apart.
-      const match = importedSecrets?.find(
-        (imp) =>
-          imp.sourceEnv === singleEnvSlug &&
-          (imp.importId && singleEnvImport?.id
-            ? imp.importId === singleEnvImport.id
-            : imp.environment === importEnvSlug && imp.secretPath === importPath)
-      );
+      // A replication import and a regular import of the same source both report the source's environment and
+      // path, so a replication import matches only by its own ID. A regular import falls back to the source,
+      // because the backend returns one group for several regular imports of the same source.
+      const envGroups = importedSecrets?.filter((imp) => imp.sourceEnv === singleEnvSlug) ?? [];
+      const match =
+        envGroups.find((imp) => imp.importId && imp.importId === singleEnvImport?.id) ??
+        (singleEnvImport?.isReplication
+          ? undefined
+          : envGroups.find(
+              (imp) =>
+                !imp.isReplication &&
+                imp.environment === importEnvSlug &&
+                imp.secretPath === importPath
+            ));
       return match ? [match] : [];
     }
     return (
@@ -168,7 +174,8 @@ export const SecretImportTableRow = ({
     importPath,
     isSingleEnvView,
     singleEnvSlug,
-    singleEnvImport?.id
+    singleEnvImport?.id,
+    singleEnvImport?.isReplication
   ]);
 
   // Union of unique secret keys across all environments (preserves search/expand behavior)

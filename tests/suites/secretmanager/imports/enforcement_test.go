@@ -1,6 +1,7 @@
 package imports_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -76,8 +77,9 @@ func TestImportReplicationEnforcement_ExistingImports(t *testing.T) {
 
 	t.Run("should report each import's own secrets when a folder imports a source both directly and replicated", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, `This is the recreate step an admin follows for a direct import. The two imports
-			share a source, so the dashboard can only tell their secrets apart by import ID.`)
+		spec.Why(t, `This is the recreate step an admin follows for a direct import. The imports share
+			a source, so the dashboard tells a replicated import's secrets apart by import ID, and
+			falls back to the source only for direct imports, which share one group per source.`)
 
 		// Setup
 		tn := h.NewTenant(t)
@@ -85,6 +87,7 @@ func TestImportReplicationEnforcement_ExistingImports(t *testing.T) {
 		secretmanager.CreateFolder(t, proj, "staging", stagingApp.Path)
 		secretmanager.CreateSecret(t, proj, "staging", "KEY", "v1", secretmanager.WithPath(stagingApp.Path))
 		directImport := secretmanager.CreateImport(t, proj, "prod", stagingApp)
+		secondDirectImport := secretmanager.CreateImport(t, proj, "prod", stagingApp)
 		createPolicy(t, proj, "prod", "/", tn.Admin, true)
 		replicatedImport := secretmanager.CreateImport(t, proj, "prod", stagingApp, secretmanager.Replicated())
 		waitForOpenRequest(t, proj)
@@ -95,17 +98,26 @@ func TestImportReplicationEnforcement_ExistingImports(t *testing.T) {
 
 		// Assert
 		require.NoError(t, err)
-		require.NotNilf(t, res.JSON200, "listing imported secrets returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "listing imported secrets returned %s", apierr.Body(res.Body))
+		var body struct {
+			Secrets []struct {
+				ImportId string `json:"importId"`
+				Secrets  []struct {
+					SecretKey string `json:"secretKey"`
+				} `json:"secrets"`
+			} `json:"secrets"`
+		}
+		require.NoError(t, json.Unmarshal(res.Body, &body))
 		keysByImport := map[string][]string{}
-		for _, group := range res.JSON200.Secrets {
-			require.NotNil(t, group.ImportId)
+		for _, group := range body.Secrets {
 			keys := []string{}
 			for _, secret := range group.Secrets {
 				keys = append(keys, secret.SecretKey)
 			}
-			keysByImport[*group.ImportId] = keys
+			keysByImport[group.ImportId] = keys
 		}
 		require.Equal(t, map[string][]string{directImport: {"KEY"}, replicatedImport: {}}, keysByImport)
+		require.NotContains(t, keysByImport, secondDirectImport)
 	})
 
 	t.Run("should list only the replicated imports when asked for them", func(t *testing.T) {
