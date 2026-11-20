@@ -849,6 +849,17 @@ export const secretRotationV2ServiceFactory = ({
       getSecretRotationSubject(secretRotation)
     );
 
+    const isRotatedOnIntervalChange =
+      SECRET_ROTATIONS_ROTATED_ON_INTERVAL_CHANGE.has(secretRotation.type as SecretRotation) &&
+      payload.rotationInterval !== undefined &&
+      payload.rotationInterval !== secretRotation.rotationInterval;
+
+    if (isRotatedOnIntervalChange)
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionSecretRotationActions.RotateSecrets,
+        getSecretRotationSubject(secretRotation)
+      );
+
     if (secretRotation.type !== type)
       throw new BadRequestError({
         message: `Secret Rotation with ID "${rotationId}" is not configured for ${SECRET_ROTATION_NAME_MAP[type]}`
@@ -953,11 +964,7 @@ export const secretRotationV2ServiceFactory = ({
         }
       });
 
-      if (
-        SECRET_ROTATIONS_ROTATED_ON_INTERVAL_CHANGE.has(type) &&
-        payload.rotationInterval !== undefined &&
-        payload.rotationInterval !== secretRotation.rotationInterval
-      ) {
+      if (isRotatedOnIntervalChange) {
         try {
           // reloaded from the primary so the new interval is seen and a rotation that finished while this update ran isn't overwritten with older credentials
           const currentSecretRotation = await secretRotationV2DAL.transaction((tx) =>
