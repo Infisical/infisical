@@ -127,7 +127,7 @@ func TestImpervaPkiSync_Sync(t *testing.T) {
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "removing the certificates: %s", apierr.Body(res.Body))
 		s.cp.ExpectEvent[imperva.CustomCertificateDeleted](t, func(e imperva.CustomCertificateDeleted) bool {
 			return e.Site == s.site && e.AuthType == "RSA"
-		})
+		}, cloudSyncRemoval)
 		require.Empty(t, s.cp.State(t).Sites[s.site].Certificates)
 	})
 

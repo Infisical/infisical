@@ -179,7 +179,7 @@ func TestCloudflareCustomCertificatePkiSync_RemoveCertificates(t *testing.T) {
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "removing the certificates: %s", apierr.Body(res.Body))
 		s.cf.ExpectEvent[cloudflare.CustomCertificateDeleted](t, func(e cloudflare.CustomCertificateDeleted) bool {
 			return e.Zone == s.zone && e.ID == uploaded
-		})
+		}, cloudSyncRemoval)
 		require.Empty(t, s.certificates(t))
 	})
 }

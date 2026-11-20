@@ -192,7 +192,7 @@ func TestLinuxServerPkiSync_RemoveCertificates(t *testing.T) {
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "removing the certificates: %s", apierr.Body(res.Body))
 		for _, ext := range []string{".pem", ".key"} {
-			s.host.ExpectEvent[linuxserver.FileRemoved](t, func(e linuxserver.FileRemoved) bool { return e.Path == s.base+ext }, fakenet.Since(mark))
+			s.host.ExpectEvent[linuxserver.FileRemoved](t, func(e linuxserver.FileRemoved) bool { return e.Path == s.base+ext }, fakenet.Since(mark), cloudSyncRemoval)
 		}
 		files := s.host.State(t).Files
 		require.Equal(t, []string{"/etc/ssl/app/unmanaged.pem"}, fileNames(files))

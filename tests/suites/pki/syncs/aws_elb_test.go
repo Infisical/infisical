@@ -154,7 +154,7 @@ func TestAwsElbPkiSync_RemoveCertificates(t *testing.T) {
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "removing the certificates: %s", apierr.Body(res.Body))
 		unbound := s.acct.ELB.ExpectEvent[aws.ListenerCertificateRemoved](t, func(e aws.ListenerCertificateRemoved) bool {
 			return e.ListenerArn == s.listenerArn && e.CertificateArn == arn
-		}, fakenet.Since(mark))
+		}, fakenet.Since(mark), cloudSyncRemoval)
 		deleted := s.acct.ACM.ExpectEvent[aws.CertificateDeleted](t, func(e aws.CertificateDeleted) bool { return e.ARN == arn },
 			fakenet.Since(mark), fakenet.Within(20*time.Second))
 		require.True(t, deleted.At.After(unbound.At), "the certificate was deleted from ACM at %s, before it was unbound at %s", deleted.At, unbound.At)

@@ -153,7 +153,7 @@ func TestChefPkiSync_Sync(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "removing the certificates: %s", apierr.Body(res.Body))
-		s.cp.ExpectEvent[chef.DataBagItemDeleted](t, func(e chef.DataBagItemDeleted) bool { return e.Item == item })
+		s.cp.ExpectEvent[chef.DataBagItemDeleted](t, func(e chef.DataBagItemDeleted) bool { return e.Item == item }, cloudSyncRemoval)
 		items := s.cp.State(t).DataBags["certificates"]
 		require.Len(t, items, 1)
 		require.Contains(t, items, "web")

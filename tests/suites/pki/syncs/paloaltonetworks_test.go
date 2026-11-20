@@ -264,7 +264,7 @@ func TestPaloAltoNetworksPkiSync_RemoveCertificates(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "removing the certificates: %s", apierr.Body(res.Body))
-		s.fw.ExpectEvent[panos.CertificateDeleted](t, func(e panos.CertificateDeleted) bool { return e.Name == pair }, fakenet.Since(mark))
+		s.fw.ExpectEvent[panos.CertificateDeleted](t, func(e panos.CertificateDeleted) bool { return e.Name == pair }, fakenet.Since(mark), cloudSyncRemoval)
 		committed := s.fw.ExpectEvent[panos.Committed](t, nil, fakenet.Since(mark))
 		require.NotContains(t, committed.Certificates, pair)
 		left := s.fw.State(t).Certificates
@@ -411,7 +411,7 @@ func TestPaloAltoNetworksSslTlsProfilePkiSync_RemoveCertificates(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "removing the certificates: %s", apierr.Body(res.Body))
-		s.fw.ExpectEvent[panos.ProfileUpdated](t, func(e panos.ProfileUpdated) bool { return e.Name == "portal" && e.Certificate == "fallback" }, fakenet.Since(mark))
+		s.fw.ExpectEvent[panos.ProfileUpdated](t, func(e panos.ProfileUpdated) bool { return e.Name == "portal" && e.Certificate == "fallback" }, fakenet.Since(mark), cloudSyncRemoval)
 		s.fw.ExpectEvent[panos.CertificateDeleted](t, func(e panos.CertificateDeleted) bool { return e.Name == pair }, fakenet.Since(mark))
 		committed := s.fw.ExpectEvent[panos.Committed](t, nil, fakenet.Since(mark))
 		require.Equal(t, "fallback", committed.Profiles["portal"])

@@ -154,7 +154,7 @@ func TestNetScalerPkiSync_Sync(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "removing the certificates: %s", apierr.Body(res.Body))
-		s.adc.ExpectEvent[netscaler.CertKeyUnbound](t, func(e netscaler.CertKeyUnbound) bool { return e.VServer == "vs-web" && e.CertKey == name })
+		s.adc.ExpectEvent[netscaler.CertKeyUnbound](t, func(e netscaler.CertKeyUnbound) bool { return e.VServer == "vs-web" && e.CertKey == name }, cloudSyncRemoval)
 		s.adc.ExpectEvent[netscaler.CertKeyDeleted](t, func(e netscaler.CertKeyDeleted) bool { return e.Name == name })
 		state := s.adc.State(t)
 		require.Empty(t, state.VServers["vs-web"])

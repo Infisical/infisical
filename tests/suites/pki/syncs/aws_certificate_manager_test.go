@@ -181,7 +181,7 @@ func TestAwsCertificateManagerPkiSync_Sync(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "removing the certificates: %s", apierr.Body(res.Body))
-		s.acct.ACM.ExpectEvent[aws.CertificateDeleted](t, func(e aws.CertificateDeleted) bool { return e.ARN == arn })
+		s.acct.ACM.ExpectEvent[aws.CertificateDeleted](t, func(e aws.CertificateDeleted) bool { return e.ARN == arn }, cloudSyncRemoval)
 		left := s.acct.Certificates(t)
 		require.Len(t, left, 1)
 		for _, c := range left {

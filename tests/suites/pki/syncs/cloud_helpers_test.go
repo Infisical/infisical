@@ -12,6 +12,7 @@ import (
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture/pki"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/google/uuid"
@@ -58,6 +59,11 @@ func cloudSyncRead(get cloudSyncGet, syncID string) func(ctx context.Context) (c
 const cloudSyncRunWait = 75 * time.Second
 
 var cloudSyncRun = wait.Timeout(cloudSyncRunWait)
+
+// cloudSyncRemoval waits for the provider call a removal makes. A run marks the sync
+// succeeded before it releases the sync's lock, so a removal sent right after can find
+// the lock held and be requeued like a run.
+var cloudSyncRemoval = fakenet.Within(cloudSyncRunWait)
 
 // cloudSyncAwait waits for a run that finished after the one recorded at previous
 // (nil for the first run) and fails unless it ended in want. A failed status ends the

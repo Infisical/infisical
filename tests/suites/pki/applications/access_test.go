@@ -138,7 +138,7 @@ func TestApplicationAccess_Auditor(t *testing.T) {
 
 		// Assert
 		require.Equal(t, http.StatusForbidden, res.StatusCode())
-		require.Equal(t, "You are not allowed to delete on certificates", apierr.Message(res.Body))
+		require.Equal(t, "You are not allowed to request-revocation on certificates", apierr.Message(res.Body))
 		require.Equal(t, "active", pki.ReadCertificate(t, tn.Admin, cert.ID).JSON200.Certificate.Status)
 	})
 }

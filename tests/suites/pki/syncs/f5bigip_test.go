@@ -150,7 +150,7 @@ func TestF5BigIpPkiSync_Sync(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "removing the certificates: %s", apierr.Body(res.Body))
-		updated := s.bigip.ExpectEvent[f5bigip.ClientSSLProfileUpdated](t, func(e f5bigip.ClientSSLProfileUpdated) bool { return e.Path == "/Common/web-ssl" })
+		updated := s.bigip.ExpectEvent[f5bigip.ClientSSLProfileUpdated](t, func(e f5bigip.ClientSSLProfileUpdated) bool { return e.Path == "/Common/web-ssl" }, cloudSyncRemoval)
 		s.bigip.ExpectEvent[f5bigip.FileObjectDeleted](t, func(e f5bigip.FileObjectDeleted) bool { return e.Kind == "ssl-cert" && e.Path == path+"-chain" })
 		require.Equal(t, []f5bigip.CertKeyChainEntry{other}, updated.CertKeyChain)
 		state := s.bigip.State(t)

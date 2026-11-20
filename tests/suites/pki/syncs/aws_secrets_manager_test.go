@@ -193,7 +193,7 @@ func TestAwsSecretsManagerPkiSync_RemoveCertificates(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "removing the certificates: %s", apierr.Body(res.Body))
-		s.acct.SecretsManager.ExpectEvent[aws.SecretDeleted](t, func(e aws.SecretDeleted) bool { return e.Name == name })
+		s.acct.SecretsManager.ExpectEvent[aws.SecretDeleted](t, func(e aws.SecretDeleted) bool { return e.Name == name }, cloudSyncRemoval)
 		require.Equal(t, []string{"unmanaged"}, slices.Collect(maps.Keys(s.acct.Secrets(t))))
 	})
 }

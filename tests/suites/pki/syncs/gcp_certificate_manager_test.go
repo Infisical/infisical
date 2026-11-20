@@ -184,7 +184,7 @@ func TestGcpCertificateManagerPkiSync_Sync(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "removing the certificates: %s", apierr.Body(res.Body))
-		s.gcp.CertificateManager.ExpectEvent[oauth.GCPCertificateMapEntryDeleted](t, func(e oauth.GCPCertificateMapEntryDeleted) bool { return e.Name == s.entry() }, fakenet.Since(mark))
+		s.gcp.CertificateManager.ExpectEvent[oauth.GCPCertificateMapEntryDeleted](t, func(e oauth.GCPCertificateMapEntryDeleted) bool { return e.Name == s.entry() }, fakenet.Since(mark), cloudSyncRemoval)
 		s.gcp.CertificateManager.ExpectEvent[oauth.GCPCertificateDeleted](t, func(e oauth.GCPCertificateDeleted) bool { return e.Name == s.certificate(cert.ID.String()) }, fakenet.Since(mark))
 		state := s.gcp.CertificateManager.State(t)
 		require.Empty(t, state.Certificates)

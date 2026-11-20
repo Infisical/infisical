@@ -230,7 +230,7 @@ func TestAzureKeyVaultPkiSync_RemoveCertificates(t *testing.T) {
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "removing the certificates: %s", apierr.Body(res.Body))
 		s.kv.ExpectEvent[azure.VaultCertificateDeleted](t, func(e azure.VaultCertificateDeleted) bool {
 			return e.Vault == s.vault && e.Name == name
-		})
+		}, cloudSyncRemoval)
 		vault := s.kv.State(t).Vaults[s.vault]
 		require.Empty(t, vault.Certificates)
 		require.Equal(t, []string{name}, vault.Deleted)

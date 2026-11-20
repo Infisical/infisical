@@ -130,7 +130,7 @@ func TestKempLoadMasterPkiSync_Sync(t *testing.T) {
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "removing the certificates: %s", apierr.Body(res.Body))
 		s.lm.ExpectEvent[kemp.VirtualServiceModified](t, func(e kemp.VirtualServiceModified) bool {
 			return e.Index == "1" && slices.Equal(e.CertFiles, []string{"web"})
-		})
+		}, cloudSyncRemoval)
 		s.lm.ExpectEvent[kemp.CertificateDeleted](t, func(e kemp.CertificateDeleted) bool { return e.Name == name })
 		require.Equal(t, []string{"web"}, slices.Sorted(maps.Keys(s.lm.State(t).Certificates)))
 	})
