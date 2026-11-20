@@ -84,6 +84,8 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
+import { getServerCfg } from "../super-admin/super-admin-service";
+import { LoginMethod } from "../super-admin/super-admin-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
 import { TOrgDALFactory } from "./org-dal";
@@ -1141,6 +1143,11 @@ export const orgServiceFactory = ({
     return `${appCfg.SITE_URL}/login`;
   };
 
+  const $isEmailLoginEnabled = async () => {
+    const { enabledLoginMethods } = await getServerCfg();
+    return !enabledLoginMethods || enabledLoginMethods.includes(LoginMethod.EMAIL);
+  };
+
   const resendOrgMemberInvitation = async ({
     orgId,
     actorId,
@@ -1197,6 +1204,13 @@ export const orgServiceFactory = ({
         actorPermission: permission,
         targetPermissions: inviteePermissions,
         baseMessage: "Failed to resend the invitation of this org member"
+      });
+    }
+
+    if (!org?.authEnforced && !(await $isEmailLoginEnabled())) {
+      throw new BadRequestError({
+        message:
+          "Failed to resend the invitation because email login is disabled on this instance. The invitee can join by signing in with one of the enabled login methods."
       });
     }
 
@@ -1338,6 +1352,11 @@ export const orgServiceFactory = ({
     // If user already completed signup, they'll be promoted to Accepted
     // when they authenticate via selectOrganization or processProviderCallback
     if (user.isAccepted) {
+      return { user, organizationName: organization.name };
+    }
+
+    // A link issued before email login was disabled must not set up a password account either.
+    if (!(await $isEmailLoginEnabled())) {
       return { user, organizationName: organization.name };
     }
 

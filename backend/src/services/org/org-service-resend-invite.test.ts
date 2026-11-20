@@ -8,7 +8,7 @@ import {
   OrgPermissionMemberActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
-import { NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 
 import { orgServiceFactory } from "./org-service";
 
@@ -16,6 +16,14 @@ vi.mock("@app/lib/config/env", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/config/env")>()),
   getConfig: () => ({ isSmtpConfigured: false, SITE_URL: "https://infisical.test" })
 }));
+
+const { getServerCfgMock } = vi.hoisted(() => ({ getServerCfgMock: vi.fn() }));
+
+vi.mock("@app/services/super-admin/super-admin-service", () => ({
+  getServerCfg: getServerCfgMock
+}));
+
+beforeEach(() => getServerCfgMock.mockResolvedValue({ enabledLoginMethods: null }));
 
 // Without SMTP the resend returns the invitation link to the caller, and that link alone completes the
 // invitee's signup. So a caller who could not have granted the pending membership's role must not get one.
@@ -157,6 +165,17 @@ describe("resendOrgMemberInvitation privilege boundary", () => {
     }
   );
 
+  test("no link is handed out once the instance has disabled email login", async () => {
+    getServerCfgMock.mockResolvedValue({ enabledLoginMethods: ["saml"] });
+    const { resend, createTokenForUser } = setup({
+      actorPermission: abilityByRole.admin,
+      shouldUseNewPrivilegeSystem: true
+    });
+
+    await expect(resend()).rejects.toThrow(BadRequestError);
+    expect(createTokenForUser).not.toHaveBeenCalled();
+  });
+
   test("an unknown membership is a 404, not a crash", async () => {
     const { resend } = setup({
       actorPermission: abilityByRole.admin,
@@ -165,5 +184,29 @@ describe("resendOrgMemberInvitation privilege boundary", () => {
     });
 
     await expect(resend()).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("verifyUserToOrg with email login disabled", () => {
+  test("a link issued earlier accepts the invitation but gives no signup token", async () => {
+    getServerCfgMock.mockResolvedValue({ enabledLoginMethods: ["saml"] });
+    const validateTokenForUser = vi.fn().mockResolvedValue(undefined);
+
+    const service = orgServiceFactory({
+      userDAL: {
+        findOne: vi.fn().mockResolvedValue({ id: "invitee-id", isAccepted: false }),
+        updateById: vi.fn()
+      },
+      orgDAL: {
+        findMembership: vi.fn().mockResolvedValue([{ id: MEMBERSHIP_ID, scopeOrgId: ORG_ID }]),
+        findById: vi.fn().mockResolvedValue({ id: ORG_ID, name: "Acme", authEnforced: false })
+      },
+      tokenService: { validateTokenForUser }
+    } as never);
+
+    const result = await service.verifyUserToOrg({ orgId: ORG_ID, email: "invitee@acme.test", code: "code" });
+
+    expect(validateTokenForUser).toHaveBeenCalled();
+    expect(result).toEqual({ user: { id: "invitee-id", isAccepted: false }, organizationName: "Acme" });
   });
 });
