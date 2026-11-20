@@ -566,6 +566,19 @@ describe("getCertificateDeletionWarning", () => {
     ).toBe("This removes the certificate. This cannot be undone.");
   });
 
+  it("describes the removal as what happens once the request is approved when approval is required", () => {
+    expect(
+      getCertificateDeletionWarning(
+        { status: CertStatus.ACTIVE, notAfter: past, hasPrivateKey: true },
+        true,
+        true,
+        true
+      )
+    ).toBe(
+      "Confirming creates an approval request. Once it's approved, this removes the certificate and its private key, which can't be undone."
+    );
+  });
+
   it("says nothing about trust for a revoked or expired certificate", () => {
     expect(
       getCertificateDeletionWarning({ status: CertStatus.REVOKED, notAfter: future }, true)
