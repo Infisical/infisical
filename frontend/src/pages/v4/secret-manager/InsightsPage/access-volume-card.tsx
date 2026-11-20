@@ -51,10 +51,14 @@ export const AccessVolumeCard = ({ projectId }: { projectId: string }) => {
               header: "Top Readers",
               primary: true,
               grow: true,
+              wrap: true,
               text: (actor) => actor.name,
               render: (actor) => (
-                <Inline gap={8} align="center" wrap={false}>
-                  <Icon name={actor.type === "user" ? "user" : "machine"} />
+                <Inline gap={8} align="start" wrap={false}>
+                  <Icon
+                    name={actor.type === "user" ? "user" : "machine"}
+                    style={{ flexShrink: 0, marginTop: 2 }}
+                  />
                   <span>{actor.name}</span>
                 </Inline>
               )
