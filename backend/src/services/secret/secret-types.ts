@@ -10,8 +10,8 @@ import {
   TSecretsUpdate
 } from "@app/db/schemas";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { OrderByDirection, TGenericPermission, TProjectPermission } from "@app/lib/types";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";

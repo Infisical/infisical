@@ -108,7 +108,7 @@ copy drifts on its own.
   orphaned by a cascade), and say why in a comment.
 - **Wait with `pollUntil`** (`poll.ts`) for anything asynchronous, never a fixed sleep.
 - **Run background jobs on demand** through a pass-through wrapper in `e2e-test/fakes/` (eg
-  `reminder-queue.ts` and `event-outbox-queue.ts`, driven by `runDailyReminders` in `reminders.ts`).
+  `reminder-queue.ts` and `events-module.ts`, driven by `runDailyReminders` in `reminders.ts`).
 
 #### Faking a third-party provider
 
@@ -665,20 +665,24 @@ Invariants worth knowing before extending it:
 
 ### Event Outbox (transactional and generic; alerting is its first consumer)
 
-`src/services/event-outbox/` writes "this happened" as a row inside the caller's own transaction, so
-an event is exactly as durable as the business write. Enqueueing to Redis after commit loses the event
+The Events domain (`src/domains/platform/events/`) writes "this happened" as a row inside the caller's own
+transaction, so an event is exactly as durable as the business write. Enqueueing to Redis after commit loses the event
 whenever the pod dies or Redis is down in that window. It's not alert-specific:
 `alert-event-consumer.ts` is one consumer on the shared registry, and anything else that needs
 at-least-once delivery of a domain event registers next to it. The delegated approval dispatch consumer
 (`delegated-approval/dispatch/delegated-approval-dispatch-consumer.ts`) is the second: it calls the external
 approval system inline from `handle()` and maps the outcome to `Delivered` / `Retry` / `Failed`, with no queue hop.
 
-**Naming:** the outbox is an implementation detail to both sides of it. Emitters depend on
-`TEventEmitter` and pass a `TEventInput`; consumers implement `IEventConsumer`, receive `TEvent[]` (the
-CloudEvents envelope) and return `TEventConsumerResult` with an `EventResultStatus`. Names with "outbox"
-in them (the DAL, queue, cron jobs, metrics, `EventOutboxStatus`, `TOutboxFlushKey`) describe the
-mechanism and stay inside the module and its wiring. A dependency field for the emitter is
-`eventEmitter`, not `eventOutboxService`.
+**Naming:** the outbox is an implementation detail to both sides of it. Emitters pass a `TEventInput`;
+consumers implement `TEventConsumer`, receive `TEvent[]` (the CloudEvents envelope) and return
+`TEventConsumerResult` with an `EventResultStatus`. Everything comes from
+`@app/domains/platform/events/ce/module`. Names with "outbox" in them (the store, queue, cron jobs, metrics,
+`EventOutboxStatus`) describe the mechanism and stay inside the domain.
+
+**Who takes what:** code under `src/services/` and `src/ee/services/` takes `eventEmitter: TEventEmitter`
+(`@app/lib/knex/event-emitter`) and calls `eventEmitter.emit(events, tx)` with its Knex transaction. A domain
+takes `eventEmitterService: TEventEmitterService` and calls `eventEmitterService.within(tx).emit(events)` inside its
+`run`, or `eventEmitterService.emit(events)` outside one.
 
 #### How to implement an event
 
@@ -688,11 +692,11 @@ an event about something being created, updated or deleted, the
 [CRUD Event Design ADR](https://app.notion.com/p/3ff5646922298176bd92f298433f7d60). The steps below
 summarise them.
 
-1. **Define it with `defineEvent`, in the domain that emits it.** It goes in that domain's `*-events.ts`
+1. **Define it with `EventDefinition.define`, in the domain that emits it.** It goes in that domain's `*-events.ts`
    (eg `secret-folder/secret-folder-events.ts`), never in a consumer (see "The event contract belongs to
    the domain" below). The name is `com.infisical.<domain>.<entity>.<action>.v<version>`: lower-kebab
    segments, a singular entity, a past-tense action, and words a customer recognises rather than
-   implementation detail. `defineEvent` throws on boot for a name that breaks this. Start at `v1` and
+   implementation detail. `EventDefinition.define` throws on boot for a name that breaks this. Start at `v1` and
    bump only for a breaking change to `data`; adding an optional field is not one.
 2. **Give `data` what a consumer needs to decide whether it cares and to find the thing again, not the
    thing itself.** That is ids, the owning scope (eg `projectId`) and the location where there is one
@@ -707,9 +711,9 @@ summarise them.
    (`secret-v2-bridge/secret-events.ts`, `secret-folder/secret-folder-events.ts`,
    `secret-import/secret-import-events.ts`) are the reference.
 4. **Emit it in the transaction of the write it describes**, so the event is exactly as durable as that
-   write: `SomeEventV1.emit(eventEmitter, data, tx)`, or `build` several and pass them to
-   `eventEmitter.emit(events, tx)` in one call. Omit `tx` only when there is no such write left to be
-   atomic with (eg after it already committed); the insert then runs on its own. Nothing around the emit
+   write: `eventEmitter.emit([SomeEventV1.build(data)], tx)`, with as many built events as the write
+   produced in the one call. Omit `tx` only when there is no such write left to be atomic with (eg after it
+   already committed); the insert then runs on its own. Nothing around the emit
    is caught: a swallowed insert failure hands the caller a poisoned transaction (`25P02` on its next
    statement). When several services emit the same event, give it one helper in the domain's events
    file rather than repeating the call.
@@ -717,15 +721,22 @@ summarise them.
    ```ts
    await folderDAL.transaction(async (tx) => {
      const folder = await folderDAL.create({ ... }, tx);
-     await FolderModifiedEventV1.emit(
-       eventEmitter,
-       { folderId: folder.id, projectId, environment, secretPath, modificationType: EventModificationType.Created },
+     await eventEmitter.emit(
+       [
+         FolderModifiedEventV1.build({
+           folderId: folder.id,
+           projectId,
+           environment,
+           secretPath,
+           modificationType: EventModificationType.Created
+         })
+       ],
        tx
      );
    });
    ```
 
-5. **Consume it with an `IEventConsumer`** whose `subscribesTo` matches the definition's `type` and
+5. **Consume it with a `TEventConsumer`** whose `subscribesTo` matches the definition's `type` and
    whose `dataSchema` is the definition's `data` schema. Nothing is written for an event no consumer
    subscribes to. Only `subscribesTo` runs before the insert, in memory: whether a customer configured
    anything for the resource is decided in the worker, and a row nobody wanted is marked `Delivered` and
@@ -736,8 +747,9 @@ Events named before the ADR (eg `identity.authentication.auth-method-changed`) k
 they move to it.
 
 **Before writing a consumer or changing the outbox itself, read
-[`src/services/event-outbox/AGENTS.md`](src/services/event-outbox/AGENTS.md)** (retry ownership,
-`isFinalAttempt`, fenced claims, ordering). In short: delivery is at-least-once with best-effort ordering,
+[`src/domains/platform/events/AGENTS.md`](src/domains/platform/events/AGENTS.md)** (retry ownership,
+`isFinalAttempt`, fenced claims, ordering). Register a consumer with `domains.events.registerConsumer(...)` in
+`server/routes/index.ts`, before `domains.events.start()`: a registration after it throws. In short: delivery is at-least-once with best-effort ordering,
 and one event's failure must never escape `handle` (use `runEventsSerially` / `runEventsConcurrentlyByKey`).
 
 **Adding an event-triggered alert** needs no outbox code: declare the event with

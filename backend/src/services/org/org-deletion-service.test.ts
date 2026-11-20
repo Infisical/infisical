@@ -1,5 +1,5 @@
+import { EventModificationType } from "@app/domains/platform/events/ce/module";
 import { NotFoundError } from "@app/lib/errors";
-import { EventModificationType } from "@app/services/event-outbox/event-definition";
 
 import { orgDeletionServiceFactory } from "./org-deletion-service";
 import { OrganizationModifiedEventV1 } from "./org-events";

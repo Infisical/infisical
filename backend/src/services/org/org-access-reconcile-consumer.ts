@@ -1,14 +1,14 @@
+import {
+  EventResultStatus,
+  TEvent,
+  TEventConsumer,
+  TEventConsumerResult
+} from "@app/domains/platform/events/ce/module";
 import { Meter, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
-import {
-  EventResultStatus,
-  IEventConsumer,
-  TEvent,
-  TEventConsumerResult
-} from "@app/services/event-outbox/event-outbox-types";
 import { TProjectAccessRevokeServiceFactory } from "@app/services/membership/project-access-revoke-service";
 
 import { auditRevokedProjectAccess } from "./org-access-fns";
@@ -64,7 +64,7 @@ export const orgAccessReconcileConsumerFactory = ({
   projectAccessRevokeService,
   auditLogService,
   usageMeteringService
-}: TOrgAccessReconcileConsumerDep): IEventConsumer<TOrgMembershipEventPayload> => {
+}: TOrgAccessReconcileConsumerDep): TEventConsumer<TOrgMembershipEventPayload> => {
   const eventTypes = new Set<string>(ORG_MEMBERSHIP_EVENTS);
   const subscribesTo = (eventType: string) => eventTypes.has(eventType);
 
