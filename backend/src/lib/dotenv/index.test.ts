@@ -87,6 +87,10 @@ describe("parseEnvFile", () => {
     expect(parseEnvFile('KEY="say \\"hello\\""')).toEqual({ KEY: 'say "hello"' });
   });
 
+  test("keeps a backslash that is followed by n or r", () => {
+    expect(parseEnvFile('KEY="C:\\\\new\\\\reports"')).toEqual({ KEY: "C:\\new\\reports" });
+  });
+
   test("unescapes carriage returns", () => {
     expect(parseEnvFile('KEY="a\\rb"')).toEqual({ KEY: "a\rb" });
   });
@@ -146,7 +150,11 @@ describe("round-trip", () => {
     { LEADING_SPACE: " hello" },
     { TRAILING_SPACE: "hello " },
     { BOTH_SPACES: " hello " },
-    { TAB_PADDED: "\tvalue\t" }
+    { TAB_PADDED: "\tvalue\t" },
+    { BACKSLASH_N: "C:\\new\\folder" },
+    { BACKSLASH_R: "C:\\reports" },
+    { LITERAL_ESCAPED_NEWLINE: "-----BEGIN KEY-----\\nMIIB\\n-----END KEY-----" },
+    { BACKSLASH_QUOTE: 'a\\"b' }
   ];
 
   test.each(cases)("round-trips %j", (input) => {
