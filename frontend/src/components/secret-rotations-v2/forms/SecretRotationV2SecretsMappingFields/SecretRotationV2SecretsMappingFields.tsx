@@ -23,7 +23,10 @@ import { OpenAIServiceAccountRotationSecretsMappingFields } from "./OpenAIServic
 import { OpenRouterApiKeyRotationSecretsMappingFields } from "./OpenRouterApiKeyRotationSecretsMappingFields";
 import { RedisCredentialsRotationSecretsMappingFields } from "./RedisCredentialsRotationSecretsMappingFields";
 import { SalesforceOauthCredentialsRotationSecretsMappingFields } from "./SalesforceOauthCredentialsRotationSecretsMappingFields";
-import { SqlCredentialsRotationSecretsMappingFields } from "./shared";
+import {
+  GitLabTokenRotationSecretsMappingFields,
+  SqlCredentialsRotationSecretsMappingFields
+} from "./shared";
 import { SnowflakeUserKeyPairRotationSecretsMappingFields } from "./SnowflakeUserKeyPairRotationSecretsMappingFields";
 import { StripeApiKeyRotationSecretsMappingFields } from "./StripeApiKeyRotationSecretsMappingFields";
 import { SupabaseApiKeyRotationSecretsMappingFields } from "./SupabaseApiKeyRotationSecretsMappingFields";
@@ -64,7 +67,9 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.CloudflareR2AccessKey]: CloudflareR2AccessKeyRotationSecretsMappingFields,
   [SecretRotation.StripeApiKey]: StripeApiKeyRotationSecretsMappingFields,
   [SecretRotation.GcpServiceAccountKey]: GcpServiceAccountKeyRotationSecretsMappingFields,
-  [SecretRotation.ClickHouseCredentials]: SqlCredentialsRotationSecretsMappingFields
+  [SecretRotation.ClickHouseCredentials]: SqlCredentialsRotationSecretsMappingFields,
+  [SecretRotation.GitLabServiceAccountToken]: GitLabTokenRotationSecretsMappingFields,
+  [SecretRotation.GitLabGroupAccessToken]: GitLabTokenRotationSecretsMappingFields
 };
 
 export const SecretRotationV2SecretsMappingFields = () => {

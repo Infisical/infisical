@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { AppConnections } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -8,6 +9,7 @@ import {
   SanitizedGitLabConnectionSchema,
   TGitLabGroup,
   TGitLabProject,
+  TGitLabServiceAccount,
   UpdateGitLabConnectionSchema
 } from "@app/services/app-connection/gitlab";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -103,6 +105,44 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
       );
 
       return groups;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/groups/:groupId/service-accounts`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listGitLabGroupServiceAccounts",
+      params: z.object({
+        connectionId: z.string().uuid().describe(AppConnections.GITLAB.LIST_GROUP_SERVICE_ACCOUNTS.connectionId),
+        groupId: z
+          .string()
+          .trim()
+          .max(20)
+          .regex(/^\d+$/, "Group ID must be a numeric GitLab group ID")
+          .describe(AppConnections.GITLAB.LIST_GROUP_SERVICE_ACCOUNTS.groupId)
+      }),
+      response: {
+        200: z
+          .object({
+            id: z.string().describe(AppConnections.GITLAB.LIST_GROUP_SERVICE_ACCOUNTS.id),
+            username: z.string().describe(AppConnections.GITLAB.LIST_GROUP_SERVICE_ACCOUNTS.username),
+            name: z.string().describe(AppConnections.GITLAB.LIST_GROUP_SERVICE_ACCOUNTS.name)
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { connectionId, groupId } = req.params;
+
+      const serviceAccounts: TGitLabServiceAccount[] =
+        await server.services.appConnection.gitlab.listGroupServiceAccounts(connectionId, groupId, req.permission);
+
+      return serviceAccounts;
     }
   });
 };

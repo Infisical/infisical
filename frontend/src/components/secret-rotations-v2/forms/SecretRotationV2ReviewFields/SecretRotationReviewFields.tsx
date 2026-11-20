@@ -36,7 +36,7 @@ import { OpenAIServiceAccountRotationReviewFields } from "./OpenAIServiceAccount
 import { OpenRouterApiKeyRotationReviewFields } from "./OpenRouterApiKeyRotationReviewFields";
 import { RedisCredentialsRotationReviewFields } from "./RedisCredentialsRotationReviewFields";
 import { SalesforceOauthCredentialsRotationReviewFields } from "./SalesforceOauthCredentialsRotationReviewFields";
-import { SqlCredentialsRotationReviewFields } from "./shared";
+import { GitLabTokenRotationReviewFields, SqlCredentialsRotationReviewFields } from "./shared";
 import { SnowflakeUserKeyPairRotationReviewFields } from "./SnowflakeUserKeyPairRotationReviewFields";
 import { StripeApiKeyRotationReviewFields } from "./StripeApiKeyRotationReviewFields";
 import { SupabaseApiKeyRotationReviewFields } from "./SupabaseApiKeyRotationReviewFields";
@@ -75,7 +75,9 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.CloudflareR2AccessKey]: CloudflareR2AccessKeyRotationReviewFields,
   [SecretRotation.StripeApiKey]: StripeApiKeyRotationReviewFields,
   [SecretRotation.GcpServiceAccountKey]: GcpServiceAccountKeyRotationReviewFields,
-  [SecretRotation.ClickHouseCredentials]: SqlCredentialsRotationReviewFields
+  [SecretRotation.ClickHouseCredentials]: SqlCredentialsRotationReviewFields,
+  [SecretRotation.GitLabServiceAccountToken]: GitLabTokenRotationReviewFields,
+  [SecretRotation.GitLabGroupAccessToken]: GitLabTokenRotationReviewFields
 };
 
 const pluralize = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;

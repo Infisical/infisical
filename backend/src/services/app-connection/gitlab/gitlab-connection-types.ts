@@ -56,3 +56,9 @@ export interface TGitLabGroup {
   fullName: string;
   fullPath: string;
 }
+
+export type TGitLabServiceAccount = {
+  id: string;
+  username: string;
+  name: string;
+};

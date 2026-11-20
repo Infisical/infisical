@@ -32,6 +32,22 @@ export const secretRotations = [
     rotationType: "Dual-Phase",
   },
   {
+    name: "GitLab Group Access Token",
+    slug: "gitlab-group-access-token",
+    path: "/documentation/platform/secret-rotation/gitlab-group-access-token",
+    description: "Learn how to automatically rotate GitLab group access tokens.",
+    category: "SaaS",
+    rotationType: "Dual-Phase",
+  },
+  {
+    name: "GitLab Service Account Token",
+    slug: "gitlab-service-account-token",
+    path: "/documentation/platform/secret-rotation/gitlab-service-account-token",
+    description: "Learn how to automatically rotate GitLab service account tokens.",
+    category: "SaaS",
+    rotationType: "Dual-Phase",
+  },
+  {
     name: "Databricks Service Principal Secret",
     slug: "databricks-service-principal-secret",
     path: "/documentation/platform/secret-rotation/databricks-service-principal-secret",

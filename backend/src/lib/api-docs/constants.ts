@@ -3185,6 +3185,15 @@ export const AppConnections = {
   ROTATE_CREDENTIALS: (app: AppConnection) => ({
     connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to rotate credentials for.`
   }),
+  GITLAB: {
+    LIST_GROUP_SERVICE_ACCOUNTS: {
+      connectionId: "The ID of the GitLab Connection to list service accounts with.",
+      groupId: "The numeric ID of the GitLab group whose service accounts to list.",
+      id: "The GitLab user ID of the service account.",
+      username: "The GitLab username of the service account.",
+      name: "The display name of the service account."
+    }
+  },
   KEEPER: {
     LIST_SHARED_FOLDERS: {
       connectionId: "The ID of the Keeper Connection to list shared folders from.",
@@ -4157,6 +4166,22 @@ export const SecretRotations = {
       permissions:
         "The permissions granted to the generated Stripe API key. Stripe has no wildcard permission, so this is the full list of what the key may do."
     },
+    GITLAB_SERVICE_ACCOUNT_TOKEN: {
+      groupId: "The ID of the GitLab group that owns the service account.",
+      serviceAccountId: "The user ID of the GitLab service account to create tokens for.",
+      name: "The name for the generated GitLab token. Infisical appends a timestamp so each rotated token is distinct.",
+      description: "An optional description for the generated GitLab token.",
+      scopes: "The scopes to grant the generated GitLab token, for example 'api', 'read_api', or 'read_repository'."
+    },
+    GITLAB_GROUP_ACCESS_TOKEN: {
+      groupId: "The ID of the GitLab group to create group access tokens for.",
+      name: "The name for the generated group access token. Infisical appends a timestamp so each rotated token is distinct.",
+      description: "An optional description for the generated group access token.",
+      scopes:
+        "The scopes to grant the generated group access token, for example 'api', 'read_api', or 'read_repository'. The 'read_user' scope is not available to group access tokens.",
+      accessLevel:
+        "The role of the generated group access token in the group: 10 (Guest), 15 (Planner), 20 (Reporter), 25 (Security Manager), 30 (Developer), or 40 (Maintainer). The Owner role isn't allowed. Defaults to 40."
+    },
     GCP_SERVICE_ACCOUNT_KEY: {
       serviceAccountEmail:
         "The email of the GCP service account whose keys will be rotated, e.g. my-app@my-project.iam.gserviceaccount.com. The connection's service account needs the Service Account Key Admin role (roles/iam.serviceAccountKeyAdmin) on it."
@@ -4270,6 +4295,27 @@ export const SecretRotations = {
     CLICKHOUSE_CREDENTIALS: {
       username: "The name of the secret that the active username will be mapped to.",
       password: "The name of the secret that the generated password will be mapped to."
+    },
+    GITLAB_SERVICE_ACCOUNT_TOKEN: {
+      tokenId: "The name of the secret that the rotated GitLab token ID will be mapped to.",
+      token: "The name of the secret that the rotated GitLab token value will be mapped to."
+    },
+    GITLAB_GROUP_ACCESS_TOKEN: {
+      tokenId: "The name of the secret that the rotated group access token ID will be mapped to.",
+      token: "The name of the secret that the rotated group access token value will be mapped to."
+    }
+  },
+  GENERATED_CREDENTIALS: {
+    GITLAB_TOKEN: {
+      tokenId: "The GitLab ID of the generated token.",
+      token: "The value of the generated token.",
+      settings:
+        "The settings the token was created with. Infisical rotates the token in place while these match the rotation's parameters, and replaces it with a new token when they don't. Absent for tokens created before Infisical recorded them.",
+      name: "The token name, without the timestamp Infisical appends.",
+      description: "The token description, if one was set.",
+      scopes: "The scopes granted to the token, sorted alphabetically.",
+      accessLevel:
+        "The token's role in the group, for group access tokens: 10 (Guest), 15 (Planner), 20 (Reporter), 25 (Security Manager), 30 (Developer), or 40 (Maintainer). Absent for service account tokens."
     }
   }
 };

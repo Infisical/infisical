@@ -82,6 +82,16 @@ import {
   TGcpServiceAccountKeyRotationOption
 } from "./gcp-service-account-key-rotation";
 import {
+  TGitLabGroupAccessTokenRotation,
+  TGitLabGroupAccessTokenRotationGeneratedCredentialsResponse,
+  TGitLabGroupAccessTokenRotationOption
+} from "./gitlab-group-access-token-rotation";
+import {
+  TGitLabServiceAccountTokenRotation,
+  TGitLabServiceAccountTokenRotationGeneratedCredentialsResponse,
+  TGitLabServiceAccountTokenRotationOption
+} from "./gitlab-service-account-token-rotation";
+import {
   THpIloRotation,
   THpIloRotationGeneratedCredentialsResponse,
   THpIloRotationOption
@@ -187,6 +197,8 @@ export type TSecretRotationV2 = (
   | TStripeApiKeyRotation
   | TGcpServiceAccountKeyRotation
   | TClickHouseCredentialsRotation
+  | TGitLabServiceAccountTokenRotation
+  | TGitLabGroupAccessTokenRotation
 ) & {
   secrets: (SecretV3RawSanitized | null)[];
 };
@@ -219,7 +231,9 @@ export type TSecretRotationV2Option =
   | TCloudflareR2AccessKeyRotationOption
   | TStripeApiKeyRotationOption
   | TGcpServiceAccountKeyRotationOption
-  | TClickHouseCredentialsRotationOption;
+  | TClickHouseCredentialsRotationOption
+  | TGitLabServiceAccountTokenRotationOption
+  | TGitLabGroupAccessTokenRotationOption;
 
 export type TListSecretRotationV2Options = { secretRotationOptions: TSecretRotationV2Option[] };
 
@@ -256,7 +270,9 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TCloudflareR2AccessKeyRotationGeneratedCredentialsResponse
   | TStripeApiKeyRotationGeneratedCredentialsResponse
   | TGcpServiceAccountKeyRotationGeneratedCredentialsResponse
-  | TClickHouseCredentialsRotationGeneratedCredentialsResponse;
+  | TClickHouseCredentialsRotationGeneratedCredentialsResponse
+  | TGitLabServiceAccountTokenRotationGeneratedCredentialsResponse
+  | TGitLabGroupAccessTokenRotationGeneratedCredentialsResponse;
 
 export type TCreateSecretRotationV2DTO = DiscriminativePick<
   TSecretRotationV2,
@@ -342,6 +358,8 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.StripeApiKey]: TStripeApiKeyRotationOption;
   [SecretRotation.GcpServiceAccountKey]: TGcpServiceAccountKeyRotationOption;
   [SecretRotation.ClickHouseCredentials]: TClickHouseCredentialsRotationOption;
+  [SecretRotation.GitLabServiceAccountToken]: TGitLabServiceAccountTokenRotationOption;
+  [SecretRotation.GitLabGroupAccessToken]: TGitLabGroupAccessTokenRotationOption;
 };
 
 export type TSecretRotationGeneratedCredentialsResponseMap = {
@@ -376,6 +394,8 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.StripeApiKey]: TStripeApiKeyRotationGeneratedCredentialsResponse;
   [SecretRotation.GcpServiceAccountKey]: TGcpServiceAccountKeyRotationGeneratedCredentialsResponse;
   [SecretRotation.ClickHouseCredentials]: TClickHouseCredentialsRotationGeneratedCredentialsResponse;
+  [SecretRotation.GitLabServiceAccountToken]: TGitLabServiceAccountTokenRotationGeneratedCredentialsResponse;
+  [SecretRotation.GitLabGroupAccessToken]: TGitLabGroupAccessTokenRotationGeneratedCredentialsResponse;
 };
 
 // Unified type for local account reconciliation (Unix/Linux, Windows, and HP iLO)

@@ -28,7 +28,10 @@ import {
   useViewSecretRotationV2GeneratedCredentials
 } from "@app/hooks/api/secretRotationsV2";
 
-import { ViewSqlCredentialsRotationGeneratedCredentials } from "./shared";
+import {
+  ViewGitLabTokenRotationGeneratedCredentials,
+  ViewSqlCredentialsRotationGeneratedCredentials
+} from "./shared";
 import { ViewAwsIamUserSecretRotationGeneratedCredentials } from "./ViewAwsIamUserSecretRotationGeneratedCredentials";
 import { ViewCloudflareApiTokenRotationGeneratedCredentials } from "./ViewCloudflareApiTokenRotationGeneratedCredentials";
 import { ViewCloudflareR2AccessKeyRotationGeneratedCredentials } from "./ViewCloudflareR2AccessKeyRotationGeneratedCredentials";
@@ -271,6 +274,14 @@ const Content = ({ secretRotation }: ContentProps) => {
     case SecretRotation.GcpServiceAccountKey:
       Component = (
         <ViewGcpServiceAccountKeyRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.GitLabServiceAccountToken:
+    case SecretRotation.GitLabGroupAccessToken:
+      Component = (
+        <ViewGitLabTokenRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );
