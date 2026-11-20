@@ -466,7 +466,6 @@ export const ServiceSheet = ({
     control,
     handleSubmit,
     reset,
-    resetField,
     getFieldState,
     getValues,
     setError,
@@ -723,14 +722,20 @@ export const ServiceSheet = ({
     const hooks = service && storedService?.id === service.id ? storedService.hooks : undefined;
     savedHooksRef.current = new Map((hooks ?? []).map((hook) => [hook.id, hook]));
     if (!hooks || getFieldState("hooks").isDirty) return;
-    resetField("hooks", {
-      defaultValue: hooks.map((hook): TServiceHookDraft => ({
-        hookId: hook.id,
-        hookName: hook.name,
-        ...hookNarrowingDraftOf(hook)
-      }))
-    });
-  }, [isOpen, service, storedService, getFieldState, resetField]);
+    // A full reset, since resetField leaves useFieldArray's rows as they were. Fields edited while the read was in
+    // flight keep their values.
+    reset(
+      {
+        ...getValues(),
+        hooks: hooks.map((hook): TServiceHookDraft => ({
+          hookId: hook.id,
+          hookName: hook.name,
+          ...hookNarrowingDraftOf(hook)
+        }))
+      },
+      { keepDirtyValues: true }
+    );
+  }, [isOpen, service, storedService, getFieldState, getValues, reset]);
 
   // The template step is skipped for a prefilled sheet, so this is where a wrong guess of the type is corrected.
   const switchPrefillType = (serviceType: AgentVaultServiceType) => {
