@@ -34,6 +34,7 @@ export const gitLabTokenRotationFactory = ({
   kmsDataKeyService,
   tokensPath,
   resourceLabel,
+  permissionHint,
   token: { name, description, scopes, accessLevel },
   assertCanCreateToken
 }: {
@@ -46,6 +47,8 @@ export const gitLabTokenRotationFactory = ({
   tokensPath: string;
   /** what the tokens belong to, for error messages, e.g. `group '34'` */
   resourceLabel: string;
+  /** what to check when GitLab refuses for lack of permission */
+  permissionHint: string;
   token: {
     name: string;
     description?: string;
@@ -79,7 +82,8 @@ export const gitLabTokenRotationFactory = ({
       scopes,
       accessLevel,
       rotationInterval,
-      resourceLabel
+      resourceLabel,
+      permissionHint
     });
 
   // A token Infisical fails to save is one nothing tracks, so a retry or a delete can never revoke it.
@@ -96,7 +100,8 @@ export const gitLabTokenRotationFactory = ({
           context,
           tokensPath,
           tokenId: credentials.tokenId,
-          resourceLabel
+          resourceLabel,
+          permissionHint
         });
       } catch (revokeError: unknown) {
         logger.error(
@@ -124,7 +129,9 @@ export const gitLabTokenRotationFactory = ({
 
     const context = await $getContext();
     await Promise.all(
-      generatedCredentials.map(({ tokenId }) => revokeGitLabToken({ context, tokensPath, tokenId, resourceLabel }))
+      generatedCredentials.map(({ tokenId }) =>
+        revokeGitLabToken({ context, tokensPath, tokenId, resourceLabel, permissionHint })
+      )
     );
 
     return callback();
@@ -144,7 +151,8 @@ export const gitLabTokenRotationFactory = ({
         context,
         tokensPath,
         tokenId: credentialsToRevoke.tokenId,
-        resourceLabel
+        resourceLabel,
+        permissionHint
       });
     }
 

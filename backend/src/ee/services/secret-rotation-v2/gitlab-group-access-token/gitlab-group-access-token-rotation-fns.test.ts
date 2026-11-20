@@ -187,11 +187,21 @@ describe("gitLabGroupAccessTokenRotationFactory", () => {
     expect(deleteMock).toHaveBeenCalledWith(`${TOKENS_URL}/101`, expect.anything());
   });
 
-  it("points at the Owner role when GitLab refuses token creation", async () => {
+  it("quotes GitLab and lists what to check when GitLab refuses token creation", async () => {
     postMock.mockRejectedValue(axiosError(403, { message: "403 Forbidden" }));
 
     await expect(buildFactory().issueCredentials(callback)).rejects.toThrow(
-      "Failed to create a GitLab token for group '34': 403 Forbidden. Check that the connection's user has the Owner role on the group."
+      "Failed to create a GitLab token for group '34'. GitLab responded: \"403 Forbidden\". Check that the connection's user has the Owner role on the group, that group access token creation is allowed in the group's Settings > General > Permissions and group features, and, on GitLab.com, that the group is on a Premium or Ultimate plan (group access tokens aren't available on Free or during a trial)."
+    );
+  });
+
+  it("treats GitLab's 400 permission refusal on a Free or trial group as a permission error", async () => {
+    postMock.mockRejectedValue(
+      axiosError(400, { message: "400 Bad request - User does not have permission to create group access token" })
+    );
+
+    await expect(buildFactory().issueCredentials(callback)).rejects.toThrow(
+      'GitLab responded: "400 Bad request - User does not have permission to create group access token". Check that the connection\'s user has the Owner role on the group'
     );
   });
 

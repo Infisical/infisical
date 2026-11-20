@@ -206,8 +206,9 @@ describe("gitLabServiceAccountTokenRotationFactory", () => {
     postMock.mockRejectedValue(axiosError(400, { message: { expires_at: ["must be before 2027-01-01"] } }));
 
     await expect(buildFactory().issueCredentials(callback)).rejects.toThrow(
-      "Failed to create a GitLab token for service account '12' in group '34': expires_at must be before 2027-01-01"
+      "Failed to create a GitLab token for service account '12' in group '34'. GitLab responded: \"expires_at must be before 2027-01-01\"."
     );
+    await expect(buildFactory().issueCredentials(callback)).rejects.not.toThrow("Owner role");
     expect(callback).not.toHaveBeenCalled();
   });
 

@@ -27,6 +27,8 @@ export const gitLabGroupAccessTokenRotationFactory: TRotationFactory<
     kmsDataKeyService,
     tokensPath: `/groups/${encodeURIComponent(groupId)}/access_tokens`,
     resourceLabel: `group '${groupId}'`,
+    permissionHint:
+      "Check that the connection's user has the Owner role on the group, that group access token creation is allowed in the group's Settings > General > Permissions and group features, and, on GitLab.com, that the group is on a Premium or Ultimate plan (group access tokens aren't available on Free or during a trial).",
     token: { name, description, scopes, accessLevel }
   });
 };

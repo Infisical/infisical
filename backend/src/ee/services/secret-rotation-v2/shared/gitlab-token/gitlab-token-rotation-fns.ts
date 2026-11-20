@@ -64,10 +64,14 @@ export const getGitLabTokenApiContext = async ({
   };
 };
 
-const getGitLabTokenPermissionHint = (error: unknown) =>
-  error instanceof AxiosError && error.response?.status === HttpStatusCode.Forbidden
-    ? " Check that the connection's user has the Owner role on the group."
-    : "";
+// GitLab answers some permission refusals with a 400, e.g. "User does not have permission to create group access token"
+const isGitLabPermissionError = (error: unknown) =>
+  error instanceof AxiosError &&
+  (error.response?.status === HttpStatusCode.Forbidden ||
+    (error.response?.status === HttpStatusCode.BadRequest && /permission/i.test(getGitLabErrorMessage(error))));
+
+const formatGitLabTokenError = (action: string, error: unknown, permissionHint: string) =>
+  `${action}. GitLab responded: "${getGitLabErrorMessage(error)}".${isGitLabPermissionError(error) ? ` ${permissionHint}` : ""}`;
 
 /**
  * Creates a token under `tokensPath`, a GitLab token collection such as
@@ -81,7 +85,8 @@ export const createGitLabToken = async ({
   scopes,
   accessLevel,
   rotationInterval,
-  resourceLabel
+  resourceLabel,
+  permissionHint
 }: {
   context: TGitLabTokenApiContext;
   tokensPath: string;
@@ -94,6 +99,8 @@ export const createGitLabToken = async ({
   rotationInterval: number;
   /** what the token belongs to, for error messages, e.g. `service account '12' in group '34'` */
   resourceLabel: string;
+  /** appended when GitLab refuses for lack of permission */
+  permissionHint: string;
 }): Promise<TGitLabTokenCredentials> => {
   try {
     const { data } = await safeRequest.post<TGitLabCreateTokenResponse>(
@@ -121,7 +128,7 @@ export const createGitLabToken = async ({
     if (error instanceof BadRequestError) throw error;
 
     throw new BadRequestError({
-      message: `Failed to create a GitLab token for ${resourceLabel}: ${getGitLabErrorMessage(error)}.${getGitLabTokenPermissionHint(error)}`
+      message: formatGitLabTokenError(`Failed to create a GitLab token for ${resourceLabel}`, error, permissionHint)
     });
   }
 };
@@ -130,12 +137,14 @@ export const revokeGitLabToken = async ({
   context,
   tokensPath,
   tokenId,
-  resourceLabel
+  resourceLabel,
+  permissionHint
 }: {
   context: TGitLabTokenApiContext;
   tokensPath: string;
   tokenId: string;
   resourceLabel: string;
+  permissionHint: string;
 }) => {
   try {
     await safeRequest.delete(`${context.apiUrl}${tokensPath}/${encodeURIComponent(tokenId)}`, {
@@ -146,7 +155,11 @@ export const revokeGitLabToken = async ({
     if (error instanceof AxiosError && error.response?.status === HttpStatusCode.NotFound) return;
 
     throw new BadRequestError({
-      message: `Failed to revoke GitLab token '${tokenId}' of ${resourceLabel}: ${getGitLabErrorMessage(error)}.${getGitLabTokenPermissionHint(error)}`
+      message: formatGitLabTokenError(
+        `Failed to revoke GitLab token '${tokenId}' of ${resourceLabel}`,
+        error,
+        permissionHint
+      )
     });
   }
 };

@@ -32,6 +32,7 @@ export const gitLabServiceAccountTokenRotationFactory: TRotationFactory<
     kmsDataKeyService,
     tokensPath: `/groups/${encodeURIComponent(groupId)}/service_accounts/${encodeURIComponent(serviceAccountId)}/personal_access_tokens`,
     resourceLabel,
+    permissionHint: "Check that the connection's user has the Owner role on the group.",
     token: { name, description, scopes },
     // A token for the connection's own identity would give whoever reads the rotated secret the
     // connection's access (Owner on the group), outliving their access to Infisical.
