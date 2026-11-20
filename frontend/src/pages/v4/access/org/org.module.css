@@ -39,7 +39,6 @@
 .metadata {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
   gap: var(--cipher-space-4);
 }
 .typeIcon {

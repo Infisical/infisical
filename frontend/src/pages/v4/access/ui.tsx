@@ -116,7 +116,13 @@ export const ListToolbar = ({
           ) : (
             <Tooltip content={filterName(filter)}>
               <DropdownMenuTrigger asChild>
-                <Button variant="bare" icon="funnel" iconOnly aria-label={filterName(filter)}>
+                <Button
+                  variant="bare"
+                  icon="funnel"
+                  iconOnly
+                  applied={filter.selected.length > 0}
+                  aria-label={filterName(filter)}
+                >
                   {filterName(filter)}
                 </Button>
               </DropdownMenuTrigger>

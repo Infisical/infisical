@@ -615,7 +615,6 @@ export const AdditionalPrivilegesSection = ({
       <Card
         variant="framed"
         title="Additional privileges"
-        flush={rows.length > 0 && !query.error}
         action={
           readOnly ? undefined : (
             <Gate allowed={canEdit}>

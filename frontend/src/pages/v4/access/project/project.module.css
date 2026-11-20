@@ -30,13 +30,3 @@
 .durationCell :global([data-slot="button"]) {
   width: 100%;
 }
-.copyValue {
-  display: flex;
-  align-items: center;
-  gap: var(--cipher-space-4);
-  min-width: 0;
-}
-.wrap {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}

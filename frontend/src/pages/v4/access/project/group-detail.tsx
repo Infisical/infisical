@@ -31,7 +31,7 @@ import { DetailLayout, Stack } from "@infisical/cipher/ui/layout";
 import { DataList } from "@infisical/cipher/ui/list";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Pagination } from "@infisical/cipher/ui/pagination";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { CopyValue } from "@infisical/cipher/ui/sensitive-editor";
 import { useParams, useSearch } from "@tanstack/react-router";
 
 import {
@@ -256,13 +256,11 @@ const GroupMembersCard = ({
   };
 
   const filtered = Boolean(search.trim()) || typeFilter.length > 0;
-  const hasRows = query.isPending || members.length > 0;
   return (
     <>
       <Card
         variant="framed"
         title="Group members"
-        flush={hasRows}
         action={
           <ListToolbar
             search={search}
@@ -342,27 +340,6 @@ const GroupMembersCard = ({
         onOpenChange={(open) => !open && setAssuming(undefined)}
       />
     </>
-  );
-};
-
-const CopyGroupId = ({ id }: { id: string }) => {
-  const [copied, setCopied] = useState(false);
-  return (
-    <Tooltip content={copied ? "Group ID copied" : "Copy group ID"}>
-      <Button
-        variant="ghost"
-        size="icon-xs"
-        icon={copied ? "check" : "copy"}
-        iconOnly
-        onClick={async () => {
-          if (!(await copyText(id))) return;
-          setCopied(true);
-          window.setTimeout(() => setCopied(false), 2000);
-        }}
-      >
-        Copy group ID
-      </Button>
-    </Tooltip>
   );
 };
 
@@ -450,10 +427,9 @@ export const ProjectGroupDetail = () => {
                 ["Name", group.name],
                 [
                   "ID",
-                  <span key="id" className={styles.idValue}>
-                    {group.id}
-                    <CopyGroupId id={group.id} />
-                  </span>
+                  <CopyValue key="id" value={group.id} label="Copy group ID">
+                    <code>{group.id}</code>
+                  </CopyValue>
                 ],
                 [
                   `${accessLabel(scope.projectType, "role")}`,

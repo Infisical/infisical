@@ -574,7 +574,6 @@ export const EnvironmentsSettings = () => {
       <Card
         variant="framed"
         title="Environments"
-        flush={canRead && hasRows}
         action={
           <Button
             variant="accent"

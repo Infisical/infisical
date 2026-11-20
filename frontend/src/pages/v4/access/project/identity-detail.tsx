@@ -24,8 +24,8 @@ import { Input } from "@infisical/cipher/ui/input";
 import { DetailLayout, Inline, Stack } from "@infisical/cipher/ui/layout";
 import { DataList } from "@infisical/cipher/ui/list";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { CopyValue } from "@infisical/cipher/ui/sensitive-editor";
 import { Switch } from "@infisical/cipher/ui/switch";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { useParams } from "@tanstack/react-router";
 import { BanIcon, UserRoundXIcon } from "lucide-react";
 
@@ -251,28 +251,6 @@ const EditIdentityDialog = ({
   );
 };
 
-const CopyIdButton = ({ id }: { id: string }) => {
-  const [copied, setCopied] = useState(false);
-  const label = copied ? "Machine identity ID copied" : "Copy machine identity ID";
-  return (
-    <Tooltip content={label}>
-      <Button
-        variant="ghost"
-        size="icon-xs"
-        icon={copied ? "check" : "copy"}
-        iconOnly
-        onClick={async () => {
-          if (!(await copyText(id))) return;
-          setCopied(true);
-          window.setTimeout(() => setCopied(false), 2000);
-        }}
-      >
-        {label}
-      </Button>
-    </Tooltip>
-  );
-};
-
 const DetailsCard = ({
   membership,
   canEdit,
@@ -303,10 +281,9 @@ const DetailsCard = ({
           ["Name", identity.name],
           [
             "ID",
-            <span key="id" className={styles.idValue}>
+            <CopyValue key="id" value={identity.id} label="Copy machine identity ID">
               <code>{identity.id}</code>
-              <CopyIdButton id={identity.id} />
-            </span>
+            </CopyValue>
           ],
           ["Managed by", <ManagedByBadge key="managed" identity={identity} />],
           [

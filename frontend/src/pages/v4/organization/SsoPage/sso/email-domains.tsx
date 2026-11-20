@@ -437,7 +437,6 @@ export const EmailDomainsSection = () => {
             />
           </Inline>
         }
-        flush={hasEmailDomainVerification && canRead}
         action={
           <Inline gap={8} wrap={false}>
             {hasEmailDomainVerification && canRead && (

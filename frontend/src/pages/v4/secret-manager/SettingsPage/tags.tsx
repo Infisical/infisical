@@ -277,7 +277,6 @@ export const TagsSettings = () => {
       <Card
         variant="framed"
         title="Tags"
-        flush={canRead && hasRows}
         action={
           <Inline gap={8} wrap={false}>
             {canRead && rows.length > 0 && (

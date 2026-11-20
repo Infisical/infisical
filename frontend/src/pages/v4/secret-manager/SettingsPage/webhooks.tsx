@@ -518,7 +518,6 @@ export const WebhooksSettings = () => {
       <Card
         variant="framed"
         title="Webhooks"
-        flush={hasRows}
         action={
           <Button
             variant="outline"

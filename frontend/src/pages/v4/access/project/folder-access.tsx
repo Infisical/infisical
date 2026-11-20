@@ -534,7 +534,6 @@ export const FolderAccessSection = ({
             <DocumentationLink href={FOLDER_ACCESS_DOCS_URL} subject="folder access" />
           </Inline>
         }
-        flush={rows.length > 0 && !query.error}
         action={readOnly ? undefined : grantButton("accent")}
       >
         {hasPlan && query.error ? (

@@ -32,14 +32,6 @@
 .notice {
   margin: 0;
 }
-.idValue {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cipher-space-4);
-  min-width: 0;
-  font-family: var(--cipher-type-mono-font-family);
-  overflow-wrap: anywhere;
-}
 .memberIcon {
   display: inline-flex;
   color: var(--cipher-muted);
