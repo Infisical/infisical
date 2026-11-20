@@ -61,7 +61,7 @@ import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { formatDateTime, orgRoleName, orgRoleSlug, roleOptions } from "../roles";
 import { failed, saved, toast } from "../toast";
-import { Gate, ListToolbar, usePagedList, RESTRICTED } from "../ui";
+import { EditDetailsButton, Gate, ListToolbar, usePagedList, RESTRICTED } from "../ui";
 import { useCustomRoleGate } from "./custom-role-gate";
 import { CopyButton, Dash, MetadataBadges, Value, VerifiedMark } from "./detail-parts";
 import { type InviteLink, InviteUsersSheet } from "./invite-users-sheet";
@@ -215,31 +215,31 @@ const UserGroupsSection = ({ username }: { username: string }) => {
           <ListToolbar search={list.search} onSearch={list.setSearch} placeholder="Search groups" />
         }
       >
-        {hasRows && (
-          <DataTable
-            label={`Groups for ${username}`}
-            rows={list.pageRows}
-            columns={columns}
-            rowActions={rowActions}
-            getRowId={(group) => group.id}
-            rowLabel={(group) => group.name}
-            loading={isPending}
-            sort={list.sort}
-            onSortChange={list.setSort}
-            pagination={list.pagination}
-          />
-        )}
-        {!hasRows &&
-          (groups.length ? (
-            <EmptyState size="sm" icon="search" title="No groups match this search" />
-          ) : (
-            <EmptyState
-              size="sm"
-              icon="user"
-              title="This user has not been assigned to any groups"
-              description="Add this user from a group's page."
-            />
-          ))}
+        <DataTable
+          label={`Groups for ${username}`}
+          rows={list.pageRows}
+          columns={columns}
+          rowActions={rowActions}
+          getRowId={(group) => group.id}
+          rowLabel={(group) => group.name}
+          loading={isPending}
+          sort={list.sort}
+          onSortChange={list.setSort}
+          pagination={list.pagination}
+          filtered={groups.length > 0}
+          empty={
+            groups.length ? (
+              <EmptyState size="sm" icon="search" title="No groups match this search" />
+            ) : (
+              <EmptyState
+                size="sm"
+                icon="user"
+                title="This user has not been assigned to any groups"
+                description="Add this user from a group's page."
+              />
+            )
+          }
+        />
       </Card>
       <AlertDialog
         open={Boolean(removing)}
@@ -437,16 +437,11 @@ export const OrgMemberDetail = () => {
               title="Details"
               action={
                 !self && (
-                  <Gate allowed={canEdit}>
-                    <Button
-                      variant="outline"
-                      icon="pencil"
-                      iconOnly
-                      aria-label="Edit user"
-                      disabled={!canEdit}
-                      onClick={() => setEditing(true)}
-                    />
-                  </Gate>
+                  <EditDetailsButton
+                    label="Edit user"
+                    allowed={canEdit}
+                    onClick={() => setEditing(true)}
+                  />
                 )
               }
             >
