@@ -971,6 +971,10 @@ The issuer URL and each consumer's `sub` format are one-way doors: customers cop
   and reconnecting verifies it once the customer has added the federated credential. The Azure Key Vault
   `managed-identity` method is the reference consumer: copy its `getManagedIdentityAccessToken`, which
   caches the provider's access token in the credentials like the secret-based methods do.
+- **A project connection's token also carries `project_id`**, taken from the connection row like the subject, so
+  a provider can trust every connection in one project (GCP binds `principalSet://.../attribute.project_id/<id>`).
+  Org-level connections send no `project_id`. GCP `workload-identity-federation` is the second consumer; it signs
+  a new token for every exchange, because GCP rejects a token by when it was issued.
 - **The API returns the values the customer copies.** Connection responses carry
   `credentials.federatedCredential` (issuer URL, subject, audience), built on every read by
   `addAppConnectionFederatedCredential` and never stored, so the UI and Terraform read them rather than rebuild them.

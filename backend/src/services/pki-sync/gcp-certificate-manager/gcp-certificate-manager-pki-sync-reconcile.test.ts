@@ -107,7 +107,8 @@ const certificateDAL = {
   findById: vi.fn(async (id: string) => certificateRows[id])
 } as never;
 
-const buildFns = () => gcpCertificateManagerPkiSyncFactory({ certificateSyncDAL, certificateDAL });
+const buildFns = () =>
+  gcpCertificateManagerPkiSyncFactory({ certificateSyncDAL, certificateDAL, gcpAuthDeps: {} as never });
 
 const unboundSync = (syncOptions: Record<string, unknown>) =>
   pkiSync({

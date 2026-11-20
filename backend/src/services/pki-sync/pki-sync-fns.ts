@@ -319,7 +319,7 @@ export const PkiSyncFns = {
     pkiSync: TPkiSyncWithCredentials,
     certificateMap: TCertificateMap,
     dependencies: {
-      appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
+      appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById" | "update">;
       kmsDataKeyService: TKmsDataKeyService;
       certificateDAL: TCertificateDALFactory;
       certificateSyncDAL: TCertificateSyncDALFactory;
@@ -476,7 +476,12 @@ export const PkiSyncFns = {
         checkPkiSyncDestination(pkiSync, PkiSync.GcpCertificateManager as PkiSync);
         const gcpCertificateManagerPkiSync = gcpCertificateManagerPkiSyncFactory({
           certificateDAL: dependencies.certificateDAL,
-          certificateSyncDAL: dependencies.certificateSyncDAL
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gcpAuthDeps: {
+            appConnectionDAL: dependencies.appConnectionDAL,
+            kmsDataKeyService: dependencies.kmsDataKeyService,
+            oidcIssuerService: dependencies.oidcIssuerService
+          }
         });
         return gcpCertificateManagerPkiSync.syncCertificates(pkiSync, certificateMap);
       }
@@ -585,7 +590,7 @@ export const PkiSyncFns = {
     pkiSync: TPkiSyncWithCredentials,
     certificateNames: string[],
     dependencies: {
-      appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
+      appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById" | "update">;
       kmsDataKeyService: TKmsDataKeyService;
       certificateSyncDAL: TCertificateSyncDALFactory;
       certificateDAL: TCertificateDALFactory;
@@ -788,7 +793,12 @@ export const PkiSyncFns = {
         checkPkiSyncDestination(pkiSync, PkiSync.GcpCertificateManager as PkiSync);
         const gcpCertificateManagerPkiSync = gcpCertificateManagerPkiSyncFactory({
           certificateDAL: dependencies.certificateDAL,
-          certificateSyncDAL: dependencies.certificateSyncDAL
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gcpAuthDeps: {
+            appConnectionDAL: dependencies.appConnectionDAL,
+            kmsDataKeyService: dependencies.kmsDataKeyService,
+            oidcIssuerService: dependencies.oidcIssuerService
+          }
         });
         await gcpCertificateManagerPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateSyncDAL: dependencies.certificateSyncDAL,

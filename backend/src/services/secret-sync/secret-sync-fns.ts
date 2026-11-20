@@ -354,7 +354,7 @@ export const SecretSyncFns = {
           kmsDataKeyService
         });
       case SecretSync.GCPSecretManager:
-        return GcpSyncFns.syncSecrets(secretSync, payload);
+        return GcpSyncFns.syncSecrets(secretSync, payload, { appConnectionDAL, kmsDataKeyService, oidcIssuerService });
       case SecretSync.AzureKeyVault:
         return azureKeyVaultSyncFactory({
           appConnectionDAL,
@@ -503,7 +503,7 @@ export const SecretSyncFns = {
         secretMap = await GithubSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.GCPSecretManager:
-        secretMap = await GcpSyncFns.getSecrets(secretSync);
+        secretMap = await GcpSyncFns.getSecrets(secretSync, { appConnectionDAL, kmsDataKeyService, oidcIssuerService });
         break;
       case SecretSync.AzureKeyVault:
         secretMap = await azureKeyVaultSyncFactory({
@@ -711,7 +711,11 @@ export const SecretSyncFns = {
           kmsDataKeyService
         });
       case SecretSync.GCPSecretManager:
-        return GcpSyncFns.removeSecrets(secretSync, payload);
+        return GcpSyncFns.removeSecrets(secretSync, payload, {
+          appConnectionDAL,
+          kmsDataKeyService,
+          oidcIssuerService
+        });
       case SecretSync.AzureKeyVault:
         return azureKeyVaultSyncFactory({
           appConnectionDAL,

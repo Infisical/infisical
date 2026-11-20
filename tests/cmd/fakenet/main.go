@@ -22,6 +22,7 @@ import (
 	"github.com/Infisical/infisical/tests/fakes/azure"
 	"github.com/Infisical/infisical/tests/fakes/cloudflare"
 	"github.com/Infisical/infisical/tests/fakes/dnsmadeeasy"
+	"github.com/Infisical/infisical/tests/fakes/gcp"
 	"github.com/Infisical/infisical/tests/fakes/github"
 	"github.com/Infisical/infisical/tests/fakes/kubernetes"
 	"github.com/Infisical/infisical/tests/fakes/ldap"
@@ -62,6 +63,7 @@ func main() {
 		kubernetes.Service, azure.Service, alicloud.Service, oci.Service,
 		ldap.Service,
 		acmeca.Service, cloudflare.Service, dnsmadeeasy.Service, website.Service,
+		gcp.STS, gcp.IAMCredentials,
 	)
 
 	go func() { log.Fatalf("fakenet: ldap listener: %v", ldap.Serve(fmt.Sprintf(":%d", ldap.Port), srv)) }()

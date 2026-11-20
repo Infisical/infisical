@@ -190,7 +190,9 @@ export const oidcIssuerServiceFactory = ({
         iat,
         nbf: iat,
         exp: iat + TOKEN_TTL_SECONDS,
-        jti: crypto.nativeCrypto.randomUUID()
+        jti: crypto.nativeCrypto.randomUUID(),
+        // Lets a provider trust every connection in a project (GCP principalSet on attribute.project_id)
+        ...(appConnection.projectId ? { project_id: appConnection.projectId } : {})
       },
       sign: async (data) =>
         (await sign({ data, signingAlgorithm: SigningAlgorithm.RSASSA_PKCS1_V1_5_SHA_256, isDigest: false })).signature
@@ -220,7 +222,7 @@ export const oidcIssuerServiceFactory = ({
       id_token_signing_alg_values_supported: [OIDC_ISSUER_SIGNING_ALG],
       scopes_supported: ["openid"],
       // Must list every claim signToken sets
-      claims_supported: ["iss", "sub", "aud", "exp", "iat", "nbf", "jti"]
+      claims_supported: ["iss", "sub", "aud", "exp", "iat", "nbf", "jti", "project_id"]
     };
   };
 
