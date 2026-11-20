@@ -1171,9 +1171,33 @@ export const orgServiceFactory = ({
       [`${TableName.Membership}.id` as "id"]: membershipId
     });
 
+    if (!inviteeOrgMembership) {
+      throw new NotFoundError({ message: `Organization membership with ID '${membershipId}' not found` });
+    }
+
     if (inviteeOrgMembership.status !== OrgMembershipStatus.Invited) {
       throw new BadRequestError({
         message: "Organization invitation already accepted"
+      });
+    }
+
+    const inviteeRoles = resolveMembershipRoleSlugs(
+      await membershipRoleDAL.findRolesByMembershipIds([inviteeOrgMembership.id])
+    );
+    if (inviteeRoles.length) {
+      const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(orgId), () =>
+        orgDAL.findById(orgId)
+      );
+      const inviteePermissions = await permissionService.getOrgPermissionByRoles(inviteeRoles, orgId, {
+        ignoreUnresolvedRoles: true
+      });
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: OrgPermissionMemberActions.GrantPrivileges,
+        opSubject: OrgPermissionSubjects.Member,
+        actorPermission: permission,
+        targetPermissions: inviteePermissions,
+        baseMessage: "Failed to resend the invitation of this org member"
       });
     }
 
