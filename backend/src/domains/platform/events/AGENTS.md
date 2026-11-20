@@ -81,8 +81,7 @@ Owns the `event_outbox` table (`OutboxEntryStore`). Depends on no other domain.
 - One flush per consumer at a time (the `jobId` is the consumer name), in bounded batches
   (`MAX_BATCHES_PER_FLUSH` x `OUTBOX_CLAIM_BATCH_SIZE`).
 - **Queue, job and cron names are frozen** (`EventsQueues`, the two `event-outbox-*` crons): old pods share
-  them, and the rows, during a rolling deploy. An old pod may still insert a row without an `eventId`, so the
-  claim fills it in.
+  them, and the rows, during a rolling deploy.
 - **A malformed event throws at emit**, before any database access, and fails the caller's write on purpose.
   It is a bug at the emit site, so the user gets a 500 naming the request ID and the detail goes to the log and
   the rejected counter.
@@ -94,6 +93,6 @@ stuck claim. `lag` and `exhausted.count` are labelled by consumer automatically.
 
 `OutboxEntryStore` and `InMemoryOutboxEntryStore` pass the same contract suite
 (`testing/outbox-entry-store-contract.ts`); add a case there for any new query. What only Postgres proves
-(joining a transaction, rollback, an entry without an event id) is in the `*.integration-test.ts` files. In e2e
+(joining a transaction, rollback, the `eventId` default) is in the `*.integration-test.ts` files. In e2e
 specs the module is wrapped by `e2e-test/fakes/events-module.ts`, which records the secret events and lets a
 spec deliver on demand.

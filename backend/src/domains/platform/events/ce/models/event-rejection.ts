@@ -1,6 +1,6 @@
 import { RuleViolationError } from "@app/domains/lib/errors";
 
-// `DataRejected`: the event's own schema, or a subscribing consumer's, refused the data.
+// `DataRejected`: a subscribing consumer's schema refused the data.
 export enum EventRejectionReason {
   InvalidEvent = "invalid_event",
   DataTooLarge = "data_too_large",

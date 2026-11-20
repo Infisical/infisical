@@ -14,13 +14,11 @@ import { TOldestPendingAge, TOutboxDelivery, TOutboxEntryStore } from "../servic
 // Postgres caps a statement at 65535 bind params and a row takes five, so big bulk writes get chunked.
 const INSERT_BATCH_SIZE = 1000;
 
-// Claims fill in eventId (see claimBatch). Only a row an old pod claimed can lack one, and only the sweeper
-// reads those, without looking at it.
 const toModel = (row: TEventOutbox) =>
   OutboxEntry.restore({
     id: String(row.id),
     consumer: row.consumer,
-    eventId: row.eventId ?? "",
+    eventId: row.eventId,
     eventType: row.eventType,
     payload: row.payload,
     occurredAt: new Date(row.occurredAt),
@@ -97,7 +95,7 @@ export class OutboxEntryStore implements TOutboxEntryStore {
   }
 
   // One statement, so the row locks only last as long as the UPDATE. lockToken fences this claim from a later
-  // one on the same rows. Old pods insert rows without an eventId during a rolling deploy, so fill it in here.
+  // one on the same rows.
   async claimBatch(consumer: string, limit: number): Promise<OutboxClaim> {
     const lockToken = crypto.randomUUID();
     try {
@@ -118,8 +116,7 @@ export class OutboxEntryStore implements TOutboxEntryStore {
         .update({
           status: EventOutboxStatus.Processing,
           lockedAt: writer.fn.now(),
-          lockToken,
-          eventId: writer.raw('COALESCE("eventId", gen_random_uuid())')
+          lockToken
         })
         .returning("*");
 

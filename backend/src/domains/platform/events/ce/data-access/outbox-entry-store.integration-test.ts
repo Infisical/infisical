@@ -30,14 +30,14 @@ describeOutboxEntryStoreContract("OutboxEntryStore", async () => {
 });
 
 describe("OutboxEntryStore.claimBatch", () => {
-  // Old pods still insert without an eventId during a rolling deploy.
+  // A pod from before eventId existed still inserts without one during a rolling deploy.
   test("should give an entry written without an event id one of its own", async () => {
     // Setup
     const store = new OutboxEntryStore(poolStoreConnection(h.db));
     const consumer = `it-${randomUUID().slice(0, 8)}`;
     const eventId = randomUUID();
     const row = { consumer, eventType: "it.resource.happened", payload: JSON.stringify({}), occurredAt: new Date() };
-    await h.db(TableName.EventOutbox).insert([row, row, { ...row, eventId }]);
+    await h.db(TableName.EventOutbox).insert([row, row, { ...row, eventId }] as never);
 
     // Action
     const { entries } = await store.claimBatch(consumer, 10);
