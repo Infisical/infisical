@@ -351,12 +351,25 @@ describe("certificate deletion behind an approval policy", () => {
 
     it("deletes right away a certificate with no profile, without looking for a policy", async () => {
       const ctx = buildDeletionService();
-      ctx.certificateDAL.findById.mockResolvedValue({ ...applicationCertificate, profileId: null });
+      const noProfile = { ...applicationCertificate, profileId: null };
+      ctx.certificateDAL.findById.mockResolvedValue(noProfile);
+      ctx.certificateDAL.findByIdForUpdate.mockResolvedValue(noProfile);
 
       const result = await ctx.service.deleteCert(deleteRequest);
 
       expect(result.status).toBe(CertificateDeletionStatus.Deleted);
       expect(ctx.approvalPolicyService.matchPolicy).not.toHaveBeenCalled();
+    });
+
+    it("refuses to delete directly when the certificate's coverage changed before the lock", async () => {
+      const ctx = buildDeletionService();
+      ctx.certificateDAL.findById.mockResolvedValue({ ...applicationCertificate, profileId: null });
+
+      await expect(ctx.service.deleteCert(deleteRequest)).rejects.toThrow(
+        "was assigned to an Application while it was being deleted"
+      );
+
+      expect(ctx.storedCertificate().deletedAt).toBeNull();
     });
 
     it("refuses a certificate that's already deleted before looking for a policy", async () => {

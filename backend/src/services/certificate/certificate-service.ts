@@ -863,6 +863,13 @@ export const certificateServiceFactory = ({
     const { deletedCert, pkiSyncIdsHoldingCertificate } = await certificateDAL.transaction(async (tx) => {
       const lockedCert = await certificateDAL.findByIdForUpdate(cert.id, tx);
       if (!lockedCert || lockedCert.deletedAt) throw $alreadyDeletedError(cert, lockedCert?.deletedAt);
+      // Coverage was decided from the row read before the lock, so an assignment to an Application that committed
+      // since would let this delete skip that Application's deletion policy.
+      if (lockedCert.applicationId !== cert.applicationId || lockedCert.profileId !== cert.profileId) {
+        throw new BadRequestError({
+          message: `Certificate '${getCertificateDisplayName(cert)}' was assigned to an Application while it was being deleted. Delete it again.`
+        });
+      }
 
       const signer = await signerDAL.findOne({ certificateId: cert.id }, tx);
       if (signer) throw $deletionSignerError();
