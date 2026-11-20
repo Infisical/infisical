@@ -30,7 +30,6 @@ export const certRevocationApprovalResourceFactory = ({
     policyLabel: "Revocation"
   }),
 
-  // Notifications name the certificate and, on failure, why.
   buildNotification: async ({ event, request, failureReason }) => {
     const certificateName = getCertificateDisplayName(
       (request.requestData as { requestData: TCertRevocationRequestData }).requestData

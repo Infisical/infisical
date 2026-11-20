@@ -111,8 +111,6 @@ const isCertRequestData = (data: unknown): data is { requestData: CertRequestReq
   );
 };
 
-// Issuance, renewal, revocation and deletion requests all belong to an Application, so they share
-// one table.
 const getApplicationRequestSummary = (request: TApprovalRequest) => {
   if (isCertificateActionPolicyType(request.type)) {
     const data = request.requestData.requestData as TCertificateActionRequestData;

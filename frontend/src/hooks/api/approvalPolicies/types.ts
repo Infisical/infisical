@@ -25,8 +25,6 @@ export const APPLICATION_POLICY_TYPE_LABELS: Record<TApplicationPolicyType, stri
   [ApprovalPolicyType.CertDeletion]: "Deletion"
 };
 
-// Policies on an action against an existing certificate. The backend refuses a machine identity
-// bypass on them and an Auditor as an approver, since an Auditor can't approve.
 export const CERTIFICATE_ACTION_POLICY_TYPES = [
   ApprovalPolicyType.CertRevocation,
   ApprovalPolicyType.CertDeletion

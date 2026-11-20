@@ -29,7 +29,6 @@ export const certDeletionApprovalResourceFactory = ({
     policyLabel: "Deletion"
   }),
 
-  // The certificate may be deleted by the time a notice goes out, so its name comes from the request.
   buildNotification: async ({ event, request, failureReason }) => {
     const certificateName = getCertificateDisplayName(
       (request.requestData as { requestData: TCertDeletionRequestData }).requestData

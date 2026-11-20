@@ -300,7 +300,6 @@ export type TApplicationApprovalStep = {
   notifyApprovers?: boolean;
 };
 
-// Revocation and deletion policies take the same body and are served by the same generic approval-policy endpoints.
 const applicationApprovalPolicyHelpers = (
   policyType: ApprovalPolicyType.CertRevocation | ApprovalPolicyType.CertDeletion
 ) => {
@@ -352,7 +351,6 @@ const applicationApprovalPolicyHelpers = (
         (res) => ok<{ policy: { id: string; steps: TApplicationApprovalStep[] } }>(res).policy
       ),
 
-    // The query the Certificate Manager requests page and its sidebar count send.
     listProjectRequests: (dto: { projectId: string; authToken: string }) =>
       request(
         {

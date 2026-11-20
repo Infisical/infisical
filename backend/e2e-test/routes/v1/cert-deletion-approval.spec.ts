@@ -1,6 +1,3 @@
-// A deletion approval policy holds the delete of every certificate on a profile it lists, whoever asks. Each test
-// gets its own Application, with the same people in the same roles, so demoting an approver in one can't change
-// what another sees.
 import { OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { ResourceMembershipRole } from "@app/db/schemas/models";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -84,8 +81,6 @@ describe("Certificate deletion approval", { timeout: 60_000 }, () => {
     return { userId, username, token: await createUserAccessToken({ userId, orgId }) };
   };
 
-  // The org's admin creates the Application, so it is the Application's Admin. The policy covers `covered` and
-  // names `approver`; `other` is an Operator the policy doesn't name.
   const setUp = async () => {
     const newProfile = () =>
       createCertificateProfile({ projectId, caId, commonNames: [COMMON_NAME], authToken: adminToken });
@@ -300,7 +295,6 @@ describe("Certificate deletion approval", { timeout: 60_000 }, () => {
       authToken: adminToken
     });
     expect((await getDeletionRequest({ requestId, authToken: adminToken })).approversCanNoLongerApprove).toBe(true);
-    // The stuck request's approver can't come back by itself, so the policy names `other` before deleting again.
     await updateDeletionApprovalPolicy({
       policyId: policy.id,
       steps: [{ requiredApprovals: 1, approvers: [{ type: ApproverType.User, id: other.userId }] }],

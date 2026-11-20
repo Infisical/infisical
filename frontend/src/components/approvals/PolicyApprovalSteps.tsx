@@ -26,7 +26,6 @@ import { TFormWithApprovalSteps } from "./ApprovalStepsSchema";
 
 type Props = {
   applicationId?: string;
-  // Revocation and deletion approvers must be able to approve, and Auditors can't.
   excludeAuditors?: boolean;
 };
 

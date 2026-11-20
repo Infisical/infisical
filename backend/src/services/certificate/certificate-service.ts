@@ -636,9 +636,6 @@ export const certificateServiceFactory = ({
     });
   };
 
-  // Opens the approval request a covered revocation or deletion waits on. A certificate has at most one pending
-  // request per action, and one whose approvers can no longer approve it, or that lapsed, is closed and replaced
-  // rather than blocking the action until it expires.
   const $openCertificateActionRequest = async ({
     policyType,
     cert,
@@ -849,7 +846,6 @@ export const certificateServiceFactory = ({
         actor,
         actorId,
         actorOrgId,
-        // Another delete, or a signer taking the certificate, can commit after it was read above.
         assertStillActionable: async (lockedCert, tx) => {
           if (!lockedCert || lockedCert.deletedAt) throw $alreadyDeletedError(cert, lockedCert?.deletedAt);
           if (await signerDAL.findOne({ certificateId: cert.id }, tx)) throw $deletionSignerError();
@@ -1703,8 +1699,6 @@ export const certificateServiceFactory = ({
     }
 
     if (outcome.kind === ApprovedDeletionOutcomeKind.Failed) {
-      // Identifying fields come from the request, which always has them, since the certificate may be unreadable by
-      // the time the deletion fails.
       const { reason } = outcome;
       try {
         await auditLogService.createAuditLog({

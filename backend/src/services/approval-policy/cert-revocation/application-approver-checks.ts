@@ -36,7 +36,6 @@ type TMembershipDeps = Pick<
   "membershipDAL" | "membershipRoleDAL" | "userGroupMembershipDAL"
 >;
 
-// A policy scoped to an Application whose conditions list the certificate profiles it covers.
 type TApplicationProfilePolicy = {
   isActive?: boolean | null;
   conditions: { conditions: { profileNames: string[] }[] };
@@ -45,8 +44,6 @@ type TApplicationProfilePolicy = {
 
 type TApplicationProfileInputs = { profileName: string; applicationId: string };
 
-// What matchPolicy returns: each step's approvers narrowed to those who can approve now, with the number of distinct
-// people who can approve it.
 export type TMatchedApplicationPolicy<P extends TApplicationProfilePolicy> = Omit<P, "steps"> & {
   steps: (P["steps"][number] & { approverCount: number })[];
 };
@@ -219,9 +216,6 @@ const resolveApprovingPeople = async (
   );
 };
 
-// The members every Application-scoped certificate action policy shares: which policy covers a certificate's
-// profile, and who may approve its requests. Only Application Admins and Operators approve; Auditors and people
-// outside the Application don't, however the policy was saved.
 type TApplicationApproverChecks<P extends TApplicationProfilePolicy> = Pick<
   TApprovalResource<TApplicationProfileInputs>,
   | "scopeType"
@@ -371,7 +365,6 @@ export const applicationApproverChecksFactory = <P extends TApplicationProfilePo
       });
     },
 
-    // Saving an approver who can't approve would let a request open that nobody can decide.
     verifyPolicyActors: async ({ projectId, scopeId, approvers }) => {
       if (!scopeId || approvers.length === 0) return;
       const entries = approvers.map((approver) => ({ type: approver.type as ApproverType, id: approver.id }));
