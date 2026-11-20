@@ -1388,12 +1388,14 @@ export const certificateRenewalServiceFactory = ({
       throw new NotFoundError({ message: "Certificate not found" });
     }
 
+    let checkedRenewalCaId: string | null = null;
     if (isStoredCsr) {
       const renewalProfile = certForLicenseChecks.profileId
         ? await certificateProfileDAL.findByIdWithConfigs(certForLicenseChecks.profileId)
         : undefined;
       const renewalCaId = renewalProfile?.caId || certForLicenseChecks.caId;
       const renewalCa = renewalCaId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(renewalCaId) : undefined;
+      checkedRenewalCaId = renewalCaId ?? null;
       if (caSignsCsrAsSent(renewalCa?.externalCa?.type as CaType | undefined)) csrRenewalRequest = csrNamesRequest;
     }
 
@@ -1452,6 +1454,13 @@ export const certificateRenewalServiceFactory = ({
               message: "This certificate has no order with its CA to reissue. Place a new order instead."
             });
           }
+        }
+
+        if (isStoredCsr && (ca?.id ?? null) !== checkedRenewalCaId) {
+          throw new BadRequestError({
+            message:
+              "The certificate profile's certificate authority changed while this renewal was being prepared. Renew the certificate again."
+          });
         }
 
         const { certificateRequest, replayedRequest, ttl, resolvedCustomExtensions } = $buildValidatedRenewalRequest({
