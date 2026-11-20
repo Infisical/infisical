@@ -1,0 +1,60 @@
+---
+title: "Deploy Infisical on Render"
+sidebarTitle: "Render"
+description: "Deploy Infisical on Render with a one-click template that sets up managed PostgreSQL and Redis-compatible databases."
+---
+
+[Render](https://render.com) is a cloud platform that runs Docker images and provides managed PostgreSQL and Redis-compatible databases. Render's [Infisical template](https://github.com/render-examples/infisical) runs the official `infisical/infisical` image and creates the database and cache that Infisical needs, so you don't have to set up or maintain servers. Use it to run a single Infisical instance without managing infrastructure.
+
+## Prerequisites
+
+- A [Render account](https://dashboard.render.com/register)
+- A GitHub account (the template copies its Blueprint into a new repository in your account)
+
+## What the template creates
+
+| Resource | Type | Instance type |
+| --- | --- | --- |
+| `infisical` | Web service running the `infisical/infisical` image | Standard (2 GB) |
+| `infisical-db` | Render-managed PostgreSQL 16 | Basic 256 MB |
+| `infisical-kv` | Render Key Value, `noeviction` | Starter |
+
+The template sets `DB_CONNECTION_URI`, `REDIS_URL`, and `SITE_URL`, and generates `AUTH_SECRET` and the seed for `ENCRYPTION_KEY`, so the deploy doesn't ask for any values.
+
+<Note>
+  Use the Standard instance type or larger. Database migrations on first boot need more than 512 MB of memory.
+</Note>
+
+## Deploy Infisical
+
+<Steps>
+  <Step>
+    Open [Deploy to Render](https://render.com/deploy-template/api/github/start?template_repo=infisical) and sign in. Render copies the template into your GitHub account and creates the resources.
+  </Step>
+  <Step>
+    Wait until the `infisical` service is **Live**. Infisical runs database migrations on first boot. If the first deploy fails with `ECONNREFUSED` on port 5432, the database wasn't ready yet, so select **Manual Deploy** on the `infisical` service.
+  </Step>
+  <Step>
+    Open the service URL and sign up. The first account becomes the [instance admin](/documentation/platform/admin-panel/server-admin).
+  </Step>
+  <Step>
+    On the service's **Environment** page, copy `ENCRYPTION_SEED` and store it somewhere outside Render. Infisical derives `ENCRYPTION_KEY` from this value at startup, and you can't decrypt your secrets without it.
+  </Step>
+</Steps>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Email service" icon="envelope" href="/self-hosting/configuration/envars#email-service">
+    Add the SMTP variables to the `infisical` service to send invites and verification emails
+  </Card>
+  <Card title="Upgrading Infisical" icon="arrow-up" href="/self-hosting/guides/upgrading-infisical">
+    Change the image tag in your copy of `render.yaml`, then push to upgrade
+  </Card>
+  <Card title="Environment variables" icon="sliders" href="/self-hosting/configuration/envars">
+    Set `SITE_URL` to your custom domain after you add one to the service in Render
+  </Card>
+  <Card title="Server admin" icon="shield" href="/documentation/platform/admin-panel/server-admin">
+    Restrict sign-ups and manage the instance
+  </Card>
+</CardGroup>
