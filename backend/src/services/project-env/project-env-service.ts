@@ -326,10 +326,10 @@ export const projectEnvServiceFactory = ({
             name: "DeleteEnvironment"
           });
 
+        await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, undefined, { grantTargetProjectIds });
         await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
         return doc;
       });
-      await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, undefined, { grantTargetProjectIds });
 
       await keyStore.setItemWithExpiry(
         KeyStorePrefixes.WaitUntilReadyProjectEnvironmentOperation(projectId),
