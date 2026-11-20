@@ -4159,7 +4159,7 @@ export const SecretRotations = {
       scopes:
         "The scopes to grant the generated group access token, for example 'api', 'read_api', or 'read_repository'. The 'read_user' scope is not available to group access tokens.",
       accessLevel:
-        "The role of the generated group access token in the group: 10 (Guest), 15 (Planner), 20 (Reporter), 25 (Security Manager), 30 (Developer), 40 (Maintainer), or 50 (Owner). Defaults to 40."
+        "The role of the generated group access token in the group: 10 (Guest), 15 (Planner), 20 (Reporter), 25 (Security Manager), 30 (Developer), or 40 (Maintainer). The Owner role isn't allowed. Defaults to 40."
     },
     GCP_SERVICE_ACCOUNT_KEY: {
       serviceAccountEmail:

@@ -29,6 +29,10 @@ Rotate a GitLab [group access token](https://docs.gitlab.com/user/group/settings
     GitLab deletes a bot user 30 days after its last token is revoked or expires.
 </Warning>
 
+<Warning>
+    Don't rotate the generated tokens outside Infisical. GitLab lets a token with the `api` or `self_rotate` scope [rotate itself](https://docs.gitlab.com/api/group_access_tokens/#self-rotate), which revokes it and issues a replacement that Infisical doesn't know about. Infisical keeps tracking the revoked token, so later rotations and **Revoke Credentials** leave the replacement active, and whoever holds it can keep rotating it.
+</Warning>
+
 ## Step 1: Create a personal access token for Infisical
 
 Infisical needs a GitLab connection whose user has the Owner role on the group, so that Infisical can create and revoke the group's access tokens.
@@ -100,7 +104,7 @@ Infisical needs a GitLab connection whose user has the Owner role on the group, 
         - **Token Name**: The name of each generated token; Infisical appends a timestamp so each rotated token has a distinct name
         - **Token Description** (optional): A description shown on each generated token in GitLab
         - **Scopes**: The [scopes](https://docs.gitlab.com/security/tokens/access_token_scopes/) granted to each generated token; `read_user` isn't listed because GitLab only grants it to personal access tokens
-        - **Role**: The token's [role](https://docs.gitlab.com/user/permissions/) in the group, which defaults to Maintainer
+        - **Role**: The token's [role](https://docs.gitlab.com/user/permissions/) in the group, up to Maintainer, which is the default
 
         Then select **Continue**.
     </Step>

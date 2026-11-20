@@ -271,6 +271,15 @@ describe("GitLab group access token parameters", () => {
     expect(CreateGitLabGroupAccessTokenRotationSchema.safeParse(createInput({ accessLevel: 35 })).success).toBe(false);
   });
 
+  it("rejects the Owner role", () => {
+    const result = CreateGitLabGroupAccessTokenRotationSchema.safeParse(
+      createInput({ accessLevel: GitLabTokenAccessLevel.Owner })
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toBe("Group access tokens cannot have the Owner role");
+  });
+
   it("rejects scopes only personal access tokens can have", () => {
     const result = CreateGitLabGroupAccessTokenRotationSchema.safeParse(
       createInput({

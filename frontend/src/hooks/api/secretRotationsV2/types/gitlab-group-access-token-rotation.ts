@@ -12,8 +12,7 @@ export enum GitLabTokenAccessLevel {
   Reporter = 20,
   SecurityManager = 25,
   Developer = 30,
-  Maintainer = 40,
-  Owner = 50
+  Maintainer = 40
 }
 
 export const GITLAB_TOKEN_ACCESS_LEVEL_LABELS: Record<GitLabTokenAccessLevel, string> = {
@@ -22,8 +21,7 @@ export const GITLAB_TOKEN_ACCESS_LEVEL_LABELS: Record<GitLabTokenAccessLevel, st
   [GitLabTokenAccessLevel.Reporter]: "Reporter",
   [GitLabTokenAccessLevel.SecurityManager]: "Security Manager",
   [GitLabTokenAccessLevel.Developer]: "Developer",
-  [GitLabTokenAccessLevel.Maintainer]: "Maintainer",
-  [GitLabTokenAccessLevel.Owner]: "Owner"
+  [GitLabTokenAccessLevel.Maintainer]: "Maintainer"
 };
 
 // read_user only works on personal access tokens

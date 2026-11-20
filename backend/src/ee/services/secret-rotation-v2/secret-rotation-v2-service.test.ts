@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { TableName } from "@app/db/schemas";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { recordSecretRotationOutcomeMetric, recordSecretRotationStatusChangeMetric } from "@app/lib/telemetry/metrics";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { fnSecretBulkUpdate } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
@@ -507,13 +508,21 @@ describe("rotation alert cleanup", () => {
   });
 });
 
+const EDITOR_AUDIT_LOG_INFO = {
+  actor: { type: ActorType.USER, metadata: { userId: "editor-1", email: "editor@example.com" } }
+};
+
 describe.each([SecretRotation.GitLabServiceAccountToken, SecretRotation.GitLabGroupAccessToken])(
   "updating the rotation interval of a %s rotation",
   (type) => {
     const update = (
       service: ReturnType<typeof createService>["service"],
       payload: { rotationInterval?: number; description?: string }
-    ) => service.updateSecretRotation({ type, rotationId: "rotation-1", ...payload } as never, actor as never);
+    ) =>
+      service.updateSecretRotation(
+        { type, rotationId: "rotation-1", auditLogInfo: EDITOR_AUDIT_LOG_INFO, ...payload } as never,
+        actor as never
+      );
 
     const createGitLabService = () => {
       const created = createService({
@@ -566,6 +575,15 @@ describe.each([SecretRotation.GitLabServiceAccountToken, SecretRotation.GitLabGr
         "rotation-1",
         expect.objectContaining({ rotationInterval: 30 }),
         expect.anything()
+      );
+      expect(deps.auditLogService.createAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actor: EDITOR_AUDIT_LOG_INFO.actor,
+          event: {
+            type: EventType.UPDATE_SECRET_ROTATION,
+            metadata: { rotationId: "rotation-1", type, rotationInterval: 30 }
+          }
+        })
       );
     });
 

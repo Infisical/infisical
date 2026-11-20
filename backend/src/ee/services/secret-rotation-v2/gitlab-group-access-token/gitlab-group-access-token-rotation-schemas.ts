@@ -40,6 +40,7 @@ const GitLabGroupAccessTokenRotationParametersSchema = z.object({
   ).describe(SecretRotations.PARAMETERS.GITLAB_GROUP_ACCESS_TOKEN.scopes),
   accessLevel: z
     .nativeEnum(GitLabTokenAccessLevel)
+    .refine((level) => level !== GitLabTokenAccessLevel.Owner, "Group access tokens cannot have the Owner role")
     .default(GitLabTokenAccessLevel.Maintainer)
     .describe(SecretRotations.PARAMETERS.GITLAB_GROUP_ACCESS_TOKEN.accessLevel)
 });

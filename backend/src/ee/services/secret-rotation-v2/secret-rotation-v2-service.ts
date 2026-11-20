@@ -821,7 +821,7 @@ export const secretRotationV2ServiceFactory = ({
         message: "Failed to update secret rotation due to plan restriction. Upgrade plan to update secret rotations."
       });
 
-    const { type, rotationId, ...payload } = dto;
+    const { type, rotationId, auditLogInfo, ...payload } = dto;
 
     const secretRotation = await secretRotationV2DAL.findById(rotationId);
 
@@ -938,6 +938,20 @@ export const secretRotationV2ServiceFactory = ({
         });
       }
 
+      // logged before the immediate rotation below, which can throw after the update has committed
+      await auditLogService.createAuditLog({
+        ...auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.UPDATE_SECRET_ROTATION,
+          metadata: {
+            rotationId,
+            type,
+            ...payload
+          }
+        }
+      });
+
       if (
         SECRET_ROTATIONS_ROTATED_ON_INTERVAL_CHANGE.has(type) &&
         payload.rotationInterval !== undefined &&
@@ -953,6 +967,7 @@ export const secretRotationV2ServiceFactory = ({
 
           // eslint-disable-next-line @typescript-eslint/no-use-before-define
           const rotatedSecretRotation = await rotateGeneratedCredentials(currentSecretRotation, {
+            auditLogInfo,
             isManualRotation: true
           });
 

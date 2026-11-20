@@ -457,6 +457,7 @@ export type TUpdateSecretRotationV2DTO = Partial<
 > & {
   rotationId: string;
   type: SecretRotation;
+  auditLogInfo: AuditLogInfo;
 };
 
 export type TDeleteSecretRotationV2DTO = {

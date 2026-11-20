@@ -302,22 +302,9 @@ export const registerSecretRotationEndpoints = <
       const { rotationId } = req.params;
 
       const secretRotation = (await server.services.secretRotationV2.updateSecretRotation(
-        { ...req.body, rotationId, type },
+        { ...req.body, rotationId, type, auditLogInfo: req.auditLogInfo },
         req.permission
       )) as T;
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: secretRotation.projectId,
-        event: {
-          type: EventType.UPDATE_SECRET_ROTATION,
-          metadata: {
-            rotationId,
-            type,
-            ...req.body
-          }
-        }
-      });
 
       void server.services.telemetry
         .sendPostHogEvents({
