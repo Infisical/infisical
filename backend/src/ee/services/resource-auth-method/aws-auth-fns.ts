@@ -1,10 +1,12 @@
 import RE2 from "re2";
 
+import { getStsEndpointOverride } from "@app/lib/aws/endpoint";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import {
   extractPrincipalArn,
+  isAwsRootPrincipalArn,
   parseSignedGetCallerIdentityRequest
 } from "@app/services/identity-aws-auth/identity-aws-auth-fns";
 
@@ -29,7 +31,12 @@ export const verifyStsAndExtractCaller = async ({
 }: TVerifyStsCallerInput) => {
   let signedRequest: ReturnType<typeof parseSignedGetCallerIdentityRequest>;
   try {
-    signedRequest = parseSignedGetCallerIdentityRequest({ iamHttpRequestMethod, iamRequestBody, iamRequestHeaders });
+    signedRequest = parseSignedGetCallerIdentityRequest({
+      iamHttpRequestMethod,
+      iamRequestBody,
+      iamRequestHeaders,
+      stsEndpointOverride: getStsEndpointOverride()
+    });
   } catch (err) {
     throw new UnauthorizedError({
       message: err instanceof BadRequestError ? err.message : "Malformed signed STS request",
@@ -88,6 +95,13 @@ export const validateAllowlists = ({
     throw new UnauthorizedError({
       message: "Access denied: AWS auth method has no allowlist configured.",
       detail: { reasonCode: "no_allowlist_configured", ...errorContext }
+    });
+  }
+
+  if (isAwsRootPrincipalArn(Arn)) {
+    throw new UnauthorizedError({
+      message: "Access denied: AWS account root principals cannot use AWS Auth.",
+      detail: { reasonCode: "root_principal_not_supported", accountId: Account, ...errorContext }
     });
   }
 

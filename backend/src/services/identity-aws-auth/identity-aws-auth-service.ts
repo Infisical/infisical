@@ -10,6 +10,7 @@ import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/ser
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { getStsEndpointOverride } from "@app/lib/aws/endpoint";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
@@ -45,6 +46,7 @@ import {
   extractPrincipalArn,
   extractPrincipalArnEntity,
   hasAwsTrustBinding,
+  isAwsRootPrincipalArn,
   parseSignedGetCallerIdentityRequest
 } from "./identity-aws-auth-fns";
 import {
@@ -127,7 +129,8 @@ export const identityAwsAuthServiceFactory = ({
       const { url, headers, body } = parseSignedGetCallerIdentityRequest({
         iamHttpRequestMethod,
         iamRequestBody,
-        iamRequestHeaders
+        iamRequestHeaders,
+        stsEndpointOverride: getStsEndpointOverride()
       });
 
       const {
@@ -142,6 +145,18 @@ export const identityAwsAuthServiceFactory = ({
         headers,
         data: body
       });
+
+      if (isAwsRootPrincipalArn(Arn)) {
+        throw new UnauthorizedError({
+          message: "Access denied: AWS account root principals cannot use AWS Auth.",
+          detail: {
+            reasonCode: "root_principal_not_supported",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
+        });
+      }
 
       if (identityAwsAuth.allowedAccountIds) {
         // validate if Account is in the list of allowed Account IDs

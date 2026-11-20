@@ -6,15 +6,16 @@ import { logger } from "@app/lib/logger";
 
 import { identityAwsAuthServiceFactory } from "./identity-aws-auth-service";
 
-const { request } = vi.hoisted(() => ({ request: vi.fn() }));
+const { request, config } = vi.hoisted(() => ({
+  request: vi.fn(),
+  config: { OTEL_TELEMETRY_COLLECTION_ENABLED: false } as Record<string, unknown>
+}));
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
 }));
 
-vi.mock("@app/lib/config/env", () => ({
-  getConfig: () => ({ OTEL_TELEMETRY_COLLECTION_ENABLED: false })
-}));
+vi.mock("@app/lib/config/env", () => ({ getConfig: () => config }));
 
 vi.mock("@fastify/request-context", () => ({
   requestContext: { get: vi.fn(() => undefined) }
@@ -41,6 +42,7 @@ const ROLE_ARN = `arn:aws:iam::${ACCOUNT_ID}:role/app-role`;
 type TAwsAuthRow = {
   allowedAccountIds: string;
   allowedPrincipalArns: string;
+  stsEndpoint: string;
 };
 
 const makeService = (awsAuth: Partial<TAwsAuthRow> = {}, authMethods: string[] = []) => {
@@ -103,6 +105,9 @@ const makeService = (awsAuth: Partial<TAwsAuthRow> = {}, authMethods: string[] =
 
 beforeEach(() => {
   vi.clearAllMocks();
+  delete config.AWS_ENDPOINT_URL;
+  delete config.AWS_ENDPOINT_URL_STS;
+  delete config.AWS_IGNORE_CONFIGURED_ENDPOINT_URLS;
 });
 
 describe("awsAuthService.login without a trust binding", () => {
@@ -183,6 +188,95 @@ describe("awsAuthService.login without a trust binding", () => {
       } as never)
     ).rejects.toThrow("Signed STS request must be a POST of Action=GetCallerIdentity");
     expect(request).not.toHaveBeenCalled();
+  });
+});
+
+describe("awsAuthService.login STS verification", () => {
+  const login = ({
+    arn = `arn:aws:iam::${ACCOUNT_ID}:user/app`,
+    host,
+    awsAuth = { allowedAccountIds: ACCOUNT_ID }
+  }: { arn?: string; host?: string; awsAuth?: Partial<TAwsAuthRow> } = {}) => {
+    const { service, issueIdentityAccessToken } = makeService(awsAuth);
+    request.mockResolvedValue({
+      data: {
+        GetCallerIdentityResponse: { GetCallerIdentityResult: { Account: ACCOUNT_ID, Arn: arn, UserId: "AIDA" } }
+      }
+    });
+    const headers = {
+      Authorization: "AWS4-HMAC-SHA256 Credential=AKIA/20260101/us-east-1/sts/aws4_request, SignedHeaders=host",
+      ...(host ? { Host: host } : {})
+    };
+    return {
+      result: service.login({
+        identityId: IDENTITY_ID,
+        iamHttpRequestMethod: "POST",
+        iamRequestBody: Buffer.from("Action=GetCallerIdentity&Version=2011-06-15").toString("base64"),
+        iamRequestHeaders: Buffer.from(JSON.stringify(headers)).toString("base64")
+      } as never),
+      issueIdentityAccessToken
+    };
+  };
+
+  test("verifies against AWS_ENDPOINT_URL when the operator sets it", async () => {
+    config.AWS_ENDPOINT_URL = "http://localstack:4566";
+    const { result } = login({ host: "localhost.localstack.cloud:4566" });
+
+    await expect(result).resolves.toMatchObject({ accessToken: ACCESS_TOKEN });
+    expect(request).toHaveBeenCalledWith({
+      method: "POST",
+      url: "http://localstack:4566",
+      headers: {
+        authorization: "AWS4-HMAC-SHA256 Credential=AKIA/20260101/us-east-1/sts/aws4_request, SignedHeaders=host"
+      },
+      data: "Action=GetCallerIdentity&Version=2011-06-15"
+    });
+  });
+
+  test("prefers AWS_ENDPOINT_URL_STS over AWS_ENDPOINT_URL", async () => {
+    config.AWS_ENDPOINT_URL = "http://localstack:4566";
+    config.AWS_ENDPOINT_URL_STS = "http://sts-only:4566";
+    const { result } = login();
+
+    await expect(result).resolves.toMatchObject({ accessToken: ACCESS_TOKEN });
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ url: "http://sts-only:4566" }));
+  });
+
+  test("AWS_IGNORE_CONFIGURED_ENDPOINT_URLS restores the regional AWS endpoint", async () => {
+    config.AWS_ENDPOINT_URL = "http://localstack:4566";
+    config.AWS_IGNORE_CONFIGURED_ENDPOINT_URLS = true;
+    const { result } = login();
+
+    await expect(result).resolves.toMatchObject({ accessToken: ACCESS_TOKEN });
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ url: "https://sts.us-east-1.amazonaws.com" }));
+  });
+
+  test("never sends the request to the identity's own stsEndpoint", async () => {
+    const { result } = login({ awsAuth: { allowedAccountIds: ACCOUNT_ID, stsEndpoint: "http://127.0.0.1:8080/" } });
+
+    await expect(result).resolves.toMatchObject({ accessToken: ACCESS_TOKEN });
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ url: "https://sts.us-east-1.amazonaws.com" }));
+  });
+
+  test("without an operator endpoint, a request signed for a non-AWS host is refused before any request is made", async () => {
+    const { result } = login({ host: "localhost.localstack.cloud:4566" });
+
+    await expect(result).rejects.toThrow("Signed STS request has an invalid host header");
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    { name: "an account allow list", awsAuth: { allowedAccountIds: ACCOUNT_ID } },
+    { name: "a principal ARN allow list", awsAuth: { allowedPrincipalArns: `arn:aws:iam::${ACCOUNT_ID}:user/*` } }
+  ])("rejects an account root principal with $name before issuing a token", async ({ awsAuth }) => {
+    const { result, issueIdentityAccessToken } = login({ arn: `arn:aws:iam::${ACCOUNT_ID}:root`, awsAuth });
+
+    await expect(result).rejects.toMatchObject({
+      name: "UnauthorizedError",
+      detail: { reasonCode: "root_principal_not_supported" }
+    });
+    expect(issueIdentityAccessToken).not.toHaveBeenCalled();
   });
 });
 
