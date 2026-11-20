@@ -27,7 +27,7 @@ import {
 import {
   CUSTOM_EXTENSION_PRESETS_BY_OID,
   describeReservedExtensionOid,
-  findOidsNotAllowedByPolicy,
+  findMicrosoftAutoenrollmentRuleProblems,
   isReservedExtensionOid,
   resolveCustomExtensions,
   TCustomExtensionRule,
@@ -861,19 +861,6 @@ export const certificatePolicyServiceFactory = ({
           }
         }
       }
-
-      const missingWindowsOids = findOidsNotAllowedByPolicy(
-        consolidatedData.customExtensions,
-        MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS
-      );
-      if (missingWindowsOids.length) {
-        const [windowsProfile] = await certificatePolicyDAL.findMicrosoftAutoenrollmentProfiles(policyId);
-        if (windowsProfile) {
-          throw new BadRequestError({
-            message: `Certificate profile '${windowsProfile.profileName}' uses this policy with Microsoft Autoenrollment in Application '${windowsProfile.applicationName}', which adds custom extensions ${missingWindowsOids.join(" and ")} to every certificate. Allow ${missingWindowsOids.join(" and ")} in the policy's custom extension rules, or turn off Microsoft Autoenrollment for that profile.`
-          });
-        }
-      }
     }
 
     const updateData = { ...consolidatedData };
@@ -885,7 +872,21 @@ export const certificatePolicyServiceFactory = ({
       }
     }
 
-    const updatedTemplate = await certificatePolicyDAL.updateById(policyId, updateData);
+    const windowsRuleProblems = consolidatedData.customExtensions
+      ? findMicrosoftAutoenrollmentRuleProblems(consolidatedData.customExtensions)
+      : [];
+    const updatedTemplate = await certificatePolicyDAL.transaction(async (tx) => {
+      if (windowsRuleProblems.length) {
+        await certificatePolicyDAL.lockById(policyId, tx);
+        const [windowsProfile] = await certificatePolicyDAL.findMicrosoftAutoenrollmentProfiles(policyId, tx);
+        if (windowsProfile) {
+          throw new BadRequestError({
+            message: `Certificate profile '${windowsProfile.profileName}' uses this policy with Microsoft Autoenrollment in Application '${windowsProfile.applicationName}', which adds custom extensions ${MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS.join(" and ")} to every certificate. ${windowsRuleProblems.join(" ")} You can also turn off Microsoft Autoenrollment for that profile.`
+          });
+        }
+      }
+      return certificatePolicyDAL.updateById(policyId, updateData, tx);
+    });
     if (!updatedTemplate) {
       throw new NotFoundError({ message: "Failed to update certificate policy" });
     }

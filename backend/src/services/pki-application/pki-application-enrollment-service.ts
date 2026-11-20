@@ -59,7 +59,7 @@ import { CaType } from "@app/services/certificate-authority/certificate-authorit
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS } from "@app/services/certificate-common/certificate-constants";
-import { findOidsNotAllowedByPolicy } from "@app/services/certificate-common/certificate-extension-fns";
+import { findMicrosoftAutoenrollmentRuleProblems } from "@app/services/certificate-common/certificate-extension-fns";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -184,7 +184,7 @@ type TPkiApplicationEnrollmentServiceFactoryDep = {
   licenseService: TLicenseService;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "matchPolicy">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
-  certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
+  certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById" | "lockById">;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
@@ -1079,12 +1079,15 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     });
   };
 
-  const $assertPolicyAllowsWindowsExtensions = async (profile: { slug: string; certificatePolicyId: string }) => {
-    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
-    const missingOids = findOidsNotAllowedByPolicy(policy?.customExtensions, MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS);
-    if (!missingOids.length) return;
+  const $assertPolicyAllowsWindowsExtensions = async (
+    profile: { slug: string; certificatePolicyId: string },
+    tx?: Knex
+  ) => {
+    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId, tx);
+    const problems = findMicrosoftAutoenrollmentRuleProblems(policy?.customExtensions);
+    if (!problems.length) return;
     throw new BadRequestError({
-      message: `Profile '${profile.slug}' has a certificate policy that restricts custom extensions, and Microsoft Autoenrollment adds ${missingOids.join(" and ")} to every certificate. Allow ${missingOids.join(" and ")} in the policy's custom extension rules, or turn off the policy's custom extension restriction.`
+      message: `Profile '${profile.slug}' has a certificate policy that restricts custom extensions, and Microsoft Autoenrollment adds ${MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS.join(" and ")} to every certificate. ${problems.join(" ")} You can also turn off the policy's custom extension restriction.`
     });
   };
 
@@ -1236,6 +1239,8 @@ export const pkiApplicationEnrollmentServiceFactory = ({
 
     const savedConfig = await pkiApplicationProfileDAL
       .transaction(async (tx) => {
+        await certificatePolicyDAL.lockById(profile.certificatePolicyId, tx);
+        await $assertPolicyAllowsWindowsExtensions(profile, tx);
         if (existingConfig) {
           if (!isConfigChanged) return existingConfig;
           const [updated] = await microsoftAutoenrollmentEnrollmentConfigDAL.update(

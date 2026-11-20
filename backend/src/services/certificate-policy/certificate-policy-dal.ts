@@ -279,6 +279,14 @@ export const certificatePolicyDALFactory = (db: TDbClient) => {
     }
   };
 
+  const lockById = async (id: string, tx: Knex) => {
+    try {
+      await tx(TableName.PkiCertificatePolicy).where({ id }).forUpdate().first("id");
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Lock certificate policy" });
+    }
+  };
+
   const findMicrosoftAutoenrollmentProfiles = async (policyId: string, tx?: Knex) => {
     try {
       return (await (tx || db)(TableName.PkiCertificateProfile)
@@ -306,6 +314,7 @@ export const certificatePolicyDALFactory = (db: TDbClient) => {
   return {
     ...certificatePolicyOrm,
     findMicrosoftAutoenrollmentProfiles,
+    lockById,
     create,
     updateById,
     deleteById,

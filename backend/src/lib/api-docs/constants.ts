@@ -2796,7 +2796,7 @@ export const MICROSOFT_AUTOENROLLMENT = {
     connectionId:
       "The ID of the Active Directory LDAP connection used to look up computers. Required when turning Microsoft Autoenrollment on; when updating, leave it out to keep the current connection.",
     allowedGroupSids:
-      "The security identifiers (SIDs) of the Active Directory groups whose computers may enroll. Null or an empty list allows any computer in the domain. Leave it out when updating to keep the current groups.",
+      "The security identifiers (SIDs) of the Active Directory security groups whose computers may enroll. Find them with GET /api/v1/app-connections/ldap/{connectionId}/groups. Null or an empty list allows any computer in the domain. Leave it out when updating to keep the current groups.",
     renewBeforeDays:
       "How many days before expiry Windows renews the certificate. Windows renews only when this is more than 8 hours and less than 20% of the certificate's validity, so the value Windows is given is moved into that window (see effectiveRenewBeforeSeconds). Defaults to 42 when turning Microsoft Autoenrollment on; leave it out when updating to keep the current value.",
     keytab:

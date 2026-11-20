@@ -46,8 +46,9 @@ describe("CertificatePolicyService", () => {
     isPolicyInUse: vi.fn(),
     getProfilesUsingPolicy: vi.fn(),
     findMicrosoftAutoenrollmentProfiles: vi.fn(),
+    lockById: vi.fn(),
     findByNameAndProjectId: vi.fn(),
-    transaction: vi.fn(),
+    transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback("tx")),
     find: vi.fn(),
     findOne: vi.fn(),
     findMany: vi.fn(),
@@ -286,10 +287,14 @@ describe("CertificatePolicyService", () => {
       });
 
       expect(mockCertificatePolicyDAL.findById).toHaveBeenCalledWith("policy-123");
-      expect(mockCertificatePolicyDAL.updateById).toHaveBeenCalledWith("policy-123", {
-        ...updateData,
-        name: expect.any(String)
-      });
+      expect(mockCertificatePolicyDAL.updateById).toHaveBeenCalledWith(
+        "policy-123",
+        {
+          ...updateData,
+          name: expect.any(String)
+        },
+        "tx"
+      );
       expect(result).toEqual(updatedTemplate);
     });
 
@@ -307,6 +312,8 @@ describe("CertificatePolicyService", () => {
           data: { customExtensions: [{ oid: "1.3.6.1.4.1.311.25.2", allowed: ["*"] }] }
         })
       ).rejects.toThrow("Allow 1.3.6.1.4.1.311.21.7 in the policy's custom extension rules");
+      expect(mockCertificatePolicyDAL.lockById).toHaveBeenCalledWith("policy-123", "tx");
+      expect(mockCertificatePolicyDAL.findMicrosoftAutoenrollmentProfiles).toHaveBeenCalledWith("policy-123", "tx");
       expect(mockCertificatePolicyDAL.updateById).not.toHaveBeenCalled();
     });
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -80,7 +81,11 @@ export const registerLdapConnectionRouter = async (server: FastifyZodProvider) =
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
       operationId: "listLdapDirectoryGroups",
+      tags: [ApiDocsTags.AppConnections],
+      description:
+        "Search the Active Directory security groups an LDAP connection can read, for example to find the SIDs that a Microsoft Autoenrollment profile's allowedGroupSids takes. Requires permission to connect the LDAP connection.",
       params: z.object({
         connectionId: z.string().uuid().describe("The ID of the LDAP Connection to search groups in.")
       }),

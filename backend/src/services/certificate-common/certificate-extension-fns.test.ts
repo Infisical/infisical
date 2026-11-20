@@ -11,7 +11,7 @@ import {
   describeCustomExtensionValue,
   encodeCustomExtensionValue,
   findCsrCustomExtensionMismatch,
-  findOidsNotAllowedByPolicy,
+  findMicrosoftAutoenrollmentRuleProblems,
   findUnsatisfiedCustomExtensionOids,
   isReservedExtensionOid,
   parseCustomExtensionsFromCertificate,
@@ -220,12 +220,35 @@ describe("resolveCustomExtensions with extensions the issuer adds", () => {
     ).toEqual({ errors: [], extensions: [templateInfo] });
   });
 
-  it("names the Windows extensions a restricting policy does not allow", () => {
-    expect(findOidsNotAllowedByPolicy(null, [SID_OID, TEMPLATE_INFO_OID])).toEqual([]);
-    expect(findOidsNotAllowedByPolicy([{ oid: SID_OID, allowed: ["*"] }], [SID_OID, TEMPLATE_INFO_OID])).toEqual([
-      TEMPLATE_INFO_OID
+  it("names what a restricting policy must change for Microsoft Autoenrollment", () => {
+    expect(findMicrosoftAutoenrollmentRuleProblems(null)).toEqual([]);
+    expect(
+      findMicrosoftAutoenrollmentRuleProblems([
+        { oid: SID_OID, allowed: ["*"] },
+        { oid: TEMPLATE_INFO_OID, allowed: ["*"] }
+      ])
+    ).toEqual([]);
+    expect(findMicrosoftAutoenrollmentRuleProblems([{ oid: SID_OID, allowed: ["*"] }])).toEqual([
+      `Allow ${TEMPLATE_INFO_OID} in the policy's custom extension rules.`
     ]);
-    expect(findOidsNotAllowedByPolicy([], [SID_OID])).toEqual([SID_OID]);
+    expect(
+      findMicrosoftAutoenrollmentRuleProblems([
+        { oid: SID_OID, denied: ["*"] },
+        { oid: TEMPLATE_INFO_OID, required: ["1.3.6.1.4.1.311.21.8.1:100.0"] }
+      ])
+    ).toEqual([expect.stringContaining("denies every value"), expect.stringContaining("must allow any value (*)")]);
+    expect(
+      findMicrosoftAutoenrollmentRuleProblems([
+        { oid: SID_OID, denied: ["S-1-*"] },
+        { oid: TEMPLATE_INFO_OID, required: ["*"] }
+      ])
+    ).toEqual([expect.stringContaining("denies every value")]);
+    expect(
+      findMicrosoftAutoenrollmentRuleProblems([
+        { oid: SID_OID, required: ["S-1-5-21-1111111111-2222222222-3333333333-*"] },
+        { oid: TEMPLATE_INFO_OID, allowed: ["*"] }
+      ])
+    ).toEqual([]);
   });
 
   it("signs the issuer's copy once when the profile declares the same extension", () => {

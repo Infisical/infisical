@@ -2216,7 +2216,8 @@
                           "api-reference/endpoints/app-connections/ldap/get-by-name",
                           "api-reference/endpoints/app-connections/ldap/create",
                           "api-reference/endpoints/app-connections/ldap/update",
-                          "api-reference/endpoints/app-connections/ldap/delete"
+                          "api-reference/endpoints/app-connections/ldap/delete",
+                          "api-reference/endpoints/app-connections/ldap/list-groups"
                         ]
                       },
                       {

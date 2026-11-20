@@ -1971,8 +1971,11 @@ const MicrosoftAutoenrollmentPanel = ({
               <TriangleAlertIcon />
               <AlertTitle>Channel bindings can&apos;t be checked</AlertTitle>
               <AlertDescription>
-                {initial?.channelBinding.reason} Requests are refused. If this can&apos;t be fixed,
-                turn on Accept any TLS channel binding below.
+                <p>
+                  {isCloud
+                    ? "Infisical can't check TLS channel bindings right now, so requests are refused. Contact Infisical support."
+                    : `${initial?.channelBinding.reason} Requests are refused. If this can't be fixed, turn on Accept any TLS channel binding below.`}
+                </p>
               </AlertDescription>
             </Alert>
           ) : null}

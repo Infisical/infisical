@@ -98,7 +98,7 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
     appConnectionDAL: { findById: vi.fn() },
     licenseService: { getPlan: vi.fn() },
     certificateProfileDAL: { findById: vi.fn() },
-    certificatePolicyDAL: { findById: vi.fn().mockResolvedValue({ validity: { max: "90d" } }) },
+    certificatePolicyDAL: { findById: vi.fn().mockResolvedValue({ validity: { max: "90d" } }), lockById: vi.fn() },
     certificatePolicyService: { validateCertificateRequest: vi.fn() },
     certificateAuthorityDAL: { findById: vi.fn(), findByIdWithAssociatedCa: vi.fn() },
     kmsService: { encryptWithKmsKey: vi.fn(), decryptWithKmsKey: vi.fn() },
@@ -502,6 +502,19 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
       await expect(set({ connectionId: CONNECTION_ID, keytab: encodeKeytab([3]) })).rejects.toThrow(
         "Allow 1.3.6.1.4.1.311.21.7 in the policy's custom extension rules"
       );
+      expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.create).not.toHaveBeenCalled();
+    });
+
+    test("re-checks the policy's extension rules under a lock on the policy inside the save", async () => {
+      deps.certificatePolicyDAL.findById
+        .mockResolvedValueOnce({ validity: { max: "90d" } })
+        .mockResolvedValueOnce({ validity: { max: "90d" } })
+        .mockResolvedValue({ customExtensions: [{ oid: "1.2.3.4", allowed: ["*"] }] });
+
+      await expect(set({ connectionId: CONNECTION_ID, keytab: encodeKeytab([3]) })).rejects.toThrow(
+        "in the policy's custom extension rules"
+      );
+      expect(deps.certificatePolicyDAL.lockById).toHaveBeenCalledWith("policy-id", "tx");
       expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.create).not.toHaveBeenCalled();
     });
 
