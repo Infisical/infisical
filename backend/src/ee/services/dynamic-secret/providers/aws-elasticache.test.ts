@@ -1,4 +1,5 @@
 import {
+  InvalidUserGroupStateFault,
   UserAlreadyExistsFault,
   UserGroupAlreadyExistsFault,
   UserGroupNotFoundFault
@@ -45,16 +46,19 @@ const LEGACY_SHARED_USER_GROUP_ID = "infisical-managed-group-elasticache";
 const DISABLED_DEFAULT_USER_ID = "infisical-disabled-default";
 const SETTING_UP_MESSAGE = "ElastiCache is still setting up the user group for this cluster";
 
-// Enforces the AWS rules the provider has to work around: a cluster holds one user group, and a new group can't be
-// attached or modified until it is active, which the test triggers with activateUserGroups().
+// Enforces the AWS rules the provider has to work around, as observed on live clusters: a cluster holds one user
+// group, a new group is "creating" and can't be attached or modified, and a group whose users just changed is
+// "modifying", which can be attached but not modified again. activateUserGroups() stands in for AWS finishing.
 const fakeAccount = (initialClusters: Record<string, string[]>, initialUserGroups: Record<string, string[]>) => {
   const clusters = { ...initialClusters };
   const userGroups = { ...initialUserGroups };
   const users: Record<string, { UserName: string; AccessString: string }> = {};
-  const creating = new Set<string>();
-  const assertActive = (userGroupId: string) => {
-    if (creating.has(userGroupId)) throw new Error(`User group ${userGroupId} has status creating`);
-  };
+  const pendingStatus = new Map<string, "creating" | "modifying">();
+  const invalidState = (userGroupId: string) =>
+    new InvalidUserGroupStateFault({
+      message: `User group ${userGroupId} has status ${pendingStatus.get(userGroupId)}.`,
+      $metadata: {}
+    });
 
   aws.handle = ({ constructor: { name }, input }) => {
     switch (name) {
@@ -64,7 +68,7 @@ const fakeAccount = (initialClusters: Record<string, string[]>, initialUserGroup
         if (!userGroups[input.UserGroupId]) throw new UserGroupNotFoundFault({ message: "not found", $metadata: {} });
         return {
           UserGroups: [
-            { Status: creating.has(input.UserGroupId) ? "creating" : "active", UserIds: userGroups[input.UserGroupId] }
+            { Status: pendingStatus.get(input.UserGroupId) ?? "active", UserIds: userGroups[input.UserGroupId] }
           ]
         };
       case "CreateUserGroupCommand":
@@ -72,10 +76,11 @@ const fakeAccount = (initialClusters: Record<string, string[]>, initialUserGroup
           throw new UserGroupAlreadyExistsFault({ message: "exists", $metadata: {} });
         }
         userGroups[input.UserGroupId] = [...input.UserIds];
-        creating.add(input.UserGroupId);
+        pendingStatus.set(input.UserGroupId, "creating");
         return {};
       case "ModifyReplicationGroupCommand": {
-        input.UserGroupIdsToAdd.forEach(assertActive);
+        const creatingGroupId = input.UserGroupIdsToAdd.find((id) => pendingStatus.get(id) === "creating");
+        if (creatingGroupId) throw invalidState(creatingGroupId);
         const kept = clusters[input.ReplicationGroupId].filter((id) => !input.UserGroupIdsToRemove.includes(id));
         if (kept.length + input.UserGroupIdsToAdd.length > 1) {
           throw new Error("Max number of user groups per replication group allowed is 1");
@@ -94,14 +99,15 @@ const fakeAccount = (initialClusters: Record<string, string[]>, initialUserGroup
         });
         return {};
       case "ModifyUserGroupCommand":
-        assertActive(input.UserGroupId);
+        if (pendingStatus.has(input.UserGroupId)) throw invalidState(input.UserGroupId);
         userGroups[input.UserGroupId].push(...input.UserIdsToAdd);
+        pendingStatus.set(input.UserGroupId, "modifying");
         return {};
       default:
         return {};
     }
   };
-  return { clusters, userGroups, users, activateUserGroups: () => creating.clear() };
+  return { clusters, userGroups, users, activateUserGroups: () => pendingStatus.clear() };
 };
 
 const inputs = (clusterName: string) => ({
@@ -143,6 +149,7 @@ describe("AwsElastiCacheDatabaseProvider user groups", () => {
     account.activateUserGroups();
     const firstLeaseA = await createLease(clusterA);
     const leaseB = await createLease(clusterB);
+    account.activateUserGroups();
     const secondLeaseA = await createLease(clusterA);
 
     const [groupA] = account.clusters[clusterA];
