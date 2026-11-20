@@ -6,7 +6,7 @@ description: "Let an AI agent reach your databases, servers, and clusters throug
 
 AI agents often need privileged access: a coding agent that reads production data to trace a bug, or an agent you built that runs a nightly task against a database. If you put a connection string in the agent's environment, the agent holds a long-lived credential while it reads untrusted input.
 
-With PAM, an agent runs the same [Infisical CLI](/cli/reference#pam) commands a person does. The [Gateway](/documentation/platform/gateways/overview) adds each account's credential to the connection, so the credential never reaches the agent's machine. The one exception is an AWS IAM account without a Gateway. Infisical records every session.
+With PAM, an agent runs the same [Infisical CLI](/cli/reference#pam) commands a person does. The [gateway](/documentation/platform/gateways/overview) adds each account's credential to the connection, so the credential never reaches the agent's machine. The one exception is an AWS IAM account without a gateway. Infisical records every session.
 
 ```bash
 infisical pam accounts get
@@ -21,7 +21,7 @@ infisical pam access prod/orders-db -- psql -c "select count(*) from orders wher
 
 SSH accounts run the command on the server. Database, Redis, Snowflake, Kubernetes, GCP, and Azure accounts run it on the agent's machine against a local proxy. The CLI points each client at the proxy through the [environment variables the client reads](/cli/reference#pam-access), such as `PGHOST` for `psql`, `KUBECONFIG` for `kubectl`, and the proxy settings for `gcloud` and `az`.
 
-AWS IAM accounts with a Gateway work the same way: the Gateway signs each AWS request, and the agent only holds placeholder credentials. For an AWS IAM account without a Gateway, the CLI runs the command with temporary AWS credentials in its environment, and the agent can read them until they expire. To keep credentials away from the agent, set a Gateway on the account's template.
+AWS IAM accounts with a gateway work the same way: the gateway signs each AWS request, and the agent only holds placeholder credentials. For an AWS IAM account without a gateway, the CLI runs the command with temporary AWS credentials in its environment, and the agent can read them until they expire. To keep credentials away from the agent, set a gateway on the account's template.
 
 Windows accounts open a remote desktop, so they don't support a command after `--`.
 
@@ -53,7 +53,7 @@ If your login expires, the CLI exits with an error instead of starting a login. 
 You need:
 
 - The [Infisical CLI](/cli/install) on the machine that runs the agent
-- The Product Admin [role](/documentation/platform/pam/concepts/access-control#product-membership) in PAM, to add the machine identity
+- The Admin [product role](/documentation/platform/pam/concepts/access-control#product-membership) in PAM, to add the machine identity
 - The Admin role on the folders or accounts the agent needs, to give the identity a role on them
 
 <Steps>
@@ -72,7 +72,7 @@ You need:
     export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
     ```
 
-    Every `infisical pam` command the agent runs then authenticates as the identity. An access token in `INFISICAL_TOKEN` also works. To use another [auth method](/documentation/platform/identities/machine-identities#authentication-methods), set the [variables that method reads](/cli/reference#pam-access) instead.
+    Every `infisical pam` command the agent runs then authenticates as the identity. An access token in `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN` or `INFISICAL_TOKEN` also works. To use another [auth method](/documentation/platform/identities/machine-identities#authentication-methods), set the [variables that method reads](/cli/reference#pam-access) instead.
   </Step>
 </Steps>
 

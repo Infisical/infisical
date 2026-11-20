@@ -131,7 +131,7 @@ To add an alert, open the folder's **Approvals** tab, select **Alerts**, and sel
 
 An AI agent requests access through the [CLI](/cli/reference#pam-access). If the agent runs as you, the request is filed under your name. If the agent runs as a machine identity, the request shows the identity's name.
 
-When an [agent](/documentation/platform/pam/ai-agents/overview#accounts-that-need-approval) runs [`infisical pam access`](/cli/reference#pam-access) on an account that requires approval, the CLI files a request with the agent's `--reason` and `--duration` and exits with `approval_pending`. After an approver approves the request, the agent runs the command again.
+When an [agent](/documentation/platform/pam/ai-agents/overview#accounts-that-need-approval) runs [`infisical pam access`](/cli/reference#pam-access) on an account that requires approval, the CLI files a request with the agent's `--reason` and `--duration` and exits with an error saying the request is waiting for approval. After an approver approves the request, the agent runs the command again.
 
 <Warning>
   When you approve a request from an agent, you approve everything the agent does with the access for the duration you grant. Give an agent's machine identity a role on only the accounts it needs, and review its [session recordings](/documentation/platform/pam/sessions/session-recording).
