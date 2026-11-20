@@ -1,6 +1,6 @@
 import { TGenericPermission } from "@app/lib/types";
 
-import { TAgentVaultHookRuleInput } from "../agent-vault-hook/agent-vault-hook-fns";
+import { TAgentVaultServiceHookInput } from "../agent-vault-hook/agent-vault-hook-fns";
 import { AgentVaultOauthClientAuthMethod } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TAgentVaultSkillFile } from "../agent-vault-skill/agent-vault-skill-types";
 import {
@@ -70,13 +70,8 @@ export type TAgentVaultInlineServiceInput = {
     | { type: AgentVaultCredentialType.SshKey; username: string; privateKey: string; certificate?: string };
   customHeaders?: { name: string; prefix?: string; value: string }[];
   substitutions?: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[]; value: string }[];
-};
-
-/** A hook sent with a session, for that session alone. */
-export type TAgentVaultInlineHookInput = {
-  url: string;
-  secret: string;
-  rules?: TAgentVaultHookRuleInput[];
+  // A saved hook of the project, by name.
+  hook?: TAgentVaultServiceHookInput;
 };
 
 export type TAgentVaultInlineBearerCredentialSummary = {
@@ -187,9 +182,6 @@ export type TMintSessionDTO = {
   onBehalfOf?: TOnBehalfOfUser;
   label: string | null;
   metadata?: Record<string, string>;
-  // At most one of the two: a saved hook of the project, or one of the session's own.
-  hookId?: string;
-  hook?: TAgentVaultInlineHookInput;
 };
 
 export type TAgentVaultSessionMetadataFilter = Array<{ key: string; value: string }>;

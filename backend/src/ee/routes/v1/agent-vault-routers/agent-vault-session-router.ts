@@ -41,10 +41,8 @@ import {
   serviceTypeReportFieldsOf
 } from "./agent-vault-router-fns";
 import {
-  AgentVaultInlineHookInputSchema,
   AgentVaultProjectIdSchema,
   AgentVaultSessionActorSchema,
-  AgentVaultSessionHookSchema,
   AgentVaultSessionOnBehalfOfSchema,
   AgentVaultSessionServiceSchema,
   AgentVaultSessionServicesInputSchema,
@@ -68,8 +66,7 @@ const SessionSchema = z.object({
   status: z.nativeEnum(AgentVaultSessionStatus),
   expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
   revokedAt: z.date().nullable(),
-  createdAt: z.date(),
-  hook: AgentVaultSessionHookSchema
+  createdAt: z.date()
 });
 
 const SessionServicesSchema = AgentVaultSessionServiceSchema.array().describe(AGENT_VAULT.SESSION.servicesRead);
@@ -122,8 +119,7 @@ const EXAMPLE_SESSION = {
   accessBundle: EXAMPLE_ACCESS_BUNDLE,
   services: [],
   skills: [],
-  stats: { requests: 1284, brokered: 1102 },
-  hook: null
+  stats: { requests: 1284, brokered: 1102 }
 };
 
 // What a session that lists services by name reads back, matching the create example's request.
@@ -319,9 +315,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                 })
               ),
             label: agentVaultSessionLabelSchema.describe(AGENT_VAULT.SESSION.label),
-            metadata: agentVaultSessionMetadataSchema.optional().describe(AGENT_VAULT.SESSION.metadata),
-            hookId: z.string().uuid().optional().describe(AGENT_VAULT.SESSION.hookId),
-            hook: AgentVaultInlineHookInputSchema.optional()
+            metadata: agentVaultSessionMetadataSchema.optional().describe(AGENT_VAULT.SESSION.metadata)
           })
           .describe(
             docsExample({
@@ -347,8 +341,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
               createdAt: z.date(),
               accessBundle: SessionAccessBundleSchema.nullable().describe(AGENT_VAULT.SESSION.accessBundleRead),
               services: SessionServicesSchema,
-              skills: SessionSkillsSchema,
-              hook: AgentVaultSessionHookSchema
+              skills: SessionSkillsSchema
             })
           })
           .describe(
@@ -363,8 +356,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                 createdAt: EXAMPLE_SESSION.createdAt,
                 accessBundle: null,
                 services: EXAMPLE_SERVICES,
-                skills: EXAMPLE_SKILLS,
-                hook: null
+                skills: EXAMPLE_SKILLS
               }
             })
           )
@@ -385,15 +377,13 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
         actorName = req.auth.identityName;
       }
 
-      const { session, token, ttlSeconds, onBehalfOf, hookAudit } = await server.services.agentVaultSession.mintSession(
-        {
-          actorName,
-          actorEmail,
-          projectId,
-          ctx: actorContext(req),
-          ...body
-        }
-      );
+      const { session, token, ttlSeconds, onBehalfOf } = await server.services.agentVaultSession.mintSession({
+        actorName,
+        actorEmail,
+        projectId,
+        ctx: actorContext(req),
+        ...body
+      });
       const inlineServiceCount = session.services.filter((service) => service.isInline).length;
       const inlineSkillCount = session.skills.filter((skill) => skill.isInline).length;
 
@@ -452,7 +442,6 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                   : { skillId: skill.id, name: skill.name, isInline: false as const }
               )
             }),
-            ...hookAudit,
             ...(onBehalfOf && {
               onBehalfOfUserId: onBehalfOf.userId,
               onBehalfOfUserName: onBehalfOf.username,

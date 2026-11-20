@@ -429,7 +429,7 @@ describe("toResolvedInlineService", () => {
   });
 });
 
-describe("inline services written with a hook before hooks moved to sessions", () => {
+describe("inline services written with a hook before hooks became their own resource", () => {
   const seal = (value: unknown) => Buffer.from(JSON.stringify(value));
   const open = (sealed: Buffer) => JSON.parse(sealed.toString()) as unknown;
   const legacyHooked = (overrides: Partial<TAgentVaultInlineServiceSecretsRow> = {}) =>
@@ -441,10 +441,10 @@ describe("inline services written with a hook before hooks moved to sessions", (
       ...overrides
     });
 
-  test("resolve sends the service without a hook", () => {
+  // Resolve attaches the hook from the row's URL and secret afterwards, with every other service's hook.
+  test("still resolve, with the hook left for resolve to attach", () => {
     const resolved = toResolvedInlineService(legacyHooked(), openInlineServiceSecrets(legacyHooked(), open));
-    expect(resolved).not.toBeNull();
-    expect(resolved).not.toHaveProperty("hook");
+    expect(resolved).toMatchObject({ hook: null });
   });
 
   test("a pass-through service with only a legacy hook needs nothing sealed", () => {
@@ -454,6 +454,30 @@ describe("inline services written with a hook before hooks moved to sessions", (
 
   test("reads carry no hook", () => {
     expect(toInlineServiceSummary(legacyHooked())).not.toHaveProperty("hook");
+  });
+});
+
+describe("an inline service's saved hook", () => {
+  const http = (hook: TAgentVaultInlineServiceInput["hook"]): TAgentVaultInlineServiceInput => ({
+    type: AgentVaultServiceType.Http,
+    hostPattern: "api.example.com",
+    credential: { type: AgentVaultCredentialType.Passthrough },
+    hook
+  });
+
+  test("is kept by name for mint to find, and null without one", () => {
+    const [withHook, withoutHook] = prepareInlineServices([
+      http({ name: "approvals", paths: ["/charges"] }),
+      { ...http(undefined), hostPattern: "other.example.com" }
+    ]);
+    expect(withHook.hook).toEqual({ name: "approvals", paths: ["/charges"] });
+    expect(withoutHook.hook).toBeNull();
+  });
+
+  test("refuses a narrowing the service's type can't use, naming the service by its host", () => {
+    expect(() => prepareInlineServices([http({ name: "approvals", tools: ["t"] })])).toThrow(
+      "'api.example.com' is an HTTP service, and only an MCP service can be narrowed by tools. Leave them out to check every request to it."
+    );
   });
 });
 

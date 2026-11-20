@@ -32,7 +32,6 @@ import {
   AgentVaultListedProjectServiceSchema,
   AgentVaultProjectIdSchema,
   AgentVaultProjectServiceSchema,
-  AgentVaultProjectServiceWithHooksSchema,
   AgentVaultUpdateServiceBodySchema
 } from "./agent-vault-schemas";
 
@@ -63,6 +62,11 @@ const oauthAuditFieldsOf = (credential: TAgentVaultCredentialSummary) => {
 
 // A project's services, which access bundles hold through links, like skills. Personal values hang off the service,
 // since a member sets them once however many bundles give them the service.
+const hookChangeKindOf = ({ previous, current }: { previous: unknown; current: unknown }) => {
+  if (!previous) return "set" as const;
+  return current ? ("updated" as const) : ("removed" as const);
+};
+
 export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -142,9 +146,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
         "Get a service in an Agent Vault project and the access bundles it is in. A member can get only a service in an access bundle they have been granted.",
       tags: [ApiDocsTags.AgentVaultServices],
       params: ServiceIdParamsSchema,
-      response: {
-        200: z.object({ service: AgentVaultProjectServiceWithHooksSchema })
-      }
+      response: { 200: z.object({ service: AgentVaultProjectServiceSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
@@ -152,17 +154,11 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
         actorContext(req),
         req.params.serviceId
       );
-      const { service } = await server.services.agentVaultAccessBundle.getService({
+      return server.services.agentVaultAccessBundle.getService({
         projectId,
         ctx: actorContext(req),
         serviceId: req.params.serviceId
       });
-      const hooks = await server.services.agentVaultHook.listServiceHooks({
-        projectId,
-        ctx: actorContext(req),
-        serviceId: service.id
-      });
-      return { service: { ...service, ...(hooks ? { hooks } : {}) } };
     }
   });
 
@@ -229,7 +225,8 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
                 ? undefined
                 : service.credential.memberProvidedFields,
             ...transformationNames,
-            variableKeys: variableKeysOf(service)
+            variableKeys: variableKeysOf(service),
+            ...(service.hook ? { hook: service.hook } : {})
           }
         }
       });
@@ -346,7 +343,12 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
             credentialReplaced,
             personalValuesCleared,
             variableKeys:
-              req.body.credential || update.customHeaders || update.substitutions ? variableKeysOf(service) : undefined
+              req.body.credential || update.customHeaders || update.substitutions ? variableKeysOf(service) : undefined,
+            ...(update.hookChange && {
+              hookChanged: hookChangeKindOf(update.hookChange),
+              hook: update.hookChange.current,
+              previousHook: update.hookChange.previous
+            })
           }
         }
       });

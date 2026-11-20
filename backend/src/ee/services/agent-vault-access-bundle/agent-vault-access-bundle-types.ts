@@ -1,5 +1,6 @@
 import { TGenericPermission } from "@app/lib/types";
 
+import { TAgentVaultServiceHookInput, TAgentVaultServiceHookView } from "../agent-vault-hook/agent-vault-hook-fns";
 import { AgentVaultOauthRegistration } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TOnBehalfOfUser } from "../agent-vault-session/agent-vault-session-types";
 import {
@@ -127,6 +128,8 @@ export type TAgentVaultServiceSummary = {
   description: string | null;
   createdAt: Date;
   updatedAt: Date;
+  // Left out for callers who can't read hooks.
+  hook?: TAgentVaultServiceHookView | null;
 } & (
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Http }> & {
       credential: Extract<
@@ -232,6 +235,7 @@ export type TCreateServiceDTO = TAgentVaultProjectScoped & {
   credential: TAgentVaultCredentialInput;
   customHeaders?: TAgentVaultCustomHeaderInput[];
   substitutions?: TAgentVaultSubstitutionInput[];
+  hook?: TAgentVaultServiceHookInput;
 };
 
 export type TUpdateServiceDTO = TAgentVaultProjectScoped & {
@@ -256,6 +260,8 @@ export type TUpdateServiceDTO = TAgentVaultProjectScoped & {
   credential?: TAgentVaultCredentialUpdate;
   customHeaders?: TAgentVaultCustomHeaderUpdate[];
   substitutions?: TAgentVaultSubstitutionUpdate[];
+  // null removes the hook.
+  hook?: TAgentVaultServiceHookInput | null;
 };
 
 // What the service sheet would save, so the tools are listed with the credential agents will use. On edit, a value

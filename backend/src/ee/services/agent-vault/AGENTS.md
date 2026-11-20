@@ -23,7 +23,7 @@ agent-vault-member/          project membership (list, add, role, remove)
 agent-vault-delegation/      which users a machine identity may start sessions on behalf of
 agent-vault-personal-value/  each actor's own values for the fields a service leaves to members
 agent-vault-skill/           the skill library, versions, bundle links, file validation and hashing
-agent-vault-hook/            saved hooks, the rule grammar, inline hook rows and their secret cleanup
+agent-vault-hook/            saved hooks (CRUD, usedBy), the service hook grammar and narrowing checks
 agent-vault-session/         mint, revoke, list, get, edit label and metadata
 agent-vault-proxy/           create/rotate (proxy token + CA), bootstrap, heartbeat, resolve, credential refresh, session skills
 agent-vault-oauth/           OAuth sign-ins for services and OAuth variables: discovery, registration, authorizations, refresh
@@ -109,7 +109,7 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
 
 - **Every gate checks a CASL action, never the role.** The actions that stand in for what used to be role checks:
   `read-any`, `edit-any` and `revoke-any` on sessions (other actors' sessions and their session logs; plain `read`,
-  `edit` and `revoke` reach only your own), `create-with-inline-services` and `create-with-inline-hook` on sessions, the `agent-vault-variables`
+  `edit` and `revoke` reach only your own), `create-with-inline-services` on sessions, the `agent-vault-variables`
   subject (global variables), the project's `Settings` subject (session log settings, `read` to view and `edit` to
   change), `edit` on proxies (the proxy list carries a proxy's settings only for it), `manage-members` on access bundles
   (a delegation's missing bundles), and `create`, `edit` and `delete` on members, groups or identities, for only the
@@ -397,11 +397,10 @@ database too; the OAuth shapes below are checked in code.
   a later bundle edit can still create the overlap; resolve puts the bundle's services first, and the Go matcher breaks
   a tie by slice order, so the bundle's service gets the host.
 - **Secrets go when the session ends; the rest stays.** The credential (`encryptedCredential`), the custom header and
-  substitution values (`encryptedValue` on the child rows) and the session's inline hook secret are set to NULL together
-  with `secretsDeletedAt`, in one transaction. The row keeps the name, type, hosts, rules, credential type, header names
+  substitution values (`encryptedValue` on the child rows) and, on rows minted before hooks became their own resource,
+  `encryptedHookSecret` are set to NULL together with `secretsDeletedAt`, in one transaction. The row keeps the name, type, hosts, rules, credential type, header names
   and placeholders, since sessions stay until their project is deleted and the Sessions page shows what an ended session
-  could reach. `encryptedHookSecret` is still nulled for rows written before hooks moved to sessions, until the column
-  drops. Revoke deletes the secrets in its transaction, and the hourly `FrequentResourceCleanup`
+  could reach. Revoke deletes the secrets in its transaction, and the hourly `FrequentResourceCleanup`
   (`deleteSecretsOfEndedSessions`) catches sessions that expired or lost their owner, matching `deriveSessionStatus`.
   Neither writes the session row, so an ownerless session's `updatedAt` never moves. `ttl: never` is allowed, so such a
   session keeps its secrets until it is revoked or its owner is deleted.
@@ -620,70 +619,52 @@ outside it is logged unparsed and still checked against the list.
 
 A hook is a server of the customer's that the proxy asks before it applies substitutions and the credential, and that
 allows or refuses the request. HTTP and MCP ask per request; Postgres, MySQL and SSH ask once per connection. The proxy
-does the asking (`packages/agentvault/hook.go` in the CLI repo); Infisical stores hooks and sends the session's one on
+does the asking (`packages/agentvault/hook.go` in the CLI repo); Infisical stores hooks and sends each service's on
 resolve.
 
-- **A hook is its own resource, attached to a session, never to a service.** Saved hooks are project rows of
-  `agent_vault_hooks` (`/hooks` routes); a session references one through `agent_vault_sessions.hookId`. A session has
-  at most one hook: a saved one (`hookId` on mint) or one of its own (`hook` on mint), never both (400). There are no
-  project-wide hooks: a hook runs only on sessions that attach it, so whoever mints a session decides whether one applies.
-- **An inline hook is a row with `sessionId` set**, `name` NULL, written only by `insertInlineForSession` in mint's
-  transaction (session row first, then the hook, then `session.hookId`, since each points at the other). The hooks
-  routes and `resolveFromHook` never return one. Its secret goes when the session ends, with the inline services'
-  (`deleteInlineHookSecretBySessionId`, `deleteInlineHookSecretsOfEndedSessions`, called from the inline service DAL so
-  revoke and the hourly cleanup cover both in one transaction).
-- **Rules are rows of `agent_vault_hook_services`, one per (hook, project service)**, like bundle service links. The
-  API takes and returns `{ service: <name>, methods?, paths?, tools? }` and never a service ID in a rule; on save
-  (`toHookServiceLinks`, also for an inline hook at mint) each name must be one of the project's services
-  (`sessionId IS NULL`, 404 naming it otherwise), read in the write's transaction with `lockProjectServicesForHook`
-  (FOR KEY SHARE in ID order, after the hook row lock), and a narrowing that doesn't fit its type is a 400
-  (`assertHookNarrowingFitsService`). A service listed twice is a 422. HTTP rules narrow by `methods` and `paths`
-  (prefixes, same semantics as `allowedPathPrefixes`), MCP rules by `tools`, and database and SSH services take the
-  whole service. Reads name each service by its current name; deleting a service removes its rows by cascade.
-- **No rules means every request only when the hook was saved that way** (`appliesToAllServices`, set on every save
-  of the rule list and on inline hook insert). A hook whose last service was deleted, or removed through
-  `/hooks/:hookId/services/:serviceId`, keeps `appliesToAllServices = false` and checks nothing; never derive "all
-  traffic" from an empty rule list alone, or deleting a service would widen what the hook checks.
-- **The service sheet edits one link at a time** through `POST /hooks/:hookId/services` and `PATCH`/`DELETE
-  /hooks/:hookId/services/:serviceId`: Edit on hooks (plus the plan flag, except DELETE), audited as `agent-vault-hook-update` with
-  `serviceChange`. Each sets `appliesToAllServices = false`. `GET /services/:serviceId` adds `hooks: [{ id, name,
-  methods?, paths?, tools? }]` for callers with `read` on hooks (`listServiceHooks`); the list doesn't.
-- **A hook has one behavior, gate, and no `mode` field** in the API, the table or the resolve payload.
-- **Permissions are flat CRUD on `agent-vault-hooks`**: admin all, member `read`. Read returns name, URL, rules and
-  `appliesToAllServices`, never the secret. Minting with `hookId` takes `read` on hooks; minting with an inline hook takes
-  `create-with-inline-hook` on sessions (admin only, separate from `create-with-inline-services` so a custom role can
-  let an orchestrator inline a hook without opening hosts), because an inline URL is a new destination the proxy POSTs
-  to from inside the customer's network. Both are checked at mint only, never on resolve: a hook only adds checks, so
-  dropping it on a demotion would widen access.
-- **Session reads return `hook: { id, name, isInline }`, plus `url`, `rules` and `appliesToAllServices` only for
-  callers with `read` on hooks** (`toSessionHookView`).
+- **A hook is a project resource with no rules of its own** (`agent_vault_hooks`: name, description, URL, sealed
+  secret; `/hooks` routes are plain CRUD). Reads add `usedBy`, the project's services that use it. There are no
+  session-level or inline hooks; if inline hooks come back, add them to saved and inline services together.
+- **A service has at most one hook, stored on its row**: `hookId` (FK, `ON DELETE SET NULL`) plus the narrowing
+  `hookMethods`/`hookPaths` (HTTP) or `hookTools` (MCP), null meaning every request or connection. No link table, so the
+  hook saves in the same create or PATCH as the service. Every write sets all four columns (`toServiceHookColumns`,
+  `NO_SERVICE_HOOK`), and readers ignore the narrowing whenever `hookId` is null: a hook deleted through the foreign key
+  leaves an inline row's narrowing behind.
+- **The API names the hook, never its ID**: `hook: { name, methods?, paths?, tools? }` on service create and update
+  (`null` on update removes it, left out keeps it) and on an inline service at mint. An unknown name is a 404
+  (`hookNotFoundByName`); a narrowing that doesn't fit the service's type is a 400 (`assertHookNarrowingFitsService`).
+  The name is looked up again inside the write's transaction FOR KEY SHARE (`findByNameForService`,
+  `findByNamesForService` at mint), so a hook deleted meanwhile is a 404 rather than a failed key.
+- **Lock order is service rows, then the hook.** A service write locks its row and then the hook; `deleteHook` locks
+  the project's services using the hook (FOR NO KEY UPDATE), then the hook, then reads them again under the hook's
+  lock, clears their hook columns and deletes the hook. Keep that order in anything new that touches both.
+- **Permissions**: flat CRUD on `agent-vault-hooks` (admin all, member `read`). Setting a hook on a service is like
+  using a variable in it: Edit on services plus `read` on hooks, which naming a hook on an inline service also takes.
+  Removing one takes only Edit on services. Service reads (list, single, bundle, create and update responses) carry
+  `hook: { id, name, methods?, paths?, tools? } | null` only for callers with `read` on hooks, and leave the field out
+  otherwise, since null would claim there is none.
 - **The secret is the admin's, write-only.** Sealed under the project data key as `{ value }` in `encryptedSecret`,
   never returned, audited only as `secretReplaced`. A PATCH without `secret` keeps it. The URL refuses a query string,
-  userinfo and a fragment because it is shown in reads, audits and session details. The secret is never variable
-  expanded, so braces in it are allowed.
-- **Edits reach live sessions on the proxy's next resolve**, since a session references the hook, not a copy. A
-  running session's hook can't be changed or added; session edit stays label and metadata.
-- **Deleting a saved hook is never blocked.** Sessions using it lose it through `hookId ON DELETE SET NULL` and resolve
-  as if no hook was given; nothing tracks usage. The FK update moves those sessions' `updatedAt`, which for a session
-  that already lost its owner reopens its 24 hour late-log window; accepted.
-- **The plan flag gates writes only** (`agentVaultHooks`), through `assertAgentVaultHooksOnPlan`: saved hook create,
-  an edit of URL, secret or rules (including adding or narrowing one service's link), and an inline hook at mint.
-  Rename, delete (of a hook or one service's link), reads and a mint with a saved `hookId`
-  never check it. Resolve never checks it, so a downgrade keeps existing hooks running: a hook only adds checks, and
-  dropping it would widen access.
-- **Resolve sends one top-level `hook: { id, name, url, secret, rules } | null`** (`findSessionHook`, kept to the
-  session's project and, for an inline hook, the session). `toResolvedHookRules` names each service from the service
-  rows sent in the same response and leaves out one not in the session; a hook with services none of which is in the
-  session, or with none and `appliesToAllServices` false, goes out as no hook rather than checking everything. It also sends each service's
-  `accessBundleId` (null when not from a bundle) and a top-level `session` (`label`, `metadata`, `actor` with the
-  `actorType` fallback, `onBehalfOf`); metadata is read only for a session with a hook and is `{}` otherwise. The proxy
-  puts `session` in the hook payload with `hook: { id, name }`. A hook row without a secret fails the resolve rather
-  than going out as no hook. Every field must be in the `/resolve` 200 schema or it is stripped. Old proxies ignore the top-level field and
-  broker without asking, by decision; no version check.
-- **`agent_vault_services.hookUrl`, `encryptedHookSecret` and their CHECKs are dead** (hooks moved off services with no
-  migration of existing ones). They stay this release because pods on the previous release still read them during a
-  rolling deploy; nothing reads or writes them except the inline secret cleanup nulling `encryptedHookSecret`. The
-  next release's migration drops them, together with that write.
+  userinfo and a fragment because it is shown in reads and audits. The secret is never variable expanded.
+- **Edits reach live sessions on the proxy's next resolve**, since services reference the hook, not a copy. Sessions
+  don't pick hooks: whoever mints a session gets each service's hook, so an admin's hook always applies.
+- **Deleting a hook is never blocked**, and the response (`usedBy`) and the `agent-vault-hook-delete` audit event
+  (`services`) list the services that lose it.
+- **The plan flag gates writes that add or change a hook** (`agentVaultHooks`, `assertAgentVaultHooksOnPlan`): hook
+  create, a hook edit of URL or secret, and setting or changing a service's hook or narrowing (`isServiceHookChange`,
+  so re-sending the same hook is free). Rename, description, removing a service's hook, deleting a hook, reads, a mint
+  whose inline service names an existing hook and resolve never check it, so a downgrade keeps existing hooks running.
+- **Resolve sends `services[i].hook: { id, name, url, secret, methods?, paths?, tools? } | null`** (`findHooks`, kept to
+  the session's project, retried on the primary for IDs the replica lacks; one still missing was deleted and goes out
+  as none). There is no top-level hook. `session.metadata` is read and sent only when some service has a hook. Proxies
+  that predate narrowing read `url` and `secret` and ask about every request of the service, so they check more, never
+  less. Every field must be in the `/resolve` 200 schema or it is stripped.
+- **Upgrades.** The migration turned each project service's old `hookUrl`/`encryptedHookSecret` into a saved hook named
+  `<service>-hook` (suffixed on a clash) with no narrowing. Inline services minted before the upgrade still carry those
+  columns, and resolve sends that hook (`id` = the service's, `name` = `<service>-hook`, every request) until the
+  session ends. On a project service the old columns are never read. They stay this release for pods on the previous
+  release during a rolling deploy; the next release's migration drops them, together with the inline secret cleanup
+  that nulls `encryptedHookSecret`.
 
 ## Transformations
 

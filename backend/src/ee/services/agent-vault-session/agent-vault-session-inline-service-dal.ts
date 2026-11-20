@@ -6,10 +6,6 @@ import { DatabaseError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import {
-  deleteInlineHookSecretBySessionId,
-  deleteInlineHookSecretsOfEndedSessions
-} from "../agent-vault-hook/agent-vault-hook-dal";
-import {
   addOauthRequiredScopes,
   compareAndSwapOauthTokens,
   TOauthTokenColumns
@@ -91,6 +87,7 @@ const SUMMARY_COLUMNS = [
   "credentialType",
   "credentialConfig",
   "secretsDeletedAt",
+  "hookUrl",
   "createdAt",
   "updatedAt"
 ] as const;
@@ -194,10 +191,9 @@ export const agentVaultSessionInlineServiceDALFactory = (db: TDbClient) => {
     }
   };
 
-  // The credential, custom header values and substitution values together, in one transaction, keeping the names and
-  // placeholders for history. Never writes the session row, whose updatedAt dates an ownerless session's last logs.
-  // encryptedHookSecret is still cleared because rows written before hooks moved off services may hold one, until the
-  // column is dropped.
+  // The credential, the hook's signing secret, custom header values and substitution values together, in one
+  // transaction, keeping the names and placeholders for history. Never writes the session row, whose updatedAt dates
+  // an ownerless session's last logs.
   const deleteSecretsOf = async (serviceIds: string[], tx: Knex) => {
     if (!serviceIds.length) return;
     await tx(TableName.AgentVaultService)
@@ -217,20 +213,18 @@ export const agentVaultSessionInlineServiceDALFactory = (db: TDbClient) => {
         rows.map((row) => row.id),
         tx
       );
-      await deleteInlineHookSecretBySessionId(sessionId, tx);
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete agent vault session inline service secrets" });
     }
   };
 
   /**
-   * Deletes the secrets of every inline service and inline hook whose session can no longer resolve: revoked, expired, or
-   * left without its owner or the user it acts for, matching deriveSessionStatus. In batches, each its own transaction, so no one
+   * Deletes the secrets of every inline service whose session can no longer resolve: revoked, expired, or left without
+   * its owner or the user it acts for, matching deriveSessionStatus. In batches, each its own transaction, so no one
    * transaction grows with the number of sessions that ended since the last run.
    */
   const deleteSecretsOfEndedSessions = async () => {
     let deleted = 0;
-    let deletedHooks = 0;
     try {
       for (;;) {
         // eslint-disable-next-line no-await-in-loop
@@ -266,20 +260,16 @@ export const agentVaultSessionInlineServiceDALFactory = (db: TDbClient) => {
             rows.map((row) => row.id),
             tx
           );
-          const hookCount = await deleteInlineHookSecretsOfEndedSessions(tx, DELETE_SECRETS_BATCH_SIZE);
-          return { serviceCount: rows.length, hookCount };
+          return rows.length;
         });
-        deleted += batch.serviceCount;
-        deletedHooks += batch.hookCount;
-        if (batch.serviceCount < DELETE_SECRETS_BATCH_SIZE && batch.hookCount < DELETE_SECRETS_BATCH_SIZE) break;
+        deleted += batch;
+        if (batch < DELETE_SECRETS_BATCH_SIZE) break;
       }
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete agent vault inline service secrets of ended sessions" });
     }
-    if (deleted || deletedHooks) {
-      logger.info(
-        `frequent-resource-cleanup: deleted the secrets of ${deleted} agent vault inline services and ${deletedHooks} inline hooks`
-      );
+    if (deleted) {
+      logger.info(`frequent-resource-cleanup: deleted the secrets of ${deleted} agent vault inline services`);
     }
   };
 

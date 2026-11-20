@@ -12,13 +12,10 @@ import { TImmutableDBKeys } from "./models";
 export const AgentVaultHooksSchema = z.object({
   id: z.string().uuid(),
   projectId: z.string(),
-  sessionId: z.string().uuid().nullable().optional(),
-  name: z.string().nullable().optional(),
+  name: z.string(),
   description: z.string().nullable().optional(),
   url: z.string(),
-  encryptedSecret: zodBuffer.nullable().optional(),
-  appliesToAllServices: z.boolean(),
-  secretsDeletedAt: z.date().nullable().optional(),
+  encryptedSecret: zodBuffer,
   createdAt: z.date(),
   updatedAt: z.date()
 });

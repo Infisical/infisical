@@ -17,7 +17,13 @@ import {
   buildUpdateServiceRequest,
   membersClearedNotice
 } from "./serviceRequest";
-import { HTTP_METHODS, McpToolScope, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
+import {
+  HTTP_METHODS,
+  McpToolScope,
+  serviceHookDraftOf,
+  TServiceForm,
+  UNCHANGED_SECRET
+} from "./serviceSchema";
 
 const SERVER_URL = "https://mcp.linear.app/mcp";
 
@@ -56,7 +62,7 @@ const form = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   pathPrefixes: [],
   customHeaders: [],
   substitutions: [],
-  hooks: [],
+  hook: serviceHookDraftOf(null),
   ...overrides
 });
 
@@ -956,5 +962,73 @@ describe("OAuth variable credentials", () => {
 
   it("asks nothing when a variable service is left to each member", () => {
     expect(membersClearedNotice(mcpForm({ memberProvidedFields: MEMBER }), variableMcp)).toBe(null);
+  });
+});
+
+describe("service hooks", () => {
+  const HOOK = { id: "hook-1", name: "approvals" };
+  const picked = (overrides: Partial<TServiceForm["hook"]> = {}) => ({
+    ...serviceHookDraftOf(HOOK),
+    ...overrides
+  });
+
+  it("creates a service with its hook by name and only the narrowing its type uses", () => {
+    expect(
+      buildCreateServiceRequest(
+        undefined,
+        form({
+          hook: picked({ methods: [AgentVaultHttpMethod.Put], paths: ["/v1"], tools: ["x"] })
+        })
+      ).hook
+    ).toEqual({ name: "approvals", methods: [AgentVaultHttpMethod.Put], paths: ["/v1"] });
+    expect(
+      buildCreateServiceRequest(undefined, mcpForm({ hook: picked({ tools: ["delete_issue"] }) }))
+        .hook
+    ).toEqual({ name: "approvals", tools: ["delete_issue"] });
+    expect(
+      buildCreateServiceRequest(undefined, postgresForm({ hook: picked({ paths: ["/x"] }) })).hook
+    ).toEqual({ name: "approvals" });
+  });
+
+  it("creates a service without a hook by leaving it out", () => {
+    expect(buildCreateServiceRequest(undefined, form())).not.toHaveProperty("hook");
+  });
+
+  it("leaves an unchanged hook out of an update, even with its lists reordered", () => {
+    const saved = {
+      ...storedHttp,
+      hook: {
+        ...HOOK,
+        methods: [AgentVaultHttpMethod.Put, AgentVaultHttpMethod.Get],
+        paths: ["/v1"]
+      }
+    };
+    expect(
+      buildUpdateServiceRequest(saved, form({ hook: serviceHookDraftOf(saved.hook) }))
+    ).not.toHaveProperty("hook");
+  });
+
+  it("sends a changed narrowing or another hook", () => {
+    const saved = { ...storedHttp, hook: { ...HOOK } };
+    expect(
+      buildUpdateServiceRequest(saved, form({ hook: picked({ paths: ["/v1"] }) })).hook
+    ).toEqual({ name: "approvals", paths: ["/v1"] });
+    expect(
+      buildUpdateServiceRequest(
+        saved,
+        form({ hook: picked({ hookId: "hook-2", hookName: "release-guard" }) })
+      ).hook
+    ).toEqual({ name: "release-guard" });
+  });
+
+  it("sends null to remove the hook", () => {
+    expect(buildUpdateServiceRequest({ ...storedHttp, hook: { ...HOOK } }, form()).hook).toBeNull();
+  });
+
+  it("sends nothing when there was no hook and none is picked, or the read left the hook out", () => {
+    expect(buildUpdateServiceRequest({ ...storedHttp, hook: null }, form())).not.toHaveProperty(
+      "hook"
+    );
+    expect(buildUpdateServiceRequest(storedHttp, form())).not.toHaveProperty("hook");
   });
 });

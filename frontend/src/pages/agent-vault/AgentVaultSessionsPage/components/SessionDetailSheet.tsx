@@ -6,12 +6,10 @@ import {
   BotIcon,
   PackageIcon,
   PencilIcon,
-  UserIcon,
-  WebhookIcon
+  UserIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { describeHookRule } from "@app/components/agent-vault/hooks/hookSchema";
 import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
 import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
@@ -38,11 +36,7 @@ import {
 import { useOrganization, useProject, useProjectPermission, useUser } from "@app/context";
 import { canActOnAgentVaultSession } from "@app/helpers/agentVaultPermissions";
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
-import {
-  TAgentVaultSession,
-  TAgentVaultSessionHook,
-  TAgentVaultSessionSkill
-} from "@app/hooks/api/agentVault/types";
+import { TAgentVaultSession, TAgentVaultSessionSkill } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
 import {
@@ -77,38 +71,6 @@ const moreButton = (count: number) => (
     <span className="underline decoration-dotted underline-offset-2">{`+${count} more`}</span>
   </button>
 );
-
-// URL and rules come back only for a caller who can read hooks, so the tooltip shows only what was returned.
-const SessionHookValue = ({ hook }: { hook: TAgentVaultSessionHook }) => {
-  const label = (
-    <span className="flex min-w-0 items-center gap-2">
-      <WebhookIcon className="size-4 shrink-0 text-muted" />
-      <span className="truncate">{hook.name ?? "Inline hook"}</span>
-    </span>
-  );
-  if (!hook.url) return label;
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{label}</TooltipTrigger>
-      <TooltipContent className="max-w-sm">
-        <span className="block break-all">{hook.url}</span>
-        {hook.rules && (
-          <ul className="mt-1 flex flex-col gap-0.5 text-muted">
-            {hook.rules.length ? (
-              hook.rules.map((rule) => (
-                <li key={rule.service} className="break-all">
-                  {describeHookRule(rule)}
-                </li>
-              ))
-            ) : (
-              <li>{hook.appliesToAllServices === false ? "No services" : "All traffic"}</li>
-            )}
-          </ul>
-        )}
-      </TooltipContent>
-    </Tooltip>
-  );
-};
 
 // A session's skills, listed by name or inline: the first few by name, with the rest behind a hover card.
 const SkillsDetail = ({
@@ -371,14 +333,6 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                     )}
                     {inlineSkills.length > 0 && (
                       <SkillsDetail label="Inline Skills" skills={inlineSkills} isInline />
-                    )}
-                    {session.hook && (
-                      <Detail className="min-w-0">
-                        <DetailLabel>Hook</DetailLabel>
-                        <DetailValue className="flex min-w-0">
-                          <SessionHookValue hook={session.hook} />
-                        </DetailValue>
-                      </Detail>
                     )}
                     <Detail>
                       <DetailLabel>Created</DetailLabel>

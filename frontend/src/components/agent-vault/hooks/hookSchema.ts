@@ -9,9 +9,7 @@ import { pathPrefixError } from "@app/helpers/agentVaultPathPrefix";
 import { AgentVaultHttpMethod, AgentVaultServiceType } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultHook,
-  TAgentVaultHookRule,
-  TAgentVaultHookRuleInput,
-  TAgentVaultHookRuleNarrowing,
+  TAgentVaultHookNarrowing,
   TCreateAgentVaultHookDTO,
   TUpdateAgentVaultHookDTO
 } from "@app/hooks/api/agentVault/types";
@@ -28,8 +26,7 @@ import {
 const MAX_HOOK_URL_LENGTH = 2048;
 const MIN_HOOK_SECRET_LENGTH = 32;
 const MAX_HOOK_SECRET_LENGTH = 512;
-export const MAX_HOOK_RULES = 50;
-const MAX_HOOK_RULE_ENTRIES = 100;
+const MAX_HOOK_NARROWING_ENTRIES = 100;
 
 export const isPlainHttpUrl = (value: string) => /^http:\/\//i.test(value.trim());
 
@@ -86,22 +83,13 @@ export const hookSecretError = (value: string): string | null => {
   return null;
 };
 
-/** What a hook checks of one service: methods and paths for HTTP, tools for MCP, nothing for the rest. */
+/** What a hook checks of its service: methods and paths for HTTP, tools for MCP, nothing for the rest. */
 export type THookNarrowingDraft = {
   methods: AgentVaultHttpMethod[];
   paths: string[];
   pathDraft: string;
   tools: string[];
   toolDraft: string;
-};
-
-/**
- * A rule as the form edits it: one of the project's services by name. Its type decides which narrowing applies, and is
- * null only while no service is picked.
- */
-export type THookRuleDraft = THookNarrowingDraft & {
-  service: string;
-  serviceType: AgentVaultServiceType | null;
 };
 
 export const blankHookNarrowing = (): THookNarrowingDraft => ({
@@ -112,15 +100,7 @@ export const blankHookNarrowing = (): THookNarrowingDraft => ({
   toolDraft: ""
 });
 
-export const blankHookRule = (): THookRuleDraft => ({
-  ...blankHookNarrowing(),
-  service: "",
-  serviceType: null
-});
-
-export const hookNarrowingDraftOf = (
-  narrowing: TAgentVaultHookRuleNarrowing
-): THookNarrowingDraft => ({
+export const hookNarrowingDraftOf = (narrowing: TAgentVaultHookNarrowing): THookNarrowingDraft => ({
   ...blankHookNarrowing(),
   methods: narrowing.methods
     ? HTTP_METHODS.filter((m) => narrowing.methods?.includes(m))
@@ -129,22 +109,11 @@ export const hookNarrowingDraftOf = (
   tools: narrowing.tools ?? []
 });
 
-// A rule on a service missing from the picker's first page takes its type from the narrowing it was saved with.
-export const hookRuleDraftOf = (
-  rule: TAgentVaultHookRule,
-  serviceType?: AgentVaultServiceType
-): THookRuleDraft => {
-  let type: AgentVaultServiceType | null = serviceType ?? null;
-  if (!type && rule.tools) type = AgentVaultServiceType.Mcp;
-  else if (!type && (rule.methods || rule.paths)) type = AgentVaultServiceType.Http;
-  return { ...hookNarrowingDraftOf(rule), service: rule.service, serviceType: type };
-};
-
 /** Lists are left out rather than sent empty: the API reads an empty list as a mistake. */
 export const buildHookNarrowing = (
   draft: THookNarrowingDraft,
   serviceType: AgentVaultServiceType | null
-): TAgentVaultHookRuleNarrowing => {
+): TAgentVaultHookNarrowing => {
   if (serviceType === AgentVaultServiceType.Http) {
     return {
       ...(isAllMethods(draft.methods) || !draft.methods.length ? {} : { methods: draft.methods }),
@@ -157,11 +126,6 @@ export const buildHookNarrowing = (
   return {};
 };
 
-export const buildHookRule = (draft: THookRuleDraft): TAgentVaultHookRuleInput => ({
-  service: draft.service,
-  ...buildHookNarrowing(draft, draft.serviceType)
-});
-
 const addListIssues = (
   values: string[],
   draft: string,
@@ -171,8 +135,8 @@ const addListIssues = (
   ctx: z.RefinementCtx
 ) => {
   const issue = (message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
-  if (values.length > MAX_HOOK_RULE_ENTRIES) {
-    issue(`A rule can list at most ${MAX_HOOK_RULE_ENTRIES} ${what}.`);
+  if (values.length > MAX_HOOK_NARROWING_ENTRIES) {
+    issue(`A hook can check at most ${MAX_HOOK_NARROWING_ENTRIES} ${what}.`);
     return;
   }
   const invalid = values
@@ -189,7 +153,7 @@ const addListIssues = (
 const toolError = (tool: string, existing: string[]) =>
   toolNameError(tool) ?? (existing.includes(tool) ? `"${tool}" is listed twice.` : null);
 
-/** Marks a narrowing the API would refuse on its field, under `path` (a rule's or a service's hook entry). */
+/** Marks a narrowing the API would refuse on its field, under `path`. */
 export const addHookNarrowingIssues = (
   draft: THookNarrowingDraft,
   serviceType: AgentVaultServiceType | null,
@@ -218,21 +182,15 @@ export const addHookNarrowingIssues = (
   }
 };
 
-// The form rebuilds lists in its own order, so lists compare as sets or an untouched rule would read as an edit.
+// The form rebuilds lists in its own order, so lists compare as sets or an untouched narrowing would read as an edit.
 const asSet = (values?: string[]) => (values ? [...values].sort() : null);
 
 export const sameHookNarrowing = (
-  left: TAgentVaultHookRuleNarrowing,
-  right: TAgentVaultHookRuleNarrowing
+  left: TAgentVaultHookNarrowing,
+  right: TAgentVaultHookNarrowing
 ) =>
   JSON.stringify([asSet(left.methods), asSet(left.paths), asSet(left.tools)]) ===
   JSON.stringify([asSet(right.methods), asSet(right.paths), asSet(right.tools)]);
-
-const sameRules = (left: TAgentVaultHookRuleInput[], right: TAgentVaultHookRule[]) =>
-  left.length === right.length &&
-  left.every(
-    (rule, index) => rule.service === right[index].service && sameHookNarrowing(rule, right[index])
-  );
 
 export const hookFormSchema = () =>
   z
@@ -244,10 +202,7 @@ export const hookFormSchema = () =>
         .pipe(slugSchema({ max: 64, field: "Name" })),
       description: agentVaultDescriptionSchema,
       url: z.string(),
-      secret: z.string(),
-      rules: z
-        .array(z.custom<THookRuleDraft>())
-        .max(MAX_HOOK_RULES, `A hook can have at most ${MAX_HOOK_RULES} rules.`)
+      secret: z.string()
     })
     .superRefine((data, ctx) => {
       const issue = (path: (string | number)[], message: string) =>
@@ -259,71 +214,48 @@ export const hookFormSchema = () =>
         const secretIssue = hookSecretError(data.secret);
         if (secretIssue) issue(["secret"], secretIssue);
       }
-
-      const seen = new Set<string>();
-      data.rules.forEach((rule, index) => {
-        if (!rule.service)
-          issue(["rules", index, "service"], "Pick the service this rule applies to.");
-        else if (seen.has(rule.service)) {
-          issue(
-            ["rules", index, "service"],
-            "This service already has a rule. Put all its methods, paths or tools in that one."
-          );
-        }
-        seen.add(rule.service);
-        addHookNarrowingIssues(rule, rule.serviceType, ["rules", index], ctx);
-      });
     });
 
 export type THookForm = z.infer<ReturnType<typeof hookFormSchema>>;
 
-/** `serviceTypes` holds the project's services' types by name. */
-export const hookFormOf = (
-  hook?: TAgentVaultHook | null,
-  serviceTypes: Map<string, AgentVaultServiceType> = new Map(),
-  initialName = ""
-): THookForm => ({
+export const hookFormOf = (hook?: TAgentVaultHook | null, initialName = ""): THookForm => ({
   name: hook?.name ?? initialName,
   description: hook?.description ?? "",
   url: hook?.url ?? "",
-  secret: hook ? UNCHANGED_SECRET : "",
-  rules: (hook?.rules ?? []).map((rule) => hookRuleDraftOf(rule, serviceTypes.get(rule.service)))
+  secret: hook ? UNCHANGED_SECRET : ""
 });
 
 export const buildCreateHookRequest = (data: THookForm): TCreateAgentVaultHookDTO => ({
   name: data.name,
   ...(data.description ? { description: data.description } : {}),
   url: data.url.trim(),
-  secret: data.secret,
-  rules: data.rules.map(buildHookRule)
+  secret: data.secret
 });
 
 /**
- * Only what changed is sent. URL, secret and rules changes need the plan's hooks feature, so a rename must not carry
- * them, and the audit log reads every field sent as one the edit touched.
+ * Only what changed is sent. URL and secret changes need the plan's hooks feature, so a rename must not carry them, and
+ * the audit log reads every field sent as one the edit touched.
  */
 export const buildUpdateHookRequest = (
   hook: TAgentVaultHook,
   data: THookForm
 ): Omit<TUpdateAgentVaultHookDTO, "hookId"> => {
   const url = data.url.trim();
-  const rules = data.rules.map(buildHookRule);
   return {
     ...(data.name !== hook.name ? { name: data.name } : {}),
     ...(data.description !== (hook.description ?? "")
       ? { description: data.description || null }
       : {}),
     ...(url !== hook.url ? { url } : {}),
-    ...(data.secret !== UNCHANGED_SECRET ? { secret: data.secret } : {}),
-    ...(sameRules(rules, hook.rules) ? {} : { rules })
+    ...(data.secret !== UNCHANGED_SECRET ? { secret: data.secret } : {})
   };
 };
 
 const listSummary = (values: string[], noun: string) =>
   values.length === 1 ? values[0] : `${values.length} ${noun}`;
 
-/** One short line for what a hook checks of a service, for tables and session details. */
-export const describeHookNarrowing = (narrowing: TAgentVaultHookRuleNarrowing): string | null => {
+/** One short line for what a hook checks of its service. Null when it checks everything. */
+export const describeHookNarrowing = (narrowing: TAgentVaultHookNarrowing): string | null => {
   const parts: string[] = [];
   if (narrowing.methods) parts.push(narrowing.methods.join(", "));
   if (narrowing.paths) parts.push(listSummary(narrowing.paths, "paths"));
@@ -331,8 +263,10 @@ export const describeHookNarrowing = (narrowing: TAgentVaultHookRuleNarrowing): 
   return parts.length ? parts.join(" on ") : null;
 };
 
-/** One short line per rule, for tables and session details. */
-export const describeHookRule = (rule: TAgentVaultHookRule): string => {
-  const narrowing = describeHookNarrowing(rule);
-  return narrowing ? `${rule.service}: ${narrowing}` : rule.service;
+/** Names as a sentence's list, as in "stripe, billing-api and 2 more", naming at most `shown`. */
+export const listNames = (names: string[], shown = 3): string => {
+  if (names.length <= 1) return names[0] ?? "";
+  if (names.length <= shown)
+    return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  return `${names.slice(0, shown).join(", ")} and ${names.length - shown} more`;
 };

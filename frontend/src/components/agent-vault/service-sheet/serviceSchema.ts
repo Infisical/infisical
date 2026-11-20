@@ -23,12 +23,18 @@ import {
 } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultService,
+  TAgentVaultServiceHook,
   TAgentVaultSessionInlineService,
   TAgentVaultSharedOauthCredentialSummary
 } from "@app/hooks/api/agentVault/types";
 import { slugSchema } from "@app/lib/schemas";
 
-import { addHookNarrowingIssues, THookNarrowingDraft } from "../hooks/hookSchema";
+import {
+  addHookNarrowingIssues,
+  blankHookNarrowing,
+  hookNarrowingDraftOf,
+  THookNarrowingDraft
+} from "../hooks/hookSchema";
 
 /**
  * Seeded into a secret field on edit so the box can show that something is stored without the server
@@ -422,8 +428,13 @@ export enum ServiceStep {
   Review = "review"
 }
 
-/** A saved hook the service is in, with what the hook checks of it. */
+/** The service's hook, with what it checks of the service. An empty `hookId` means no hook. */
 export type TServiceHookDraft = THookNarrowingDraft & { hookId: string; hookName: string };
+
+export const serviceHookDraftOf = (hook?: TAgentVaultServiceHook | null): TServiceHookDraft =>
+  hook
+    ? { hookId: hook.id, hookName: hook.name, ...hookNarrowingDraftOf(hook) }
+    : { hookId: "", hookName: "", ...blankHookNarrowing() };
 
 export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
   [ServiceStep.Template]: [],
@@ -448,7 +459,7 @@ export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "substitutions"
   ],
   [ServiceStep.Tools]: [],
-  [ServiceStep.Hooks]: ["hooks"],
+  [ServiceStep.Hooks]: ["hook"],
   [ServiceStep.Review]: []
 };
 
@@ -473,7 +484,7 @@ export const NATIVE_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "sshCertificate"
   ],
   [ServiceStep.Tools]: [],
-  [ServiceStep.Hooks]: ["hooks"],
+  [ServiceStep.Hooks]: ["hook"],
   [ServiceStep.Review]: []
 };
 
@@ -493,7 +504,7 @@ export const MCP_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "customHeaders"
   ],
   [ServiceStep.Tools]: ["toolScope", "allowedTools"],
-  [ServiceStep.Hooks]: ["hooks"],
+  [ServiceStep.Hooks]: ["hook"],
   [ServiceStep.Review]: []
 };
 
@@ -699,13 +710,10 @@ export const buildServiceSchema = (
           })
         )
         .max(MAX_SUBSTITUTIONS, `You can add at most ${MAX_SUBSTITUTIONS} substitutions.`),
-      // Saved separately, through each hook, once the service itself is saved.
-      hooks: z.array(z.custom<TServiceHookDraft>())
+      hook: z.custom<TServiceHookDraft>()
     })
     .superRefine((data, ctx) => {
-      data.hooks.forEach((hook, index) =>
-        addHookNarrowingIssues(hook, data.serviceType, ["hooks", index], ctx)
-      );
+      if (data.hook.hookId) addHookNarrowingIssues(data.hook, data.serviceType, ["hook"], ctx);
       const isMcp = data.serviceType === AgentVaultServiceType.Mcp;
       const isHttp = data.serviceType === AgentVaultServiceType.Http;
       const issue = (path: string, message: string) =>

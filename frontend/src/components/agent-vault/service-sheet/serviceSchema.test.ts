@@ -26,6 +26,7 @@ import {
   OAUTH_CLIENT_VARIABLES_MESSAGE,
   oauthStatusLabel,
   serverUrlError,
+  serviceHookDraftOf,
   storedOAuthCredential,
   TServiceForm,
   UNCHANGED_SECRET
@@ -68,7 +69,7 @@ const mcpForm = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   pathPrefixes: [],
   customHeaders: [],
   substitutions: [],
-  hooks: [],
+  hook: serviceHookDraftOf(null),
   ...overrides
 });
 
@@ -700,6 +701,29 @@ describe("buildServiceSchema with a description", () => {
     ]);
     // Joiners are real text, in emoji sequences and several scripts.
     expect(descriptionIssues("Family \u{1F468}\u200D\u{1F469}\u200D\u{1F467} tickets")).toEqual([]);
+  });
+});
+
+describe("buildServiceSchema with a hook", () => {
+  const hookIssues = (hook: TServiceForm["hook"]) =>
+    (
+      buildServiceSchema().safeParse(
+        mcpForm({ oauthAuthorizationId: "auth-1", oauthAuthorizedUrl: SERVER_URL, hook })
+      ).error?.issues ?? []
+    )
+      .filter((issue) => issue.path[0] === "hook")
+      .map((issue) => ({ path: issue.path.join("."), message: issue.message }));
+
+  it("checks the narrowing only once a hook is picked", () => {
+    const typedTool = { ...serviceHookDraftOf(null), toolDraft: "delete issue" };
+    expect(hookIssues(typedTool)).toEqual([]);
+    expect(hookIssues({ ...typedTool, hookId: "hook-1", hookName: "approvals" })).toEqual([
+      expect.objectContaining({ path: "hook.tools" })
+    ]);
+  });
+
+  it("accepts a picked hook with no narrowing", () => {
+    expect(hookIssues(serviceHookDraftOf({ id: "hook-1", name: "approvals" }))).toEqual([]);
   });
 });
 

@@ -1,9 +1,11 @@
 ---
 title: "Hooks"
-description: "Let your own server allow or refuse a session's requests and connections before the proxy attaches the credential."
+description: "Let your own server allow or refuse the requests and connections an agent makes to a service before the proxy attaches the credential."
 ---
 
-A hook makes the [proxy](/documentation/platform/agent-vault/proxies) ask a server you own before it uses a [service's](/documentation/platform/agent-vault/services) credential. The proxy sends your server a signed description of what the agent is about to do, and your server answers `allow` or `deny` within 3 seconds. The proxy continues only if your server answers `allow`. You save a hook in your Agent Vault project with a URL, a signing secret, and [rules](#rules) that pick which requests reach it, then attach it to the [sessions](/documentation/platform/agent-vault/sessions) it should check. Each session can have at most one hook.
+A hook makes the [proxy](/documentation/platform/agent-vault/proxies) ask a server you own before it uses a [service's](/documentation/platform/agent-vault/services) credential. The proxy sends your server a signed description of what the agent is about to do, and your server answers `allow` or `deny` within 3 seconds. The proxy continues only if your server answers `allow`.
+
+You save a hook in your Agent Vault project with a name, a URL, and a signing secret, then [pick it on each service](#attach-a-hook-to-a-service) it should check. A service can have one hook, and one hook can check many services. The proxy asks a service's hook about the service's requests in every [session](/documentation/platform/agent-vault/sessions) that uses the service.
 
 Use a hook when a service's [methods and paths](/documentation/platform/agent-vault/http-apis#methods-and-paths) or [allowed tools](/documentation/platform/agent-vault/mcp-servers#allowed-tools) can't express the rule you want to apply. For example: to refuse refunds above a set amount, to allow writes to some repositories only, or to have a person approve an action first.
 
@@ -13,43 +15,19 @@ Your server gets the agent's request, but never the service's credential.
 
 ## Prerequisites
 
-- The [Admin role](/documentation/platform/agent-vault/access-control#product-membership) in your Agent Vault project, to save, edit, or delete hooks (members can attach saved hooks to their sessions)
+- The [Admin role](/documentation/platform/agent-vault/access-control#product-membership) in your Agent Vault project, to save hooks and pick them on services
 - A server that accepts `POST` requests at an `https://` or `http://` URL, and that every proxy in the project can reach
 
 ## How it works
 
-The proxy asks the hook at a different point for each [service type](/documentation/platform/agent-vault/services#service-types):
+The proxy asks the service's hook at a different point for each [service type](/documentation/platform/agent-vault/services#service-types):
 
-- **HTTP APIs and MCP servers:** Before it sends each request that the hook's rules pick
-- **Databases and SSH servers:** Once for each connection the agent opens, if the hook's rules pick the service
+- **HTTP APIs and MCP servers:** Before it sends each request that the hook [checks](#narrow-the-requests-the-hook-checks)
+- **Databases and SSH servers:** Once for each connection the agent opens
 
 The proxy checks its own rules first. If the request breaks the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), the service's methods and paths, or the service's allowed tools, the proxy refuses the request without asking the hook.
 
 If your server denies the request or doesn't give a usable answer, the proxy [refuses it](#refused-requests), and the agent gets a message it can act on.
-
-## Rules
-
-A hook's rules pick which of a session's requests the proxy asks the hook about. Each rule names one of your project's services, and each service can appear in only one of a hook's rules. A rule can't name an [inline service](/documentation/platform/agent-vault/inline-services). If you save a hook with no rules, the proxy asks it about every request and connection in the session.
-
-To ask about only some of the service's traffic, narrow the rule. The narrowing has to fit the service's type:
-
-- **HTTP APIs:** `methods`, a list of methods such as `POST`, and `paths`, a list of path prefixes that match the same way as a service's [paths](/documentation/platform/agent-vault/http-apis#paths)
-- **MCP servers:** `tools`, a list of tool names (the proxy then asks only about calls to those tools, and not about calls such as `initialize` or `tools/list`)
-- **Databases and SSH servers:** No narrowing, so the rule picks every connection to the service
-
-If a rule has both `methods` and `paths`, a request has to match both. The proxy asks the hook if any rule picks the request. For example, these rules send refunds, calls to Linear's `delete_issue` tool, and every connection to `billing-db` to the hook:
-
-```json
-[
-  { "service": "stripe", "methods": ["POST"], "paths": ["/v1/refunds"] },
-  { "service": "linear", "tools": ["delete_issue"] },
-  { "service": "billing-db" }
-]
-```
-
-A rule never matches a service that the session doesn't have. If someone renames a service, the hook's rules use the new name.
-
-If someone deletes a service, Infisical removes it from every hook. If a hook loses its last service this way, or because someone removed the service from the hook, the hook checks nothing until you add a service to it again.
 
 ## Save a hook
 
@@ -71,9 +49,6 @@ You can save a hook in Infisical or through the API. Each proxy applies a change
         In **Secret**, enter the secret your server checks signatures with (see [Pick a signing secret](#pick-a-signing-secret)).
       </Step>
       <Step>
-        Under **Rules**, select **Add Rule** for each service whose traffic the hook should check, pick the service in **Service**, and narrow the rule if you need to. To check all of a session's traffic, add no rules.
-      </Step>
-      <Step>
         Select **Create Hook**.
       </Step>
     </Steps>
@@ -89,16 +64,15 @@ You can save a hook in Infisical or through the API. Each proxy applies a change
         "projectId": "<project-id>",
         "name": "refund-approval",
         "url": "https://hooks.example.com/agent-vault",
-        "secret": "<signing-secret>",
-        "rules": [
-          { "service": "stripe", "methods": ["POST"], "paths": ["/v1/refunds"] }
-        ]
+        "secret": "<signing-secret>"
       }'
     ```
 
-    The response holds the hook's `id`, which you use to [attach the hook to a session](#attach-a-hook-to-a-session). Infisical never returns the signing secret.
+    Infisical never returns the signing secret.
   </Tab>
 </Tabs>
+
+A saved hook checks nothing until you [attach it to a service](#attach-a-hook-to-a-service).
 
 ### Pick a signing secret
 
@@ -109,51 +83,6 @@ openssl rand -hex 32
 ```
 
 If one server handles several hooks with different secrets, give each hook its own URL path, such as `/agent-vault/refunds` and `/agent-vault/deploys`, so your server can tell which secret to check the signature with. The body names the hook too, but your server can't trust the body until it has checked the signature.
-
-### Edit or delete a hook
-
-To edit a hook, go to **Hooks**, open the hook's actions menu, and select **Edit**. Through the API, call the [Update hook](/api-reference/endpoints/agent-vault-hooks/update) endpoint with only the fields you want to change. If you leave out `secret`, the hook keeps its saved secret. Sessions that use the hook get the change at the proxy's next check-in.
-
-To delete a hook, open its actions menu and select **Delete**, or call the [Delete hook](/api-reference/endpoints/agent-vault-hooks/delete) endpoint. From the proxy's next check-in, sessions that used the hook keep running without one, and the proxy stops asking about their requests.
-
-### Pick a service's hooks
-
-You can also add a service to saved hooks from the service itself, and narrow which of its requests each hook checks.
-
-<Tabs>
-  <Tab title="In Infisical">
-    <Steps>
-      <Step>
-        Go to **Services**, then select **Add Service**, or open a service's actions menu and select **Edit**.
-      </Step>
-      <Step>
-        On the **Hooks** step, pick saved hooks in **Hooks**. To create a hook here, select **Create New Hook**.
-      </Step>
-      <Step>
-        For each hook you picked, narrow the [requests the hook checks](#rules) for this service: **Methods** and **Paths** for an HTTP API, or **Tools** for an MCP server. Databases and SSH servers have nothing to narrow. To have the hook check every request to the service, don't narrow it.
-      </Step>
-      <Step>
-        Check the **Hooks** group on the **Review** step, then select **Add Service**, or **Save** if you're editing the service. Infisical saves the hook changes with the service.
-      </Step>
-    </Steps>
-  </Tab>
-  <Tab title="Through the API">
-    Call the [Add service to hook](/api-reference/endpoints/agent-vault-hooks/add-service) endpoint with the service's name in `service` and any narrowing:
-
-    ```bash
-    curl -X POST https://app.infisical.com/api/v1/agent-vault/hooks/<hook-id>/services \
-      -H "Authorization: Bearer <access-token>" \
-      -H "Content-Type: application/json" \
-      -d '{ "service": "stripe", "methods": ["POST"], "paths": ["/v1/refunds"] }'
-    ```
-
-    If the hook had no rules, it checked all of a session's traffic, and from then on it checks only its services. To manage the hook's services afterward:
-
-    - **Change a service's narrowing:** Call the [Update hook service](/api-reference/endpoints/agent-vault-hooks/update-service) endpoint with the fields you want to change (send `null` to clear a field)
-    - **Take a service off the hook:** Call the [Remove service from hook](/api-reference/endpoints/agent-vault-hooks/remove-service) endpoint
-    - **List a service's hooks:** Call the [Get service](/api-reference/endpoints/agent-vault-services/get) endpoint, which returns them in `hooks`
-  </Tab>
-</Tabs>
 
 ### Change the signing secret
 
@@ -171,53 +100,74 @@ When you replace the secret, each proxy keeps signing with the old secret until 
   </Step>
 </Steps>
 
-## Attach a hook to a session
+### Edit or delete a hook
 
-You choose a session's hook when you create the session. You can't add, change, or remove the hook of a running session, so to use a different hook, create a new session.
+The **Used By** column on the **Hooks** page lists the services each hook checks.
+
+To edit a hook, go to **Hooks**, open the hook's actions menu, and select **Edit**. Through the API, call the [Update hook](/api-reference/endpoints/agent-vault-hooks/update) endpoint with only the fields you want to change. If you leave out `secret`, the hook keeps its saved secret.
+
+To delete a hook, open its actions menu and select **Delete**, or call the [Delete hook](/api-reference/endpoints/agent-vault-hooks/delete) endpoint. From the proxy's next check-in, the proxy stops asking about requests to the services that used the hook, and those services keep working without a hook.
+
+## Attach a hook to a service
+
+You pick a service's hook on the service itself. Each proxy applies the change at its next check-in.
 
 <Tabs>
-  <Tab title="Dashboard">
-    In the **Create Session** dialog, on the **Create Now** tab, pick a saved hook in **Hook**.
+  <Tab title="In Infisical">
+    <Steps>
+      <Step>
+        Go to **Services**, then select **Add Service**, or open a service's actions menu and select **Edit**.
+      </Step>
+      <Step>
+        On the **Hooks** step, pick a saved hook in **Hook**. To create a hook here, select **Create New Hook**.
+      </Step>
+      <Step>
+        Optionally, [narrow the requests the hook checks](#narrow-the-requests-the-hook-checks) for this service: **Methods** and **Paths** for an HTTP API, or **Tools** for an MCP server.
+      </Step>
+      <Step>
+        Check the hook on the **Review** step, then select **Add Service**, or **Save** if you're editing the service.
+      </Step>
+    </Steps>
   </Tab>
-  <Tab title="API with a saved hook">
-    Call the [Create session](/api-reference/endpoints/agent-vault-sessions/create) endpoint with the hook's ID in `hookId`:
+  <Tab title="Through the API">
+    Send the hook's name and any narrowing in `hook` when you call the [Create service](/api-reference/endpoints/agent-vault-services/create) or [Update service](/api-reference/endpoints/agent-vault-services/update) endpoint:
 
     ```bash
-    curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
+    curl -X PATCH https://app.infisical.com/api/v1/agent-vault/services/<service-id> \
       -H "Authorization: Bearer <access-token>" \
       -H "Content-Type: application/json" \
       -d '{
-        "projectId": "<project-id>",
-        "accessBundle": "payments",
-        "hookId": "<hook-id>"
-      }'
-    ```
-  </Tab>
-  <Tab title="API with an inline hook">
-    To give one session a hook that isn't saved in the project, send the hook's `url`, `secret`, and `rules` in `hook` when you call the [Create session](/api-reference/endpoints/agent-vault-sessions/create) endpoint. The rules name project services, the same way as a saved hook's [rules](#rules). You need the **Admin** role in the project to send an inline hook.
-
-    ```bash
-    curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
-      -H "Authorization: Bearer <access-token>" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "projectId": "<project-id>",
-        "accessBundle": "payments",
-        "hook": {
-          "url": "https://hooks.example.com/agent-vault",
-          "secret": "<signing-secret>",
-          "rules": [
-            { "service": "stripe", "methods": ["POST"], "paths": ["/v1/refunds"] }
-          ]
-        }
+        "hook": { "name": "refund-approval", "methods": ["POST"], "paths": ["/v1/refunds"] }
       }'
     ```
 
-    Infisical deletes an inline hook's secret when the session ends.
+    To take the hook off the service, send `"hook": null`. The [Get service](/api-reference/endpoints/agent-vault-services/get) endpoint returns the service's hook in `hook`.
   </Tab>
 </Tabs>
 
-A session can have `hookId` or `hook`, but not both. The [Get session](/api-reference/endpoints/agent-vault-sessions/get) endpoint returns the session's hook in `hook`.
+### Narrow the requests the hook checks
+
+Without narrowing, the proxy asks the hook about every request to the service. To ask about only some of them, narrow the hook on the service. The narrowing depends on the service's type:
+
+- **HTTP APIs:** `methods`, a list of methods such as `POST`, and `paths`, a list of path prefixes that match the same way as a service's [paths](/documentation/platform/agent-vault/http-apis#paths) (if you set both, a request has to match both)
+- **MCP servers:** `tools`, a list of tool names (the proxy then asks only about calls to those tools, and not about calls such as `initialize` or `tools/list`)
+- **Databases and SSH servers:** No narrowing, so the proxy asks the hook about every connection
+
+### Use a hook with an inline service
+
+An [inline service](/documentation/platform/agent-vault/inline-services) can use a saved hook too. Name the hook in the inline service's `hook` field, with the same narrowing as a service in the project:
+
+```json
+{
+  "type": "http",
+  "name": "stripe",
+  "hostPattern": "api.stripe.com",
+  "credential": { "type": "bearer", "value": "<stripe-key>" },
+  "hook": { "name": "refund-approval", "methods": ["POST"], "paths": ["/v1/refunds"] }
+}
+```
+
+If no hook in the project has that name, creating the session fails.
 
 ## Build the hook server
 
@@ -354,7 +304,7 @@ The body describes the hook, the session, the service, and the request or connec
   "version": "1",
   "deliveryId": "0193a5f6-2d81-7e4c-b3a9-8c1f5e2d7a40",
   "proxy": { "id": "8e0c7d52-1f4b-4a8e-b2a6-3c9d0e7f1a24", "version": "0.43.0" },
-  "hook": { "id": "9d4f1b7e-2a6c-4c3e-8b5a-1f7d3e9c6a28", "name": null },
+  "hook": { "id": "9d4f1b7e-2a6c-4c3e-8b5a-1f7d3e9c6a28", "name": "merge-approval" },
   "session": {
     "id": "7c4e1a9b-3f2d-4b8e-9a6c-1e5d7b3f2a08",
     "label": null,
@@ -445,8 +395,8 @@ Here's a reference for each of the body's fields:
       <ResponseField name="id" type="string">
         The hook's ID.
       </ResponseField>
-      <ResponseField name="name" type="string | null">
-        The saved hook's name, or `null` for an [inline hook](#attach-a-hook-to-a-session).
+      <ResponseField name="name" type="string">
+        The hook's name.
       </ResponseField>
     </Expandable>
   </ResponseField>
@@ -631,7 +581,7 @@ To match the retried request to the approval, compare the request's content, suc
 When the proxy refuses a request, the agent gets one of these messages:
 
 - **If your server denies the request:** Your `message`, or "Your organization's hook refused this request." if you sent none (for databases and SSH servers, "Your organization's hook refused this connection.")
-- **If your server doesn't give a usable answer:** A message that says the session's hook didn't give a usable answer
+- **If your server doesn't give a usable answer:** A message that says the hook didn't give a usable answer
 
 The proxy delivers the message differently for each service type:
 
@@ -684,11 +634,9 @@ Don't put anything in `reason` that the session's owner or the project's admins 
   <Accordion title="The proxy doesn't ask the hook about a request">
     Check that:
 
-    - The session was created with the hook (the [Get session](/api-reference/endpoints/agent-vault-sessions/get) endpoint returns the hook in `hook`)
-    - The hook still exists, since a session loses its hook when someone deletes the hook
-    - A rule picks the service, and the rule's methods, paths, or tools match the request
-    - The service is a project service, not an [inline service](/documentation/platform/agent-vault/inline-services) (a rule can't name an inline service)
-    - The proxy has checked in since you last changed the hook (within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval))
+    - The service has the hook (the **Used By** column on the **Hooks** page lists the hook's services)
+    - The hook's methods, paths, or tools on the service match the request
+    - The proxy has checked in since you last changed the hook or the service (within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval))
   </Accordion>
   <Accordion title="Every request is refused with hook_failed">
     The proxy couldn't get a usable answer from your server. Check that:
@@ -708,6 +656,6 @@ Don't put anything in `reason` that the session's owner or the project's admins 
     - The clocks on the proxy's machine and on your server are both correct, since the library refuses a timestamp more than five minutes off
   </Accordion>
   <Accordion title="The MCP server stops working after you attach a hook">
-    If the hook has no rules, or a rule names the MCP server without `tools`, the proxy asks the hook about every request to the MCP server, including `initialize`, `tools/list`, and notifications. Allow those requests on your server, or add `tools` to the rule so the proxy asks only about calls to those tools.
+    If the MCP server's hook has no `tools`, the proxy asks the hook about every request to the MCP server, including `initialize`, `tools/list`, and notifications. Allow those requests on your server, or [narrow the hook](#narrow-the-requests-the-hook-checks) to the tools you want to check.
   </Accordion>
 </AccordionGroup>

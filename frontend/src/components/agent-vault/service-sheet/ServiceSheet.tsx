@@ -65,17 +65,11 @@ import {
   SERVICE_SAVE_HANDLED_ERROR_CODES,
   TAgentVaultMemberProvidedField,
   TAgentVaultNativeServiceType,
-  useAddAgentVaultHookService,
   useAgentVaultVariableKeyStatus,
   useCreateAgentVaultService,
-  useGetAgentVaultService,
-  useRemoveAgentVaultHookService,
-  useUpdateAgentVaultHookService,
   useUpdateAgentVaultService
 } from "@app/hooks/api/agentVault";
 import {
-  TAgentVaultHookRuleNarrowing,
-  TAgentVaultProjectService,
   TAgentVaultService,
   TAgentVaultVariable,
   TAgentVaultVariableReference
@@ -83,13 +77,12 @@ import {
 import { onRequestError } from "@app/hooks/api/reactQuery";
 import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 
-import { buildHookNarrowing, hookNarrowingDraftOf, sameHookNarrowing } from "../hooks/hookSchema";
 import { NATIVE_SERVICE_META } from "../nativeServiceMeta";
 import { ServiceTemplateSelect } from "../ServiceTemplateSelect";
 import { VariableFormSheet } from "../VariableFormSheet";
 import { CredentialFields } from "./CredentialFields";
 import { DetailsFields } from "./DetailsFields";
-import { HookLinksFields } from "./HookLinksFields";
+import { HookField } from "./HookField";
 import { McpCredentialFields } from "./McpCredentialFields";
 import { McpDetailsFields } from "./McpDetailsFields";
 import { McpToolsFields, TLoadedMcpTools } from "./McpToolsFields";
@@ -117,12 +110,12 @@ import {
   OAUTH_OWN_APP_REQUIRED_ERROR,
   SERVICE_STEP_FIELDS,
   SERVICE_TYPE_LABELS,
+  serviceHookDraftOf,
   serviceKindOf,
   ServiceStep,
   storedMemberFields,
   storedOAuthVariableKey,
   TServiceForm,
-  TServiceHookDraft,
   TServiceKind,
   UNCHANGED_SECRET
 } from "./serviceSchema";
@@ -181,7 +174,7 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   pathPrefixes: [],
   customHeaders: [],
   substitutions: [],
-  hooks: []
+  hook: serviceHookDraftOf(null)
 };
 
 const BLANK_MCP_SERVICE_FORM: TServiceForm = {
@@ -405,25 +398,12 @@ export const ServiceSheet = ({
   const isUpdate = Boolean(service);
   const createService = useCreateAgentVaultService(projectId);
   const updateService = useUpdateAgentVaultService(projectId);
-  const addHookService = useAddAgentVaultHookService(projectId);
-  const updateHookService = useUpdateAgentVaultHookService(projectId);
-  const removeHookService = useRemoveAgentVaultHookService(projectId);
 
   const { permission } = useProjectPermission();
   const canReadHooks = permission.can(
     ProjectPermissionAgentVaultHookActions.Read,
     ProjectPermissionSub.AgentVaultHooks
   );
-  const canEditHooks = permission.can(
-    ProjectPermissionAgentVaultHookActions.Edit,
-    ProjectPermissionSub.AgentVaultHooks
-  );
-  // The service passed in can come from a list that leaves its hooks out, so they are read from the service itself.
-  const { data: storedService } = useGetAgentVaultService(projectId, service?.id ?? "", {
-    enabled: isOpen && canReadHooks
-  });
-  // What each hook checked of this service when the sheet loaded it, which a save compares the form against.
-  const savedHooksRef = useRef(new Map<string, TAgentVaultHookRuleNarrowing>());
 
   const storedKeys = useMemo(() => storedVariableKeys(service), [service]);
   // One dialog for every field. The request settles once the dialog has closed, not when the variable is
@@ -466,7 +446,6 @@ export const ServiceSheet = ({
     control,
     handleSubmit,
     reset,
-    getFieldState,
     getValues,
     setError,
     trigger,
@@ -624,7 +603,8 @@ export const ServiceSheet = ({
             : "",
         memberProvidedFields,
         sshPrivateKey: isSshKey ? UNCHANGED_SECRET : "",
-        sshCertificate: isSshKey && credential.hasCertificate ? UNCHANGED_SECRET : ""
+        sshCertificate: isSshKey && credential.hasCertificate ? UNCHANGED_SECRET : "",
+        hook: serviceHookDraftOf(service.hook)
       });
     } else if (service?.type === AgentVaultServiceType.Mcp) {
       const { credential } = service;
@@ -653,7 +633,8 @@ export const ServiceSheet = ({
           name: header.name,
           prefix: header.prefix,
           value: UNCHANGED_SECRET
-        }))
+        })),
+        hook: serviceHookDraftOf(service.hook)
       });
     } else if (service) {
       const { credential } = service;
@@ -700,7 +681,8 @@ export const ServiceSheet = ({
           placeholder: substitution.placeholder,
           surfaces: substitution.surfaces,
           value: UNCHANGED_SECRET
-        }))
+        })),
+        hook: serviceHookDraftOf(service.hook)
       });
     } else if (prefillHost) {
       const { template: picked, form } = prefillFor(
@@ -715,27 +697,6 @@ export const ServiceSheet = ({
       reset(BLANK_SERVICE_FORM);
     }
   }, [isOpen, service, isUpdate, prefillHost, prefillPath, reset, setStep]);
-
-  // Runs after the reset above, and again when the read answers, unless the hooks were already edited.
-  useEffect(() => {
-    if (!isOpen) return;
-    const hooks = service && storedService?.id === service.id ? storedService.hooks : undefined;
-    savedHooksRef.current = new Map((hooks ?? []).map((hook) => [hook.id, hook]));
-    if (!hooks || getFieldState("hooks").isDirty) return;
-    // A full reset, since resetField leaves useFieldArray's rows as they were. Fields edited while the read was in
-    // flight keep their values.
-    reset(
-      {
-        ...getValues(),
-        hooks: hooks.map((hook): TServiceHookDraft => ({
-          hookId: hook.id,
-          hookName: hook.name,
-          ...hookNarrowingDraftOf(hook)
-        }))
-      },
-      { keepDirtyValues: true }
-    );
-  }, [isOpen, service, storedService, getFieldState, getValues, reset]);
 
   // The template step is skipped for a prefilled sheet, so this is where a wrong guess of the type is corrected.
   const switchPrefillType = (serviceType: AgentVaultServiceType) => {
@@ -784,35 +745,6 @@ export const ServiceSheet = ({
   const [membersNotice, setMembersNotice] = useState<TMembersClearedNotice | null>(null);
   const isMembersNoticeConfirmed = useRef(false);
 
-  // After the service is saved, since a new service has no ID before then. A failed link is reported by the request
-  // handler and the rest still go through: the service itself is saved either way.
-  const saveHookLinks = async (saved: TAgentVaultProjectService, data: TServiceForm) => {
-    if (!canEditHooks) return;
-    const before = savedHooksRef.current;
-    const after = new Map(
-      data.hooks.map((hook) => [hook.hookId, buildHookNarrowing(hook, data.serviceType)])
-    );
-    await Promise.allSettled([
-      ...[...after].map(([hookId, narrowing]) => {
-        const previous = before.get(hookId);
-        if (!previous) {
-          return addHookService.mutateAsync({ hookId, service: saved.name, ...narrowing });
-        }
-        if (sameHookNarrowing(previous, narrowing)) return undefined;
-        return updateHookService.mutateAsync({
-          hookId,
-          serviceId: saved.id,
-          methods: narrowing.methods ?? null,
-          paths: narrowing.paths ?? null,
-          tools: narrowing.tools ?? null
-        });
-      }),
-      ...[...before.keys()]
-        .filter((hookId) => !after.has(hookId))
-        .map((hookId) => removeHookService.mutateAsync({ hookId, serviceId: saved.id }))
-    ]);
-  };
-
   const onSubmit = async (data: TServiceForm) => {
     const notice = membersClearedNotice(data, service);
     if (notice && !isMembersNoticeConfirmed.current) {
@@ -821,10 +753,8 @@ export const ServiceSheet = ({
     }
     isMembersNoticeConfirmed.current = false;
     try {
-      const { service: saved } = service
-        ? await updateService.mutateAsync(buildUpdateServiceRequest(service, data))
-        : await createService.mutateAsync(buildCreateServiceRequest(accessBundleId, data));
-      await saveHookLinks(saved, data);
+      if (service) await updateService.mutateAsync(buildUpdateServiceRequest(service, data));
+      else await createService.mutateAsync(buildCreateServiceRequest(accessBundleId, data));
 
       createNotification({
         text: `Service "${data.name}" ${isUpdate ? "updated" : "created"}`,
@@ -1248,18 +1178,7 @@ export const ServiceSheet = ({
                       onSignInChange={setIsSigningIn}
                     />
                   )}
-                  {current.step === ServiceStep.Hooks && (
-                    <HookLinksFields
-                      canEdit={canEditHooks}
-                      savedServiceName={service?.name}
-                      onCreatedWithService={(hook) => {
-                        const rule = hook.rules.find(
-                          (candidate) => candidate.service === service?.name
-                        );
-                        if (rule) savedHooksRef.current.set(hook.id, rule);
-                      }}
-                    />
-                  )}
+                  {current.step === ServiceStep.Hooks && <HookField />}
                   {current.step === ServiceStep.Review && (
                     <ReviewFields
                       showHooks={canReadHooks}

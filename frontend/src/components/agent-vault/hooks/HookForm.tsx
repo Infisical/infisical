@@ -19,20 +19,14 @@ import {
   SheetDescription,
   SheetFooter,
   SheetHeader,
-  SheetTitle,
-  Spinner
+  SheetTitle
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { useProject } from "@app/context";
-import {
-  useCreateAgentVaultHook,
-  useListAgentVaultServices,
-  useUpdateAgentVaultHook
-} from "@app/hooks/api/agentVault";
-import { TAgentVaultHook, TAgentVaultProjectService } from "@app/hooks/api/agentVault/types";
+import { useCreateAgentVaultHook, useUpdateAgentVaultHook } from "@app/hooks/api/agentVault";
+import { TAgentVaultHook } from "@app/hooks/api/agentVault/types";
 
 import { UNCHANGED_SECRET } from "../service-sheet/serviceSchema";
-import { HookRulesField, SERVICE_PICKER_LIMIT } from "./HookRulesField";
 import {
   buildCreateHookRequest,
   buildUpdateHookRequest,
@@ -53,16 +47,16 @@ type Props = {
   onPendingChange?: (isPending: boolean) => void;
 };
 
-const HookFormBody = ({
+/** Header, body and footer of the hook sheet, to go inside a `SheetContent`. */
+export const HookForm = ({
   hook,
   initialName,
-  services,
   isReadOnly = false,
   onSaved,
   onCancel,
   onDirtyChange,
   onPendingChange
-}: Props & { services: TAgentVaultProjectService[] }) => {
+}: Props) => {
   const { projectId } = useProject();
   const createHook = useCreateAgentVaultHook(projectId);
   const updateHook = useUpdateAgentVaultHook(projectId);
@@ -72,11 +66,7 @@ const HookFormBody = ({
 
   const formMethods = useForm<THookForm>({
     resolver: zodResolver(schema),
-    defaultValues: hookFormOf(
-      hook,
-      new Map(services.map((service) => [service.name, service.type])),
-      initialName
-    )
+    defaultValues: hookFormOf(hook, initialName)
   });
   const {
     control,
@@ -116,8 +106,8 @@ const HookFormBody = ({
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
           <SheetDescription>
-            A server of yours that the proxy asks before it sends a session&apos;s requests. A
-            session uses it only when it is created with it.
+            A server of yours that the proxy asks before it sends a request. Pick it on a service to
+            check that service&apos;s requests.
           </SheetDescription>
         </SheetHeader>
 
@@ -251,12 +241,6 @@ const HookFormBody = ({
               )}
             />
           )}
-          <HookRulesField
-            isDisabled={isReadOnly}
-            isLeftWithoutServices={Boolean(
-              hook && !hook.appliesToAllServices && !hook.rules.length
-            )}
-          />
         </div>
 
         <SheetFooter className="justify-end border-t">
@@ -283,24 +267,4 @@ const HookFormBody = ({
       </form>
     </FormProvider>
   );
-};
-
-/** Header, body and footer of the hook sheet, to go inside a `SheetContent`. */
-export const HookForm = (props: Props) => {
-  const { projectId } = useProject();
-  // A saved rule takes its service's type from this page, the same one the rule picker shows before a search.
-  const { data: servicePage, isPending } = useListAgentVaultServices(projectId, {
-    orderBy: "name",
-    orderDirection: "asc",
-    limit: SERVICE_PICKER_LIMIT
-  });
-
-  if (isPending) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <Spinner size="sm" variant="av" />
-      </div>
-    );
-  }
-  return <HookFormBody {...props} services={servicePage?.services ?? []} />;
 };

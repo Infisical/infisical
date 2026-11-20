@@ -255,28 +255,23 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
               // Proxies use it to tell the agent that a rejected credential is the member's own to fix.
               memberProvided: z.boolean(),
               // The bundle the service came from. Null for a service sent with the session.
-              accessBundleId: z.string().uuid().nullable()
-            })
-            .array(),
-          // Asked before the requests its rules pick: each HTTP or MCP request, or each database or SSH connection.
-          // Proxies from before session hooks ignore it and send every request without asking.
-          hook: z
-            .object({
-              id: z.string().uuid(),
-              // Null for a hook sent with the session.
-              name: z.string().nullable(),
-              url: z.string(),
-              secret: z.string(),
-              rules: z
+              accessBundleId: z.string().uuid().nullable(),
+              // Asked before the requests its narrowing picks, or every request without one: each HTTP or MCP request,
+              // or each database or SSH connection. Proxies from before narrowing read only url and secret and ask about
+              // every request of the service, which checks more, never less.
+              hook: z
                 .object({
-                  service: z.string(),
+                  id: z.string().uuid(),
+                  name: z.string(),
+                  url: z.string(),
+                  secret: z.string(),
                   methods: z.string().array().optional(),
                   paths: z.string().array().optional(),
                   tools: z.string().array().optional()
                 })
-                .array()
+                .nullable()
             })
-            .nullable(),
+            .array(),
           sessionLogs: z.object({
             enabled: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.enabled),
             sessionKey: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.proxySessionKey)

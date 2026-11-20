@@ -6748,6 +6748,16 @@ interface AgentVaultAccessBundleDeleteEvent {
   };
 }
 
+// A service's hook: the saved hook by ID and name, and what it checks of the service. No narrowing means every request,
+// or every connection for a database or SSH service.
+type TAgentVaultServiceHookAudit = {
+  id: string;
+  name: string;
+  methods?: string[];
+  paths?: string[];
+  tools?: string[];
+};
+
 interface AgentVaultServiceCreateEvent {
   type: EventType.AGENT_VAULT_SERVICE_CREATE;
   metadata: {
@@ -6790,7 +6800,9 @@ interface AgentVaultServiceCreateEvent {
     customHeaderNames?: string[];
     substitutionPlaceholders?: string[];
     variableKeys?: string[];
-    // Present only on events recorded before hooks moved off services to their own resource.
+    // The saved hook the service was created with and what it checks of the service; no narrowing means every request.
+    hook?: TAgentVaultServiceHookAudit;
+    // Present only on events recorded before hooks became their own resource.
     hookUrl?: string;
   };
 }
@@ -6820,8 +6832,12 @@ interface AgentVaultServiceUpdateEvent {
     tlsVerify?: boolean;
     // Present only when the update changed the stored CA the proxy checks the server's certificate against.
     tlsCaChanged?: "set" | "removed" | "replaced";
-    // Present only on events recorded before hooks moved off services to their own resource.
+    // Present only when the update set, changed or removed the service's hook. `hook` is the hook afterwards, null when
+    // removed, and `previousHook` the one before, null when there was none.
     hookChanged?: "set" | "removed" | "updated";
+    hook?: TAgentVaultServiceHookAudit | null;
+    previousHook?: TAgentVaultServiceHookAudit | null;
+    // Present only on events recorded before hooks became their own resource.
     hookUrl?: string;
     hookSecretReplaced?: boolean;
     hostPattern?: string;
@@ -7048,8 +7064,6 @@ interface AgentVaultHookCreateEvent {
     hookId: string;
     hookName: string;
     url: string;
-    // An empty rule list sends every request of a session using the hook to it.
-    ruleCount: number;
   };
 }
 
@@ -7063,18 +7077,6 @@ interface AgentVaultHookUpdateEvent {
     // Null when the update removed it.
     description?: string | null;
     url?: string;
-    // Set when the update replaced the rules, with the new count.
-    ruleCount?: number;
-    // Set when one service was added to, removed from or re-narrowed in the hook, as from a service's settings. The
-    // narrowing is what the hook checks of that service afterwards; none means every request to it.
-    serviceChange?: {
-      change: "added" | "removed" | "narrowed";
-      serviceId: string;
-      serviceName: string;
-      methods?: string[];
-      paths?: string[];
-      tools?: string[];
-    };
     // Whether a new secret was saved. The secret itself is never recorded.
     secretReplaced: boolean;
   };
@@ -7086,6 +7088,8 @@ interface AgentVaultHookDeleteEvent {
     hookId: string;
     hookName: string;
     url: string;
+    // The project's services that used the hook and are no longer checked by it.
+    services: { id: string; name: string }[];
   };
 }
 
@@ -7284,15 +7288,12 @@ interface AgentVaultSessionMintEvent {
           allowedTools?: string[] | null;
           customHeaderNames: string[];
           substitutionPlaceholders: string[];
-          // Present only on events recorded before hooks moved off services to their own resource.
+          // The saved hook the service was sent with and what it checks of the service.
+          hook?: TAgentVaultServiceHookAudit;
+          // Present only on events recorded before hooks became their own resource.
           hookUrl?: string;
         }
     )[];
-    // Set when the session was started with a saved hook.
-    hookId?: string;
-    hookName?: string;
-    // Set when the session was started with a hook of its own. Never its secret.
-    inlineHook?: { hookId: string; url: string; ruleCount: number };
     // Set when a machine identity started the session on this user's behalf.
     onBehalfOfUserId?: string;
     onBehalfOfUserName?: string;

@@ -165,8 +165,8 @@ The outcome is one of four:
 | --- | --- |
 | **Brokered** | A service matched and the proxy attached its credential to the request |
 | **Passthrough** | No service matched, or the matching service has no credential. The proxy forwarded the request without a credential. Requests for the session's [services](/documentation/platform/agent-vault/service-discovery) and [skills](/documentation/platform/agent-vault/skills) go to Infisical and also show as **Passthrough** |
-| **Blocked** | The proxy refused the request, for one of the reasons in [Blocked requests](/documentation/platform/agent-vault/proxies#blocked-requests), or the session's [hook](/documentation/platform/agent-vault/hooks) denied it |
-| **Error** | The proxy couldn't reach the destination host, or the session's hook didn't give a usable answer |
+| **Blocked** | The proxy refused the request, for one of the reasons in [Blocked requests](/documentation/platform/agent-vault/proxies#blocked-requests), or the service's [hook](/documentation/platform/agent-vault/hooks) denied it |
+| **Error** | The proxy couldn't reach the destination host, or the service's hook didn't give a usable answer |
 
 For HTTP requests, the proxy doesn't record bodies, headers, or query strings. For a request to an MCP server, the proxy reads only the method and tool name of each call from the request body.
 

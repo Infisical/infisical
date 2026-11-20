@@ -224,8 +224,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
     metadata,
     ttl,
     services,
-    skills,
-    hookId
+    skills
   }: TDashboardSessionInput) => {
     try {
       const session = await createSession.mutateAsync({
@@ -234,8 +233,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
         skills: skills.length ? skills : undefined,
         ttl,
         label,
-        metadata,
-        hookId
+        metadata
       });
       createNotification({ text: "Session created", type: "success" });
       setCreatedSession(session);

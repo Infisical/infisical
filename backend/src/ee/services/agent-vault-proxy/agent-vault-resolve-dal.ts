@@ -34,17 +34,18 @@ export type TResolveServiceRow = {
   allowedPathPrefixes: string[] | null;
   allowedTools: string[] | null;
   memberProvidedFields: string[] | null;
+  hookId: string | null;
+  hookMethods: string[] | null;
+  hookPaths: string[] | null;
+  hookTools: string[] | null;
   position: number;
 };
 
 export type TResolveHookRow = {
   id: string;
-  name: string | null;
+  name: string;
   url: string;
-  encryptedSecret: Buffer | null;
-  appliesToAllServices: boolean;
-  // The hook's services in rule order, by ID: resolve names them from the service rows it sends.
-  links: { serviceId: string; methods: unknown; paths: unknown; tools: unknown }[];
+  encryptedSecret: Buffer;
 };
 
 export type TResolveSkillRow = {
@@ -95,7 +96,11 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
     "allowedMethods",
     "allowedPathPrefixes",
     "allowedTools",
-    "memberProvidedFields"
+    "memberProvidedFields",
+    "hookId",
+    "hookMethods",
+    "hookPaths",
+    "hookTools"
   ] as const;
 
   const wildcardsOf = ({ hostPattern }: { hostPattern: string | null }) =>
@@ -422,37 +427,21 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
     }
   };
 
-  // The session's hook as it is now, so an edit to a saved hook reaches the session on the next poll. Kept to the
-  // session's project, and for an inline hook to the session itself.
-  const findSessionHook = async ({
-    hookId,
-    sessionId,
+  // The hooks the session's services use, as they are now, so an edit to a hook reaches the session on the next poll.
+  // Kept to the session's project.
+  const findHooks = async ({
+    hookIds,
     projectId,
     onPrimary
-  }: { hookId: string; sessionId: string; projectId: string } & TResolveReadOptions): Promise<
-    TResolveHookRow | undefined
-  > => {
+  }: { hookIds: string[]; projectId: string } & TResolveReadOptions): Promise<TResolveHookRow[]> => {
+    if (!hookIds.length) return [];
     try {
-      // One statement, so an edit that commits between two reads can't pair the old appliesToAllServices with the new
-      // links.
       return (await (onPrimary ? db : db.replicaNode())(TableName.AgentVaultHook)
-        .where({ id: hookId, projectId })
-        .where((qb) => {
-          void qb.whereNull("sessionId").orWhere("sessionId", sessionId);
-        })
-        .first(
-          "id",
-          "name",
-          "url",
-          "encryptedSecret",
-          "appliesToAllServices",
-          db.raw(
-            `COALESCE((SELECT jsonb_agg(jsonb_build_object('serviceId', l."serviceId", 'methods', l.methods, 'paths', l.paths, 'tools', l.tools) ORDER BY l.position) FROM ?? AS l WHERE l."hookId" = ??.id), '[]'::jsonb) AS links`,
-            [TableName.AgentVaultHookService, TableName.AgentVaultHook]
-          )
-        )) as TResolveHookRow | undefined;
+        .where({ projectId })
+        .whereIn("id", [...new Set(hookIds)])
+        .select("id", "name", "url", "encryptedSecret")) as TResolveHookRow[];
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find agent vault session hook" });
+      throw new DatabaseError({ error, name: "Find agent vault hooks for resolve" });
     }
   };
 
@@ -480,7 +469,7 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
     findServiceOverrides,
     findSessionSkills,
     findReachableBundles,
-    findSessionHook,
+    findHooks,
     findSessionMetadata
   };
 };

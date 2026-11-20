@@ -4734,10 +4734,7 @@
                       "api-reference/endpoints/agent-vault-hooks/get",
                       "api-reference/endpoints/agent-vault-hooks/create",
                       "api-reference/endpoints/agent-vault-hooks/update",
-                      "api-reference/endpoints/agent-vault-hooks/delete",
-                      "api-reference/endpoints/agent-vault-hooks/add-service",
-                      "api-reference/endpoints/agent-vault-hooks/update-service",
-                      "api-reference/endpoints/agent-vault-hooks/remove-service"
+                      "api-reference/endpoints/agent-vault-hooks/delete"
                     ]
                   },
                   {

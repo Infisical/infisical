@@ -37,23 +37,22 @@ const REVIEW_STEP: StepMeta = {
 type THookStepKind = "http" | "mcp" | "connection";
 
 const HOOK_STEP_RIGHT: Record<THookStepKind, string> = {
-  http: "A session started with one of these hooks sends the hook each request to this service that matches, before the proxy adds the credential. Your server allows or refuses it. Leave methods and paths open to check every request.",
-  mcp: "A session started with one of these hooks sends the hook each call to this MCP server that matches, before the proxy adds the credential. Your server allows or refuses it. Leave tools empty to check every call.",
+  http: "Every session that uses this service sends matching requests to the hook, before the proxy adds the credential. Your server allows or refuses each one. Leave methods and paths open to check every request.",
+  mcp: "Every session that uses this service sends matching tool calls to the hook, before the proxy adds the credential. Your server allows or refuses each one. Leave tools empty to check every call.",
   connection:
-    "A session started with one of these hooks asks the hook once when the agent connects to this service, not before each query or command. Your server allows or refuses the connection."
+    "Every session that uses this service asks the hook once when the agent connects, not before each query or command. Your server allows or refuses the connection."
 };
 
 const hooksStep = (kind: THookStepKind): StepMeta => ({
   step: ServiceStep.Hooks,
-  name: "Hooks",
+  name: "Hook",
   shortDescription: "Your server checks requests",
-  title: "Hooks",
-  subtitle:
-    "The saved hooks that check this service's requests, and which requests each one checks.",
-  rightLabel: "HOOKS",
+  title: "Hook",
+  subtitle: "The saved hook that checks this service's requests, and which requests it checks.",
+  rightLabel: "HOOK",
   rightDescription: HOOK_STEP_RIGHT[kind],
   rightTip:
-    "A hook only checks a session that was started with it. Add or remove services for a hook here or on the Hooks page.",
+    "A service has at most one hook, and one hook can check many services. Change a hook's URL or secret on the Hooks page.",
   docsUrl: AgentVaultDocsUrls.hooks
 });
 

@@ -207,10 +207,16 @@ describe("database and SSH services in the inline request schema", () => {
 });
 
 describe("hooks in the inline request schema", () => {
-  test("an inline service's hook is dropped: a session takes one hook of its own instead", () => {
+  test("an inline service names a saved hook, with its narrowing", () => {
+    const parsed = AgentVaultSessionServicesInputSchema.parse([
+      bearer("token", { hook: { name: " Approvals ", methods: ["POST"] } })
+    ]) as Record<string, unknown>[];
+    expect(parsed[0]).toHaveProperty("hook", { name: "approvals", methods: ["POST"] });
+  });
+
+  test("a hook sent by URL and secret is refused, since only saved hooks can be named", () => {
     const hook = { url: "https://hooks.example.com/agent-vault", signingSecret: "s".repeat(32) };
-    const parsed = AgentVaultSessionServicesInputSchema.parse([bearer("token", { hook })]) as Record<string, unknown>[];
-    expect(parsed[0]).not.toHaveProperty("hook");
+    expect(AgentVaultSessionServicesInputSchema.safeParse([bearer("token", { hook })]).success).toBe(false);
   });
 });
 

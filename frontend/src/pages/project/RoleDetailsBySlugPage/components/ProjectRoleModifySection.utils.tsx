@@ -311,7 +311,6 @@ const AgentVaultSessionPolicyActionSchema = z.object({
   [ProjectPermissionAgentVaultSessionActions.EditAny]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.RevokeAny]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices]: z.boolean().optional(),
-  [ProjectPermissionAgentVaultSessionActions.CreateWithInlineHook]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills]: z.boolean().optional()
 });
 
@@ -2626,11 +2625,6 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Create With Inline Skills",
         value: ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills,
         description: "Send skills that last only as long as the session"
-      },
-      {
-        label: "Create With Inline Hook",
-        value: ProjectPermissionAgentVaultSessionActions.CreateWithInlineHook,
-        description: "Send a hook URL and secret with a session instead of picking a saved hook"
       }
     ]
   },

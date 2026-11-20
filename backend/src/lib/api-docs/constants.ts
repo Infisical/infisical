@@ -5234,6 +5234,7 @@ export const AGENT_VAULT = {
   },
   HOOK: {
     hookId: "The ID of the hook.",
+    projectId: "The ID of the Agent Vault project the hook is in.",
     name: "The name of the hook, unique in the project. Lowercase letters, numbers and hyphens.",
     description: "What the hook is for.",
     updateDescription: "What the hook is for. Send null to remove it.",
@@ -5243,31 +5244,22 @@ export const AGENT_VAULT = {
       "The key the proxy signs each check with, so your server can tell the check came from the proxy. 32 to 512 printable ASCII characters with no spaces, used exactly as given. Never returned once saved.",
     updateSecret:
       "A new key for the proxy to sign each check with. 32 to 512 printable ASCII characters with no spaces, used exactly as given. Leave it out to keep the saved one. Never returned once saved.",
-    rules:
-      "Which of a session's requests the proxy asks the hook about: one rule per project service, each listed once. Leave it empty to ask about every request. A request is asked about when any rule matches it.",
-    updateRules:
-      "Which of a session's requests the proxy asks the hook about. Replaces every rule. Send an empty list to ask about every request.",
-    rulesRead:
-      "Which of a session's requests the proxy asks the hook about, one rule per project service. Deleting a service removes its rule.",
-    appliesToAllServices:
-      "Whether the hook is asked about every request. True only for a hook saved with no rules. A hook whose services were all deleted or removed has no rules and is not asked at all.",
-    ruleService:
-      "The name of the project service the rule applies to. It must be one of the project's services, not one sent with a session. The rule follows the service when it is renamed, and goes when it is deleted.",
-    ruleServiceRead: "The current name of the project service the rule applies to.",
-    updateRuleMethods:
-      "HTTP services only: match only these methods. Send null to match every method. Leave it out to keep the current ones.",
-    updateRulePaths:
-      "HTTP services only: match only paths that start with one of these prefixes. Send null to match every path. Leave it out to keep the current ones.",
-    updateRuleTools:
-      "MCP services only: match only calls to these tools. Send null to match every tool. Leave it out to keep the current ones.",
-    serviceHooks:
-      "The saved hooks this service is in, by name, with what each checks of it. Returned only to callers who can read hooks.",
-    ruleMethods:
-      "HTTP services only: match only these methods. With `paths`, a request must match both. Leave it out to match every method.",
-    rulePaths:
-      "HTTP services only: match only paths that start with one of these prefixes, compared by whole segment like a service's allowed path prefixes. Leave it out to match every path.",
-    ruleTools:
-      "MCP services only: match only calls to these tools. Can't be sent with `methods` or `paths`. Leave it out to match every tool.",
+    usedBy: "The project's services that use the hook, by name. Set a service's hook on the service.",
+    serviceHook:
+      "A saved hook of the project for the proxy to ask before it sends this service's requests, by name. Narrow it with `methods` and `paths` (HTTP) or `tools` (MCP), or leave those out to ask about every request, or every connection for a database or SSH service. Needs permission to read hooks.",
+    updateServiceHook:
+      "The saved hook for the proxy to ask before it sends this service's requests, by name, with its narrowing. Replaces the service's hook and narrowing. Send null to remove the hook, or leave it out to keep the current one. Needs permission to read hooks to set one.",
+    inlineServiceHook:
+      "A saved hook of the project for the proxy to ask before it sends this service's requests, by name. Narrow it with `methods` and `paths` (HTTP) or `tools` (MCP), or leave those out to ask about every request, or every connection for a database or SSH service. Needs permission to read hooks.",
+    serviceHookName: "The name of a saved hook in the project.",
+    serviceHookMethods:
+      "HTTP services only: ask the hook only about these methods. With `paths`, a request must match both. Leave it out to ask about every method.",
+    serviceHookPaths:
+      "HTTP services only: ask the hook only about paths that start with one of these prefixes, compared by whole segment like a service's allowed path prefixes. Leave it out to ask about every path.",
+    serviceHookTools:
+      "MCP services only: ask the hook only about calls to these tools. Can't be sent with `methods` or `paths`. Leave it out to ask about every tool.",
+    serviceHookRead:
+      "The saved hook the proxy asks before it sends this service's requests, and which requests it is asked about. No `methods`, `paths` or `tools` means every request. Null when the service has none. Left out for callers who can't read hooks.",
     createdAt: "When the hook was created.",
     updatedAt: "When the hook was last changed.",
     search: "Match hooks whose name or URL contains this text.",
@@ -5509,14 +5501,6 @@ export const AGENT_VAULT = {
     inlineServiceId: "The ID of the service sent with this session.",
     inlineServiceNameRead:
       "The name the service was sent with, or its first host if it was sent without one. Shown in session logs and in the proxy's error messages.",
-    hookId:
-      "The ID of a saved hook to attach to the session. The proxy asks it before it sends the requests the hook's rules pick. Can't be sent with `hook`. Edits to the saved hook reach the session on the proxy's next poll, and deleting it leaves the session without a hook.",
-    inlineHook:
-      "A hook of the session's own, for this session only. The proxy asks it before it sends the requests its rules pick. Can't be sent with `hookId`. Its secret is deleted when the session ends.",
-    hookRead:
-      "The hook the session was started with, or null when it has none or its saved hook was deleted. `url` and `rules` are left out for anyone who can't read hooks.",
-    hookIsInline: "True when the hook was sent with the session rather than attached from the project's saved hooks.",
-    hookNameRead: "The saved hook's name. Null for a hook sent with the session.",
     ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d, or to 1h for a session started on behalf of a user.",
     label:
       "A short description of what the session is for, such as `nightly deploy` or `support ticket triage`. Up to 128 characters, without line breaks, tabs, or invisible characters. Shown wherever the session is listed.",

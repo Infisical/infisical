@@ -22,7 +22,7 @@ const NATIVE_TYPES = [
 ];
 
 type Props = {
-  /** Where the narrowing's fields sit in the form, such as `rules.0` or `hooks.2`. */
+  /** Where the narrowing's fields sit in the form, such as `hook`. */
   prefix: string;
   serviceType: AgentVaultServiceType | null;
   isDisabled?: boolean;

@@ -1,24 +1,26 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 
 import { AgentVaultHttpMethod, AgentVaultServiceType } from "@app/hooks/api/agentVault";
 import { TAgentVaultHook } from "@app/hooks/api/agentVault/types";
 
 import { UNCHANGED_SECRET } from "../service-sheet/serviceSchema";
 import {
+  addHookNarrowingIssues,
   blankHookNarrowing,
-  blankHookRule,
   buildCreateHookRequest,
   buildHookNarrowing,
-  buildHookRule,
   buildUpdateHookRequest,
-  describeHookRule,
+  describeHookNarrowing,
   hookFormOf,
   hookFormSchema,
-  hookRuleDraftOf,
+  hookNarrowingDraftOf,
   hookSecretError,
   hookUrlError,
+  listNames,
   sameHookNarrowing,
-  THookForm
+  THookForm,
+  THookNarrowingDraft
 } from "./hookSchema";
 
 const HOOK_URL = "https://hooks.example.com/agent-vault";
@@ -26,11 +28,11 @@ const SECRET = "s".repeat(32);
 
 const storedHook: TAgentVaultHook = {
   id: "11111111-1111-4111-8111-111111111111",
+  projectId: "22222222-2222-4222-8222-222222222222",
   name: "approvals",
   description: null,
   url: HOOK_URL,
-  rules: [{ service: "github", methods: [AgentVaultHttpMethod.Put] }],
-  appliesToAllServices: false,
+  usedBy: [{ id: "33333333-3333-4333-8333-333333333333", name: "github" }],
   createdAt: "2026-11-19T00:00:00.000Z",
   updatedAt: "2026-11-19T00:00:00.000Z"
 };
@@ -40,9 +42,18 @@ const form = (overrides: Partial<THookForm> = {}): THookForm => ({
   description: "",
   url: HOOK_URL,
   secret: SECRET,
-  rules: [],
   ...overrides
 });
+
+const narrowingIssuesOf = (draft: THookNarrowingDraft, serviceType: AgentVaultServiceType) => {
+  const result = z
+    .custom<THookNarrowingDraft>()
+    .superRefine((data, ctx) => addHookNarrowingIssues(data, serviceType, ["hook"], ctx))
+    .safeParse(draft);
+  return result.success
+    ? []
+    : result.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message }));
+};
 
 const issuesOf = (data: THookForm) => {
   const result = hookFormSchema().safeParse(data);
@@ -120,7 +131,7 @@ describe("hookSecretError, which mirrors the API's hook secret rule", () => {
 });
 
 describe("hookFormSchema", () => {
-  it("accepts a hook with no rules", () => {
+  it("accepts a hook", () => {
     expect(issuesOf(form())).toEqual([]);
   });
 
@@ -136,106 +147,44 @@ describe("hookFormSchema", () => {
       { path: "name", message: "Enter a name for the hook." }
     ]);
   });
+});
 
-  it("asks for a service on every rule", () => {
-    expect(issuesOf(form({ rules: [blankHookRule()] }))).toEqual([
-      { path: "rules.0.service", message: "Pick the service this rule applies to." }
-    ]);
-  });
-
-  it("takes each service once", () => {
-    const rule = { ...blankHookRule(), service: "github", serviceType: AgentVaultServiceType.Http };
-    expect(issuesOf(form({ rules: [rule, { ...rule }] }))).toEqual([
-      {
-        path: "rules.1.service",
-        message: "This service already has a rule. Put all its methods, paths or tools in that one."
-      }
-    ]);
-  });
-
+describe("addHookNarrowingIssues", () => {
   it("asks for a method when every one is cleared", () => {
-    const rule = { ...blankHookRule(), service: "github", serviceType: AgentVaultServiceType.Http };
-    expect(issuesOf(form({ rules: [{ ...rule, methods: [] }] }))).toEqual([
-      { path: "rules.0.methods", message: "Pick at least one method." }
-    ]);
+    expect(
+      narrowingIssuesOf({ ...blankHookNarrowing(), methods: [] }, AgentVaultServiceType.Http)
+    ).toEqual([{ path: "hook.methods", message: "Pick at least one method." }]);
   });
 
   it("flags a path or tool typed but not added", () => {
-    const http = { ...blankHookRule(), service: "github", serviceType: AgentVaultServiceType.Http };
-    const mcp = { ...blankHookRule(), service: "linear", serviceType: AgentVaultServiceType.Mcp };
-    expect(issuesOf(form({ rules: [{ ...http, pathDraft: "/repos" }] }))).toEqual([
-      { path: "rules.0.paths", message: 'Add "/repos" or clear it.' }
-    ]);
-    expect(issuesOf(form({ rules: [{ ...mcp, toolDraft: "delete issue" }] }))[0].path).toBe(
-      "rules.0.tools"
-    );
-  });
-
-  it("ignores the narrowing of a type the rule isn't for", () => {
-    const rule = {
-      ...blankHookRule(),
-      service: "orders-db",
-      serviceType: AgentVaultServiceType.Postgres,
-      methods: [],
-      pathDraft: "not a path"
-    };
-    expect(issuesOf(form({ rules: [rule] }))).toEqual([]);
-  });
-});
-
-describe("buildHookRule", () => {
-  it("sends methods and paths for an HTTP service, leaving out every method and empty lists", () => {
-    const rule = {
-      ...blankHookRule(),
-      service: "github",
-      serviceType: AgentVaultServiceType.Http
-    };
-    expect(buildHookRule(rule)).toEqual({ service: "github" });
     expect(
-      buildHookRule({ ...rule, methods: [AgentVaultHttpMethod.Put], paths: ["/repos"] })
-    ).toEqual({ service: "github", methods: [AgentVaultHttpMethod.Put], paths: ["/repos"] });
+      narrowingIssuesOf(
+        { ...blankHookNarrowing(), pathDraft: "/repos" },
+        AgentVaultServiceType.Http
+      )
+    ).toEqual([{ path: "hook.paths", message: 'Add "/repos" or clear it.' }]);
+    expect(
+      narrowingIssuesOf(
+        { ...blankHookNarrowing(), toolDraft: "delete issue" },
+        AgentVaultServiceType.Mcp
+      )[0].path
+    ).toBe("hook.tools");
   });
 
-  it("sends tools for an MCP service and nothing else", () => {
-    const rule = {
-      ...blankHookRule(),
-      service: "linear",
-      serviceType: AgentVaultServiceType.Mcp,
-      methods: [AgentVaultHttpMethod.Get],
-      tools: ["delete_issue"]
-    };
-    expect(buildHookRule(rule)).toEqual({ service: "linear", tools: ["delete_issue"] });
+  it("caps each list", () => {
+    const paths = Array.from({ length: 101 }, (_, index) => `/p${index}`);
+    expect(
+      narrowingIssuesOf({ ...blankHookNarrowing(), paths }, AgentVaultServiceType.Http)
+    ).toEqual([{ path: "hook.paths", message: "A hook can check at most 100 path prefixes." }]);
   });
 
-  it("sends the service alone for a database, SSH or unknown service", () => {
-    const rule = { ...blankHookRule(), service: "orders-db", paths: ["/x"], tools: ["y"] };
-    expect(buildHookRule({ ...rule, serviceType: AgentVaultServiceType.Ssh })).toEqual({
-      service: "orders-db"
-    });
-    expect(buildHookRule(rule)).toEqual({ service: "orders-db" });
-  });
-});
-
-describe("hookRuleDraftOf", () => {
-  it("takes the type from the service, or from the saved narrowing when the service isn't listed", () => {
-    expect(hookRuleDraftOf({ service: "x" }, AgentVaultServiceType.Mcp).serviceType).toBe(
-      AgentVaultServiceType.Mcp
-    );
-    expect(hookRuleDraftOf({ service: "x", tools: ["a"] }).serviceType).toBe(
-      AgentVaultServiceType.Mcp
-    );
-    expect(hookRuleDraftOf({ service: "x", paths: ["/a"] }).serviceType).toBe(
-      AgentVaultServiceType.Http
-    );
-    expect(hookRuleDraftOf({ service: "x" }).serviceType).toBeNull();
-  });
-
-  it("round-trips a saved rule", () => {
-    const narrowing = { methods: [AgentVaultHttpMethod.Put], paths: ["/repos"] };
-    expect(buildHookRule(hookRuleDraftOf({ service: "github", ...narrowing }))).toEqual({
-      service: "github",
-      ...narrowing
-    });
+  it("ignores the narrowing of a type the service isn't", () => {
+    expect(
+      narrowingIssuesOf(
+        { ...blankHookNarrowing(), methods: [], pathDraft: "not a path" },
+        AgentVaultServiceType.Postgres
+      )
+    ).toEqual([]);
   });
 });
 
@@ -244,8 +193,7 @@ describe("hook requests", () => {
     expect(buildCreateHookRequest(form({ url: ` ${HOOK_URL} ` }))).toEqual({
       name: "approvals",
       url: HOOK_URL,
-      secret: SECRET,
-      rules: []
+      secret: SECRET
     });
   });
 
@@ -255,18 +203,8 @@ describe("hook requests", () => {
     expect(buildUpdateHookRequest(storedHook, untouched)).toEqual({});
   });
 
-  it("doesn't count a rule the form reorders as changed", () => {
-    const reordered: TAgentVaultHook = {
-      ...storedHook,
-      rules: [{ service: "github", methods: [AgentVaultHttpMethod.Post, AgentVaultHttpMethod.Get] }]
-    };
-    expect(buildUpdateHookRequest(reordered, { ...hookFormOf(reordered), name: "gate" })).toEqual({
-      name: "gate"
-    });
-  });
-
   it("prefills the name of a new hook", () => {
-    expect(hookFormOf(null, new Map(), "release-guard").name).toBe("release-guard");
+    expect(hookFormOf(null, "release-guard").name).toBe("release-guard");
   });
 
   it("sends only the changed fields, and null to remove a description", () => {
@@ -277,23 +215,32 @@ describe("hook requests", () => {
     expect(
       buildUpdateHookRequest(storedHook, { ...hookFormOf(storedHook), secret: SECRET })
     ).toEqual({ secret: SECRET });
-    expect(buildUpdateHookRequest(storedHook, { ...hookFormOf(storedHook), rules: [] })).toEqual({
-      rules: []
-    });
+    expect(
+      buildUpdateHookRequest(storedHook, {
+        ...hookFormOf(storedHook),
+        url: ` https://hooks.example.com/v2 `
+      })
+    ).toEqual({ url: "https://hooks.example.com/v2" });
   });
 });
 
-describe("describeHookRule", () => {
-  it("summarizes a rule on one line", () => {
-    expect(describeHookRule({ service: "github" })).toBe("github");
-    expect(
-      describeHookRule({
-        service: "github",
-        methods: [AgentVaultHttpMethod.Put],
-        paths: ["/repos"]
-      })
-    ).toBe("github: PUT on /repos");
-    expect(describeHookRule({ service: "linear", tools: ["a", "b"] })).toBe("linear: 2 tools");
+describe("describeHookNarrowing", () => {
+  it("summarizes a narrowing on one line, or null for everything", () => {
+    expect(describeHookNarrowing({})).toBeNull();
+    expect(describeHookNarrowing({ methods: [AgentVaultHttpMethod.Put], paths: ["/repos"] })).toBe(
+      "PUT on /repos"
+    );
+    expect(describeHookNarrowing({ tools: ["a", "b"] })).toBe("2 tools");
+  });
+});
+
+describe("listNames", () => {
+  it("lists names as a sentence, naming at most three", () => {
+    expect(listNames([])).toBe("");
+    expect(listNames(["stripe"])).toBe("stripe");
+    expect(listNames(["stripe", "billing-api"])).toBe("stripe and billing-api");
+    expect(listNames(["a", "b", "c"])).toBe("a, b and c");
+    expect(listNames(["a", "b", "c", "d", "e"])).toBe("a, b, c and 2 more");
   });
 });
 
@@ -313,5 +260,16 @@ describe("hook narrowing", () => {
     expect(buildHookNarrowing(draft, AgentVaultServiceType.Http)).toEqual({ paths: ["/a"] });
     expect(buildHookNarrowing(draft, AgentVaultServiceType.Mcp)).toEqual({ tools: ["t"] });
     expect(buildHookNarrowing(draft, AgentVaultServiceType.Postgres)).toEqual({});
+  });
+
+  it("leaves out every method and empty lists", () => {
+    expect(buildHookNarrowing(blankHookNarrowing(), AgentVaultServiceType.Http)).toEqual({});
+  });
+
+  it("round-trips a saved narrowing", () => {
+    const narrowing = { methods: [AgentVaultHttpMethod.Put], paths: ["/repos"] };
+    expect(buildHookNarrowing(hookNarrowingDraftOf(narrowing), AgentVaultServiceType.Http)).toEqual(
+      narrowing
+    );
   });
 });

@@ -28,7 +28,7 @@ A PostgreSQL service lets an agent reach a PostgreSQL database during a [session
     On the **Credential** step, set up the [account](#credentials) the proxy logs in as. Select **Continue**.
   </Step>
   <Step>
-    Optionally, on the **Hooks** step, pick the [hooks](/documentation/platform/agent-vault/hooks#pick-a-services-hooks) that check this service. Select **Continue**.
+    Optionally, on the **Hooks** step, pick the [hook](/documentation/platform/agent-vault/hooks#attach-a-hook-to-a-service) that checks each connection to this service. Select **Continue**.
   </Step>
   <Step>
     On the **Review** step, select **Add Service**.
@@ -77,6 +77,6 @@ Enter the account's **Username** and **Password**. To give each member their own
 
     The session's log shows the failed connection as an **Error** row with the reason, and so does the proxy's own log.
 
-    If `connect` printed a message about the session's hook, the hook server refused the connection or didn't give a usable answer. See the [hook troubleshooting](/documentation/platform/agent-vault/hooks#troubleshooting).
+    If `connect` printed a message about the service's hook, the hook server refused the connection or didn't give a usable answer. See the [hook troubleshooting](/documentation/platform/agent-vault/hooks#troubleshooting).
   </Accordion>
 </AccordionGroup>

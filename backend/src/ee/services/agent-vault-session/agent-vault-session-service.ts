@@ -1,15 +1,13 @@
-import { ForbiddenError, MongoAbility } from "@casl/ability";
+import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultHookActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultVariableActions,
-  ProjectPermissionSub,
-  ProjectPermissionSet
+  ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -25,13 +23,8 @@ import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/
 import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent-vault-service-dal";
 import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
 import { findCallerDelegation, resolveOnBehalfOfUser } from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
-import { TAgentVaultHookDALFactory, TAgentVaultHookRow } from "../agent-vault-hook/agent-vault-hook-dal";
-import {
-  assertAgentVaultHooksOnPlan,
-  groupHookRuleViews,
-  toHookServiceLinks
-} from "../agent-vault-hook/agent-vault-hook-fns";
-import { TAgentVaultSessionHookSummary } from "../agent-vault-hook/agent-vault-hook-types";
+import { TAgentVaultHookDALFactory } from "../agent-vault-hook/agent-vault-hook-dal";
+import { hookNotFoundByName, NO_SERVICE_HOOK, toServiceHookColumns } from "../agent-vault-hook/agent-vault-hook-fns";
 import { TAgentVaultResolveDALFactory } from "../agent-vault-proxy/agent-vault-resolve-dal";
 import { generateSessionLogKey, wrapSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { TAgentVaultSkillBundleDALFactory } from "../agent-vault-skill/agent-vault-skill-bundle-dal";
@@ -98,10 +91,7 @@ export const AGENT_VAULT_ON_BEHALF_OF_SESSION_DEFAULT_TTL = "1h";
 
 type TAgentVaultSessionServiceFactoryDep = {
   agentVaultSessionDAL: TAgentVaultSessionDALFactory;
-  agentVaultHookDAL: Pick<
-    TAgentVaultHookDALFactory,
-    "findSavedForMint" | "insertInlineForSession" | "lockProjectServicesForHook" | "findHookServiceLinks"
-  >;
+  agentVaultHookDAL: Pick<TAgentVaultHookDALFactory, "findByNamesForService">;
   agentVaultSessionAccessBundleDAL: TAgentVaultSessionAccessBundleDALFactory;
   agentVaultSessionInlineServiceDAL: Pick<
     TAgentVaultSessionInlineServiceDALFactory,
@@ -129,7 +119,6 @@ type TAgentVaultSessionServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsDataKeyService: TKmsDataKeyService;
-  licenseService: Pick<TLicenseService, "getPlan">;
 };
 
 export type TAgentVaultSessionServiceFactory = ReturnType<typeof agentVaultSessionServiceFactory>;
@@ -157,8 +146,7 @@ export const agentVaultSessionServiceFactory = ({
   userDAL,
   orgDAL,
   permissionService,
-  kmsDataKeyService,
-  licenseService
+  kmsDataKeyService
 }: TAgentVaultSessionServiceFactoryDep) => {
   const requireSessionActor = (ctx: TMintSessionDTO["ctx"]) => {
     if (ctx.actor !== ActorType.USER && ctx.actor !== ActorType.IDENTITY) {
@@ -167,25 +155,14 @@ export const agentVaultSessionServiceFactory = ({
     return { type: ctx.actor, id: ctx.actorId };
   };
 
-  // A hook's URL and rules are the hook's own settings, so only someone who can read hooks sees them on a session.
-  const toSessionHookView = (
-    hook: TAgentVaultSessionListRow["hook"],
-    permission: MongoAbility<ProjectPermissionSet>
-  ): TAgentVaultSessionHookSummary | null => {
-    if (!hook) return null;
-    const summary = { id: hook.id, name: hook.name, isInline: hook.isInline };
-    if (permission.cannot(ProjectPermissionAgentVaultHookActions.Read, ProjectPermissionSub.AgentVaultHooks)) {
-      return summary;
-    }
-    return { ...summary, url: hook.url, rules: hook.rules, appliesToAllServices: hook.appliesToAllServices };
-  };
-
-  const toSessionView = (
-    { userId, identityId, onBehalfOfUserId, onBehalfOfUserName, hook, ...session }: TAgentVaultSessionListRow,
-    permission: MongoAbility<ProjectPermissionSet>
-  ) => ({
+  const toSessionView = ({
+    userId,
+    identityId,
+    onBehalfOfUserId,
+    onBehalfOfUserName,
+    ...session
+  }: TAgentVaultSessionListRow) => ({
     ...session,
-    hook: toSessionHookView(hook, permission),
     status: deriveSessionStatus({ ...session, userId, identityId, onBehalfOfUserId, onBehalfOfUserName })
   });
 
@@ -355,14 +332,6 @@ export const agentVaultSessionServiceFactory = ({
     return withServices.map((session) => ({ ...session, metadata: metadataBySession.get(session.id) ?? {} }));
   };
 
-  const describeHookForAudit = (hook: TAgentVaultHookRow | undefined, ruleCount: number) => {
-    if (!hook) return {};
-    if (hook.sessionId) {
-      return { inlineHook: { hookId: hook.id, url: hook.url, ruleCount } };
-    }
-    return { hookId: hook.id, hookName: hook.name ?? undefined };
-  };
-
   const resolveSessionTtl = (ttl: string | undefined, isOnBehalfOf: boolean) =>
     ttl ?? (isOnBehalfOf ? AGENT_VAULT_ON_BEHALF_OF_SESSION_DEFAULT_TTL : AGENT_VAULT_SESSION_DEFAULT_TTL);
 
@@ -377,16 +346,9 @@ export const agentVaultSessionServiceFactory = ({
     ttl: requestedTtl,
     onBehalfOf,
     label,
-    metadata = {},
-    hookId,
-    hook: inlineHook
+    metadata = {}
   }: TMintSessionDTO) => {
     const caller = requireSessionActor(ctx);
-    if (hookId && inlineHook) {
-      throw new BadRequestError({
-        message: "Send 'hookId' to attach a saved hook or 'hook' to send one with the session, not both."
-      });
-    }
     // The rest of mint, the junction table and resolve all work on a list; a session holds at most one bundle.
     const accessBundles = accessBundle ? [accessBundle] : [];
     const ttl = resolveSessionTtl(requestedTtl, Boolean(onBehalfOf));
@@ -401,22 +363,6 @@ export const agentVaultSessionServiceFactory = ({
       throw new BadRequestError({
         message: "Set the access bundle this session should carry, or list the services or skills it should have."
       });
-    }
-
-    // Attaching a saved hook only adds checks an admin already set up, so reading hooks is enough. A hook sent inline is
-    // a new destination the proxy calls from inside the customer's network, so it takes its own action.
-    if (hookId) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAgentVaultHookActions.Read,
-        ProjectPermissionSub.AgentVaultHooks
-      );
-    }
-    if (inlineHook) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAgentVaultSessionActions.CreateWithInlineHook,
-        ProjectPermissionSub.AgentVaultSessions
-      );
-      await assertAgentVaultHooksOnPlan(licenseService, ctx.actorOrgId);
     }
 
     // A string is a service's name and an object is a service sent inline. Each keeps its place in the list: the
@@ -475,6 +421,16 @@ export const agentVaultSessionServiceFactory = ({
       preparedInlineServices = bindInlineOauthVariables(
         preparedInlineServices,
         await agentVaultVariableDAL.findKeys({ projectId, owner: null })
+      );
+    }
+    // Using a saved hook only adds checks an admin set up, so naming one takes reading hooks and no plan check.
+    const inlineHookNames = [
+      ...new Set(preparedInlineServices.flatMap((service) => (service.hook ? [service.hook.name] : [])))
+    ];
+    if (inlineHookNames.length) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAgentVaultHookActions.Read,
+        ProjectPermissionSub.AgentVaultHooks
       );
     }
     const preparedInlineSkills = prepareInlineSkills(
@@ -742,7 +698,7 @@ export const agentVaultSessionServiceFactory = ({
     // Each value is sealed on its own, the way a project's services keep them, so the two can share one table. An
     // inline skill's files are sealed whole, the way a project skill's versions are.
     let encrypt: ((plainText: Buffer) => Buffer) | null = null;
-    if (inlineHook || preparedInlineServices.some((service) => service.secrets) || preparedInlineSkills.length) {
+    if (preparedInlineServices.some((service) => service.secrets) || preparedInlineSkills.length) {
       const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
@@ -751,7 +707,7 @@ export const agentVaultSessionServiceFactory = ({
     }
     const seal = (value: unknown) => encrypt!(Buffer.from(JSON.stringify(value)));
     const inlineServiceRows: TAgentVaultInlineServiceInsert[] = preparedInlineServices.map(
-      ({ secrets, customHeaders, substitutions, oauthVariableKey, ...service }) => ({
+      ({ secrets, customHeaders, substitutions, oauthVariableKey, hook, ...service }) => ({
         ...service,
         projectId,
         credentialType: service.credentialConfig.type,
@@ -781,8 +737,6 @@ export const agentVaultSessionServiceFactory = ({
       position
     }));
 
-    const encryptedInlineHookSecret = inlineHook ? seal({ value: inlineHook.secret }) : null;
-
     const ttlMs = ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : ms(ttl);
     const expiresAt = ttlMs === null ? null : new Date(Date.now() + ttlMs);
     const { token, tokenHash } = generateSessionToken();
@@ -810,16 +764,13 @@ export const agentVaultSessionServiceFactory = ({
       })
     };
 
-    const { session, insertedInlineServices, insertedInlineSkills, sessionHook } =
-      await agentVaultSessionDAL.transaction(async (tx) => {
+    const { session, insertedInlineServices, insertedInlineSkills } = await agentVaultSessionDAL.transaction(
+      async (tx) => {
         if ((preparedInlineServices.length && accessBundles.length) || orderedServices.length) {
           await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AgentVaultServiceNames(projectId)]);
           await assertNoBundleConflicts(tx);
           await assertNoServiceHostConflicts(tx);
         }
-        const savedHook = hookId ? await agentVaultHookDAL.findSavedForMint({ id: hookId, projectId }, tx) : undefined;
-        if (hookId && !savedHook) throw new NotFoundError({ message: `Hook with ID '${hookId}' not found` });
-
         const created = await agentVaultSessionDAL.createWithId(
           {
             id: sessionId,
@@ -828,8 +779,7 @@ export const agentVaultSessionServiceFactory = ({
             label: label || null,
             tokenHash,
             expiresAt,
-            encryptedSessionLogKey,
-            hookId: savedHook?.id ?? null
+            encryptedSessionLogKey
           },
           tx
         );
@@ -855,8 +805,22 @@ export const agentVaultSessionServiceFactory = ({
           );
         }
 
+        // Read in this transaction, so a hook deleted since the request arrived is a 404 rather than a failed key.
+        const savedHooks = inlineHookNames.length
+          ? await agentVaultHookDAL.findByNamesForService({ names: inlineHookNames, projectId }, tx)
+          : [];
+        const hooksByName = new Map(savedHooks.map((hook) => [hook.name.toLowerCase(), hook]));
         const inserted = await agentVaultSessionInlineServiceDAL.insertForSession(
-          { sessionId: created.id, services: inlineServiceRows },
+          {
+            sessionId: created.id,
+            services: inlineServiceRows.map((row, index) => {
+              const { hook } = preparedInlineServices[index];
+              if (!hook) return { ...row, ...NO_SERVICE_HOOK };
+              const saved = hooksByName.get(hook.name);
+              if (!saved) throw hookNotFoundByName(hook.name);
+              return { ...row, ...toServiceHookColumns(saved.id, hook) };
+            })
+          },
           tx
         );
 
@@ -901,39 +865,10 @@ export const agentVaultSessionServiceFactory = ({
 
         await insertSessionMetadata({ orgId: ctx.actorOrgId, sessionId: created.id, metadata }, tx);
 
-        // The session row comes first, since the inline hook points at its session and the session at its hook.
-        let attachedHook = savedHook;
-        if (inlineHook) {
-          // Rules name project services only, read in this transaction so one deleted meanwhile is a 404.
-          const inlineHookRules = inlineHook.rules ?? [];
-          const ruleServices = await agentVaultHookDAL.lockProjectServicesForHook(
-            { projectId, names: inlineHookRules.map((rule) => rule.service) },
-            tx
-          );
-          attachedHook = await agentVaultHookDAL.insertInlineForSession(
-            {
-              projectId,
-              sessionId: created.id,
-              url: inlineHook.url,
-              encryptedSecret: encryptedInlineHookSecret!,
-              links: toHookServiceLinks(inlineHookRules, ruleServices)
-            },
-            tx
-          );
-          await agentVaultSessionDAL.updateById(created.id, { hookId: attachedHook.id }, tx);
-        }
-
-        return {
-          session: created,
-          insertedInlineServices: inserted,
-          insertedInlineSkills: insertedSkills,
-          sessionHook: attachedHook
-        };
-      });
+        return { session: created, insertedInlineServices: inserted, insertedInlineSkills: insertedSkills };
+      }
+    );
     const oauthVariables = await findInlineOauthVariableKeys(insertedInlineServices);
-    const sessionHookRules = sessionHook
-      ? (groupHookRuleViews(await agentVaultHookDAL.findHookServiceLinks([sessionHook.id])).get(sessionHook.id) ?? [])
-      : [];
 
     return {
       session: {
@@ -943,19 +878,6 @@ export const agentVaultSessionServiceFactory = ({
         expiresAt: session.expiresAt ?? null,
         createdAt: session.createdAt,
         accessBundle: accessBundle ? { id: bundlesByName.get(accessBundle)!.id, name: accessBundle } : null,
-        hook: toSessionHookView(
-          sessionHook
-            ? {
-                id: sessionHook.id,
-                name: sessionHook.name ?? null,
-                isInline: Boolean(sessionHook.sessionId),
-                url: sessionHook.url,
-                rules: sessionHookRules,
-                appliesToAllServices: sessionHook.appliesToAllServices
-              }
-            : null,
-          permission
-        ),
         services: [
           ...orderedServices.map(({ service, position }) => ({
             position,
@@ -987,7 +909,6 @@ export const agentVaultSessionServiceFactory = ({
       },
       token,
       ttlSeconds: ttlMs === null ? null : Math.floor(ttlMs / 1000),
-      hookAudit: describeHookForAudit(sessionHook, sessionHookRules.length),
       onBehalfOf: onBehalfOfUser
         ? { userId: onBehalfOfUser.user.id, username: onBehalfOfUser.user.username, email: onBehalfOfUser.user.email }
         : null
@@ -1032,11 +953,7 @@ export const agentVaultSessionServiceFactory = ({
     });
 
     return {
-      sessions: await withServicesSkillsAndMetadata(
-        sessions.map((session) => toSessionView(session, permission)),
-        accessBundleIds,
-        permission
-      ),
+      sessions: await withServicesSkillsAndMetadata(sessions.map(toSessionView), accessBundleIds, permission),
       totalCount
     };
   };
@@ -1076,7 +993,7 @@ export const agentVaultSessionServiceFactory = ({
     );
 
     const [session] = await withServicesSkillsAndMetadata(
-      [toSessionView(await findVisibleSession({ projectId, ctx, sessionId, reachesAnySession }), permission)],
+      [toSessionView(await findVisibleSession({ projectId, ctx, sessionId, reachesAnySession }))],
       accessBundleIds,
       permission
     );
@@ -1100,7 +1017,7 @@ export const agentVaultSessionServiceFactory = ({
 
     // revokedNow lets the caller audit a real revocation without auditing a repeat. Revoking twice stays a
     // 200 with the original revokedAt, so the second caller is not the one who revoked it.
-    if (session.revokedAt) return { session: { ...toSessionView(session, permission), metadata }, revokedNow: false };
+    if (session.revokedAt) return { session: { ...toSessionView(session), metadata }, revokedNow: false };
 
     // The timestamp comes from the written row: a read-back could land on a replica that has not seen it.
     const revoked = await agentVaultSessionDAL.transaction(async (tx) => {
@@ -1113,7 +1030,7 @@ export const agentVaultSessionServiceFactory = ({
     });
     if (revoked) {
       return {
-        session: { ...toSessionView({ ...session, revokedAt: revoked.revokedAt ?? null }, permission), metadata },
+        session: { ...toSessionView({ ...session, revokedAt: revoked.revokedAt ?? null }), metadata },
         revokedNow: true
       };
     }
@@ -1133,8 +1050,7 @@ export const agentVaultSessionServiceFactory = ({
                 onBehalfOfUserId: current.onBehalfOfUserId ?? null,
                 onBehalfOf: session.onBehalfOf && { ...session.onBehalfOf, id: current.onBehalfOfUserId ?? null }
               }
-            : session,
-          permission
+            : session
         ),
         metadata
       },
@@ -1194,7 +1110,7 @@ export const agentVaultSessionServiceFactory = ({
     const { previousLabel } = result.written;
     const currentLabel = label === undefined ? previousLabel : label;
     const [view] = await withSessionServicesAndSkills(
-      [toSessionView({ ...session, label: currentLabel }, permission)],
+      [toSessionView({ ...session, label: currentLabel })],
       accessBundleIds,
       permission
     );

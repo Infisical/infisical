@@ -3,6 +3,7 @@ import { z } from "zod";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 
 import { assertCustomHeadersDoNotShadowCredential } from "../agent-vault-access-bundle/agent-vault-transformation-fns";
+import { assertHookNarrowingFitsService, TAgentVaultServiceHookInput } from "../agent-vault-hook/agent-vault-hook-fns";
 import {
   isVariableOauth,
   oauthVariableIdOf,
@@ -107,6 +108,8 @@ export type TPreparedInlineService = {
   secrets: TInlineServiceSecrets | null;
   // The OAuth variable a credential names, by key until bindInlineOauthVariables puts its id in credentialConfig.
   oauthVariableKey: string | null;
+  // The project's saved hook it uses, by name until mint finds it in its transaction.
+  hook: TAgentVaultServiceHookInput | null;
 };
 
 // What an inline service is called wherever a name is shown: its own, or its first host when it was sent without one,
@@ -332,6 +335,12 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
   const customHeaders = input.customHeaders ?? [];
   const substitutions = input.substitutions ?? [];
   assertCustomHeadersDoNotShadowCredential(credentialConfig, customHeaders);
+  if (input.hook) {
+    assertHookNarrowingFitsService(input.hook, {
+      name: inlineServiceDisplayName({ name: input.name, hostPattern }),
+      type: definition.type
+    });
+  }
 
   return {
     position,
@@ -350,6 +359,7 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
       surfaces: substitution.surfaces
     })),
     oauthVariableKey: variableKey,
+    hook: input.hook ?? null,
     secrets:
       secret || customHeaders.length || substitutions.length
         ? {
@@ -799,6 +809,7 @@ export const toResolvedInlineService = (
     personalValuesMissing: variableCredentialMissing,
     ...(credentialRemoved ? { credentialRemoved } : {}),
     ...(credentialNotConnected ? { credentialNotConnected } : {}),
-    memberProvided: false
+    memberProvided: false,
+    hook: null
   };
 };

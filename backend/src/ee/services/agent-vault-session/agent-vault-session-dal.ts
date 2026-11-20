@@ -8,8 +8,6 @@ import { ormify } from "@app/lib/knex";
 import { ActorType } from "@app/services/auth/auth-type";
 import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
-import { findHookServiceLinks } from "../agent-vault-hook/agent-vault-hook-dal";
-import { groupHookRuleViews, TAgentVaultHookRuleView } from "../agent-vault-hook/agent-vault-hook-fns";
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
 import { isOrphanedSession } from "./agent-vault-session-fns";
 import {
@@ -36,15 +34,6 @@ export type TAgentVaultSessionListRow = {
   accessBundle: { id: string | null; name: string } | null;
   // Null until the proxy uploads the session's first log chunk.
   stats: { requests: number; brokered: number | null } | null;
-  // Null for a session started without a hook, or whose saved hook was deleted.
-  hook: {
-    id: string;
-    name: string | null;
-    isInline: boolean;
-    url: string;
-    rules: TAgentVaultHookRuleView[];
-    appliesToAllServices: boolean;
-  } | null;
 };
 
 // The on-behalf-of user's own alias, since the actor's user is joined under the table's name.
@@ -333,7 +322,6 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           `${TableName.AgentVaultSessionStats}.sessionId`,
           `${TableName.AgentVaultSession}.id`
         )
-        .leftJoin(TableName.AgentVaultHook, `${TableName.AgentVaultHook}.id`, `${TableName.AgentVaultSession}.hookId`)
         .select(
           db.ref("id").withSchema(TableName.AgentVaultSession),
           db.ref("userId").withSchema(TableName.AgentVaultSession),
@@ -361,12 +349,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           db.ref("accessBundleName").withSchema(TableName.AgentVaultSessionAccessBundle),
           db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("liveAccessBundleName"),
           db.ref("requests").withSchema(TableName.AgentVaultSessionStats).as("statsRequests"),
-          db.ref("brokered").withSchema(TableName.AgentVaultSessionStats).as("statsBrokered"),
-          db.ref("id").withSchema(TableName.AgentVaultHook).as("hookId"),
-          db.ref("name").withSchema(TableName.AgentVaultHook).as("hookName"),
-          db.ref("sessionId").withSchema(TableName.AgentVaultHook).as("hookSessionId"),
-          db.ref("url").withSchema(TableName.AgentVaultHook).as("hookUrl"),
-          db.ref("appliesToAllServices").withSchema(TableName.AgentVaultHook).as("hookAppliesToAllServices")
+          db.ref("brokered").withSchema(TableName.AgentVaultSessionStats).as("statsBrokered")
         )
         .orderBy(`${TableName.AgentVaultSession}.createdAt`, "desc")) as {
         id: string;
@@ -397,16 +380,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         // bigint columns, which pg returns as strings
         statsRequests: string | null;
         statsBrokered: string | null;
-        hookId: string | null;
-        hookName: string | null;
-        hookSessionId: string | null;
-        hookUrl: string | null;
-        hookAppliesToAllServices: boolean | null;
       }[];
-
-      const hookRules = groupHookRuleViews(
-        await findHookServiceLinks(conn, [...new Set(rows.flatMap((row) => (row.hookId === null ? [] : [row.hookId])))])
-      );
 
       const sessions: TAgentVaultSessionListRow[] = rows.map((row) => {
         return {
@@ -443,17 +417,6 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
               : {
                   requests: Number(row.statsRequests),
                   brokered: row.statsBrokered === null ? null : Number(row.statsBrokered)
-                },
-          hook:
-            row.hookId === null
-              ? null
-              : {
-                  id: row.hookId,
-                  name: row.hookName,
-                  isInline: row.hookSessionId !== null,
-                  url: row.hookUrl!,
-                  rules: hookRules.get(row.hookId) ?? [],
-                  appliesToAllServices: Boolean(row.hookAppliesToAllServices)
                 }
         };
       });

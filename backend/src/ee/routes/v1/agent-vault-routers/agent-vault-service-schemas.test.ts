@@ -419,20 +419,30 @@ describe("service responses", () => {
   });
 });
 
-describe("hooks moved off services", () => {
-  const hook = { url: "https://hooks.example.com/agent-vault", signingSecret: "s".repeat(32) };
-
-  test("a service body's hook is dropped, on create and on update", () => {
-    expect(AgentVaultCreateServiceBodySchema.parse(httpService({ hook }))).not.toHaveProperty("hook");
-    expect(AgentVaultUpdateServiceBodySchema.parse({ type: "http", name: "renamed", hook })).not.toHaveProperty("hook");
+describe("a service's hook", () => {
+  test("is named on create and update, and null on update removes it", () => {
+    expect(
+      AgentVaultCreateServiceBodySchema.parse(httpService({ hook: { name: "approvals", paths: ["/charges/"] } }))
+    ).toHaveProperty("hook", { name: "approvals", paths: ["/charges"] });
+    expect(AgentVaultUpdateServiceBodySchema.parse({ type: "http", hook: null })).toHaveProperty("hook", null);
   });
 
-  test("a service read never carries a hook", () => {
+  test("main's hook by URL and signing secret is refused", () => {
+    const hook = { url: "https://hooks.example.com/agent-vault", signingSecret: "s".repeat(32) };
+    expect(AgentVaultCreateServiceBodySchema.safeParse(httpService({ hook })).success).toBe(false);
+  });
+
+  test("a read carries the hook and its narrowing, and leaves the field out when the caller can't read hooks", () => {
     const row = toServiceTypeFields(STORED_TYPES[0]);
-    const parsed = AgentVaultServiceSchema.parse(
-      bundleService({ ...row, credential: { type: AgentVaultCredentialType.Passthrough }, hook: { url: hook.url } })
+    const hook = { id: "00000000-0000-4000-8000-0000000000aa", name: "approvals", methods: ["POST"] };
+    const withHook = AgentVaultServiceSchema.parse(
+      bundleService({ ...row, credential: { type: AgentVaultCredentialType.Passthrough }, hook })
     );
-    expect(parsed).not.toHaveProperty("hook");
+    expect(withHook).toHaveProperty("hook", hook);
+    const without = AgentVaultServiceSchema.parse(
+      bundleService({ ...row, credential: { type: AgentVaultCredentialType.Passthrough } })
+    );
+    expect(without).not.toHaveProperty("hook");
   });
 });
 
@@ -584,7 +594,6 @@ describe("an OAuth credential from an OAuth variable", () => {
       id: "00000000-0000-4000-8000-000000000001",
       name: "gdrive",
       description: null,
-      hook: null,
       ...toServiceTypeFields(STORED_TYPES[0]),
       customHeaders: [],
       substitutions: [],

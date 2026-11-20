@@ -12,11 +12,13 @@ import {
   TMemberships
 } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultHookActions,
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -30,6 +32,19 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
 import { findOnBehalfOfListScope, TOnBehalfOfDeps } from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
+import { TAgentVaultHookDALFactory } from "../agent-vault-hook/agent-vault-hook-dal";
+import {
+  assertAgentVaultHooksOnPlan,
+  assertHookNarrowingFitsService,
+  hookNotFoundByName,
+  isServiceHookChange,
+  NO_SERVICE_HOOK,
+  pickHookNarrowing,
+  TAgentVaultServiceHookInput,
+  TAgentVaultServiceHookView,
+  toServiceHookColumns,
+  TServiceHookColumns
+} from "../agent-vault-hook/agent-vault-hook-fns";
 import { TAgentVaultMemberDALFactory } from "../agent-vault-member/agent-vault-member-dal";
 import {
   checkOauthClaimUnderLock,
@@ -192,6 +207,8 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
   agentVaultPersonalValueService: Pick<TAgentVaultPersonalValueServiceFactory, "findStatusesForOwner">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsDataKeyService: TKmsDataKeyService;
+  licenseService: Pick<TLicenseService, "getPlan">;
+  agentVaultHookDAL: Pick<TAgentVaultHookDALFactory, "findByNameInProject" | "findByNameForService" | "findNamesByIds">;
   membershipDAL: Pick<
     TMembershipDALFactory,
     "findOne" | "find" | "insertMany" | "delete" | "deleteById" | "transaction" | "findResourceMembershipsForActor"
@@ -245,6 +262,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     agentVaultPersonalValueService,
     permissionService,
     kmsDataKeyService,
+    licenseService,
+    agentVaultHookDAL,
     membershipDAL,
     membershipRoleDAL,
     agentVaultMemberDAL,
@@ -619,22 +638,34 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     canSeeSetup: permission.can(
       ProjectPermissionAgentVaultAccessBundleActions.Edit,
       ProjectPermissionSub.AgentVaultAccessBundles
-    )
+    ),
+    canReadHooks: permission.can(ProjectPermissionAgentVaultHookActions.Read, ProjectPermissionSub.AgentVaultHooks)
   });
+
+  // Null when the service has no hook, or its hook was deleted since the row was read.
+  const serviceHookView = (
+    service: Pick<TAgentVaultServices, "hookId" | "hookMethods" | "hookPaths" | "hookTools">,
+    hookNames: Map<string, string>
+  ): TAgentVaultServiceHookView | null => {
+    const name = service.hookId ? hookNames.get(service.hookId) : undefined;
+    return name ? { id: service.hookId!, name, ...pickHookNarrowing(service) } : null;
+  };
 
   // A service as the caller may see it. Without Read on variables, variableReferences is left out: an empty list would
   // claim the service uses none. The OAuth sign-in state is the account of whoever set up the service, so only those who
-  // can edit services get it.
+  // can edit services get it. The hook is left out without Read on hooks, where null would claim there is none.
   const viewService = (
     service: TAgentVaultCatalogService,
     transformations: Awaited<ReturnType<typeof loadTransformations>>,
     {
       canReadVariables,
       canSeeSetup,
+      canReadHooks,
       status
     }: {
       canReadVariables: boolean;
       canSeeSetup: boolean;
+      canReadHooks: boolean;
       status?: Awaited<ReturnType<TAgentVaultPersonalValueServiceFactory["findStatusesForOwner"]>>[number];
     }
   ) => {
@@ -657,6 +688,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ...projected,
       credential,
       ...(canReadVariables ? {} : { variableReferences: undefined }),
+      ...(canReadHooks ? { hook: serviceHookView(service, transformations.hookNames) } : {}),
       // The caller's own values, null when the admin sets the whole credential.
       personalValues: status ? { isConfigured: status.isConfigured, fields: status.fields } : null
     };
@@ -672,19 +704,27 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return new Map(rows.map((row) => [row.id, row]));
   };
 
+  const loadHookNames = (services: Pick<TAgentVaultServices, "projectId" | "hookId">[], tx?: Knex) => {
+    const ids = services.flatMap((service) => (service.hookId ? [service.hookId] : []));
+    return ids.length
+      ? agentVaultHookDAL.findNamesByIds({ ids, projectId: services[0].projectId }, tx)
+      : Promise.resolve(new Map<string, string>());
+  };
+
   const loadTransformations = async (
-    services: Pick<TAgentVaultServices, "id" | "projectId" | "credentialType" | "credentialConfig">[],
+    services: Pick<TAgentVaultServices, "id" | "projectId" | "credentialType" | "credentialConfig" | "hookId">[],
     tx?: Knex,
     { withVariableReferences = true }: { withVariableReferences?: boolean } = {}
   ) => {
     const serviceIds = services.map((service) => service.id);
-    const [customHeaders, substitutions, variableReferences, oauthVariables] = await Promise.all([
+    const [customHeaders, substitutions, variableReferences, oauthVariables, hookNames] = await Promise.all([
       agentVaultServiceCustomHeaderDAL.findByServiceIds(serviceIds, tx),
       agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds, tx),
       withVariableReferences ? agentVaultServiceVariableReferenceDAL.findByServiceIds(serviceIds, tx) : [],
-      services.length ? loadOauthVariables(services[0].projectId, services) : new Map()
+      services.length ? loadOauthVariables(services[0].projectId, services) : new Map(),
+      loadHookNames(services, tx)
     ]);
-    return { customHeaders, substitutions, variableReferences, oauthVariables };
+    return { customHeaders, substitutions, variableReferences, oauthVariables, hookNames };
   };
 
   // What a missing key's error calls the field. Never the value itself, which is secret.
@@ -1070,7 +1110,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionAgentVaultAccessBundleActions.Read,
       ProjectPermissionSub.AgentVaultAccessBundles
     );
-    const { canReadVariables, canSeeSetup } = serviceVisibilityOf(permission);
+    const { canReadVariables, canSeeSetup, canReadHooks } = serviceVisibilityOf(permission);
 
     const services = await agentVaultServiceDAL.findByAccessBundleId(bundle.id);
     const transformations = await loadTransformations(services, undefined, {
@@ -1097,6 +1137,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         ...viewService(service, transformations, {
           canReadVariables,
           canSeeSetup,
+          canReadHooks,
           status: statuses.find((entry) => entry.serviceId === service.id)
         })
       }))
@@ -1271,6 +1312,50 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return permission;
   };
 
+  // Setting a hook on a service is like using a variable in it: Edit on services, plus Read on hooks to name one. The
+  // plan gates only setting or changing one; removing it is never gated. The narrowing must fit the service's type.
+  const $checkServiceHook = async (
+    hook: TAgentVaultServiceHookInput,
+    {
+      permission,
+      projectId,
+      orgId,
+      service,
+      current
+    }: {
+      permission: TAgentVaultPermission["permission"];
+      projectId: string;
+      orgId: string;
+      service: { name: string; type: AgentVaultServiceType };
+      current?: Pick<TAgentVaultServices, "hookId" | "hookMethods" | "hookPaths" | "hookTools">;
+    }
+  ) => {
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionAgentVaultHookActions.Read,
+      ProjectPermissionSub.AgentVaultHooks
+    );
+    assertHookNarrowingFitsService(hook, service);
+    const found = await agentVaultHookDAL.findByNameInProject({ name: hook.name, projectId });
+    if (!found) throw hookNotFoundByName(hook.name);
+    if (!current || isServiceHookChange({ id: found.id, ...hook }, current)) {
+      await assertAgentVaultHooksOnPlan(licenseService, orgId);
+    }
+  };
+
+  // In the service write's transaction, after its service locks, so a hook deleted meanwhile is a 404 rather than a
+  // failed foreign key.
+  const $serviceHookColumns = async (
+    hook: TAgentVaultServiceHookInput | null,
+    projectId: string,
+    tx: Knex
+  ): Promise<{ columns: TServiceHookColumns; hook: TAgentVaultServiceHookView | null }> => {
+    if (!hook) return { columns: NO_SERVICE_HOOK, hook: null };
+    const row = await agentVaultHookDAL.findByNameForService({ name: hook.name, projectId }, tx);
+    if (!row) throw hookNotFoundByName(hook.name);
+    const columns = toServiceHookColumns(row.id, hook);
+    return { columns, hook: { id: row.id, name: row.name, ...pickHookNarrowing(columns) } };
+  };
+
   const createService = async ({
     accessBundleIds = [],
     type,
@@ -1289,6 +1374,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     credential,
     customHeaders,
     substitutions,
+    hook,
     ...rest
   }: TCreateServiceDTO) => {
     const permission = await requireServiceWrite(rest);
@@ -1296,6 +1382,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const bundles = await findBundlesInProject(rest.projectId, accessBundleIds);
 
     const serviceType = getAgentVaultServiceType(type);
+    if (hook) {
+      await $checkServiceHook(hook, {
+        permission,
+        projectId: rest.projectId,
+        orgId: rest.ctx.actorOrgId,
+        service: { name, type: serviceType.type }
+      });
+    }
     assertOauthCredentialFitsType(serviceType.type, credential);
     assertServiceFieldsSupported(serviceType, {
       hostPattern: requestedHostPattern,
@@ -1424,6 +1518,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${bundle.id}' not found` });
         }
         await checkHostPatternConflicts({ accessBundles: bundles, hostPattern }, tx);
+        const serviceHook = hook ? await $serviceHookColumns(hook, rest.projectId, tx) : undefined;
 
         const created = await agentVaultServiceDAL.create(
           {
@@ -1439,7 +1534,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             credentialType: credential.type,
             credentialConfig,
             encryptedCredential,
-            memberProvidedFields
+            memberProvidedFields,
+            ...serviceHook?.columns
           },
           tx
         );
@@ -1486,7 +1582,13 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           tx
         );
 
-        return { created, insertedCustomHeaders, insertedSubstitutions, variableReferences };
+        return {
+          created,
+          insertedCustomHeaders,
+          insertedSubstitutions,
+          variableReferences,
+          hook: serviceHook?.hook ?? null
+        };
       });
 
     let result;
@@ -1518,6 +1620,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           result.variableReferences,
           await loadOauthVariables(rest.projectId, [result.created])
         ),
+        ...(serviceVisibilityOf(permission).canReadHooks ? { hook: result.hook } : {}),
         accessBundles: bundles
       }
     };
@@ -1541,6 +1644,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     allowedPathPrefixes: sentAllowedPathPrefixes,
     allowedTools: sentAllowedTools,
     substitutions: sentSubstitutions,
+    hook,
     ...rest
   }: TUpdateServiceDTO) => {
     const permission = await requireServiceWrite(rest);
@@ -1577,8 +1681,17 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     );
     // The schema's check sees the read-back fields too, so a request holding only those reaches here with nothing to
     // change.
-    if ([name, description, credential, ...Object.values(sentFields)].every((value) => value === undefined)) {
+    if ([name, description, credential, hook, ...Object.values(sentFields)].every((value) => value === undefined)) {
       throw new BadRequestError({ message: "Provide at least one field besides 'type' to update" });
+    }
+    if (hook) {
+      await $checkServiceHook(hook, {
+        permission,
+        projectId: rest.projectId,
+        orgId: rest.ctx.actorOrgId,
+        service: { name: name ?? service.name, type: serviceType.type },
+        current: service
+      });
     }
     const requestedHostPattern = sentFields.hostPattern ?? undefined;
     const { allowedMethods, allowedPathPrefixes, allowedTools, customHeaders, substitutions } = sentFields;
@@ -2011,6 +2124,15 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           );
         }
 
+        const serviceHook = hook === undefined ? undefined : await $serviceHookColumns(hook, rest.projectId, tx);
+        let hookChange:
+          | { previous: TAgentVaultServiceHookView | null; current: TAgentVaultServiceHookView | null }
+          | undefined;
+        if (serviceHook && (serviceHook.hook ? isServiceHookChange(serviceHook.hook, locked) : locked.hookId)) {
+          const previous = locked.hookId ? serviceHookView(locked, await loadHookNames([locked], tx)) : null;
+          hookChange = { previous, current: serviceHook.hook };
+        }
+
         if (credential || customHeaders) {
           const effectiveCustomHeaders =
             customHeaders ??
@@ -2028,7 +2150,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           allowedMethods !== undefined ||
           allowedPathPrefixes !== undefined ||
           allowedTools !== undefined ||
-          Object.keys(reconciled.credentialUpdate).length > 0;
+          Object.keys(reconciled.credentialUpdate).length > 0 ||
+          serviceHook !== undefined;
 
         const updatedService = hasColumnUpdate
           ? await agentVaultServiceDAL.updateById(
@@ -2042,7 +2165,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
                 ...(allowedMethods === undefined ? {} : { allowedMethods }),
                 ...(allowedPathPrefixes === undefined ? {} : { allowedPathPrefixes }),
                 ...(allowedTools === undefined ? {} : { allowedTools }),
-                ...reconciled.credentialUpdate
+                ...reconciled.credentialUpdate,
+                ...serviceHook?.columns
               },
               tx
             )
@@ -2189,7 +2313,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           updatedSubstitutions,
           variableReferences,
           personalValuesCleared,
-          tlsCaChanged
+          tlsCaChanged,
+          hookChange
         };
       });
 
@@ -2225,6 +2350,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           result.variableReferences,
           await loadOauthVariables(rest.projectId, [result.updatedService])
         ),
+        ...(serviceVisibilityOf(permission).canReadHooks
+          ? {
+              hook: serviceHookView(
+                result.updatedService,
+                await loadHookNames([result.updatedService as TAgentVaultCatalogService])
+              )
+            }
+          : {}),
         accessBundles: await bundlesOf()
       },
       update: {
@@ -2241,7 +2374,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         allowedPathPrefixes,
         allowedTools,
         customHeaders,
-        substitutions
+        substitutions,
+        hookChange: result.hookChange
       },
       credentialReplaced,
       personalValuesCleared: result.personalValuesCleared

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, TrashIcon } from "lucide-react";
 
 import { DeleteHookDialog } from "@app/components/agent-vault/hooks/DeleteHookDialog";
-import { describeHookRule } from "@app/components/agent-vault/hooks/hookSchema";
 import { HookSheet } from "@app/components/agent-vault/hooks/HookSheet";
 import { AgentVaultHooksUpgradeIntent, useUpgradeGate } from "@app/components/license/UpgradeGate";
 import {
@@ -60,28 +59,25 @@ import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
 import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 
-const RulesSummary = ({ hook }: { hook: TAgentVaultHook }) => {
-  if (!hook.rules.length) {
-    return (
-      <span className="text-muted">
-        {hook.appliesToAllServices ? "All traffic" : "No services"}
-      </span>
-    );
-  }
-  const lines = hook.rules.map(describeHookRule);
-  if (lines.length === 1) return <span className="truncate">{lines[0]}</span>;
+const SHOWN_USED_BY = 2;
+
+const UsedBySummary = ({ usedBy }: { usedBy: TAgentVaultHook["usedBy"] }) => {
+  if (!usedBy.length) return <span className="text-muted">No services</span>;
+  const names = usedBy.map((service) => service.name);
+  const shown = names.slice(0, SHOWN_USED_BY).join(", ");
+  if (names.length <= SHOWN_USED_BY) return <span className="truncate">{shown}</span>;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <span className="truncate" data-row-interactive>
-          {lines.length} rules
+          {shown} <span className="text-muted">+{names.length - SHOWN_USED_BY}</span>
         </span>
       </TooltipTrigger>
       <TooltipContent className="max-w-sm">
         <ul className="flex flex-col gap-0.5">
-          {lines.map((line) => (
-            <li key={line} className="break-all">
-              {line}
+          {usedBy.map((service) => (
+            <li key={service.id} className="break-all">
+              {service.name}
             </li>
           ))}
         </ul>
@@ -155,7 +151,8 @@ export const HooksCard = () => {
         </CardTitle>
         <CardDescription>
           A hook is asked before the proxy sends a request, and the request goes on only if it
-          allows it. A session uses a hook when it is created with one.
+          allows it. Pick a hook on a service to check that service&apos;s requests in every
+          session.
         </CardDescription>
         {canCreate && (
           <CardAction>
@@ -200,7 +197,7 @@ export const HooksCard = () => {
               <EmptyDescription>
                 {hasHooks
                   ? "Try a different search term."
-                  : "Create a hook, then pick it when you create a session."}
+                  : "Create a hook, then pick it on a service."}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -215,7 +212,7 @@ export const HooksCard = () => {
               <TableHead isTruncatable className="w-2/5">
                 URL
               </TableHead>
-              <TableHead isTruncatable>Rules</TableHead>
+              <TableHead isTruncatable>Used By</TableHead>
               <TableHead variant="action" />
             </TableRow>
           </TableHeader>
@@ -250,7 +247,7 @@ export const HooksCard = () => {
                     {hook.url}
                   </TableCell>
                   <TableCell isTruncatable>
-                    <RulesSummary hook={hook} />
+                    <UsedBySummary usedBy={hook.usedBy} />
                   </TableCell>
                   <TableCell variant="action">
                     {(canEdit || canDelete) && (

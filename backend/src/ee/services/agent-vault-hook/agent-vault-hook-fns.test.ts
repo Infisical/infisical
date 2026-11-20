@@ -7,19 +7,18 @@ import { AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE } from "../agent-vault/agent-vault
 import { AgentVaultHttpMethod, AgentVaultServiceType } from "../agent-vault/agent-vault-enums";
 import {
   AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE,
-  AgentVaultHookRuleSchema,
-  AgentVaultHookRulesSchema,
   AgentVaultHookSecretSchema,
-  AgentVaultHookServiceNarrowingUpdateSchema,
   AgentVaultHookUrlSchema,
+  AgentVaultServiceHookInputSchema,
   assertAgentVaultHooksOnPlan,
-  groupHookRuleViews,
-  toHookServiceLinks,
-  toResolvedHookRules
+  assertHookNarrowingFitsService,
+  isServiceHookChange,
+  pickHookNarrowing,
+  toServiceHookColumns
 } from "./agent-vault-hook-fns";
 
-const SERVICE_ID = "11111111-1111-4111-8111-111111111111";
-const MIX_MESSAGE = "A rule narrows an HTTP service by 'methods' and 'paths' or an MCP service by 'tools', not both.";
+const HOOK_ID = "11111111-1111-4111-8111-111111111111";
+const MIX_MESSAGE = "A hook narrows an HTTP service by 'methods' and 'paths' or an MCP service by 'tools', not both.";
 
 const issuesOf = (result: { success: boolean; error?: { issues: { message: string }[] } }) =>
   result.success ? [] : result.error!.issues.map((issue) => issue.message);
@@ -125,192 +124,120 @@ describe("hook secret", () => {
   });
 });
 
-describe("hook rules", () => {
+describe("a service's hook", () => {
   test.each([
-    { why: "a whole service", rule: { service: "github" } },
-    { why: "methods and paths", rule: { service: "github", methods: ["PUT"], paths: ["/repos"] } },
-    { why: "tools", rule: { service: "linear", tools: ["delete_issue"] } }
-  ])("accepts $why", ({ rule }) => {
-    expect(AgentVaultHookRuleSchema.safeParse(rule).success).toBe(true);
+    { why: "a whole service", hook: { name: "guard" } },
+    { why: "methods and paths", hook: { name: "guard", methods: ["PUT"], paths: ["/repos"] } },
+    { why: "tools", hook: { name: "guard", tools: ["delete_issue"] } }
+  ])("accepts $why", ({ hook }) => {
+    expect(AgentVaultServiceHookInputSchema.safeParse(hook).success).toBe(true);
   });
 
   test("dedupes methods, normalises path prefixes and lowercases the name", () => {
     expect(
-      AgentVaultHookRuleSchema.parse({ service: " GitHub ", methods: ["PUT", "PUT"], paths: ["/repos/"] })
-    ).toEqual({ service: "github", methods: ["PUT"], paths: ["/repos"] });
-  });
-
-  test("drops a service ID, which the API no longer takes", () => {
-    expect(AgentVaultHookRuleSchema.parse({ service: "github", serviceId: SERVICE_ID })).toEqual({ service: "github" });
+      AgentVaultServiceHookInputSchema.parse({ name: " Guard ", methods: ["PUT", "PUT"], paths: ["/repos/"] })
+    ).toEqual({ name: "guard", methods: ["PUT"], paths: ["/repos"] });
   });
 
   test.each([
-    { why: "tools with methods", rule: { service: "x", methods: ["GET"], tools: ["a"] }, message: MIX_MESSAGE },
-    { why: "tools with paths", rule: { service: "x", paths: ["/a"], tools: ["a"] }, message: MIX_MESSAGE },
+    { why: "tools with methods", hook: { name: "x", methods: ["GET"], tools: ["a"] }, message: MIX_MESSAGE },
+    { why: "tools with paths", hook: { name: "x", paths: ["/a"], tools: ["a"] }, message: MIX_MESSAGE },
+    { why: "an empty name", hook: { name: "  " }, message: "Enter the name of the hook." },
     {
-      why: "an empty service",
-      rule: { service: "  " },
-      message: "Enter the name of the service this rule applies to."
-    },
-    {
-      why: "a name longer than a service name",
-      rule: { service: "a".repeat(65) },
-      message: "A service name in a rule can be at most 64 characters."
+      why: "a name longer than a hook name",
+      hook: { name: "a".repeat(65) },
+      message: "A hook name can be at most 64 characters."
     },
     {
       why: "an empty method list",
-      rule: { service: "x", methods: [] },
-      message: "List at least one method, or leave 'methods' out to match every method."
+      hook: { name: "x", methods: [] },
+      message: "List at least one method, or leave 'methods' out to check every method."
     },
     {
       why: "an empty tool list",
-      rule: { service: "x", tools: [] },
-      message: "List at least one tool, or leave 'tools' out to match every tool."
+      hook: { name: "x", tools: [] },
+      message: "List at least one tool, or leave 'tools' out to check every tool."
     },
     {
       why: "too many tools",
-      rule: { service: "x", tools: Array.from({ length: 101 }, (_, index) => `t${index}`) },
-      message: "A rule can list at most 100 tools."
+      hook: { name: "x", tools: Array.from({ length: 101 }, (_, index) => `t${index}`) },
+      message: "A service's hook can list at most 100 tools."
     },
-    {
-      why: "a duplicate tool",
-      rule: { service: "x", tools: ["a", "a"] },
-      message: '"a" is listed twice.'
-    },
-    {
-      why: "a relative path",
-      rule: { service: "x", paths: ["repos"] },
-      message: '"repos" must start with a /.'
-    }
-  ])("refuses $why", ({ rule, message }) => {
-    expect(issuesOf(AgentVaultHookRuleSchema.safeParse(rule))).toEqual([message]);
+    { why: "a duplicate tool", hook: { name: "x", tools: ["a", "a"] }, message: '"a" is listed twice.' },
+    { why: "a relative path", hook: { name: "x", paths: ["repos"] }, message: '"repos" must start with a /.' }
+  ])("refuses $why", ({ hook, message }) => {
+    expect(issuesOf(AgentVaultServiceHookInputSchema.safeParse(hook))).toEqual([message]);
   });
 
-  test("a rule without a service is refused", () => {
-    expect(AgentVaultHookRuleSchema.safeParse({ methods: ["GET"] }).success).toBe(false);
-  });
-
-  test("an empty rule list is allowed and means every request", () => {
-    expect(AgentVaultHookRulesSchema.parse([])).toEqual([]);
-  });
-
-  test("at most 50 rules", () => {
-    const rules = Array.from({ length: 51 }, (_, index) => ({ service: `s${index}` }));
-    expect(issuesOf(AgentVaultHookRulesSchema.safeParse(rules))).toEqual(["A hook can have at most 50 rules."]);
-  });
-
-  test("each service once, however its name is cased", () => {
-    expect(
-      issuesOf(
-        AgentVaultHookRulesSchema.safeParse([{ service: "github" }, { service: "linear" }, { service: "GitHub" }])
-      )
-    ).toEqual([
-      "'github' is in more than one rule. List each service once, with all its methods, paths or tools in that rule."
-    ]);
-  });
-
-  test("a narrowing PATCH needs a field, and null clears one", () => {
-    expect(AgentVaultHookServiceNarrowingUpdateSchema.safeParse({}).success).toBe(false);
-    expect(AgentVaultHookServiceNarrowingUpdateSchema.parse({ methods: null })).toEqual({ methods: null });
-  });
-});
-
-describe("hook rule services", () => {
-  const OTHER_ID = "22222222-2222-4222-8222-222222222222";
-  const services = [
-    { id: SERVICE_ID, name: "github", type: AgentVaultServiceType.Http },
-    { id: OTHER_ID, name: "linear", type: AgentVaultServiceType.Mcp },
-    { id: "33333333-3333-4333-8333-333333333333", name: "warehouse", type: AgentVaultServiceType.Postgres }
-  ];
-
-  test("on save, each rule becomes a link to the service it names, in rule order", () => {
-    expect(
-      toHookServiceLinks(
-        [
-          { service: "linear", tools: ["x"] },
-          { service: "github", methods: [AgentVaultHttpMethod.Put] },
-          { service: "warehouse" }
-        ],
-        services
-      )
-    ).toEqual([
-      { serviceId: OTHER_ID, position: 0, methods: null, paths: null, tools: ["x"] },
-      { serviceId: SERVICE_ID, position: 1, methods: ["PUT"], paths: null, tools: null },
-      { serviceId: services[2].id, position: 2, methods: null, paths: null, tools: null }
-    ]);
-  });
-
-  test("on save, a name that isn't one of the project's services is a 404 naming it", () => {
-    expect(() => toHookServiceLinks([{ service: "github" }, { service: "inline-api" }], services)).toThrow(
-      "There's no service called 'inline-api' in this project. A hook rule can only name one of the project's services."
-    );
+  test("a hook without a name is refused", () => {
+    expect(AgentVaultServiceHookInputSchema.safeParse({ methods: ["GET"] }).success).toBe(false);
   });
 
   test.each([
     {
       why: "methods on an MCP service",
-      rule: { service: "linear", methods: [AgentVaultHttpMethod.Get] },
+      narrowing: { methods: [AgentVaultHttpMethod.Get] },
+      service: { name: "linear", type: AgentVaultServiceType.Mcp },
       message:
         "'linear' is an MCP service, and only an HTTP service can be narrowed by methods or paths. Leave them out to check every request to it."
     },
     {
       why: "tools on an HTTP service",
-      rule: { service: "github", tools: ["x"] },
+      narrowing: { tools: ["x"] },
+      service: { name: "github", type: AgentVaultServiceType.Http },
       message:
         "'github' is an HTTP service, and only an MCP service can be narrowed by tools. Leave them out to check every request to it."
     },
     {
       why: "paths on a database service",
-      rule: { service: "warehouse", paths: ["/a"] },
+      narrowing: { paths: ["/a"] },
+      service: { name: "warehouse", type: AgentVaultServiceType.Postgres },
       message:
         "'warehouse' is a PostgreSQL service, and only an HTTP service can be narrowed by methods or paths. Leave them out to check every request to it."
     }
-  ])("on save, refuses $why", ({ rule, message }) => {
-    expect(() => toHookServiceLinks([rule], services)).toThrow(message);
+  ])("refuses $why for the service's type", ({ narrowing, service, message }) => {
+    expect(() => assertHookNarrowingFitsService(narrowing, service)).toThrow(message);
   });
 
-  test("reads show each hook's rules by the service's current name, in rule order", () => {
-    const link = { serviceType: AgentVaultServiceType.Http, methods: null, paths: null, tools: null };
-    expect(
-      groupHookRuleViews([
-        { ...link, hookId: "h1", serviceId: OTHER_ID, serviceName: "second", position: 1, tools: ["t"] },
-        { ...link, hookId: "h1", serviceId: SERVICE_ID, serviceName: "first", position: 0, paths: ["/repos"] },
-        { ...link, hookId: "h2", serviceId: SERVICE_ID, serviceName: "first", position: 0 }
-      ])
-    ).toEqual(
-      new Map([
-        [
-          "h1",
-          [
-            { service: "first", paths: ["/repos"] },
-            { service: "second", tools: ["t"] }
-          ]
-        ],
-        ["h2", [{ service: "first" }]]
-      ])
-    );
+  test("a database service takes a hook with no narrowing", () => {
+    expect(() =>
+      assertHookNarrowingFitsService({}, { name: "warehouse", type: AgentVaultServiceType.Postgres })
+    ).not.toThrow();
   });
 
-  describe("resolve", () => {
-    const names = new Map([[SERVICE_ID, "github"]]);
-    const link = (serviceId: string) => ({ serviceId, methods: ["GET"], paths: null, tools: null });
+  test("every write sets all four columns, so a narrowing never outlives its hook", () => {
+    expect(toServiceHookColumns(HOOK_ID, { tools: ["t"] })).toEqual({
+      hookId: HOOK_ID,
+      hookMethods: null,
+      hookPaths: null,
+      hookTools: ["t"]
+    });
+  });
 
-    test("sends the services in the session by name and leaves the rest out", () => {
-      expect(
-        toResolvedHookRules({ links: [link(SERVICE_ID), link(OTHER_ID)], appliesToAllServices: false }, names)
-      ).toEqual([{ service: "github", methods: ["GET"] }]);
+  test("reads leave out a narrowing that isn't set", () => {
+    expect(pickHookNarrowing({ hookMethods: ["GET"], hookPaths: null, hookTools: null })).toEqual({ methods: ["GET"] });
+  });
+
+  describe("isServiceHookChange", () => {
+    const row = { hookId: HOOK_ID, hookMethods: ["GET"], hookPaths: null, hookTools: null };
+
+    test("the same hook and narrowing is no change", () => {
+      expect(isServiceHookChange({ id: HOOK_ID, methods: [AgentVaultHttpMethod.Get] }, row)).toBe(false);
     });
 
-    test("sends no hook when none of its services is in the session", () => {
-      expect(toResolvedHookRules({ links: [link(OTHER_ID)], appliesToAllServices: false }, names)).toBeUndefined();
+    test.each([
+      {
+        why: "another hook",
+        hook: { id: "22222222-2222-4222-8222-222222222222", methods: [AgentVaultHttpMethod.Get] }
+      },
+      { why: "a wider narrowing", hook: { id: HOOK_ID } },
+      { why: "another narrowing", hook: { id: HOOK_ID, methods: [AgentVaultHttpMethod.Post] } }
+    ])("$why is a change", ({ hook }) => {
+      expect(isServiceHookChange(hook, row)).toBe(true);
     });
 
-    test("sends no hook for one left without services", () => {
-      expect(toResolvedHookRules({ links: [], appliesToAllServices: false }, names)).toBeUndefined();
-    });
-
-    test("sends no rules, so every request is checked, for a hook saved without services", () => {
-      expect(toResolvedHookRules({ links: [], appliesToAllServices: true }, names)).toEqual([]);
+    test("a service with no hook changes when given one", () => {
+      expect(isServiceHookChange({ id: HOOK_ID }, { hookId: null })).toBe(true);
     });
   });
 });

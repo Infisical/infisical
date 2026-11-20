@@ -46,8 +46,7 @@ const replacedRoleChecks = (ability: ReturnType<typeof abilityFor>) =>
       ProjectPermissionAgentVaultSessionActions.ReadAny,
       ProjectPermissionAgentVaultSessionActions.EditAny,
       ProjectPermissionAgentVaultSessionActions.RevokeAny,
-      ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
-      ProjectPermissionAgentVaultSessionActions.CreateWithInlineHook
+      ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices
     ].map((action) => [`sessions ${action}`, ability.can(action, ProjectPermissionSub.AgentVaultSessions)]),
     ...Object.values(ProjectPermissionAgentVaultVariableActions).map((action) => [
       `variables ${action}`,

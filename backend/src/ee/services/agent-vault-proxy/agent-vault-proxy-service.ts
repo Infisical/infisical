@@ -29,8 +29,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
 import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
-import { toResolvedHookRules } from "../agent-vault-hook/agent-vault-hook-fns";
-import { TResolvedSessionHook } from "../agent-vault-hook/agent-vault-hook-types";
+import { pickHookNarrowing } from "../agent-vault-hook/agent-vault-hook-fns";
 import {
   AGENT_VAULT_SERVICE_MOVED_MESSAGE,
   TAgentVaultOauthServiceFactory
@@ -53,6 +52,7 @@ import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault
 import { describeSessionForAudit, hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
 import { TAgentVaultSessionInlineServiceDALFactory } from "../agent-vault-session/agent-vault-session-inline-service-dal";
 import {
+  inlineServiceDisplayName,
   openInlineServiceSecrets,
   TInlineOauthResolution,
   toInlineServiceFacts,
@@ -109,6 +109,7 @@ import {
   TRefreshCredentialDTO,
   TReportMissingScopesDTO,
   TResolvedService,
+  TResolvedServiceHook,
   TResolveSessionDTO,
   TUpdateProxyDTO
 } from "./agent-vault-proxy-types";
@@ -133,7 +134,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultProxyDAL: TAgentVaultProxyDALFactory;
   agentVaultResolveDAL: Pick<
     TAgentVaultResolveDALFactory,
-    "findResolvableServices" | "findSessionSkills" | "findReachableBundles" | "findSessionHook" | "findSessionMetadata"
+    "findResolvableServices" | "findSessionSkills" | "findReachableBundles" | "findHooks" | "findSessionMetadata"
   >;
   agentVaultServiceCustomHeaderDAL: Pick<TAgentVaultServiceCustomHeaderDALFactory, "findByServiceIds">;
   agentVaultServiceSubstitutionDAL: Pick<TAgentVaultServiceSubstitutionDALFactory, "findByServiceIds">;
@@ -1240,30 +1241,30 @@ export const agentVaultProxyServiceFactory = ({
       }
     }
 
-    // A hook stores its services by ID and the proxy matches by name, so each goes out under the name of the service row
-    // sent in this same response. A separate read could land on another replica mid-rename and send an old name the
-    // proxy never matches; a service outside the session could never match anyway.
-    const serviceNamesById = new Map(rows.flatMap((row) => (row.name ? [[row.id, row.name] as const] : [])));
-    const $findSessionHook = async (hookId: string) => {
-      const scope = { hookId, sessionId: session.id, projectId: session.projectId };
-      let row = await agentVaultResolveDAL.findSessionHook({ ...scope, onPrimary });
-      if (!row && !onPrimary) {
-        // The session and its hook can come from different replicas, so a hook missing here may just not have arrived.
-        row = await agentVaultResolveDAL.findSessionHook({ ...scope, onPrimary: true });
+    // A service sent with a session before hooks were their own resource carries its hook's URL and secret on its row.
+    // It keeps checking every request until the session ends, so a running session loses no check at the upgrade.
+    const legacyInlineHookRows = liveInlineRows.filter((row) => !row.hookId && row.hookUrl && row.encryptedHookSecret);
+    const hookIds = [...new Set([...rows, ...liveInlineRows].flatMap((row) => (row.hookId ? [row.hookId] : [])))];
+    const $findHooks = async () => {
+      const scope = { hookIds, projectId: session.projectId };
+      const found = await agentVaultResolveDAL.findHooks({ ...scope, onPrimary });
+      // The services and their hooks can come from different replicas, so a hook missing here may just not have
+      // arrived. One missing on the primary too was deleted, and its services go out without it.
+      const missing = hookIds.filter((id) => !found.some((hook) => hook.id === id));
+      if (missing.length && !onPrimary) {
+        found.push(...(await agentVaultResolveDAL.findHooks({ ...scope, hookIds: missing, onPrimary: true })));
       }
-      if (!row) return undefined;
-      const rules = toResolvedHookRules(row, serviceNamesById);
-      if (!rules) return undefined;
-      return { ...row, rules };
+      return new Map(found.map((hook) => [hook.id, hook]));
     };
 
     const serviceIds = rows.map((row) => row.id);
+    const hasHook = hookIds.length > 0 || legacyInlineHookRows.length > 0;
     // Metadata goes to the proxy only for the hook's payload, so a session without a hook doesn't read it.
-    const [customHeaderRows, substitutionRows, hookRow, sessionMetadata] = await Promise.all([
+    const [customHeaderRows, substitutionRows, hooksById, sessionMetadata] = await Promise.all([
       agentVaultServiceCustomHeaderDAL.findByServiceIds(serviceIds),
       agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds),
-      session.hookId ? $findSessionHook(session.hookId) : undefined,
-      session.hookId ? agentVaultResolveDAL.findSessionMetadata({ sessionId: session.id, onPrimary }) : {}
+      $findHooks(),
+      hasHook ? agentVaultResolveDAL.findSessionMetadata({ sessionId: session.id, onPrimary }) : {}
     ]);
 
     const sessionLogConfig = await getEffectiveSessionLogConfig({ agentVaultSessionLogConfigDAL }, session.projectId, {
@@ -1280,7 +1281,7 @@ export const agentVaultProxyServiceFactory = ({
     // A bundle of pass-through services has nothing sealed, so deriving the project data key would be
     // a kms_keys read (or an external KMS round trip) per resolve for nothing.
     const hasSealedValue =
-      Boolean(hookRow) ||
+      hasHook ||
       rows.some((row) => row.encryptedCredential || row.memberProvidedFields?.length) ||
       oauthVariableRows.some((row) => row.encryptedValue) ||
       inlineServiceRows.some(
@@ -1361,6 +1362,7 @@ export const agentVaultProxyServiceFactory = ({
         })),
       personalValuesMissing: false,
       memberProvided: Boolean(row.memberProvidedFields?.length),
+      hook: null,
       ...(isVariableOauth(row) ? variableCredentialFields(oauthVariableIdOf(row)!, row.id) : {})
     }));
 
@@ -1403,11 +1405,44 @@ export const agentVaultProxyServiceFactory = ({
     // An override goes last, so it takes only a host that nothing else in the session names exactly: an exact host beats
     // a wildcard wherever it sits, and the Go matcher breaks a tie between two exact ones by order.
     const overrideIds = new Set(rows.filter((row) => row.isOverride).map((row) => row.id));
+    // The secret is never expanded, and is opened once per hook however many services use it.
+    const secretsByHookId = new Map<string, string>();
+    const hookSecretOf = (hook: { id: string; encryptedSecret: Buffer }) => {
+      if (!secretsByHookId.has(hook.id)) secretsByHookId.set(hook.id, $decryptValue(hook.encryptedSecret));
+      return secretsByHookId.get(hook.id)!;
+    };
+    const legacyInlineHookIds = new Set(legacyInlineHookRows.map((row) => row.id));
+    const hooksByServiceId = new Map<string, TResolvedServiceHook>();
+    [...rows, ...liveInlineRows].forEach((row) => {
+      const hook = row.hookId ? hooksById.get(row.hookId) : undefined;
+      if (hook) {
+        hooksByServiceId.set(row.id, {
+          id: hook.id,
+          name: hook.name,
+          url: hook.url,
+          secret: hookSecretOf(hook),
+          ...pickHookNarrowing(row)
+        });
+      } else if (legacyInlineHookIds.has(row.id)) {
+        const legacy = row as (typeof liveInlineRows)[number];
+        hooksByServiceId.set(row.id, {
+          id: row.id,
+          name: `${inlineServiceDisplayName(legacy)}-hook`,
+          url: legacy.hookUrl!,
+          secret: $decryptValue(legacy.encryptedHookSecret)
+        });
+      }
+    });
+    const withHook = (service: TResolvedService): TResolvedService => ({
+      ...service,
+      hook: hooksByServiceId.get(service.id) ?? null
+    });
+
     const services = [
       ...bundleServices.filter((service) => !overrideIds.has(service.id)),
       ...inlineServices,
       ...bundleServices.filter((service) => overrideIds.has(service.id))
-    ];
+    ].map(withHook);
 
     // A key that can't be opened turns logs off for this session instead of cutting the agent off from its services.
     const $sessionLogs = (): { enabled: boolean; sessionKey: string | null } => {
@@ -1430,18 +1465,6 @@ export const agentVaultProxyServiceFactory = ({
     };
     const sessionLogs = $sessionLogs();
 
-    // The secret is never expanded, and a hook without one (its session ended) fails the resolve rather than going out
-    // as no hook.
-    const hook: TResolvedSessionHook | null = hookRow
-      ? {
-          id: hookRow.id,
-          name: hookRow.name ?? null,
-          url: hookRow.url,
-          secret: $decryptValue(hookRow.encryptedSecret),
-          rules: hookRow.rules
-        }
-      : null;
-
     logger.info(
       `agentVaultResolve: resolved [sessionId=${session.id}] [proxyId=${proxyId}] [services=${services.length}] [inlineServices=${inlineServices.length}] [personalValuesMissing=${services.filter((service) => service.personalValuesMissing).length}]`
     );
@@ -1451,7 +1474,6 @@ export const agentVaultProxyServiceFactory = ({
       expiresAt: session.expiresAt ?? null,
       services,
       sessionLogs,
-      hook,
       session: {
         label: session.label ?? null,
         metadata: sessionMetadata,

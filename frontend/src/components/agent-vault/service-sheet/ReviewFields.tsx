@@ -332,21 +332,23 @@ export const ReviewFields = ({
 
       {showHooks && (
         <DetailGroup>
-          <DetailGroupHeader className="border-b border-border pb-2">Hooks</DetailGroupHeader>
-          {form.hooks.length ? (
+          <DetailGroupHeader className="border-b border-border pb-2">Hook</DetailGroupHeader>
+          {form.hook.hookId ? (
             <div className="flex flex-wrap gap-x-8 gap-y-4">
-              {form.hooks.map((hook) => (
-                <Detail key={hook.hookId}>
-                  <DetailLabel>{hook.hookName}</DetailLabel>
-                  <DetailValue className="break-all">
-                    {describeHookNarrowing(buildHookNarrowing(hook, form.serviceType)) ??
-                      (isNative ? "Every connection" : "Every request")}
-                  </DetailValue>
-                </Detail>
-              ))}
+              <Detail>
+                <DetailLabel>Name</DetailLabel>
+                <DetailValue>{form.hook.hookName}</DetailValue>
+              </Detail>
+              <Detail>
+                <DetailLabel>Checks</DetailLabel>
+                <DetailValue className="break-all">
+                  {describeHookNarrowing(buildHookNarrowing(form.hook, form.serviceType)) ??
+                    (isNative ? "Every connection" : "Every request")}
+                </DetailValue>
+              </Detail>
             </div>
           ) : (
-            <p className="text-sm text-muted">Not in any hook</p>
+            <p className="text-sm text-muted">No hook</p>
           )}
         </DetailGroup>
       )}

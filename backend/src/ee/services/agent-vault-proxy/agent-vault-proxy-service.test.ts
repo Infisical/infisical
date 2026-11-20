@@ -52,6 +52,10 @@ const serviceRow = (overrides: Partial<TResolveServiceRow> = {}): TResolveServic
   allowedPathPrefixes: null,
   allowedTools: null,
   memberProvidedFields: null,
+  hookId: null,
+  hookMethods: null,
+  hookPaths: null,
+  hookTools: null,
   position: 0,
   ...overrides
 });
@@ -86,8 +90,8 @@ const setup = (
     onlyOnPrimary = false,
     personalRows = [],
     session = {},
-    hookRow,
-    hookOnlyOnPrimary = false,
+    hooks = [],
+    hooksOnlyOnPrimary = false,
     licenseService = new FakeLicenseService(),
     metadata = {},
     freeLimitReached = false,
@@ -110,9 +114,9 @@ const setup = (
     freeLimitReached?: boolean;
     personalRows?: { serviceId: string; field: string; encryptedValue: Buffer; oauthConfig: unknown }[];
     session?: Record<string, unknown>;
-    hookRow?: Record<string, unknown>;
-    // The hook was written a moment ago and hasn't reached the replica the resolve read from.
-    hookOnlyOnPrimary?: boolean;
+    hooks?: { id: string; name: string; url: string; encryptedSecret: Buffer }[];
+    // The hooks were written a moment ago and haven't reached the replica the resolve read from.
+    hooksOnlyOnPrimary?: boolean;
     licenseService?: FakeLicenseService;
     metadata?: Record<string, string>;
     proxy?: {
@@ -138,8 +142,8 @@ const setup = (
   );
   const findResolvableServices = vi.fn(async () => rows);
   const findReachableBundles = vi.fn(async () => [{ id: "bundle-1", name: "bundle" }]);
-  const findSessionHook = vi.fn(async ({ onPrimary }: { onPrimary?: boolean }) =>
-    hookOnlyOnPrimary && !onPrimary ? undefined : hookRow
+  const findHooks = vi.fn(async ({ hookIds, onPrimary }: { hookIds: string[]; onPrimary?: boolean }) =>
+    hooksOnlyOnPrimary && !onPrimary ? [] : hooks.filter((hook) => hookIds.includes(hook.id))
   );
   const findSessionMetadata = vi.fn(async () => metadata);
   const sessionRow = {
@@ -167,7 +171,7 @@ const setup = (
       findResolvableServices,
       findSessionSkills: async () => [],
       findReachableBundles,
-      findSessionHook,
+      findHooks,
       findSessionMetadata
     } as never,
     agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
@@ -224,7 +228,7 @@ const setup = (
     findOauthForResolve,
     findResolvableServices,
     findReachableBundles,
-    findSessionHook,
+    findHooks,
     findSessionMetadata,
     createCipherPairWithDataKey,
     findCaFingerprintsByProjectId,
@@ -607,7 +611,7 @@ describe("resolve for a session on a user's behalf", () => {
         findResolvableServices,
         findSessionSkills: async () => [],
         findReachableBundles: async () => [],
-        findSessionHook: async () => undefined,
+        findHooks: async () => [],
         findSessionMetadata: async () => ({})
       },
       agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
@@ -867,7 +871,7 @@ describe("resolve with inline services", () => {
     expect(sealed.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
   });
 
-  test("an inline service written with a hook before hooks moved to sessions goes out without it", async () => {
+  test("an inline service sent with a hook before hooks became their own resource keeps it, checking every request", async () => {
     const legacy = inlineRow({
       credentialType: AgentVaultCredentialType.Passthrough,
       credentialConfig: { type: AgentVaultCredentialType.Passthrough },
@@ -877,9 +881,33 @@ describe("resolve with inline services", () => {
     });
     const { service, createCipherPairWithDataKey } = setup(noRefresh, [], [], { inlineRows: [legacy] });
     const { services } = await resolve(service);
-    expect(services).toHaveLength(1);
-    expect(services[0]).not.toHaveProperty("hook");
-    expect(createCipherPairWithDataKey).not.toHaveBeenCalled();
+    expect(services[0].hook).toEqual({
+      id: "inline-1",
+      name: "inline-api-hook",
+      url: "https://hooks.example.com/agent-vault",
+      secret: "s".repeat(32)
+    });
+    expect(createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
+  });
+
+  test("an inline service sent with a saved hook goes out with it and its narrowing", async () => {
+    const hooked = inlineRow({
+      hookId: "77777777-7777-4777-8777-777777777777",
+      hookTools: null,
+      hookMethods: ["POST"]
+    });
+    const { service } = setup(noRefresh, [], [], {
+      inlineRows: [hooked],
+      hooks: [
+        {
+          id: "77777777-7777-4777-8777-777777777777",
+          name: "approvals",
+          url: "https://hooks.example.com/agent-vault",
+          encryptedSecret: Buffer.from(JSON.stringify({ value: "s".repeat(32) }))
+        }
+      ]
+    });
+    expect((await resolve(service)).services[0].hook).toMatchObject({ name: "approvals", methods: ["POST"] });
   });
 });
 
@@ -903,135 +931,88 @@ describe("hooks on resolve", () => {
     name: "approvals",
     url: "https://hooks.example.com/agent-vault",
     // The test's decryptor hands the sealed bytes back as they are.
-    encryptedSecret: Buffer.from(JSON.stringify({ value: "s".repeat(32) })),
-    appliesToAllServices: false,
-    links: [{ serviceId: SERVICE_ID, methods: ["POST"], paths: ["/v1/refunds"], tools: null }]
+    encryptedSecret: Buffer.from(JSON.stringify({ value: "s".repeat(32) }))
   };
-  const DELETED_ID = "22222222-2222-4222-8222-222222222222";
+  const narrowedRow = { ...hookedRow, hookId: savedHook.id, hookMethods: ["POST"], hookPaths: ["/v1/refunds"] };
+  const plainRow = serviceRow({
+    id: "22222222-2222-4222-8222-222222222222",
+    name: "github",
+    type: AgentVaultServiceType.Http,
+    hostPattern: "api.github.com",
+    config: {},
+    credentialType: AgentVaultCredentialType.Passthrough,
+    credentialConfig: {},
+    encryptedCredential: null
+  });
 
-  test("sends the session's hook at the top level with its secret and rules, and none per service", async () => {
-    const { service, createCipherPairWithDataKey, findSessionHook } = setup(noRefresh, [hookedRow], [], {
-      session: { hookId: savedHook.id },
-      hookRow: savedHook
+  test("sends each service's hook with its secret and narrowing, and null for a service without one", async () => {
+    const { service, createCipherPairWithDataKey, findHooks } = setup(noRefresh, [narrowedRow, plainRow], [], {
+      hooks: [savedHook]
     });
     const resolved = await resolve(service);
-    expect(findSessionHook).toHaveBeenCalledWith(
-      expect.objectContaining({ hookId: savedHook.id, sessionId: "session-1", projectId: PROJECT_ID })
-    );
-    expect(resolved.hook).toEqual({
+    expect(findHooks).toHaveBeenCalledWith(expect.objectContaining({ hookIds: [savedHook.id], projectId: PROJECT_ID }));
+    expect(resolved.services[0].hook).toEqual({
       id: savedHook.id,
       name: "approvals",
       url: "https://hooks.example.com/agent-vault",
       secret: "s".repeat(32),
-      rules: [{ service: "stripe", methods: ["POST"], paths: ["/v1/refunds"] }]
+      methods: ["POST"],
+      paths: ["/v1/refunds"]
     });
-    expect(resolved.services[0]).not.toHaveProperty("hook");
+    expect(resolved.services[1].hook).toBeNull();
+    expect(resolved).not.toHaveProperty("hook");
     // Pass-through services and a hook: the hook's secret is still sealed.
     expect(createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
   });
 
-  test("an inline hook goes out with a null name", async () => {
-    const { service } = setup(noRefresh, [hookedRow], [], {
-      session: { hookId: savedHook.id },
-      hookRow: { ...savedHook, name: null, links: [], appliesToAllServices: true }
+  test("a hook with no narrowing goes out without methods, paths or tools, so it checks every request", async () => {
+    const { service } = setup(noRefresh, [{ ...hookedRow, hookId: savedHook.id }], [], { hooks: [savedHook] });
+    const [resolved] = (await resolve(service)).services;
+    expect(resolved.hook).toEqual({
+      id: savedHook.id,
+      name: "approvals",
+      url: "https://hooks.example.com/agent-vault",
+      secret: "s".repeat(32)
     });
-    expect((await resolve(service)).hook).toMatchObject({ name: null, rules: [] });
   });
 
-  test("a session without a hook, or whose saved hook was deleted, sends null and reads no hook", async () => {
-    const without = setup(noRefresh, [hookedRow]);
-    expect((await resolve(without.service)).hook).toBeNull();
-    expect(without.findSessionHook).not.toHaveBeenCalled();
-    expect(without.createCipherPairWithDataKey).not.toHaveBeenCalled();
-
-    const deleted = setup(noRefresh, [hookedRow], [], { session: { hookId: savedHook.id }, hookRow: undefined });
-    expect((await resolve(deleted.service)).hook).toBeNull();
+  test("a narrowing left behind without a hook is never sent", async () => {
+    const { service } = setup(noRefresh, [{ ...hookedRow, hookId: null, hookMethods: ["POST"] }]);
+    expect((await resolve(service)).services[0].hook).toBeNull();
   });
 
-  test("a hook not yet on the replica is read again from the primary", async () => {
-    const { service, findSessionHook } = setup(noRefresh, [hookedRow], [], {
-      session: { hookId: savedHook.id },
-      hookRow: savedHook,
-      hookOnlyOnPrimary: true
-    });
-    expect((await resolve(service)).hook).toMatchObject({ id: savedHook.id });
-    expect(findSessionHook).toHaveBeenCalledTimes(2);
-    expect(findSessionHook).toHaveBeenLastCalledWith(expect.objectContaining({ onPrimary: true }));
+  test("a project service's old hook columns are never sent, since its hook moved to a saved hook", async () => {
+    const withOldColumns = { ...hookedRow, hookUrl: "https://old.example.com", encryptedHookSecret: Buffer.from("x") };
+    const { service } = setup(noRefresh, [withOldColumns]);
+    expect((await resolve(service)).services[0].hook).toBeNull();
+  });
+
+  test("a hook not yet on the replica is read again from the primary, and one deleted goes out as none", async () => {
+    const late = setup(noRefresh, [narrowedRow], [], { hooks: [savedHook], hooksOnlyOnPrimary: true });
+    expect((await resolve(late.service)).services[0].hook).toMatchObject({ id: savedHook.id });
+    expect(late.findHooks).toHaveBeenCalledTimes(2);
+    expect(late.findHooks).toHaveBeenLastCalledWith(expect.objectContaining({ onPrimary: true }));
+
+    const deleted = setup(noRefresh, [narrowedRow]);
+    expect((await resolve(deleted.service)).services[0].hook).toBeNull();
   });
 
   test("a deleted hook on a session read from the primary is not read twice", async () => {
-    const { service, findSessionHook } = setup(noRefresh, [hookedRow], [], {
-      session: { hookId: savedHook.id },
-      hookRow: undefined,
-      onlyOnPrimary: true
-    });
-    expect((await resolve(service)).hook).toBeNull();
-    expect(findSessionHook).toHaveBeenCalledTimes(1);
+    const { service, findHooks } = setup(noRefresh, [narrowedRow], [], { onlyOnPrimary: true });
+    expect((await resolve(service)).services[0].hook).toBeNull();
+    expect(findHooks).toHaveBeenCalledTimes(1);
   });
 
-  test("off-plan, the session's hook keeps going out", async () => {
-    const { service } = setup(noRefresh, [hookedRow], [], {
-      session: { hookId: savedHook.id },
-      hookRow: savedHook,
+  test("off-plan, a service's hook keeps going out", async () => {
+    const { service } = setup(noRefresh, [narrowedRow], [], {
+      hooks: [savedHook],
       licenseService: new FakeLicenseService().setPlan("org-1", { agentVaultHooks: false })
     });
-    expect((await resolve(service)).hook).toMatchObject({ id: savedHook.id });
+    expect((await resolve(service)).services[0].hook).toMatchObject({ id: savedHook.id });
   });
 
-  test("a rule goes out under the name of the service row sent with it, and one whose service isn't sent is left out", async () => {
-    const { service } = setup(noRefresh, [{ ...hookedRow, name: "stripe-payments" }], [], {
-      session: { hookId: savedHook.id },
-      hookRow: {
-        ...savedHook,
-        links: [
-          { serviceId: SERVICE_ID, methods: ["POST"], paths: null, tools: null },
-          { serviceId: DELETED_ID, methods: null, paths: null, tools: ["x"] }
-        ]
-      }
-    });
-    const resolved = await resolve(service);
-    expect(resolved.services.map((s) => s.name)).toContain("stripe-payments");
-    expect(resolved.hook?.rules).toEqual([{ service: "stripe-payments", methods: ["POST"] }]);
-  });
-
-  test("a hook none of whose services is in the session goes out as no hook, not as one checking everything", async () => {
-    const { service } = setup(noRefresh, [hookedRow], [], {
-      session: { hookId: savedHook.id },
-      hookRow: { ...savedHook, links: [{ serviceId: DELETED_ID, methods: ["POST"], paths: null, tools: null }] }
-    });
-    expect((await resolve(service)).hook).toBeNull();
-  });
-
-  test("a hook left without services goes out as no hook", async () => {
-    const { service } = setup(noRefresh, [hookedRow], [], {
-      session: { hookId: savedHook.id },
-      hookRow: { ...savedHook, links: [] }
-    });
-    expect((await resolve(service)).hook).toBeNull();
-  });
-
-  test("a hook saved with no rules still checks everything", async () => {
-    const { service } = setup(noRefresh, [hookedRow], [], {
-      session: { hookId: savedHook.id },
-      hookRow: { ...savedHook, links: [], appliesToAllServices: true }
-    });
-    expect((await resolve(service)).hook).toMatchObject({ id: savedHook.id, rules: [] });
-  });
-
-  test("a hook that lost its secret fails the resolve rather than go out as no hook", async () => {
-    const { service } = setup(noRefresh, [hookedRow], [], {
-      session: { hookId: savedHook.id },
-      hookRow: { ...savedHook, encryptedSecret: null }
-    });
-    await expect(resolve(service)).rejects.toThrow("Failed to resolve the session's credentials");
-  });
-
-  test("sends the session's metadata when the session has a hook", async () => {
-    const { service } = setup(noRefresh, [hookedRow], [], {
-      session: { hookId: savedHook.id },
-      hookRow: savedHook,
-      metadata: { userRef: "u-42" }
-    });
+  test("sends the session's metadata when a service has a hook", async () => {
+    const { service } = setup(noRefresh, [narrowedRow], [], { hooks: [savedHook], metadata: { userRef: "u-42" } });
     expect((await resolve(service)).session.metadata).toEqual({ userRef: "u-42" });
   });
 

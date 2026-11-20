@@ -4,9 +4,20 @@ import { useProject } from "@app/context";
 import { useDeleteAgentVaultHook } from "@app/hooks/api/agentVault";
 import { TAgentVaultHook } from "@app/hooks/api/agentVault/types";
 
+import { listNames } from "./hookSchema";
+
 type Props = {
-  hook: Pick<TAgentVaultHook, "id" | "name"> | null;
+  hook: Pick<TAgentVaultHook, "id" | "name" | "usedBy"> | null;
   onOpenChange: (isOpen: boolean) => void;
+};
+
+const deleteDescription = (usedBy: TAgentVaultHook["usedBy"]) => {
+  if (!usedBy.length) return "This cannot be undone.";
+  const names = listNames(usedBy.map((service) => service.name));
+  if (usedBy.length === 1) {
+    return `It checks ${names}, which won't be checked after this. This cannot be undone.`;
+  }
+  return `It checks ${names}. They won't be checked after this. This cannot be undone.`;
 };
 
 export const DeleteHookDialog = ({ hook, onOpenChange }: Props) => {
@@ -25,7 +36,7 @@ export const DeleteHookDialog = ({ hook, onOpenChange }: Props) => {
       isOpen={Boolean(hook)}
       onOpenChange={onOpenChange}
       title={`Delete "${hook?.name}"`}
-      description="Sessions created with it keep running without a hook. This cannot be undone."
+      description={deleteDescription(hook?.usedBy ?? [])}
       confirmKey={hook?.name ?? ""}
       isPending={deleteHook.isPending}
       onConfirm={handleDelete}

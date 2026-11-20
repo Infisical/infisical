@@ -12,9 +12,11 @@ import {
 import { ConflictError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
+import { AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE } from "../agent-vault-hook/agent-vault-hook-fns";
 import { hashAccessToken } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
 import {
   AgentVaultCredentialType,
+  AgentVaultHttpMethod,
   AgentVaultMcpTransport,
   AgentVaultServiceType,
   AgentVaultVariableType
@@ -34,6 +36,7 @@ vi.mock("./agent-vault-mcp-tool-list-fns", async (importOriginal) => ({
 const PROJECT_ID = "project-1";
 const BUNDLE_ID = "bundle-1";
 const SERVICE_ID = "service-1";
+const SAVED_HOOK = { id: "00000000-0000-4000-8000-0000000000aa", name: "approvals" };
 
 type TUpdateServiceInput = Parameters<ReturnType<typeof agentVaultAccessBundleServiceFactory>["updateService"]>[0];
 
@@ -70,7 +73,9 @@ const buildService = ({
   rules,
   variableKeys = [],
   oauthVariableKeys = [],
-  oauthVariableTokens = {}
+  oauthVariableTokens = {},
+  hooksOnPlan = true,
+  savedHooks = [SAVED_HOOK]
 }: {
   firstRead: TAgentVaultServices;
   locked: TAgentVaultServices;
@@ -82,6 +87,9 @@ const buildService = ({
   oauthVariableKeys?: string[];
   // The access token each connected OAuth variable holds, by key. One left out isn't connected.
   oauthVariableTokens?: Record<string, string>;
+  hooksOnPlan?: boolean;
+  // The project's saved hooks.
+  savedHooks?: { id: string; name: string }[];
 }) => {
   const tx = {};
   const agentVaultServiceDAL = {
@@ -121,7 +129,16 @@ const buildService = ({
     })
   };
   const licenseService = {
-    getPlan: vi.fn().mockResolvedValue(Plan.restore(testFeatures()))
+    getPlan: vi.fn().mockResolvedValue(Plan.restore({ ...testFeatures(), agentVaultHooks: hooksOnPlan }))
+  };
+  const hookNamed = async ({ name }: { name: string }) => savedHooks.find((hook) => hook.name === name);
+  const agentVaultHookDAL = {
+    findByNameInProject: vi.fn(hookNamed),
+    findByNameForService: vi.fn(hookNamed),
+    findNamesByIds: vi.fn(
+      async ({ ids }: { ids: string[] }) =>
+        new Map(savedHooks.filter((hook) => ids.includes(hook.id)).map((hook) => [hook.id, hook.name]))
+    )
   };
   const agentVaultVariableDAL = {
     findKeys: vi
@@ -202,7 +219,8 @@ const buildService = ({
     },
     agentVaultPersonalValueService: { findStatusesForOwner: vi.fn().mockResolvedValue([]) },
     kmsDataKeyService,
-    licenseService
+    licenseService,
+    agentVaultHookDAL
   } as unknown as Parameters<typeof agentVaultAccessBundleServiceFactory>[0]);
   return {
     service,
@@ -211,7 +229,8 @@ const buildService = ({
     agentVaultServiceVariableReferenceDAL,
     agentVaultOauthService,
     kmsDataKeyService,
-    licenseService
+    licenseService,
+    agentVaultHookDAL
   };
 };
 
@@ -327,6 +346,7 @@ describe("updateService, the service it returns", () => {
         "port",
         "credential",
         "variableReferences",
+        "hook",
         "createdAt",
         "updatedAt"
       ].sort()
@@ -362,54 +382,159 @@ describe("updateService, what the audit is told changed", () => {
 
 const plainService = () => sshService({ hasCertificate: false, secret: "key" });
 
-// Rows written before hooks moved to their own resource still carry these columns until a later release drops them.
+// Rows written before hooks were their own resource still carry these columns until a later release drops them.
 const legacyHookedService = (): TAgentVaultServices => ({
   ...sshService({ hasCertificate: false, secret: "key" }),
   hookUrl: "https://hooks.example.com/agent-vault",
   encryptedHookSecret: Buffer.from("sealed")
 });
 
-describe("hooks moved off services", () => {
-  test("an update writes no hook columns", async () => {
-    const { service, agentVaultServiceDAL } = buildService({
-      firstRead: legacyHookedService(),
-      locked: legacyHookedService()
+const withSavedHook = (): TAgentVaultServices => ({
+  ...sshService({ hasCertificate: false, secret: "key" }),
+  hookId: SAVED_HOOK.id,
+  hookMethods: null,
+  hookPaths: null,
+  hookTools: null
+});
+
+const noHooksRead = [
+  { action: "manage", subject: "all" },
+  { action: "read", subject: ProjectPermissionSub.AgentVaultHooks, inverted: true }
+];
+
+describe("a service's hook", () => {
+  test("setting one writes the hook and its narrowing, checks the plan and tells the audit", async () => {
+    const { service, agentVaultServiceDAL, licenseService } = buildService({
+      firstRead: plainService(),
+      locked: plainService()
     });
 
-    const result = await updateSsh(service, { port: 2222 });
+    const result = await updateSsh(service, { hook: { name: "approvals" } });
 
-    const columns = writtenColumns(agentVaultServiceDAL);
-    expect(columns).not.toHaveProperty("hookUrl");
-    expect(columns).not.toHaveProperty("encryptedHookSecret");
-    expect(result.update).not.toHaveProperty("hookChanged");
+    expect(writtenColumns(agentVaultServiceDAL)).toMatchObject({
+      hookId: SAVED_HOOK.id,
+      hookMethods: null,
+      hookPaths: null,
+      hookTools: null
+    });
+    expect(licenseService.getPlan).toHaveBeenCalled();
+    expect(result.update.hookChange).toEqual({ previous: null, current: { id: SAVED_HOOK.id, name: "approvals" } });
+    expect(result.service.hook).toEqual({ id: SAVED_HOOK.id, name: "approvals" });
   });
 
-  test("a create writes no hook columns and checks no plan", async () => {
-    const { service, agentVaultServiceDAL, licenseService } = buildService({
-      firstRead: legacyHookedService(),
-      locked: legacyHookedService()
+  test("sending the hook it already has checks no plan and isn't a change", async () => {
+    const { service, licenseService } = buildService({
+      firstRead: withSavedHook(),
+      locked: withSavedHook(),
+      hooksOnPlan: false
     });
 
-    await service.createService({
+    const result = await updateSsh(service, { hook: { name: "approvals" }, port: 2222 });
+
+    expect(licenseService.getPlan).not.toHaveBeenCalled();
+    expect(result.update.hookChange).toBeUndefined();
+  });
+
+  test("removing it works off-plan, clears every hook column and names the hook it had", async () => {
+    const { service, agentVaultServiceDAL, licenseService } = buildService({
+      firstRead: withSavedHook(),
+      locked: withSavedHook(),
+      hooksOnPlan: false
+    });
+
+    const result = await updateSsh(service, { hook: null });
+
+    expect(writtenColumns(agentVaultServiceDAL)).toMatchObject({
+      hookId: null,
+      hookMethods: null,
+      hookPaths: null,
+      hookTools: null
+    });
+    expect(licenseService.getPlan).not.toHaveBeenCalled();
+    expect(result.update.hookChange).toEqual({ previous: { id: SAVED_HOOK.id, name: "approvals" }, current: null });
+  });
+
+  test("setting one off-plan is refused before the transaction", async () => {
+    const { service, agentVaultServiceDAL } = buildService({
+      firstRead: plainService(),
+      locked: plainService(),
+      hooksOnPlan: false
+    });
+
+    await expect(updateSsh(service, { hook: { name: "approvals" } })).rejects.toThrow(
+      AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE
+    );
+    expect(agentVaultServiceDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  test("a name the project has no hook for is a 404 naming it", async () => {
+    const { service } = buildService({ firstRead: plainService(), locked: plainService(), savedHooks: [] });
+
+    await expect(updateSsh(service, { hook: { name: "approvals" } })).rejects.toThrow(
+      "There's no hook called 'approvals' in this project."
+    );
+  });
+
+  test("a hook deleted before the save's transaction is a 404 rather than a failed key", async () => {
+    const { service, agentVaultHookDAL, agentVaultServiceDAL } = buildService({
+      firstRead: plainService(),
+      locked: plainService()
+    });
+    agentVaultHookDAL.findByNameForService.mockResolvedValue(undefined);
+
+    await expect(updateSsh(service, { hook: { name: "approvals" } })).rejects.toThrow(
+      "There's no hook called 'approvals' in this project."
+    );
+    expect(agentVaultServiceDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("a narrowing an SSH service can't use is refused", async () => {
+    const { service } = buildService({ firstRead: plainService(), locked: plainService() });
+
+    await expect(
+      updateSsh(service, { hook: { name: "approvals", methods: [AgentVaultHttpMethod.Post] } })
+    ).rejects.toThrow(
+      "'bastion' is an SSH service, and only an HTTP service can be narrowed by methods or paths. Leave them out to check every request to it."
+    );
+  });
+
+  test("naming one takes read on hooks", async () => {
+    const { service } = buildService({ firstRead: plainService(), locked: plainService(), rules: noHooksRead });
+
+    await expect(updateSsh(service, { hook: { name: "approvals" } })).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  test("create writes the hook it names", async () => {
+    const { service, agentVaultServiceDAL } = buildService({ firstRead: plainService(), locked: plainService() });
+
+    const result = await service.createService({
       projectId: PROJECT_ID,
       ctx,
       type: AgentVaultServiceType.Ssh,
       name: "bastion",
       host: "bastion.internal",
       port: 22,
-      credential: { type: AgentVaultCredentialType.Basic, username: "agent", password: "p" }
+      credential: { type: AgentVaultCredentialType.Basic, username: "agent", password: "p" },
+      hook: { name: "approvals" }
     });
 
-    const columns = agentVaultServiceDAL.create.mock.calls[0][0];
-    expect(columns).not.toHaveProperty("hookUrl");
-    expect(columns).not.toHaveProperty("encryptedHookSecret");
-    expect(licenseService.getPlan).not.toHaveBeenCalled();
+    expect(agentVaultServiceDAL.create.mock.calls[0][0]).toMatchObject({ hookId: SAVED_HOOK.id });
+    expect(result.service.hook).toEqual({ id: SAVED_HOOK.id, name: "approvals" });
   });
 
-  test("a read leaves out the hook a legacy row still holds", async () => {
-    const admin = buildService({ firstRead: legacyHookedService(), locked: legacyHookedService() });
-    const read = await admin.service.getService({ projectId: PROJECT_ID, ctx, serviceId: SERVICE_ID });
-    expect(JSON.parse(JSON.stringify(read.service))).not.toHaveProperty("hook");
+  test("reads show the hook only to callers who can read hooks, and never a legacy row's old one", async () => {
+    const admin = buildService({ firstRead: withSavedHook(), locked: withSavedHook() });
+    expect(
+      (await admin.service.getService({ projectId: PROJECT_ID, ctx, serviceId: SERVICE_ID })).service.hook
+    ).toEqual({ id: SAVED_HOOK.id, name: "approvals" });
+
+    const noHooks = buildService({ firstRead: withSavedHook(), locked: withSavedHook(), rules: noHooksRead });
+    const hidden = await noHooks.service.getService({ projectId: PROJECT_ID, ctx, serviceId: SERVICE_ID });
+    expect(hidden.service).not.toHaveProperty("hook");
+
+    const legacy = buildService({ firstRead: legacyHookedService(), locked: legacyHookedService() });
+    const read = await legacy.service.getService({ projectId: PROJECT_ID, ctx, serviceId: SERVICE_ID });
+    expect(read.service.hook).toBeNull();
     expect(JSON.stringify(read)).not.toContain("hooks.example.com");
   });
 });

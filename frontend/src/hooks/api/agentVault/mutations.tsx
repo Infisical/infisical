@@ -42,8 +42,6 @@ import {
   TCreateAgentVaultProxyDTO,
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
-  TAddAgentVaultHookServiceDTO,
-  TAgentVaultHookServiceLink,
   TCreateAgentVaultHookDTO,
   TCreateAgentVaultSkillDTO,
   TAgentVaultOauthVariableSignInStart,
@@ -59,7 +57,6 @@ import {
   TUpdateAgentVaultSessionDTO,
   TUpdateAgentVaultSessionLogSettingsDTO,
   TUpdateAgentVaultHookDTO,
-  TUpdateAgentVaultHookServiceDTO,
   TUpdateAgentVaultSkillDTO,
   TStartAgentVaultOauthVariableSignInDTO,
   TUpdateAgentVaultVariableDTO
@@ -246,6 +243,17 @@ const invalidateServices = (
     queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(orgId, projectId) })
   ]);
 
+// Writing a service can also change its hook, or the name a hook's Used By shows for it.
+const invalidateServiceWrite = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string,
+  projectId: string
+) =>
+  Promise.all([
+    invalidateServices(queryClient, orgId, projectId),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.hooks(orgId, projectId) })
+  ]);
+
 export const useCreateAgentVaultService = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
@@ -258,7 +266,7 @@ export const useCreateAgentVaultService = (projectId: string) => {
       );
       return data;
     },
-    onSuccess: () => invalidateServices(queryClient, currentOrg.id, projectId)
+    onSuccess: () => invalidateServiceWrite(queryClient, currentOrg.id, projectId)
   });
 };
 
@@ -274,7 +282,7 @@ export const useUpdateAgentVaultService = (projectId: string) => {
       );
       return data;
     },
-    onSuccess: () => invalidateServices(queryClient, currentOrg.id, projectId)
+    onSuccess: () => invalidateServiceWrite(queryClient, currentOrg.id, projectId)
   });
 };
 
@@ -288,7 +296,7 @@ export const useDeleteAgentVaultService = (projectId: string) => {
       );
       return data.service;
     },
-    onSuccess: () => invalidateServices(queryClient, currentOrg.id, projectId)
+    onSuccess: () => invalidateServiceWrite(queryClient, currentOrg.id, projectId)
   });
 };
 
@@ -1012,8 +1020,7 @@ export const useRemoveAgentVaultAccessBundleSkill = (projectId: string) => {
   });
 };
 
-// Sessions are refetched too: they show the hook they run with, and an edit or delete reaches them live. So are
-// services, whose own read lists the hooks they're in.
+// Services are refetched too, and the bundles that list them, since a service's read names its hook.
 const invalidateHookChange = (
   queryClient: ReturnType<typeof useQueryClient>,
   orgId: string,
@@ -1021,8 +1028,8 @@ const invalidateHookChange = (
 ) =>
   Promise.all([
     queryClient.invalidateQueries({ queryKey: agentVaultKeys.hooks(orgId, projectId) }),
-    queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(orgId, projectId) }),
-    queryClient.invalidateQueries({ queryKey: agentVaultKeys.services(orgId, projectId) })
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.services(orgId, projectId) }),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(orgId, projectId) })
   ]);
 
 export const useCreateAgentVaultHook = (projectId: string) => {
@@ -1050,50 +1057,6 @@ export const useUpdateAgentVaultHook = (projectId: string) => {
         params
       );
       return data.hook;
-    },
-    onSuccess: () => invalidateHookChange(queryClient, currentOrg.id, projectId)
-  });
-};
-
-export const useAddAgentVaultHookService = (projectId: string) => {
-  const { currentOrg } = useOrganization();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ hookId, ...rule }: TAddAgentVaultHookServiceDTO) => {
-      const { data } = await apiRequest.post<{ link: TAgentVaultHookServiceLink }>(
-        `/api/v1/agent-vault/hooks/${hookId}/services`,
-        rule
-      );
-      return data.link;
-    },
-    onSuccess: () => invalidateHookChange(queryClient, currentOrg.id, projectId)
-  });
-};
-
-export const useUpdateAgentVaultHookService = (projectId: string) => {
-  const { currentOrg } = useOrganization();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ hookId, serviceId, ...narrowing }: TUpdateAgentVaultHookServiceDTO) => {
-      const { data } = await apiRequest.patch<{ link: TAgentVaultHookServiceLink }>(
-        `/api/v1/agent-vault/hooks/${hookId}/services/${serviceId}`,
-        narrowing
-      );
-      return data.link;
-    },
-    onSuccess: () => invalidateHookChange(queryClient, currentOrg.id, projectId)
-  });
-};
-
-export const useRemoveAgentVaultHookService = (projectId: string) => {
-  const { currentOrg } = useOrganization();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ hookId, serviceId }: { hookId: string; serviceId: string }) => {
-      const { data } = await apiRequest.delete<{ link: TAgentVaultHookServiceLink }>(
-        `/api/v1/agent-vault/hooks/${hookId}/services/${serviceId}`
-      );
-      return data.link;
     },
     onSuccess: () => invalidateHookChange(queryClient, currentOrg.id, projectId)
   });

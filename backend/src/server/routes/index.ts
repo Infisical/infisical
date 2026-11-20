@@ -2097,6 +2097,8 @@ export const registerRoutes = async (
     agentVaultPersonalValueService,
     permissionService,
     kmsDataKeyService,
+    licenseService,
+    agentVaultHookDAL,
     membershipDAL,
     membershipRoleDAL,
     agentVaultMemberDAL,
@@ -2130,8 +2132,7 @@ export const registerRoutes = async (
     userDAL,
     orgDAL,
     permissionService,
-    kmsDataKeyService,
-    licenseService
+    kmsDataKeyService
   });
 
   const agentVaultDelegationService = agentVaultDelegationServiceFactory({

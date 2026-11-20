@@ -238,6 +238,8 @@ export type TAgentVaultService = (
   variableReferences?: TAgentVaultVariableReference[];
   // The caller's own values, on reads only. null when the admin sets the whole credential.
   personalValues?: TAgentVaultPersonalValues | null;
+  // Left out for a caller who can't read hooks.
+  hook?: TAgentVaultServiceHook | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -250,8 +252,6 @@ export type TAgentVaultSkippedBundleItem = { id: string; name: string };
 // A service read from the project, with the access bundles it is in. A member gets only the ones they reach.
 export type TAgentVaultProjectService = TAgentVaultService & {
   accessBundles: TAgentVaultBundleRef[];
-  /** Only on a single service read, and only for callers who can read hooks. */
-  hooks?: TAgentVaultServiceHook[];
 };
 
 export type TAgentVaultActor =
@@ -485,7 +485,6 @@ export type TAgentVaultSession = {
   skills: TAgentVaultSessionSkill[];
   /** Null until the proxy uploads the session's first log chunk. */
   stats: TAgentVaultSessionStats | null;
-  hook: TAgentVaultSessionHook | null;
 };
 
 export type TAgentVaultSessionStats = {
@@ -545,7 +544,6 @@ export type TAgentVaultMintedSession = {
   accessBundle: TAgentVaultSessionAccessBundle | null;
   services: TAgentVaultSessionService[];
   skills: TAgentVaultSessionSkill[];
-  hook: TAgentVaultSessionHook | null;
 };
 
 export type TAgentVaultProxy = {
@@ -599,6 +597,7 @@ export type TUpdateAgentVaultAccessBundleDTO = {
 export type TCreateAgentVaultServiceDTO = {
   // Access bundles to add the new service to in the same request.
   accessBundleIds?: string[];
+  hook?: TAgentVaultServiceHookInput;
 } & (
   | {
       type: AgentVaultServiceType.Http;
@@ -662,6 +661,8 @@ export type TUpdateAgentVaultServiceDTO = {
   credential?: TAgentVaultCredentialUpdate | TAgentVaultSshKeyCredentialUpdate;
   customHeaders?: TAgentVaultCustomHeaderInput[];
   substitutions?: TAgentVaultSubstitutionInput[];
+  /** Left out keeps the service's hook; null removes it. */
+  hook?: TAgentVaultServiceHookInput | null;
 };
 
 /** Credential and header values left out fall back to what the saved service stores, as on update. */
@@ -721,8 +722,8 @@ export type TAddAgentVaultMembersDTO = TAgentVaultActorIdsDTO & {
   accessBundleId: string;
 };
 
-// Needs an access bundle, or at least one service or skill. Each is named rather than referenced by ID, except the hook,
-// which is a saved hook's ID. The API also takes services, skills and a hook defined inline, which this UI doesn't send.
+// Needs an access bundle, or at least one service or skill, each named rather than referenced by ID. The API also takes
+// services and skills defined inline, which this UI doesn't send.
 export type TCreateAgentVaultSessionDTO = {
   accessBundle?: string;
   services?: string[];
@@ -730,7 +731,6 @@ export type TCreateAgentVaultSessionDTO = {
   ttl: string;
   label?: string;
   metadata?: Record<string, string>;
-  hookId?: string;
 };
 
 export type TUpdateAgentVaultSessionDTO = {
@@ -1173,70 +1173,36 @@ export type TAgentVaultAccess = {
   warn: boolean;
 };
 
-export type TAgentVaultHookRuleNarrowing = {
+/** What a hook checks of its service: methods and paths of an HTTP service, tools of an MCP service. A list left out
+ * matches everything. */
+export type TAgentVaultHookNarrowing = {
   methods?: AgentVaultHttpMethod[];
   paths?: string[];
   tools?: string[];
 };
 
-/**
- * Picks the requests of one of the project's services that go to the hook. Methods and paths narrow an HTTP service,
- * tools an MCP service. Reads name the service by its current name; deleting the service removes its rule.
- */
-export type TAgentVaultHookRule = TAgentVaultHookRuleNarrowing & {
-  service: string;
-};
-
-/** A rule as sent: the project service by name. */
-export type TAgentVaultHookRuleInput = TAgentVaultHookRule;
-
-/** A saved hook a service is in, with what the hook checks of that service. */
-export type TAgentVaultServiceHook = TAgentVaultHookRuleNarrowing & {
+/** A service's hook, with what it checks of that service. */
+export type TAgentVaultServiceHook = TAgentVaultHookNarrowing & {
   id: string;
   name: string;
 };
 
-/** One service's place in a hook, as the hook service endpoints return it. */
-export type TAgentVaultHookServiceLink = TAgentVaultHookRuleNarrowing & {
-  hookId: string;
-  hookName: string;
-  serviceId: string;
-  service: string;
-};
-
-export type TAddAgentVaultHookServiceDTO = TAgentVaultHookRuleInput & { hookId: string };
-
-/** Fields left out keep their values; null makes the hook match every method, path or tool. */
-export type TUpdateAgentVaultHookServiceDTO = {
-  hookId: string;
-  serviceId: string;
-  methods?: AgentVaultHttpMethod[] | null;
-  paths?: string[] | null;
-  tools?: string[] | null;
+/** A service's hook as sent: a saved hook by name. */
+export type TAgentVaultServiceHookInput = TAgentVaultHookNarrowing & {
+  name: string;
 };
 
 /** A saved hook. Its secret is write-only and never returned. */
 export type TAgentVaultHook = {
   id: string;
+  projectId: string;
   name: string;
   description: string | null;
   url: string;
-  rules: TAgentVaultHookRule[];
-  /** With no rules, true sends every request of the session to the hook and false sends none. */
-  appliesToAllServices: boolean;
+  /** The saved services that use it. */
+  usedBy: { id: string; name: string }[];
   createdAt: string;
   updatedAt: string;
-};
-
-/** The hook a session was started with. URL and rules only for callers who can read hooks. */
-export type TAgentVaultSessionHook = {
-  id: string;
-  /** Null for a hook sent inline with the session. */
-  name: string | null;
-  isInline: boolean;
-  url?: string;
-  rules?: TAgentVaultHookRule[];
-  appliesToAllServices?: boolean;
 };
 
 export type TListAgentVaultHooksDTO = {
@@ -1255,7 +1221,6 @@ export type TCreateAgentVaultHookDTO = {
   description?: string;
   url: string;
   secret: string;
-  rules?: TAgentVaultHookRuleInput[];
 };
 
 /** Fields left out keep their values; `secret` left out keeps the saved one and `description: null` removes it. */
@@ -1265,5 +1230,4 @@ export type TUpdateAgentVaultHookDTO = {
   description?: string | null;
   url?: string;
   secret?: string;
-  rules?: TAgentVaultHookRuleInput[];
 };
