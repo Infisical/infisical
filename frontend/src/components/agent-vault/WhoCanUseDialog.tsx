@@ -41,7 +41,7 @@ export const WhoCanUseDialog = ({ isOpen, onOpenChange, target }: Props) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Who Can Use {target?.name}</DialogTitle>
           <DialogDescription>

@@ -12,10 +12,8 @@ import {
 } from "lucide-react";
 
 import {
-  agentVaultRoleRules,
   CreateAgentVaultRoleDialog,
   DeleteAgentVaultRoleDialog,
-  describeRoleRules,
   TRoleToCopy,
   TRoleToDelete
 } from "@app/components/agent-vault/roles";
@@ -37,7 +35,6 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-  OverflowBadgeList,
   RowLink,
   Skeleton,
   Table,
@@ -57,28 +54,11 @@ import {
 import { canReadAgentVaultMembers } from "@app/helpers/agentVaultPermissions";
 import { isCustomProjectRole } from "@app/helpers/roles";
 import { useGetProjectRoles } from "@app/hooks/api";
-import {
-  useGetAgentVaultRoleDetails,
-  useListAllAgentVaultMembers
-} from "@app/hooks/api/agentVaultRoles";
+import { useListAllAgentVaultMembers } from "@app/hooks/api/agentVaultRoles";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 const BUILT_IN_ORDER: string[] = [ProjectMembershipRole.Admin, ProjectMembershipRole.NoAccess];
-
-const GrantsCell = ({ parts }: { parts: string[] | null }) => {
-  if (!parts) return <span className="text-sm text-muted">Couldn&apos;t load</span>;
-  if (!parts.length) return <span className="text-sm text-muted">No permissions</span>;
-  return (
-    <OverflowBadgeList
-      items={parts}
-      getKey={(part) => part}
-      getLabel={(part) => part}
-      maxBadgeWidth={240}
-      className="w-full"
-    />
-  );
-};
 
 export const RolesTab = () => {
   const { projectId } = useProject();
@@ -94,13 +74,7 @@ export const RolesTab = () => {
     isError,
     refetch
   } = useGetProjectRoles(projectId, ProjectType.AgentVault);
-  // The list leaves out what each custom role grants, so each is read on its own. Built-in roles grant what the editor
-  // says they do.
-  const roleSlugs = useMemo(
-    () => (roles ?? []).filter((role) => isCustomProjectRole(role.slug)).map((role) => role.slug),
-    [roles]
-  );
-  const details = useGetAgentVaultRoleDetails(projectId, roleSlugs);
+  // Only the delete dialog reads these: it says how many members hold the role.
   const { data: members, isPending: isMembersPending } = useListAllAgentVaultMembers(projectId, {
     enabled: canReadMembers
   });
@@ -133,7 +107,7 @@ export const RolesTab = () => {
       .sort((a, b) => rank(a.slug) - rank(b.slug) || a.name.localeCompare(b.name));
   }, [roles, search]);
 
-  const columnCount = canReadMembers ? 5 : 4;
+  const columnCount = 3;
 
   const renderBody = () => {
     if (isError) {
@@ -169,13 +143,9 @@ export const RolesTab = () => {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead isTruncatable className="w-2/5">
+            <TableHead isTruncatable className="w-full">
               Name
             </TableHead>
-            <TableHead isTruncatable className="w-1/3">
-              Grants
-            </TableHead>
-            {canReadMembers && <TableHead className="w-36">Assigned To</TableHead>}
             <TableHead className="w-36">Type</TableHead>
             <TableHead variant="action" />
           </TableRow>
@@ -196,11 +166,6 @@ export const RolesTab = () => {
           {!isPending &&
             displayed.map((role) => {
               const isCustom = isCustomProjectRole(role.slug);
-              const rules = isCustom
-                ? details.bySlug.get(role.slug)?.permissions
-                : agentVaultRoleRules({ slug: role.slug, permissions: [] });
-              const isDetailPending = isCustom && details.pendingSlugs.has(role.slug);
-              const holderCount = holderCounts.get(role.slug) ?? 0;
               const roleLink = {
                 to: "/organizations/$orgId/projects/agent-vault/$projectId/roles/$roleSlug" as const,
                 params: { orgId: currentOrg.id, projectId, roleSlug: role.slug }
@@ -217,24 +182,6 @@ export const RolesTab = () => {
                       {role.description || role.slug}
                     </div>
                   </TableCell>
-                  <TableCell isTruncatable className="min-w-64">
-                    {isDetailPending ? (
-                      <Skeleton className="h-4 w-48" />
-                    ) : (
-                      <GrantsCell parts={rules ? describeRoleRules(rules) : null} />
-                    )}
-                  </TableCell>
-                  {canReadMembers && (
-                    <TableCell className="text-sm">
-                      {isMembersPending ? (
-                        <Skeleton className="h-4 w-8" />
-                      ) : (
-                        <span className={holderCount ? undefined : "text-muted"}>
-                          {holderCount}
-                        </span>
-                      )}
-                    </TableCell>
-                  )}
                   <TableCell>
                     {isCustom ? (
                       <Badge variant="info">

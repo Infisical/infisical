@@ -1,5 +1,5 @@
-import { useCallback, useMemo } from "react";
-import { QueryClient, useQueries, useQuery, UseQueryResult } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { QueryClient, useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import {
@@ -17,7 +17,7 @@ import {
   TAgentVaultSkill
 } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { roleQueryKeys, useGetProjectRoles } from "@app/hooks/api/roles/queries";
+import { useGetProjectRoles } from "@app/hooks/api/roles/queries";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 
 export type TAgentVaultRoleOption = {
@@ -197,32 +197,4 @@ export const fetchAgentVaultRoleBySlug = async (projectId: string, roleSlug: str
     `/api/v1/projects/${projectId}/roles/slug/${roleSlug}`
   );
   return data.role;
-};
-
-// The role list leaves out each role's rules, so each one is read on its own, under the same key as the role page.
-export const useGetAgentVaultRoleDetails = (projectId: string, roleSlugs: string[]) => {
-  const slugsKey = roleSlugs.join(",");
-  const stableSlugs = useMemo(() => (slugsKey ? slugsKey.split(",") : []), [slugsKey]);
-
-  const combine = useCallback(
-    (results: UseQueryResult<TProjectRole>[]) => ({
-      bySlug: new Map(
-        results.flatMap((result, index) =>
-          result.data ? [[stableSlugs[index], result.data] as const] : []
-        )
-      ),
-      pendingSlugs: new Set(stableSlugs.filter((_, index) => results[index]?.isPending)),
-      failedSlugs: new Set(stableSlugs.filter((_, index) => results[index]?.isError))
-    }),
-    [stableSlugs]
-  );
-
-  return useQueries({
-    queries: stableSlugs.map((slug) => ({
-      queryKey: roleQueryKeys.getProjectRoleBySlug(projectId, slug),
-      queryFn: () => fetchAgentVaultRoleBySlug(projectId, slug),
-      enabled: Boolean(projectId)
-    })),
-    combine
-  });
 };

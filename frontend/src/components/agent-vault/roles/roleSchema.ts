@@ -2,7 +2,6 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import {
-  describeAgentVaultPolicy,
   getBuiltInAgentVaultPolicy,
   policyToRules,
   rulesToPolicy
@@ -32,13 +31,6 @@ export const toRoleSlug = (name: string) => slugify(name, { lowercase: true });
 export const agentVaultRoleRules = (role: { slug: string; permissions: TProjectPermission[] }) => {
   const builtIn = getBuiltInAgentVaultPolicy(role.slug);
   return builtIn ? policyToRules(builtIn) : role.permissions;
-};
-
-/** One phrase per thing a role grants, for lists that have room for a line. Empty when it grants nothing. */
-export const describeRoleRules = (rules: TProjectPermission[]) => {
-  const { policy, unsupported } = rulesToPolicy(rules);
-  const parts = describeAgentVaultPolicy(policy);
-  return unsupported.length ? [...parts, "Rules only the JSON tab can show"] : parts;
 };
 
 // The admin role carries actions the API refuses in a custom one, such as the legacy grant beside what replaced it, so
