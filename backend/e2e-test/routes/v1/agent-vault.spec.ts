@@ -12597,45 +12597,51 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("adding a role leaves the member's other roles as they were, time limits included", async () => {
+    test("naming a member's roles again keeps a time limit still running and gives an ended role afresh", async () => {
       const projectId = await getProjectId();
-      const [timed, extra] = [
+      const [timed, ended, extra] = [
         await createAgentVaultRole(projectId, `keep-timed-${unique()}`, SESSION_RULES),
+        await createAgentVaultRole(projectId, `keep-ended-${unique()}`, SESSION_RULES),
         await createAgentVaultRole(projectId, `keep-extra-${unique()}`, SESSION_RULES)
       ];
       const identity = await createOrgIdentity(`av-keep-roles-${unique()}`);
       try {
         const added = await inject("POST", "/api/v1/agent-vault/members", {
           machineIdentityIds: [identity.id],
-          roles: [timed.slug]
+          roles: [timed.slug, ended.slug]
         });
         expect(added.statusCode, added.payload).toBe(200);
         const membership = await testDb("memberships")
           .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorIdentityId: identity.id })
           .first();
-        // Given for a time through the generic routes, and already over.
-        const endedAt = new Date(Date.now() - 3_600_000);
-        await testDb("membership_roles").where({ membershipId: membership.id, customRoleId: timed.id }).update({
-          isTemporary: true,
-          temporaryMode: "relative",
-          temporaryRange: "1h",
-          temporaryAccessStartTime: new Date(endedAt.getTime() - 3_600_000),
-          temporaryAccessEndTime: endedAt
-        });
+        // Given for a time through the generic routes: one still running, one already over.
+        const limitRole = (customRoleId: string, endsAt: Date) =>
+          testDb("membership_roles").where({ membershipId: membership.id, customRoleId }).update({
+            isTemporary: true,
+            temporaryMode: "relative",
+            temporaryRange: "1h",
+            temporaryAccessStartTime: new Date(endsAt.getTime() - 3_600_000),
+            temporaryAccessEndTime: endsAt
+          });
+        const endsAt = new Date(Date.now() + 3_600_000);
+        await limitRole(timed.id, endsAt);
+        await limitRole(ended.id, new Date(Date.now() - 3_600_000));
 
-        // What the dashboard's Assigned To sends: every role the member holds, and the new one.
+        // A client that resends every role with the new one. No member list shows an ended role, so naming one gives it
+        // back.
         const updated = await inject("PATCH", "/api/v1/agent-vault/members", {
           machineIdentityIds: [identity.id],
-          roles: [timed.slug, extra.slug]
+          roles: [timed.slug, ended.slug, extra.slug]
         });
         expect(updated.statusCode, updated.payload).toBe(200);
         const rows = await testDb("membership_roles")
           .where({ membershipId: membership.id })
           .select("customRoleId", "isTemporary", "temporaryAccessEndTime");
-        expect(rows).toHaveLength(2);
+        expect(rows).toHaveLength(3);
         expect(rows).toEqual(
           expect.arrayContaining([
-            expect.objectContaining({ customRoleId: timed.id, isTemporary: true, temporaryAccessEndTime: endedAt }),
+            expect.objectContaining({ customRoleId: timed.id, isTemporary: true, temporaryAccessEndTime: endsAt }),
+            expect.objectContaining({ customRoleId: ended.id, isTemporary: false, temporaryAccessEndTime: null }),
             expect.objectContaining({ customRoleId: extra.id, isTemporary: false, temporaryAccessEndTime: null })
           ])
         );

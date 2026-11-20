@@ -203,6 +203,58 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
     expect(await grantRoleIdOf(granted)).toBe(grantRoleId);
     expect(await testDb(TableName.Role).where({ projectId, slug: "member-role" })).toHaveLength(1);
   });
+  test("a group's bundle role lasts only as long as its grant counted, while the group held a live role", async () => {
+    const windowEndingAt = (endsAt: Date) =>
+      ({
+        isTemporary: true,
+        temporaryMode: "relative",
+        temporaryRange: "1d",
+        temporaryAccessStartTime: new Date(endsAt.getTime() - 86_400_000),
+        temporaryAccessEndTime: endsAt
+      }) as Partial<TRoleRow>;
+    const addGroup = async (window: Partial<TRoleRow> = {}) => {
+      const suffix = randomUUID().slice(0, 8);
+      const [group] = (await testDb(TableName.Groups)
+        .insert({ orgId, name: `av-migration-group-${suffix}`, slug: `av-migration-group-${suffix}` })
+        .returning("id")) as { id: string }[];
+      const [membership] = (await testDb(TableName.Membership)
+        .insert({ scope: AccessScope.Project, scopeOrgId: orgId, scopeProjectId: projectId, actorGroupId: group.id, isActive: true })
+        .returning("id")) as { id: string }[];
+      await testDb(TableName.MembershipRole).insert({ membershipId: membership.id, role: ProjectMembershipRole.Member, ...window });
+      return { groupId: group.id, membershipId: membership.id };
+    };
+    const endsAt = new Date(Date.now() + 86_400_000);
+    const [permanent, timed, ended] = [
+      await addGroup(),
+      await addGroup(windowEndingAt(endsAt)),
+      await addGroup(windowEndingAt(new Date(Date.now() - 3_600_000)))
+    ];
+    const bundle = await addBundle(`group-window-${randomUUID().slice(0, 8)}`);
+    await Promise.all([permanent, timed, ended].map((group) => grant(bundle, { actorGroupId: group.groupId })));
+
+    await up(testDb);
+    const grantRoleId = await grantRoleIdOf(bundle);
+    const bundleRoleOf = async (membershipId: string) =>
+      (await rolesOf(membershipId)).filter((row) => row.customRoleId === grantRoleId);
+
+    expect(await bundleRoleOf(permanent.membershipId)).toEqual([expect.objectContaining({ temporaryAccessEndTime: null })]);
+    expect(await bundleRoleOf(timed.membershipId)).toEqual([expect.objectContaining({ temporaryAccessEndTime: endsAt })]);
+    // Its role had ended, so its grant gave nothing.
+    expect(await bundleRoleOf(ended.membershipId)).toEqual([]);
+
+    // Both groups that still hold it get their grant back.
+    await down(testDb);
+    const grantedTo = (
+      (await testDb(TableName.Membership)
+        .where({ scope: "resource", scopeResourceId: bundle })
+        .select("actorGroupId")) as { actorGroupId: string }[]
+    ).map((row) => row.actorGroupId);
+    expect(grantedTo.sort()).toEqual([permanent.groupId, timed.groupId].sort());
+
+    // Back to the migrated shape, which the specs after this one run on.
+    await up(testDb);
+  });
+
   test("down() turns bundle roles back into grants for who holds them for good now, leaving each member a role", async () => {
     const [active, revoked, ended, timed, assigned, bundleOnly] = [
       await addIdentity(ProjectMembershipRole.Member),

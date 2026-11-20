@@ -9,7 +9,8 @@ import { AccessScope, ProjectMembershipRole, ProjectType, TableName } from "../s
 // 1. each project with Member or Viewer rows, or members holding a custom role, gets a custom role holding what Member
 //    held; those rows move onto it, and anyone holding a custom role gets it as well, since Member's rules applied to
 //    them and their own role's didn't;
-// 2. each bundle with grants gets a custom role that can use it, given to everyone the bundle was granted to;
+// 2. each bundle with grants gets a custom role that can use it, given to everyone the bundle was granted to, and to a
+//    group only for as long as its grant counted (bundleRoleWindowOf);
 // 3. the grants, now carried by those roles, are deleted.
 // The bundle's role is recorded on the bundle (grantRoleId), so the deprecated grant endpoints can keep working on it.
 // A rolling deploy isn't bridged: until instances still on the previous release are replaced, they find no grants, so
@@ -69,6 +70,50 @@ const longestLasting = <T extends TWindowRow>(held: T[]) =>
     if (!row.isTemporary) return row;
     return (row.temporaryAccessEndTime?.getTime() ?? 0) > (best.temporaryAccessEndTime?.getTime() ?? 0) ? row : best;
   });
+
+type TTimedRoleRow = TWindowRow & {
+  temporaryMode?: string | null;
+  temporaryRange?: string | null;
+  temporaryAccessStartTime?: Date | null;
+};
+
+type TBundleRoleWindow = Omit<Partial<TTimedRoleRow>, "id" | "membershipId" | "isTemporary"> & {
+  isTemporary?: boolean;
+};
+
+// A group's grant counted only while the group held a live role, so the group's bundle role lasts as long as the longest
+// of those, and a group whose roles have all ended gets none (null). Any other grant counted for as long as it stood, so
+// its role is permanent.
+const bundleRoleWindowOf = async (
+  knex: Knex,
+  { membershipId, isGroup }: { membershipId: string; isGroup: boolean }
+): Promise<TBundleRoleWindow | null> => {
+  if (!isGroup) return {};
+  const live = (await knex(TableName.MembershipRole)
+    .where({ membershipId })
+    .where((qb) => {
+      void qb.where("isTemporary", false).orWhere("temporaryAccessEndTime", ">", new Date());
+    })
+    .select(
+      "id",
+      "membershipId",
+      "isTemporary",
+      "temporaryMode",
+      "temporaryRange",
+      "temporaryAccessStartTime",
+      "temporaryAccessEndTime"
+    )) as TTimedRoleRow[];
+  if (!live.length) return null;
+  const longest = longestLasting(live);
+  if (!longest.isTemporary) return {};
+  return {
+    isTemporary: true,
+    temporaryMode: longest.temporaryMode,
+    temporaryRange: longest.temporaryRange,
+    temporaryAccessStartTime: longest.temporaryAccessStartTime,
+    temporaryAccessEndTime: longest.temporaryAccessEndTime
+  };
+};
 
 const retireMember = async (knex: Knex) => {
   const rows = (await knex(TableName.MembershipRole)
@@ -230,11 +275,15 @@ const grantsToRoles = async (knex: Knex) => {
         .first("id")) as { id: string } | undefined;
       // A grant always needed a project membership, and leaving the project deletes the grants, so none should be
       // missing. One that is grants nothing, as before.
-      if (projectMembership) {
+      const window = projectMembership
+        ? await bundleRoleWindowOf(knex, { membershipId: projectMembership.id, isGroup: Boolean(grant.actorGroupId) })
+        : null;
+      if (projectMembership && window) {
         await knex(TableName.MembershipRole).insert({
           membershipId: projectMembership.id,
           role: ProjectMembershipRole.Custom,
-          customRoleId: role.id
+          customRoleId: role.id,
+          ...window
         });
       }
     }
@@ -284,11 +333,18 @@ export async function down(knex: Knex): Promise<void> {
 
     const bundleRoleMembershipIds = new Set<string>();
     for await (const bundle of bundles) {
-      // A grant can't carry a time limit, so a temporary assignment isn't restored: as a grant it would never end.
+      // A grant can't carry a time limit, so a temporary assignment isn't restored: as a grant it would never end. A
+      // group's live one is, since a group's grant counts only while the group holds a live role, which bounds it.
       const holders = (await knex(TableName.MembershipRole)
         .join(TableName.Membership, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .where(`${TableName.MembershipRole}.customRoleId`, bundle.grantRoleId)
-        .where(`${TableName.MembershipRole}.isTemporary`, false)
+        .where((qb) => {
+          void qb.where(`${TableName.MembershipRole}.isTemporary`, false).orWhere((groupQb) => {
+            void groupQb
+              .whereNotNull(`${TableName.Membership}.actorGroupId`)
+              .where(`${TableName.MembershipRole}.temporaryAccessEndTime`, ">", new Date());
+          });
+        })
         .distinct(
           `${TableName.Membership}.actorUserId`,
           `${TableName.Membership}.actorIdentityId`,
