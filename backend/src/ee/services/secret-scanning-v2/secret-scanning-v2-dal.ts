@@ -257,7 +257,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         // eslint-disable-next-line no-await-in-loop
         const created = await tx(TableName.SecretScanningFinding)
           .insert(
-            // the first location is kept on the finding too, for the release before locations existed
+            // The first location is kept on the finding too, for the release before locations existed. Its scanId is
+            // also how countUnresolvedCreatedByScanId knows which scan created the finding.
             chunk.map(({ secretFindingBlindIndex, rule, severity, fingerprint, details }) => ({
               resourceId,
               secretFindingBlindIndex,
@@ -995,19 +996,14 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
-  // A finding's first location is written in the transaction that creates it, so the scan of its earliest location is
-  // the scan that created it, however many batches or attempts that scan took.
+  // A finding's scanId is written once, by the scan that inserts it under the resource's advisory lock, so it names the
+  // creating scan however many batches or attempts that scan took. Location timestamps can't tell: now() is when a
+  // transaction began, so a scan that began earlier but took the lock later would sort first on a finding it didn't
+  // create.
   const countUnresolvedCreatedByScanId = async (scanId: string, tx?: Knex) => {
     try {
       const [result] = (await (tx || db)(TableName.SecretScanningFinding)
-        .where(`${TableName.SecretScanningFinding}.status`, SecretScanningFindingStatus.Unresolved)
-        .whereIn(`${TableName.SecretScanningFinding}.id`, (qb) => {
-          void qb.select("findingId").from(TableName.SecretScanningFindingLocation).where({ scanId });
-        })
-        .whereRaw(
-          `(SELECT "scanId" FROM ?? AS "firstLocation" WHERE "firstLocation"."findingId" = ??.id ORDER BY "firstLocation"."createdAt", "firstLocation".id LIMIT 1) = ?`,
-          [TableName.SecretScanningFindingLocation, TableName.SecretScanningFinding, scanId]
-        )
+        .where({ scanId, status: SecretScanningFindingStatus.Unresolved })
         .count("* as count")) as { count: string }[];
 
       return Number(result?.count ?? 0);

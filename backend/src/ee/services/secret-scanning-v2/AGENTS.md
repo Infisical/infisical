@@ -51,7 +51,9 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, findings, or 
   `scan-failed` (`secret-scanning-v2-events.ts`) with its data source as the `resourceId`, in the transaction that
   closes it, guarded on the status update matching, so a scan the reaper already closed emits nothing.
 - `secrets-detected` fires only for news: unresolved findings this scan created (`countUnresolvedCreatedByScanId`,
-  the scan of a finding's earliest location, so a resumed full scan counts every batch), plus, for diff scans only,
+  the finding's own `scanId`, written once under the resource's advisory lock, so a resumed full scan counts every
+  batch; never infer it from location `createdAt`, which is transaction start time and misorders overlapping scans,
+  and keep that column when the rollback-only finding columns are dropped), plus, for diff scans only,
   findings it reopened. A new location of a finding that's still unresolved was already alerted on, and a resource's
   first full scan never alerts (`hasEarlierCompletedHistoricalScan`), since all of its history is new then.
 - Every data source gets its default alerts (`SECRET_SCANNING_DEFAULT_ALERTS`) in the transaction that creates it. Its

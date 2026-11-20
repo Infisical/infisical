@@ -124,6 +124,8 @@ export const secretScanningV2QueueServiceFactory = ({
   // secrets_v2.secretValueOrgBlindIndex, so a finding can be matched against secrets in the org without decrypting.
   const createFindingRowsBuilder = async (projectId: string) => {
     const project = await projectDAL.findById(projectId);
+    if (!project) throw new BadRequestError({ message: "The project this data source belongs to was deleted." });
+
     const blindIndexer = await createOrgSecretBlindIndexer({ orgId: project.orgId, kmsDataKeyService });
 
     // A rule that matches only a file's path reports no value, so its matches get no blind index rather than all
@@ -226,9 +228,12 @@ export const secretScanningV2QueueServiceFactory = ({
    * which is what the returned flag reports.
    */
   // The alert scope of a scan's data source. Read before the transaction that emits the alert, so the emit adds
-  // no read to it.
+  // no read to it. A project being deleted is hidden from findById before its scans are removed, so there is no scope
+  // then: the scan and its pull request check still have to be closed, with no alert.
   const getAlertScope = async (dataSource: { id: string; projectId: string }) => {
     const project = await projectDAL.findById(dataSource.projectId);
+    if (!project) return undefined;
+
     return { orgId: project.orgId, projectId: dataSource.projectId, dataSourceId: dataSource.id };
   };
 
@@ -636,7 +641,7 @@ export const secretScanningV2QueueServiceFactory = ({
               ? 0
               : await secretScanningV2DAL.findings.countUnresolvedCreatedByScanId(scanId, tx);
 
-            if (newFindings) {
+            if (newFindings && alertScope) {
               await emitSecretScanningSecretsDetected(
                 eventEmitter,
                 { ...alertScope, scanId, unresolvedFindings: newFindings },
@@ -969,7 +974,7 @@ export const secretScanningV2QueueServiceFactory = ({
             (await secretScanningV2DAL.findings.countUnresolvedCreatedByScanId(scanId, tx)) +
             persisted.reopenedFindings.length;
 
-          if (newFindings) {
+          if (newFindings && alertScope) {
             await emitSecretScanningSecretsDetected(
               eventEmitter,
               { ...alertScope, scanId, unresolvedFindings: newFindings },
