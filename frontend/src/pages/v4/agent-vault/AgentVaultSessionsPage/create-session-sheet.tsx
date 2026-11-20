@@ -7,7 +7,7 @@ import { Code } from "@infisical/cipher/ui/code";
 import { CodeBlock } from "@infisical/cipher/ui/code-block";
 import { Combobox } from "@infisical/cipher/ui/combobox";
 import { DurationInput } from "@infisical/cipher/ui/duration-input";
-import { Field, FieldError } from "@infisical/cipher/ui/field";
+import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
@@ -614,14 +614,13 @@ const CreateNowForm = ({
             control={control}
             name="metadata"
             render={({ field }) => (
-              <Field>
+              <Field error={metadataListError}>
                 <MetadataEditor
                   addLabel="Add metadata"
                   entries={field.value}
                   errors={metadataRowErrors}
                   onChange={field.onChange}
                 />
-                {metadataListError && <FieldError>{metadataListError}</FieldError>}
               </Field>
             )}
           />
