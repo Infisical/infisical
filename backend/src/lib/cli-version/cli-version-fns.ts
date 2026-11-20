@@ -10,11 +10,13 @@ const VERSION_REGEX = new RE2(/^(\d+)\.(\d+)\.(\d+)/);
 const STRICT_VERSION_REGEX = new RE2(/^(\d+)\.(\d+)\.(\d+)$/);
 
 export enum CliCapability {
-  DirectGatewayTransport = "direct-gateway-transport"
+  DirectGatewayTransport = "direct-gateway-transport",
+  AwsIamGateway = "aws-iam-gateway"
 }
 
 export const CLI_CAPABILITY_MIN_VERSION: Record<CliCapability, string> = {
-  [CliCapability.DirectGatewayTransport]: "0.43.131"
+  [CliCapability.DirectGatewayTransport]: "0.43.131",
+  [CliCapability.AwsIamGateway]: "0.45.12"
 };
 
 const getCliVersionSegment = (userAgent?: string) => {

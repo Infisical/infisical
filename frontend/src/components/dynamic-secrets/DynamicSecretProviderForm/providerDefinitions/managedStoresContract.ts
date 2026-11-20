@@ -6,5 +6,6 @@ export const MANAGED_STORE_DYNAMIC_SECRET_PROVIDERS = [
   DynamicSecretProviders.AwsMemoryDb,
   DynamicSecretProviders.MongoAtlas,
   DynamicSecretProviders.MongoDB,
-  DynamicSecretProviders.Couchbase
+  DynamicSecretProviders.Couchbase,
+  DynamicSecretProviders.Neon
 ] as const;

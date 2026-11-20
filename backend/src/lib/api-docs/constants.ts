@@ -1430,7 +1430,10 @@ export const PROJECT_IDENTITY_MEMBERSHIP = {
   },
   GET_IDENTITY_MEMBERSHIP_BY_ID: {
     projectId: "The ID of the project to get the identity membership for.",
-    identityId: "The ID of the machine identity to get the membership for."
+    identityId: "The ID of the machine identity to get the membership for.",
+    hasDeleteProtection: "Whether the machine identity is protected from deletion.",
+    activeLockoutAuthMethods:
+      "The auth methods currently locked out for the machine identity after too many failed logins."
   },
   LIST_AVAILABLE_IDENTITIES: {
     projectId: "The ID of the project to list available identities for.",
@@ -2552,7 +2555,10 @@ export const CERTIFICATES = {
       "The serial number of the certificate to revoke. The revoked certificate will be added to the certificate revocation list (CRL) of the CA.",
     revocationReason: "The reason for revoking the certificate.",
     revokedAt: "The date and time when the certificate was revoked.",
-    serialNumberRes: "The serial number of the revoked certificate.",
+    serialNumberRes: "The serial number of the certificate.",
+    status:
+      "revoked (HTTP 200) when the certificate was revoked. pending_approval (HTTP 202) when a revocation approval policy covers the certificate's profile. An approval request was created, and the certificate isn't revoked until the request is approved.",
+    approvalRequestId: "The ID of the approval request created for the revocation.",
     crlWarning: "Set when the certificate was revoked but the CRL could not be regenerated. Contains the reason."
   },
   DELETE: {

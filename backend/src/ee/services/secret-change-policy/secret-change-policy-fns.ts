@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { TApprovalPolicies, TProjectEnvironments } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { canonicalizeSecretPath, canonicalizeSecretPathPattern } from "@app/lib/fn";
 import { containsGlobPatterns } from "@app/lib/picomatch";
 import {
   TApprovalPolicyBypassersDALFactory,
@@ -96,21 +97,30 @@ export const getPolicyScore = (policy: { secretPath?: string | null }) =>
   policy.secretPath ? (containsGlobPatterns(policy.secretPath) ? 1 : 2) : 0;
 
 // picks the highest-priority policy governing a secret path: exact path match first, then glob, then env-scoped.
+// A policy that matches only once its stored pattern is normalized ("prod" for "/prod") ranks below every policy that
+// matches as stored, so normalizing can fill a gap but never change which policy already governed the folder.
 export const resolvePolicyForPath = <T extends { secretPath?: string | null; createdAt: Date; id: string }>(
   policies: T[],
   secretPath: string
-) =>
-  policies
+) => {
+  const canonicalSecretPath = canonicalizeSecretPath(secretPath);
+  const matches = (pattern: string) => picomatch.isMatch(canonicalSecretPath, pattern, { strictSlashes: false });
+
+  return policies
+    .map((policy) => ({ policy, matchesAsStored: !policy.secretPath || matches(policy.secretPath) }))
     .filter(
-      ({ secretPath: policyPath }) => !policyPath || picomatch.isMatch(secretPath, policyPath, { strictSlashes: false })
+      ({ policy, matchesAsStored }) =>
+        matchesAsStored || matches(canonicalizeSecretPathPattern(policy.secretPath as string))
     )
     .sort(
       (a, b) =>
-        getPolicyScore(b) - getPolicyScore(a) ||
-        a.createdAt.getTime() - b.createdAt.getTime() ||
-        a.id.localeCompare(b.id)
+        Number(b.matchesAsStored) - Number(a.matchesAsStored) ||
+        getPolicyScore(b.policy) - getPolicyScore(a.policy) ||
+        a.policy.createdAt.getTime() - b.policy.createdAt.getTime() ||
+        a.policy.id.localeCompare(b.policy.id)
     )
-    .shift();
+    .shift()?.policy;
+};
 
 /**
  * Returns the committer ID fields for a secret approval request,

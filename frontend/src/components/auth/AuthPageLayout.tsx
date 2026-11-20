@@ -40,7 +40,7 @@ export const AuthPageLayout = ({
   return (
     <div
       className={cn(
-        "min-h-screen bg-linear-to-r from-card to-page-deep to-75%",
+        "min-h-dvh bg-linear-to-r from-card to-page-deep to-75%",
         isSplit &&
           "lg:grid lg:grid-cols-[minmax(440px,44%)_minmax(0,1fr)] xl:grid-cols-[minmax(520px,40%)_minmax(0,1fr)]"
       )}
@@ -48,7 +48,7 @@ export const AuthPageLayout = ({
     >
       <section
         className={cn(
-          "flex h-screen min-h-0 min-w-0 flex-col",
+          "flex h-dvh min-h-0 min-w-0 flex-col",
           anchorBottomContent ? "overflow-hidden" : "thin-scrollbar overflow-y-auto",
           isSplit && "lg:border-r lg:border-border"
         )}
@@ -80,7 +80,7 @@ export const AuthPageLayout = ({
       </section>
 
       {isSplit && (
-        <aside className="relative hidden h-screen min-w-0 overflow-hidden lg:sticky lg:top-0 lg:flex lg:flex-col">
+        <aside className="relative hidden h-dvh min-w-0 overflow-hidden lg:sticky lg:top-0 lg:flex lg:flex-col">
           <AuthPageBackground />
           <div className="relative z-10 flex h-16 items-center justify-end px-8 xl:px-12">
             <Button asChild variant="outline" size="sm">
