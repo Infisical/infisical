@@ -98,6 +98,7 @@ const setup = ({
           : []
       )
     },
+    membershipRoleDAL: { findOne: vi.fn().mockResolvedValue({ role: inviteeRole }) },
     tokenService: { createTokenForUser }
   } as never);
 
@@ -165,15 +166,24 @@ describe("resendOrgMemberInvitation privilege boundary", () => {
     }
   );
 
-  test("no link is handed out once the instance has disabled email login", async () => {
+  test("no link is handed out for a non-admin once the instance has disabled email login", async () => {
     getServerCfgMock.mockResolvedValue({ enabledLoginMethods: ["saml"] });
     const { resend, createTokenForUser } = setup({
       actorPermission: abilityByRole.admin,
-      shouldUseNewPrivilegeSystem: true
+      shouldUseNewPrivilegeSystem: true,
+      inviteeRole: "member"
     });
 
     await expect(resend()).rejects.toThrow(BadRequestError);
     expect(createTokenForUser).not.toHaveBeenCalled();
+  });
+
+  test("an Admin invitation can still be resent with email login disabled, as admins can still log in", async () => {
+    getServerCfgMock.mockResolvedValue({ enabledLoginMethods: ["saml"] });
+    const { resend } = setup({ actorPermission: abilityByRole.admin, shouldUseNewPrivilegeSystem: true });
+
+    const { signupToken } = await resend();
+    expect(signupToken?.link).toContain("token=invite-token");
   });
 
   test("an unknown membership is a 404, not a crash", async () => {
@@ -201,6 +211,7 @@ describe("verifyUserToOrg with email login disabled", () => {
         findMembership: vi.fn().mockResolvedValue([{ id: MEMBERSHIP_ID, scopeOrgId: ORG_ID }]),
         findById: vi.fn().mockResolvedValue({ id: ORG_ID, name: "Acme", authEnforced: false })
       },
+      membershipRoleDAL: { findOne: vi.fn().mockResolvedValue({ role: "member" }) },
       tokenService: { validateTokenForUser }
     } as never);
 

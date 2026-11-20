@@ -1208,10 +1208,13 @@ export const orgServiceFactory = ({
     }
 
     if (!org?.authEnforced && !(await $isEmailLoginEnabled())) {
-      throw new BadRequestError({
-        message:
-          "Failed to resend the invitation because email login is disabled on this instance. The invitee can join by signing in with one of the enabled login methods."
-      });
+      const inviteeRole = await membershipRoleDAL.findOne({ membershipId: inviteeOrgMembership.id });
+      if (inviteeRole?.role !== OrgMembershipRole.Admin) {
+        throw new BadRequestError({
+          message:
+            "Failed to resend the invitation because email login is disabled on this instance. The invitee can join by signing in with one of the enabled login methods."
+        });
+      }
     }
 
     // Only a mailed invitation counts: without SMTP the caller gets the link instead. A step that fails before
@@ -1355,16 +1358,14 @@ export const orgServiceFactory = ({
       return { user, organizationName: organization.name };
     }
 
-    // A link issued before email login was disabled must not set up a password account either.
-    if (!(await $isEmailLoginEnabled())) {
+    const membershipRole = await membershipRoleDAL.findOne({ membershipId: orgMembership.id });
+    const isAdminInvite = membershipRole.role === OrgMembershipRole.Admin;
+
+    if (!isAdminInvite && !(await $isEmailLoginEnabled())) {
       return { user, organizationName: organization.name };
     }
 
-    const membershipRole = await membershipRoleDAL.findOne({ membershipId: orgMembership.id });
-    if (
-      organization.authEnforced &&
-      !(organization.bypassOrgAuthEnabled && membershipRole.role === OrgMembershipRole.Admin)
-    ) {
+    if (organization.authEnforced && !(organization.bypassOrgAuthEnabled && isAdminInvite)) {
       return { user, organizationName: organization.name };
     }
 
