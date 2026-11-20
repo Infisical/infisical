@@ -3178,6 +3178,15 @@ export const AppConnections = {
   ROTATE_CREDENTIALS: (app: AppConnection) => ({
     connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to rotate credentials for.`
   }),
+  GITLAB: {
+    LIST_GROUP_SERVICE_ACCOUNTS: {
+      connectionId: "The ID of the GitLab Connection to list service accounts with.",
+      groupId: "The numeric ID of the GitLab group whose service accounts to list.",
+      id: "The GitLab user ID of the service account.",
+      username: "The GitLab username of the service account.",
+      name: "The display name of the service account."
+    }
+  },
   KEEPER: {
     LIST_SHARED_FOLDERS: {
       connectionId: "The ID of the Keeper Connection to list shared folders from.",

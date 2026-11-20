@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { AppConnections } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -116,15 +117,20 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
     schema: {
       operationId: "listGitLabGroupServiceAccounts",
       params: z.object({
-        connectionId: z.string().uuid(),
-        groupId: z.string().trim().max(20).regex(/^\d+$/, "Group ID must be a numeric GitLab group ID")
+        connectionId: z.string().uuid().describe(AppConnections.GITLAB.LIST_GROUP_SERVICE_ACCOUNTS.connectionId),
+        groupId: z
+          .string()
+          .trim()
+          .max(20)
+          .regex(/^\d+$/, "Group ID must be a numeric GitLab group ID")
+          .describe(AppConnections.GITLAB.LIST_GROUP_SERVICE_ACCOUNTS.groupId)
       }),
       response: {
         200: z
           .object({
-            id: z.string(),
-            username: z.string(),
-            name: z.string()
+            id: z.string().describe(AppConnections.GITLAB.LIST_GROUP_SERVICE_ACCOUNTS.id),
+            username: z.string().describe(AppConnections.GITLAB.LIST_GROUP_SERVICE_ACCOUNTS.username),
+            name: z.string().describe(AppConnections.GITLAB.LIST_GROUP_SERVICE_ACCOUNTS.name)
           })
           .array()
       }
