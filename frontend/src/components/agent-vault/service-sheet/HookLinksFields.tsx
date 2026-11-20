@@ -47,7 +47,7 @@ type Props = {
 export const HookLinksFields = ({ canEdit, savedServiceName, onCreatedWithService }: Props) => {
   const { projectId } = useProject();
   const { subscription } = useSubscription();
-  const { control } = useFormContext<TServiceForm>();
+  const { control, getValues } = useFormContext<TServiceForm>();
   const serviceType = useWatch({ control, name: "serviceType" });
   const hooks = useFieldArray({ control, name: "hooks", keyName: "fieldId" });
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
@@ -74,6 +74,9 @@ export const HookLinksFields = ({ canEdit, savedServiceName, onCreatedWithServic
       ? hook.rules.find((candidate) => candidate.service === savedServiceName)
       : undefined;
     if (rule) onCreatedWithService(hook);
+    // Creating the hook refreshes the service, which may already have loaded it into the form when its rules name
+    // this service.
+    if (getValues("hooks").some((draft) => draft.hookId === hook.id)) return;
     addHook(hook, rule);
   });
 
