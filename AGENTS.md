@@ -165,7 +165,8 @@ resource's `filterActiveApprovers` drops; the resource's `buildNotification` sup
 revocation (`certificateService.revokeApprovedCertificate`) is the reference. Certificate issuance and renewal
 (`cert-request-policy-factory.ts`) notify through it when the approved action fails, and their
 `filterActiveApprovers` keeps approvers still in the request's Application in any role (or, for a policy without one,
-in Certificate Management), but approve and reject don't recheck that yet. Read
+users still in Certificate Management and every approver group, whose membership is never checked there), but approve
+and reject don't recheck that yet. Read
 `backend/src/services/certificate-request/AGENTS.md` before changing how an issuance or renewal failure is recorded or
 reported.
 
