@@ -19,9 +19,9 @@ Rotate a GitLab [group access token](https://docs.gitlab.com/user/group/settings
 ## Prerequisites
 
 - A [project with secrets configured](/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret)
-- A GitLab user with the Owner role on the group, to create the token the connection uses
-- On GitLab.com, a paid Premium or Ultimate subscription for the group. Group access tokens aren't available on Free or during a trial.
-- Group access token creation allowed in the top-level group's **Settings** > **General** > **Permissions and group features** (allowed by default)
+- A GitLab user with the [Owner role](https://docs.gitlab.com/user/permissions/#roles) on the group, to create the token the connection uses
+- On GitLab.com, a [Premium or Ultimate subscription](https://about.gitlab.com/pricing/) for the group (group access tokens aren't available on Free or during a trial)
+- Group access token creation [allowed](https://docs.gitlab.com/user/group/settings/group_access_tokens/#restrict-the-creation-of-group-and-project-access-tokens) in the top-level group's **Settings** > **General** > **Permissions and group features** (allowed by default)
 
 <Note>
     GitLab gives every group access token its own bot user. Because Infisical rotates each token in place, a rotation keeps the same two bot users, and access you grant them by name, such as on a protected branch's list of users allowed to push, carries over from one rotation to the next.

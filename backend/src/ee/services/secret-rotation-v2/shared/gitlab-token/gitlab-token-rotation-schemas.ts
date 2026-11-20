@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { SecretRotations } from "@app/lib/api-docs";
+
 import {
   GITLAB_TOKEN_DESCRIPTION_MAX_LENGTH,
   GITLAB_TOKEN_MAX_LIFETIME_DAYS,
@@ -47,16 +49,17 @@ export const GitLabTokenRotationIntervalSchema = z.coerce
 
 export const GitLabTokenGeneratedCredentialsSchema = z
   .object({
-    tokenId: z.string(),
-    token: z.string(),
+    tokenId: z.string().describe(SecretRotations.GENERATED_CREDENTIALS.GITLAB_TOKEN.tokenId),
+    token: z.string().describe(SecretRotations.GENERATED_CREDENTIALS.GITLAB_TOKEN.token),
     settings: z
       .object({
-        name: z.string(),
-        description: z.string().optional(),
-        scopes: z.string().array(),
-        accessLevel: z.number().optional()
+        name: z.string().describe(SecretRotations.GENERATED_CREDENTIALS.GITLAB_TOKEN.name),
+        description: z.string().optional().describe(SecretRotations.GENERATED_CREDENTIALS.GITLAB_TOKEN.description),
+        scopes: z.string().array().describe(SecretRotations.GENERATED_CREDENTIALS.GITLAB_TOKEN.scopes),
+        accessLevel: z.number().optional().describe(SecretRotations.GENERATED_CREDENTIALS.GITLAB_TOKEN.accessLevel)
       })
       .optional()
+      .describe(SecretRotations.GENERATED_CREDENTIALS.GITLAB_TOKEN.settings)
   })
   .array()
   .min(1)

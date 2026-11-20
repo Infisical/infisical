@@ -4283,6 +4283,19 @@ export const SecretRotations = {
       tokenId: "The name of the secret that the rotated group access token ID will be mapped to.",
       token: "The name of the secret that the rotated group access token value will be mapped to."
     }
+  },
+  GENERATED_CREDENTIALS: {
+    GITLAB_TOKEN: {
+      tokenId: "The GitLab ID of the generated token.",
+      token: "The value of the generated token.",
+      settings:
+        "The settings the token was created with. Infisical rotates the token in place while these match the rotation's parameters, and replaces it with a new token when they don't. Absent for tokens created before Infisical recorded them.",
+      name: "The token name, without the timestamp Infisical appends.",
+      description: "The token description, if one was set.",
+      scopes: "The scopes granted to the token, sorted alphabetically.",
+      accessLevel:
+        "The token's role in the group, for group access tokens: 10 (Guest), 15 (Planner), 20 (Reporter), 25 (Security Manager), 30 (Developer), or 40 (Maintainer). Absent for service account tokens."
+    }
   }
 };
 
