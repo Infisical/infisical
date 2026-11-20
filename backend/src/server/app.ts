@@ -31,6 +31,7 @@ import { etag } from "./plugins/etag";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./plugins/fastify-zod";
 import { fastifyIp } from "./plugins/ip";
 import { maintenanceMode } from "./plugins/maintenanceMode";
+import { responsePolicyHeaders } from "./plugins/response-policy-headers";
 import { registerResponseSchemaHooks } from "./plugins/response-schema-hooks";
 import { registerServeUI } from "./plugins/serve-ui";
 import { fastifySwagger } from "./plugins/swagger";
@@ -155,6 +156,7 @@ export const main = async ({
     }
 
     await server.register(helmet, { contentSecurityPolicy: false });
+    await server.register(responsePolicyHeaders);
 
     await server.register(maintenanceMode);
 
