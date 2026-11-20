@@ -27,6 +27,10 @@ description: "Learn how to configure a Supabase Sync for Infisical."
                 - **Environment**: The project environment to retrieve secrets from.
                 - **Secret Path**: The folder path to retrieve secrets from.
 
+                <Note>
+                    Supabase reserves secret names that start with `SUPABASE_` and provides those values to Edge Functions itself. The sync skips any secret whose synced name starts with `SUPABASE_`.
+                </Note>
+
                 <Tip>
                     If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
                 </Tip>

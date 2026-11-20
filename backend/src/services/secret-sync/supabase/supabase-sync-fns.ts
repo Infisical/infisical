@@ -14,6 +14,9 @@ import { TSupabaseSyncWithCredentials } from "./supabase-sync-types";
 
 const SUPABASE_INTERNAL_SECRETS = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_DB_URL"];
 
+// Supabase rejects any secret name with this prefix and injects its own SUPABASE_* values into Edge Functions.
+const SUPABASE_RESERVED_PREFIX = "SUPABASE_";
+
 export const SupabaseSyncFns = {
   async getSecrets(secretSync: TSupabaseSyncWithCredentials) {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
@@ -34,6 +37,8 @@ export const SupabaseSyncFns = {
     const toCreate: TSupabaseSecret[] = [];
 
     for (const key of Object.keys(secretMap)) {
+      if (key.startsWith(SUPABASE_RESERVED_PREFIX)) continue;
+
       const variable: TSupabaseSecret = { name: key, value: secretMap[key].value ?? "" };
       toCreate.push(variable);
     }
