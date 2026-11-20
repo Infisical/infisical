@@ -423,7 +423,6 @@ export const FolderAlerts = ({
     <>
       <Card
         variant="framed"
-        flush={isPending || alerts.length > 0}
         title="Alerts"
         hint="Notify email, Slack, webhook or PagerDuty about access requests in this folder."
         action={

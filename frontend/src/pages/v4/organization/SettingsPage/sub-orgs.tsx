@@ -377,7 +377,6 @@ export const SubOrgsTab = () => {
       <Card
         variant="framed"
         title="Sub-organizations"
-        flush={hasRows}
         action={
           <Inline gap={8} wrap={false}>
             <ListToolbar

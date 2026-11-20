@@ -220,7 +220,6 @@ export const IdentityRoleDetailsSection = ({
       <Card
         variant="framed"
         title={accessLabel(scope.projectType, "roles")}
-        flush={hasRoles}
         action={rolesEditable ? addButton : undefined}
       >
         {hasRoles ? (

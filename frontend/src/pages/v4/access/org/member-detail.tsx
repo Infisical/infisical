@@ -40,6 +40,7 @@ import { Loader } from "@infisical/cipher/ui/loader";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Select } from "@infisical/cipher/ui/select";
+import { CopyValue } from "@infisical/cipher/ui/sensitive-editor";
 import { useParams } from "@tanstack/react-router";
 import { BanIcon, MailIcon, UserCheckIcon } from "lucide-react";
 
@@ -63,7 +64,7 @@ import { formatDateTime, orgRoleName, orgRoleSlug, roleOptions } from "../roles"
 import { failed, saved, toast } from "../toast";
 import { EditDetailsButton, Gate, ListToolbar, usePagedList, RESTRICTED } from "../ui";
 import { useCustomRoleGate } from "./custom-role-gate";
-import { CopyButton, Dash, MetadataBadges, Value, VerifiedMark } from "./detail-parts";
+import { Dash, MetadataBadges, VerifiedMark } from "./detail-parts";
 import { type InviteLink, InviteUsersSheet } from "./invite-users-sheet";
 import { type MetadataEntry, MetadataEditor, metadataErrors } from "./metadata-editor";
 import { ProjectMembershipsSection } from "./project-memberships";
@@ -204,13 +205,11 @@ const UserGroupsSection = ({ username }: { username: string }) => {
     )
   };
 
-  const hasRows = isPending || list.pageRows.length > 0;
   return (
     <>
       <Card
         variant="framed"
         title="Groups"
-        flush={hasRows}
         action={
           <ListToolbar search={list.search} onSearch={list.setSearch} placeholder="Search groups" />
         }
@@ -462,11 +461,9 @@ export const OrgMemberDetail = () => {
                     [
                       "Email",
                       email ? (
-                        <Value key="email">
-                          {email}
-                          <VerifiedMark verified={user.isEmailVerified} />
-                          <CopyButton value={email} label="Copy user email to clipboard" />
-                        </Value>
+                        <CopyValue key="email" value={email} label="Copy user email">
+                          {email} <VerifiedMark verified={user.isEmailVerified} />
+                        </CopyValue>
                       ) : (
                         <Dash key="email" />
                       )

@@ -269,7 +269,6 @@ export const AlertsTab = () => {
       <Card
         variant="framed"
         title="Alerts"
-        flush={hasRows}
         action={
           <Button
             variant="outline"

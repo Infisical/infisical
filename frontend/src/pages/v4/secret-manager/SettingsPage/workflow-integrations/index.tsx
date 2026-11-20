@@ -258,7 +258,6 @@ export const WorkflowIntegrationsSettings = () => {
       <Card
         variant="framed"
         title="Workflow integrations"
-        flush={hasRows}
         action={
           <Button
             variant="outline"

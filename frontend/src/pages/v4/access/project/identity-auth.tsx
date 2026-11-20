@@ -152,7 +152,6 @@ export const ProjectIdentityAuthSection = ({
       <Card
         variant="framed"
         title="Authentication"
-        flush={methods.length > 0}
         action={methods.length < AUTH_METHOD_ORDER.length ? addButton : undefined}
       >
         {methods.length > 0 ? (

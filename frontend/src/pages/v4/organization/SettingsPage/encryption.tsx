@@ -236,7 +236,6 @@ export const EncryptionTab = () => {
         <Card
           variant="framed"
           title="Key management systems"
-          flush={hasRows}
           action={
             <Gate allowed={canCreate}>
               <Button

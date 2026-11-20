@@ -428,7 +428,6 @@ export const OrgIdentityDetail = () => {
             <Card
               variant="framed"
               title="Authentication"
-              flush={isOwnIdentity && methods.length > 0}
               action={isOwnIdentity && !allConfigured ? addAuthButton : undefined}
             >
               {isOwnIdentity && methods.length > 0 && (

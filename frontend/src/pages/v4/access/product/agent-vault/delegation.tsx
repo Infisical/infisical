@@ -132,7 +132,6 @@ export const AgentVaultIdentityDelegationSection = ({
             <DocumentationLink href={DELEGATION_DOCS_URL} subject="delegation" />
           </Inline>
         }
-        flush={Boolean(rows.length) && !loadFailed}
         action={
           canEditDelegation &&
           !isPending &&

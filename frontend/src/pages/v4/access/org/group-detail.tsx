@@ -40,6 +40,7 @@ import { Loader } from "@infisical/cipher/ui/loader";
 import { MultiSelect } from "@infisical/cipher/ui/multi-select";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Pagination } from "@infisical/cipher/ui/pagination";
+import { CopyValue } from "@infisical/cipher/ui/sensitive-editor";
 import { useParams } from "@tanstack/react-router";
 
 import {
@@ -66,7 +67,6 @@ import { useOrgId, useOrgPermission } from "../permissions";
 import { formatDate, orgRoleName, orgRoleSlug } from "../roles";
 import { failed, saved, toast } from "../toast";
 import { EditDetailsButton, Gate, ListToolbar, Muted, RESTRICTED, type Sort } from "../ui";
-import { CopyButton, Value } from "./detail-parts";
 import { GroupDialog } from "./group-dialog";
 import { ProjectMembershipsSection } from "./project-memberships";
 import { useDebounced } from "./use-debounced";
@@ -299,7 +299,6 @@ const GroupMembersSection = ({
   const members = data?.members ?? [];
   const totalCount = data?.totalCount ?? 0;
   const filtered = Boolean(debouncedSearch || kinds.length);
-  const hasRows = isPending || members.length > 0;
   const addButton = isLinked ? null : (
     <Gate allowed={canEdit}>
       <Button variant="accent" icon="plus" disabled={!canEdit} onClick={() => setAdding(true)}>
@@ -355,7 +354,6 @@ const GroupMembersSection = ({
       <Card
         variant="framed"
         title="Group members"
-        flush={hasRows}
         action={
           <Inline gap={8} wrap={false}>
             <ListToolbar
@@ -548,13 +546,7 @@ export const OrgGroupDetail = () => {
                       copyLabel="Copy group ID to clipboard"
                     />
                   ],
-                  [
-                    "Slug",
-                    <Value key="slug">
-                      {group.slug}
-                      <CopyButton value={group.slug} label="Copy slug to clipboard" />
-                    </Value>
-                  ],
+                  ["Slug", <CopyValue key="slug" value={group.slug} label="Copy slug" />],
                   ["Organization role", orgRoleName(roles, group)],
                   ["Created", formatDate(group.createdAt)]
                 ]}

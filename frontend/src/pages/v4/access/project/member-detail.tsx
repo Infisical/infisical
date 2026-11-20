@@ -15,6 +15,7 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { DetailLayout, Inline, Stack } from "@infisical/cipher/ui/layout";
 import { DataList } from "@infisical/cipher/ui/list";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { CopyValue } from "@infisical/cipher/ui/sensitive-editor";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { useParams } from "@tanstack/react-router";
 
@@ -43,33 +44,6 @@ import { MemberRolesSection } from "./member-roles";
 import { PermissionAuditAction } from "./permission-audit-sheet";
 import { accessLabel, accessNoun, canAssumeUserIn } from "./product";
 import { useProjectScope } from "./scope";
-
-import styles from "./project.module.css";
-
-const CopyValue = ({ value, what }: { value: string; what: string }) => {
-  const [copied, setCopied] = useState(false);
-  const label = copied ? `${what} copied` : `Copy ${what.toLowerCase()} to clipboard`;
-  return (
-    <span className={styles.copyValue}>
-      <span className={styles.wrap}>{value}</span>
-      <Tooltip content={label}>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          icon={copied ? "check" : "copy"}
-          iconOnly
-          onClick={async () => {
-            if (!(await copyText(value))) return;
-            setCopied(true);
-            window.setTimeout(() => setCopied(false), 2000);
-          }}
-        >
-          {label}
-        </Button>
-      </Tooltip>
-    </span>
-  );
-};
 
 export const ProjectMemberDetail = () => {
   const scope = useProjectScope();
@@ -215,8 +189,13 @@ export const ProjectMemberDetail = () => {
                 density="compact"
                 items={[
                   ["Name", personName(user) ?? <Muted>-</Muted>],
-                  ["ID", <CopyValue key="id" value={user.id} what="User ID" />],
-                  ["Email", <CopyValue key="email" value={user.email} what="User email" />],
+                  [
+                    "ID",
+                    <CopyValue key="id" value={user.id} label="Copy user ID">
+                      <code>{user.id}</code>
+                    </CopyValue>
+                  ],
+                  ["Email", <CopyValue key="email" value={user.email} label="Copy user email" />],
                   ...(user.username !== user.email ? ([["Username", user.username]] as const) : []),
                   [`Joined ${accessNoun(scope.projectType)}`, formatDate(member.createdAt)]
                 ]}

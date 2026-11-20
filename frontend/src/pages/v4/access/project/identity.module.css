@@ -1,16 +1,9 @@
 .helper {
   color: var(--cipher-muted);
 }
-.idValue {
-  display: inline-flex;
-  align-items: flex-start;
-  gap: var(--cipher-space-4);
-  min-width: 0;
-}
 .pairs {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
   gap: var(--cipher-space-8);
 }
 .pair {

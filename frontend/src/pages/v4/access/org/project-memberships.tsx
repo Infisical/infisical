@@ -508,7 +508,6 @@ export const ProjectMembershipsSection = ({
   };
 
   const searching = Boolean(list.search.trim());
-  const hasRows = isPending || list.pageRows.length > 0;
   const removingLabel = removing ? labelOf(removing) : "";
 
   let empty = <EmptyState size="sm" icon="folder" title={text.emptyTitle} />;
@@ -521,7 +520,6 @@ export const ProjectMembershipsSection = ({
       <Card
         variant="framed"
         title="Products"
-        flush={hasRows}
         action={
           <Inline gap={8} wrap={false}>
             <ListToolbar
