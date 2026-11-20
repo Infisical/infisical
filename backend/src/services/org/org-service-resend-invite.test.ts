@@ -50,11 +50,13 @@ const setup = ({
   actorPermission,
   shouldUseNewPrivilegeSystem,
   inviteeRole = "admin",
+  inviteeGroupRole,
   membershipExists = true
 }: {
   actorPermission: MongoAbility;
   shouldUseNewPrivilegeSystem: boolean;
   inviteeRole?: string;
+  inviteeGroupRole?: string;
   membershipExists?: boolean;
 }) => {
   const createTokenForUser = vi.fn().mockResolvedValue("invite-token");
@@ -63,9 +65,13 @@ const setup = ({
   const service = orgServiceFactory({
     permissionService: {
       getOrgPermission: vi.fn().mockResolvedValue({ permission: actorPermission }),
-      getOrgPermissionByRoles: vi
+      getActorGrantAbilities: vi
         .fn()
-        .mockImplementation((roles: string[]) => roles.map((role) => ({ permission: abilityByRole[role] })))
+        .mockResolvedValue(
+          [inviteeRole, inviteeGroupRole]
+            .filter((role): role is string => Boolean(role) && role !== "no-access")
+            .map((role) => ({ permission: abilityByRole[role] }))
+        )
     },
     userDAL: { findOne: vi.fn().mockResolvedValue({ id: "actor-id" }) },
     orgDAL: {
@@ -83,9 +89,6 @@ const setup = ({
             ]
           : []
       )
-    },
-    membershipRoleDAL: {
-      findRolesByMembershipIds: vi.fn().mockResolvedValue([{ membershipId: MEMBERSHIP_ID, role: inviteeRole }])
     },
     tokenService: { createTokenForUser }
   } as never);
@@ -138,6 +141,21 @@ describe("resendOrgMemberInvitation privilege boundary", () => {
     const { signupToken } = await resend();
     expect(signupToken?.link).toContain("token=invite-token");
   });
+
+  test.each([false, true])(
+    "a member creator cannot get the link of a No Access invitee who is pending in an Admin group (new privilege system: %s)",
+    async (shouldUseNewPrivilegeSystem) => {
+      const { resend, createTokenForUser } = setup({
+        actorPermission: memberCreatorOnly,
+        shouldUseNewPrivilegeSystem,
+        inviteeRole: "no-access",
+        inviteeGroupRole: "admin"
+      });
+
+      await expect(resend()).rejects.toThrow(PermissionBoundaryError);
+      expect(createTokenForUser).not.toHaveBeenCalled();
+    }
+  );
 
   test("an unknown membership is a 404, not a crash", async () => {
     const { resend } = setup({

@@ -1181,16 +1181,15 @@ export const orgServiceFactory = ({
       });
     }
 
-    const inviteeRoles = resolveMembershipRoleSlugs(
-      await membershipRoleDAL.findRolesByMembershipIds([inviteeOrgMembership.id])
-    );
-    if (inviteeRoles.length) {
+    const inviteePermissions = await permissionService.getActorGrantAbilities({
+      scopeData: { scope: AccessScope.Organization, orgId },
+      actorId: inviteeOrgMembership.actorUserId as string,
+      actorType: ActorType.USER
+    });
+    if (inviteePermissions.length) {
       const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(orgId), () =>
         orgDAL.findById(orgId)
       );
-      const inviteePermissions = await permissionService.getOrgPermissionByRoles(inviteeRoles, orgId, {
-        ignoreUnresolvedRoles: true
-      });
       assertRoleSetBoundary({
         shouldUseNewPrivilegeSystem,
         opActions: OrgPermissionMemberActions.GrantPrivileges,
