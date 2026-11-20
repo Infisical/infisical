@@ -8,6 +8,7 @@ import {
 import { Alert, AlertDescription } from "@infisical/cipher/ui/alert";
 import { Button } from "@infisical/cipher/ui/button";
 import { Calendar } from "@infisical/cipher/ui/calendar";
+import { Card } from "@infisical/cipher/ui/card";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { EmptyState } from "@infisical/cipher/ui/empty";
@@ -57,7 +58,10 @@ import { orgHref, v4Path } from "../../links";
 import { EventClassesCard } from "./event-classes";
 import { AuditLogStreamsTab } from "./streams/streams";
 
+import styles from "./audit-logs.module.css";
+
 const PAGE_SIZE = 500;
+const EMBEDDED_PAGE_SIZE = 10;
 const rowHeight = 48;
 const hour = 3600 * 1000;
 const day = 24 * hour;
@@ -127,7 +131,8 @@ const truncate = {
 
 const makeColumns = (
   onOpen: (log: AuditLog) => void,
-  showProject: boolean
+  showProject: boolean,
+  showActor: boolean
 ): DataTableColumn<AuditLog>[] => [
   {
     id: "time",
@@ -136,18 +141,23 @@ const makeColumns = (
     mono: true,
     render: (row) => formatTime(row.createdAt)
   },
-  {
-    id: "actor",
-    header: "Actor",
-    width: 264,
-    maxWidth: 264,
-    text: (row) => actorName(row.actor),
-    render: (row) => <MiddleTruncate text={actorName(row.actor)} />
-  },
+  ...(showActor
+    ? [
+        {
+          id: "actor",
+          header: "Actor",
+          width: 264,
+          maxWidth: 264,
+          text: (row: AuditLog) => actorName(row.actor),
+          render: (row: AuditLog) => <MiddleTruncate text={actorName(row.actor)} />
+        }
+      ]
+    : []),
   {
     id: "event",
     header: "Event",
     grow: true,
+    minWidth: showActor ? undefined : 240,
     maxWidth: 380,
     primary: true,
     mono: true,
@@ -187,7 +197,7 @@ const makeColumns = (
   {
     id: "source",
     header: "Source",
-    width: 280,
+    width: showActor ? 280 : 200,
     render: (row) => (
       <Inline gap={8} align="baseline" wrap={false} style={{ minWidth: 0, overflow: "hidden" }}>
         {sourceOf(row)}
@@ -259,7 +269,8 @@ const LogsTable = ({ project, actorId }: { project?: AuditLogsProject; actorId?:
   const [anchor, setAnchor] = useState(() => Date.now());
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const [opened, setOpened] = useState<AuditLog | null>(null);
-  const columns = useMemo(() => makeColumns(setOpened, !project), [project]);
+  const columns = useMemo(() => makeColumns(setOpened, !project, !actorId), [project, actorId]);
+  const pageSize = actorId ? EMBEDDED_PAGE_SIZE : PAGE_SIZE;
   const preset = ranges.find((item) => item.value === range);
   const active =
     !preset && custom?.from && custom.to
@@ -302,7 +313,7 @@ const LogsTable = ({ project, actorId }: { project?: AuditLogsProject; actorId?:
   const query: TGetAuditLogsFilter = {
     startDate: new Date(active.from),
     endDate: new Date(active.to),
-    limit: PAGE_SIZE,
+    limit: pageSize,
     eventType: everyEvent ? [] : (value("event") as EventType[]),
     eventClass: value("class") as AuditLogEventClass[],
     actorType: actorType ?? ((pickedActorType || undefined) as ActorType | undefined),
@@ -317,7 +328,7 @@ const LogsTable = ({ project, actorId }: { project?: AuditLogsProject; actorId?:
     org.useAuditLogs(query, projectId);
   const pages = error ? [] : (data?.pages ?? []);
   const rows = pages.flat();
-  const canLoadMore = hasNextPage && pages[pages.length - 1]?.length === PAGE_SIZE;
+  const canLoadMore = hasNextPage && pages[pages.length - 1]?.length === pageSize;
   const filtered = filters.some((filter) => filter.values.length > 0);
 
   const fields: FilterBarField[] = [
@@ -412,10 +423,10 @@ const LogsTable = ({ project, actorId }: { project?: AuditLogsProject; actorId?:
   let empty = (
     <EmptyState
       size="sm"
-      media="bare"
+      media={actorId ? undefined : "bare"}
       icon="history"
-      title="No events match these filters"
-      description={`Nothing in the ${active.title}. Try a wider date range.`}
+      title={actorId ? `No events in the ${active.title}` : "No events match these filters"}
+      description={actorId ? undefined : `Nothing in the ${active.title}. Try a wider date range.`}
       actions={
         filtered ? (
           <Button
@@ -451,9 +462,95 @@ const LogsTable = ({ project, actorId }: { project?: AuditLogsProject; actorId?:
       <EmptyState size="sm" media="bare" icon="history" title="Audit log storage is disabled" />
     );
 
+  const filterBar = (
+    <FilterBar
+      label="Audit log filters"
+      fields={fields}
+      value={filters}
+      onChange={(next) => {
+        setFilters(next);
+        reset();
+      }}
+      actions={
+        <>
+          <ToggleGroup
+            type="single"
+            aria-label="Date range"
+            value={range}
+            onValueChange={(next) => {
+              const item = ranges.find((entry) => entry.value === next);
+              if (!item) return;
+              setRange(item.value);
+              reset();
+            }}
+          >
+            {ranges.map((item) => (
+              <ToggleGroupItem key={item.value} value={item.value}>
+                {item.label}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" icon="calendar">
+                {preset ? "Custom" : active.title}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" aria-label="Custom date range">
+              <Calendar
+                aria-label="Custom date range"
+                mode="range"
+                disabled={{ after: new Date() }}
+                selected={custom}
+                onSelect={(next) => {
+                  setCustom(next);
+                  if (next?.from && next.to) {
+                    setRange("custom");
+                    reset();
+                  }
+                }}
+                footer={
+                  custom?.from && custom.to
+                    ? `${formatDay(custom.from)} to ${formatDay(custom.to)}`
+                    : "Choose a start and end date"
+                }
+              />
+            </PopoverContent>
+          </Popover>
+        </>
+      }
+    />
+  );
+  const table = (
+    <DataTable<AuditLog>
+      filtered
+      key={[active.from, active.to, JSON.stringify(filters)].join()}
+      label={`Audit log, ${active.title}`}
+      rows={rows}
+      columns={columns}
+      loading={isPending}
+      getRowId={(row) => row.id}
+      rowLabel={(row) => `${row.event.type} by ${actorName(row.actor)}`}
+      onRowActivate={setOpened}
+      rowHeight={rowHeight}
+      virtual={!actorId}
+      loadMore={
+        canLoadMore && !actorId
+          ? {
+              label: `Load ${pageSize} more`,
+              loading: isFetchingNextPage,
+              onClick: () => fetchNextPage()
+            }
+          : undefined
+      }
+      end={isPending || rows.length === 0 || actorId ? undefined : "End of logs"}
+      empty={empty}
+    />
+  );
+
   return (
     <>
-      {storage?.volumeWarning && (
+      {!actorId && storage?.volumeWarning && (
         <Alert tone="warn">
           <AlertDescription>
             Your audit log volume is growing. To keep searches fast, stream logs to an{" "}
@@ -476,101 +573,54 @@ const LogsTable = ({ project, actorId }: { project?: AuditLogsProject; actorId?:
           </AlertDescription>
         </Alert>
       )}
-      <FilterBar
-        label="Audit log filters"
-        fields={fields}
-        value={filters}
-        onChange={(next) => {
-          setFilters(next);
-          reset();
-        }}
-        actions={
-          <>
-            <ToggleGroup
-              type="single"
-              aria-label="Date range"
-              value={range}
-              onValueChange={(next) => {
-                const item = ranges.find((entry) => entry.value === next);
-                if (!item) return;
-                setRange(item.value);
-                reset();
-              }}
-            >
-              {ranges.map((item) => (
-                <ToggleGroupItem key={item.value} value={item.value}>
-                  {item.label}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" icon="calendar">
-                  {preset ? "Custom" : active.title}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" aria-label="Custom date range">
-                <Calendar
-                  aria-label="Custom date range"
-                  mode="range"
-                  disabled={{ after: new Date() }}
-                  selected={custom}
-                  onSelect={(next) => {
-                    setCustom(next);
-                    if (next?.from && next.to) {
-                      setRange("custom");
-                      reset();
-                    }
-                  }}
-                  footer={
-                    custom?.from && custom.to
-                      ? `${formatDay(custom.from)} to ${formatDay(custom.to)}`
-                      : "Choose a start and end date"
-                  }
-                />
-              </PopoverContent>
-            </Popover>
-          </>
-        }
-      />
-      <Stack gap={12}>
-        <Inline gap={16} align="center" justify="between">
-          <Heading level={2} size="subsection">
-            Audit log, {active.title}
-          </Heading>
-          {!error && (
-            <Meta mono={false}>
-              {isPending
-                ? "Loading events"
-                : `Showing ${rows.length.toLocaleString("en-US")}${canLoadMore ? "+" : ""} events`}
-            </Meta>
-          )}
-        </Inline>
-        <DataTable<AuditLog>
-          filtered
-          key={[active.from, active.to, JSON.stringify(filters)].join()}
-          label={`Audit log, ${active.title}`}
-          rows={rows}
-          columns={columns}
-          loading={isPending}
-          getRowId={(row) => row.id}
-          rowLabel={(row) => `${row.event.type} by ${actorName(row.actor)}`}
-          onRowActivate={setOpened}
-          rowHeight={rowHeight}
-          virtual
-          loadMore={
-            canLoadMore
-              ? {
-                  label: `Load ${PAGE_SIZE} more`,
-                  loading: isFetchingNextPage,
-                  onClick: () => fetchNextPage()
-                }
-              : undefined
+      {actorId ? (
+        <Card
+          variant="framed"
+          title="Audit logs"
+          flush
+          footer={
+            rows.length > 0 ? (
+              <Inline gap={12} align="center" justify="between" style={{ width: "100%" }}>
+                <Meta mono={false}>
+                  Showing {rows.length.toLocaleString("en-US")}
+                  {canLoadMore ? "+" : ""} events
+                </Meta>
+                {canLoadMore && (
+                  <Button
+                    variant="outline"
+                    loading={isFetchingNextPage}
+                    onClick={() => fetchNextPage()}
+                  >
+                    Load {pageSize} more
+                  </Button>
+                )}
+              </Inline>
+            ) : undefined
           }
-          end={isPending || rows.length === 0 ? undefined : "End of logs"}
-          empty={empty}
-        />
-      </Stack>
+        >
+          <div className={styles.toolbar}>{filterBar}</div>
+          {table}
+        </Card>
+      ) : (
+        <>
+          {filterBar}
+          <Stack gap={12}>
+            <Inline gap={16} align="center" justify="between">
+              <Heading level={2} size="subsection">
+                Audit log, {active.title}
+              </Heading>
+              {!error && (
+                <Meta mono={false}>
+                  {isPending
+                    ? "Loading events"
+                    : `Showing ${rows.length.toLocaleString("en-US")}${canLoadMore ? "+" : ""} events`}
+                </Meta>
+              )}
+            </Inline>
+            {table}
+          </Stack>
+        </>
+      )}
       <LogDetails log={opened} onClose={() => setOpened(null)} />
     </>
   );
