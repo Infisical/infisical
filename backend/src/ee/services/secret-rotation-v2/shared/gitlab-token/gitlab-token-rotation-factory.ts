@@ -1,5 +1,3 @@
-import { isEqual } from "lodash";
-
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   TRotationFactoryCheckActiveCredentials,
@@ -9,6 +7,7 @@ import {
   TRotationFactoryRotateCredentials,
   TSecretRotationV2Raw
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import { deepEqual } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TGitLabConnection } from "@app/services/app-connection/gitlab/gitlab-connection-types";
@@ -160,7 +159,7 @@ export const gitLabTokenRotationFactory = ({
   ) => {
     const context = await $getTokenCreationContext();
 
-    if (credentialsToRevoke?.tokenId && isEqual(credentialsToRevoke.settings, tokenSettings)) {
+    if (credentialsToRevoke?.tokenId && deepEqual(credentialsToRevoke.settings, tokenSettings)) {
       const rotatedCredentials = await rotateGitLabToken({
         context,
         tokensPath,
