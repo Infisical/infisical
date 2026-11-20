@@ -1990,7 +1990,7 @@ export const OverviewPage = () => {
                           <>
                             {sortSummary && (
                               <ButtonGroup label="Applied sort" className={styles.sortChip}>
-                                <ButtonGroupText className={styles.sortChipText}>
+                                <ButtonGroupText size="xs">
                                   <TruncatedLabel>{sortSummary}</TruncatedLabel>
                                 </ButtonGroupText>
                                 <Button

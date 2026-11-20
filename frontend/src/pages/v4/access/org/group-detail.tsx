@@ -65,7 +65,7 @@ import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { formatDate, orgRoleName, orgRoleSlug } from "../roles";
 import { failed, saved, toast } from "../toast";
-import { Gate, ListToolbar, Muted, RESTRICTED, type Sort } from "../ui";
+import { EditDetailsButton, Gate, ListToolbar, Muted, RESTRICTED, type Sort } from "../ui";
 import { CopyButton, Value } from "./detail-parts";
 import { GroupDialog } from "./group-dialog";
 import { ProjectMembershipsSection } from "./project-memberships";
@@ -386,44 +386,44 @@ const GroupMembersSection = ({
           </Inline>
         }
       >
-        {hasRows && (
-          <DataTable
-            label={`Members of ${group.name}`}
-            rows={members}
-            columns={columns}
-            rowActions={isLinked ? undefined : rowActions}
-            getRowId={(member) => `${member.type}:${member.id}`}
-            rowLabel={memberName}
-            loading={isPending}
-            sort={sort}
-            onSortChange={(next) => {
-              setSort(next);
-              setPage(1);
-            }}
-            pagination={
-              !isPending && totalCount > 0 ? (
-                <Pagination
-                  variant="compact"
-                  page={page}
-                  total={totalCount}
-                  pageSize={perPage}
-                  pageSizeOptions={[10, 20, 50, 100]}
-                  onPageChange={setPage}
-                  onPageSizeChange={(size) => {
-                    setPerPage(size);
-                    setPage(1);
-                  }}
-                />
-              ) : undefined
-            }
-          />
-        )}
-        {!hasRows &&
-          (filtered ? (
-            <EmptyState size="sm" icon="search" title="No members match this search" />
-          ) : (
-            <EmptyState size="sm" icon="user" title="This group does not have any members" />
-          ))}
+        <DataTable
+          label={`Members of ${group.name}`}
+          rows={members}
+          columns={columns}
+          rowActions={isLinked ? undefined : rowActions}
+          getRowId={(member) => `${member.type}:${member.id}`}
+          rowLabel={memberName}
+          loading={isPending}
+          sort={sort}
+          onSortChange={(next) => {
+            setSort(next);
+            setPage(1);
+          }}
+          pagination={
+            !isPending && totalCount > 0 ? (
+              <Pagination
+                variant="compact"
+                page={page}
+                total={totalCount}
+                pageSize={perPage}
+                pageSizeOptions={[10, 20, 50, 100]}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => {
+                  setPerPage(size);
+                  setPage(1);
+                }}
+              />
+            ) : undefined
+          }
+          filtered={filtered}
+          empty={
+            filtered ? (
+              <EmptyState size="sm" icon="search" title="No members match this search" />
+            ) : (
+              <EmptyState size="sm" icon="user" title="This group does not have any members" />
+            )
+          }
+        />
       </Card>
       {adding && (
         <AddMembersDialog group={group} oidcManaged={oidcManaged} onOpenChange={setAdding} />
@@ -527,16 +527,11 @@ export const OrgGroupDetail = () => {
               title="Details"
               action={
                 !isLinked && (
-                  <Gate allowed={canEdit}>
-                    <Button
-                      variant="outline"
-                      icon="pencil"
-                      iconOnly
-                      aria-label="Edit group"
-                      disabled={!canEdit}
-                      onClick={() => setEditing(true)}
-                    />
-                  </Gate>
+                  <EditDetailsButton
+                    label="Edit group"
+                    allowed={canEdit}
+                    onClick={() => setEditing(true)}
+                  />
                 )
               }
             >

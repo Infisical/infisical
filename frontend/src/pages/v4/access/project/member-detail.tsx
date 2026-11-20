@@ -156,9 +156,9 @@ export const ProjectMemberDetail = () => {
                 side="right"
                 content="You cannot modify your own membership. Ask a project admin to make changes to your membership."
               >
-                <Badge tone="info">
-                  <Icon name="info" size={12} />
-                  {`Your ${accessNoun(scope.projectType)} membership`}
+                <Badge tone="info" icon="info" size="control-sm" collapse>
+                  <span aria-hidden="true">You</span>
+                  <span className="sr-only">{`Your ${accessNoun(scope.projectType)} membership`}</span>
                 </Badge>
               </Tooltip>
             ) : (

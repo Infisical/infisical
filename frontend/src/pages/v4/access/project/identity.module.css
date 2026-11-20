@@ -3,7 +3,7 @@
 }
 .idValue {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--cipher-space-4);
   min-width: 0;
 }

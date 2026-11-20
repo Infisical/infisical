@@ -50,7 +50,7 @@ import { useOrgId, useOrgPermission } from "../permissions";
 import { IdentityAlertAction } from "../project/identity-alerts";
 import { formatDateTime, orgRoleName, orgRoleSlug, roleOptions } from "../roles";
 import { failed, saved, toast } from "../toast";
-import { AccessRestricted, Gate, RESTRICTED } from "../ui";
+import { AccessRestricted, EditDetailsButton, Gate, RESTRICTED } from "../ui";
 import {
   AUTH_METHOD_ORDER,
   type AuthIdentity,
@@ -367,16 +367,11 @@ export const OrgIdentityDetail = () => {
               variant="framed"
               title="Details"
               action={
-                <Gate allowed={canEdit}>
-                  <Button
-                    variant="outline"
-                    icon="pencil"
-                    iconOnly
-                    aria-label="Edit machine identity"
-                    disabled={!canEdit}
-                    onClick={() => setEditing(true)}
-                  />
-                </Gate>
+                <EditDetailsButton
+                  label="Edit machine identity"
+                  allowed={canEdit}
+                  onClick={() => setEditing(true)}
+                />
               }
             >
               <DataList
@@ -397,11 +392,10 @@ export const OrgIdentityDetail = () => {
                     <Badge key="managed" tone="outline">
                       <Icon name="building" size={12} />
                       Organization
-                    </Badge>,
-                    { span: "half" }
+                    </Badge>
                   ],
-                  ["Organization role", orgRoleName(roles, roleRef), { span: "half" }],
-                  ["Created", formatDateTime(membership.createdAt), { span: "half" }],
+                  ["Organization role", orgRoleName(roles, roleRef)],
+                  ["Created", formatDateTime(membership.createdAt)],
                   [
                     "Delete protection",
                     identity.hasDeleteProtection ? (
@@ -414,8 +408,7 @@ export const OrgIdentityDetail = () => {
                         <Icon name="x" size={12} />
                         Disabled
                       </Badge>
-                    ),
-                    { span: "half" }
+                    )
                   ],
                   [
                     "Last login",
