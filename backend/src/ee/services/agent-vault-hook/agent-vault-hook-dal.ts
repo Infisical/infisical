@@ -316,8 +316,10 @@ export const agentVaultHookDALFactory = (db: TDbClient) => {
 
   const countHookServiceLinks = async (hookId: string, tx: Knex) => {
     try {
-      const row = (await tx(LINK).where({ hookId }).count("* as count").first()) as { count: string | number };
-      return Number(row.count);
+      const row = (await tx(LINK).where({ hookId }).count(`${LINK}.hookId as count`).first()) as
+        | { count: string }
+        | undefined;
+      return parseInt(row?.count || "0", 10);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count agent vault hook services" });
     }
