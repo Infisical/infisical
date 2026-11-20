@@ -999,7 +999,7 @@ export const secretAccessApprovalRequestServiceFactory = ({
       projectId: request.projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.Any
     });
 
     if (request.requesterId !== actorId) {
