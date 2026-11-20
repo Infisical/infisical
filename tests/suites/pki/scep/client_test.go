@@ -30,6 +30,7 @@ import (
 // internal CA under a policy that allows anything.
 type scepProfile struct {
 	api     *api.ClientWithResponses
+	project *pki.Project
 	app     pki.Application
 	profile pki.Profile
 }
@@ -57,7 +58,7 @@ func newScepProfile(t *testing.T, tn *harness.Tenant, enrollment api.SetPkiAppli
 	profile := pki.NewProfile(t, proj, pki.NewInternalCA(t, proj), pki.NewPolicy(t, proj, pki.AllowAll(t)))
 	app := pki.NewApplication(t, proj, profile)
 	pki.EnableSCEP(t, app, profile, enrollment)
-	return scepProfile{api: tn.Anonymous(t), app: app, profile: profile}
+	return scepProfile{api: tn.Anonymous(t), project: proj, app: app, profile: profile}
 }
 
 // operation sends a SCEP GET, which is how a client without POSTPKIOperation, or

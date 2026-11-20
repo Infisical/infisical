@@ -361,6 +361,7 @@ const envSchema = z
     DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
 
     OPENAPI_FULL_SPEC: zodStrBool.default("false").optional(),
+    ALLOW_CRON_JOB_TRIGGER: zodStrBool.default("false"),
     ACME_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     ACME_SKIP_UPSTREAM_VALIDATION: zodStrBool.default("false").optional(),
     ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES: zpStr(

@@ -4759,6 +4759,15 @@ export const SecretValidationRules = {
   }
 } as const;
 
+export const CRON_JOB_TRIGGER = {
+  description:
+    "Run a scheduled job once, now, and wait for its handler to return. Only instance admins can call it, and only when the instance sets ALLOW_CRON_JOB_TRIGGER=true. The instance that serves the request must run general workers, because jobs are registered only there. A 200 means the handler returned; work it queued may still be running.",
+  jobName: "The name of the scheduled job to run.",
+  response: {
+    jobName: "The name of the job that ran."
+  }
+};
+
 export const ENCRYPTION_KEY_ROTATION = {
   ROOT_KEY: {
     description:

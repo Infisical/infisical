@@ -12,13 +12,12 @@ package acmeca
 
 import (
 	"crypto"
-	"crypto/ecdsa"
-	"crypto/x509"
 	"encoding/json"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/Infisical/infisical/tests/fakes/internal/issuer"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 )
 
@@ -30,8 +29,7 @@ type CA struct {
 	mu         sync.Mutex
 	mux        *http.ServeMux
 	events     fakenet.Emitter
-	key        *ecdsa.PrivateKey
-	cert       *x509.Certificate
+	root       *issuer.CA
 	nonces     map[string]bool
 	accounts   map[string]*account
 	orders     map[string]*order
@@ -46,6 +44,10 @@ type Issued struct {
 	Serial   string    `json:"serial"`
 	PEM      string    `json:"pem"`
 	IssuedAt time.Time `json:"issuedAt"`
+	// RevokedAt is set once the account that ordered it revokes it, with Reason the
+	// RFC 5280 reason code it gave.
+	RevokedAt *time.Time `json:"revokedAt,omitempty"`
+	Reason    int        `json:"reason,omitempty"`
 }
 
 type account struct {
