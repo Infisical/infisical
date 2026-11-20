@@ -45,7 +45,7 @@ import type { TRelayWithAuthMethod } from "@app/hooks/api/relays/types";
 import { Dash } from "../../access/org/detail-parts";
 import { useOrgId, useOrgPermission } from "../../access/permissions";
 import { saved, toast } from "../../access/toast";
-import { AccessRestricted, RESTRICTED } from "../../access/ui";
+import { AccessRestricted, EditDetailsButton, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
@@ -186,14 +186,12 @@ const RelayDeployCard = ({ relay }: { relay: TRelayWithAuthMethod }) => {
   return (
     <Card
       variant="framed"
-      title={
-        <Inline gap={8} wrap={false}>
-          Deployment
-          <DocumentationLink
-            href="https://infisical.com/docs/cli/overview"
-            subject="relay deployment"
-          />
-        </Inline>
+      title="Deployment"
+      badges={
+        <DocumentationLink
+          href="https://infisical.com/docs/cli/overview"
+          subject="relay deployment"
+        />
       }
       action={
         canEdit && showCommands ? (
@@ -274,26 +272,18 @@ const ConnectedGatewaysCard = ({ relayId }: { relayId: string }) => {
       render: (row) => (row.heartbeat ? relative(row.heartbeat) : <Dash />)
     }
   ];
-  const empty = !isPending && rows.length === 0;
   return (
-    <Card variant="framed" title="Connected gateways" flush={!empty}>
-      {empty ? (
-        <EmptyState
-          size="sm"
-          icon="server"
-          title="No connected gateways"
-          description="Gateways that route through this relay will show up here."
-        />
-      ) : (
-        <DataTable
-          label="Connected gateways"
-          rows={rows}
-          columns={columns}
-          loading={isPending}
-          getRowId={(row) => row.id}
-          rowLabel={(row) => row.name}
-        />
-      )}
+    <Card variant="framed" title="Connected gateways" flush>
+      <DataTable
+        label="Connected gateways"
+        rows={rows}
+        columns={columns}
+        loading={isPending}
+        getRowId={(row) => row.id}
+        rowLabel={(row) => row.name}
+        filtered={false}
+        empty={<EmptyState size="sm" media="bare" icon="server" title="No connected gateways" />}
+      />
     </Card>
   );
 };
@@ -434,51 +424,46 @@ export const RelayDetailsByIDPage = () => {
       <DetailLayout
         asideLabel="Details"
         aside={
-          <Stack gap={24}>
-            <Card
-              variant="framed"
-              title="Details"
-              action={
-                <Button
-                  variant="outline"
-                  icon="pencil"
-                  iconOnly
-                  aria-label="Edit relay host"
-                  disabledReason={canEdit ? undefined : RESTRICTED}
-                  onClick={() => setDialog("host")}
-                />
-              }
-            >
-              <DataList
-                variant="props"
-                density="compact"
-                items={[
-                  [
-                    "ID",
-                    <TruncatedValue
-                      key="id"
-                      value={relay.id}
-                      copyLabel="Copy relay ID to clipboard"
-                    />
-                  ],
-                  ["Host", <TruncatedValue key="host" value={relay.host} />],
-                  ["Health", <RelayHealth key="health" heartbeat={relay.heartbeat} />],
-                  [
-                    "Last heartbeat",
-                    relay.heartbeat ? dateTime(relay.heartbeat) : <Dash key="heartbeat" />,
-                    { span: "half" }
-                  ],
-                  ["Created", dateTime(relay.createdAt), { span: "half" }]
-                ]}
+          <Card
+            variant="framed"
+            title="Details"
+            action={
+              <EditDetailsButton
+                label="Edit relay host"
+                allowed={canEdit}
+                onClick={() => setDialog("host")}
               />
-            </Card>
-            <AuthenticationCard relay={relay} canEdit={canEdit} />
-          </Stack>
+            }
+          >
+            <DataList
+              variant="props"
+              density="compact"
+              items={[
+                ["Name", relay.name],
+                [
+                  "ID",
+                  <TruncatedValue
+                    key="id"
+                    value={relay.id}
+                    copyLabel="Copy relay ID to clipboard"
+                  />
+                ],
+                ["Host", <TruncatedValue key="host" value={relay.host} />],
+                ["Health", <RelayHealth key="health" heartbeat={relay.heartbeat} size="md" />],
+                [
+                  "Last heartbeat",
+                  relay.heartbeat ? dateTime(relay.heartbeat) : <Dash key="heartbeat" />
+                ],
+                ["Created", dateTime(relay.createdAt)]
+              ]}
+            />
+          </Card>
         }
       >
         <Stack gap={24}>
           <RelayDeployCard relay={relay} />
           <ConnectedGatewaysCard relayId={relay.id} />
+          <AuthenticationCard relay={relay} canEdit={canEdit} />
         </Stack>
       </DetailLayout>
       <EditHostDialog

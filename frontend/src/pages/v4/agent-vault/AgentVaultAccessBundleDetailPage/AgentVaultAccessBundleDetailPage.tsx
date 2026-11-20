@@ -18,7 +18,8 @@ import {
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { HeaderSearch } from "@infisical/cipher/ui/header-search";
 import { Icon } from "@infisical/cipher/ui/icon";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { DetailLayout, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { DataList } from "@infisical/cipher/ui/list";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
@@ -36,14 +37,22 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { AgentVaultSessionScope } from "@app/hooks/api/agentVault/enums";
-import type { TAgentVaultBundleSkill, TAgentVaultService } from "@app/hooks/api/agentVault/types";
+import type {
+  TAgentVaultAccessBundle,
+  TAgentVaultBundleSkill,
+  TAgentVaultService
+} from "@app/hooks/api/agentVault/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
+import { Dash } from "../../access/org/detail-parts";
 import { useProjectPermission } from "../../access/permissions";
+import { formatDateTime } from "../../access/roles";
 import { failed, saved } from "../../access/toast";
+import { EditDetailsButton } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
+import { TruncatedValue } from "../../networking/truncated-value";
 import { AccessBundleDialog, DeleteAccessBundleDialog } from "../resources/access-bundle-dialogs";
 import { AddBundleServicesDialog, AddBundleSkillsDialog } from "../resources/add-to-bundle-dialogs";
 import { targetOf, AgentVaultDocs } from "../resources/agent-vault-utils";
@@ -178,7 +187,7 @@ const BundleSkills = ({
     <Card
       variant="framed"
       title="Skills"
-      flush={skills.length > 0 || isPending}
+      flush
       action={
         canManage ? (
           <Button
@@ -192,26 +201,26 @@ const BundleSkills = ({
         ) : undefined
       }
     >
-      {skills.length > 0 || isPending ? (
-        <DataTable
-          label="Skills in this bundle"
-          rows={skills}
-          columns={columns}
-          loading={isPending}
-          loadingRows={2}
-          getRowId={(skill) => skill.id}
-          rowLabel={(skill) => skill.name}
-          rowActions={rowActions}
-        />
-      ) : (
-        <EmptyState
-          size="sm"
-          media="bare"
-          icon="book"
-          title="No skills yet"
-          description="Skills give agents running with this bundle instructions for their tasks."
-        />
-      )}
+      <DataTable
+        label="Skills in this bundle"
+        rows={skills}
+        columns={columns}
+        loading={isPending}
+        loadingRows={2}
+        getRowId={(skill) => skill.id}
+        rowLabel={(skill) => skill.name}
+        rowActions={rowActions}
+        filtered={false}
+        empty={
+          <EmptyState
+            size="sm"
+            media="bare"
+            icon="book"
+            title="No skills yet"
+            description="Skills give agents running with this bundle instructions for their tasks."
+          />
+        }
+      />
       {adding && (
         <AddBundleSkillsDialog
           projectId={projectId}
@@ -238,6 +247,40 @@ const BundleSkills = ({
     </Card>
   );
 };
+
+const BundleDetailsCard = ({
+  accessBundle,
+  canEdit,
+  onEdit
+}: {
+  accessBundle: TAgentVaultAccessBundle;
+  canEdit: boolean;
+  onEdit: () => void;
+}) => (
+  <Card
+    variant="framed"
+    title="Details"
+    action={<EditDetailsButton label="Edit access bundle" allowed={canEdit} onClick={onEdit} />}
+  >
+    <DataList
+      variant="props"
+      density="compact"
+      items={[
+        ["Name", accessBundle.name],
+        ["Description", accessBundle.description || <Dash key="description" />],
+        [
+          "ID",
+          <TruncatedValue
+            key="id"
+            value={accessBundle.id}
+            copyLabel="Copy access bundle ID to clipboard"
+          />
+        ],
+        ["Created", formatDateTime(accessBundle.createdAt)]
+      ]}
+    />
+  </Card>
+);
 
 const AccessBundleDetail = ({
   orgId,
@@ -354,7 +397,6 @@ const AccessBundleDetail = ({
               { label: "Access bundles", link: { to: listRoute, params: { orgId, projectId } } }
             ]}
             title={accessBundle.name}
-            description={accessBundle.description || undefined}
             badges={
               <DocumentationLink href={AgentVaultDocs.accessBundles} subject="access bundles" />
             }
@@ -393,44 +435,53 @@ const AccessBundleDetail = ({
               ) : undefined
             }
           />
-          {needsSetup.length > 0 && (
-            <Alert
-              tone="warn"
-              actions={
-                <Button variant="outline" size="sm" onClick={() => setSettingUp(needsSetup[0])}>
-                  {`Set up ${needsSetup[0].name}`}
-                </Button>
-              }
-            >
-              {`${one ? `${needsSetup[0].name} requires` : `${needsSetup.length} services require`} your personal values. Sessions from this bundle can't reach ${one ? "it" : "them"} until you set ${one ? "it" : "them"} up.`}
-            </Alert>
-          )}
-          {canReadAnySession && accessBundle.services.length > 0 && (
-            <ReadyAlert orgId={orgId} projectId={projectId} />
-          )}
-          <Card
-            variant="framed"
-            title="Services"
-            flush={accessBundle.services.length > 0}
-            action={
-              <Inline gap={8} wrap={false}>
-                {accessBundle.services.length > 0 && (
-                  <HeaderSearch
-                    label="Search services"
-                    placeholder="Search services"
-                    value={search}
-                    onValueChange={setSearch}
-                  />
-                )}
-                {canEditBundle && (
-                  <Button variant="outline" icon="plus" onClick={() => setAddingService(true)}>
-                    Add services
-                  </Button>
-                )}
-              </Inline>
+          <DetailLayout
+            asideLabel="Details"
+            aside={
+              <BundleDetailsCard
+                accessBundle={accessBundle}
+                canEdit={canEditBundle}
+                onEdit={() => setEditing(true)}
+              />
             }
           >
-            {accessBundle.services.length > 0 ? (
+            {needsSetup.length > 0 && (
+              <Alert
+                tone="warn"
+                actions={
+                  <Button variant="outline" size="sm" onClick={() => setSettingUp(needsSetup[0])}>
+                    {`Set up ${needsSetup[0].name}`}
+                  </Button>
+                }
+              >
+                {`${one ? `${needsSetup[0].name} requires` : `${needsSetup.length} services require`} your personal values. Sessions from this bundle can't reach ${one ? "it" : "them"} until you set ${one ? "it" : "them"} up.`}
+              </Alert>
+            )}
+            {canReadAnySession && accessBundle.services.length > 0 && (
+              <ReadyAlert orgId={orgId} projectId={projectId} />
+            )}
+            <Card
+              variant="framed"
+              title="Services"
+              flush
+              action={
+                <Inline gap={8} wrap={false}>
+                  {accessBundle.services.length > 0 && (
+                    <HeaderSearch
+                      label="Search services"
+                      placeholder="Search services"
+                      value={search}
+                      onValueChange={setSearch}
+                    />
+                  )}
+                  {canEditBundle && (
+                    <Button variant="outline" icon="plus" onClick={() => setAddingService(true)}>
+                      Add services
+                    </Button>
+                  )}
+                </Inline>
+              }
+            >
               <ServicesTable
                 orgId={orgId}
                 projectId={projectId}
@@ -440,36 +491,33 @@ const AccessBundleDetail = ({
                 loading={false}
                 sort={sort}
                 onSortChange={setSort}
+                filtered={accessBundle.services.length > 0}
                 empty={
-                  <EmptyState
-                    size="sm"
-                    media="bare"
-                    icon="search"
-                    title="No services match your search"
-                  />
+                  accessBundle.services.length > 0 ? (
+                    <EmptyState
+                      size="sm"
+                      media="bare"
+                      icon="search"
+                      title="No services match your search"
+                    />
+                  ) : (
+                    <EmptyState size="sm" media="bare" icon="proxy" title="No services yet" />
+                  )
                 }
                 onEdit={(service) => setSheet({ service })}
                 onSetUp={setSettingUp}
               />
-            ) : (
-              <EmptyState
-                size="sm"
-                media="bare"
-                icon="proxy"
-                title="No services yet"
-                description="Add services to give this bundle access to external hosts."
+            </Card>
+            {canReadSkills && (
+              <BundleSkills
+                projectId={projectId}
+                accessBundleId={accessBundle.id}
+                canManage={canEditBundle}
+                canCreate={canCreateSkills}
+                onOpen={openSheet}
               />
             )}
-          </Card>
-          {canReadSkills && (
-            <BundleSkills
-              projectId={projectId}
-              accessBundleId={accessBundle.id}
-              canManage={canEditBundle}
-              canCreate={canCreateSkills}
-              onOpen={openSheet}
-            />
-          )}
+          </DetailLayout>
         </Stack>
       </div>
       {addingService && (

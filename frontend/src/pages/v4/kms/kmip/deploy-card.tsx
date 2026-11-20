@@ -5,7 +5,7 @@ import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
 import { CodeBlock } from "@infisical/cipher/ui/code-block";
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Stack } from "@infisical/cipher/ui/layout";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 
 import type { TKmipServerWithAuthMethod } from "@app/hooks/api/kmipServers/types";
@@ -151,12 +151,8 @@ export const DeployCard = ({
 export const ConnectClientsCard = () => (
   <Card
     variant="framed"
-    title={
-      <Inline gap={8} wrap={false}>
-        Connecting KMIP clients
-        <DocumentationLink href={KMIP_CLIENT_DOCS} subject="KMIP clients" />
-      </Inline>
-    }
+    title="Connecting KMIP clients"
+    badges={<DocumentationLink href={KMIP_CLIENT_DOCS} subject="KMIP clients" />}
     hint="Clients connect with a client certificate and are managed per KMS project."
   >
     <ol className={css.steps}>

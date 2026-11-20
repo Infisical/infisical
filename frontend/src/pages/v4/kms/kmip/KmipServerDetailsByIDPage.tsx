@@ -13,10 +13,9 @@ import {
 } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
-import { DetailLayout, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { DetailLayout, Stack } from "@infisical/cipher/ui/layout";
 import { DataList } from "@infisical/cipher/ui/list";
 import { Loader } from "@infisical/cipher/ui/loader";
-import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useParams } from "@tanstack/react-router";
@@ -27,15 +26,16 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import type { TKmipServerWithAuthMethod } from "@app/hooks/api/kmipServers/types";
 
-import { CopyButton } from "../../access/org/detail-parts";
+import { Dash } from "../../access/org/detail-parts";
 import { useOrgId, useOrgPermission } from "../../access/permissions";
 import { formatDateTime } from "../../access/roles";
 import { failed, toast } from "../../access/toast";
-import { AccessRestricted, Gate, RESTRICTED } from "../../access/ui";
+import { AccessRestricted, EditDetailsButton, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import type { KmipEnrollment } from "../../data/kmip/contract";
 import { useGo } from "../../links";
+import { TruncatedValue } from "../../networking/truncated-value";
 import { ConnectClientsCard, DeployCard } from "./deploy-card";
 import {
   AuthMethodDialog,
@@ -47,31 +47,7 @@ import { errorStatus, KMIP_SERVER_DOCS, keyAlgorithmName, kmipLinks } from "./sh
 
 import css from "./kmip.module.css";
 
-const Dash = () => <span className={css.muted}>-</span>;
-
 const methodLabel = { aws: "AWS auth", token: "Token auth", identity: "Machine identity" };
-
-const EditButton = ({
-  label,
-  allowed,
-  onClick
-}: {
-  label: string;
-  allowed: boolean;
-  onClick: () => void;
-}) => (
-  <Gate allowed={allowed}>
-    <Button
-      variant="outline"
-      size="icon-xs"
-      aria-label={label}
-      disabled={!allowed}
-      onClick={onClick}
-    >
-      <Icon name="pencil" size={12} />
-    </Button>
-  </Gate>
-);
 
 const useEnrollment = (server: TKmipServerWithAuthMethod | undefined) => {
   const generate = useV4Adapter("kmip").useGenerateEnrollmentToken();
@@ -212,81 +188,24 @@ export const KmipServerDetailsByIDPage = () => {
           <DetailLayout
             asideLabel="Details"
             aside={
-              <Stack gap={24}>
-                <Card variant="framed" title="Details">
-                  <DataList
-                    variant="props"
-                    density="compact"
-                    items={[
-                      [
-                        "ID",
-                        <Inline key="id" gap={4} align="center" wrap={false}>
-                          <MiddleTruncate mono keepEnd={6} text={server.id} />
-                          <CopyButton value={server.id} label="Copy KMIP server ID" />
-                        </Inline>
-                      ],
-                      ["Name", server.name],
-                      ["Created", formatDateTime(server.createdAt)]
-                    ]}
-                  />
-                </Card>
-                {!isIdentity && (
-                  <Card
-                    variant="framed"
-                    title="Certificate configuration"
-                    action={
-                      <EditButton
-                        label="Edit certificate configuration"
-                        allowed={canEdit}
-                        onClick={() => setDialog("cert")}
+              <Card variant="framed" title="Details">
+                <DataList
+                  variant="props"
+                  density="compact"
+                  items={[
+                    ["Name", server.name],
+                    [
+                      "ID",
+                      <TruncatedValue
+                        key="id"
+                        value={server.id}
+                        copyLabel="Copy KMIP server ID to clipboard"
                       />
-                    }
-                  >
-                    <DataList
-                      variant="props"
-                      density="compact"
-                      items={[
-                        ["Hostnames or IPs", server.hostnamesOrIps || <Dash key="hosts" />],
-                        ["Certificate TTL", server.ttl || "1y"],
-                        ["Key algorithm", keyAlgorithmName(server.keyAlgorithm)]
-                      ]}
-                    />
-                  </Card>
-                )}
-                <Card
-                  variant="framed"
-                  title="Authentication"
-                  action={
-                    isIdentity ? undefined : (
-                      <EditButton
-                        label="Edit auth method"
-                        allowed={canEdit}
-                        onClick={() => setDialog("auth")}
-                      />
-                    )
-                  }
-                >
-                  <Stack gap={12}>
-                    {isIdentity && (
-                      <Alert
-                        tone="warn"
-                        title="Authenticated through a machine identity (legacy)"
-                        actions={
-                          <Button variant="link" onClick={back}>
-                            Create a new KMIP server
-                          </Button>
-                        }
-                      >
-                        This server still uses a machine identity. Create a new KMIP server to
-                        replace it.
-                      </Alert>
-                    )}
-                    {authItems.length > 0 && (
-                      <DataList variant="props" density="compact" items={authItems} />
-                    )}
-                  </Stack>
-                </Card>
-              </Stack>
+                    ],
+                    ["Created", formatDateTime(server.createdAt)]
+                  ]}
+                />
+              </Card>
             }
           >
             <div className={css.column}>
@@ -298,6 +217,62 @@ export const KmipServerDetailsByIDPage = () => {
                 onGenerate={mint}
               />
               <ConnectClientsCard />
+              {!isIdentity && (
+                <Card
+                  variant="framed"
+                  title="Certificate configuration"
+                  action={
+                    <EditDetailsButton
+                      label="Edit certificate configuration"
+                      allowed={canEdit}
+                      onClick={() => setDialog("cert")}
+                    />
+                  }
+                >
+                  <DataList
+                    variant="props"
+                    density="compact"
+                    items={[
+                      ["Hostnames or IPs", server.hostnamesOrIps || <Dash key="hosts" />],
+                      ["Certificate TTL", server.ttl || "1y"],
+                      ["Key algorithm", keyAlgorithmName(server.keyAlgorithm)]
+                    ]}
+                  />
+                </Card>
+              )}
+              <Card
+                variant="framed"
+                title="Authentication"
+                action={
+                  isIdentity ? undefined : (
+                    <EditDetailsButton
+                      label="Edit auth method"
+                      allowed={canEdit}
+                      onClick={() => setDialog("auth")}
+                    />
+                  )
+                }
+              >
+                <Stack gap={12}>
+                  {isIdentity && (
+                    <Alert
+                      tone="warn"
+                      title="Authenticated through a machine identity (legacy)"
+                      actions={
+                        <Button variant="link" onClick={back}>
+                          Create a new KMIP server
+                        </Button>
+                      }
+                    >
+                      This server still uses a machine identity. Create a new KMIP server to replace
+                      it.
+                    </Alert>
+                  )}
+                  {authItems.length > 0 && (
+                    <DataList variant="props" density="compact" items={authItems} />
+                  )}
+                </Stack>
+              </Card>
             </div>
           </DetailLayout>
         </Stack>

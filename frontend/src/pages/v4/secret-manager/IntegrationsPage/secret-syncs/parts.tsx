@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ComponentPropsWithRef, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,6 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import {
   Dialog,
@@ -49,15 +50,39 @@ export const useSyncBlock = (projectId: string) => {
       : RESTRICTED;
 };
 
-export const SyncStatus = ({ sync }: { sync: TSecretSync }) => {
+type StatusSize = "md" | "control-sm";
+
+const StatusLabel = ({
+  tone,
+  icon,
+  size,
+  ...props
+}: ComponentPropsWithRef<"span"> & {
+  tone?: "neutral" | "ok" | "bad";
+  icon: "clock" | "check-c" | "alert" | "x";
+  size?: StatusSize;
+}) =>
+  size ? (
+    <Badge
+      {...props}
+      tone={!tone || tone === "neutral" ? "outline" : tone}
+      icon={icon}
+      size={size}
+      collapse={size === "control-sm"}
+    />
+  ) : (
+    <StatusText {...props} tone={tone} icon={icon} />
+  );
+
+export const SyncStatus = ({ sync, size }: { sync: TSecretSync; size?: StatusSize }) => {
   const state = SYNC_STATE[syncStateOf(sync)];
   const failure = messageOf(sync.syncStatus, sync.lastSyncMessage);
   const note =
     sync.syncStatus === SecretSyncStatus.Succeeded ? sync.lastSyncMessage || undefined : undefined;
   const status = (
-    <StatusText tone={state.tone} icon={state.icon} tabIndex={0}>
+    <StatusLabel tone={state.tone} icon={state.icon} size={size} tabIndex={0}>
       {state.label}
-    </StatusText>
+    </StatusLabel>
   );
   if (!sync.lastSyncedAt && !failure && !note) return status;
   return (
@@ -87,21 +112,23 @@ const JobStatus = ({
   kind,
   status,
   message,
-  at
+  at,
+  size
 }: {
   kind: "import" | "remove";
   status: SecretSyncStatus | null;
   message: string | null;
   at: Date | null;
+  size?: StatusSize;
 }) => {
   if (!status) return null;
   const labels = JOB_LABELS[kind];
   if (status === SecretSyncStatus.Succeeded) {
     if (!at || Date.now() - new Date(at).getTime() > 15_000) return null;
     return (
-      <StatusText tone="ok" icon="check-c">
+      <StatusLabel tone="ok" icon="check-c" size={size}>
         {labels.done}
-      </StatusText>
+      </StatusLabel>
     );
   }
   if (status === SecretSyncStatus.Failed)
@@ -110,36 +137,44 @@ const JobStatus = ({
         side="left"
         content={<span style={{ whiteSpace: "pre-wrap" }}>{messageOf(status, message)}</span>}
       >
-        <StatusText tone="bad" icon="alert" tabIndex={0} data-row-interactive>
+        <StatusLabel tone="bad" icon="alert" size={size} tabIndex={0} data-row-interactive>
           {labels.failed}
-        </StatusText>
+        </StatusLabel>
       </Tooltip>
+    );
+  if (size)
+    return (
+      <StatusLabel icon="clock" size={size}>
+        {labels.running}
+      </StatusLabel>
     );
   return <StatusText loading>{labels.running}</StatusText>;
 };
 
-export const SyncJobs = ({ sync }: { sync: TSecretSync }) => (
+export const SyncJobs = ({ sync, size }: { sync: TSecretSync; size?: StatusSize }) => (
   <>
     <JobStatus
       kind="import"
       status={sync.importStatus}
       message={sync.lastImportMessage}
       at={sync.lastImportedAt}
+      size={size}
     />
     <JobStatus
       kind="remove"
       status={sync.removeStatus}
       message={sync.lastRemoveMessage}
       at={sync.lastRemovedAt}
+      size={size}
     />
   </>
 );
 
-export const AutoSyncOff = () => (
+export const AutoSyncOff = ({ size }: { size?: StatusSize }) => (
   <Tooltip content="Changes to the source aren't synced until you turn auto-sync back on.">
-    <StatusText icon="x" tabIndex={0} data-row-interactive>
+    <StatusLabel icon="x" size={size} tabIndex={0} data-row-interactive>
       Auto-sync off
-    </StatusText>
+    </StatusLabel>
   </Tooltip>
 );
 

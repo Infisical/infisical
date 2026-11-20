@@ -1,5 +1,6 @@
 import { type ReactNode, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
+import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
@@ -14,7 +15,7 @@ import { DataList, type DataListItem } from "@infisical/cipher/ui/list";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
-import { Meta, StatusText } from "@infisical/cipher/ui/text";
+import { Meta } from "@infisical/cipher/ui/text";
 import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useParams } from "@tanstack/react-router";
 
@@ -31,7 +32,7 @@ import { SecretSync, SecretSyncStatus } from "@app/hooks/api/secretSyncs/enums";
 import type { TSecretSync } from "@app/hooks/api/secretSyncs/types";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
-import { CopyButton, Dash } from "../../access/org/detail-parts";
+import { Dash } from "../../access/org/detail-parts";
 import { useProjectPermission } from "../../access/permissions";
 import { useProjectScope } from "../../access/project/scope";
 import { formatDateTime } from "../../access/roles";
@@ -40,6 +41,7 @@ import { useAlertMembers } from "../../cert-manager/SettingsPage/alert-members";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, useGo, v4Path } from "../../links";
+import { TruncatedValue } from "../../networking/truncated-value";
 import { type EditSection, EditSyncSheet } from "../IntegrationsPage/secret-syncs/edit-sync-sheet";
 import {
   destinationNameOf,
@@ -156,7 +158,7 @@ const LogsCard = ({ sync }: { sync: TSecretSync }) => {
   const rows = logs.error ? [] : (logs.data?.pages ?? []).flat();
   const lastPage = logs.data?.pages.at(-1);
   return (
-    <Card variant="framed" title="Sync logs" footer={`Last ${days} days`} footerPlacement="frame">
+    <Card variant="framed" title="Sync logs" footer={`Last ${days} days`}>
       <DataTable
         label="Sync logs"
         rows={rows}
@@ -239,8 +241,14 @@ const SyncDetails = ({
         members
       });
 
-  const editButton = (section: EditSection, reason = editBlock) => (
-    <Button variant="ghost" size="sm" disabledReason={reason} onClick={() => setEditing(section)}>
+  const editButton = (section: EditSection, label: string, reason = editBlock) => (
+    <Button
+      variant="ghost"
+      size="sm"
+      aria-label={`Edit ${label}`}
+      disabledReason={reason}
+      onClick={() => setEditing(section)}
+    >
       Edit
     </Button>
   );
@@ -248,14 +256,8 @@ const SyncDetails = ({
   const details: DataListItem[] = [
     ["Name", sync.name],
     ["Description", sync.description || <Dash key="description" />],
-    [
-      "ID",
-      <Inline key="id" gap={4} align="center" wrap={false}>
-        <MiddleTruncate mono keepEnd={6} text={sync.id} />
-        <CopyButton value={sync.id} label="Copy sync ID" />
-      </Inline>
-    ],
-    ["Status", <SyncStatus key="status" sync={sync} />],
+    ["ID", <TruncatedValue key="id" value={sync.id} copyLabel="Copy sync ID to clipboard" />],
+    ["Status", <SyncStatus key="status" sync={sync} size="md" />],
     ["Auto-sync", enabledText(sync.isAutoSyncEnabled)],
     [
       "Last synced",
@@ -320,10 +322,10 @@ const SyncDetails = ({
           breadcrumb={[{ label: "Secret syncs", href: listHref }]}
           title={sync.name}
           badges={
-            <Inline gap={12} align="center" wrap={false}>
-              <SyncStatus sync={sync} />
-              {!sync.isAutoSyncEnabled && <AutoSyncOff />}
-              <SyncJobs sync={sync} />
+            <Inline gap={8} align="center" wrap={false}>
+              <SyncStatus sync={sync} size="control-sm" />
+              {!sync.isAutoSyncEnabled && <AutoSyncOff size="control-sm" />}
+              <SyncJobs sync={sync} size="control-sm" />
             </Inline>
           }
           actions={
@@ -352,46 +354,51 @@ const SyncDetails = ({
         <DetailLayout
           asideLabel="Sync details"
           aside={
-            <Stack gap={24}>
-              <Card variant="framed" title="Details" action={editButton("details")}>
-                <DataList variant="props" density="compact" items={details} />
-              </Card>
-              <Card
-                variant="framed"
-                title="Source"
-                action={
-                  <Inline gap={8} align="center" wrap={false}>
-                    {sourceDeleted && (
-                      <StatusText tone="bad" icon="alert">
-                        Folder deleted
-                      </StatusText>
-                    )}
-                    {editButton("source")}
-                  </Inline>
-                }
-              >
-                <DataList variant="props" density="compact" items={source} />
-              </Card>
-              <Card
-                variant="framed"
-                title="Failure alert"
-                action={editButton(
-                  "alerts",
-                  editBlock ?? (alerts.isPending ? "Loading the failure alert" : undefined)
-                )}
-              >
-                <DataList variant="props" density="compact" items={failureAlertItems} />
-              </Card>
-            </Stack>
+            <Card variant="framed" title="Details" action={editButton("details", "sync details")}>
+              <DataList variant="props" density="compact" items={details} />
+            </Card>
           }
         >
-          <Card variant="framed" title="Destination" action={editButton("destination")}>
+          <Card
+            variant="framed"
+            title="Source"
+            badges={
+              sourceDeleted && (
+                <Badge tone="bad" icon="alert">
+                  Folder deleted
+                </Badge>
+              )
+            }
+            action={editButton("source", "source")}
+          >
+            <DataList variant="props" density="compact" items={source} />
+          </Card>
+          <Card
+            variant="framed"
+            title="Destination"
+            action={editButton("destination", "destination")}
+          >
             <FormProvider {...reviewForm}>
               <DataList variant="props" density="compact" items={destination} />
             </FormProvider>
           </Card>
-          <Card variant="framed" title="Sync options" action={editButton("options")}>
+          <Card
+            variant="framed"
+            title="Sync options"
+            action={editButton("options", "sync options")}
+          >
             <DataList variant="props" density="compact" items={syncOptions} />
+          </Card>
+          <Card
+            variant="framed"
+            title="Failure alert"
+            action={editButton(
+              "alerts",
+              "failure alert",
+              editBlock ?? (alerts.isPending ? "Loading the failure alert" : undefined)
+            )}
+          >
+            <DataList variant="props" density="compact" items={failureAlertItems} />
           </Card>
           <LogsCard sync={sync} />
         </DetailLayout>

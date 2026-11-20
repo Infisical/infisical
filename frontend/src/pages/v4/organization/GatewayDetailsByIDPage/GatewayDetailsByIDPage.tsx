@@ -236,44 +236,42 @@ export const GatewayDetailsByIDPage = () => {
       <DetailLayout
         asideLabel="Details"
         aside={
-          <Stack gap={24}>
-            <Card variant="framed" title="Details">
-              <DataList
-                variant="props"
-                density="compact"
-                items={[
-                  [
-                    "ID",
-                    <TruncatedValue
-                      key="id"
-                      value={gateway.id}
-                      copyLabel="Copy gateway ID to clipboard"
-                    />
-                  ],
-                  ["Health", <GatewayHealth key="health" gateway={gateway} />],
-                  ["Connection", <Connection key="connection" gateway={gateway} />],
-                  [
-                    "Last seen",
-                    lastSeen ? (
-                      <Tooltip key="seen" content={new Date(lastSeen).toUTCString()}>
-                        <span>{dateTime(lastSeen)}</span>
-                      </Tooltip>
-                    ) : (
-                      <Dash key="seen" />
-                    ),
-                    { span: "half" }
-                  ],
-                  ["Created", dateTime(gateway.createdAt), { span: "half" }]
-                ]}
-              />
-            </Card>
-            <AuthenticationCard gateway={gateway} canEdit={canEdit} />
-          </Stack>
+          <Card variant="framed" title="Details">
+            <DataList
+              variant="props"
+              density="compact"
+              items={[
+                ["Name", gateway.name],
+                [
+                  "ID",
+                  <TruncatedValue
+                    key="id"
+                    value={gateway.id}
+                    copyLabel="Copy gateway ID to clipboard"
+                  />
+                ],
+                ["Health", <GatewayHealth key="health" gateway={gateway} size="md" />],
+                ["Connection", <Connection key="connection" gateway={gateway} />],
+                [
+                  "Last seen",
+                  lastSeen ? (
+                    <Tooltip key="seen" content={new Date(lastSeen).toUTCString()}>
+                      <span>{dateTime(lastSeen)}</span>
+                    </Tooltip>
+                  ) : (
+                    <Dash key="seen" />
+                  )
+                ],
+                ["Created", dateTime(gateway.createdAt)]
+              ]}
+            />
+          </Card>
         }
       >
         <Stack gap={24}>
           <GatewayDeployCard gateway={gateway} />
           <ConnectedResourcesCard gatewayId={gateway.id} />
+          <AuthenticationCard gateway={gateway} canEdit={canEdit} />
         </Stack>
       </DetailLayout>
       <NameDialog
