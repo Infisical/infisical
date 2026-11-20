@@ -9,6 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from "@infisical/cipher/ui/alert-dialog";
+import { Alert } from "@infisical/cipher/ui/alert";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
@@ -52,6 +53,7 @@ import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, useGo, v4Path } from "../../links";
+import { TruncatedValue } from "../../networking/truncated-value";
 import {
   certDataOf,
   decisionBlock,
@@ -300,34 +302,11 @@ const RequestDetail = ({
   const subject = revocationData
     ? revocationData.commonName || revocationData.serialNumber.toUpperCase()
     : certData?.certificateRequest?.commonName || certData?.profileName;
-  const lede = isSigning ? (
-    <>
-      Signing request for signer {signingData?.signerName} by {requester}.
-    </>
-  ) : (
-    <>
-      {revocationData ? "Revocation request" : "Certificate issuance request"} for {subject} by{" "}
-      {requester}
-      {application ? (
-        <>
-          {" on application "}
-          <Button variant="link" asChild>
-            <a href={orgHref(orgId, `/cert-manager/applications/${application.name}`)}>
-              {application.name}
-            </a>
-          </Button>
-        </>
-      ) : null}
-      .
-      {request.approversCanNoLongerApprove &&
-        " Not enough of this request's approvers can still approve it."}
-    </>
-  );
   const facts: DataListItem[] = [
-    ["Requester", requester, { span: "half" }],
-    ["Email", request.requesterEmail || "None", { span: "half" }],
-    ["Status", <RequestStatus key="status" status={request.status} />, { span: "half" }],
-    ["Requested", format(new Date(request.createdAt), "yyyy-MM-dd, hh:mm aaa"), { span: "half" }],
+    ["Requester", requester],
+    ["Email", request.requesterEmail || "None"],
+    ["Status", <RequestStatus key="status" status={request.status} badge="sm" />],
+    ["Requested", format(new Date(request.createdAt), "yyyy-MM-dd, hh:mm aaa")],
     ...(isSigning
       ? ([
           ["Signer", signingData?.signerName],
@@ -340,7 +319,19 @@ const RequestDetail = ({
         ] as DataListItem[])
       : ([
           ["Profile", revocationData?.profileName ?? certData?.profileName],
-          ...(application ? [["Application", application.name]] : [])
+          ...(subject && !revocationData ? [["Subject", subject]] : []),
+          ...(application
+            ? [
+                [
+                  "Application",
+                  <Button key="application" variant="link" asChild>
+                    <a href={orgHref(orgId, `/cert-manager/applications/${application.name}`)}>
+                      {application.name}
+                    </a>
+                  </Button>
+                ]
+              ]
+            : [])
         ] as DataListItem[])),
     ...(request.justification
       ? ([["Justification", request.justification]] as DataListItem[])
@@ -357,8 +348,7 @@ const RequestDetail = ({
         <PageHeader
           breadcrumb={[back]}
           title={titleOf(request.type)}
-          badges={<RequestStatus status={request.status} />}
-          description={lede}
+          badges={<RequestStatus status={request.status} badge="control-sm" />}
           actions={
             isPending ? (
               <>
@@ -396,11 +386,14 @@ const RequestDetail = ({
         <DetailLayout
           asideLabel="Request details"
           aside={
-            <Card variant="framed" title="Request">
+            <Card variant="framed" title="Details">
               <DataList variant="props" density="compact" items={facts} />
             </Card>
           }
         >
+          {request.approversCanNoLongerApprove && (
+            <Alert tone="warn">Not enough of this request&apos;s approvers can still approve it.</Alert>
+          )}
           {request.steps.length === 0 && request.status === ApprovalRequestStatus.Approved ? (
             <List
               label="Approval workflow"
@@ -448,13 +441,15 @@ const RequestDetail = ({
                   [
                     "Revocation reason",
                     crlReasonToNameMap[revocationData.revocationReason as CrlReason] ??
-                      revocationData.revocationReason,
-                    { span: "half" }
+                      revocationData.revocationReason
                   ],
                   [
                     "Serial number",
-                    <code key="serial">{revocationData.serialNumber.toUpperCase()}</code>,
-                    { span: "half" }
+                    <TruncatedValue
+                      key="serial"
+                      value={revocationData.serialNumber.toUpperCase()}
+                      copyLabel="Copy serial number to clipboard"
+                    />
                   ]
                 ]}
               />

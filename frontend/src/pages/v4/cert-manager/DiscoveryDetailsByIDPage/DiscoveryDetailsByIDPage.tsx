@@ -240,7 +240,6 @@ const ScanRuns = ({
             size="sm"
             icon="history"
             title="No scans yet"
-            description="Run a scan to see its results here."
           />
         }
         pagination={
@@ -337,7 +336,6 @@ const FoundInstallations = ({
             size="sm"
             icon="server"
             title="No installations found"
-            description="Run a scan to find certificate installations."
           />
         }
         pagination={
@@ -386,10 +384,9 @@ const DiscoveryDetail = ({
       <PageHeader
         breadcrumb={[{ label: "Discovery jobs", link: go.link(listHref) }]}
         title={discovery.name}
-        description={discovery.description || undefined}
         badges={
           discovery.isAutoScanEnabled ? (
-            <Badge tone="info" dot>
+            <Badge tone="info" dot size="control-sm" collapse>
               Auto-scan
             </Badge>
           ) : undefined
@@ -435,12 +432,14 @@ const DiscoveryDetail = ({
       <DetailLayout
         asideLabel="Discovery job details"
         aside={
-          <Stack gap={16}>
             <Card variant="framed" title="Details">
               <DataList
                 variant="props"
                 density="compact"
                 items={[
+                  ...(discovery.description
+                    ? ([["Description", discovery.description]] as const)
+                    : []),
                   [
                     "Type",
                     PKI_DISCOVERY_TYPE_MAP[discovery.discoveryType]?.name ?? discovery.discoveryType
@@ -468,14 +467,11 @@ const DiscoveryDetail = ({
                           `Every ${discovery.scanIntervalDays} day${discovery.scanIntervalDays > 1 ? "s" : ""}`
                         ]
                       ] as const)
-                    : [])
+                    : []),
+                  ...targetItems(discovery)
                 ]}
               />
             </Card>
-            <Card variant="framed" title="Targets">
-              <DataList variant="props" density="compact" items={targetItems(discovery)} />
-            </Card>
-          </Stack>
         }
       >
         <ScanRuns discovery={discovery} projectId={projectId} isScanRunning={isScanRunning} />

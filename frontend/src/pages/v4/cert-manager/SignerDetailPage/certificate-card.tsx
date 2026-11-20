@@ -1,6 +1,6 @@
 import { Card } from "@infisical/cipher/ui/card";
 import { EmptyState } from "@infisical/cipher/ui/empty";
-import { Inline, InlineGrow } from "@infisical/cipher/ui/layout";
+import { Inline, InlineGrow, Stack } from "@infisical/cipher/ui/layout";
 import { Link } from "@infisical/cipher/ui/link";
 import { DataList, type DataListItem } from "@infisical/cipher/ui/list";
 
@@ -61,13 +61,17 @@ export const SignerCertificateCard = ({ orgId, signer }: { orgId: string; signer
   const orderId = signer.externalOrder ? String(signer.externalOrder.orderId) : null;
   const nextOrderId = getNextDigicertOrderId(signer);
   const hasDetails = Boolean(signer.certificateId || orderId || signer.certificateHsmKeyLabel);
+  const description: DataListItem[] = signer.description
+    ? [["Description", signer.description]]
+    : [];
   return (
-    <Card variant="framed" title="Certificate details">
+    <Card variant="framed" title="Details">
       {hasDetails ? (
         <DataList
           variant="props"
           density="compact"
           items={[
+            ...description,
             ["Common name", signer.certificateCommonName ?? signer.commonName ?? <Dash key="cn" />],
             ...when(ca, () => caItem(orgId, ca!)),
             copyable("Serial number", "Copy serial number", signer.certificateSerialNumber),
@@ -96,7 +100,12 @@ export const SignerCertificateCard = ({ orgId, signer }: { orgId: string; signer
           ]}
         />
       ) : (
-        <EmptyState size="sm" icon="cert" title="No certificate issued yet" />
+        <Stack gap={16}>
+          {description.length > 0 && (
+            <DataList variant="props" density="compact" items={description} />
+          )}
+          <EmptyState size="sm" media="bare" icon="cert" title="No certificate issued yet" />
+        </Stack>
       )}
     </Card>
   );

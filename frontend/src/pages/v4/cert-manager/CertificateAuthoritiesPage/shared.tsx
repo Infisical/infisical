@@ -41,8 +41,14 @@ const statusTone = {
   [CaStatus.PENDING_CERTIFICATE]: "warn"
 } as const;
 
-export const CaStatusBadge = ({ status }: { status: CaStatus }) => (
-  <Badge size="sm" tone={statusTone[status]} dot>
+export const CaStatusBadge = ({
+  status,
+  size = "sm"
+}: {
+  status: CaStatus;
+  size?: "sm" | "control-sm";
+}) => (
+  <Badge size={size} tone={statusTone[status]} dot collapse={size === "control-sm"}>
     {status === CaStatus.PENDING_CERTIFICATE ? "Pending certificate" : caStatusToNameMap[status]}
   </Badge>
 );

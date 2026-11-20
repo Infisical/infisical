@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { subject } from "@casl/ability";
+import { Alert } from "@infisical/cipher/ui/alert";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
 import {
@@ -32,12 +33,11 @@ import {
   EXTENDED_KEY_USAGE_LABELS,
   KEY_USAGES_OPTIONS
 } from "@app/hooks/api/certificates/constants";
-import { CertKeyAlgorithm, CertKeyUsage, CertStatus } from "@app/hooks/api/certificates/enums";
+import { CertKeyAlgorithm, CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import type { TCertificate } from "@app/hooks/api/certificates/types";
 import type { TPkiInstallation } from "@app/hooks/api/pkiDiscovery/types";
 import {
   getApplicationCertificateAccess,
-  getCertificateDisplayStatus,
   getCertSourceLabel,
   DELETED_CERTIFICATE_NO_ACTIONS
 } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
@@ -47,12 +47,12 @@ import { failed, saved } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, v4Path } from "../../links";
+import { TruncatedValue } from "../../networking/truncated-value";
 import {
   altNamesOf,
   certificateBlocks,
   certificateName,
   CertificateStatusBadge,
-  daysLeft,
   DeleteCertificateDialog,
   ExpiryBadge,
   RevokeCertificateDialog,
@@ -73,20 +73,6 @@ import { CertificateMetadataCard } from "./certificate-metadata";
 import { CertificateSyncsDialog } from "./certificate-syncs";
 
 const routeId = v4Path("/organizations/$orgId/cert-manager/certificates/$certificateId");
-
-const ledeOf = (cert: TCertificate) => {
-  const left = daysLeft(cert.notAfter);
-  const { status } = getCertificateDisplayStatus(cert);
-  if (status === CertStatus.DELETED) return "Deleted. It no longer serves or renews.";
-  if (status === CertStatus.REVOKED) return "Revoked. Clients that check revocation reject it.";
-  if (status === CertStatus.EXPIRED)
-    return `Expired ${-left} days ago. Issue a replacement, then delete this one.`;
-  if (status === CertStatus.RENEWED) return "Renewed. A newer certificate replaces this one.";
-  if (left > 30) return `Valid for ${left} more days.`;
-  return cert.renewBeforeDays
-    ? `Expires in ${left} days. Auto renewal runs ${cert.renewBeforeDays} days before expiry.`
-    : `Expires in ${left} days, and auto renewal is off.`;
-};
 
 const keyUsageLabel = Object.fromEntries(
   KEY_USAGES_OPTIONS.map(({ value, label }) => [value, label])
@@ -199,22 +185,35 @@ const when = (condition: unknown, item: DataListItem): DataListItem[] => (condit
 
 const overviewItems = (cert: TCertificate, orgId: string): DataListItem[] => [
   ["Common name", cert.commonName || "None"],
-  ["Serial number", <code key="serial">{cert.serialNumber}</code>],
-  ...when(cert.orderId, ["Order ID", <code key="order">{cert.orderId}</code>]),
-  ["Status", <CertificateStatusBadge key="status" cert={cert} />, { span: "half" }],
-  ["Source", getCertSourceLabel(cert.source ?? null), { span: "half" }],
-  ["Not before", shortDate(cert.notBefore), { span: "half" }],
+  [
+    "Serial number",
+    <TruncatedValue
+      key="serial"
+      value={cert.serialNumber}
+      copyLabel="Copy serial number to clipboard"
+    />
+  ],
+  ...when(cert.orderId, [
+    "Order ID",
+    <TruncatedValue key="order" value={cert.orderId ?? ""} copyLabel="Copy order ID to clipboard" />
+  ]),
+  ["Status", <CertificateStatusBadge key="status" cert={cert} />],
+  ["Source", getCertSourceLabel(cert.source ?? null)],
+  ["Not before", shortDate(cert.notBefore)],
   [
     "Not after",
     <Inline key="after" gap={8} align="center" wrap>
       {shortDate(cert.notAfter)}
       <ExpiryBadge cert={cert} />
-    </Inline>,
-    { span: "half" }
+    </Inline>
   ],
   ...when(cert.fingerprints?.sha256, [
     "SHA-256 fingerprint",
-    <code key="sha256">{cert.fingerprints?.sha256}</code>
+    <TruncatedValue
+      key="sha256"
+      value={cert.fingerprints?.sha256 ?? ""}
+      copyLabel="Copy SHA-256 fingerprint to clipboard"
+    />
   ]),
   ...when(cert.renewedFromCertificateId, [
     "Renewed from",
@@ -255,28 +254,17 @@ const issuanceItems = (cert: TCertificate, org: string): DataListItem[] => [
   ["Auto renewal", cert.renewBeforeDays ? `${cert.renewBeforeDays} days before expiry` : "Off"]
 ];
 
-const CertificateAside = ({
-  cert,
-  orgId,
-  metadataReason
-}: {
-  cert: TCertificate;
-  orgId: string;
-  metadataReason?: string;
-}) => (
-  <>
-    <Card variant="framed" title="Overview">
-      <DataList variant="props" density="compact" items={overviewItems(cert, orgId)} />
-    </Card>
-    <Card variant="framed" title="Issuance">
-      <DataList
-        variant="props"
-        density="compact"
-        items={issuanceItems(cert, orgHref(orgId, "/cert-manager"))}
-      />
-    </Card>
-    <CertificateMetadataCard cert={cert} editReason={metadataReason} />
-  </>
+const CertificateAside = ({ cert, orgId }: { cert: TCertificate; orgId: string }) => (
+  <Card variant="framed" title="Details">
+    <DataList
+      variant="props"
+      density="compact"
+      items={[
+        ...overviewItems(cert, orgId),
+        ...issuanceItems(cert, orgHref(orgId, "/cert-manager"))
+      ]}
+    />
+  </Card>
 );
 
 const reasonFor = (allowed: boolean, blocked?: string) =>
@@ -511,28 +499,8 @@ const CertificateDetail = ({
       <PageHeader
         breadcrumb={[backCrumbOf(org, parentApplication, fromHsmConnector)]}
         title={name}
-        badges={<CertificateStatusBadge cert={cert} revocation={revocation} />}
-        description={
-          revocation.isPending && revocation.requestId ? (
-            <>
-              {"This certificate isn't revoked until its "}
-              <Button variant="link" asChild>
-                <a
-                  href={orgHref(
-                    orgId,
-                    `/cert-manager/approvals/${revocation.requestId}?policyType=${ApprovalPolicyType.CertRevocation}&from=root-requests`
-                  )}
-                >
-                  revocation request
-                </a>
-              </Button>
-              {" is approved."}
-              {revocation.revokeReplacesRequestReason &&
-                ` ${revocation.revokeReplacesRequestReason}`}
-            </>
-          ) : (
-            ledeOf(cert)
-          )
+        badges={
+          <CertificateStatusBadge cert={cert} revocation={revocation} size="control-sm" />
         }
         actions={
           <>
@@ -551,8 +519,25 @@ const CertificateDetail = ({
       />
       <DetailLayout
         asideLabel="Certificate details"
-        aside={<CertificateAside cert={cert} orgId={orgId} metadataReason={metadataReason} />}
+        aside={<CertificateAside cert={cert} orgId={orgId} />}
       >
+        {revocation.isPending && revocation.requestId && (
+          <Alert tone="warn">
+            {"This certificate isn't revoked until its "}
+            <Button variant="link" asChild>
+              <a
+                href={orgHref(
+                  orgId,
+                  `/cert-manager/approvals/${revocation.requestId}?policyType=${ApprovalPolicyType.CertRevocation}&from=root-requests`
+                )}
+              >
+                revocation request
+              </a>
+            </Button>
+            {" is approved."}
+            {revocation.revokeReplacesRequestReason && ` ${revocation.revokeReplacesRequestReason}`}
+          </Alert>
+        )}
         <Grid min="card" gap={24} style={{ alignItems: "start" }}>
           <Card variant="framed" title="Subject">
             <DataList
@@ -560,14 +545,13 @@ const CertificateDetail = ({
               density="compact"
               items={[
                 ["Common name", cert.subject?.commonName || cert.commonName || "None"],
-                ["Organization", cert.subject?.organization || "None", { span: "half" }],
+                ["Organization", cert.subject?.organization || "None"],
                 [
                   "Organizational unit",
-                  cert.subject?.organizationalUnit || "None",
-                  { span: "half" }
+                  cert.subject?.organizationalUnit || "None"
                 ],
-                ["Locality", cert.subject?.locality || "None", { span: "half" }],
-                ["State", cert.subject?.state || "None", { span: "half" }],
+                ["Locality", cert.subject?.locality || "None"],
+                ["State", cert.subject?.state || "None"],
                 ["Country", cert.subject?.country || "None"]
               ]}
             />
@@ -664,6 +648,7 @@ const CertificateDetail = ({
             />
           ))}
         </List>
+        <CertificateMetadataCard cert={cert} editReason={metadataReason} />
       </DetailLayout>
     </Stack>
   );

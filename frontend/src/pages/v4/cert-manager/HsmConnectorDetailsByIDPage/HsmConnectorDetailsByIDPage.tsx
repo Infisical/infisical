@@ -40,6 +40,7 @@ import { AccessRestricted, Muted, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
+import { TruncatedValue } from "../../networking/truncated-value";
 import { useCertManagerProjectId } from "../components/certificate";
 import { EditHsmConnectorSheet } from "../SettingsPage/hsm-connector-edit-sheet";
 import { DeleteHsmConnectorDialog } from "../SettingsPage/hsm-connectors";
@@ -284,7 +285,6 @@ const ConnectorDetail = ({
       <PageHeader
         breadcrumb={[{ label: "HSM connectors", link: go.link(listHref) }]}
         title={connector.name}
-        description={connector.description || undefined}
         actions={
           <>
             <DropdownMenu>
@@ -343,7 +343,17 @@ const ConnectorDetail = ({
               variant="props"
               density="compact"
               items={[
-                ["Connector ID", <code key="id">{connector.id}</code>],
+                [
+                  "Connector ID",
+                  <TruncatedValue
+                    key="id"
+                    value={connector.id}
+                    copyLabel="Copy connector ID to clipboard"
+                  />
+                ],
+                ...(connector.description
+                  ? ([["Description", connector.description]] as const)
+                  : []),
                 ["Reached from", reachedFrom()],
                 ["Slot label", <code key="slot">{connector.slotLabel}</code>],
                 [

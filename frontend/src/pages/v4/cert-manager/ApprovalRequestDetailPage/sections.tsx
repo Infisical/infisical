@@ -83,14 +83,13 @@ export const CertificateSections = ({
   };
   const subject = present([
     Boolean(certRequest?.commonName) && ["Common name (CN)", certRequest?.commonName],
-    Boolean(organization) && ["Organization (O)", organization, { span: "half" }],
+    Boolean(organization) && ["Organization (O)", organization],
     Boolean(organizationalUnit) && [
       "Organizational unit (OU)",
-      organizationalUnit,
-      { span: "half" }
+      organizationalUnit
     ],
-    Boolean(country) && ["Country (C)", country, { span: "half" }],
-    Boolean(state) && ["State (ST)", state, { span: "half" }],
+    Boolean(country) && ["Country (C)", country],
+    Boolean(state) && ["State (ST)", state],
     Boolean(locality) && ["Locality (L)", locality],
     domainComponents.length > 0 && [
       "Domain components (DC)",
@@ -108,13 +107,11 @@ export const CertificateSections = ({
               Boolean(certRequest?.keyAlgorithm) && [
                 "Key algorithm",
                 certKeyAlgorithmToNameMap[certRequest?.keyAlgorithm as CertKeyAlgorithm] ??
-                  certRequest?.keyAlgorithm,
-                { span: "half" }
+                  certRequest?.keyAlgorithm
               ],
               Boolean(certRequest?.signatureAlgorithm) && [
                 "Signature algorithm",
-                certRequest?.signatureAlgorithm,
-                { span: "half" }
+                certRequest?.signatureAlgorithm
               ],
               Boolean(certRequest?.validity?.ttl) && [
                 "Validity",
@@ -124,14 +121,12 @@ export const CertificateSections = ({
               ["Certificate profile", data?.profileName],
               basicConstraints?.isCA && [
                 "Basic constraints",
-                "Certificate authority",
-                { span: "half" }
+                "Certificate authority"
               ],
               basicConstraints?.isCA &&
                 basicConstraints.pathLength !== undefined && [
                   "Path length",
-                  String(basicConstraints.pathLength),
-                  { span: "half" }
+                  String(basicConstraints.pathLength)
                 ]
             ])}
           />

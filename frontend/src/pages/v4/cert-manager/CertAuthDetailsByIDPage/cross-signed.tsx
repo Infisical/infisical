@@ -29,6 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@infisical/cipher/ui/dropdown-menu";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
@@ -705,16 +706,15 @@ const CrossSignedSummary = ({
         variant="props"
         density="compact"
         items={[
-          ["Signed by", summary.issuerName, { span: "half" }],
+          ["Signed by", summary.issuerName],
           [
             "Status",
             <Badge key="status" size="sm" tone={status.tone} dot>
               {status.label}
-            </Badge>,
-            { span: "half" }
+            </Badge>
           ],
-          ["Not before", format(summary.notBefore, "yyyy-MM-dd"), { span: "half" }],
-          ["Not after", format(summary.notAfter, "yyyy-MM-dd"), { span: "half" }],
+          ["Not before", format(summary.notBefore, "yyyy-MM-dd")],
+          ["Not after", format(summary.notAfter, "yyyy-MM-dd")],
           ["Serial number", <code key="serial">{crossSigned.serialNumber.toUpperCase()}</code>],
           ...(summary.chainRootName ? [["Chain root", summary.chainRootName] as const] : [])
         ]}
@@ -786,22 +786,19 @@ export const CrossSignedCertificateCard = ({
         variant="framed"
         title="Cross-signed certificate"
         badges={
-          !entitled && (
-            <Badge size="sm" tone="info">
-              Enterprise
-            </Badge>
-          )
+          <>
+            <DocumentationLink href={docs} subject="Cross-signed certificates" />
+            {!entitled && (
+              <Badge size="sm" tone="info">
+                Enterprise
+              </Badge>
+            )}
+          </>
         }
         hint="Keeps clients that trust your old CA working while you migrate."
         action={
-          crossSigned ? (
+          crossSigned && (
             <CrossSignedMenu ca={ca} crossSigned={crossSigned} blocks={blocks} onOpen={open} />
-          ) : (
-            <Button variant="link" size="sm" asChild>
-              <a href={docs} target="_blank" rel="noreferrer">
-                Docs
-              </a>
-            </Button>
           )
         }
       >

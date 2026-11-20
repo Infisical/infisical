@@ -266,13 +266,13 @@ export const RevocationCard = ({
       hint="How clients check whether certificates issued by this CA are revoked. Changes apply to certificates issued afterwards."
       action={
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
-          icon="pencil"
+          aria-label="Edit CRL settings"
           disabledReason={editBlock}
           onClick={() => setEditing(true)}
         >
-          Edit CRL settings
+          Edit
         </Button>
       }
     >

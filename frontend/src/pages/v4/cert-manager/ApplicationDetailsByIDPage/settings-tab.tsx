@@ -917,13 +917,12 @@ const LegacyAlertSheet = ({ alert, onClose }: { alert?: TPkiAlertV2; onClose: ()
             density="compact"
             items={[
               ["Event", legacyEventLabel[alert.eventType] ?? alert.eventType],
-              ["Status", alert.enabled ? "Enabled" : "Disabled", { span: "half" }],
+              ["Status", alert.enabled ? "Enabled" : "Disabled"],
               [
                 "Alert before",
                 alert.eventType === PkiAlertEventTypeV2.EXPIRATION
                   ? formatAlertBefore(alert.alertBefore)
-                  : "None",
-                { span: "half" }
+                  : "None"
               ],
               ["Description", alert.description || "None"],
               [
@@ -934,15 +933,13 @@ const LegacyAlertSheet = ({ alert, onClose }: { alert?: TPkiAlertV2; onClose: ()
               ],
               [
                 "Filters",
-                alert.filters.length ? `${alert.filters.length}` : "None",
-                { span: "half" }
+                alert.filters.length ? `${alert.filters.length}` : "None"
               ],
               [
                 "Last run",
                 alert.lastRun
                   ? `${alert.lastRun.status === "success" ? "Sent" : "Failed"} ${ago(alert.lastRun.timestamp)}`
-                  : "Never",
-                { span: "half" }
+                  : "Never"
               ],
               ["Created", formatDate(alert.createdAt)]
             ]}

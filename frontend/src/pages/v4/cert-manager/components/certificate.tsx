@@ -86,19 +86,30 @@ export type CertificateRevocation = ReturnType<ReturnType<typeof useRevocationAp
 
 export const CertificateStatusBadge = ({
   cert,
-  revocation
+  revocation,
+  size
 }: {
   cert: TCertificate;
   revocation?: CertificateRevocation;
+  size?: "control-sm";
 }) => {
   const { status, label } = getCertificateDisplayStatus(cert);
   const statusBadge = (
-    <Badge tone={statusTone[status]} dot={status !== CertStatus.RENEWED}>
+    <Badge
+      tone={statusTone[status]}
+      dot={status !== CertStatus.RENEWED}
+      size={size}
+      collapse={Boolean(size)}
+    >
       {label}
     </Badge>
   );
   if (!revocation?.isPending) return statusBadge;
-  const pendingBadge = <Badge tone="warn">Revocation pending</Badge>;
+  const pendingBadge = (
+    <Badge tone="warn" size={size}>
+      Revocation pending
+    </Badge>
+  );
   return (
     <Inline gap={6} align="center">
       {status !== CertStatus.ACTIVE && statusBadge}

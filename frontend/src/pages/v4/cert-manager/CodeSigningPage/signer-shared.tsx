@@ -80,13 +80,21 @@ export const signerStatusNote = (signer: TSigner) => {
 
 export const SignerStatusBadge = ({
   signer,
-  note = signerStatusNote(signer)
+  note = signerStatusNote(signer),
+  size
 }: {
   signer: TSigner;
   note?: string | null;
+  size?: "control-sm";
 }) => {
   const badge = (
-    <Badge tone={STATUS_TONES[signer.status] ?? "outline"} dot>
+    <Badge
+      tone={STATUS_TONES[signer.status] ?? "outline"}
+      dot
+      size={size}
+      collapse={Boolean(size)}
+      tabIndex={note ? 0 : undefined}
+    >
       {signerStatusLabels[signer.status] ?? signer.status}
     </Badge>
   );

@@ -9,6 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
 import { Combobox } from "@infisical/cipher/ui/combobox";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
 import { Field } from "@infisical/cipher/ui/field";
@@ -57,11 +58,15 @@ export const SYNC_STATE: Record<
 
 export const syncStateOf = (sync: TPkiSync): SyncState => sync.syncStatus ?? "never";
 
-export const SyncStatus = ({ sync }: { sync: TPkiSync }) => {
+type BadgeSize = "sm" | "control-sm";
+
+const BADGE_TONES = { neutral: "outline", ok: "ok", bad: "bad" } as const;
+
+export const SyncStatus = ({ sync, badge }: { sync: TPkiSync; badge?: BadgeSize }) => {
   const state = SYNC_STATE[syncStateOf(sync)];
   const failure = getPkiSyncFailureMessage(sync.syncStatus, sync.lastSyncMessage);
   const running = sync.syncStatus === PkiSyncStatus.Running;
-  const status = running ? (
+  let status = running ? (
     <StatusText loading tabIndex={0}>
       {state.label}
     </StatusText>
@@ -70,6 +75,18 @@ export const SyncStatus = ({ sync }: { sync: TPkiSync }) => {
       {state.label}
     </StatusText>
   );
+  if (badge)
+    status = (
+      <Badge
+        tone={BADGE_TONES[state.tone]}
+        icon={running ? "sync" : state.icon}
+        size={badge}
+        collapse={badge === "control-sm"}
+        tabIndex={0}
+      >
+        {state.label}
+      </Badge>
+    );
   const settled =
     sync.syncStatus === PkiSyncStatus.Succeeded || sync.syncStatus === PkiSyncStatus.Failed;
   if (!sync.syncStatus) {
@@ -114,18 +131,24 @@ const JobStatus = ({
   kind,
   status,
   message,
-  at
+  at,
+  badge
 }: {
   kind: "import" | "remove";
   status: PkiSyncStatus | null;
   message: string | null;
   at: string | null;
+  badge?: BadgeSize;
 }) => {
   if (!status) return null;
   const labels = JOB_LABELS[kind];
   if (status === PkiSyncStatus.Succeeded) {
     if (!at || Date.now() - new Date(at).getTime() > 15_000) return null;
-    return (
+    return badge ? (
+      <Badge tone="ok" icon="check-c" size={badge} collapse>
+        {labels.done}
+      </Badge>
+    ) : (
       <StatusText tone="ok" icon="check-c">
         {labels.done}
       </StatusText>
@@ -141,15 +164,35 @@ const JobStatus = ({
           </span>
         }
       >
-        <StatusText tone="bad" icon="alert" tabIndex={0} data-row-interactive>
-          {labels.failed}
-        </StatusText>
+        {badge ? (
+          <Badge tone="bad" icon="alert" size={badge} collapse tabIndex={0}>
+            {labels.failed}
+          </Badge>
+        ) : (
+          <StatusText tone="bad" icon="alert" tabIndex={0} data-row-interactive>
+            {labels.failed}
+          </StatusText>
+        )}
       </Tooltip>
     );
-  return <StatusText loading>{labels.running}</StatusText>;
+  return badge ? (
+    <Badge tone="outline" icon="sync" size={badge} collapse>
+      {labels.running}
+    </Badge>
+  ) : (
+    <StatusText loading>{labels.running}</StatusText>
+  );
 };
 
-export const SyncJobs = ({ sync, canImport }: { sync: TPkiSync; canImport?: boolean }) => (
+export const SyncJobs = ({
+  sync,
+  canImport,
+  badge
+}: {
+  sync: TPkiSync;
+  canImport?: boolean;
+  badge?: BadgeSize;
+}) => (
   <>
     {canImport !== false && (
       <JobStatus
@@ -157,6 +200,7 @@ export const SyncJobs = ({ sync, canImport }: { sync: TPkiSync; canImport?: bool
         status={sync.importStatus}
         message={sync.lastImportMessage}
         at={sync.lastImportedAt}
+        badge={badge}
       />
     )}
     <JobStatus
@@ -164,15 +208,22 @@ export const SyncJobs = ({ sync, canImport }: { sync: TPkiSync; canImport?: bool
       status={sync.removeStatus}
       message={sync.lastRemoveMessage}
       at={sync.lastRemovedAt}
+      badge={badge}
     />
   </>
 );
 
-export const AutoSyncOff = () => (
+export const AutoSyncOff = ({ badge }: { badge?: BadgeSize }) => (
   <Tooltip content="Certificate changes aren't synced to the destination until you turn auto-sync back on.">
-    <StatusText icon="x" tabIndex={0} data-row-interactive>
-      Auto-sync off
-    </StatusText>
+    {badge ? (
+      <Badge tone="outline" icon="x" size={badge} collapse tabIndex={0}>
+        Auto-sync off
+      </Badge>
+    ) : (
+      <StatusText icon="x" tabIndex={0} data-row-interactive>
+        Auto-sync off
+      </StatusText>
+    )}
   </Tooltip>
 );
 

@@ -312,8 +312,7 @@ const InstallationDetail = ({
                 <EmptyState
                   size="sm"
                   icon="cert"
-                  title="No certificates found on this installation"
-                  description="Run a scan to find certificates."
+                  title="No certificates found"
                 />
               )
             }
