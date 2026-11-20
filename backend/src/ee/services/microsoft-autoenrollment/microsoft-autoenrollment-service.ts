@@ -86,7 +86,8 @@ import {
   buildTemplateInfoExtension,
   buildTemplateOid,
   resolveRenewalPeriodSeconds,
-  resolveTemplatePrivateKey
+  resolveTemplatePrivateKey,
+  resolveTemplateSignatureAlgorithm
 } from "./microsoft-autoenrollment-template-fns";
 import {
   MICROSOFT_AUTOENROLLMENT_NOT_ENABLED_MESSAGE,
@@ -421,6 +422,7 @@ export const microsoftAutoenrollmentServiceFactory = ({
       validitySeconds,
       renewalPeriodSeconds: resolveRenewalPeriodSeconds(config.renewBeforeDays, validitySeconds),
       privateKey: resolveTemplatePrivateKey(profile.defaults?.keyAlgorithm),
+      hashAlgorithm: resolveTemplateSignatureAlgorithm(profile.defaults).hash,
       majorRevision: config.templateMajorRevision,
       minorRevision: config.templateMinorRevision,
       extensions: [
@@ -511,7 +513,7 @@ export const microsoftAutoenrollmentServiceFactory = ({
           certificateDAL.primaryNode()
         )
       : undefined;
-    if (!storedCertificate || storedCertificate.deletedAt) {
+    if (!storedCertificate || storedCertificate.deletedAt || storedCertificate.status === CertStatus.REVOKED) {
       return {
         refusal: `The certificate being renewed (serial ${currentCertificate.serialNumber}) was not issued from profile '${context.profile.slug}' in this application, has expired, was deleted, or is revoked.`
       };

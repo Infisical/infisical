@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { MicrosoftAutoenrollmentParamsSchema } from "@app/ee/routes/microsoft-autoenrollment/microsoft-autoenrollment-schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { MAX_KEYTAB_BYTES } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-fns";
 import { ApiDocsTags, MICROSOFT_AUTOENROLLMENT } from "@app/lib/api-docs";
 import { isValidSid } from "@app/lib/windows-sid/windows-sid-fns";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -12,7 +13,6 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-const MAX_KEYTAB_BYTES = 64 * 1024;
 const MAX_ALLOWED_GROUPS = 50;
 const MAX_SID_LENGTH = 184;
 

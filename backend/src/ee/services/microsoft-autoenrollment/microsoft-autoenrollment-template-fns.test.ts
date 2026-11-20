@@ -3,7 +3,7 @@ import * as asn1js from "asn1js";
 import { describe, expect, test } from "vitest";
 
 import { CertExtendedKeyUsageType, CertKeyUsageType } from "@app/services/certificate-common/certificate-constants";
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 
 import {
   buildPolicyId,
@@ -11,9 +11,11 @@ import {
   buildSidSecurityExtension,
   buildTemplateInfoExtension,
   buildTemplateOid,
+  findTemplatePolicyProblem,
   readSidSecurityExtension,
   resolveRenewalPeriodSeconds,
-  resolveTemplatePrivateKey
+  resolveTemplatePrivateKey,
+  resolveTemplateSignatureAlgorithm
 } from "./microsoft-autoenrollment-template-fns";
 
 const APPLICATION_PROFILE_ID = "0f1e2d3c-4b5a-4968-8776-a5b4c3d2e1f0";
@@ -178,5 +180,76 @@ describe("resolveRenewalPeriodSeconds", () => {
     ["prefers staying under 20% when the lifetime is too short for both bounds", 1, DAY, DAY * 0.2 - 1]
   ])("%s", (_name, renewBeforeDays, validitySeconds, expected) => {
     expect(resolveRenewalPeriodSeconds(renewBeforeDays, validitySeconds)).toBe(expected);
+  });
+});
+
+describe("resolveTemplateSignatureAlgorithm", () => {
+  test.each([
+    [undefined, undefined, "sha256", CertSignatureAlgorithm.RSA_SHA256],
+    [CertKeyAlgorithm.RSA_3072, CertSignatureAlgorithm.RSA_SHA384, "sha384", CertSignatureAlgorithm.RSA_SHA384],
+    [CertKeyAlgorithm.ECDSA_P384, CertSignatureAlgorithm.ECDSA_SHA512, "sha512", CertSignatureAlgorithm.ECDSA_SHA512],
+    [CertKeyAlgorithm.ECDSA_P256, undefined, "sha256", CertSignatureAlgorithm.ECDSA_SHA256]
+  ])("asks Windows for the profile's hash (%s, %s)", (keyAlgorithm, signatureAlgorithm, hashName, expected) => {
+    const result = resolveTemplateSignatureAlgorithm({ keyAlgorithm, signatureAlgorithm });
+
+    expect(result.hash.name).toBe(hashName);
+    expect(result.signatureAlgorithm).toBe(expected);
+  });
+});
+
+describe("findTemplatePolicyProblem", () => {
+  test("names the signature algorithm when the policy allows the key but not how Windows signs", () => {
+    const problem = findTemplatePolicyProblem(
+      { slug: "web-servers", defaults: { keyAlgorithm: CertKeyAlgorithm.RSA_2048 } },
+      null,
+      (request) => request.signatureAlgorithm !== CertSignatureAlgorithm.RSA_SHA256
+    );
+
+    expect(problem).toMatch(/no default signature algorithm, so Windows signs its requests with RSA-SHA256/);
+  });
+
+  test("checks the algorithm an AWS KMS elliptic curve CA signs with, not the one Windows uses", () => {
+    const onlySha384 = (request: { signatureAlgorithm?: CertSignatureAlgorithm }) =>
+      !request.signatureAlgorithm || request.signatureAlgorithm === CertSignatureAlgorithm.ECDSA_SHA384;
+    const ecProfile = { slug: "web-servers", defaults: { keyAlgorithm: CertKeyAlgorithm.ECDSA_P256 } };
+
+    expect(
+      findTemplatePolicyProblem(
+        ecProfile,
+        { keyAlgorithm: CertKeyAlgorithm.ECDSA_P384, keySource: "aws-kms" },
+        onlySha384
+      )
+    ).toBeNull();
+    expect(
+      findTemplatePolicyProblem(
+        {
+          slug: "web-servers",
+          defaults: {
+            keyAlgorithm: CertKeyAlgorithm.ECDSA_P256,
+            signatureAlgorithm: CertSignatureAlgorithm.ECDSA_SHA384
+          }
+        },
+        { keyAlgorithm: CertKeyAlgorithm.ECDSA_P256, keySource: "aws-kms" },
+        onlySha384
+      )
+    ).toMatch(/are signed with ECDSA-SHA256, the only algorithm its certificate authority's AWS KMS key can sign with/);
+    expect(
+      findTemplatePolicyProblem(
+        ecProfile,
+        { keyAlgorithm: CertKeyAlgorithm.ECDSA_P384, keySource: "infisical" },
+        onlySha384
+      )
+    ).toMatch(/no default signature algorithm, so Windows signs its requests with ECDSA-SHA256/);
+    expect(
+      findTemplatePolicyProblem(
+        ecProfile,
+        { keyAlgorithm: CertKeyAlgorithm.ECDSA_P256, keySource: "aws-kms" },
+        onlySha384
+      )
+    ).toMatch(/the only algorithm its certificate authority's AWS KMS key can sign with/);
+  });
+
+  test("passes when the policy allows both", () => {
+    expect(findTemplatePolicyProblem({ slug: "web-servers", defaults: null }, null, () => true)).toBeNull();
   });
 });

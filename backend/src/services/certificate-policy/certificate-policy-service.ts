@@ -3,6 +3,7 @@ import slugify from "@sindresorhus/slugify";
 import RE2 from "re2";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
+import { findTemplatePolicyProblem } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-template-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificatePolicyActions,
@@ -876,13 +877,27 @@ export const certificatePolicyServiceFactory = ({
       ? findMicrosoftAutoenrollmentRuleProblems(consolidatedData.customExtensions)
       : [];
     const updatedTemplate = await certificatePolicyDAL.transaction(async (tx) => {
-      if (windowsRuleProblems.length) {
+      if (windowsRuleProblems.length || consolidatedData.algorithms !== undefined) {
         await certificatePolicyDAL.lockById(policyId, tx);
-        const [windowsProfile] = await certificatePolicyDAL.findMicrosoftAutoenrollmentProfiles(policyId, tx);
-        if (windowsProfile) {
+        const windowsProfiles = await certificatePolicyDAL.findMicrosoftAutoenrollmentProfiles(policyId, tx);
+        const [windowsProfile] = windowsProfiles;
+        if (windowsProfile && windowsRuleProblems.length) {
           throw new BadRequestError({
             message: `Certificate profile '${windowsProfile.profileName}' uses this policy with Microsoft Autoenrollment in Application '${windowsProfile.applicationName}', which adds custom extensions ${MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS.join(" and ")} to every certificate. ${windowsRuleProblems.join(" ")} You can also turn off Microsoft Autoenrollment for that profile.`
           });
+        }
+        const updatedPolicy = { ...existingTemplate, ...updateData } as TCertificatePolicy;
+        for (const { profileName, profileDefaults, applicationName, caKeyAlgorithm, caKeySource } of windowsProfiles) {
+          const keyProblem = findTemplatePolicyProblem(
+            { slug: profileName, defaults: profileDefaults },
+            { keyAlgorithm: caKeyAlgorithm, keySource: caKeySource },
+            (request) => validateRequestAgainstPolicy(updatedPolicy, request, { skipRequired: true }).isValid
+          );
+          if (keyProblem) {
+            throw new BadRequestError({
+              message: `Certificate profile '${profileName}' uses this policy with Microsoft Autoenrollment in Application '${applicationName}'. ${keyProblem}`
+            });
+          }
         }
       }
       return certificatePolicyDAL.updateById(policyId, updateData, tx);

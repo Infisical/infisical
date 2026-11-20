@@ -7,9 +7,9 @@ import { DatabaseError } from "@app/lib/errors";
 export type TMicrosoftAutoenrollmentRequestDALFactory = ReturnType<typeof microsoftAutoenrollmentRequestDALFactory>;
 
 export const microsoftAutoenrollmentRequestDALFactory = (db: TDbClient) => {
-  const createRequestNumber = async (certificateRequest: { id: string; createdAt: Date }, tx?: Knex) => {
+  const createRequestNumber = async (certificateRequest: { id: string; createdAt: Date }, tx: Knex) => {
     try {
-      const [created] = await (tx || db)(TableName.PkiMicrosoftAutoenrollmentRequest)
+      const [created] = await tx(TableName.PkiMicrosoftAutoenrollmentRequest)
         .insert({
           certificateRequestId: certificateRequest.id,
           certificateRequestCreatedAt: certificateRequest.createdAt

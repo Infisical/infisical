@@ -372,6 +372,12 @@ export const withActiveDirectoryErrors =
   (err: unknown): never => {
     if (err instanceof LdapTargetConfigurationError) throw err;
     logger.warn({ err }, `Unable to search Active Directory [connectionId=${connection.id}]`);
+    if (err instanceof GatewayTimeoutError) {
+      throw new GatewayTimeoutError({
+        message: `Could not search Active Directory with the LDAP connection '${connection.name}': ${err.message} Try again.`,
+        error: err
+      });
+    }
     const details = err instanceof BadRequestError ? ` Details: ${err.message}` : "";
     throw new BadRequestError({
       message: `Could not search Active Directory with the LDAP connection '${connection.name}'. Check that the directory is reachable and the connection's credentials are valid.${details}`

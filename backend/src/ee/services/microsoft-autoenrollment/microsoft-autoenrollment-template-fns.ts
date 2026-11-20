@@ -1,6 +1,7 @@
 import * as x509 from "@peculiar/x509";
 
 import { crypto } from "@app/lib/crypto/cryptography";
+import { findCaKeySourceRequiredSignatureAlgorithm } from "@app/services/certificate-authority/ca-key-source/ca-key-source-fns";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
@@ -15,8 +16,13 @@ import {
   convertExtendedKeyUsageArrayToLegacy,
   convertKeyUsageArrayToLegacy
 } from "@app/services/certificate-common/certificate-utils";
+import { TCertificateProfileDefaults } from "@app/services/certificate-profile/certificate-profile-types";
 import { TIssuerAddedExtension } from "@app/services/certificate-v3/certificate-v3-types";
-import { CertExtendedKeyUsageNameToOID, CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import {
+  CertExtendedKeyUsageNameToOID,
+  CertKeyAlgorithm,
+  CertSignatureAlgorithm
+} from "@app/services/certificate/certificate-types";
 
 const MICROSOFT_AUTOENROLLMENT_PEN = "99999";
 
@@ -58,6 +64,12 @@ const KEY_ALGORITHM_DISPLAY_NAMES: Partial<Record<string, string>> = {
 };
 
 export const TEMPLATE_DEFAULT_KEY_ALGORITHM = CertKeyAlgorithm.RSA_2048;
+
+const TEMPLATE_HASHES = [
+  { signatureSuffix: "SHA256", oid: "2.16.840.1.101.3.4.2.1", name: "sha256" },
+  { signatureSuffix: "SHA384", oid: "2.16.840.1.101.3.4.2.2", name: "sha384" },
+  { signatureSuffix: "SHA512", oid: "2.16.840.1.101.3.4.2.3", name: "sha512" }
+];
 
 export const getKeyAlgorithmDisplayName = (keyAlgorithm: string) =>
   KEY_ALGORITHM_DISPLAY_NAMES[keyAlgorithm] ?? keyAlgorithm;
@@ -155,4 +167,49 @@ export const buildProfileUsageExtensions = ({
   }
 
   return extensions;
+};
+
+export const resolveTemplateSignatureAlgorithm = (
+  defaults?: Pick<TCertificateProfileDefaults, "keyAlgorithm" | "signatureAlgorithm"> | null
+) => {
+  const hash =
+    TEMPLATE_HASHES.find(({ signatureSuffix }) => defaults?.signatureAlgorithm?.endsWith(`-${signatureSuffix}`)) ??
+    TEMPLATE_HASHES[0];
+  const family = resolveTemplatePrivateKey(defaults?.keyAlgorithm).ellipticCurve ? "ECDSA" : "RSA";
+  return {
+    hash: { oid: hash.oid, name: hash.name },
+    signatureAlgorithm: `${family}-${hash.signatureSuffix}` as CertSignatureAlgorithm
+  };
+};
+
+export type TTemplateSigningCa = { keyAlgorithm?: string | null; keySource?: string | null };
+
+export const findTemplatePolicyProblem = (
+  profile: { slug: string; defaults?: unknown },
+  signingCa: TTemplateSigningCa | null | undefined,
+  isAllowed: (request: { keyAlgorithm: CertKeyAlgorithm; signatureAlgorithm?: CertSignatureAlgorithm }) => boolean
+) => {
+  const defaults = profile.defaults as TCertificateProfileDefaults | null;
+  const profileKeyAlgorithm = defaults?.keyAlgorithm;
+  const keyAlgorithm = profileKeyAlgorithm ?? TEMPLATE_DEFAULT_KEY_ALGORITHM;
+  if (!isAllowed({ keyAlgorithm })) {
+    const keyName = getKeyAlgorithmDisplayName(keyAlgorithm);
+    return profileKeyAlgorithm
+      ? `Profile '${profile.slug}' asks Windows for ${keyName} keys, but the profile's certificate policy does not allow that key algorithm, so every Windows request would be refused. Set the profile's default key algorithm to one the policy allows, or allow ${keyName} in the policy.`
+      : `Profile '${profile.slug}' has no default key algorithm, so Windows requests ${keyName} keys, but the profile's certificate policy does not allow that key algorithm, so every Windows request would be refused. Set the profile's default key algorithm to one the policy allows, or allow ${keyName} in the policy.`;
+  }
+
+  const caRequiredSignatureAlgorithm = findCaKeySourceRequiredSignatureAlgorithm({
+    keySource: signingCa?.keySource,
+    caKeyAlgorithm: signingCa?.keyAlgorithm
+  });
+  const signatureAlgorithm =
+    caRequiredSignatureAlgorithm ?? resolveTemplateSignatureAlgorithm(defaults).signatureAlgorithm;
+  if (isAllowed({ keyAlgorithm, signatureAlgorithm })) return null;
+  if (caRequiredSignatureAlgorithm) {
+    return `Certificates from profile '${profile.slug}' are signed with ${signatureAlgorithm}, the only algorithm its certificate authority's AWS KMS key can sign with, but the profile's certificate policy does not allow that signature algorithm, so every Windows request would be refused. Allow ${signatureAlgorithm} in the policy, or use a certificate authority whose key the policy allows.`;
+  }
+  return defaults?.signatureAlgorithm
+    ? `Profile '${profile.slug}' asks Windows to sign its requests with ${signatureAlgorithm}, but the profile's certificate policy does not allow that signature algorithm, so every Windows request would be refused. Set the profile's default signature algorithm to one the policy allows, or allow ${signatureAlgorithm} in the policy.`
+    : `Profile '${profile.slug}' has no default signature algorithm, so Windows signs its requests with ${signatureAlgorithm}, but the profile's certificate policy does not allow that signature algorithm, so every Windows request would be refused. Set the profile's default signature algorithm to one the policy allows, or allow ${signatureAlgorithm} in the policy.`;
 };

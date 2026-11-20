@@ -39,7 +39,6 @@ const OID_GROUP_PUBLIC_KEY = 3;
 const OID_GROUP_EXTENSION = 6;
 const OID_GROUP_TEMPLATE = 9;
 const CA_CLIENT_AUTHENTICATION_KERBEROS = 2;
-const SHA256_OID = "2.16.840.1.101.3.4.2.1";
 
 const RSA_KEY_POLICY = {
   policySchema: 2,
@@ -89,6 +88,7 @@ type TPolicyTemplate = {
   validitySeconds: number;
   renewalPeriodSeconds: number;
   privateKey: TTemplatePrivateKey;
+  hashAlgorithm: { oid: string; name: string };
   majorRevision: number;
   minorRevision: number;
   extensions: TIssuerAddedExtension[];
@@ -182,7 +182,9 @@ export const buildGetPoliciesResponse = ({
   const algorithmOIDReference = ellipticCurve
     ? String(addOid(ellipticCurve.oid, OID_GROUP_PUBLIC_KEY, ellipticCurve.name))
     : "";
-  const hashAlgorithmOIDReference = template ? addOid(SHA256_OID, OID_GROUP_HASH_ALGORITHM, "sha256") : null;
+  const hashAlgorithmOIDReference = template
+    ? addOid(template.hashAlgorithm.oid, OID_GROUP_HASH_ALGORITHM, template.hashAlgorithm.name)
+    : null;
   const policyOIDReference = template ? addOid(template.templateOid, OID_GROUP_TEMPLATE, template.templateName) : null;
 
   const policies = template

@@ -553,15 +553,6 @@ describe("microsoftAutoenrollmentService", () => {
       expect(refusalReasons()).toEqual([KerberosFailureReason.ChannelBindingMismatch]);
     });
 
-    test("reads the certificates once for concurrent requests on an empty cache", async () => {
-      vi.mocked(learnServerChannelBindings).mockResolvedValue([SERVER_BINDING.toString("hex")]);
-
-      const responses = await Promise.all([getPoliciesBoundTo(SERVER_BINDING), getPoliciesBoundTo(SERVER_BINDING)]);
-
-      expect(responses.map(({ statusCode }) => statusCode)).toEqual([200, 200]);
-      expect(learnServerChannelBindings).toHaveBeenCalledTimes(1);
-    });
-
     const refusalMessage = () => {
       const [[refusal]] = deps.auditLogService.createCollapsedAuditLog.mock.calls as [
         [{ event: { metadata: { message: string } } }]
@@ -696,6 +687,22 @@ describe("microsoftAutoenrollmentService", () => {
 
       expect(response.body).toContain("<validityPeriodSeconds>2592000</validityPeriodSeconds>");
       expect(response.body).toContain(`<renewalPeriodSeconds>${2592000 * 0.2 - 1}</renewalPeriodSeconds>`);
+    });
+
+    test("asks Windows to sign with the hash of the profile's default signature algorithm", async () => {
+      deps.certificateProfileDAL.findByIdWithConfigs.mockResolvedValue({
+        id: PROFILE_ID,
+        projectId: "project-id",
+        caId: CA_ID,
+        slug: "web-servers",
+        certificatePolicyId: "policy-id",
+        defaults: { ttlDays: 30, signatureAlgorithm: "RSA-SHA384" }
+      });
+
+      const response = await service.getPolicies(request(GET_POLICIES_BODY));
+
+      expect(response.body).toContain("<value>2.16.840.1.101.3.4.2.2</value><group>1</group>");
+      expect(response.body).not.toContain("2.16.840.1.101.3.4.2.1");
     });
 
     test("offers a one year lifetime when the profile has no default TTL", async () => {
@@ -1021,7 +1028,12 @@ describe("microsoftAutoenrollmentService", () => {
     test.each([
       ["was not issued by the profile's CA or is revoked", false, { id: "current-certificate-id", deletedAt: null }],
       ["is not stored", true, undefined],
-      ["was deleted", true, { id: "current-certificate-id", deletedAt: new Date() }]
+      ["was deleted", true, { id: "current-certificate-id", deletedAt: new Date() }],
+      [
+        "was revoked after the CA check read it",
+        true,
+        { id: "current-certificate-id", deletedAt: null, status: CertStatus.REVOKED }
+      ]
     ])("refuses to renew a certificate that %s", async (_name, isIssuedByCa, storedCertificate) => {
       vi.mocked(isSignerCertIssuedByCa).mockResolvedValue(isIssuedByCa);
       deps.certificateDAL.findOne.mockResolvedValue(storedCertificate);

@@ -207,7 +207,8 @@ const ConfirmActionButton = ({
   confirmVariant,
   triggerSize,
   onConfirmed,
-  isPending
+  isPending,
+  isDisabled = false
 }: {
   label: string;
   title: string;
@@ -217,6 +218,7 @@ const ConfirmActionButton = ({
   triggerSize?: React.ComponentProps<typeof Button>["size"];
   onConfirmed: () => Promise<void>;
   isPending: boolean;
+  isDisabled?: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -228,7 +230,7 @@ const ConfirmActionButton = ({
         variant="outline"
         size={triggerSize}
         onClick={() => setIsOpen(true)}
-        isDisabled={isActionPending}
+        isDisabled={isActionPending || isDisabled}
       >
         {label}
       </Button>
@@ -1484,6 +1486,13 @@ const createMicrosoftAutoenrollmentFormSchema = (
       allowAnyChannelBinding: z.boolean()
     })
     .superRefine((values, ctx) => {
+      if (values.keytabFile && values.keytabFile.size === 0) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["keytabFile"],
+          message: "The keytab file is empty."
+        });
+      }
       if (values.keytabFile && values.keytabFile.size > MAX_KEYTAB_BYTES) {
         ctx.addIssue({
           code: "custom",
@@ -1607,19 +1616,33 @@ const MicrosoftAutoenrollmentPanel = ({
   const clearMutation = useClearPkiApplicationMicrosoftAutoenrollmentEnrollment();
   const reenrollMutation = useReenrollPkiApplicationMicrosoftAutoenrollmentComputers();
   const [isReplacingKeytab, setIsReplacingKeytab] = useState(false);
+  const [connectionBeforeReuse, setConnectionBeforeReuse] = useState<string | null>(null);
   const [groupSearch, setGroupSearch] = useState("");
   const [debouncedGroupSearch] = useDebounce(groupSearch, 300);
   const { data: servicePrincipal, error: servicePrincipalError } =
     useGetMicrosoftAutoenrollmentServicePrincipal(applicationId, profileId);
   const instanceServicePrincipalName = servicePrincipal?.servicePrincipalName.toLowerCase();
+  const savedPrincipalName = initial?.servicePrincipalName.toLowerCase();
   const reuseCandidate = instanceServicePrincipalName
-    ? otherProfiles.find(
-        (p) =>
-          p.servicePrincipalName.split("@")[0].toLowerCase() === instanceServicePrincipalName &&
-          (!initial ||
-            p.servicePrincipalName !== initial.servicePrincipalName ||
-            p.keyVersion !== initial.keyVersion)
-      )
+    ? otherProfiles
+        .filter(
+          (p) =>
+            p.servicePrincipalName.split("@")[0].toLowerCase() === instanceServicePrincipalName &&
+            (!initial ||
+              p.servicePrincipalName.toLowerCase() !== initial.servicePrincipalName.toLowerCase() ||
+              p.keyVersion > initial.keyVersion)
+        )
+        .reduce<TMicrosoftAutoenrollmentOtherProfile | undefined>((best, p) => {
+          if (!best) return p;
+          const isCandidateSamePrincipal =
+            p.servicePrincipalName.toLowerCase() === savedPrincipalName;
+          const isBestSamePrincipal =
+            best.servicePrincipalName.toLowerCase() === savedPrincipalName;
+          if (isCandidateSamePrincipal !== isBestSamePrincipal) {
+            return isCandidateSamePrincipal ? p : best;
+          }
+          return p.keyVersion > best.keyVersion ? p : best;
+        }, undefined)
     : undefined;
   const {
     control,
@@ -1627,18 +1650,23 @@ const MicrosoftAutoenrollmentPanel = ({
     watch,
     reset,
     setValue,
+    clearErrors,
     formState: { isDirty, isSubmitting, dirtyFields }
   } = useForm<MicrosoftAutoenrollmentForm>({
     resolver: zodResolver(
-      createMicrosoftAutoenrollmentFormSchema(!initial, Boolean(reuseCandidate))
+      createMicrosoftAutoenrollmentFormSchema(
+        !initial || isReplacingKeytab,
+        Boolean(reuseCandidate)
+      )
     ),
     defaultValues: getMicrosoftAutoenrollmentFormValues(initial)
   });
 
+  const savedFormValuesKey = JSON.stringify(getMicrosoftAutoenrollmentFormValues(initial));
   useEffect(() => {
     reset(getMicrosoftAutoenrollmentFormValues(initial));
     setIsReplacingKeytab(false);
-  }, [initial, reset]);
+  }, [savedFormValuesKey, reset]);
 
   const connectionId = watch("connectionId");
   const keytabFile = watch("keytabFile");
@@ -1685,6 +1713,7 @@ const MicrosoftAutoenrollmentPanel = ({
 
   const onUseReuseCandidate = () => {
     if (!reuseCandidate) return;
+    setConnectionBeforeReuse(connectionId);
     setValue("keytabFile", null);
     setValue("reuseFrom", reuseCandidate, { shouldDirty: true, shouldValidate: true });
     setValue("connectionId", reuseCandidate.connectionId, {
@@ -1694,8 +1723,17 @@ const MicrosoftAutoenrollmentPanel = ({
   };
 
   const onReplaceKeytab = () => {
+    if (reuseFrom && connectionId === reuseFrom.connectionId) {
+      setValue("connectionId", connectionBeforeReuse, { shouldDirty: true });
+    }
     setValue("reuseFrom", null, { shouldDirty: true });
     setIsReplacingKeytab(true);
+  };
+
+  const onKeepCurrentKeytab = () => {
+    setValue("keytabFile", null, { shouldDirty: true });
+    clearErrors("keytabFile");
+    setIsReplacingKeytab(false);
   };
 
   const onSave = handleSubmit(async (values) => {
@@ -1775,6 +1813,21 @@ const MicrosoftAutoenrollmentPanel = ({
     );
   }
 
+  let keytabActions: React.ReactNode;
+  if (keytabRow) {
+    keytabActions = (
+      <Button variant="outline" size="xs" onClick={onReplaceKeytab}>
+        Replace
+      </Button>
+    );
+  } else if (initial && isReplacingKeytab) {
+    keytabActions = (
+      <Button variant="outline" size="xs" onClick={onKeepCurrentKeytab}>
+        Keep Current Keytab
+      </Button>
+    );
+  }
+
   return (
     <form className="contents" onSubmit={(event) => onSave(event).catch(() => undefined)}>
       <fieldset
@@ -1809,16 +1862,7 @@ const MicrosoftAutoenrollmentPanel = ({
             />
           </SectionCard>
         ) : null}
-        <SectionCard
-          title="Kerberos Keytab"
-          actions={
-            keytabRow ? (
-              <Button variant="outline" size="xs" onClick={onReplaceKeytab}>
-                Replace
-              </Button>
-            ) : undefined
-          }
-        >
+        <SectionCard title="Kerberos Keytab" actions={keytabActions}>
           {keytabRow}
           {isSavedKeytabForOtherHost ? (
             <Alert variant="warning">
@@ -1932,9 +1976,7 @@ const MicrosoftAutoenrollmentPanel = ({
                         <span className="shrink-0 font-mono text-xs text-muted">{option.sid}</span>
                       </div>
                     )}
-                    shouldFilter={false}
-                    includeMissingSelectedOptions
-                    onInputValueChange={setGroupSearch}
+                    onSearchChange={setGroupSearch}
                     isLoading={isGroupsFetching}
                     isError={Boolean(error)}
                     placeholder="Search groups by name"
@@ -2047,18 +2089,20 @@ const MicrosoftAutoenrollmentPanel = ({
             <Field>
               <FieldLabel>Re-enroll computers</FieldLabel>
               <FieldDescription>
-                Makes every computer request a new certificate the next time it fetches the
-                enrollment policy.
+                {isDirty
+                  ? "Save or discard your changes before re-enrolling computers."
+                  : "Makes every computer that can still enroll request a new certificate the next time it fetches the enrollment policy."}
               </FieldDescription>
               <div>
                 <ConfirmActionButton
                   label="Re-enroll All Computers"
                   title={`Re-enroll All Computers for ${initial?.templateName ?? ""}?`}
-                  description="Every computer that holds a certificate from this profile requests a new one the next time it fetches the enrollment policy, which can take up to 8 hours. If an approval policy covers the profile, each request waits for approval."
+                  description="Every computer that holds a certificate from this profile and can still enroll requests a new one the next time it fetches the enrollment policy, which can take up to 8 hours. If an approval policy covers the profile, each request waits for approval."
                   confirmLabel="Re-enroll"
                   confirmVariant="project"
                   triggerSize="sm"
                   isPending={isPending}
+                  isDisabled={isDirty}
                   onConfirmed={async () => {
                     if (onUpgradeRequired) {
                       onUpgradeRequired();
@@ -2354,6 +2398,7 @@ export const ConfigureEnrollmentModal = ({
                           key={m}
                           onClick={() => handleAddMethod(m)}
                           isDisabled={isPending || isUnsupported}
+                          isDisabledFocusable={isUnsupported}
                         >
                           <div className="flex flex-col">
                             <span className="flex items-center gap-2 font-medium">
@@ -2369,7 +2414,7 @@ export const ConfigureEnrollmentModal = ({
                       if (!isUnsupported) return item;
                       return (
                         <Tooltip key={m}>
-                          <TooltipTrigger className="block w-full">{item}</TooltipTrigger>
+                          <TooltipTrigger asChild>{item}</TooltipTrigger>
                           <TooltipContent side="left" className="max-w-xs">
                             {unsupportedReason}
                           </TooltipContent>

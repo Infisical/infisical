@@ -164,7 +164,8 @@ export const useGetPkiApplicationEnrollment = (applicationId: string, profileId:
       );
       return data;
     },
-    enabled: Boolean(applicationId && profileId)
+    enabled: Boolean(applicationId && profileId),
+    refetchOnMount: "always"
   });
 
 export const useGetMicrosoftAutoenrollmentServicePrincipal = (

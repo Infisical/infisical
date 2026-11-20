@@ -222,7 +222,7 @@ export const resolveMicrosoftAutoenrollmentKeytab = async (
   }: {
     microsoftAutoenrollmentEnrollmentConfigDAL: Pick<
       TMicrosoftAutoenrollmentEnrollmentConfigDALFactory,
-      "findKeytabByApplicationAndProfile"
+      "findKeytabByApplicationAndProfile" | "primaryNode"
     >;
     kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
     projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
@@ -256,7 +256,8 @@ export const resolveMicrosoftAutoenrollmentKeytab = async (
     }
     const source = await microsoftAutoenrollmentEnrollmentConfigDAL.findKeytabByApplicationAndProfile(
       applicationId,
-      reuseKeytab.profileId
+      reuseKeytab.profileId,
+      microsoftAutoenrollmentEnrollmentConfigDAL.primaryNode()
     );
     if (!source) {
       throw new BadRequestError({

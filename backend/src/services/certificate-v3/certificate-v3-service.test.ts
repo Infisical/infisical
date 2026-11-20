@@ -4902,6 +4902,33 @@ describe("CertificateV3Service", () => {
       );
     });
 
+    it("records a sign failure under the name the issuer supplies, not the request's", async () => {
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockRejectedValue(new BadRequestError({ message: "x" }));
+
+      await expect(
+        service.signCertificateFromProfile({
+          profileId: "profile-123",
+          csr: "not a csr",
+          validity: { ttl: "30d" },
+          enrollmentType: EnrollmentType.MICROSOFT_AUTOENROLLMENT,
+          issuerNameOverride: { commonName: "laptop01.corp.example.com", altNames: [] },
+          actor: ActorType.USER,
+          actorId: "user-123",
+          actorAuthMethod: AuthMethod.EMAIL,
+          actorOrgId: "org-123",
+          auditLogInfo
+        } as never)
+      ).rejects.toThrow("x");
+
+      expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: expect.objectContaining({
+            metadata: expect.objectContaining({ commonName: "laptop01.corp.example.com" })
+          })
+        })
+      );
+    });
+
     it("records an order failure with the order's common name", async () => {
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockRejectedValue(new BadRequestError({ message: "x" }));
 

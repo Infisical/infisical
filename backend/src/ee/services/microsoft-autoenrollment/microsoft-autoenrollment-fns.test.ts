@@ -1,6 +1,7 @@
 import dns from "node:dns/promises";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
+import { buildTestKeytab, buildTestKeytabEntry } from "@app/lib/kerberos/kerberos.test-helpers";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
@@ -8,6 +9,7 @@ import {
   getMicrosoftAutoenrollmentUnsupportedReason,
   isComputerInAllowedGroups,
   mergeAllowedGroups,
+  readUploadedKeytab,
   resolveCanonicalHostname
 } from "./microsoft-autoenrollment-fns";
 
@@ -22,6 +24,14 @@ describe("isComputerInAllowedGroups", () => {
   ])("%s", (_name, allowedGroupSids, expected) => {
     const allowedGroups = allowedGroupSids.map((sid) => ({ sid, name: sid }));
     expect(isComputerInAllowedGroups(allowedGroups, [DOMAIN_COMPUTERS_SID])).toBe(expected);
+  });
+});
+
+describe("readUploadedKeytab", () => {
+  test("refuses a key version too large to store", () => {
+    expect(() => readUploadedKeytab(buildTestKeytab([buildTestKeytabEntry({ keyVersion: 2 ** 31 })]))).toThrow(
+      /not a valid keytab/
+    );
   });
 });
 

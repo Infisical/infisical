@@ -154,6 +154,7 @@ describe("SOAP response builders", () => {
     validitySeconds: 2592000,
     renewalPeriodSeconds: 3628800,
     privateKey,
+    hashAlgorithm: { oid: "2.16.840.1.101.3.4.2.1", name: "sha256" },
     majorRevision: 100,
     minorRevision: 3,
     extensions: [{ oid: "2.5.29.37", critical: false, value: Buffer.from([0x30, 0x00]) }],

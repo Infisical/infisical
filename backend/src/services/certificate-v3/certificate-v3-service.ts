@@ -2456,7 +2456,7 @@ export const certificateV3ServiceFactory = ({
           operation: dto.issuanceOperation ?? CertificateIssuanceOperation.SIGN,
           enrollmentType: dto.enrollmentType,
           originalCertificateId: dto.originalCertificateId,
-          commonName: $commonNameFromCsr(dto.csr),
+          commonName: dto.issuerNameOverride?.commonName ?? $commonNameFromCsr(dto.csr),
           applicationId: dto.applicationId
         }
       });

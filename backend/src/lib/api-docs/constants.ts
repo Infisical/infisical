@@ -2810,7 +2810,7 @@ export const MICROSOFT_AUTOENROLLMENT = {
     otherProfiles:
       "Other profiles in this application that have Microsoft Autoenrollment on, with their keytab's service principal name, key version and LDAP connection, so their keytab can be reused.",
     unsupportedReason:
-      "Why this profile cannot use Microsoft Autoenrollment, such as an external certificate authority or a key type Windows cannot request. Null when it can.",
+      "Why this profile cannot use Microsoft Autoenrollment, such as an external certificate authority, a key type Windows cannot request, or a certificate policy that refuses the key type or the Windows extensions. Null when it can, and always null once the method is on for the profile.",
     configured: "Whether Microsoft Autoenrollment is on for this profile in the application.",
     id: "The ID of the Microsoft Autoenrollment configuration.",
     policyUrl:

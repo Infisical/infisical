@@ -15,8 +15,11 @@ import {
   readAccountDisabledFlag,
   readDirectoryComputerGroupSids,
   resolveDirectorySecurityGroupNames,
-  searchDirectoryGroups
+  searchDirectoryGroups,
+  withActiveDirectoryErrors
 } from "./ldap-directory-fns";
+
+vi.mock("@app/lib/logger", () => ({ logger: { warn: vi.fn(), info: vi.fn(), error: vi.fn() } }));
 
 vi.mock("./ldap-connection-fns", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./ldap-connection-fns")>()),
@@ -277,5 +280,20 @@ describe("readDirectoryComputerGroupSids", () => {
 
     await expect(readDirectoryComputerGroupSids({ config, sid: COMPUTER_SID }, gatewayServices)).resolves.toBeNull();
     expect(searches.map((search) => search.attributes)).not.toContainEqual(["tokenGroups"]);
+  });
+});
+
+describe("withActiveDirectoryErrors", () => {
+  it("keeps a directory timeout a timeout, naming the connection", () => {
+    expect(() =>
+      withActiveDirectoryErrors({ id: "connection-id", name: "corp-ad" })(
+        new GatewayTimeoutError({ message: "The directory did not answer within 10 seconds." })
+      )
+    ).toThrow(GatewayTimeoutError);
+    expect(() =>
+      withActiveDirectoryErrors({ id: "connection-id", name: "corp-ad" })(
+        new GatewayTimeoutError({ message: "The directory did not answer within 10 seconds." })
+      )
+    ).toThrow(/LDAP connection 'corp-ad': The directory did not answer/);
   });
 });

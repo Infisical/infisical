@@ -249,6 +249,24 @@ describe("resolveCustomExtensions with extensions the issuer adds", () => {
         { oid: TEMPLATE_INFO_OID, allowed: ["*"] }
       ])
     ).toEqual([]);
+    expect(
+      findMicrosoftAutoenrollmentRuleProblems([
+        { oid: SID_OID, denied: ["S-1-5-21-*-1000"] },
+        { oid: TEMPLATE_INFO_OID, allowed: ["*"], denied: ["1.3.6.1.4.1.99999*"] }
+      ])
+    ).toEqual([expect.stringContaining("must allow any value (*)")]);
+    expect(
+      findMicrosoftAutoenrollmentRuleProblems([
+        { oid: SID_OID, allowed: ["*"] },
+        { oid: TEMPLATE_INFO_OID, allowed: ["1.3.6.1.4.1.311.21.8.1.1:100.0", "1.2.3:101.7"] }
+      ])
+    ).toEqual([expect.stringContaining("must allow any value (*)")]);
+    expect(
+      findMicrosoftAutoenrollmentRuleProblems([
+        { oid: SID_OID, allowed: ["**"] },
+        { oid: TEMPLATE_INFO_OID, required: ["**"] }
+      ])
+    ).toEqual([]);
   });
 
   it("signs the issuer's copy once when the profile declares the same extension", () => {

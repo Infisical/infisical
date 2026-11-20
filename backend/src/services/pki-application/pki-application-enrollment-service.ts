@@ -17,12 +17,10 @@ import {
 import {
   assertProfileCaSupportsMicrosoftAutoenrollment,
   getMicrosoftAutoenrollmentUnsupportedReason,
+  loadTemplateSigningCa,
   resolveInstanceServicePrincipalName
 } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-fns";
-import {
-  getKeyAlgorithmDisplayName,
-  TEMPLATE_DEFAULT_KEY_ALGORITHM
-} from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-template-fns";
+import { findTemplatePolicyProblem } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-template-fns";
 import {
   MICROSOFT_AUTOENROLLMENT_NOT_ENABLED_MESSAGE,
   MicrosoftAutoenrollmentKeytabSource
@@ -55,7 +53,7 @@ import { TCertRequestPolicy } from "@app/services/approval-policy/cert-request/c
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
-import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS } from "@app/services/certificate-common/certificate-constants";
@@ -185,7 +183,7 @@ type TPkiApplicationEnrollmentServiceFactoryDep = {
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "matchPolicy">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById" | "lockById">;
-  certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
+  certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateRequestAgainstPolicy">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find">;
@@ -311,6 +309,45 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     return { junction, application };
   };
 
+  const $findPolicyBlocker = async (
+    profile: { slug: string; certificatePolicyId: string; caId?: string | null; defaults?: unknown },
+    tx?: Knex
+  ) => {
+    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId, tx);
+    if (!policy) return `Certificate policy for profile '${profile.slug}' not found.`;
+    const signingCa = await loadTemplateSigningCa(
+      profile.caId,
+      { certificateAuthorityDAL, certificateAuthoritySecretDAL },
+      tx
+    );
+    const keyProblem = findTemplatePolicyProblem(
+      profile,
+      signingCa,
+      (request) =>
+        certificatePolicyService.validateRequestAgainstPolicy(policy, request, { skipRequired: true }).isValid
+    );
+    if (keyProblem) return keyProblem;
+    const ruleProblems = findMicrosoftAutoenrollmentRuleProblems(policy.customExtensions);
+    if (!ruleProblems.length) return null;
+    return `Profile '${profile.slug}' has a certificate policy that restricts custom extensions, and Microsoft Autoenrollment adds ${MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS.join(" and ")} to every certificate. ${ruleProblems.join(" ")} You can also turn off the policy's custom extension restriction.`;
+  };
+
+  const $findInactiveCaReason = async (profile: { slug: string; caId?: string | null }, tx?: Knex) => {
+    const ca = profile.caId ? await certificateAuthorityDAL.findById(profile.caId, tx) : undefined;
+    if (!ca || ca.status === CaStatus.ACTIVE) return null;
+    return ca.status === CaStatus.PENDING_CERTIFICATE
+      ? `Profile '${profile.slug}' issues from a certificate authority that is still waiting for its certificate, so Windows can't get the issuing CA certificate. Install the CA certificate first.`
+      : `Profile '${profile.slug}' issues from a certificate authority that is disabled. Enable the certificate authority first.`;
+  };
+
+  const $assertPolicyAllowsMicrosoftAutoenrollment = async (
+    profile: { slug: string; certificatePolicyId: string; caId?: string | null; defaults?: unknown },
+    tx?: Knex
+  ) => {
+    const blocker = await $findPolicyBlocker(profile, tx);
+    if (blocker) throw new BadRequestError({ message: blocker });
+  };
+
   const getEnrollment = async ({
     applicationId,
     profileId,
@@ -338,14 +375,17 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     const profile = await certificateProfileDAL.findById(profileId);
     const caType = await resolveCaType(profile?.caId, certificateAuthorityDAL);
     const microsoftAutoenrollmentUnsupportedReason = profile
-      ? await getMicrosoftAutoenrollmentUnsupportedReason(
+      ? ((await getMicrosoftAutoenrollmentUnsupportedReason(
           {
             profileSlug: profile.slug,
             caId: profile.caId,
             keyAlgorithm: (profile.defaults as TCertificateProfileDefaults | null)?.keyAlgorithm
           },
           certificateAuthorityDAL
-        )
+        )) ??
+        (junction.microsoftAutoenrollmentConfigId
+          ? null
+          : ((await $findInactiveCaReason(profile)) ?? (await $findPolicyBlocker(profile)))))
       : null;
 
     const microsoftAutoenrollmentConfigs =
@@ -1057,40 +1097,6 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     return { applicationId, applicationName: application.name, profileId };
   };
 
-  const $assertPolicyAllowsTemplateKey = async (profile: {
-    slug: string;
-    certificatePolicyId: string;
-    defaults?: unknown;
-  }) => {
-    const profileKeyAlgorithm = (profile.defaults as TCertificateProfileDefaults | null)?.keyAlgorithm;
-    const keyAlgorithm = profileKeyAlgorithm ?? TEMPLATE_DEFAULT_KEY_ALGORITHM;
-    const { isValid } = await certificatePolicyService.validateCertificateRequest(
-      profile.certificatePolicyId,
-      { keyAlgorithm },
-      { skipRequired: true }
-    );
-    if (isValid) return;
-
-    const keyName = getKeyAlgorithmDisplayName(keyAlgorithm);
-    throw new BadRequestError({
-      message: profileKeyAlgorithm
-        ? `Profile '${profile.slug}' asks Windows for ${keyName} keys, but the profile's certificate policy does not allow that key algorithm, so every Windows request would be refused. Set the profile's default key algorithm to one the policy allows, or allow ${keyName} in the policy.`
-        : `Profile '${profile.slug}' has no default key algorithm, so Windows requests ${keyName} keys, but the profile's certificate policy does not allow that key algorithm, so every Windows request would be refused. Set the profile's default key algorithm to one the policy allows, or allow ${keyName} in the policy.`
-    });
-  };
-
-  const $assertPolicyAllowsWindowsExtensions = async (
-    profile: { slug: string; certificatePolicyId: string },
-    tx?: Knex
-  ) => {
-    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId, tx);
-    const problems = findMicrosoftAutoenrollmentRuleProblems(policy?.customExtensions);
-    if (!problems.length) return;
-    throw new BadRequestError({
-      message: `Profile '${profile.slug}' has a certificate policy that restricts custom extensions, and Microsoft Autoenrollment adds ${MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS.join(" and ")} to every certificate. ${problems.join(" ")} You can also turn off the policy's custom extension restriction.`
-    });
-  };
-
   const setMicrosoftAutoenrollmentEnrollment = async ({
     applicationId,
     profileId,
@@ -1145,8 +1151,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       },
       certificateAuthorityDAL
     );
-    await $assertPolicyAllowsTemplateKey(profile);
-    await $assertPolicyAllowsWindowsExtensions(profile);
+    await $assertPolicyAllowsMicrosoftAutoenrollment(profile);
     const microsoftAutoenrollmentTtl = await resolveMicrosoftAutoenrollmentTtl(
       {
         certificatePolicyId: profile.certificatePolicyId,
@@ -1237,10 +1242,24 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       configFields.renewBeforeDays !== existingConfig?.renewBeforeDays ||
       configFields.allowAnyChannelBinding !== existingConfig?.allowAnyChannelBinding;
 
+    let savedProfileSlug = profile.slug;
     const savedConfig = await pkiApplicationProfileDAL
       .transaction(async (tx) => {
         await certificatePolicyDAL.lockById(profile.certificatePolicyId, tx);
-        await $assertPolicyAllowsWindowsExtensions(profile, tx);
+        const lockedProfile = (await certificateProfileDAL.findById(profileId, tx)) ?? profile;
+        savedProfileSlug = lockedProfile.slug;
+        const lockedInactiveCaReason = existingConfig ? null : await $findInactiveCaReason(lockedProfile, tx);
+        if (lockedInactiveCaReason) throw new BadRequestError({ message: lockedInactiveCaReason });
+        await assertProfileCaSupportsMicrosoftAutoenrollment(
+          {
+            profileSlug: lockedProfile.slug,
+            caId: lockedProfile.caId,
+            keyAlgorithm: (lockedProfile.defaults as TCertificateProfileDefaults | null)?.keyAlgorithm
+          },
+          certificateAuthorityDAL,
+          tx
+        );
+        await $assertPolicyAllowsMicrosoftAutoenrollment(lockedProfile, tx);
         if (existingConfig) {
           if (!isConfigChanged) return existingConfig;
           const [updated] = await microsoftAutoenrollmentEnrollmentConfigDAL.update(
@@ -1275,6 +1294,12 @@ export const pkiApplicationEnrollmentServiceFactory = ({
         if (hasPostgresErrorCode(error, DatabaseErrorCode.UniqueViolation)) {
           throw new ConflictError({ message: CONCURRENT_MICROSOFT_AUTOENROLLMENT_SAVE_MESSAGE });
         }
+        if (hasPostgresErrorCode(error, DatabaseErrorCode.ForeignKeyViolation)) {
+          throw new ConflictError({
+            message:
+              "The profile was removed from this application, or the LDAP connection was deleted, while this save was in progress. Reload and try again."
+          });
+        }
         throw error;
       });
 
@@ -1282,12 +1307,12 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       applicationId,
       applicationName: application.name,
       profileId,
-      profileName: profile.slug,
+      profileName: savedProfileSlug,
       microsoftAutoenrollment: buildMicrosoftAutoenrollmentState({
         applicationId,
         profileId,
         applicationProfileId: junction.id,
-        profileName: profile.slug,
+        profileName: savedProfileSlug,
         config: { ...savedConfig, allowedGroups },
         ttl: microsoftAutoenrollmentTtl,
         channelBinding: await readChannelBindingStatus(keyStore)
@@ -1320,7 +1345,10 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     );
     const profile = await certificateProfileDAL.findById(profileId);
     if (!profile) throw new NotFoundError({ message: `Certificate profile with ID '${profileId}' not found` });
-    await microsoftAutoenrollmentEnrollmentConfigDAL.delete({ applicationProfileId: junction.id });
+    await pkiApplicationProfileDAL.transaction(async (tx) => {
+      await pkiApplicationProfileDAL.update({ id: junction.id }, { microsoftAutoenrollmentConfigId: null }, tx);
+      await microsoftAutoenrollmentEnrollmentConfigDAL.delete({ applicationProfileId: junction.id }, tx);
+    });
     return { applicationId, applicationName: application.name, profileId, profileName: profile.slug };
   };
 

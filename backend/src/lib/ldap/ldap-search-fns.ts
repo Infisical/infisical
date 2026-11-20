@@ -14,15 +14,13 @@ export const getLdapAttribute = (entry: ldap.SearchEntry, name: string): string 
     (attribute) => attribute.type.toLowerCase() === name.toLowerCase()
   )?.values?.[0] ?? "";
 
-export const getLdapAttributeBuffer = (entry: ldap.SearchEntry, name: string): Buffer | undefined =>
-  (entry as unknown as { attributes: TLdapAttribute[] }).attributes?.find(
-    (attribute) => attribute.type.toLowerCase() === name.toLowerCase()
-  )?.buffers?.[0];
-
 export const getLdapAttributeBuffers = (entry: ldap.SearchEntry, name: string): Buffer[] =>
   (entry as unknown as { attributes: TLdapAttribute[] }).attributes?.find(
     (attribute) => attribute.type.toLowerCase() === name.toLowerCase()
   )?.buffers ?? [];
+
+export const getLdapAttributeBuffer = (entry: ldap.SearchEntry, name: string): Buffer | undefined =>
+  getLdapAttributeBuffers(entry, name)[0];
 
 export const buildDomainBaseDN = (domainFqdn: string): string =>
   domainFqdn

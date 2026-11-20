@@ -23,9 +23,12 @@ import { MicrosoftAutoenrollmentMetadataKey } from "./microsoft-autoenrollment-t
 
 type TMicrosoftAutoenrollmentEligibilityDeps = {
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile" | "primaryNode">;
-  microsoftAutoenrollmentEnrollmentConfigDAL: Pick<TMicrosoftAutoenrollmentEnrollmentConfigDALFactory, "findById">;
+  microsoftAutoenrollmentEnrollmentConfigDAL: Pick<
+    TMicrosoftAutoenrollmentEnrollmentConfigDALFactory,
+    "findById" | "primaryNode"
+  >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
-  certificateDAL: Pick<TCertificateDALFactory, "findById">;
+  certificateDAL: Pick<TCertificateDALFactory, "findById" | "primaryNode">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   kmsService: TAppConnectionServiceFactoryDep["kmsService"];
 } & TLdapDirectoryGatewayServices;
@@ -38,7 +41,7 @@ const assertRenewedCertificateUsable = async (
   renewedFromCertificateId: string,
   certificateDAL: TMicrosoftAutoenrollmentEligibilityDeps["certificateDAL"]
 ) => {
-  const renewedCertificate = await certificateDAL.findById(renewedFromCertificateId);
+  const renewedCertificate = await certificateDAL.findById(renewedFromCertificateId, certificateDAL.primaryNode());
   if (!renewedCertificate || renewedCertificate.deletedAt) {
     return refuse("The certificate this request renews was deleted after the request was submitted.");
   }
@@ -48,7 +51,10 @@ const assertRenewedCertificateUsable = async (
 };
 
 export const checkMicrosoftAutoenrollmentRequestBeforeSigning = async (
-  certificateRequest: Pick<TCertificateRequests, "id" | "applicationId" | "profileId" | "renewedFromCertificateId">,
+  certificateRequest: Pick<
+    TCertificateRequests,
+    "id" | "applicationId" | "profileId" | "renewedFromCertificateId" | "commonName"
+  >,
   {
     pkiApplicationProfileDAL,
     microsoftAutoenrollmentEnrollmentConfigDAL,
@@ -70,7 +76,10 @@ export const checkMicrosoftAutoenrollmentRequestBeforeSigning = async (
         )
       : undefined;
   const config = junction?.microsoftAutoenrollmentConfigId
-    ? await microsoftAutoenrollmentEnrollmentConfigDAL.findById(junction.microsoftAutoenrollmentConfigId)
+    ? await microsoftAutoenrollmentEnrollmentConfigDAL.findById(
+        junction.microsoftAutoenrollmentConfigId,
+        microsoftAutoenrollmentEnrollmentConfigDAL.primaryNode()
+      )
     : undefined;
   if (!config) {
     return refuse("Microsoft Autoenrollment was turned off for this profile after the request was submitted.");
@@ -114,6 +123,14 @@ export const checkMicrosoftAutoenrollmentRequestBeforeSigning = async (
       computer.isDisabled
         ? `Computer ${computer.samAccountName} was disabled in Active Directory after the request was submitted.`
         : describeUnreadableUserAccountControl(computer.samAccountName)
+    );
+  }
+  if (!computer.dnsHostName) {
+    return refuse(`Computer ${computer.samAccountName} no longer has a DNS host name in Active Directory.`);
+  }
+  if (computer.dnsHostName.toLowerCase() !== certificateRequest.commonName?.toLowerCase()) {
+    return refuse(
+      `Computer ${computer.samAccountName}'s DNS host name in Active Directory changed after the request was submitted, so the request no longer names it. The computer requests a new certificate on its next autoenrollment check.`
     );
   }
   if (config.allowedGroups.length && !groupSids.length) {

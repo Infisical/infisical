@@ -300,12 +300,31 @@ export const certificatePolicyDALFactory = (db: TDbClient) => {
           `${TableName.PkiApplication}.id`,
           `${TableName.PkiApplicationProfile}.applicationId`
         )
+        .leftJoin(
+          TableName.InternalCertificateAuthority,
+          `${TableName.InternalCertificateAuthority}.caId`,
+          `${TableName.PkiCertificateProfile}.caId`
+        )
+        .leftJoin(
+          TableName.CertificateAuthoritySecret,
+          `${TableName.CertificateAuthoritySecret}.caId`,
+          `${TableName.PkiCertificateProfile}.caId`
+        )
         .where(`${TableName.PkiCertificateProfile}.certificatePolicyId`, policyId)
         .whereNotNull(`${TableName.PkiApplicationProfile}.microsoftAutoenrollmentConfigId`)
         .select(
           db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"),
-          db.ref("name").withSchema(TableName.PkiApplication).as("applicationName")
-        )) as { profileName: string; applicationName: string }[];
+          db.ref("defaults").withSchema(TableName.PkiCertificateProfile).as("profileDefaults"),
+          db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"),
+          db.ref("keyAlgorithm").withSchema(TableName.InternalCertificateAuthority).as("caKeyAlgorithm"),
+          db.ref("keySource").withSchema(TableName.CertificateAuthoritySecret).as("caKeySource")
+        )) as {
+        profileName: string;
+        profileDefaults: unknown;
+        applicationName: string;
+        caKeyAlgorithm: string | null;
+        caKeySource: string | null;
+      }[];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find Microsoft Autoenrollment profiles using a certificate policy" });
     }

@@ -15,8 +15,9 @@ Each computer signs in with its Kerberos ticket on every request. Its certificat
 ## Prerequisites
 
 - The [Enterprise plan](https://infisical.com/pricing)
-- A profile attached to your Application that issues from an internal certificate authority (external certificate authorities aren't supported)
+- A profile attached to your Application that issues from an active internal certificate authority (external certificate authorities aren't supported)
 - A CA key that matches the profile's default key algorithm: an RSA CA for RSA keys or no default, an EC CA for ECDSA keys
+- A certificate policy that allows the profile's default key algorithm (RSA 2048 if the profile has none) and its default signature algorithm (SHA-256 for the key type if the profile has none). If the certificate authority's key is an elliptic curve key in AWS KMS, the policy must allow the algorithm that key signs with instead (ECDSA with SHA-256, SHA-384 or SHA-512 for P-256, P-384 or P-521)
 - If the profile's certificate policy restricts custom extensions, rules that allow the **AD SID security extension** (`1.3.6.1.4.1.311.25.2`) and **Certificate template information** (`1.3.6.1.4.1.311.21.7`, with `*` as its allowed value)
 - An [LDAP connection](/integrations/app-connections/ldap) that uses the Active Directory provider, for your computers' domain (use an LDAPS URL on port 636 if your domain controllers require LDAP signing)
 - Read access to `userAccountControl` and `tokenGroups` on computer objects for the LDAP connection's account
@@ -25,7 +26,7 @@ Each computer signs in with its Kerberos ticket on every request. Its certificat
 - Permission to run `ktpass` on a domain controller
 - Windows computers that reach your Infisical instance over HTTPS
 - A TLS certificate on that address that the computers trust
-- Your instance sees the same TLS certificate the computers see at its host name, so it resolves that name the way they do and no proxy inspects HTTPS in between (to check, see [Network requirements for TLS channel binding](#network-requirements-for-tls-channel-binding))
+- Your instance sees the same TLS certificate the computers see at its host name, so it resolves that name the way they do and no proxy inspects HTTPS in between (to check, see [Network requirements for TLS channel binding](#network-requirements-for-tls-channel-binding)), unless you turn on **Accept any TLS channel binding**
 - If you self-host Infisical, `SITE_URL` set to the HTTPS address computers use (the enrollment URLs and the Kerberos service principal are built from it)
 
 If you self-host Infisical behind a reverse proxy that routes requests by path, route `/cep/` and `/ces/` to Infisical as well as `/api/`.
@@ -191,17 +192,18 @@ Windows keeps the enrollment policy for up to 8 hours, so a change to the enroll
 Each certificate is built from the profile, whatever the computer puts in its request:
 
 - **Validity**: the profile's default TTL, or, if the profile has none, one year (the same as the AD CS computer templates) or the policy's maximum validity, whichever is shorter
-- **Key usages**: the key usages and extended key usages set on the profile, such as **Digital Signature** and **Key Encipherment** with **Client Authentication** and **Server Authentication** (if the profile has none, the certificate gets the key usages Windows asks for in its request, and no extended key usages)
+- **Key usages**: the key usages and extended key usages set on the profile, such as **Digital Signature** and **Key Encipherment** with **Client Authentication** and **Server Authentication** (if the profile sets no key usages, or no extended key usages, the certificate gets the ones the computer asks for in its request, and the request is refused if the certificate policy doesn't allow them)
 - **Security identifier**: the computer's SID in the Active Directory security extension (OID `1.3.6.1.4.1.311.25.2`), which domain controllers use for [strong certificate mapping](https://support.microsoft.com/en-us/topic/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers-ad2c23b0-15d8-4340-a468-4d4f3b188f16) (if the certificate policy restricts custom extensions, it must allow this OID and the SID must meet its rule)
 - **Key type**: the profile's default key algorithm, RSA (2048, 3072 or 4096 bits) or ECDSA (P-256, P-384 or P-521), or RSA 2048 if the profile has none
+- **Signature**: Windows signs its request with the hash of the profile's default signature algorithm (SHA-256, SHA-384 or SHA-512), or SHA-256 if the profile has none
 
 If the profile's default TTL is longer than the policy's maximum validity, every request is refused until you change the profile.
 
-While the method is on, a change to the profile is refused if it moves the profile off an internal CA, or leaves the CA's key type mismatched with the default key algorithm.
+While the method is on, a change to the profile is refused if it moves the profile off an internal CA, leaves the CA's key type mismatched with the default key algorithm, or leaves a default key algorithm (RSA 2048 if there is none) or signature algorithm (SHA-256 if there is none, or the algorithm the CA's AWS KMS key requires) that the certificate policy doesn't allow. A change to the certificate policy that would refuse them, or the Windows extensions, is refused too.
 
 ## Re-enroll computers
 
-Changing the enrollment method doesn't replace the certificates computers already hold. They get the new settings when they renew. To make every computer request a new certificate the next time it fetches the enrollment policy (the same as re-enrolling all certificate holders of a template in AD CS), go to the **Renewal** section of the panel, select **Re-enroll All Computers**, then select **Re-enroll**. Computers pick up the change within 8 hours. If an approval policy covers the profile, each new request waits for approval. The certificates they replace stay valid until they expire.
+Changing the enrollment method doesn't replace the certificates computers already hold. They get the new settings when they renew. To make every computer that can still enroll request a new certificate the next time it fetches the enrollment policy (the same as re-enrolling all certificate holders of a template in AD CS), go to the **Renewal** section of the panel, select **Re-enroll All Computers**, then select **Re-enroll**. Computers pick up the change within 8 hours. If an approval policy covers the profile, each new request waits for approval. The certificates they replace stay valid until they expire.
 
 ## Approvals
 
@@ -212,6 +214,7 @@ Approvers find the request in your Application's **Certificate Requests** tab. T
 - Microsoft Autoenrollment was turned off for the profile
 - The computer was deleted or disabled in Active Directory
 - The computer is no longer in an allowed group
+- The computer's DNS host name in Active Directory changed or was cleared
 - The certificate the request renews was deleted or revoked
 
 To install an approved certificate without waiting, run `certutil -pulse` on the computer from an elevated prompt.
@@ -295,7 +298,7 @@ The two fingerprints must match. If they don't, see [Requests are refused with a
     - **Microsoft Autoenrollment Request Refused** (`microsoft-autoenrollment-request-refused`): a refused sign-in, a computer outside the allowed groups, an Active Directory problem, a refused renewal, a profile whose default TTL exceeds its certificate policy's maximum validity, or a TLS channel binding that's missing, bound to another TLS certificate, or can't be checked (Windows leaves out the channel binding if the computer sets `SuppressExtendedProtection` to `1` under `HKLM\SYSTEM\CurrentControlSet\Control\Lsa`)
     - **Certificate Issuance Failed** (`certificate-issuance-failed`): a request that the certificate policy or CA rejects, such as one with a TTL or key the policy doesn't allow, or a computer SID that the policy's rule for the SID extension doesn't allow
 
-    If no refusal is logged for the computer, it never reached your instance, never sent a Kerberos ticket, stopped on its own (for example on an untrusted root), or its request is waiting for approval. Match the Windows error first:
+    A refusal caused by the keytab, such as a ticket encrypted with a newer key version than the saved keytab, is logged for the profile without a computer name, because the ticket can't be read. If no refusal is logged at all, the computer never reached your instance, never sent a Kerberos ticket, stopped on its own (for example on an untrusted root), or its request is waiting for approval. Match the Windows error first:
 
     | Windows error | Cause |
     | --- | --- |

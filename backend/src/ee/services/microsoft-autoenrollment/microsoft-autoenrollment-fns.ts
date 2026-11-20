@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { getConfig } from "@app/lib/config/env";
 import { followCnameChain } from "@app/lib/dns";
 import { BadRequestError } from "@app/lib/errors";
@@ -7,6 +9,7 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { TAppConnectionServiceFactoryDep } from "@app/services/app-connection/app-connection-service";
 import { TLdapConnectionConfig } from "@app/services/app-connection/ldap/ldap-connection-types";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { TMicrosoftAutoenrollmentAllowedGroup } from "@app/services/enrollment-config/microsoft-autoenrollment-enrollment-config-dal";
 
@@ -69,7 +72,13 @@ export const loadLdapConnectionConfig = async (
   return (await decryptAppConnection(appConnection, kmsService)) as unknown as TLdapConnectionConfig;
 };
 
+const MAX_STORED_KEY_VERSION = 2147483647;
+export const MAX_KEYTAB_BYTES = 64 * 1024;
+
 export const readUploadedKeytab = (keytabFile: Buffer) => {
+  if (keytabFile.length > MAX_KEYTAB_BYTES) {
+    throw new BadRequestError({ message: "The keytab file cannot be larger than 64 KB" });
+  }
   const keytabEntries = parseKeytab(keytabFile);
   const principals = [
     ...new Map(
@@ -85,6 +94,11 @@ export const readUploadedKeytab = (keytabFile: Buffer) => {
     });
   }
   const newestEntry = keytabEntries.reduce((newest, entry) => (entry.keyVersion > newest.keyVersion ? entry : newest));
+  if (newestEntry.keyVersion > MAX_STORED_KEY_VERSION) {
+    throw new BadRequestError({
+      message: "The uploaded file is not a valid keytab. Upload the keytab file that ktpass created."
+    });
+  }
   return { servicePrincipalName: `${newestEntry.principal}@${newestEntry.realm}`, keyVersion: newestEntry.keyVersion };
 };
 
@@ -109,9 +123,10 @@ type TProfileCaCompatibilityInput = {
 
 const checkProfileCaCompatibility = async (
   { profileSlug, caId, keyAlgorithm }: TProfileCaCompatibilityInput,
-  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">,
+  tx?: Knex
 ) => {
-  const ca = caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(caId) : null;
+  const ca = caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx) : null;
   const caKeyAlgorithm = ca?.internalCa?.keyAlgorithm ?? "";
   const isEllipticCurveProfile = Boolean(resolveTemplatePrivateKey(keyAlgorithm).ellipticCurve);
   const keyFamily = isEllipticCurveProfile ? "an elliptic curve" : "an RSA";
@@ -153,6 +168,30 @@ export const getMicrosoftAutoenrollmentUnsupportedReason = async (
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">
 ) => (await checkProfileCaCompatibility(input, certificateAuthorityDAL))?.message ?? null;
 
+export const loadTemplateSigningCa = async (
+  caId: string | null | undefined,
+  {
+    certificateAuthorityDAL,
+    certificateAuthoritySecretDAL
+  }: {
+    certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
+    certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
+  },
+  tx?: Knex
+) => {
+  if (!caId) return null;
+  const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
+  const secret = await certificateAuthoritySecretDAL.findOne({ caId }, tx);
+  return { keyAlgorithm: ca?.internalCa?.keyAlgorithm, keySource: secret?.keySource };
+};
+
+export const describeApplicationList = (applicationNames: string[]) => {
+  const quotedNames = applicationNames.map((name) => `'${name}'`);
+  return quotedNames.length === 1
+    ? `application ${quotedNames[0]}`
+    : `applications ${quotedNames.slice(0, -1).join(", ")} and ${quotedNames[quotedNames.length - 1]}`;
+};
+
 export const assertProfileCaSupportsMicrosoftAutoenrollment = async (
   {
     enabledInApplicationNames,
@@ -160,19 +199,15 @@ export const assertProfileCaSupportsMicrosoftAutoenrollment = async (
   }: TProfileCaCompatibilityInput & {
     enabledInApplicationNames?: string[];
   },
-  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">,
+  tx?: Knex
 ) => {
-  const incompatibility = await checkProfileCaCompatibility(input, certificateAuthorityDAL);
+  const incompatibility = await checkProfileCaCompatibility(input, certificateAuthorityDAL, tx);
   if (!incompatibility) return;
 
   if (enabledInApplicationNames?.length) {
-    const quotedNames = enabledInApplicationNames.map((name) => `'${name}'`);
-    const applicationList =
-      quotedNames.length === 1
-        ? `application ${quotedNames[0]}`
-        : `applications ${quotedNames.slice(0, -1).join(", ")} and ${quotedNames[quotedNames.length - 1]}`;
     throw new BadRequestError({
-      message: `Microsoft Autoenrollment is on for profile '${input.profileSlug}' in ${applicationList}. This change would stop it working: ${incompatibility.shortReason}. Turn Microsoft Autoenrollment off there first, or keep the profile's certificate authority and default key algorithm compatible.`
+      message: `Microsoft Autoenrollment is on for profile '${input.profileSlug}' in ${describeApplicationList(enabledInApplicationNames)}. This change would stop it working: ${incompatibility.shortReason}. Turn Microsoft Autoenrollment off there first, or keep the profile's certificate authority and default key algorithm compatible.`
     });
   }
 

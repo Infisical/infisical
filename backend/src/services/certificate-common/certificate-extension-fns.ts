@@ -484,8 +484,15 @@ export const findCustomExtensionRuleValueError = (
   return null;
 };
 
-const ANY_DOMAIN_COMPUTER_SID = "S-1-5-21-0-0-0-1000";
-const SAMPLE_TEMPLATE_INFORMATION_VALUES = ["1.3.6.1.4.1.311.21.8.1.1:100.0", "1.2.3:101.7"];
+const UNRELATED_COMPUTER_SIDS = ["S-1-5-21-1-2-5-1125", "S-1-5-21-4067890-3467890-9876043-36789"];
+
+const isMatchAnyPattern = (pattern: string) => /^\*+$/.test(pattern.trim());
+
+const acceptsEveryValue = (rule: TCustomExtensionRule) => {
+  if (rule.denied?.length) return false;
+  if (rule.required?.length) return rule.required.some(isMatchAnyPattern);
+  return !rule.allowed?.length || rule.allowed.some(isMatchAnyPattern);
+};
 
 export const findMicrosoftAutoenrollmentRuleProblems = (rules: TCustomExtensionRule[] | null | undefined) => {
   const rulesByOid = buildRuleLookup(rules);
@@ -499,16 +506,16 @@ export const findMicrosoftAutoenrollmentRuleProblems = (rules: TCustomExtensionR
     problems.push(`Allow ${missingOids.join(" and ")} in the policy's custom extension rules.`);
   }
   const sidRule = rulesByOid.get(sidOid);
-  if (sidRule && matchesAnyPattern(ANY_DOMAIN_COMPUTER_SID, sidRule.denied ?? [])) {
+  if (
+    sidRule &&
+    (sidRule.denied ?? []).some((pattern) =>
+      UNRELATED_COMPUTER_SIDS.every((sid) => matchesNormalizedPattern(sid, pattern))
+    )
+  ) {
     problems.push(`The rule for ${sidOid} denies every value, so no computer could enroll.`);
   }
   const templateRule = rulesByOid.get(templateOid);
-  if (
-    templateRule &&
-    SAMPLE_TEMPLATE_INFORMATION_VALUES.some((value) =>
-      findCustomExtensionRuleValueError(templateOid, value, templateRule)
-    )
-  ) {
+  if (templateRule && !acceptsEveryValue(templateRule)) {
     problems.push(
       `The rule for ${templateOid} must allow any value (*), because its value changes each time the method's settings are saved or computers are re-enrolled.`
     );

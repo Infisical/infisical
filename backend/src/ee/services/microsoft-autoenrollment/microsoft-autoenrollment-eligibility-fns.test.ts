@@ -34,9 +34,9 @@ const ldapConfig = { credentials: { dn: "svc@corp.example.com" } };
 describe("checkMicrosoftAutoenrollmentRequestBeforeSigning", () => {
   const deps = {
     pkiApplicationProfileDAL: { findOneByApplicationAndProfile: vi.fn(), primaryNode: vi.fn(() => "primary") },
-    microsoftAutoenrollmentEnrollmentConfigDAL: { findById: vi.fn() },
+    microsoftAutoenrollmentEnrollmentConfigDAL: { findById: vi.fn(), primaryNode: vi.fn(() => "primary") },
     resourceMetadataDAL: { find: vi.fn() },
-    certificateDAL: { findById: vi.fn() },
+    certificateDAL: { findById: vi.fn(), primaryNode: vi.fn(() => "primary") },
     appConnectionDAL: { findById: vi.fn() },
     kmsService: {},
     gatewayV2Service: {},
@@ -48,6 +48,7 @@ describe("checkMicrosoftAutoenrollmentRequestBeforeSigning", () => {
     applicationId: "application-id",
     profileId: "profile-id",
     renewedFromCertificateId: null,
+    commonName: "laptop01.corp.example.com",
     ...overrides
   });
 
@@ -95,7 +96,24 @@ describe("checkMicrosoftAutoenrollmentRequestBeforeSigning", () => {
       { config: ldapConfig, sid: COMPUTER_SID },
       expect.anything()
     );
+    expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.findById).toHaveBeenCalledWith("config-id", "primary");
     expect(readDirectoryComputerGroupSids).not.toHaveBeenCalled();
+  });
+
+  test("refuses a computer whose DNS host name changed since the request was submitted", async () => {
+    findDirectoryComputerBySid.mockResolvedValue({
+      dnsHostName: "laptop02.corp.example.com",
+      isDisabled: false,
+      samAccountName: "LAPTOP01$"
+    });
+
+    await expect(check()).rejects.toThrow(/DNS host name in Active Directory changed after the request was submitted/);
+  });
+
+  test("refuses a computer whose DNS host name was cleared since the request was submitted", async () => {
+    findDirectoryComputerBySid.mockResolvedValue({ dnsHostName: null, isDisabled: false, samAccountName: "LAPTOP01$" });
+
+    await expect(check()).rejects.toThrow("Computer LAPTOP01$ no longer has a DNS host name in Active Directory.");
   });
 
   test("refuses when Microsoft Autoenrollment was turned off for the profile", async () => {
@@ -188,7 +206,7 @@ describe("checkMicrosoftAutoenrollmentRequestBeforeSigning", () => {
       deps.certificateDAL.findById.mockResolvedValue(renewed);
 
       await expect(check({ renewedFromCertificateId: "cert-old" })).resolves.toBeUndefined();
-      expect(deps.certificateDAL.findById).toHaveBeenCalledWith("cert-old");
+      expect(deps.certificateDAL.findById).toHaveBeenCalledWith("cert-old", "primary");
     });
 
     test("keeps the renewal when the certificate it renews expired while waiting for approval", async () => {

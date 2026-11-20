@@ -22,9 +22,15 @@ const parseKeytabEntry = (entry: Buffer) => {
     offset += length;
     return bytes;
   };
-  const readCountedString = () => readBytes(readBytes(2).readUInt16BE()).toString("utf8");
+  const readCountedString = () => {
+    const value = readBytes(readBytes(2).readUInt16BE()).toString("utf8");
+    if (!value || [...value].some((character) => character.charCodeAt(0) < 0x20 || character.charCodeAt(0) === 0x7f))
+      throw new RangeError("Keytab name is empty or has control characters");
+    return value;
+  };
 
   const componentCount = readBytes(2).readUInt16BE();
+  if (!componentCount) throw new RangeError("Keytab principal has no name");
   const realm = readCountedString();
   const components: string[] = [];
   for (let index = 0; index < componentCount; index += 1) {
@@ -35,7 +41,7 @@ const parseKeytabEntry = (entry: Buffer) => {
   const encryptionType = readBytes(2).readUInt16BE();
   const key = Buffer.from(readBytes(readBytes(2).readUInt16BE()));
   if (entry.length - offset >= KEYTAB_EXTENDED_KEY_VERSION_BYTES) {
-    keyVersion = readBytes(KEYTAB_EXTENDED_KEY_VERSION_BYTES).readUInt32BE();
+    keyVersion = readBytes(KEYTAB_EXTENDED_KEY_VERSION_BYTES).readUInt32BE() || keyVersion;
   }
 
   return {
@@ -54,6 +60,7 @@ export const parseKeytab = (keytab: Buffer): TKeytabEntry[] => {
     let offset = 2;
     while (offset < keytab.length) {
       const entrySize = keytab.readInt32BE(offset);
+      if (entrySize === 0) break;
       offset += 4;
       if (entrySize < 0) {
         offset -= entrySize;

@@ -50,6 +50,19 @@ describe("parseKeytab", () => {
     });
   });
 
+  test("uses the 8-bit key version when the 32-bit key version is zero", () => {
+    const keytab = buildTestKeytab([buildTestKeytabEntry({ keyVersion: 7 })]);
+    keytab.writeUInt32BE(0, keytab.length - 4);
+
+    expect(parseKeytab(keytab)).toMatchObject([{ keyVersion: 7 }]);
+  });
+
+  test("stops at a zero-length record", () => {
+    const entry = buildTestKeytabEntry();
+
+    expect(parseKeytab(Buffer.concat([buildTestKeytab([entry]), Buffer.alloc(16)]))).toEqual([entry]);
+  });
+
   test("refuses a keytab with only non-AES keys", () => {
     expect(() => parseKeytab(buildTestKeytab([], [RC4_ENTRY]))).toThrow(/no AES keys/);
   });
@@ -58,7 +71,9 @@ describe("parseKeytab", () => {
     ["an empty file", Buffer.alloc(0)],
     ["another file format", Buffer.from("-----BEGIN CERTIFICATE-----")],
     ["a truncated keytab", buildTestKeytab([buildTestKeytabEntry()]).subarray(0, 40)],
-    ["an AES entry with a key of the wrong length", buildTestKeytab([buildTestKeytabEntry({ key: Buffer.alloc(20) })])]
+    ["an AES entry with a key of the wrong length", buildTestKeytab([buildTestKeytabEntry({ key: Buffer.alloc(20) })])],
+    ["a principal with an empty realm", buildTestKeytab([buildTestKeytabEntry({ realm: "" })])],
+    ["a principal with a NUL byte", buildTestKeytab([buildTestKeytabEntry({ principal: "HTTP/h\u0000ost" })])]
   ])("refuses %s", (_, file) => {
     expect(() => parseKeytab(file)).toThrow(BadRequestError);
     expect(() => parseKeytab(file)).toThrow(/not a valid keytab/);
