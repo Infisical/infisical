@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { TAuditLogs } from "@app/db/schemas";
+
 import { AuditLogStreamProduct, LogProvider, StreamMode } from "../audit-log-stream/audit-log-stream-enums";
 import { auditLogStreamOutboxServiceFactory } from "./audit-log-stream-outbox-service";
 import { AuditLogStreamOutboxStatus, TAuditLogStreamOutboxRow } from "./audit-log-stream-outbox-types";
@@ -413,7 +415,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
     return { service, auditLogStreamOutboxDAL, auditLogStreamDAL, projectDAL, keyStore, queueService };
   };
 
-  const log = (id: string, orgId?: string) => ({ id, orgId }) as TAuditLogStreamOutboxRow["payload"];
+  const log = (id: string, orgId?: string) => ({ id, orgId }) as TAuditLogs;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -471,8 +473,7 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
   });
 
   // A log carrying a projectId, used to exercise product-scoped streams.
-  const projectLog = (id: string, orgId: string, projectId: string) =>
-    ({ id, orgId, projectId }) as TAuditLogStreamOutboxRow["payload"];
+  const projectLog = (id: string, orgId: string, projectId: string) => ({ id, orgId, projectId }) as TAuditLogs;
 
   test("no stream has a product filter → project types are never resolved (zero-overhead path)", async () => {
     const { service, auditLogStreamDAL, auditLogStreamOutboxDAL, projectDAL } = buildService();
@@ -565,6 +566,26 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
     const inserted = auditLogStreamOutboxDAL.batchInsert.mock.calls[0][0] as { streamId: string }[];
     // Only the catch-all stream receives it; the KMS-filtered stream does not.
     expect(inserted.map((r) => r.streamId)).toEqual(["sCatchAll"]);
+  });
+
+  test("enqueueStreamEvents inserts the rows it was given and wakes each stream once", async () => {
+    const { service, auditLogStreamOutboxDAL, queueService } = buildService();
+    const sA = { id: "sA", orgId: "orgA", provider: PROVIDER };
+    const sB = { id: "sB", orgId: "orgA", provider: PROVIDER };
+    const event = (id: string) => ({ id, createdAt: "2026-11-19T10:00:00.000Z" });
+
+    await service.enqueueStreamEvents([
+      { stream: sA, payload: event("e1") },
+      { stream: sA, payload: event("e2") },
+      { stream: sB, payload: event("e1") }
+    ]);
+
+    expect(auditLogStreamOutboxDAL.batchInsert).toHaveBeenCalledWith([
+      { streamId: "sA", orgId: "orgA", payload: event("e1") },
+      { streamId: "sA", orgId: "orgA", payload: event("e2") },
+      { streamId: "sB", orgId: "orgA", payload: event("e1") }
+    ]);
+    expect(queueService.queue).toHaveBeenCalledTimes(2);
   });
 });
 

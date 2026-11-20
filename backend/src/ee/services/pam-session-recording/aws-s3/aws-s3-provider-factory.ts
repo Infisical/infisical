@@ -21,7 +21,11 @@ import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-con
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
 import { getS3CompatibleConnectionConfig } from "@app/services/app-connection/s3-compatible";
 
-import { PAM_RECORDING_MAX_CHUNK_BYTES, PAM_RECORDING_PRESIGNED_URL_EXPIRY_SECONDS } from "../pam-recording-constants";
+import {
+  PAM_RECORDING_MAX_CHUNK_BYTES,
+  PAM_RECORDING_PRESIGNED_URL_EXPIRY_SECONDS,
+  PAM_RECORDING_SERVER_READ_TIMEOUT_MS
+} from "../pam-recording-constants";
 import {
   buildExternalChunkObjectKey,
   normalizeKeyPrefix,
@@ -156,6 +160,18 @@ export const AwsS3RecordingStorageProvider: TPamRecordingStorageProvider = () =>
     const command = new GetObjectCommand({ Bucket: config.bucket, Key: objectKey });
     const url = await getSignedUrl(client, command, { expiresIn: PAM_RECORDING_PRESIGNED_URL_EXPIRY_SECONDS });
     return { url, expiresInSeconds: PAM_RECORDING_PRESIGNED_URL_EXPIRY_SECONDS };
+  },
+
+  // The bucket is customer-controlled, so both the bytes read and the time spent are bounded.
+  readObject: async ({ config, objectKey, maxBytes }) => {
+    if (!config.bucket) throw new BadRequestError({ message: "Bucket is required" });
+    const client = buildClient(config, await config.getHttpsAgent?.());
+    const object = await client.send(
+      new GetObjectCommand({ Bucket: config.bucket, Key: objectKey, Range: `bytes=0-${maxBytes - 1}` }),
+      { abortSignal: AbortSignal.timeout(PAM_RECORDING_SERVER_READ_TIMEOUT_MS) }
+    );
+    if (!object.Body) throw new BadRequestError({ message: `Recording object '${objectKey}' has no content` });
+    return Buffer.from(await object.Body.transformToByteArray());
   },
 
   deleteSession: async ({ config, projectId, sessionId }) => {

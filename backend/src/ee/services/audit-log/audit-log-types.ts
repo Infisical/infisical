@@ -1046,6 +1046,11 @@ export enum EventType {
   DELETE_ALERT = "delete-alert",
   TEST_ALERT_CHANNEL = "test-alert-channel",
 
+  // Audit log streams
+  CREATE_AUDIT_LOG_STREAM = "create-audit-log-stream",
+  UPDATE_AUDIT_LOG_STREAM = "update-audit-log-stream",
+  DELETE_AUDIT_LOG_STREAM = "delete-audit-log-stream",
+
   // Authorization
   PERMISSION_DENIED = "permission-denied",
 
@@ -8689,6 +8694,27 @@ interface DeleteAlertEvent {
   };
 }
 
+type TAuditLogStreamEventMetadata = {
+  logStreamId: string;
+  provider: string;
+  filters: { products?: string[]; pamSessionActivity?: { includeOutput: boolean } | null } | null;
+};
+
+interface CreateAuditLogStreamEvent {
+  type: EventType.CREATE_AUDIT_LOG_STREAM;
+  metadata: TAuditLogStreamEventMetadata;
+}
+
+interface UpdateAuditLogStreamEvent {
+  type: EventType.UPDATE_AUDIT_LOG_STREAM;
+  metadata: TAuditLogStreamEventMetadata;
+}
+
+interface DeleteAuditLogStreamEvent {
+  type: EventType.DELETE_AUDIT_LOG_STREAM;
+  metadata: { logStreamId: string; provider: string };
+}
+
 interface TestAlertChannelEvent {
   type: EventType.TEST_ALERT_CHANNEL;
   metadata: {
@@ -8708,6 +8734,9 @@ export type Event =
   | UpdateAlertEvent
   | DeleteAlertEvent
   | TestAlertChannelEvent
+  | CreateAuditLogStreamEvent
+  | UpdateAuditLogStreamEvent
+  | DeleteAuditLogStreamEvent
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
   | DeleteSubOrganizationEvent

@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { TAuditLogs } from "@app/db/schemas";
+import { TAuditLogs, TAuditLogStreams } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -25,7 +25,7 @@ import {
   streamHasProductFilter
 } from "../audit-log-stream/audit-log-stream-fns";
 import { TAuditLogStreamFilters } from "../audit-log-stream/audit-log-stream-schemas";
-import { TAuditLogStreamCredentials } from "../audit-log-stream/audit-log-stream-types";
+import { TAuditLogStreamCredentials, TAuditLogStreamEvent } from "../audit-log-stream/audit-log-stream-types";
 import { FLUSH_DEBOUNCE_MS, MAX_ATTEMPTS } from "./audit-log-stream-outbox-constants";
 import { TAuditLogStreamOutboxDALFactory } from "./audit-log-stream-outbox-dal";
 import {
@@ -85,6 +85,9 @@ export type TAuditLogStreamOutboxServiceFactoryDep = {
 
 export type TAuditLogStreamOutboxServiceFactory = {
   enqueueForLogs: (auditLogs: TAuditLogs[]) => Promise<void>;
+  enqueueStreamEvents: (
+    rows: { stream: Pick<TAuditLogStreams, "id" | "orgId" | "provider">; payload: TAuditLogStreamEvent }[]
+  ) => Promise<void>;
   drainStream: (data: TAuditLogStreamFlushJobData) => Promise<void>;
   sweepStaleClaims: () => Promise<void>;
   pruneDeliveredRows: () => Promise<void>;
@@ -201,6 +204,21 @@ export const auditLogStreamOutboxServiceFactory = ({
     await Promise.allSettled(
       Array.from(streamsToFlush.entries()).map(([streamId, { orgId, provider }]) =>
         debounceAndEnqueueFlush(streamId, orgId, provider)
+      )
+    );
+  };
+
+  const enqueueStreamEvents: TAuditLogStreamOutboxServiceFactory["enqueueStreamEvents"] = async (rows) => {
+    if (rows.length === 0) return;
+
+    await auditLogStreamOutboxDAL.batchInsert(
+      rows.map(({ stream, payload }) => ({ streamId: stream.id, orgId: stream.orgId, payload }))
+    );
+
+    const streamsToFlush = new Map(rows.map(({ stream }) => [stream.id, stream]));
+    await Promise.allSettled(
+      Array.from(streamsToFlush.values()).map((stream) =>
+        debounceAndEnqueueFlush(stream.id, stream.orgId, stream.provider as LogProvider)
       )
     );
   };
@@ -536,6 +554,7 @@ export const auditLogStreamOutboxServiceFactory = ({
 
   return {
     enqueueForLogs,
+    enqueueStreamEvents,
     drainStream,
     sweepStaleClaims,
     pruneDeliveredRows

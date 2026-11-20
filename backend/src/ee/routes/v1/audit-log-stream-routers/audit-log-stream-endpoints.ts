@@ -3,6 +3,7 @@ import { z } from "zod";
 import { LogProvider, StreamMode } from "@app/ee/services/audit-log-stream/audit-log-stream-enums";
 import { AuditLogStreamFiltersSchema } from "@app/ee/services/audit-log-stream/audit-log-stream-schemas";
 import { TAuditLogStream } from "@app/ee/services/audit-log-stream/audit-log-stream-types";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -93,6 +94,15 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
         req.permission
       );
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.CREATE_AUDIT_LOG_STREAM,
+          metadata: { logStreamId: auditLogStream.id, provider, filters: auditLogStream.filters ?? null }
+        }
+      });
+
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.AuditLogStreamCreated,
@@ -140,6 +150,15 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
         req.permission
       );
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.UPDATE_AUDIT_LOG_STREAM,
+          metadata: { logStreamId: auditLogStream.id, provider, filters: auditLogStream.filters ?? null }
+        }
+      });
+
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.AuditLogStreamUpdated,
@@ -175,6 +194,15 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
       const { logStreamId } = req.params;
 
       const auditLogStream = await server.services.auditLogStream.deleteById(logStreamId, provider, req.permission);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.DELETE_AUDIT_LOG_STREAM,
+          metadata: { logStreamId: auditLogStream.id, provider }
+        }
+      });
 
       void server.services.telemetry
         .sendPostHogEvents({
