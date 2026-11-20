@@ -6110,7 +6110,6 @@ interface OrgUpdateEvent {
     scimEnabled?: boolean;
     defaultMembershipRoleSlug?: string;
     enforceMfa?: boolean;
-    selectedMfaMethod?: string;
     allowedMfaMethods?: string[];
     allowSecretSharingOutsideOrganization?: boolean;
     bypassOrgAuthEnabled?: boolean;

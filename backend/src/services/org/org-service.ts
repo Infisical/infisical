@@ -58,7 +58,7 @@ import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
-import { getOrgAllowedMfaMethods, MFA_METHOD_PRIORITY } from "../auth/auth-fns";
+import { getOrgAllowedMfaMethods } from "../auth/auth-fns";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import {
   ActorAuthMethod,
@@ -501,7 +501,6 @@ export const orgServiceFactory = ({
       scimEnabled,
       defaultMembershipRoleSlug,
       enforceMfa,
-      selectedMfaMethod,
       allowedMfaMethods,
       ssoMfaTrust,
       allowSecretSharingOutsideOrganization,
@@ -568,16 +567,7 @@ export const orgServiceFactory = ({
       }
     }
 
-    // Stored strongest first, so the first entry is the strongest allowed method. selectedMfaMethod is the
-    // deprecated single-method form of the same setting.
-    let allowedMfaMethodsUpdate: MfaMethod[] | undefined;
-    if (allowedMfaMethods !== undefined) {
-      allowedMfaMethodsUpdate = MFA_METHOD_PRIORITY.filter((method) => allowedMfaMethods.includes(method));
-    } else if (selectedMfaMethod !== undefined) {
-      allowedMfaMethodsUpdate = [selectedMfaMethod];
-    }
-
-    if (enforceMfa !== undefined || allowedMfaMethodsUpdate) {
+    if (enforceMfa !== undefined || allowedMfaMethods) {
       if (!plan.has(PlanFeature.EnforceMfa)) {
         throw new BadRequestError({
           message: "Failed to enforce user MFA due to plan restriction. Upgrade plan to enforce/un-enforce MFA."
@@ -587,7 +577,7 @@ export const orgServiceFactory = ({
       // Email codes need SMTP; passkeys and authenticator apps don't, so only an allowlist with email does.
       const orgBeforeUpdate = await orgDAL.findById(orgId);
       const willEnforceMfa = enforceMfa ?? orgBeforeUpdate?.enforceMfa;
-      const willAllowEmail = (allowedMfaMethodsUpdate ?? getOrgAllowedMfaMethods(orgBeforeUpdate ?? {})).includes(
+      const willAllowEmail = (allowedMfaMethods ?? getOrgAllowedMfaMethods(orgBeforeUpdate ?? {})).includes(
         MfaMethod.EMAIL
       );
       if (willEnforceMfa && willAllowEmail && !appCfg.isSmtpConfigured) {
@@ -745,10 +735,7 @@ export const orgServiceFactory = ({
       scimEnabled,
       defaultMembershipRole,
       enforceMfa,
-      allowedMfaMethods: allowedMfaMethodsUpdate,
-      // Kept in step with the first allowed method so a server on the previous release, which reads only
-      // selectedMfaMethod, still enforces a method the org chose.
-      selectedMfaMethod: allowedMfaMethodsUpdate?.[0],
+      allowedMfaMethods,
       ssoMfaTrust,
       allowSecretSharingOutsideOrganization,
       bypassOrgAuthEnabled,
