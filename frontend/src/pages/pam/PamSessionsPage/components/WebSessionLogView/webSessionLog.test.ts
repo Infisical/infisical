@@ -52,7 +52,8 @@ const events: TWebSessionEvent[] = [
     width: 1280,
     height: 800,
     bytes: 3,
-    jpeg: "AAA"
+    format: "webp",
+    image: "AAA"
   }
 ];
 
@@ -211,9 +212,9 @@ describe("screenshots as the gateway records them", () => {
   test("a click screenshot attaches to its click and a scroll screenshot to its scroll", () => {
     const recorded = [
       '{"timestamp":"2026-11-19T20:50:39.900000000-03:00","eventType":"input","channelType":"web","elapsedTime":1.1,"action":"click","x":40,"y":40,"target":{"tag":"button","role":"button","name":"save"}}',
-      '{"timestamp":"2026-11-19T20:50:40.351035708-03:00","eventType":"screenshot","channelType":"web","elapsedTime":1.597308739,"trigger":"click","width":1265,"height":800,"bytes":8134,"jpeg":"/9j/4AAQSkZJRgAB"}',
+      '{"timestamp":"2026-11-19T20:50:40.351035708-03:00","eventType":"screenshot","channelType":"web","elapsedTime":1.597308739,"trigger":"click","width":1265,"height":800,"bytes":8134,"format":"webp","image":"UklGRiQAAABXRUJQ"}',
       '{"timestamp":"2026-11-19T20:50:41.440905804-03:00","eventType":"input","channelType":"web","elapsedTime":2.687178811,"action":"scroll","scrollX":0,"scrollY":800}',
-      '{"timestamp":"2026-11-19T20:50:41.900000000-03:00","eventType":"screenshot","channelType":"web","elapsedTime":3.1,"trigger":"scroll","width":1265,"height":800,"bytes":7392,"jpeg":"/9j/4AAQSkZJRgAB"}',
+      '{"timestamp":"2026-11-19T20:50:41.900000000-03:00","eventType":"screenshot","channelType":"web","elapsedTime":3.1,"trigger":"scroll","width":1265,"height":800,"bytes":7392,"format":"webp","image":"UklGRiQAAABXRUJQ"}',
       '{"timestamp":"2026-11-19T20:50:42.000000000-03:00","eventType":"session","channelType":"web","elapsedTime":3.2,"action":"screenshot.skipped","detail":"capturing the screenshot failed"}'
     ].map((line) => JSON.parse(line) as TWebSessionEvent);
 
@@ -240,7 +241,8 @@ describe("screenshots", () => {
       width: 1280,
       height: 800,
       bytes: 51200,
-      jpeg: "AAA"
+      format: "webp",
+      image: "AAA"
     }) as TWebSessionEvent;
   const click = (name: string) =>
     ({

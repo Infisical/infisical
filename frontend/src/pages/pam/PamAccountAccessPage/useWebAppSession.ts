@@ -11,7 +11,9 @@ import {
   createWebAppFrameParser,
   decodeServerMessage,
   encodeClientMessage,
+  MAX_DEVICE_SCALE_FACTOR,
   TWebAppClientMessage,
+  viewportScale,
   WebAppFrameType,
   WebAppProtocolError
 } from "./web-app-protocol";
@@ -19,6 +21,15 @@ import {
 const MIN_VIEWPORT = 200;
 const MAX_VIEWPORT = 3840;
 const RESIZE_DEBOUNCE_MS = 150;
+const STATS_INTERVAL_MS = 1000;
+const LATENCY_SAMPLES = 20;
+
+export type TWebAppSessionStats = { fps: number; latencyMs: number | null };
+
+const median = (values: number[]) => {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)];
+};
 
 export type TWebAppPageState = {
   url: string;
@@ -51,11 +62,26 @@ export const useWebAppSession = ({ accountId, reason, mfaSessionId }: UseWebAppS
   const [endReason, setEndReason] = useState<string | null>(null);
   const [pageState, setPageState] = useState<TWebAppPageState | null>(null);
   const [frameSize, setFrameSize] = useState<{ width: number; height: number } | null>(null);
+  const [isSharp, setIsSharp] = useState(true);
+  const [stats, setStats] = useState<TWebAppSessionStats>({ fps: 0, latencyMs: null });
+  const isSharpRef = useRef(isSharp);
+  isSharpRef.current = isSharp;
+  const scaleRef = useRef(1);
+  // The gateway can render at most the scale its browser launched with, which ready reports.
+  const launchScaleRef = useRef(MAX_DEVICE_SCALE_FACTOR);
+  const frameTimesRef = useRef<number[]>([]);
+  const pendingInputAtRef = useRef<number | null>(null);
+  const latencySamplesRef = useRef<number[]>([]);
 
   const send = useCallback((message: TWebAppClientMessage) => {
     const ws = wsRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     ws.send(encodeClientMessage(message));
+    const isUserAction =
+      message.type !== "resize" && !(message.type === "mouse" && message.action === "move");
+    if (isUserAction && pendingInputAtRef.current === null) {
+      pendingInputAtRef.current = performance.now();
+    }
   }, []);
 
   const sendViewportSize = useCallback(() => {
@@ -63,7 +89,16 @@ export const useWebAppSession = ({ accountId, reason, mfaSessionId }: UseWebAppS
     if (!container) return;
     const { width, height } = container.getBoundingClientRect();
     if (width <= 0 || height <= 0) return;
-    send({ type: "resize", width: clampViewport(width), height: clampViewport(height) });
+    const cssWidth = clampViewport(width);
+    const cssHeight = clampViewport(height);
+    const scale = isSharpRef.current
+      ? Math.min(
+          viewportScale(window.devicePixelRatio, cssWidth, cssHeight),
+          launchScaleRef.current
+        )
+      : 1;
+    scaleRef.current = scale;
+    send({ type: "resize", width: cssWidth, height: cssHeight, deviceScaleFactor: scale });
   }, [send]);
 
   const closeSocket = useCallback(() => {
@@ -116,6 +151,15 @@ export const useWebAppSession = ({ accountId, reason, mfaSessionId }: UseWebAppS
             }
             canvas.getContext("2d")?.drawImage(bitmap, 0, 0);
             bitmap.close();
+            const now = performance.now();
+            frameTimesRef.current.push(now);
+            if (pendingInputAtRef.current !== null) {
+              latencySamplesRef.current = [
+                ...latencySamplesRef.current.slice(1 - LATENCY_SAMPLES),
+                now - pendingInputAtRef.current
+              ];
+              pendingInputAtRef.current = null;
+            }
           })
           .catch(() => {});
       };
@@ -163,6 +207,8 @@ export const useWebAppSession = ({ accountId, reason, mfaSessionId }: UseWebAppS
           if (!message) return;
           switch (message.type) {
             case "ready":
+              launchScaleRef.current = message.deviceScaleFactor ?? 1;
+              scaleRef.current = Math.min(scaleRef.current, launchScaleRef.current);
               setStatus("connected");
               break;
             case "state":
@@ -208,6 +254,7 @@ export const useWebAppSession = ({ accountId, reason, mfaSessionId }: UseWebAppS
     const isCurrent = () => gen === generationRef.current;
 
     setStatus("connecting");
+    launchScaleRef.current = MAX_DEVICE_SCALE_FACTOR;
     setError(null);
     setEndReason(null);
     setPageState(null);
@@ -287,6 +334,42 @@ export const useWebAppSession = ({ accountId, reason, mfaSessionId }: UseWebAppS
     };
   }, [sendViewportSize]);
 
+  useEffect(() => {
+    sendViewportSize();
+  }, [isSharp, sendViewportSize]);
+
+  useEffect(() => {
+    // Moving the window to a screen with another pixel ratio changes no element's size.
+    let query: MediaQueryList | null = null;
+    const listener = { current: () => {} };
+    const watch = () => {
+      query?.removeEventListener("change", listener.current);
+      query = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+      query.addEventListener("change", listener.current);
+    };
+    listener.current = () => {
+      sendViewportSize();
+      watch();
+    };
+    watch();
+    return () => query?.removeEventListener("change", listener.current);
+  }, [sendViewportSize]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const cutoff = performance.now() - STATS_INTERVAL_MS;
+      frameTimesRef.current = frameTimesRef.current.filter((t) => t >= cutoff);
+      const samples = latencySamplesRef.current;
+      setStats({
+        fps: frameTimesRef.current.length,
+        latencyMs: samples.length > 0 ? Math.round(median(samples)) : null
+      });
+    }, STATS_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getScale = useCallback(() => scaleRef.current, []);
+
   const disconnect = useCallback(() => {
     generationRef.current += 1;
     closeSocket();
@@ -305,6 +388,10 @@ export const useWebAppSession = ({ accountId, reason, mfaSessionId }: UseWebAppS
     endReason,
     pageState,
     frameSize,
+    stats,
+    isSharp,
+    setIsSharp,
+    getScale,
     send,
     disconnect,
     reconnect

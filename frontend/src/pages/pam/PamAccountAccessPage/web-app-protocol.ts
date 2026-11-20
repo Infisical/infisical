@@ -85,7 +85,7 @@ export type TWebAppClientMessage =
       modifiers: number;
     }
   | { type: "text"; text: string }
-  | { type: "resize"; width: number; height: number }
+  | { type: "resize"; width: number; height: number; deviceScaleFactor?: number }
   | { type: "navigate"; url: string }
   | { type: "back" }
   | { type: "forward" }
@@ -107,7 +107,12 @@ export const encodeClientMessage = (message: TWebAppClientMessage): Uint8Array<A
 };
 
 const WebAppServerMessageSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("ready"), width: z.number(), height: z.number() }),
+  z.object({
+    type: z.literal("ready"),
+    width: z.number(),
+    height: z.number(),
+    deviceScaleFactor: z.number().optional()
+  }),
   z.object({
     type: z.literal("state"),
     url: z.string(),
@@ -173,4 +178,16 @@ export const mapPointToFrame = (
     x: Math.round(Math.min(Math.max(x, 0), frame.width - 1)),
     y: Math.round(Math.min(Math.max(y, 0), frame.height - 1))
   };
+};
+
+export const MAX_DEVICE_SCALE_FACTOR = 2;
+export const MAX_FRAME_SIDE = 3840;
+
+// Mirrors the gateway's clamp, so the viewer divides input coordinates by the scale the frames use.
+export const viewportScale = (devicePixelRatio: number, width: number, height: number): number => {
+  const wanted = Math.min(Math.max(devicePixelRatio || 1, 1), MAX_DEVICE_SCALE_FACTOR);
+  return Math.max(
+    1,
+    Math.min(wanted, MAX_FRAME_SIDE / Math.max(width, 1), MAX_FRAME_SIDE / Math.max(height, 1))
+  );
 };

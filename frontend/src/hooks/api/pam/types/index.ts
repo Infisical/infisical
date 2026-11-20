@@ -377,7 +377,8 @@ export type TWebScreenshotEvent = TWebEventBase & {
   width: number;
   height: number;
   bytes: number;
-  jpeg: string;
+  format: string;
+  image: string;
 };
 
 export type TWebSessionEvent =

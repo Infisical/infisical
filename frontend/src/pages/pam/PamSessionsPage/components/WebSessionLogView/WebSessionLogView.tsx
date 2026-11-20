@@ -60,7 +60,10 @@ const KIND_PRESENTATION: Record<TWebLogKind, { icon: LucideIcon; className: stri
   screenshot: { icon: ImageIcon, className: "text-muted" }
 };
 
-const screenshotSrc = (shot: TWebScreenshotEvent) => `data:image/jpeg;base64,${shot.jpeg}`;
+const SCREENSHOT_FORMATS = new Set(["webp", "jpeg", "png"]);
+
+const screenshotSrc = (shot: TWebScreenshotEvent) =>
+  `data:image/${SCREENSHOT_FORMATS.has(shot.format) ? shot.format : "webp"};base64,${shot.image}`;
 
 const formatElapsed = (seconds: number) => {
   const total = Math.max(0, Math.floor(seconds));

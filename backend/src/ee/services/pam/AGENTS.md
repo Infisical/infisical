@@ -160,7 +160,8 @@ in for schemas, and the explorer grid is read-only for every table (`supportsRow
 
 **Web App is a remote browser**: the gateway launches one Chromium per session and streams its screen to a
 canvas in the viewer, which sends mouse and keyboard input back (CLI `packages/pam/handlers/webapp/`). The
-backend only relays bytes between the WebSocket and the tunnel, reusing `handleRdpSession`, and the gateway
+backend only relays bytes between the WebSocket and the tunnel, through RDP's relay (`handleWebAppSession`) with a
+256 KiB WebSocket buffer instead of 1 MiB so frames can't queue up behind the viewer, and the gateway
 activates the session after its credential fetch, as RDP does. The `allowedHosts` allowlist is enforced only by
 the gateway, so never widen or rewrite it backend-side: the gateway target is the start URL's host and nothing
 else. The recording is a web activity log with screenshots embedded in its chunks, stored in Postgres.

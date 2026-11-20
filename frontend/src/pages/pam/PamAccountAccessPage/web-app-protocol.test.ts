@@ -8,6 +8,7 @@ import {
   MAX_CLIENT_FRAME_BYTES,
   modifiersFromEvent,
   mouseButtonFromEvent,
+  viewportScale,
   WebAppFrameType,
   WebAppProtocolError
 } from "./web-app-protocol";
@@ -204,5 +205,22 @@ describe("mapPointToFrame", () => {
       x: 1279,
       y: 799
     });
+  });
+});
+
+describe("viewportScale", () => {
+  test("follows the screen's pixel ratio between 1 and 2", () => {
+    expect(viewportScale(1, 1280, 800)).toBe(1);
+    expect(viewportScale(1.5, 1280, 800)).toBe(1.5);
+    expect(viewportScale(2, 1280, 800)).toBe(2);
+    expect(viewportScale(3, 1280, 800)).toBe(2);
+    expect(viewportScale(0.5, 1280, 800)).toBe(1);
+    expect(viewportScale(Number.NaN, 1280, 800)).toBe(1);
+  });
+
+  test("keeps frames within 3840 pixels on each side", () => {
+    expect(viewportScale(2, 2560, 1440)).toBe(1.5);
+    expect(viewportScale(2, 1280, 2400)).toBe(1.6);
+    expect(viewportScale(2, 3840, 2160)).toBe(1);
   });
 });

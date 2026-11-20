@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Globe, RotateCw, TriangleAlert } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, IconButton, Input, PageLoader } from "@app/components/v3";
+import { Button, IconButton, Input, Label, PageLoader, Toggle } from "@app/components/v3";
 import { TPamAccount } from "@app/hooks/api/pam";
 
 import { DisconnectedScreen } from "./DisconnectedScreen";
@@ -35,6 +35,10 @@ export const WebAppContent = ({ account, reason, mfaSessionId }: Props) => {
     endReason,
     pageState,
     frameSize,
+    stats,
+    isSharp,
+    setIsSharp,
+    getScale,
     send,
     disconnect,
     reconnect
@@ -71,7 +75,10 @@ export const WebAppContent = ({ account, reason, mfaSessionId }: Props) => {
       extra: { deltaX?: number; deltaY?: number } = {}
     ) => {
       if (!isConnectedRef.current) return;
-      const { x, y } = toFrame(event);
+      const point = toFrame(event);
+      const scale = getScale();
+      const x = Math.round(point.x / scale);
+      const y = Math.round(point.y / scale);
       send({
         type: "mouse",
         action,
@@ -184,7 +191,7 @@ export const WebAppContent = ({ account, reason, mfaSessionId }: Props) => {
       window.removeEventListener("mouseup", onMouseUp);
       document.removeEventListener("paste", onPaste);
     };
-  }, [canvasRef, send]);
+  }, [canvasRef, send, getScale]);
 
   const isConnecting = status === "connecting" || (isConnected && !frameSize);
 
@@ -314,6 +321,32 @@ export const WebAppContent = ({ account, reason, mfaSessionId }: Props) => {
         </span>
         <div className="flex min-w-0 items-center gap-4">
           {pageState?.title && <span className="truncate text-muted">{pageState.title}</span>}
+          {isConnected && (
+            <span
+              className="shrink-0 font-mono text-muted tabular-nums"
+              title="Frames per second, and the median time from a click or key press to the next frame"
+            >
+              {stats.fps} fps · {stats.latencyMs === null ? "–" : `${stats.latencyMs} ms`}
+            </span>
+          )}
+          {window.devicePixelRatio > 1 && (
+            <span className="flex shrink-0 items-center gap-1.5">
+              <Toggle
+                id="web-app-sharp"
+                size="sm"
+                checked={isSharp}
+                onCheckedChange={setIsSharp}
+                aria-label="Sharp rendering"
+              />
+              <Label
+                htmlFor="web-app-sharp"
+                className="text-xs text-muted"
+                title="Render at your screen's full resolution. Turn off for a faster picture on slow connections."
+              >
+                Sharp
+              </Label>
+            </span>
+          )}
           <span className="shrink-0">
             <span className="text-muted">Account:</span>{" "}
             <span className="text-muted">{account.name}</span>

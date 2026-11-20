@@ -4,7 +4,7 @@ import { handleClickhouseSession } from "./clickhouse/pam-clickhouse-session-han
 import { handleMysqlSession } from "./mysql/pam-mysql-session-handler";
 import { TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
 import { handleCockroachdbSession, handlePostgresSession } from "./postgres/pam-postgres-session-handler";
-import { handleRdpSession } from "./rdp/pam-rdp-session-handler";
+import { handleRdpSession, handleWebAppSession } from "./rdp/pam-rdp-session-handler";
 import { handleRedisSession } from "./redis/pam-redis-session-handler";
 import { handleSnowflakeSession } from "./snowflake/pam-snowflake-session-handler";
 import { handleSSHSession } from "./ssh/pam-ssh-session-handler";
@@ -55,7 +55,7 @@ export const SESSION_HANDLERS: Partial<Record<PamAccountType, TSessionHandlerEnt
   // The gateway drives the browser and speaks the viewer protocol itself, so the tunnel only relays bytes
   [PamAccountType.WebApp]: {
     gatewayAccountType: PamAccountType.WebApp,
-    handler: handleRdpSession
+    handler: handleWebAppSession
   },
   // Windows AD accounts use RDP through the Windows gateway protocol
   [PamAccountType.WindowsAd]: {

@@ -103,6 +103,9 @@ export const createRelayConnection = async ({
         logger.info(`Relay TLS connection established successfully [tunnelId=${tunnelId ?? "n/a"}]`);
         resolve(socket);
       });
+      // Interactive sessions write keystrokes and clicks as small packets, which Nagle's algorithm
+      // would otherwise hold back until the previous one is acknowledged.
+      socket.setNoDelay(true);
 
       socket.on("error", (err: Error) => {
         reject(new Error(`TLS connection error: ${err.message}`));
@@ -281,7 +284,11 @@ export const setupGatewayProxy = async ({
       // can be rebound since. Connecting by name rather than by the resolved address keeps Node's
       // own multi-address fallback, which a dual-stack gateway relies on.
       await assertHostNotInfisicalInfrastructure({ host: serverName });
-      return { conn: net.connect({ host: serverName, port: Number(parsed.port) }), serverName, direct: true };
+      return {
+        conn: net.connect({ host: serverName, port: Number(parsed.port), noDelay: true }),
+        serverName,
+        direct: true
+      };
     };
 
     const dialRelay = async () => {
