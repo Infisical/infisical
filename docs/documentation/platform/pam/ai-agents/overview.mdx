@@ -27,7 +27,7 @@ AWS IAM accounts with a gateway work the same way: the gateway signs each AWS re
 
 Windows accounts open a remote desktop, so they don't run a command after `--`. An agent that can control desktop apps uses them through an RDP client instead:
 
-1. The agent starts the RDP proxy in the background, such as with `infisical pam access <folder/account> > infisical-rdp.log 2>&1 &`. The proxy runs until it's stopped or the session expires.
+1. The agent starts the RDP proxy in the background, such as with `infisical pam access <folder/account> < /dev/null > infisical-rdp.log 2>&1 &`. The proxy runs until it's stopped or the session expires.
 2. The agent opens the `.rdp` file named in the log with an RDP client, such as `mstsc` on Windows, the Windows App on macOS, or `xfreerdp` on Linux. The password stays blank, because the gateway adds the credential.
 3. The agent works in the remote desktop. Infisical records the session like any other.
 4. When it's done, the agent stops the CLI with `kill`, which ends the session.
