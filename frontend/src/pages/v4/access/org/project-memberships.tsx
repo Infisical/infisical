@@ -544,22 +544,20 @@ export const ProjectMembershipsSection = ({
           </Inline>
         }
       >
-        {hasRows ? (
-          <DataTable
-            label={`Products for ${subjectName}`}
-            rows={list.pageRows}
-            columns={columns}
-            loading={isPending}
-            rowActions={rowActions}
-            getRowId={(row) => row.id}
-            rowLabel={labelOf}
-            sort={list.sort}
-            onSortChange={list.setSort}
-            pagination={list.pagination}
-          />
-        ) : (
-          empty
-        )}
+        <DataTable
+          label={`Products for ${subjectName}`}
+          rows={list.pageRows}
+          columns={columns}
+          loading={isPending}
+          rowActions={rowActions}
+          getRowId={(row) => row.id}
+          rowLabel={labelOf}
+          sort={list.sort}
+          onSortChange={list.setSort}
+          pagination={list.pagination}
+          filtered={searching}
+          empty={empty}
+        />
       </Card>
       <AddToProductDialog
         subject={subject}

@@ -42,6 +42,26 @@ export const Gate = ({
     </Tooltip>
   );
 
+export const EditDetailsButton = ({
+  label,
+  allowed,
+  onClick
+}: {
+  label: string;
+  allowed: boolean;
+  onClick: () => void;
+}) => (
+  <Button
+    variant="ghost"
+    size="sm"
+    aria-label={label}
+    disabledReason={allowed ? undefined : RESTRICTED}
+    onClick={onClick}
+  >
+    Edit
+  </Button>
+);
+
 export const AccessRestricted = ({ requirement }: { requirement?: string }) => (
   <EmptyState
     icon="lock"

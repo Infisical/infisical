@@ -51,7 +51,7 @@ import { useOrgPermission, useProjectPermission } from "../permissions";
 import { AgentVaultIdentityDelegationSection } from "../product/agent-vault/delegation";
 import { formatDateTime } from "../roles";
 import { failed, saved, toast } from "../toast";
-import { AccessRestricted, Gate, Muted } from "../ui";
+import { AccessRestricted, EditDetailsButton, Muted } from "../ui";
 import { ProjectAccessExtras } from "./access-extras";
 import { IdentityAlertAction } from "./identity-alerts";
 import { ProjectIdentityAuthSection } from "./identity-auth";
@@ -292,16 +292,7 @@ const DetailsCard = ({
       title="Details"
       action={
         isOrgIdentity ? undefined : (
-          <Gate allowed={canEdit}>
-            <Button
-              variant="outline"
-              icon="pencil"
-              iconOnly
-              aria-label="Edit machine identity"
-              disabled={!canEdit}
-              onClick={onEdit}
-            />
-          </Gate>
+          <EditDetailsButton label="Edit machine identity" allowed={canEdit} onClick={onEdit} />
         )
       }
     >
