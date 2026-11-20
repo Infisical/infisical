@@ -1279,6 +1279,8 @@ export type TDynamicProviderCreateMetadata = {
     constraints: TConstraints;
     ruleNames: string[];
   };
+  // A function rather than a list so the lease query runs only for the rare provider call that needs it
+  getLeaseEntityIds?: () => Promise<string[]>;
 };
 
 export type TDynamicProviderValidateMetadata = {

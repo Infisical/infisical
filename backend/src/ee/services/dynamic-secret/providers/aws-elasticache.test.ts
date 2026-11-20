@@ -128,13 +128,14 @@ const inputs = (clusterName: string) => ({
 const saveDynamicSecret = (clusterName: string) =>
   AwsElastiCacheDatabaseProvider().validateConnection(inputs(clusterName), { projectId: "proj-1" });
 
-const createLease = (clusterName: string) =>
+// existingLeaseUsernames: usernames of the leases Infisical already holds for this dynamic secret
+const createLease = (clusterName: string, existingLeaseUsernames: string[] = []) =>
   AwsElastiCacheDatabaseProvider().create({
     inputs: inputs(clusterName),
     expireAt: Date.now() + 60 * 60 * 1000,
     identity: { name: "user@example.com" },
     dynamicSecret: { id: "dynamic-secret-1" } as TDynamicSecrets,
-    metadata: { projectId: "proj-1" }
+    metadata: { projectId: "proj-1", getLeaseEntityIds: async () => existingLeaseUsernames }
   });
 
 describe("AwsElastiCacheDatabaseProvider user groups", () => {
@@ -203,17 +204,20 @@ describe("AwsElastiCacheDatabaseProvider user groups", () => {
     expect(Object.keys(account.userGroups)).toEqual(["customer-user-group"]);
   });
 
-  test("moves a cluster off the legacy shared group without dropping any of its leases", async () => {
+  test("moves a cluster off the legacy shared group, keeping only this dynamic secret's leases", async () => {
     const account = fakeAccount(
       { "cluster-a": [LEGACY_SHARED_USER_GROUP_ID], "cluster-b": [LEGACY_SHARED_USER_GROUP_ID] },
-      { [LEGACY_SHARED_USER_GROUP_ID]: ["default", "inf-existing-lease"] }
+      { [LEGACY_SHARED_USER_GROUP_ID]: ["default", "inf-existing-lease", "inf-lease-for-cluster-b"] }
     );
+    // AWS stores user IDs in lowercase, while Infisical keeps the lease username as generated
+    const existingLeases = ["inf-Existing-Lease"];
 
-    await expect(createLease("cluster-a")).rejects.toThrow(BUSY_MESSAGE);
-    // A server still running the previous version adds a lease to the legacy group mid-upgrade
+    await expect(createLease("cluster-a", existingLeases)).rejects.toThrow(BUSY_MESSAGE);
+    // A server still running the previous version issues a lease for this dynamic secret mid-upgrade
     account.userGroups[LEGACY_SHARED_USER_GROUP_ID].push("inf-lease-from-previous-version");
+    existingLeases.push("inf-lease-from-previous-version");
     account.activateUserGroups();
-    const lease = await createLease("cluster-a");
+    const lease = await createLease("cluster-a", existingLeases);
 
     const [groupA] = account.clusters["cluster-a"];
     expect(groupA).not.toBe(LEGACY_SHARED_USER_GROUP_ID);

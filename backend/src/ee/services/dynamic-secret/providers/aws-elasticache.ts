@@ -26,7 +26,7 @@ import { logger } from "@app/lib/logger";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
-import { DynamicSecretAwsElastiCacheSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretAwsElastiCacheSchema, TDynamicProviderCreateMetadata, TDynamicProviderFns } from "./models";
 import { generateUsername } from "./templateUtils";
 
 const CreateElastiCacheUserSchema = z.object({
@@ -46,6 +46,11 @@ type TBasicAWSCredentials = { accessKeyId: string; secretAccessKey: string };
 
 type TCreateElastiCacheUserInput = z.infer<typeof CreateElastiCacheUserSchema>;
 type TDeleteElastiCacheUserInput = z.infer<typeof DeleteElasticCacheUserSchema>;
+
+const renderRevocationStatement = (revocationStatement: string, username: string) =>
+  DeleteElasticCacheUserSchema.parse(
+    JSON.parse(handlebars.compile(revocationStatement, { noEscape: true })({ username }))
+  );
 
 // Every cluster used to be attached to this one group, so its users can log in to all of those clusters.
 const LEGACY_SHARED_USER_GROUP_ID = "infisical-managed-group-elasticache";
@@ -128,7 +133,11 @@ const ElastiCacheUserManager = (credentials: TBasicAWSCredentials, region: strin
     }
   };
 
-  const createUser = async (creationInput: TCreateElastiCacheUserInput, clusterName: string) => {
+  const createUser = async (
+    creationInput: TCreateElastiCacheUserInput,
+    clusterName: string,
+    getLeaseUserIds: () => Promise<string[]>
+  ) => {
     const userGroupId = getClusterUserGroupId(clusterName);
     const attachedUserGroupIds = await $getReplicationGroupUserGroupIds(clusterName);
     const isAttached = attachedUserGroupIds.includes(userGroupId);
@@ -140,15 +149,16 @@ const ElastiCacheUserManager = (credentials: TBasicAWSCredentials, region: strin
       throw new BadRequestError({ message: USER_GROUP_BUSY_MESSAGE });
     }
 
-    // A cluster holds a single user group, so the legacy group's users are copied in right before it is swapped out,
-    // keeping the cluster's existing leases working. The legacy group doesn't record which cluster a user is for, so
-    // all of them move; each is deleted when its lease ends.
-    const legacyUserIds =
-      !isAttached && isOnLegacyGroup
-        ? ((await $getUserGroup(LEGACY_SHARED_USER_GROUP_ID))?.UserIds ?? []).filter(
-            (userId) => userId !== "default" && !userGroup?.UserIds?.includes(userId)
-          )
-        : [];
+    // A cluster holds a single user group, so this dynamic secret's lease users are copied in right before the
+    // legacy group is swapped out, keeping those leases working. The legacy group also holds leases for other
+    // clusters, which must not gain access to this one. AWS stores user IDs in lowercase.
+    let legacyUserIds: string[] = [];
+    if (!isAttached && isOnLegacyGroup) {
+      const leaseUserIds = new Set((await getLeaseUserIds()).map((userId) => userId.toLowerCase()));
+      legacyUserIds = ((await $getUserGroup(LEGACY_SHARED_USER_GROUP_ID))?.UserIds ?? []).filter(
+        (userId) => leaseUserIds.has(userId.toLowerCase()) && !userGroup?.UserIds?.includes(userId)
+      );
+    }
 
     await elastiCache.send(new CreateUserCommand(creationInput));
     try {
@@ -273,8 +283,9 @@ export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
     usernameTemplate?: string | null;
     identity: ActorIdentityAttributes;
     dynamicSecret: TDynamicSecrets;
+    metadata: TDynamicProviderCreateMetadata;
   }) => {
-    const { inputs, expireAt, usernameTemplate, identity, dynamicSecret } = data;
+    const { inputs, expireAt, usernameTemplate, identity, dynamicSecret, metadata } = data;
     const providerInputs = await validateProviderInputs(inputs);
     if (!(await validateConnection(providerInputs))) {
       throw new BadRequestError({ message: "Failed to establish connection" });
@@ -306,7 +317,11 @@ export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
           secretAccessKey: providerInputs.secretAccessKey
         },
         providerInputs.region
-      ).createUser(parsedStatement, providerInputs.clusterName);
+      ).createUser(parsedStatement, providerInputs.clusterName, async () =>
+        ((await metadata.getLeaseEntityIds?.()) ?? []).map(
+          (entityId) => renderRevocationStatement(providerInputs.revocationStatement, entityId).UserId
+        )
+      );
 
       return {
         entityId: leaseUsername,
@@ -335,10 +350,7 @@ export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await validateProviderInputs(inputs);
 
-    const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({
-      username: entityId
-    });
-    const parsedStatement = DeleteElasticCacheUserSchema.parse(JSON.parse(revokeStatement));
+    const parsedStatement = renderRevocationStatement(providerInputs.revocationStatement, entityId);
 
     try {
       await ElastiCacheUserManager(

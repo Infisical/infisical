@@ -198,7 +198,14 @@ export const dynamicSecretLeaseServiceFactory = ({
         usernameTemplate: dynamicSecretCfg.usernameTemplate,
         identity,
         dynamicSecret: dynamicSecretCfg,
-        metadata: { projectId, passwordValidation },
+        metadata: {
+          projectId,
+          passwordValidation,
+          getLeaseEntityIds: async () =>
+            (await dynamicSecretLeaseDAL.find({ dynamicSecretId: dynamicSecretCfg.id })).map(
+              (lease) => lease.externalEntityId
+            )
+        },
         config
       });
     } catch (error: unknown) {
