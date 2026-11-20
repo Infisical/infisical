@@ -324,11 +324,7 @@ export const homeLive: HomeAdapter = {
           queryClient.invalidateQueries({
             predicate: (query) => {
               const request = query.state.data as TSecretApprovalRequest | undefined;
-              return (
-                query.queryKey[1] === "secret-approval-request-detail" &&
-                request?.status === "open" &&
-                !request.hasMerged
-              );
+              return query.queryKey[1] === "secret-approval-request-detail" && !request?.hasMerged;
             }
           }),
         30_000
@@ -360,12 +356,7 @@ export const homeLive: HomeAdapter = {
     const accessLists = useQueries({
       queries: accessProjects.map((projectId) => ({
         queryKey: ["v4-home", "access-requests", projectId],
-        refetchInterval: (query: { state: { data?: { requests: TAccessApprovalRequest[] } } }) =>
-          query.state.data?.requests.some(
-            (request) => request.status === ApprovalStatus.PENDING
-          ) === false
-            ? false
-            : 30_000,
+        refetchInterval: 30_000,
         queryFn: async () => {
           const project = await fetchProjectById(projectId);
           const { data } = await apiRequest.get<{
