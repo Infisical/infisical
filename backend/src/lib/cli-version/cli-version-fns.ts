@@ -16,7 +16,7 @@ export enum CliCapability {
 
 export const CLI_CAPABILITY_MIN_VERSION: Record<CliCapability, string> = {
   [CliCapability.DirectGatewayTransport]: "0.43.131",
-  [CliCapability.AwsIamGateway]: "0.45.12"
+  [CliCapability.AwsIamGateway]: "0.45.14"
 };
 
 const getCliVersionSegment = (userAgent?: string) => {
