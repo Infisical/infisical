@@ -8,10 +8,12 @@ import {
   ProjectPermissionAgentVaultHookActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { ConflictError, NotFoundError } from "@app/lib/errors";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
-import { getAgentVaultPermission } from "../agent-vault/agent-vault-permission";
+import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultHookDALFactory, TAgentVaultHookRow } from "./agent-vault-hook-dal";
 import { assertAgentVaultHooksOnPlan } from "./agent-vault-hook-fns";
 import {
@@ -29,6 +31,7 @@ type TAgentVaultHookServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsDataKeyService: TKmsDataKeyService;
   licenseService: Pick<TLicenseService, "getPlan">;
+  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
 };
 
 export type TAgentVaultHookServiceFactory = ReturnType<typeof agentVaultHookServiceFactory>;
@@ -48,7 +51,8 @@ export const agentVaultHookServiceFactory = ({
   agentVaultHookDAL,
   permissionService,
   kmsDataKeyService,
-  licenseService
+  licenseService,
+  membershipDAL
 }: TAgentVaultHookServiceFactoryDep) => {
   const $authorize = async (scoped: TAgentVaultHookScoped, action: ProjectPermissionAgentVaultHookActions) => {
     const { permission } = await getAgentVaultPermission({ permissionService }, scoped);
@@ -64,9 +68,23 @@ export const agentVaultHookServiceFactory = ({
     return encryptor({ plainText: Buffer.from(JSON.stringify({ value: secret })) }).cipherTextBlob;
   };
 
-  const $toHooks = async (rows: TAgentVaultHookRow[], tx?: Knex) => {
+  // A caller who can read hooks but not every bundle sees only the services they reach, as with a variable's services.
+  const $authorizeRead = async (scoped: TAgentVaultHookScoped) => {
+    const { permission, accessBundleIds } = await getAgentVaultReachability(
+      { permissionService, membershipDAL },
+      scoped
+    );
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionAgentVaultHookActions.Read,
+      ProjectPermissionSub.AgentVaultHooks
+    );
+    return accessBundleIds;
+  };
+
+  const $toHooks = async (rows: TAgentVaultHookRow[], accessBundleIds: string[] | null, tx?: Knex) => {
     const usedBy = await agentVaultHookDAL.findUsedBy(
       rows.map((row) => row.id),
+      accessBundleIds,
       tx
     );
     return rows.map((row) => toAgentVaultHook(row, usedBy.get(row.id) ?? []));
@@ -76,21 +94,21 @@ export const agentVaultHookServiceFactory = ({
   const duplicateName = (name: string) => new ConflictError({ message: `A hook named '${name}' already exists.` });
 
   const listHooks = async ({ search, limit, offset, ...scoped }: TListHooksDTO) => {
-    await $authorize(scoped, ProjectPermissionAgentVaultHookActions.Read);
+    const accessBundleIds = await $authorizeRead(scoped);
     const { hooks, totalCount } = await agentVaultHookDAL.findForList({
       projectId: scoped.projectId,
       search,
       limit,
       offset
     });
-    return { hooks: await $toHooks(hooks), totalCount };
+    return { hooks: await $toHooks(hooks, accessBundleIds), totalCount };
   };
 
   const getHook = async ({ hookId, ...scoped }: THookByIdDTO) => {
-    await $authorize(scoped, ProjectPermissionAgentVaultHookActions.Read);
+    const accessBundleIds = await $authorizeRead(scoped);
     const hook = await agentVaultHookDAL.findByIdInProject({ id: hookId, projectId: scoped.projectId });
     if (!hook) throw hookNotFound(hookId);
-    const [view] = await $toHooks([hook]);
+    const [view] = await $toHooks([hook], accessBundleIds);
     return { hook: view };
   };
 
@@ -121,6 +139,7 @@ export const agentVaultHookServiceFactory = ({
   // Changes reach every session whose services use the hook on the proxy's next resolve.
   const updateHook = async ({ hookId, name, description, url, secret, ...scoped }: TUpdateHookDTO) => {
     await $authorize(scoped, ProjectPermissionAgentVaultHookActions.Edit);
+    const accessBundleIds = await $authorizeRead(scoped);
 
     const current = await agentVaultHookDAL.findByIdInProject({ id: hookId, projectId: scoped.projectId });
     if (!current) throw hookNotFound(hookId);
@@ -155,7 +174,7 @@ export const agentVaultHookServiceFactory = ({
           },
           tx
         );
-        return $toHooks([updated], tx);
+        return $toHooks([updated], accessBundleIds, tx);
       });
     } catch (error) {
       if (isUniqueViolation(error) && name !== undefined) throw duplicateName(name);
@@ -171,6 +190,8 @@ export const agentVaultHookServiceFactory = ({
   const deleteHook = async ({ hookId, ...scoped }: THookByIdDTO) => {
     await $authorize(scoped, ProjectPermissionAgentVaultHookActions.Delete);
     const view = await agentVaultHookDAL.transaction(async (tx) => {
+      // Service writes take this lock before locking a service and then a hook; taking it first here keeps the order.
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AgentVaultServiceNames(scoped.projectId)]);
       await agentVaultHookDAL.lockServicesUsingHook({ hookId, projectId: scoped.projectId }, tx);
       const locked = await agentVaultHookDAL.lockByIdInProject({ id: hookId, projectId: scoped.projectId }, tx);
       if (!locked) throw hookNotFound(hookId);

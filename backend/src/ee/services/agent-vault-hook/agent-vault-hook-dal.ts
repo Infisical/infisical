@@ -135,16 +135,28 @@ export const agentVaultHookDALFactory = (db: TDbClient) => {
     }
   };
 
-  /** The project's services using each hook, by name. */
-  const findUsedBy = async (hookIds: string[], tx?: Knex): Promise<Map<string, THookServiceRef[]>> => {
+  /** The project's services using each hook, by name: only those in accessBundleIds, or every one when it's null. */
+  const findUsedBy = async (
+    hookIds: string[],
+    accessBundleIds: string[] | null,
+    tx?: Knex
+  ): Promise<Map<string, THookServiceRef[]>> => {
     const usedBy = new Map<string, THookServiceRef[]>();
-    if (!hookIds.length) return usedBy;
+    if (!hookIds.length || accessBundleIds?.length === 0) return usedBy;
     try {
-      const rows = (await (tx || db)(SERVICE)
-        .whereIn("hookId", hookIds)
-        .whereNull("sessionId")
-        .orderBy("name", "asc")
-        .select("id", "name", "hookId")) as (THookServiceRef & { hookId: string })[];
+      const query = (tx || db)(SERVICE).whereIn("hookId", hookIds).whereNull("sessionId");
+      if (accessBundleIds) {
+        void query.whereExists((qb) => {
+          void qb
+            .select(db.raw("1"))
+            .from(TableName.AgentVaultAccessBundleService)
+            .whereRaw(`??."serviceId" = ??.id`, [TableName.AgentVaultAccessBundleService, SERVICE])
+            .whereIn(`${TableName.AgentVaultAccessBundleService}.accessBundleId`, accessBundleIds);
+        });
+      }
+      const rows = (await query.orderBy("name", "asc").select("id", "name", "hookId")) as (THookServiceRef & {
+        hookId: string;
+      })[];
       rows.forEach(({ hookId, id, name }) => usedBy.set(hookId, [...(usedBy.get(hookId) ?? []), { id, name }]));
       return usedBy;
     } catch (error) {

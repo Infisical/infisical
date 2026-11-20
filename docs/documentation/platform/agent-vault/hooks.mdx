@@ -137,6 +137,7 @@ You pick a service's hook on the service itself. Each proxy applies the change a
       -H "Authorization: Bearer <access-token>" \
       -H "Content-Type: application/json" \
       -d '{
+        "type": "http",
         "hook": { "name": "refund-approval", "methods": ["POST"], "paths": ["/v1/refunds"] }
       }'
     ```

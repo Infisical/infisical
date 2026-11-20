@@ -20,7 +20,7 @@ import {
   TUpdateAgentVaultServiceDTO
 } from "@app/hooks/api/agentVault/types";
 
-import { buildHookNarrowing, sameHookNarrowing } from "../hooks/hookSchema";
+import { buildHookNarrowing, hookNarrowingDraftOf, sameHookNarrowing } from "../hooks/hookSchema";
 import {
   hasDatabase,
   hostOf,
@@ -312,7 +312,13 @@ const withHookChange = (service: TAgentVaultService, data: TServiceForm) => {
   const next = buildServiceHook(data);
   const saved = service.hook ?? null;
   if (!next) return saved ? { hook: null } : {};
-  if (saved && saved.id === data.hook.hookId && sameHookNarrowing(saved, next)) return {};
+  // The saved narrowing goes through the form's shape too: a saved list of every method is no list once built.
+  if (
+    saved &&
+    saved.id === data.hook.hookId &&
+    sameHookNarrowing(buildHookNarrowing(hookNarrowingDraftOf(saved), data.serviceType), next)
+  )
+    return {};
   return { hook: next };
 };
 

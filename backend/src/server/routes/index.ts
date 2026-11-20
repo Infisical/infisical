@@ -2083,7 +2083,8 @@ export const registerRoutes = async (
     agentVaultHookDAL,
     permissionService,
     kmsDataKeyService,
-    licenseService
+    licenseService,
+    membershipDAL
   });
 
   const agentVaultAccessBundleService = agentVaultAccessBundleServiceFactory({

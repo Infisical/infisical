@@ -13,7 +13,7 @@ import {
 } from "@app/components/v3";
 import { useProject, useSubscription } from "@app/context";
 import { useDebounce } from "@app/hooks";
-import { useListAgentVaultHooks } from "@app/hooks/api/agentVault";
+import { AgentVaultServiceType, useListAgentVaultHooks } from "@app/hooks/api/agentVault";
 import { TAgentVaultHook } from "@app/hooks/api/agentVault/types";
 
 import { HookNarrowingFields } from "../hooks/HookNarrowingFields";
@@ -109,7 +109,12 @@ export const HookField = () => {
           />
           <FieldDescription>
             {isOnPlan ? (
-              "Every session that uses this service sends matching requests to the hook."
+              `Every session that uses this service ${
+                serviceType === AgentVaultServiceType.Http ||
+                serviceType === AgentVaultServiceType.Mcp
+                  ? "sends matching requests to the hook"
+                  : "asks the hook before each connection"
+              }.`
             ) : (
               <>
                 Hooks aren&apos;t included in your plan, so this service&apos;s hook can&apos;t be

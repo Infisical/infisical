@@ -268,5 +268,8 @@ export const listNames = (names: string[], shown = 3): string => {
   if (names.length <= 1) return names[0] ?? "";
   if (names.length <= shown)
     return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  // "and 1 more" is no shorter than the name it hides.
+  if (names.length === shown + 1)
+    return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
   return `${names.slice(0, shown).join(", ")} and ${names.length - shown} more`;
 };

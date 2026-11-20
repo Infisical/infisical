@@ -240,6 +240,7 @@ describe("listNames", () => {
     expect(listNames(["stripe"])).toBe("stripe");
     expect(listNames(["stripe", "billing-api"])).toBe("stripe and billing-api");
     expect(listNames(["a", "b", "c"])).toBe("a, b and c");
+    expect(listNames(["a", "b", "c", "d"])).toBe("a, b, c and d");
     expect(listNames(["a", "b", "c", "d", "e"])).toBe("a, b, c and 2 more");
   });
 });

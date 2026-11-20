@@ -1008,6 +1008,13 @@ describe("service hooks", () => {
     ).not.toHaveProperty("hook");
   });
 
+  it("leaves an untouched hook saved with every method listed out of an update", () => {
+    const saved = { ...storedHttp, hook: { ...HOOK, methods: [...HTTP_METHODS] } };
+    expect(
+      buildUpdateServiceRequest(saved, form({ hook: serviceHookDraftOf(saved.hook) }))
+    ).not.toHaveProperty("hook");
+  });
+
   it("sends a changed narrowing or another hook", () => {
     const saved = { ...storedHttp, hook: { ...HOOK } };
     expect(

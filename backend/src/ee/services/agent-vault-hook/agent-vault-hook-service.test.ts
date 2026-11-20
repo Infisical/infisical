@@ -41,7 +41,8 @@ const buildService = ({
   rules = [{ action: "manage", subject: "all" }],
   existingByName,
   stored = storedHook,
-  usedBy = [LINEAR, GITHUB]
+  usedBy = [LINEAR, GITHUB],
+  reachesEveryBundle = true
 }: {
   hooksOnPlan?: boolean;
   rules?: RawRuleOf<MongoAbility>[];
@@ -49,7 +50,9 @@ const buildService = ({
   // null for a hook that isn't the project's.
   stored?: typeof storedHook | null;
   usedBy?: { id: string; name: string }[];
+  reachesEveryBundle?: boolean;
 } = {}) => {
+  const tx = { raw: vi.fn() };
   const agentVaultHookDAL = {
     findForList: vi.fn().mockResolvedValue({ hooks: [storedHook], totalCount: 1 }),
     findByIdInProject: vi.fn().mockResolvedValue(stored ?? undefined),
@@ -61,7 +64,7 @@ const buildService = ({
     findUsedBy: vi.fn(async (hookIds: string[]) => new Map(hookIds.map((id) => [id, usedBy]))),
     lockServicesUsingHook: vi.fn().mockResolvedValue(usedBy),
     detachFromServices: vi.fn(),
-    transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({}))
+    transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(tx))
   };
   const licenseService = {
     getPlan: vi.fn().mockResolvedValue(Plan.restore({ ...testFeatures(), agentVaultHooks: hooksOnPlan }))
@@ -80,12 +83,17 @@ const buildService = ({
     permissionService: {
       getProjectPermission: vi.fn().mockResolvedValue({
         permission: createMongoAbility(rules),
-        hasRole: () => true,
+        hasRole: () => reachesEveryBundle,
         memberships: []
       })
+    },
+    membershipDAL: {
+      findResourceMembershipsForActor: vi
+        .fn()
+        .mockResolvedValue([{ isActive: true, actorGroupId: null, scopeResourceId: "bundle-granted" }])
     }
   } as unknown as Parameters<typeof agentVaultHookServiceFactory>[0]);
-  return { service, agentVaultHookDAL, licenseService };
+  return { service, agentVaultHookDAL, licenseService, tx };
 };
 
 const memberRules: RawRuleOf<MongoAbility>[] = [{ action: "read", subject: "agent-vault-hooks" }];
@@ -214,10 +222,14 @@ describe("deleteHook", () => {
     expect(licenseService.getPlan).not.toHaveBeenCalled();
   });
 
-  test("locks the services using it before the hook, then reads them again under the hook's lock", async () => {
-    const { service, agentVaultHookDAL } = buildService();
+  test("takes the project's service-names lock, then locks the services using it before the hook, then reads them again under the hook's lock", async () => {
+    const { service, agentVaultHookDAL, tx } = buildService();
 
     await service.deleteHook({ projectId: PROJECT_ID, ctx, hookId: HOOK_ID });
+
+    expect(tx.raw.mock.invocationCallOrder[0]).toBeLessThan(
+      agentVaultHookDAL.lockServicesUsingHook.mock.invocationCallOrder[0]
+    );
 
     const servicesLocked = agentVaultHookDAL.lockServicesUsingHook.mock.invocationCallOrder;
     const hookLocked = agentVaultHookDAL.lockByIdInProject.mock.invocationCallOrder[0];
@@ -247,6 +259,16 @@ describe("reads", () => {
     await expect(service.deleteHook({ projectId: PROJECT_ID, ctx, hookId: HOOK_ID })).rejects.toBeInstanceOf(
       ForbiddenError
     );
+  });
+
+  test("usedBy lists only the services in bundles the caller reaches, and every service for one who reaches all", async () => {
+    const member = buildService({ rules: memberRules, reachesEveryBundle: false });
+    await member.service.listHooks({ projectId: PROJECT_ID, ctx, limit: 20, offset: 0 });
+    expect(member.agentVaultHookDAL.findUsedBy).toHaveBeenCalledWith([HOOK_ID], ["bundle-granted"], undefined);
+
+    const admin = buildService();
+    await admin.service.getHook({ projectId: PROJECT_ID, ctx, hookId: HOOK_ID });
+    expect(admin.agentVaultHookDAL.findUsedBy).toHaveBeenCalledWith([HOOK_ID], null, undefined);
   });
 
   test("a hook that isn't the project's is a 404 that echoes the id", async () => {
