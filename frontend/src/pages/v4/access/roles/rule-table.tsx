@@ -424,6 +424,9 @@ export const RuleTable = (props: RuleTableProps) => {
 
   const policyCount = subjects.filter((config) => draft[config.subject]?.length).length;
   const filtering = Boolean(search || filter.length);
+  const ruleCount = filtering
+    ? `${rows.length} of ${plural(all.length, "rule", "rules")}`
+    : `${plural(all.length, "rule", "rules")} across ${plural(policyCount, "policy", "policies")}`;
   return (
     <>
       <Card
@@ -471,7 +474,7 @@ export const RuleTable = (props: RuleTableProps) => {
           all.length > 0 ? (
             <span
               className={styles.legend}
-            >{`${plural(all.length, "rule", "rules")} across ${plural(policyCount, "policy", "policies")}. Rules on the same policy combine, and a Forbid wins over an Allow.`}</span>
+            >{`${ruleCount}. Rules on the same policy combine, and a Forbid wins over an Allow.`}</span>
           ) : undefined
         }
       >
