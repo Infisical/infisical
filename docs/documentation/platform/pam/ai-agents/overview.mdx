@@ -19,19 +19,21 @@ infisical pam access prod/orders-db -- psql -c "select count(*) from orders wher
 2. The agent runs one command against an account with [`infisical pam access <folder/account> -- <command>`](/cli/reference#pam-access). The CLI opens a [session](/documentation/platform/pam/sessions/overview), runs the command, ends the session, and exits with the command's exit code.
 3. If the CLI can't run the command, it exits with an error that says what to do next. The agent fixes what it can, such as a missing `--reason`, and tells you about the rest.
 
-SSH accounts run the command on the server. Database, Redis, and Kubernetes accounts run it on the agent's machine against a local proxy. The CLI points each client at the proxy through the [environment variables the client reads](/cli/reference#pam-access), such as `PGHOST` for `psql` and `KUBECONFIG` for `kubectl`.
+SSH accounts run the command on the server. Database, Redis, Snowflake, Kubernetes, GCP, and Azure accounts run it on the agent's machine against a local proxy. The CLI points each client at the proxy through the [environment variables the client reads](/cli/reference#pam-access), such as `PGHOST` for `psql`, `KUBECONFIG` for `kubectl`, and the proxy settings for `gcloud` and `az`.
 
-Windows, AWS IAM, GCP, Azure, and Snowflake accounts don't support a command after `--`. An agent can still start a session on them by leaving out the command, the same way a person does.
+AWS IAM accounts with a Gateway work the same way: the Gateway signs each AWS request, and the agent only holds placeholder credentials. For an AWS IAM account without a Gateway, the CLI runs the command with temporary AWS credentials in its environment, and the agent can read them until they expire. To keep credentials away from the agent, set a Gateway on the account's template.
+
+Windows accounts open a remote desktop, so they don't support a command after `--`.
 
 ### Accounts that need approval
 
-The CLI never prompts an agent. If an account requires [approval](/documentation/platform/pam/access-requests/overview), the CLI files an access request with the agent's `--reason` and `--duration` and exits with `approval_pending`. The error tells the agent not to look for another way to reach the account. It also gives the command that checks whether the request was approved, `infisical pam accounts get <folder/account>`. After an approver approves the request, the agent runs the same command again.
+The CLI never prompts an agent. If an account requires [approval](/documentation/platform/pam/access-requests/overview), the CLI files an access request with the agent's `--reason` and `--duration` and exits with an error saying the request is waiting. The error tells the agent not to look for another way to reach the account. It also gives the command that checks whether the request was approved, `infisical pam accounts get <folder/account>`. After an approver approves the request, the agent runs the same command again.
 
 If a request is already waiting, the CLI doesn't file another one. To stop the CLI from filing requests at all, pass `--no-approval-request`.
 
 ### Accounts that require MFA
 
-If an account's [template](/documentation/platform/pam/templates/overview) requires MFA, the CLI exits with `mfa_required` and a link. The agent passes the link to you. After you complete MFA in your browser, the agent runs the command again with `--mfa-session`, using the value from the error.
+If an account's [template](/documentation/platform/pam/templates/overview) requires MFA, the CLI exits with an error that has a link. The agent passes the link to you. After you complete MFA in your browser, the agent runs the command again with `--mfa-session`, using the value from the error.
 
 Machine identities can't complete MFA. If an agent runs as a machine identity, it can't use these accounts.
 
@@ -44,7 +46,7 @@ An agent has no access of its own. It has the roles of the user or machine ident
 | You | Run [`infisical login`](/cli/reference#login) before you start the agent | A coding agent that you work with in your terminal | Every account you can reach |
 | A machine identity | Set the identity's credentials in the agent's environment | An agent that runs on a schedule or on a server, or an agent you don't fully trust | The accounts that the identity's roles give it |
 
-If your login expires, the CLI exits with `auth_required` instead of starting a login. An agent can't log in for you. Run `infisical login` yourself, then have the agent run its command again.
+If your login expires, the CLI exits with an error instead of starting a login. An agent can't log in for you. Run `infisical login` yourself, then have the agent run its command again.
 
 ### Run an agent as a machine identity
 
@@ -82,8 +84,10 @@ If an agent reads [`infisical pam --help`](/cli/reference#pam), it learns the co
 Reach databases, servers, and clusters only through Infisical PAM. Never ask for or
 look for credentials.
 - List the accounts you can use: infisical pam accounts get
-- Run one command against an account: infisical pam access <folder/account> -- <command>
-- If a command exits with approval_pending or mfa_required, tell me and wait.
+- Before you use an account, run infisical pam accounts get <folder/account>. Copy its
+  Connect command and change only the command after --. Some clients need the sh -c
+  wrapper it shows to reach the account.
+- If a command says an account is waiting for approval or needs MFA, tell me and wait.
 ```
 
 ## Review and stop an agent
@@ -110,10 +114,7 @@ If the account requires approval, [revoking the request](/documentation/platform
     No. Only users and groups can approve requests, and nobody can approve a request they filed.
   </Accordion>
   <Accordion title="Why does an account stay pending?">
-    The request is waiting for one of the approvers on the folder's **Approvals** tab. If the folder has no approvers, the CLI doesn't file a request and exits with `approval_not_configured` instead.
-  </Accordion>
-  <Accordion title="How does a script tell errors apart?">
-    Pass `-o json` to `infisical pam access`. The CLI then prints errors as JSON with a stable `code`, such as `approval_pending` or `reason_required`, and the commands to run next. The [CLI reference](/cli/reference#pam-access) lists the codes.
+    The request is waiting for one of the approvers on the folder's **Approvals** tab. If the folder has no approvers, the CLI doesn't file a request and exits with an error that says so.
   </Accordion>
   <Accordion title="What happened to infisical pam agentic access?">
     It was removed. Running it now prints an error that points to `infisical pam accounts get` and `infisical pam access`.
