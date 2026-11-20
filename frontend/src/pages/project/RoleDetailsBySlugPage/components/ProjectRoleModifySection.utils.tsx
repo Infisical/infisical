@@ -2723,12 +2723,12 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.AgentVaultHooks]: {
     title: "Hooks",
-    description: "Manage the hooks that check a session's requests before they are sent",
+    description: "Manage the hooks that check a service's requests before they are sent",
     actions: [
       {
         label: "Read",
         value: ProjectPermissionAgentVaultHookActions.Read,
-        description: "View hooks and start sessions with them"
+        description: "View hooks and use them on services"
       },
       {
         label: "Create",
@@ -2738,7 +2738,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Modify",
         value: ProjectPermissionAgentVaultHookActions.Edit,
-        description: "Change a hook's URL, secret or rules"
+        description: "Change a hook's name, description, URL or secret"
       },
       {
         label: "Remove",

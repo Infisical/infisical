@@ -12858,10 +12858,6 @@ describe("Agent Vault V1 Router", async () => {
       const duplicate = await inject("POST", hooksUrl, { name: "approvals", url: hookUrl, secret });
       expect(duplicate.statusCode).toBe(409);
 
-      const rules = await inject("POST", hooksUrl, { name: "with-rules", url: hookUrl, secret, rules: [] });
-      expect(rules.statusCode, rules.payload).toBe(200);
-      expect(rules.json().hook).not.toHaveProperty("rules");
-
       const list = await inject("GET", hooksUrl);
       expect(list.statusCode, list.payload).toBe(200);
       expect((list.json().hooks as { id: string }[]).map(({ id }) => id)).toContain(hook.id);
@@ -12900,7 +12896,6 @@ describe("Agent Vault V1 Router", async () => {
         "hooks-service"
       );
       const resolved = await resolve();
-      expect(resolved).not.toHaveProperty("hook");
       const byName = (name: string) => resolved.services.find((entry) => entry.name === name)!;
       expect(byName(service.name).hook).toEqual({
         id: hook.id,

@@ -183,6 +183,15 @@ export const pickHookNarrowing = (row: {
   ...(row.hookTools ? { tools: row.hookTools } : {})
 });
 
+/** Null when the service has no hook, or its hook was deleted since the row was read. */
+export const serviceHookView = (
+  service: { hookId?: string | null } & Parameters<typeof pickHookNarrowing>[0],
+  hookNames: ReadonlyMap<string, string>
+): TAgentVaultServiceHookView | null => {
+  const name = service.hookId ? hookNames.get(service.hookId) : undefined;
+  return name ? { id: service.hookId!, name, ...pickHookNarrowing(service) } : null;
+};
+
 const sameList = (left: string[] | undefined, right: string[] | undefined) =>
   JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
 

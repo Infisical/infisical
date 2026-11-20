@@ -722,8 +722,8 @@ export type TAddAgentVaultMembersDTO = TAgentVaultActorIdsDTO & {
   accessBundleId: string;
 };
 
-// Needs an access bundle, or at least one service or skill, each named rather than referenced by ID. The API also takes
-// services and skills defined inline, which this UI doesn't send.
+// Needs an access bundle, or at least one service or skill. Each is named rather than referenced by ID. The API also
+// takes services and skills defined inline, which this UI doesn't send.
 export type TCreateAgentVaultSessionDTO = {
   accessBundle?: string;
   services?: string[];

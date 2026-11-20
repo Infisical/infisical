@@ -40,6 +40,7 @@ import {
   isServiceHookChange,
   NO_SERVICE_HOOK,
   pickHookNarrowing,
+  serviceHookView,
   TAgentVaultServiceHookInput,
   TAgentVaultServiceHookView,
   toServiceHookColumns,
@@ -641,15 +642,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     ),
     canReadHooks: permission.can(ProjectPermissionAgentVaultHookActions.Read, ProjectPermissionSub.AgentVaultHooks)
   });
-
-  // Null when the service has no hook, or its hook was deleted since the row was read.
-  const serviceHookView = (
-    service: Pick<TAgentVaultServices, "hookId" | "hookMethods" | "hookPaths" | "hookTools">,
-    hookNames: Map<string, string>
-  ): TAgentVaultServiceHookView | null => {
-    const name = service.hookId ? hookNames.get(service.hookId) : undefined;
-    return name ? { id: service.hookId!, name, ...pickHookNarrowing(service) } : null;
-  };
 
   // A service as the caller may see it. Without Read on variables, variableReferences is left out: an empty list would
   // claim the service uses none. The OAuth sign-in state is the account of whoever set up the service, so only those who

@@ -427,7 +427,7 @@ describe("a service's hook", () => {
     expect(AgentVaultUpdateServiceBodySchema.parse({ type: "http", hook: null })).toHaveProperty("hook", null);
   });
 
-  test("main's hook by URL and signing secret is refused", () => {
+  test("a hook sent by URL and signing secret is refused", () => {
     const hook = { url: "https://hooks.example.com/agent-vault", signingSecret: "s".repeat(32) };
     expect(AgentVaultCreateServiceBodySchema.safeParse(httpService({ hook })).success).toBe(false);
   });

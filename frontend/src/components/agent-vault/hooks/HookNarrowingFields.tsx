@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { Controller, FieldValues, useFormContext } from "react-hook-form";
+import { Controller, useFormContext } from "react-hook-form";
 
 import {
   Checkbox,
@@ -13,7 +13,12 @@ import {
 import { pathPrefixError } from "@app/helpers/agentVaultPathPrefix";
 import { AgentVaultServiceType } from "@app/hooks/api/agentVault";
 
-import { HTTP_METHODS, isAllMethods, toolNameError } from "../service-sheet/serviceSchema";
+import {
+  HTTP_METHODS,
+  isAllMethods,
+  toolNameError,
+  TServiceForm
+} from "../service-sheet/serviceSchema";
 
 const NATIVE_TYPES = [
   AgentVaultServiceType.Postgres,
@@ -22,8 +27,6 @@ const NATIVE_TYPES = [
 ];
 
 type Props = {
-  /** Where the narrowing's fields sit in the form, such as `hook`. */
-  prefix: string;
   serviceType: AgentVaultServiceType | null;
   isDisabled?: boolean;
 };
@@ -32,16 +35,16 @@ type Props = {
  * What a hook checks of one service: methods and paths for an HTTP service, tools for an MCP service. A database or
  * SSH service is checked once per connection, so it has nothing to narrow.
  */
-export const HookNarrowingFields = ({ prefix, serviceType, isDisabled = false }: Props) => {
+export const HookNarrowingFields = ({ serviceType, isDisabled = false }: Props) => {
   const baseId = useId();
-  const { control, clearErrors, trigger } = useFormContext<FieldValues>();
+  const { control, clearErrors, trigger } = useFormContext<TServiceForm>();
 
   if (serviceType === AgentVaultServiceType.Http) {
     return (
       <>
         <Controller
           control={control}
-          name={`${prefix}.methods`}
+          name="hook.methods"
           render={({ field, fieldState }) => (
             <Field>
               <FieldLabel>Methods</FieldLabel>
@@ -89,14 +92,14 @@ export const HookNarrowingFields = ({ prefix, serviceType, isDisabled = false }:
         />
         <Controller
           control={control}
-          name={`${prefix}.paths`}
+          name="hook.paths"
           render={({ field, fieldState }) => (
             <Field>
               <FieldLabel>Paths</FieldLabel>
               <FieldContent>
                 <Controller
                   control={control}
-                  name={`${prefix}.pathDraft`}
+                  name="hook.pathDraft"
                   render={({ field: draft }) => (
                     <TagsInput
                       value={field.value}
@@ -104,11 +107,11 @@ export const HookNarrowingFields = ({ prefix, serviceType, isDisabled = false }:
                       inputValue={draft.value}
                       onInputValueChange={(next) => {
                         draft.onChange(next);
-                        if (fieldState.error) clearErrors(`${prefix}.paths`);
+                        if (fieldState.error) clearErrors("hook.paths");
                       }}
                       validateTag={pathPrefixError}
                       onValidationError={(reason) =>
-                        reason ? trigger(`${prefix}.paths`) : clearErrors(`${prefix}.paths`)
+                        reason ? trigger("hook.paths") : clearErrors("hook.paths")
                       }
                       isDisabled={isDisabled}
                       isError={Boolean(fieldState.error)}
@@ -131,14 +134,14 @@ export const HookNarrowingFields = ({ prefix, serviceType, isDisabled = false }:
     return (
       <Controller
         control={control}
-        name={`${prefix}.tools`}
+        name="hook.tools"
         render={({ field, fieldState }) => (
           <Field>
             <FieldLabel>Tools</FieldLabel>
             <FieldContent>
               <Controller
                 control={control}
-                name={`${prefix}.toolDraft`}
+                name="hook.toolDraft"
                 render={({ field: draft }) => (
                   <TagsInput
                     value={field.value}
@@ -146,14 +149,14 @@ export const HookNarrowingFields = ({ prefix, serviceType, isDisabled = false }:
                     inputValue={draft.value}
                     onInputValueChange={(next) => {
                       draft.onChange(next);
-                      if (fieldState.error) clearErrors(`${prefix}.tools`);
+                      if (fieldState.error) clearErrors("hook.tools");
                     }}
                     validateTag={(tool, existing) =>
                       toolNameError(tool) ??
                       (existing.includes(tool) ? `"${tool}" is listed twice.` : null)
                     }
                     onValidationError={(reason) =>
-                      reason ? trigger(`${prefix}.tools`) : clearErrors(`${prefix}.tools`)
+                      reason ? trigger("hook.tools") : clearErrors("hook.tools")
                     }
                     isDisabled={isDisabled}
                     isError={Boolean(fieldState.error)}

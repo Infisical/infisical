@@ -140,6 +140,23 @@ describe("mintSession, inline services with a saved hook", () => {
     expect(withoutHook).toMatchObject({ hookId: null, hookMethods: null, hookPaths: null, hookTools: null });
   });
 
+  test("returns each inline service's hook by name for the mint audit, from the hooks the transaction read", async () => {
+    const { service, findByNamesForService } = buildService();
+
+    const { session } = await mintWithHook(service, {
+      name: "approvals",
+      methods: [AgentVaultHttpMethod.Post],
+      paths: ["/charges"]
+    });
+
+    expect(findByNamesForService).toHaveBeenCalledTimes(1);
+    const [withHook, withoutHook] = session.services;
+    expect(withHook).toMatchObject({
+      hook: { id: HOOK_ID, name: "approvals", methods: ["POST"], paths: ["/charges"] }
+    });
+    expect(withoutHook).not.toHaveProperty("hook");
+  });
+
   test("a name the project has no hook for is a 404 naming it, and nothing is written", async () => {
     const { service, insertForSession } = buildService({ savedHooks: [] });
 

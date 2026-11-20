@@ -60,13 +60,13 @@ const oauthAuditFieldsOf = (credential: TAgentVaultCredentialSummary) => {
   return { oauthIssuer: credential.issuer, oauthScopes: credential.grantedScopes };
 };
 
-// A project's services, which access bundles hold through links, like skills. Personal values hang off the service,
-// since a member sets them once however many bundles give them the service.
 const hookChangeKindOf = ({ previous, current }: { previous: unknown; current: unknown }) => {
   if (!previous) return "set" as const;
   return current ? ("updated" as const) : ("removed" as const);
 };
 
+// A project's services, which access bundles hold through links, like skills. Personal values hang off the service,
+// since a member sets them once however many bundles give them the service.
 export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",

@@ -3,7 +3,11 @@ import { z } from "zod";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 
 import { assertCustomHeadersDoNotShadowCredential } from "../agent-vault-access-bundle/agent-vault-transformation-fns";
-import { assertHookNarrowingFitsService, TAgentVaultServiceHookInput } from "../agent-vault-hook/agent-vault-hook-fns";
+import {
+  assertHookNarrowingFitsService,
+  serviceHookView,
+  TAgentVaultServiceHookInput
+} from "../agent-vault-hook/agent-vault-hook-fns";
 import {
   isVariableOauth,
   oauthVariableIdOf,
@@ -581,12 +585,15 @@ const toInlineCredentialSummary = (
 // Built by hand rather than spread, so the sealed column stays off the wire even if a response schema is loosened.
 export const toInlineServiceSummary = (
   row: TAgentVaultSessionInlineServiceSummaryRow,
-  oauthVariables: TInlineOauthVariableKeys = new Map()
+  oauthVariables: TInlineOauthVariableKeys = new Map(),
+  hookNames?: ReadonlyMap<string, string>
 ): TAgentVaultInlineServiceSummary => {
+  const hook = hookNames ? serviceHookView(row, hookNames) : null;
   const base = {
     id: row.id,
     name: inlineServiceDisplayName(row),
-    description: row.description ?? null
+    description: row.description ?? null,
+    ...(hook && { hook })
   };
   const credential = toInlineCredentialSummary(row.credentialConfig as TInlineCredentialConfig, oauthVariables);
   // Every mint checks the credential against the type, so this means a row written some other way.

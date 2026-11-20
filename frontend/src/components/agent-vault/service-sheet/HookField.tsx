@@ -138,9 +138,7 @@ export const HookField = () => {
         </FieldContent>
       </Field>
 
-      {hookId && (
-        <HookNarrowingFields prefix="hook" serviceType={serviceType} isDisabled={!isOnPlan} />
-      )}
+      {hookId && <HookNarrowingFields serviceType={serviceType} isDisabled={!isOnPlan} />}
 
       {upgradeGate}
       {creationUpgradeGate}

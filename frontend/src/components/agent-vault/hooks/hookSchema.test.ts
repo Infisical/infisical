@@ -48,7 +48,7 @@ const form = (overrides: Partial<THookForm> = {}): THookForm => ({
 const narrowingIssuesOf = (draft: THookNarrowingDraft, serviceType: AgentVaultServiceType) => {
   const result = z
     .custom<THookNarrowingDraft>()
-    .superRefine((data, ctx) => addHookNarrowingIssues(data, serviceType, ["hook"], ctx))
+    .superRefine((data, ctx) => addHookNarrowingIssues(data, serviceType, ctx))
     .safeParse(draft);
   return result.success
     ? []

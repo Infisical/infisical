@@ -153,13 +153,13 @@ const addListIssues = (
 const toolError = (tool: string, existing: string[]) =>
   toolNameError(tool) ?? (existing.includes(tool) ? `"${tool}" is listed twice.` : null);
 
-/** Marks a narrowing the API would refuse on its field, under `path`. */
+/** Marks a narrowing the API would refuse on its field under the service form's `hook`. */
 export const addHookNarrowingIssues = (
   draft: THookNarrowingDraft,
   serviceType: AgentVaultServiceType | null,
-  path: (string | number)[],
   ctx: z.RefinementCtx
 ) => {
+  const path = ["hook"];
   if (serviceType === AgentVaultServiceType.Http) {
     if (!draft.methods.length) {
       ctx.addIssue({

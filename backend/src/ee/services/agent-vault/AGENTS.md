@@ -656,7 +656,7 @@ resolve.
   whose inline service names an existing hook and resolve never check it, so a downgrade keeps existing hooks running.
 - **Resolve sends `services[i].hook: { id, name, url, secret, methods?, paths?, tools? } | null`** (`findHooks`, kept to
   the session's project, retried on the primary for IDs the replica lacks; one still missing was deleted and goes out
-  as none). There is no top-level hook. `session.metadata` is read and sent only when some service has a hook. Proxies
+  as none). `session.metadata` is read and sent only when some service has a hook. Proxies
   that predate narrowing read `url` and `secret` and ask about every request of the service, so they check more, never
   less. Every field must be in the `/resolve` 200 schema or it is stripped.
 - **Upgrades.** The migration turned each project service's old `hookUrl`/`encryptedHookSecret` into a saved hook named

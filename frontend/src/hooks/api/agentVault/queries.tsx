@@ -1047,11 +1047,7 @@ export const useListAllAgentVaultServicesRequiringSetup = (
 export const useListGrantedAgentVaultServicesRequiringSetup = (projectId: string) =>
   useListAgentVaultServices(projectId, { requiresSetup: true, granted: true, limit: 1 });
 
-export const useGetAgentVaultService = (
-  projectId: string,
-  serviceId: string,
-  { enabled = true }: { enabled?: boolean } = {}
-) => {
+export const useGetAgentVaultService = (projectId: string, serviceId: string) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
@@ -1062,7 +1058,7 @@ export const useGetAgentVaultService = (
       );
       return data.service;
     },
-    enabled: enabled && Boolean(serviceId)
+    enabled: Boolean(serviceId)
   });
 };
 

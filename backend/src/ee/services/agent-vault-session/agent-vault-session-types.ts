@@ -1,6 +1,6 @@
 import { TGenericPermission } from "@app/lib/types";
 
-import { TAgentVaultServiceHookInput } from "../agent-vault-hook/agent-vault-hook-fns";
+import { TAgentVaultServiceHookInput, TAgentVaultServiceHookView } from "../agent-vault-hook/agent-vault-hook-fns";
 import { AgentVaultOauthClientAuthMethod } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TAgentVaultSkillFile } from "../agent-vault-skill/agent-vault-skill-types";
 import {
@@ -107,6 +107,8 @@ export type TAgentVaultInlineServiceSummary = {
   // The name it was sent with, or its first host when it was sent without one.
   name: string;
   description: string | null;
+  // Only where the caller passed the hook names: mint, for its audit event. Reads leave it out.
+  hook?: TAgentVaultServiceHookView;
 } & (
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Http }> & {
       credential: Exclude<TAgentVaultInlineCredentialSummary, { type: AgentVaultCredentialType.SshKey }>;

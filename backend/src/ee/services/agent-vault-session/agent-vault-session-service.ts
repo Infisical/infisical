@@ -764,8 +764,8 @@ export const agentVaultSessionServiceFactory = ({
       })
     };
 
-    const { session, insertedInlineServices, insertedInlineSkills } = await agentVaultSessionDAL.transaction(
-      async (tx) => {
+    const { session, insertedInlineServices, insertedInlineSkills, inlineHookNamesById } =
+      await agentVaultSessionDAL.transaction(async (tx) => {
         if ((preparedInlineServices.length && accessBundles.length) || orderedServices.length) {
           await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AgentVaultServiceNames(projectId)]);
           await assertNoBundleConflicts(tx);
@@ -865,9 +865,13 @@ export const agentVaultSessionServiceFactory = ({
 
         await insertSessionMetadata({ orgId: ctx.actorOrgId, sessionId: created.id, metadata }, tx);
 
-        return { session: created, insertedInlineServices: inserted, insertedInlineSkills: insertedSkills };
-      }
-    );
+        return {
+          session: created,
+          insertedInlineServices: inserted,
+          insertedInlineSkills: insertedSkills,
+          inlineHookNamesById: new Map(savedHooks.map((hook) => [hook.id, hook.name]))
+        };
+      });
     const oauthVariables = await findInlineOauthVariableKeys(insertedInlineServices);
 
     return {
@@ -892,7 +896,7 @@ export const agentVaultSessionServiceFactory = ({
           })),
           ...insertedInlineServices.map((row) => ({
             position: row.position,
-            service: { ...toInlineServiceSummary(row, oauthVariables), isInline: true as const }
+            service: { ...toInlineServiceSummary(row, oauthVariables, inlineHookNamesById), isInline: true as const }
           }))
         ]
           .sort((a, b) => a.position - b.position)

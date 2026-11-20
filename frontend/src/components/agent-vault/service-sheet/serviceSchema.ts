@@ -424,7 +424,7 @@ export enum ServiceStep {
   Details = "details",
   Credential = "credential",
   Tools = "tools",
-  Hooks = "hooks",
+  Hook = "hook",
   Review = "review"
 }
 
@@ -459,7 +459,7 @@ export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "substitutions"
   ],
   [ServiceStep.Tools]: [],
-  [ServiceStep.Hooks]: ["hook"],
+  [ServiceStep.Hook]: ["hook"],
   [ServiceStep.Review]: []
 };
 
@@ -484,7 +484,7 @@ export const NATIVE_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "sshCertificate"
   ],
   [ServiceStep.Tools]: [],
-  [ServiceStep.Hooks]: ["hook"],
+  [ServiceStep.Hook]: ["hook"],
   [ServiceStep.Review]: []
 };
 
@@ -504,7 +504,7 @@ export const MCP_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "customHeaders"
   ],
   [ServiceStep.Tools]: ["toolScope", "allowedTools"],
-  [ServiceStep.Hooks]: ["hook"],
+  [ServiceStep.Hook]: ["hook"],
   [ServiceStep.Review]: []
 };
 
@@ -713,7 +713,7 @@ export const buildServiceSchema = (
       hook: z.custom<TServiceHookDraft>()
     })
     .superRefine((data, ctx) => {
-      if (data.hook.hookId) addHookNarrowingIssues(data.hook, data.serviceType, ["hook"], ctx);
+      if (data.hook.hookId) addHookNarrowingIssues(data.hook, data.serviceType, ctx);
       const isMcp = data.serviceType === AgentVaultServiceType.Mcp;
       const isHttp = data.serviceType === AgentVaultServiceType.Http;
       const issue = (path: string, message: string) =>

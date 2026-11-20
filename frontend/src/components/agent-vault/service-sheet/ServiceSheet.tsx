@@ -515,7 +515,7 @@ export const ServiceSheet = ({
     return all.filter(
       (meta) =>
         (hasTemplateStep || meta.step !== ServiceStep.Template) &&
-        (canReadHooks || meta.step !== ServiceStep.Hooks)
+        (canReadHooks || meta.step !== ServiceStep.Hook)
     );
   }, [hasTemplateStep, isMcp, nativeType, canReadHooks]);
   const stepKeys = useMemo(() => steps.map((meta) => meta.step), [steps]);
@@ -753,8 +753,11 @@ export const ServiceSheet = ({
     }
     isMembersNoticeConfirmed.current = false;
     try {
-      if (service) await updateService.mutateAsync(buildUpdateServiceRequest(service, data));
-      else await createService.mutateAsync(buildCreateServiceRequest(accessBundleId, data));
+      if (service) {
+        await updateService.mutateAsync(buildUpdateServiceRequest(service, data));
+      } else {
+        await createService.mutateAsync(buildCreateServiceRequest(accessBundleId, data));
+      }
 
       createNotification({
         text: `Service "${data.name}" ${isUpdate ? "updated" : "created"}`,
@@ -1178,7 +1181,7 @@ export const ServiceSheet = ({
                       onSignInChange={setIsSigningIn}
                     />
                   )}
-                  {current.step === ServiceStep.Hooks && <HookField />}
+                  {current.step === ServiceStep.Hook && <HookField />}
                   {current.step === ServiceStep.Review && (
                     <ReviewFields
                       showHooks={canReadHooks}

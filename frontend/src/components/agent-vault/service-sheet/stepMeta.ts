@@ -43,8 +43,8 @@ const HOOK_STEP_RIGHT: Record<THookStepKind, string> = {
     "Every session that uses this service asks the hook once when the agent connects, not before each query or command. Your server allows or refuses the connection."
 };
 
-const hooksStep = (kind: THookStepKind): StepMeta => ({
-  step: ServiceStep.Hooks,
+const hookStep = (kind: THookStepKind): StepMeta => ({
+  step: ServiceStep.Hook,
   name: "Hook",
   shortDescription: "Your server checks requests",
   title: "Hook",
@@ -79,7 +79,7 @@ export const SERVICE_STEPS: StepMeta[] = [
       "Agents reach this service without ever holding the credential themselves. Custom headers go out on top of it, and a substitution swaps a placeholder your agent already sends for the real value.",
     rightTip: VARIABLE_TIP
   },
-  hooksStep("http"),
+  hookStep("http"),
   REVIEW_STEP
 ];
 
@@ -118,7 +118,7 @@ export const MCP_SERVICE_STEPS: StepMeta[] = [
     rightTip:
       "Turning off All Tools asks the server for its list with the credential from the previous step. If members provide their own credential, enter a token or sign in with your own account to load the list. Infisical doesn't save it. To allow a tool the server doesn't list, type its exact name in Allowed Tools."
   },
-  hooksStep("mcp"),
+  hookStep("mcp"),
   REVIEW_STEP
 ];
 
@@ -174,7 +174,7 @@ export const nativeServiceSteps = (serviceType: TAgentVaultNativeServiceType): S
       rightLabel: "CREDENTIAL",
       rightDescription: copy.credentialRight
     },
-    hooksStep("connection"),
+    hookStep("connection"),
     REVIEW_STEP
   ];
 };

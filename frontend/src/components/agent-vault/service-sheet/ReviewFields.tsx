@@ -65,7 +65,7 @@ const alignColumns = (rows: string[][]) => {
 };
 
 type Props = {
-  /** Off for a caller who can't read hooks, who never sees the Hooks step either. */
+  /** Off for a caller who can't read hooks, who never sees the Hook step either. */
   showHooks?: boolean;
   isUpdate: boolean;
   service?: TAgentVaultService | null;
