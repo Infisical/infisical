@@ -1411,7 +1411,6 @@ export const secretV2BridgeServiceFactory = ({
       actorOrgId
     });
 
-    const secretDalVersion = Number((await keyStore.pgGetIntItem(KeyStorePrefixes.SecretDalVersion(projectId))) || 0);
     const etagRedisKey = KeyStorePrefixes.SecretEtag(projectId, utcDayStamp());
     // Hash of only the request inputs that change the response body, shared by the ETag field and the
     // cache key. Transport-only inputs like ifNoneMatch are excluded so a client's stale ETag can't fork
@@ -1430,9 +1429,7 @@ export const secretV2BridgeServiceFactory = ({
       throwOnMissingReadValuePermission,
       ...params
     });
-    // The data version is in the field because the version commits with the write while the ETag hash is cleared
-    // outside it: an ETag stored by a read that raced a write is left under the old version and never matches again.
-    const etagField = `${secretDalVersion}:${actorId}:${permissionFingerprint}:${requestParamsHash}`;
+    const etagField = `${actorId}:${permissionFingerprint}:${requestParamsHash}`;
 
     const hasIfNoneMatch = ifNoneMatch !== undefined;
     let etagMissReason: SecretEtagMissReason | undefined;
@@ -1460,6 +1457,9 @@ export const secretV2BridgeServiceFactory = ({
       environment,
       secretPath: path
     });
+
+    const cachedSecretDalVersion = await keyStore.pgGetIntItem(KeyStorePrefixes.SecretDalVersion(projectId));
+    const secretDalVersion = Number(cachedSecretDalVersion || 0);
 
     const cacheKey = KeyStorePrefixes.SecretsServiceLayerCache({
       projectId,
