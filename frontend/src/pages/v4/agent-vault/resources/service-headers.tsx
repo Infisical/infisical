@@ -39,7 +39,7 @@ export const CustomHeaderFields = ({
     );
 
   return (
-    <Stack gap={8}>
+    <Stack gap={8} className={css.headerFields}>
       <Stack gap={2}>
         <Text>Custom headers</Text>
         <SmallText muted>
@@ -53,42 +53,51 @@ export const CustomHeaderFields = ({
         const valueError = err(`${path}.value`);
         return (
           <div key={row.id ?? `new-${index}`} className={css.fieldRow}>
-            <div className={css.grow}>
-              {index === 0 && <span className={css.miniLabel}>Name</span>}
-              <Input
-                mono
-                aria-label={`Header ${index + 1} name`}
-                value={row.name}
-                placeholder="X-Org-Id"
-                invalid={Boolean(nameError)}
-                onChange={(event) => update(index, { name: event.target.value })}
-              />
-              {nameError && <FieldError>{nameError}</FieldError>}
+            <div className={css.nameCell}>
+              <span className={css.miniLabel} data-repeat={index > 0 || undefined}>
+                Name
+              </span>
+              <Field error={nameError}>
+                <Input
+                  mono
+                  aria-label={`Header ${index + 1} name`}
+                  value={row.name}
+                  placeholder="X-Org-Id"
+                  invalid={Boolean(nameError)}
+                  onChange={(event) => update(index, { name: event.target.value })}
+                />
+              </Field>
             </div>
             <div className={css.prefixCell}>
-              {index === 0 && <span className={css.miniLabel}>Prefix</span>}
-              <Input
-                mono
-                aria-label={`Header ${index + 1} prefix`}
-                value={row.prefix}
-                placeholder="Token"
-                invalid={Boolean(prefixError)}
-                onChange={(event) => update(index, { prefix: event.target.value })}
-              />
-              {prefixError && <FieldError>{prefixError}</FieldError>}
+              <span className={css.miniLabel} data-repeat={index > 0 || undefined}>
+                Prefix
+              </span>
+              <Field error={prefixError}>
+                <Input
+                  mono
+                  aria-label={`Header ${index + 1} prefix`}
+                  value={row.prefix}
+                  placeholder="Token"
+                  invalid={Boolean(prefixError)}
+                  onChange={(event) => update(index, { prefix: event.target.value })}
+                />
+              </Field>
             </div>
-            <div className={css.grow}>
-              {index === 0 && <span className={css.miniLabel}>Value</span>}
-              <VariableSecretInput
-                projectId={projectId}
-                label={`Header ${index + 1} value`}
-                value={row.value}
-                hasStored={Boolean(row.id)}
-                placeholder="Value, or type {{"
-                invalid={Boolean(valueError)}
-                onChange={(value) => update(index, { value })}
-              />
-              {valueError && <FieldError>{valueError}</FieldError>}
+            <div className={css.valueCell}>
+              <span className={css.miniLabel} data-repeat={index > 0 || undefined}>
+                Value
+              </span>
+              <Field error={valueError}>
+                <VariableSecretInput
+                  projectId={projectId}
+                  label={`Header ${index + 1} value`}
+                  value={row.value}
+                  hasStored={Boolean(row.id)}
+                  placeholder="Value, or type {{"
+                  invalid={Boolean(valueError)}
+                  onChange={(value) => update(index, { value })}
+                />
+              </Field>
             </div>
             <span className={css.rowAction} data-first={index === 0 || undefined}>
               <Button
@@ -159,30 +168,30 @@ export const SubstitutionFields = ({
             <div className={css.fieldRow}>
               <div className={css.grow}>
                 <span className={css.miniLabel}>Replace</span>
-                <Input
-                  mono
-                  aria-label={`Substitution ${index + 1} placeholder`}
-                  value={row.placeholder}
-                  placeholder="__API_TOKEN__"
-                  invalid={Boolean(err(`${path}.placeholder`))}
-                  onChange={(event) => update(index, { placeholder: event.target.value })}
-                />
-                {err(`${path}.placeholder`) && (
-                  <FieldError>{err(`${path}.placeholder`)}</FieldError>
-                )}
+                <Field error={err(`${path}.placeholder`)}>
+                  <Input
+                    mono
+                    aria-label={`Substitution ${index + 1} placeholder`}
+                    value={row.placeholder}
+                    placeholder="__API_TOKEN__"
+                    invalid={Boolean(err(`${path}.placeholder`))}
+                    onChange={(event) => update(index, { placeholder: event.target.value })}
+                  />
+                </Field>
               </div>
               <div className={css.grow}>
                 <span className={css.miniLabel}>With</span>
-                <VariableSecretInput
-                  projectId={projectId}
-                  label={`Substitution ${index + 1} value`}
-                  value={row.value}
-                  hasStored={Boolean(row.id)}
-                  placeholder="Real value, or type {{"
-                  invalid={Boolean(err(`${path}.value`))}
-                  onChange={(value) => update(index, { value })}
-                />
-                {err(`${path}.value`) && <FieldError>{err(`${path}.value`)}</FieldError>}
+                <Field error={err(`${path}.value`)}>
+                  <VariableSecretInput
+                    projectId={projectId}
+                    label={`Substitution ${index + 1} value`}
+                    value={row.value}
+                    hasStored={Boolean(row.id)}
+                    placeholder="Real value, or type {{"
+                    invalid={Boolean(err(`${path}.value`))}
+                    onChange={(value) => update(index, { value })}
+                  />
+                </Field>
               </div>
               <span className={css.rowAction} data-first>
                 <Button

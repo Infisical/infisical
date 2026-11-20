@@ -68,6 +68,10 @@
   flex: none;
   width: calc(var(--cipher-size-cell-min) * 1.75);
 }
+.nameCell,
+.valueCell {
+  composes: grow;
+}
 .miniLabel {
   display: block;
   margin-bottom: var(--cipher-space-field-label);
@@ -81,4 +85,36 @@
 }
 .rowAction[data-first] {
   margin-top: calc(var(--cipher-type-small-line-height) + var(--cipher-space-field-label));
+}
+.miniLabel[data-repeat] {
+  display: none;
+}
+.headerFields {
+  container-type: inline-size;
+}
+@container (width < 32rem) {
+  .headerFields .fieldRow {
+    display: grid;
+    grid-template-columns: calc(var(--cipher-size-cell-min) * 1.75) minmax(0, 1fr) auto;
+    grid-template-areas:
+      "name name action"
+      "prefix value value";
+  }
+  .headerFields .nameCell {
+    grid-area: name;
+  }
+  .headerFields .prefixCell {
+    grid-area: prefix;
+    width: auto;
+  }
+  .headerFields .valueCell {
+    grid-area: value;
+  }
+  .headerFields .rowAction {
+    grid-area: action;
+    margin-top: calc(var(--cipher-type-small-line-height) + var(--cipher-space-field-label));
+  }
+  .headerFields .miniLabel[data-repeat] {
+    display: block;
+  }
 }

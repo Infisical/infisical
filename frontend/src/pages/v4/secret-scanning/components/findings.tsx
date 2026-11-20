@@ -311,14 +311,14 @@ const FindingLocations = ({
           {data.locations.map((location) => (
             <AccordionItem key={location.id} value={location.id}>
               <AccordionTrigger>
-                <Inline gap={8} align="center" justify="between" wrap={false}>
+                <Inline gap={8} align="center" justify="between">
                   <code>
                     {location.details.file}:{location.details.startLine}
                   </code>
-                  <Meta>
-                    {location.details.commit.slice(0, 7)}
-                    {location.details.date && ` · ${relative(location.details.date)}`}
-                  </Meta>
+                  <Inline gap={12} wrap={false}>
+                    <Meta>{location.details.commit.slice(0, 7)}</Meta>
+                    {location.details.date && <Meta>{relative(location.details.date)}</Meta>}
+                  </Inline>
                 </Inline>
               </AccordionTrigger>
               <AccordionContent>
