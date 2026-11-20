@@ -23,11 +23,15 @@ export type TFlyioListVariables = {
   appId: string;
 };
 
-export type TPutFlyioVariable = TFlyioListVariables & {
+export type TPutFlyioVariable = {
+  accessToken: string;
+  appName: string;
   secretMap: { [key: string]: { value: string } };
 };
 
-export type TDeleteFlyioVariable = TFlyioListVariables & {
+export type TDeleteFlyioVariable = {
+  accessToken: string;
+  appName: string;
   keys: string[];
 };
 
