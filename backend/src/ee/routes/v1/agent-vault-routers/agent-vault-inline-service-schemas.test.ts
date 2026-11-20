@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
 
+import { prepareInlineServices } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-service-fns";
+import { TAgentVaultInlineServiceInput } from "@app/ee/services/agent-vault-session/agent-vault-session-types";
 import { AGENT_VAULT_INLINE_SERVICE_VARIABLE_MESSAGE } from "@app/ee/services/agent-vault/agent-vault-variable-fns";
+import { BadRequestError } from "@app/lib/errors";
 
 import { AGENT_VAULT_SERVICE_DESCRIPTION_MESSAGE, AgentVaultSessionServicesInputSchema } from "./agent-vault-schemas";
 
@@ -26,7 +29,7 @@ describe("a session's services request schema", () => {
     ]);
   });
 
-  test("refuses a name used twice, whether named or sent inline, at the second one", () => {
+  test("refuses a name used twice, whether listed by name or sent inline, at the second one", () => {
     expect(issuesOf(["github", "github"])).toEqual([
       expect.objectContaining({
         path: [1],
@@ -37,11 +40,11 @@ describe("a session's services request schema", () => {
     expect(issuesOf(["github", bearer("one", { name: "github" })])[0].path).toEqual([1, "name"]);
   });
 
-  test("caps the project services a session names at 50", () => {
+  test("caps the services a session lists by name at 50", () => {
     const names = Array.from({ length: 51 }, (_, index) => `service-${index}`);
     expect(issuesOf(names)[0]).toMatchObject({
       code: "custom",
-      message: "A session can name at most 50 of the project's services."
+      message: "A session can have at most 50 of the project's services."
     });
     expect(issuesOf(names.slice(0, 50))).toEqual([]);
   });
@@ -115,7 +118,8 @@ describe("inline services request schema", () => {
     );
     expect(issuesOf(services)[0]).toMatchObject({
       code: "custom",
-      message: "A session can carry at most 20 inline services. Add the others to the project and name them instead."
+      message:
+        "A session can carry at most 20 inline services. Add the others to the project and list them by name instead."
     });
   });
 
@@ -256,5 +260,56 @@ describe("hooks in the inline request schema", () => {
       [0, "hook", "signingSecret"],
       [1, "hook", "url"]
     ]);
+  });
+});
+
+describe("OAuth sent with a session", () => {
+  const oauth = (credential: Record<string, unknown>) => [
+    { type: "http", hostPattern: "www.googleapis.com", credential: { type: "oauth", ...credential } }
+  ];
+
+  test("takes an OAuth variable's key, or tokens with the provider's details", () => {
+    expect(issuesOf(oauth({ variable: "GDRIVE_U123" }))).toEqual([]);
+    expect(
+      issuesOf(
+        oauth({
+          accessToken: "ya29.access",
+          refreshToken: "1//refresh",
+          expiresAt: "2026-11-18T12:00:00Z",
+          authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+          tokenEndpoint: "https://oauth2.googleapis.com/token",
+          clientId: "client-1",
+          clientSecret: "secret-1",
+          scopes: ["https://www.googleapis.com/auth/drive"]
+        })
+      )
+    ).toEqual([]);
+  });
+
+  test("refuses a token endpoint that isn't https, and a token with a line break", () => {
+    expect(issuesOf(oauth({ accessToken: "a", tokenEndpoint: "http://oauth2.example.com/token" }))[0].path).toEqual([
+      0,
+      "credential",
+      "tokenEndpoint"
+    ]);
+    expect(issuesOf(oauth({ accessToken: "a\nb" }))[0].path).toEqual([0, "credential", "accessToken"]);
+  });
+});
+
+describe("an inline OAuth credential with fields left to members", () => {
+  test("keeps them through the schema, so the session refuses them with a 400", () => {
+    const [parsed] = AgentVaultSessionServicesInputSchema.parse([
+      {
+        type: "http",
+        hostPattern: "api.example.com",
+        credential: { type: "oauth", variable: "GDRIVE_U123", memberProvidedFields: ["credential-value"] }
+      }
+    ]);
+    expect(parsed).toMatchObject({ credential: { memberProvidedFields: ["credential-value"] } });
+
+    expect(() => prepareInlineServices([parsed as TAgentVaultInlineServiceInput])).toThrow(BadRequestError);
+    expect(() => prepareInlineServices([parsed as TAgentVaultInlineServiceInput])).toThrow(
+      /can't leave a field to members/
+    );
   });
 });

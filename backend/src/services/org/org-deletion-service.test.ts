@@ -7,7 +7,10 @@ import { OrganizationModifiedEventV1 } from "./org-events";
 const ORG_ID = "00000000-0000-4000-8000-000000000001";
 const TX = { isTx: true };
 
-const build = (deletedOrg: Record<string, unknown> | null = { id: ORG_ID, rootOrgId: null }) => {
+const build = (
+  deletedOrg: Record<string, unknown> | null = { id: ORG_ID, rootOrgId: null },
+  projects: { id: string; version: number }[] = []
+) => {
   const calls: string[] = [];
   const orgDAL = {
     transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => {
@@ -22,17 +25,19 @@ const build = (deletedOrg: Record<string, unknown> | null = { id: ORG_ID, rootOr
       calls.push("honey-tokens");
     })
   };
+  const folderDAL = { findByProjectId: vi.fn(async (projectId: string) => [{ id: `folder-${projectId}` }]) };
+  const secretDAL = { find: vi.fn(async () => [{ id: "legacy-secret", secretReminderRepeatDays: 7 }]) };
+  const reminderService = { deleteReminderBySecretId: vi.fn(async () => {}) };
   const service = orgDeletionServiceFactory({
     orgDAL,
-    projectDAL: { find: vi.fn(async () => []) },
-    secretDAL: { find: vi.fn() },
-    folderDAL: { findByProjectId: vi.fn() },
-    projectBotService: { getBotKey: vi.fn() },
-    reminderService: { deleteReminderBySecretId: vi.fn() },
+    projectDAL: { find: vi.fn(async () => projects) },
+    secretDAL,
+    folderDAL,
+    reminderService,
     honeyTokenCleanupService,
     eventEmitter
   } as unknown as Parameters<typeof orgDeletionServiceFactory>[0]);
-  return { service, orgDAL, eventEmitter, calls };
+  return { service, orgDAL, eventEmitter, calls, folderDAL, reminderService };
 };
 
 describe("orgDeletionServiceFactory", () => {
@@ -95,6 +100,20 @@ describe("orgDeletionServiceFactory", () => {
         throw new Error("token issue failed");
       })
     ).rejects.toThrow("token issue failed");
+  });
+
+  test("deletes an org holding a legacy project without asking for its project bot", async () => {
+    const { service, orgDAL, folderDAL, reminderService } = build(undefined, [
+      { id: "legacy-project", version: 2 },
+      { id: "v3-project", version: 3 }
+    ]);
+
+    await service.deleteOrganization(ORG_ID);
+
+    expect(folderDAL.findByProjectId).toHaveBeenCalledTimes(1);
+    expect(folderDAL.findByProjectId).toHaveBeenCalledWith("legacy-project");
+    expect(reminderService.deleteReminderBySecretId).toHaveBeenCalledWith("legacy-secret", "legacy-project");
+    expect(orgDAL.deleteById).toHaveBeenCalledWith(ORG_ID, TX);
   });
 
   test("throws not found when there is no org to delete", async () => {

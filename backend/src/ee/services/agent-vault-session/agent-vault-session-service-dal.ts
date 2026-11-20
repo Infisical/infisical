@@ -22,7 +22,7 @@ export type TAgentVaultSessionProjectServiceRow = {
 export const agentVaultSessionServiceDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultSessionService);
 
-  // The project services each session names, as they are named now. A deleted service is gone from the list.
+  // The services each session lists by name, as they are named now. A deleted service is gone from the list.
   const findSummariesBySessionIds = async (
     sessionIds: string[],
     tx?: Knex

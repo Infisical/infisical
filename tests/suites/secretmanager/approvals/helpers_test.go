@@ -216,6 +216,14 @@ func merge(t *testing.T, actor *harness.Principal, id uuid.UUID) {
 // replaceApprovers swaps the policy's approvers, keeping one required approval.
 func replaceApprovers(t *testing.T, proj *fixture.Project, policyID uuid.UUID, approvers []policyMember) {
 	t.Helper()
+	res, err := proj.Tenant().Admin.API.UpdateSecretApprovalPolicyWithResponse(t.Context(), policyID.String(),
+		api.UpdateSecretApprovalPolicyJSONRequestBody{Approvers: updateApproverItems(t, approvers)})
+	require.NoError(t, err)
+	require.Equalf(t, http.StatusOK, res.StatusCode(), "replacing the approvers returned %s", apierr.Body(res.Body))
+}
+
+func updateApproverItems(t *testing.T, approvers []policyMember) []api.UpdateSecretApprovalPolicyJSONBody_Approvers_Item {
+	t.Helper()
 	items := make([]api.UpdateSecretApprovalPolicyJSONBody_Approvers_Item, len(approvers))
 	for i, a := range approvers {
 		if a.group != nil {
@@ -230,10 +238,7 @@ func replaceApprovers(t *testing.T, proj *fixture.Project, policyID uuid.UUID, a
 			Id:   new(a.user.ID.String()),
 		}))
 	}
-	res, err := proj.Tenant().Admin.API.UpdateSecretApprovalPolicyWithResponse(t.Context(), policyID.String(),
-		api.UpdateSecretApprovalPolicyJSONRequestBody{Approvers: items})
-	require.NoError(t, err)
-	require.Equalf(t, http.StatusOK, res.StatusCode(), "replacing the approvers returned %s", apierr.Body(res.Body))
+	return items
 }
 
 func closeRequest(t *testing.T, actor *harness.Principal, id uuid.UUID) {

@@ -107,6 +107,12 @@ describe("agent vault project roles", () => {
       true
     );
     expect(admin.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Project)).toBe(true);
+    expect(
+      admin.can(
+        ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills,
+        ProjectPermissionSub.AgentVaultSessions
+      )
+    ).toBe(true);
     expect(admin.can(ProjectPermissionAgentVaultSkillActions.Create, ProjectPermissionSub.AgentVaultSkills)).toBe(true);
     expect(admin.can(ProjectPermissionAgentVaultSkillActions.Delete, ProjectPermissionSub.AgentVaultSkills)).toBe(true);
 
@@ -115,7 +121,7 @@ describe("agent vault project roles", () => {
     expect(admin.can(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens)).toBe(false);
   });
 
-  test("a member can mint, label and revoke sessions and read a proxy fingerprint and skills, and nothing more", () => {
+  test("a member can mint, label and revoke sessions, send skills with them, and read a proxy fingerprint and skills, and nothing more", () => {
     const member = abilityFor(ProjectMembershipRole.Member);
 
     expect(member.can(ProjectPermissionAgentVaultSessionActions.Create, ProjectPermissionSub.AgentVaultSessions)).toBe(
@@ -127,6 +133,12 @@ describe("agent vault project roles", () => {
     expect(member.can(ProjectPermissionAgentVaultSessionActions.Revoke, ProjectPermissionSub.AgentVaultSessions)).toBe(
       true
     );
+    expect(
+      member.can(
+        ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills,
+        ProjectPermissionSub.AgentVaultSessions
+      )
+    ).toBe(true);
     expect(member.can(ProjectPermissionAgentVaultProxyActions.Read, ProjectPermissionSub.AgentVaultProxies)).toBe(true);
 
     expect(member.can(ProjectPermissionAgentVaultProxyActions.Create, ProjectPermissionSub.AgentVaultProxies)).toBe(

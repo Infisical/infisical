@@ -4,10 +4,12 @@ import RE2 from "re2";
 
 import {
   ActionProjectType,
+  ProjectVersion,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretType,
   TableName,
+  TProjects,
   TSecretBlindIndexes,
   TSecrets
 } from "@app/db/schemas";
@@ -30,7 +32,6 @@ import {
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { getBotKeyFnFactory } from "../project-bot/project-bot-fns";
-import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -1201,16 +1202,16 @@ export const decryptSecretWithBot = (
 type TFnDeleteProjectSecretReminders = {
   secretDAL: Pick<TSecretDALFactory, "find">;
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
-  projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
 };
 
+// Decides by project version alone: a legacy project whose bot can no longer be created must not
+// block deleting it or its org.
 export const fnDeleteProjectSecretReminders = async (
-  projectId: string,
-  { secretDAL, reminderService, projectBotService, folderDAL }: TFnDeleteProjectSecretReminders
+  { id: projectId, version }: Pick<TProjects, "id" | "version">,
+  { secretDAL, reminderService, folderDAL }: TFnDeleteProjectSecretReminders
 ) => {
-  const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId, false);
-  if (shouldUseSecretV2Bridge) return;
+  if (version === ProjectVersion.V3) return;
 
   const projectFolders = await folderDAL.findByProjectId(projectId);
   const projectSecrets = await secretDAL.find({

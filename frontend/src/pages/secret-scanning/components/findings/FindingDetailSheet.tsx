@@ -1,7 +1,6 @@
 import { format } from "date-fns";
-import { ChevronDownIcon, ChevronUpIcon, CopyIcon, ExternalLinkIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -27,12 +26,17 @@ import {
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
+import {
+  RESOURCE_DESCRIPTION_HELPER,
+  SECRET_SCANNING_DATA_SOURCE_MAP
+} from "@app/helpers/secretScanningV2";
 import {
   SecretScanningFindingStatus,
-  TSecretScanningFinding
+  TSecretScanningFinding,
+  useListSecretScanningFindingLocations
 } from "@app/hooks/api/secretScanningV2";
 
+import { FindingLocationList } from "./FindingLocationList";
 import { FindingStatusBadge } from "./FindingStatusBadge";
 
 type Props = {
@@ -56,6 +60,10 @@ export const FindingDetailSheet = ({
   onChangeStatus,
   isReopening
 }: Props) => {
+  // the newest location's rule description stands for the finding's
+  const { data: locationPages } = useListSecretScanningFindingLocations(finding?.id ?? "");
+  const latestLocation = locationPages?.pages[0]?.locations[0];
+
   return (
     <Sheet open={Boolean(finding)} onOpenChange={(open) => !open && onClose()}>
       <SheetContent size="form" onOpenAutoFocus={(event) => event.preventDefault()}>
@@ -99,79 +107,42 @@ export const FindingDetailSheet = ({
                 <SheetTitle>{finding.rule}</SheetTitle>
                 <FindingStatusBadge status={finding.status} />
               </div>
-              <SheetDescription>{finding.details.description}</SheetDescription>
+              {latestLocation && (
+                <SheetDescription>{latestLocation.details.description}</SheetDescription>
+              )}
             </SheetHeader>
 
-            <div className="grid flex-1 grid-cols-2 content-start gap-4 overflow-y-auto p-4">
-              <Detail>
-                <DetailLabel>File</DetailLabel>
-                <DetailValue>
-                  {finding.details.link ? (
-                    <a
-                      href={finding.details.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 hover:underline hover:underline-offset-2"
-                    >
-                      <ExternalLinkIcon className="size-3.5 shrink-0" />
-                      {finding.details.file}:{finding.details.startLine}
-                    </a>
-                  ) : (
-                    `${finding.details.file}:${finding.details.startLine}`
-                  )}
-                </DetailValue>
-              </Detail>
-              <Detail>
-                <DetailLabel>Fingerprint</DetailLabel>
-                <DetailValue>
-                  <span className="text-xs break-all text-muted">{finding.fingerprint}</span>
-                </DetailValue>
-              </Detail>
-              <Detail>
-                <DetailLabel>Commit</DetailLabel>
-                <DetailValue>
-                  {finding.details.commit.slice(0, 7)}
-                  {finding.details.message && (
-                    <p className="line-clamp-3 text-xs text-muted">{finding.details.message}</p>
-                  )}
-                </DetailValue>
-              </Detail>
-              <Detail>
-                <DetailLabel>Author</DetailLabel>
-                <DetailValue>
-                  {finding.details.author}
-                  {finding.details.email && (
-                    <p className="text-xs text-muted">{finding.details.email}</p>
-                  )}
-                </DetailValue>
-              </Detail>
-              <Detail>
-                <DetailLabel>Committed</DetailLabel>
-                <DetailValue>{formatDate(finding.details.date)}</DetailValue>
-              </Detail>
-              {finding.triageComment && (
-                <Detail className="col-span-2">
-                  <DetailLabel>Comment</DetailLabel>
-                  <DetailValue>
-                    <p className="whitespace-pre-wrap">{finding.triageComment}</p>
-                  </DetailValue>
+            <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+              <div className="grid grid-cols-2 gap-4">
+                <Detail>
+                  <DetailLabel>
+                    {RESOURCE_DESCRIPTION_HELPER[finding.dataSourceType].singularTitle}
+                  </DetailLabel>
+                  <DetailValue>{finding.resourceName}</DetailValue>
                 </Detail>
-              )}
+                <Detail>
+                  <DetailLabel>Last Detected</DetailLabel>
+                  <DetailValue>{formatDate(finding.lastDetectedAt)}</DetailValue>
+                </Detail>
+                <Detail>
+                  <DetailLabel>First Detected</DetailLabel>
+                  <DetailValue>{formatDate(finding.createdAt)}</DetailValue>
+                </Detail>
+                {finding.triageComment && (
+                  <Detail className="col-span-2">
+                    <DetailLabel>Comment</DetailLabel>
+                    <DetailValue>
+                      <p className="whitespace-pre-wrap">{finding.triageComment}</p>
+                    </DetailValue>
+                  </Detail>
+                )}
+              </div>
+              <Separator />
+              <FindingLocationList findingId={finding.id} locationCount={finding.locationCount} />
             </div>
 
             <Separator />
             <SheetFooter>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  navigator.clipboard.writeText(finding.fingerprint);
-                  createNotification({ type: "info", text: "Fingerprint copied to clipboard" });
-                }}
-              >
-                <CopyIcon />
-                Copy Fingerprint
-              </Button>
               <div className="ml-auto">
                 <ProjectPermissionCan
                   I={ProjectPermissionSecretScanningFindingActions.Update}

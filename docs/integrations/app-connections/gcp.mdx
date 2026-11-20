@@ -87,6 +87,8 @@ Infisical supports [service account impersonation](https://cloud.google.com/iam/
             <Tab title="Secret Sync">
                 Add the required permissions for secret syncs:
                 ![Assign Service Account Permission](/images/app-connections/gcp/service-account-secret-sync-permission.png)
+
+                Instead of Secret Manager Admin on the whole project, you can [limit the service account to the secrets a GCP Secret Manager sync manages](/integrations/secret-syncs/gcp-secret-manager#least-privilege-permissions).
             </Tab>
             <Tab title="Certificate Sync">
                 Add the required permissions for [certificate syncs](/documentation/platform/pki/applications/certificate-syncs/gcp-certificate-manager):

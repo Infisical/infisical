@@ -113,6 +113,17 @@ export type TGetPublicKeyDTO = {
   signerId: string;
 } & TActorPermission;
 
+export enum SigningActivityRange {
+  SevenDays = "7d",
+  ThirtyDays = "30d",
+  SixMonths = "6m"
+}
+
+export type TGetSigningActivityTrendDTO = {
+  range: SigningActivityRange;
+  signerId?: string;
+} & TProjectPermission;
+
 export type TListSigningOperationsDTO = {
   signerId: string;
   offset?: number;

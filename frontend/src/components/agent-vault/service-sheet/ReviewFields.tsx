@@ -22,8 +22,10 @@ import {
   credentialLabel,
   hasDatabase,
   isAllMethods,
+  isOAuthVariableCredential,
   McpToolScope,
   oauthStatusLabel,
+  storedOAuthVariableKey,
   SURFACE_LABELS,
   TRANSPORT_LABELS,
   TServiceForm,
@@ -231,7 +233,15 @@ export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields
                 : credentialLabel(form.serviceType, form.credentialType)}
             </DetailValue>
           </Detail>
-          {isOAuth && (
+          {isOAuth && isOAuthVariableCredential(form) && (
+            <Detail>
+              <DetailLabel>OAuth Variable</DetailLabel>
+              <DetailValue className="font-mono">
+                {form.oauthVariableKey || storedOAuthVariableKey(service) || "Unchanged"}
+              </DetailValue>
+            </Detail>
+          )}
+          {isOAuth && !isOAuthVariableCredential(form) && (
             <Detail>
               <DetailLabel>Status</DetailLabel>
               <DetailValue>{oauthStatusLabel(form, service)}</DetailValue>

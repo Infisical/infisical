@@ -1060,7 +1060,15 @@ export const secretSyncQueueFactory = ({
     const { projectId, destination, name, folder, lastSyncMessage, lastRemoveMessage, lastImportMessage, environment } =
       secretSync;
 
+    // findById hides projects pending deletion, whose syncs can still fail; skip rather than throw so the job
+    // doesn't retry until its attempts run out.
     const project = await projectDAL.findById(projectId);
+    if (!project) {
+      logger.info(
+        `SecretSync: project ${projectId} not found, skipping failed notifications [syncId=${secretSync.id}] [action=${action}]`
+      );
+      return;
+    }
 
     const adminUserIds = await findProjectAdminUserIds(
       { projectMembershipDAL, orgDAL, userDAL },

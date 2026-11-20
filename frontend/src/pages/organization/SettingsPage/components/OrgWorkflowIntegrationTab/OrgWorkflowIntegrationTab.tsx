@@ -42,6 +42,7 @@ import {
   useCheckMicrosoftTeamsIntegrationInstallationStatus,
   useDeleteMicrosoftTeamsIntegration,
   useDeleteSlackIntegration,
+  useGetSlackIntegrationAlertCount,
   useGetWorkflowIntegrations
 } from "@app/hooks/api";
 import {
@@ -91,6 +92,25 @@ export const OrgWorkflowIntegrationTab = withPermission(
     const removeIntegrationData = popUp.removeIntegration.data as
       | { id: string; slug: string; platform: WorkflowIntegrationPlatform }
       | undefined;
+
+    const {
+      data: slackAlertCount = 0,
+      isLoading: isLoadingSlackAlertCount,
+      isError: isSlackAlertCountError
+    } = useGetSlackIntegrationAlertCount(
+      popUp.removeIntegration.isOpen &&
+        removeIntegrationData?.platform === WorkflowIntegrationPlatform.SLACK
+        ? removeIntegrationData.id
+        : undefined
+    );
+
+    let slackAlertWarning = "";
+    if (isSlackAlertCountError) {
+      slackAlertWarning =
+        " Infisical could not check which alerts post through it. Any that do will fail to send until they are edited to use another Slack integration.";
+    } else if (slackAlertCount > 0) {
+      slackAlertWarning = ` ${slackAlertCount} alert${slackAlertCount === 1 ? " posts" : "s post"} through it and will fail to send until ${slackAlertCount === 1 ? "it is" : "they are"} edited to use another Slack integration.`;
+    }
 
     const handleRemoveIntegration = async () => {
       if (!currentOrg || !removeIntegrationData) {
@@ -341,9 +361,9 @@ export const OrgWorkflowIntegrationTab = withPermission(
           isOpen={popUp.removeIntegration.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("removeIntegration", isOpen)}
           title={`Delete integration "${removeIntegrationData?.slug ?? ""}"?`}
-          description="Projects using this integration will stop sending notifications to it. This cannot be undone."
+          description={`Projects using this integration will stop sending notifications to it.${slackAlertWarning} This cannot be undone.`}
           confirmKey={removeIntegrationData?.slug ?? ""}
-          isPending={isDeletingIntegration}
+          isPending={isDeletingIntegration || isLoadingSlackAlertCount}
           onConfirm={handleRemoveIntegration}
         />
       </Card>

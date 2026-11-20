@@ -10,7 +10,7 @@ Applications are where teams issue and manage certificates. Within an Applicatio
 - **Automate renewal** so certificates never expire unexpectedly
 - **Configure alerting** for expiration, issuance, and lifecycle events
 - **Sync certificates** to AWS ACM, Azure Key Vault, Cloudflare, and other destinations
-- **Require approvals** before high-value certificates are issued
+- **Require approvals** before high-value certificates are issued or revoked
 
 Each Application represents a service or workload in your organization — a payments API, a mobile backend, an IoT device fleet, or an internal web app. Product admins create Applications and assign team members; teams then operate independently within their assigned Applications.
 
@@ -30,7 +30,7 @@ Each Application represents a service or workload in your organization — a pay
     Notifications for expiration, issuance, renewal, and revocation.
   </Card>
   <Card title="Approval Policies" icon="check-check">
-    Optional review workflows before certificates are issued.
+    Optional review workflows before certificates are issued or revoked.
   </Card>
   <Card title="Certificate Syncs" icon="refresh-cw">
     Push certificates to AWS, Azure, Cloudflare, and more.
@@ -114,6 +114,6 @@ Members are assigned to Applications with one of three roles:
     Get notified when certificates expire or lifecycle events occur.
   </Card>
   <Card title="Approval Policies" icon="check-check" href="/documentation/platform/pki/applications/approvals">
-    Add human review before certificates are issued.
+    Add human review before certificates are issued or revoked.
   </Card>
 </CardGroup>
