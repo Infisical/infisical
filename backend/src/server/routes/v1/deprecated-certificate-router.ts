@@ -553,7 +553,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
       description:
-        "Delete certificate. Only expired, discovered, or imported certificates can be deleted. If a deletion approval policy in the certificate's Application covers its profile, the endpoint returns HTTP 202 and the certificate isn't deleted until the approval request is approved.",
+        "Delete a certificate and its private key. Its details stay in the inventory with a deleted status. Deleting a certificate does not revoke it. If a deletion approval policy in the certificate's Application covers its profile, the endpoint returns HTTP 202 and the certificate isn't deleted until the approval request is approved.",
       params: z.object({
         serialNumber: z.string().trim().describe(CERTIFICATES.DELETE.serialNumber)
       }),
