@@ -37,6 +37,11 @@ import {
   THCVaultMountResponse,
   TResolvedKvMount
 } from "./hc-vault-connection-types";
+import {
+  HC_VAULT_URL_PATH_CHARACTERS_MESSAGE,
+  hasHCVaultDotSegment,
+  isHCVaultUrlPathPreserved
+} from "./hc-vault-path-fns";
 
 // HashiCorp Vault stores JSON data, so values can be any valid JSON type
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
@@ -659,7 +664,9 @@ class NamespaceHeaderNotSupportedError extends Error {
 const isRootNamespace = (namespace: string) => namespace === "/" || namespace === "root" || !namespace;
 
 const isWildcardPath = (path: string) => path.split("/").includes("+");
-const isKvMount = (mount: THCVaultMount) => mount.type === "kv" || mount.type.startsWith("kv");
+// Mounts created before Vault renamed its KV v1 engine from "generic" to "kv" still report the old type.
+export const isKvMount = (mount: THCVaultMount) =>
+  mount.type === "kv" || mount.type.startsWith("kv") || mount.type === "generic";
 const ACL_ALLOWED_CAPABILITIES = ["read", "list"];
 
 // Fallback for restricted Vault tokens that lack permission to list a mount from its root.
@@ -953,6 +960,12 @@ export const listHCVaultSecretPaths = async (
 // the caller declares which secrets engine it is reading from, so the engine is resolved once rather
 // than guessed per path. This allow secrets engine that are defined as paths
 export const resolveKvMount = (mountPath: string, mounts: THCVaultMount[]): TResolvedKvMount => {
+  if (hasHCVaultDotSegment(mountPath)) {
+    throw new BadRequestError({
+      message: `Secrets engine '${mountPath}' cannot contain '.' or '..' path segments`
+    });
+  }
+
   const mountSegments = mountPath.split("/").filter(Boolean);
   const normalizedMountPath = mountSegments.join("/");
 
@@ -978,6 +991,12 @@ export const resolveKvMount = (mountPath: string, mounts: THCVaultMount[]): TRes
 };
 
 export const resolveVaultSecretPathWithinMount = (secretPath: string, mountSegments: string[]): string => {
+  if (hasHCVaultDotSegment(secretPath)) {
+    throw new BadRequestError({
+      message: `Vault path '${secretPath}' cannot contain '.' or '..' path segments`
+    });
+  }
+
   const pathSegments = secretPath.split("/").filter(Boolean);
 
   if (!mountSegments.every((segment, idx) => pathSegments[idx] === segment)) {
@@ -997,6 +1016,22 @@ export const resolveVaultSecretPathWithinMount = (secretPath: string, mountSegme
   }
 
   return actualPath;
+};
+
+export const getVaultKvSecretUrl = (instanceUrl: string, kvMount: TResolvedKvMount, secretPath: string) => {
+  const actualPath = resolveVaultSecretPathWithinMount(secretPath, kvMount.mountSegments);
+  const url =
+    kvMount.kvVersion === "2"
+      ? `${instanceUrl}/v1/${kvMount.mountUrlPath}/data/${actualPath}`
+      : `${instanceUrl}/v1/${kvMount.mountUrlPath}/${actualPath}`;
+
+  if (!isHCVaultUrlPathPreserved(url)) {
+    throw new BadRequestError({
+      message: `Vault path '${secretPath}' ${HC_VAULT_URL_PATH_CHARACTERS_MESSAGE}`
+    });
+  }
+
+  return url;
 };
 
 const fetchVaultSecretAtPath = async ({
@@ -1019,12 +1054,10 @@ const fetchVaultSecretAtPath = async ({
   skipNamespaceHeader: boolean;
 }): Promise<Record<string, JsonValue>> => {
   try {
-    const { mountSegments, mountUrlPath, kvVersion } = kvMount;
-    const actualPath = resolveVaultSecretPathWithinMount(secretPath, mountSegments);
+    const url = getVaultKvSecretUrl(instanceUrl, kvMount, secretPath);
 
     // Fetch secrets based on KV version
-    if (kvVersion === "2") {
-      // For KV v2: /v1/{mount}/data/{path}
+    if (kvMount.kvVersion === "2") {
       const { data } = await requestWithHCVaultGateway<{
         data: {
           data: Record<string, JsonValue>; // KV v2 has nested data structure, supports all JSON types
@@ -1036,7 +1069,7 @@ const fetchVaultSecretAtPath = async ({
           };
         };
       }>(connection, gatewayV2Service, {
-        url: `${instanceUrl}/v1/${mountUrlPath}/data/${actualPath}`,
+        url,
         method: "GET",
         headers: {
           "X-Vault-Token": accessToken,
@@ -1047,14 +1080,13 @@ const fetchVaultSecretAtPath = async ({
       return data.data.data;
     }
 
-    // For KV v1: /v1/{mount}/{path}
     const { data } = await requestWithHCVaultGateway<{
       data: Record<string, JsonValue>; // KV v1 has flat data structure, supports all JSON types
       lease_duration: number;
       lease_id: string;
       renewable: boolean;
     }>(connection, gatewayV2Service, {
-      url: `${instanceUrl}/v1/${mountUrlPath}/${actualPath}`,
+      url,
       method: "GET",
       headers: {
         "X-Vault-Token": accessToken,
