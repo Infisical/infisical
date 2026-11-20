@@ -19,12 +19,16 @@ type EAB struct {
 // its EAB credentials.
 func EnableACME(tt *testing.T, app Application, profile Profile, body api.SetPkiApplicationAcmeEnrollmentJSONRequestBody) EAB {
 	tt.Helper()
-	client := app.project.tn.Admin.API
-	res, err := client.SetPkiApplicationAcmeEnrollmentWithResponse(tt.Context(), app.ID, profile.ID, body)
+	res, err := app.project.tn.Admin.API.SetPkiApplicationAcmeEnrollmentWithResponse(tt.Context(), app.ID, profile.ID, body)
 	require.NoError(tt, err, "enabling ACME enrollment")
 	require.NotNilf(tt, res.JSON200, "enabling ACME enrollment returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	return RevealEAB(tt, app, profile)
+}
 
-	reveal, err := client.RevealPkiApplicationAcmeEabSecretWithResponse(tt.Context(), app.ID, profile.ID)
+// RevealEAB returns the current EAB credentials of the application's ACME enrollment for the profile.
+func RevealEAB(tt *testing.T, app Application, profile Profile) EAB {
+	tt.Helper()
+	reveal, err := app.project.tn.Admin.API.RevealPkiApplicationAcmeEabSecretWithResponse(tt.Context(), app.ID, profile.ID)
 	require.NoError(tt, err, "revealing the EAB secret")
 	require.NotNilf(tt, reveal.JSON200, "revealing the EAB secret returned %d: %s", reveal.StatusCode(), apierr.Body(reveal.Body))
 	return EAB{KID: reveal.JSON200.EabKid, Secret: reveal.JSON200.EabSecret}

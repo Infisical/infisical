@@ -3817,6 +3817,7 @@ const (
 	PkiSyncHealthCheck                            TriggerAdminCronJobParamsJobName = "pki-sync-health-check"
 	ProjectEnvHardDelete                          TriggerAdminCronJobParamsJobName = "project-env-hard-delete"
 	ProjectHardDelete                             TriggerAdminCronJobParamsJobName = "project-hard-delete"
+	ScepIntuneRevocationSync                      TriggerAdminCronJobParamsJobName = "scep-intune-revocation-sync"
 	SecretReadActivityFlush                       TriggerAdminCronJobParamsJobName = "secret-read-activity-flush"
 	SecretReadActivityPrune                       TriggerAdminCronJobParamsJobName = "secret-read-activity-prune"
 	SecretRotationV2QueueRotations                TriggerAdminCronJobParamsJobName = "secret-rotation-v2-queue-rotations"
@@ -3907,6 +3908,8 @@ func (e TriggerAdminCronJobParamsJobName) Valid() bool {
 	case ProjectEnvHardDelete:
 		return true
 	case ProjectHardDelete:
+		return true
+	case ScepIntuneRevocationSync:
 		return true
 	case SecretReadActivityFlush:
 		return true
@@ -5597,6 +5600,7 @@ const (
 	CreateAlertJSONBodyChannelsChannelTypeEmail     CreateAlertJSONBodyChannelsChannelType = "email"
 	CreateAlertJSONBodyChannelsChannelTypePagerduty CreateAlertJSONBodyChannelsChannelType = "pagerduty"
 	CreateAlertJSONBodyChannelsChannelTypeSlack     CreateAlertJSONBodyChannelsChannelType = "slack"
+	CreateAlertJSONBodyChannelsChannelTypeSlackApp  CreateAlertJSONBodyChannelsChannelType = "slack-app"
 	CreateAlertJSONBodyChannelsChannelTypeWebhook   CreateAlertJSONBodyChannelsChannelType = "webhook"
 )
 
@@ -5608,6 +5612,8 @@ func (e CreateAlertJSONBodyChannelsChannelType) Valid() bool {
 	case CreateAlertJSONBodyChannelsChannelTypePagerduty:
 		return true
 	case CreateAlertJSONBodyChannelsChannelTypeSlack:
+		return true
+	case CreateAlertJSONBodyChannelsChannelTypeSlackApp:
 		return true
 	case CreateAlertJSONBodyChannelsChannelTypeWebhook:
 		return true
@@ -5759,6 +5765,7 @@ const (
 	TestAlertChannelJSONBodyChannelTypeEmail     TestAlertChannelJSONBodyChannelType = "email"
 	TestAlertChannelJSONBodyChannelTypePagerduty TestAlertChannelJSONBodyChannelType = "pagerduty"
 	TestAlertChannelJSONBodyChannelTypeSlack     TestAlertChannelJSONBodyChannelType = "slack"
+	TestAlertChannelJSONBodyChannelTypeSlackApp  TestAlertChannelJSONBodyChannelType = "slack-app"
 	TestAlertChannelJSONBodyChannelTypeWebhook   TestAlertChannelJSONBodyChannelType = "webhook"
 )
 
@@ -5770,6 +5777,8 @@ func (e TestAlertChannelJSONBodyChannelType) Valid() bool {
 	case TestAlertChannelJSONBodyChannelTypePagerduty:
 		return true
 	case TestAlertChannelJSONBodyChannelTypeSlack:
+		return true
+	case TestAlertChannelJSONBodyChannelTypeSlackApp:
 		return true
 	case TestAlertChannelJSONBodyChannelTypeWebhook:
 		return true
@@ -6101,6 +6110,7 @@ const (
 	UpdateAlertJSONBodyChannelsChannelTypeEmail     UpdateAlertJSONBodyChannelsChannelType = "email"
 	UpdateAlertJSONBodyChannelsChannelTypePagerduty UpdateAlertJSONBodyChannelsChannelType = "pagerduty"
 	UpdateAlertJSONBodyChannelsChannelTypeSlack     UpdateAlertJSONBodyChannelsChannelType = "slack"
+	UpdateAlertJSONBodyChannelsChannelTypeSlackApp  UpdateAlertJSONBodyChannelsChannelType = "slack-app"
 	UpdateAlertJSONBodyChannelsChannelTypeWebhook   UpdateAlertJSONBodyChannelsChannelType = "webhook"
 )
 
@@ -6112,6 +6122,8 @@ func (e UpdateAlertJSONBodyChannelsChannelType) Valid() bool {
 	case UpdateAlertJSONBodyChannelsChannelTypePagerduty:
 		return true
 	case UpdateAlertJSONBodyChannelsChannelTypeSlack:
+		return true
+	case UpdateAlertJSONBodyChannelsChannelTypeSlackApp:
 		return true
 	case UpdateAlertJSONBodyChannelsChannelTypeWebhook:
 		return true
@@ -11279,13 +11291,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections99RotationRotationSta
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections100App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections100AppQovery ListAppConnections200JSONResponseBodyAppConnections100App = "qovery"
+	ListAppConnections200JSONResponseBodyAppConnections100AppCoolify ListAppConnections200JSONResponseBodyAppConnections100App = "coolify"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections100App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections100App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections100AppQovery:
+	case ListAppConnections200JSONResponseBodyAppConnections100AppCoolify:
 		return true
 	default:
 		return false
@@ -11294,13 +11306,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections100App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections100Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections100MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections100Method = "access-token"
+	ListAppConnections200JSONResponseBodyAppConnections100MethodApiToken ListAppConnections200JSONResponseBodyAppConnections100Method = "api-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections100Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections100Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections100MethodAccessToken:
+	case ListAppConnections200JSONResponseBodyAppConnections100MethodApiToken:
 		return true
 	default:
 		return false
@@ -11327,13 +11339,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections100RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections101App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections101AppLitellm ListAppConnections200JSONResponseBodyAppConnections101App = "litellm"
+	ListAppConnections200JSONResponseBodyAppConnections101AppQovery ListAppConnections200JSONResponseBodyAppConnections101App = "qovery"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections101App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections101App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections101AppLitellm:
+	case ListAppConnections200JSONResponseBodyAppConnections101AppQovery:
 		return true
 	default:
 		return false
@@ -11342,13 +11354,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections101App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections101Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections101MethodApiKey ListAppConnections200JSONResponseBodyAppConnections101Method = "api-key"
+	ListAppConnections200JSONResponseBodyAppConnections101MethodAccessToken ListAppConnections200JSONResponseBodyAppConnections101Method = "access-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections101Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections101Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections101MethodApiKey:
+	case ListAppConnections200JSONResponseBodyAppConnections101MethodAccessToken:
 		return true
 	default:
 		return false
@@ -11375,13 +11387,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections101RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections102App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections102AppFireworks ListAppConnections200JSONResponseBodyAppConnections102App = "fireworks"
+	ListAppConnections200JSONResponseBodyAppConnections102AppLitellm ListAppConnections200JSONResponseBodyAppConnections102App = "litellm"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections102App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections102App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections102AppFireworks:
+	case ListAppConnections200JSONResponseBodyAppConnections102AppLitellm:
 		return true
 	default:
 		return false
@@ -11423,13 +11435,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections102RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections103App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections103AppNutanixPrismCentral ListAppConnections200JSONResponseBodyAppConnections103App = "nutanix-prism-central"
+	ListAppConnections200JSONResponseBodyAppConnections103AppFireworks ListAppConnections200JSONResponseBodyAppConnections103App = "fireworks"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections103App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections103App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections103AppNutanixPrismCentral:
+	case ListAppConnections200JSONResponseBodyAppConnections103AppFireworks:
 		return true
 	default:
 		return false
@@ -11486,13 +11498,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections104App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections104Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections104MethodBasicAuth ListAppConnections200JSONResponseBodyAppConnections104Method = "basic-auth"
+	ListAppConnections200JSONResponseBodyAppConnections104MethodApiKey ListAppConnections200JSONResponseBodyAppConnections104Method = "api-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections104Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections104Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections104MethodBasicAuth:
+	case ListAppConnections200JSONResponseBodyAppConnections104MethodApiKey:
 		return true
 	default:
 		return false
@@ -11519,13 +11531,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections104RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections105App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections105AppPowerdns ListAppConnections200JSONResponseBodyAppConnections105App = "powerdns"
+	ListAppConnections200JSONResponseBodyAppConnections105AppNutanixPrismCentral ListAppConnections200JSONResponseBodyAppConnections105App = "nutanix-prism-central"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections105App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections105App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections105AppPowerdns:
+	case ListAppConnections200JSONResponseBodyAppConnections105AppNutanixPrismCentral:
 		return true
 	default:
 		return false
@@ -11534,13 +11546,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections105App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections105Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections105MethodApiKey ListAppConnections200JSONResponseBodyAppConnections105Method = "api-key"
+	ListAppConnections200JSONResponseBodyAppConnections105MethodBasicAuth ListAppConnections200JSONResponseBodyAppConnections105Method = "basic-auth"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections105Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections105Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections105MethodApiKey:
+	case ListAppConnections200JSONResponseBodyAppConnections105MethodBasicAuth:
 		return true
 	default:
 		return false
@@ -11567,13 +11579,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections105RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections106App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections106AppSpacelift ListAppConnections200JSONResponseBodyAppConnections106App = "spacelift"
+	ListAppConnections200JSONResponseBodyAppConnections106AppPowerdns ListAppConnections200JSONResponseBodyAppConnections106App = "powerdns"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections106App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections106App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections106AppSpacelift:
+	case ListAppConnections200JSONResponseBodyAppConnections106AppPowerdns:
 		return true
 	default:
 		return false
@@ -11582,13 +11594,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections106App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections106Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections106MethodApiKeySecret ListAppConnections200JSONResponseBodyAppConnections106Method = "api-key-secret"
+	ListAppConnections200JSONResponseBodyAppConnections106MethodApiKey ListAppConnections200JSONResponseBodyAppConnections106Method = "api-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections106Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections106Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections106MethodApiKeySecret:
+	case ListAppConnections200JSONResponseBodyAppConnections106MethodApiKey:
 		return true
 	default:
 		return false
@@ -11615,13 +11627,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections106RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections107App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections107AppDaytona ListAppConnections200JSONResponseBodyAppConnections107App = "daytona"
+	ListAppConnections200JSONResponseBodyAppConnections107AppSpacelift ListAppConnections200JSONResponseBodyAppConnections107App = "spacelift"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections107App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections107App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections107AppDaytona:
+	case ListAppConnections200JSONResponseBodyAppConnections107AppSpacelift:
 		return true
 	default:
 		return false
@@ -11630,13 +11642,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections107App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections107Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections107MethodApiKey ListAppConnections200JSONResponseBodyAppConnections107Method = "api-key"
+	ListAppConnections200JSONResponseBodyAppConnections107MethodApiKeySecret ListAppConnections200JSONResponseBodyAppConnections107Method = "api-key-secret"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections107Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections107Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections107MethodApiKey:
+	case ListAppConnections200JSONResponseBodyAppConnections107MethodApiKeySecret:
 		return true
 	default:
 		return false
@@ -11663,13 +11675,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections107RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections108App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections108AppStripe ListAppConnections200JSONResponseBodyAppConnections108App = "stripe"
+	ListAppConnections200JSONResponseBodyAppConnections108AppDaytona ListAppConnections200JSONResponseBodyAppConnections108App = "daytona"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections108App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections108App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections108AppStripe:
+	case ListAppConnections200JSONResponseBodyAppConnections108AppDaytona:
 		return true
 	default:
 		return false
@@ -11678,13 +11690,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections108App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections108Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections108MethodOauth ListAppConnections200JSONResponseBodyAppConnections108Method = "oauth"
+	ListAppConnections200JSONResponseBodyAppConnections108MethodApiKey ListAppConnections200JSONResponseBodyAppConnections108Method = "api-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections108Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections108Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections108MethodOauth:
+	case ListAppConnections200JSONResponseBodyAppConnections108MethodApiKey:
 		return true
 	default:
 		return false
@@ -11711,13 +11723,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections108RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections109App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections109AppKeeper ListAppConnections200JSONResponseBodyAppConnections109App = "keeper"
+	ListAppConnections200JSONResponseBodyAppConnections109AppStripe ListAppConnections200JSONResponseBodyAppConnections109App = "stripe"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections109App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections109App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections109AppKeeper:
+	case ListAppConnections200JSONResponseBodyAppConnections109AppStripe:
 		return true
 	default:
 		return false
@@ -11726,13 +11738,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections109App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections109Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections109MethodApiKey ListAppConnections200JSONResponseBodyAppConnections109Method = "api-key"
+	ListAppConnections200JSONResponseBodyAppConnections109MethodOauth ListAppConnections200JSONResponseBodyAppConnections109Method = "oauth"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections109Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections109Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections109MethodApiKey:
+	case ListAppConnections200JSONResponseBodyAppConnections109MethodOauth:
 		return true
 	default:
 		return false
@@ -11759,13 +11771,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections109RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections110App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections110AppHpeIlo ListAppConnections200JSONResponseBodyAppConnections110App = "hpe-ilo"
+	ListAppConnections200JSONResponseBodyAppConnections110AppKeeper ListAppConnections200JSONResponseBodyAppConnections110App = "keeper"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections110App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections110App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections110AppHpeIlo:
+	case ListAppConnections200JSONResponseBodyAppConnections110AppKeeper:
 		return true
 	default:
 		return false
@@ -11774,13 +11786,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections110App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections110Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections110MethodBasicAuth ListAppConnections200JSONResponseBodyAppConnections110Method = "basic-auth"
+	ListAppConnections200JSONResponseBodyAppConnections110MethodApiKey ListAppConnections200JSONResponseBodyAppConnections110Method = "api-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections110Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections110Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections110MethodBasicAuth:
+	case ListAppConnections200JSONResponseBodyAppConnections110MethodApiKey:
 		return true
 	default:
 		return false
@@ -11807,13 +11819,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections110RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections111App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections111AppServicenow ListAppConnections200JSONResponseBodyAppConnections111App = "servicenow"
+	ListAppConnections200JSONResponseBodyAppConnections111AppHpeIlo ListAppConnections200JSONResponseBodyAppConnections111App = "hpe-ilo"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections111App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections111App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections111AppServicenow:
+	case ListAppConnections200JSONResponseBodyAppConnections111AppHpeIlo:
 		return true
 	default:
 		return false
@@ -11855,13 +11867,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections111RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections112App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections112AppS3Compatible ListAppConnections200JSONResponseBodyAppConnections112App = "s3-compatible"
+	ListAppConnections200JSONResponseBodyAppConnections112AppServicenow ListAppConnections200JSONResponseBodyAppConnections112App = "servicenow"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections112App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections112App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections112AppS3Compatible:
+	case ListAppConnections200JSONResponseBodyAppConnections112AppServicenow:
 		return true
 	default:
 		return false
@@ -11870,13 +11882,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections112App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections112Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections112MethodAccessKey ListAppConnections200JSONResponseBodyAppConnections112Method = "access-key"
+	ListAppConnections200JSONResponseBodyAppConnections112MethodBasicAuth ListAppConnections200JSONResponseBodyAppConnections112Method = "basic-auth"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections112Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections112Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections112MethodAccessKey:
+	case ListAppConnections200JSONResponseBodyAppConnections112MethodBasicAuth:
 		return true
 	default:
 		return false
@@ -11903,13 +11915,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections112RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections113App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections113AppJira ListAppConnections200JSONResponseBodyAppConnections113App = "jira"
+	ListAppConnections200JSONResponseBodyAppConnections113AppS3Compatible ListAppConnections200JSONResponseBodyAppConnections113App = "s3-compatible"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections113App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections113App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections113AppJira:
+	case ListAppConnections200JSONResponseBodyAppConnections113AppS3Compatible:
 		return true
 	default:
 		return false
@@ -11918,13 +11930,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections113App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections113Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections113MethodApiToken ListAppConnections200JSONResponseBodyAppConnections113Method = "api-token"
+	ListAppConnections200JSONResponseBodyAppConnections113MethodAccessKey ListAppConnections200JSONResponseBodyAppConnections113Method = "access-key"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections113Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections113Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections113MethodApiToken:
+	case ListAppConnections200JSONResponseBodyAppConnections113MethodAccessKey:
 		return true
 	default:
 		return false
@@ -11966,13 +11978,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections114App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections114Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections114MethodPersonalAccessToken ListAppConnections200JSONResponseBodyAppConnections114Method = "personal-access-token"
+	ListAppConnections200JSONResponseBodyAppConnections114MethodApiToken ListAppConnections200JSONResponseBodyAppConnections114Method = "api-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections114Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections114Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections114MethodPersonalAccessToken:
+	case ListAppConnections200JSONResponseBodyAppConnections114MethodApiToken:
 		return true
 	default:
 		return false
@@ -11999,13 +12011,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections114RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections115App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections115AppClickhouse ListAppConnections200JSONResponseBodyAppConnections115App = "clickhouse"
+	ListAppConnections200JSONResponseBodyAppConnections115AppJira ListAppConnections200JSONResponseBodyAppConnections115App = "jira"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections115App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections115App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections115AppClickhouse:
+	case ListAppConnections200JSONResponseBodyAppConnections115AppJira:
 		return true
 	default:
 		return false
@@ -12014,13 +12026,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections115App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections115Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections115MethodUsernameAndPassword ListAppConnections200JSONResponseBodyAppConnections115Method = "username-and-password"
+	ListAppConnections200JSONResponseBodyAppConnections115MethodPersonalAccessToken ListAppConnections200JSONResponseBodyAppConnections115Method = "personal-access-token"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections115Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections115Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections115MethodUsernameAndPassword:
+	case ListAppConnections200JSONResponseBodyAppConnections115MethodPersonalAccessToken:
 		return true
 	default:
 		return false
@@ -12047,13 +12059,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections115RotationRotationSt
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections116App.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections116AppIncidentIo ListAppConnections200JSONResponseBodyAppConnections116App = "incident-io"
+	ListAppConnections200JSONResponseBodyAppConnections116AppClickhouse ListAppConnections200JSONResponseBodyAppConnections116App = "clickhouse"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections116App enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections116App) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections116AppIncidentIo:
+	case ListAppConnections200JSONResponseBodyAppConnections116AppClickhouse:
 		return true
 	default:
 		return false
@@ -12062,13 +12074,13 @@ func (e ListAppConnections200JSONResponseBodyAppConnections116App) Valid() bool 
 
 // Defines values for ListAppConnections200JSONResponseBodyAppConnections116Method.
 const (
-	ListAppConnections200JSONResponseBodyAppConnections116MethodApiKey ListAppConnections200JSONResponseBodyAppConnections116Method = "api-key"
+	ListAppConnections200JSONResponseBodyAppConnections116MethodUsernameAndPassword ListAppConnections200JSONResponseBodyAppConnections116Method = "username-and-password"
 )
 
 // Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections116Method enum.
 func (e ListAppConnections200JSONResponseBodyAppConnections116Method) Valid() bool {
 	switch e {
-	case ListAppConnections200JSONResponseBodyAppConnections116MethodApiKey:
+	case ListAppConnections200JSONResponseBodyAppConnections116MethodUsernameAndPassword:
 		return true
 	default:
 		return false
@@ -12087,6 +12099,54 @@ func (e ListAppConnections200JSONResponseBodyAppConnections116RotationRotationSt
 	case ListAppConnections200JSONResponseBodyAppConnections116RotationRotationStatusFailed:
 		return true
 	case ListAppConnections200JSONResponseBodyAppConnections116RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAppConnections200JSONResponseBodyAppConnections117App.
+const (
+	ListAppConnections200JSONResponseBodyAppConnections117AppIncidentIo ListAppConnections200JSONResponseBodyAppConnections117App = "incident-io"
+)
+
+// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections117App enum.
+func (e ListAppConnections200JSONResponseBodyAppConnections117App) Valid() bool {
+	switch e {
+	case ListAppConnections200JSONResponseBodyAppConnections117AppIncidentIo:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAppConnections200JSONResponseBodyAppConnections117Method.
+const (
+	ListAppConnections200JSONResponseBodyAppConnections117MethodApiKey ListAppConnections200JSONResponseBodyAppConnections117Method = "api-key"
+)
+
+// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections117Method enum.
+func (e ListAppConnections200JSONResponseBodyAppConnections117Method) Valid() bool {
+	switch e {
+	case ListAppConnections200JSONResponseBodyAppConnections117MethodApiKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAppConnections200JSONResponseBodyAppConnections117RotationRotationStatus.
+const (
+	ListAppConnections200JSONResponseBodyAppConnections117RotationRotationStatusFailed  ListAppConnections200JSONResponseBodyAppConnections117RotationRotationStatus = "failed"
+	ListAppConnections200JSONResponseBodyAppConnections117RotationRotationStatusSuccess ListAppConnections200JSONResponseBodyAppConnections117RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections117RotationRotationStatus enum.
+func (e ListAppConnections200JSONResponseBodyAppConnections117RotationRotationStatus) Valid() bool {
+	switch e {
+	case ListAppConnections200JSONResponseBodyAppConnections117RotationRotationStatusFailed:
+		return true
+	case ListAppConnections200JSONResponseBodyAppConnections117RotationRotationStatusSuccess:
 		return true
 	default:
 		return false
@@ -23670,6 +23730,402 @@ const (
 func (e BreakGlassCertRequestApprovalRequest500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case BreakGlassCertRequestApprovalRequest500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesType.
+const (
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesTypeDnsName   CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesType = "dns_name"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesTypeEmail     CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesType = "email"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesTypeIpAddress CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesType = "ip_address"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesTypeUpn       CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesType = "upn"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesTypeUri       CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesType = "uri"
+)
+
+// Valid indicates whether the value is a known member of the CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesType enum.
+func (e CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesType) Valid() bool {
+	switch e {
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesTypeDnsName:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesTypeEmail:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesTypeIpAddress:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesTypeUpn:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesTypeUri:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsages.
+const (
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsagesAnyPurpose      CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsages = "any_purpose"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsagesClientAuth      CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsages = "client_auth"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsagesCodeSigning     CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsages = "code_signing"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsagesEmailProtection CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsages = "email_protection"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsagesOcspSigning     CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsages = "ocsp_signing"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsagesServerAuth      CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsages = "server_auth"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsagesSmartCardLogon  CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsages = "smart_card_logon"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsagesTimeStamping    CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsages = "time_stamping"
+)
+
+// Valid indicates whether the value is a known member of the CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsages enum.
+func (e CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsages) Valid() bool {
+	switch e {
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsagesAnyPurpose:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsagesClientAuth:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsagesCodeSigning:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsagesEmailProtection:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsagesOcspSigning:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsagesServerAuth:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsagesSmartCardLogon:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsagesTimeStamping:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm.
+const (
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmECPrime256v1    CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "EC_prime256v1"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmECSecp384r1     CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "EC_secp384r1"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmECSecp521r1     CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "EC_secp521r1"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmMLDSA44         CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "ML-DSA-44"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmMLDSA65         CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "ML-DSA-65"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmMLDSA87         CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "ML-DSA-87"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmRSA2048         CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "RSA_2048"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmRSA3072         CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "RSA_3072"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmRSA4096         CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "RSA_4096"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHA2128f  CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "SLH-DSA-SHA2-128f"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHA2128s  CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "SLH-DSA-SHA2-128s"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHA2192f  CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "SLH-DSA-SHA2-192f"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHA2192s  CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "SLH-DSA-SHA2-192s"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHA2256f  CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "SLH-DSA-SHA2-256f"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHA2256s  CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "SLH-DSA-SHA2-256s"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHAKE128f CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "SLH-DSA-SHAKE-128f"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHAKE128s CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "SLH-DSA-SHAKE-128s"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHAKE192f CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "SLH-DSA-SHAKE-192f"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHAKE192s CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "SLH-DSA-SHAKE-192s"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHAKE256f CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "SLH-DSA-SHAKE-256f"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHAKE256s CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm = "SLH-DSA-SHAKE-256s"
+)
+
+// Valid indicates whether the value is a known member of the CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm enum.
+func (e CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm) Valid() bool {
+	switch e {
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmECPrime256v1:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmECSecp384r1:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmECSecp521r1:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmMLDSA44:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmMLDSA65:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmMLDSA87:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmRSA2048:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmRSA3072:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmRSA4096:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHA2128f:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHA2128s:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHA2192f:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHA2192s:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHA2256f:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHA2256s:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHAKE128f:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHAKE128s:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHAKE192f:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHAKE192s:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHAKE256f:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithmSLHDSASHAKE256s:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsages.
+const (
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsagesCrlSign          CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsages = "crl_sign"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsagesDataEncipherment CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsages = "data_encipherment"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsagesDecipherOnly     CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsages = "decipher_only"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsagesDigitalSignature CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsages = "digital_signature"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsagesEncipherOnly     CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsages = "encipher_only"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsagesKeyAgreement     CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsages = "key_agreement"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsagesKeyCertSign      CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsages = "key_cert_sign"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsagesKeyEncipherment  CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsages = "key_encipherment"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsagesNonRepudiation   CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsages = "non_repudiation"
+)
+
+// Valid indicates whether the value is a known member of the CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsages enum.
+func (e CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsages) Valid() bool {
+	switch e {
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsagesCrlSign:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsagesDataEncipherment:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsagesDecipherOnly:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsagesDigitalSignature:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsagesEncipherOnly:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsagesKeyAgreement:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsagesKeyCertSign:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsagesKeyEncipherment:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsagesNonRepudiation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm.
+const (
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmECDSASHA256     CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "ECDSA-SHA256"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmECDSASHA384     CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "ECDSA-SHA384"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmECDSASHA512     CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "ECDSA-SHA512"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmMLDSA44         CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "ML-DSA-44"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmMLDSA65         CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "ML-DSA-65"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmMLDSA87         CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "ML-DSA-87"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmRSASHA256       CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "RSA-SHA256"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmRSASHA384       CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "RSA-SHA384"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmRSASHA512       CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "RSA-SHA512"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHA2128f  CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "SLH-DSA-SHA2-128f"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHA2128s  CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "SLH-DSA-SHA2-128s"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHA2192f  CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "SLH-DSA-SHA2-192f"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHA2192s  CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "SLH-DSA-SHA2-192s"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHA2256f  CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "SLH-DSA-SHA2-256f"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHA2256s  CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "SLH-DSA-SHA2-256s"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHAKE128f CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "SLH-DSA-SHAKE-128f"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHAKE128s CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "SLH-DSA-SHAKE-128s"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHAKE192f CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "SLH-DSA-SHAKE-192f"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHAKE192s CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "SLH-DSA-SHAKE-192s"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHAKE256f CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "SLH-DSA-SHAKE-256f"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHAKE256s CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm = "SLH-DSA-SHAKE-256s"
+)
+
+// Valid indicates whether the value is a known member of the CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm enum.
+func (e CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm) Valid() bool {
+	switch e {
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmECDSASHA256:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmECDSASHA384:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmECDSASHA512:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmMLDSA44:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmMLDSA65:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmMLDSA87:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmRSASHA256:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmRSASHA384:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmRSASHA512:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHA2128f:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHA2128s:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHA2192f:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHA2192s:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHA2256f:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHA2256s:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHAKE128f:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHAKE128s:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHAKE192f:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHAKE192s:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHAKE256f:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithmSLHDSASHAKE256s:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalRenewalKeySource.
+const (
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalRenewalKeySourceCsr   CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalRenewalKeySource = "csr"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalRenewalKeySourceNew   CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalRenewalKeySource = "new"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalRenewalKeySourceReuse CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalRenewalKeySource = "reuse"
+)
+
+// Valid indicates whether the value is a known member of the CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalRenewalKeySource enum.
+func (e CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalRenewalKeySource) Valid() bool {
+	switch e {
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalRenewalKeySourceCsr:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalRenewalKeySourceNew:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalRenewalKeySourceReuse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataVersion.
+const (
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataVersionN1 CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataVersion enum.
+func (e CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataVersion) Valid() bool {
+	switch e {
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataVersionN1:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelCertRequestApprovalRequest200JSONResponseBodyRequestStepsApproversType.
+const (
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestStepsApproversTypeGroup CancelCertRequestApprovalRequest200JSONResponseBodyRequestStepsApproversType = "group"
+	CancelCertRequestApprovalRequest200JSONResponseBodyRequestStepsApproversTypeUser  CancelCertRequestApprovalRequest200JSONResponseBodyRequestStepsApproversType = "user"
+)
+
+// Valid indicates whether the value is a known member of the CancelCertRequestApprovalRequest200JSONResponseBodyRequestStepsApproversType enum.
+func (e CancelCertRequestApprovalRequest200JSONResponseBodyRequestStepsApproversType) Valid() bool {
+	switch e {
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestStepsApproversTypeGroup:
+		return true
+	case CancelCertRequestApprovalRequest200JSONResponseBodyRequestStepsApproversTypeUser:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelCertRequestApprovalRequest400JSONResponseBodyStatusCode.
+const (
+	CancelCertRequestApprovalRequest400JSONResponseBodyStatusCodeN400 CancelCertRequestApprovalRequest400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CancelCertRequestApprovalRequest400JSONResponseBodyStatusCode enum.
+func (e CancelCertRequestApprovalRequest400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CancelCertRequestApprovalRequest400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelCertRequestApprovalRequest401JSONResponseBodyStatusCode.
+const (
+	CancelCertRequestApprovalRequest401JSONResponseBodyStatusCodeN401 CancelCertRequestApprovalRequest401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CancelCertRequestApprovalRequest401JSONResponseBodyStatusCode enum.
+func (e CancelCertRequestApprovalRequest401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CancelCertRequestApprovalRequest401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelCertRequestApprovalRequest403JSONResponseBodyStatusCode.
+const (
+	CancelCertRequestApprovalRequest403JSONResponseBodyStatusCodeN403 CancelCertRequestApprovalRequest403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CancelCertRequestApprovalRequest403JSONResponseBodyStatusCode enum.
+func (e CancelCertRequestApprovalRequest403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CancelCertRequestApprovalRequest403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelCertRequestApprovalRequest404JSONResponseBodyStatusCode.
+const (
+	CancelCertRequestApprovalRequest404JSONResponseBodyStatusCodeN404 CancelCertRequestApprovalRequest404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CancelCertRequestApprovalRequest404JSONResponseBodyStatusCode enum.
+func (e CancelCertRequestApprovalRequest404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CancelCertRequestApprovalRequest404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelCertRequestApprovalRequest422JSONResponseBodyStatusCode.
+const (
+	CancelCertRequestApprovalRequest422JSONResponseBodyStatusCodeN422 CancelCertRequestApprovalRequest422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CancelCertRequestApprovalRequest422JSONResponseBodyStatusCode enum.
+func (e CancelCertRequestApprovalRequest422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CancelCertRequestApprovalRequest422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelCertRequestApprovalRequest500JSONResponseBodyStatusCode.
+const (
+	CancelCertRequestApprovalRequest500JSONResponseBodyStatusCodeN500 CancelCertRequestApprovalRequest500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CancelCertRequestApprovalRequest500JSONResponseBodyStatusCode enum.
+func (e CancelCertRequestApprovalRequest500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CancelCertRequestApprovalRequest500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -37884,6 +38340,186 @@ func (e UpdatePkiApplication500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for RemovePkiApplicationGroupMember400JSONResponseBodyStatusCode.
+const (
+	RemovePkiApplicationGroupMember400JSONResponseBodyStatusCodeN400 RemovePkiApplicationGroupMember400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the RemovePkiApplicationGroupMember400JSONResponseBodyStatusCode enum.
+func (e RemovePkiApplicationGroupMember400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemovePkiApplicationGroupMember400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemovePkiApplicationGroupMember401JSONResponseBodyStatusCode.
+const (
+	RemovePkiApplicationGroupMember401JSONResponseBodyStatusCodeN401 RemovePkiApplicationGroupMember401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the RemovePkiApplicationGroupMember401JSONResponseBodyStatusCode enum.
+func (e RemovePkiApplicationGroupMember401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemovePkiApplicationGroupMember401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemovePkiApplicationGroupMember403JSONResponseBodyStatusCode.
+const (
+	RemovePkiApplicationGroupMember403JSONResponseBodyStatusCodeN403 RemovePkiApplicationGroupMember403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the RemovePkiApplicationGroupMember403JSONResponseBodyStatusCode enum.
+func (e RemovePkiApplicationGroupMember403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemovePkiApplicationGroupMember403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemovePkiApplicationGroupMember404JSONResponseBodyStatusCode.
+const (
+	RemovePkiApplicationGroupMember404JSONResponseBodyStatusCodeN404 RemovePkiApplicationGroupMember404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the RemovePkiApplicationGroupMember404JSONResponseBodyStatusCode enum.
+func (e RemovePkiApplicationGroupMember404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemovePkiApplicationGroupMember404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemovePkiApplicationGroupMember422JSONResponseBodyStatusCode.
+const (
+	RemovePkiApplicationGroupMember422JSONResponseBodyStatusCodeN422 RemovePkiApplicationGroupMember422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the RemovePkiApplicationGroupMember422JSONResponseBodyStatusCode enum.
+func (e RemovePkiApplicationGroupMember422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemovePkiApplicationGroupMember422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemovePkiApplicationGroupMember500JSONResponseBodyStatusCode.
+const (
+	RemovePkiApplicationGroupMember500JSONResponseBodyStatusCodeN500 RemovePkiApplicationGroupMember500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the RemovePkiApplicationGroupMember500JSONResponseBodyStatusCode enum.
+func (e RemovePkiApplicationGroupMember500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemovePkiApplicationGroupMember500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdatePkiApplicationGroupMemberRole400JSONResponseBodyStatusCode.
+const (
+	UpdatePkiApplicationGroupMemberRole400JSONResponseBodyStatusCodeN400 UpdatePkiApplicationGroupMemberRole400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpdatePkiApplicationGroupMemberRole400JSONResponseBodyStatusCode enum.
+func (e UpdatePkiApplicationGroupMemberRole400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdatePkiApplicationGroupMemberRole400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdatePkiApplicationGroupMemberRole401JSONResponseBodyStatusCode.
+const (
+	UpdatePkiApplicationGroupMemberRole401JSONResponseBodyStatusCodeN401 UpdatePkiApplicationGroupMemberRole401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpdatePkiApplicationGroupMemberRole401JSONResponseBodyStatusCode enum.
+func (e UpdatePkiApplicationGroupMemberRole401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdatePkiApplicationGroupMemberRole401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdatePkiApplicationGroupMemberRole403JSONResponseBodyStatusCode.
+const (
+	UpdatePkiApplicationGroupMemberRole403JSONResponseBodyStatusCodeN403 UpdatePkiApplicationGroupMemberRole403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpdatePkiApplicationGroupMemberRole403JSONResponseBodyStatusCode enum.
+func (e UpdatePkiApplicationGroupMemberRole403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdatePkiApplicationGroupMemberRole403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdatePkiApplicationGroupMemberRole404JSONResponseBodyStatusCode.
+const (
+	UpdatePkiApplicationGroupMemberRole404JSONResponseBodyStatusCodeN404 UpdatePkiApplicationGroupMemberRole404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpdatePkiApplicationGroupMemberRole404JSONResponseBodyStatusCode enum.
+func (e UpdatePkiApplicationGroupMemberRole404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdatePkiApplicationGroupMemberRole404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdatePkiApplicationGroupMemberRole422JSONResponseBodyStatusCode.
+const (
+	UpdatePkiApplicationGroupMemberRole422JSONResponseBodyStatusCodeN422 UpdatePkiApplicationGroupMemberRole422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpdatePkiApplicationGroupMemberRole422JSONResponseBodyStatusCode enum.
+func (e UpdatePkiApplicationGroupMemberRole422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdatePkiApplicationGroupMemberRole422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdatePkiApplicationGroupMemberRole500JSONResponseBodyStatusCode.
+const (
+	UpdatePkiApplicationGroupMemberRole500JSONResponseBodyStatusCodeN500 UpdatePkiApplicationGroupMemberRole500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpdatePkiApplicationGroupMemberRole500JSONResponseBodyStatusCode enum.
+func (e UpdatePkiApplicationGroupMemberRole500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdatePkiApplicationGroupMemberRole500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for AddPkiApplicationGroupMember400JSONResponseBodyStatusCode.
 const (
 	AddPkiApplicationGroupMember400JSONResponseBodyStatusCodeN400 AddPkiApplicationGroupMember400JSONResponseBodyStatusCode = 400
@@ -37968,6 +38604,186 @@ const (
 func (e AddPkiApplicationGroupMember500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case AddPkiApplicationGroupMember500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemovePkiApplicationIdentityMember400JSONResponseBodyStatusCode.
+const (
+	RemovePkiApplicationIdentityMember400JSONResponseBodyStatusCodeN400 RemovePkiApplicationIdentityMember400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the RemovePkiApplicationIdentityMember400JSONResponseBodyStatusCode enum.
+func (e RemovePkiApplicationIdentityMember400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemovePkiApplicationIdentityMember400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemovePkiApplicationIdentityMember401JSONResponseBodyStatusCode.
+const (
+	RemovePkiApplicationIdentityMember401JSONResponseBodyStatusCodeN401 RemovePkiApplicationIdentityMember401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the RemovePkiApplicationIdentityMember401JSONResponseBodyStatusCode enum.
+func (e RemovePkiApplicationIdentityMember401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemovePkiApplicationIdentityMember401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemovePkiApplicationIdentityMember403JSONResponseBodyStatusCode.
+const (
+	RemovePkiApplicationIdentityMember403JSONResponseBodyStatusCodeN403 RemovePkiApplicationIdentityMember403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the RemovePkiApplicationIdentityMember403JSONResponseBodyStatusCode enum.
+func (e RemovePkiApplicationIdentityMember403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemovePkiApplicationIdentityMember403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemovePkiApplicationIdentityMember404JSONResponseBodyStatusCode.
+const (
+	RemovePkiApplicationIdentityMember404JSONResponseBodyStatusCodeN404 RemovePkiApplicationIdentityMember404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the RemovePkiApplicationIdentityMember404JSONResponseBodyStatusCode enum.
+func (e RemovePkiApplicationIdentityMember404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemovePkiApplicationIdentityMember404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemovePkiApplicationIdentityMember422JSONResponseBodyStatusCode.
+const (
+	RemovePkiApplicationIdentityMember422JSONResponseBodyStatusCodeN422 RemovePkiApplicationIdentityMember422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the RemovePkiApplicationIdentityMember422JSONResponseBodyStatusCode enum.
+func (e RemovePkiApplicationIdentityMember422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemovePkiApplicationIdentityMember422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemovePkiApplicationIdentityMember500JSONResponseBodyStatusCode.
+const (
+	RemovePkiApplicationIdentityMember500JSONResponseBodyStatusCodeN500 RemovePkiApplicationIdentityMember500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the RemovePkiApplicationIdentityMember500JSONResponseBodyStatusCode enum.
+func (e RemovePkiApplicationIdentityMember500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemovePkiApplicationIdentityMember500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdatePkiApplicationIdentityMemberRole400JSONResponseBodyStatusCode.
+const (
+	UpdatePkiApplicationIdentityMemberRole400JSONResponseBodyStatusCodeN400 UpdatePkiApplicationIdentityMemberRole400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpdatePkiApplicationIdentityMemberRole400JSONResponseBodyStatusCode enum.
+func (e UpdatePkiApplicationIdentityMemberRole400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdatePkiApplicationIdentityMemberRole400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdatePkiApplicationIdentityMemberRole401JSONResponseBodyStatusCode.
+const (
+	UpdatePkiApplicationIdentityMemberRole401JSONResponseBodyStatusCodeN401 UpdatePkiApplicationIdentityMemberRole401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpdatePkiApplicationIdentityMemberRole401JSONResponseBodyStatusCode enum.
+func (e UpdatePkiApplicationIdentityMemberRole401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdatePkiApplicationIdentityMemberRole401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdatePkiApplicationIdentityMemberRole403JSONResponseBodyStatusCode.
+const (
+	UpdatePkiApplicationIdentityMemberRole403JSONResponseBodyStatusCodeN403 UpdatePkiApplicationIdentityMemberRole403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpdatePkiApplicationIdentityMemberRole403JSONResponseBodyStatusCode enum.
+func (e UpdatePkiApplicationIdentityMemberRole403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdatePkiApplicationIdentityMemberRole403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdatePkiApplicationIdentityMemberRole404JSONResponseBodyStatusCode.
+const (
+	UpdatePkiApplicationIdentityMemberRole404JSONResponseBodyStatusCodeN404 UpdatePkiApplicationIdentityMemberRole404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpdatePkiApplicationIdentityMemberRole404JSONResponseBodyStatusCode enum.
+func (e UpdatePkiApplicationIdentityMemberRole404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdatePkiApplicationIdentityMemberRole404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdatePkiApplicationIdentityMemberRole422JSONResponseBodyStatusCode.
+const (
+	UpdatePkiApplicationIdentityMemberRole422JSONResponseBodyStatusCodeN422 UpdatePkiApplicationIdentityMemberRole422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpdatePkiApplicationIdentityMemberRole422JSONResponseBodyStatusCode enum.
+func (e UpdatePkiApplicationIdentityMemberRole422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdatePkiApplicationIdentityMemberRole422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdatePkiApplicationIdentityMemberRole500JSONResponseBodyStatusCode.
+const (
+	UpdatePkiApplicationIdentityMemberRole500JSONResponseBodyStatusCodeN500 UpdatePkiApplicationIdentityMemberRole500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpdatePkiApplicationIdentityMemberRole500JSONResponseBodyStatusCode enum.
+func (e UpdatePkiApplicationIdentityMemberRole500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdatePkiApplicationIdentityMemberRole500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -38424,6 +39240,246 @@ func (e DetachPkiApplicationProfile500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for GetPkiApplicationEnrollment200JSONResponseBodyCaType.
+const (
+	GetPkiApplicationEnrollment200JSONResponseBodyCaTypeAcme           GetPkiApplicationEnrollment200JSONResponseBodyCaType = "acme"
+	GetPkiApplicationEnrollment200JSONResponseBodyCaTypeAdcs           GetPkiApplicationEnrollment200JSONResponseBodyCaType = "adcs"
+	GetPkiApplicationEnrollment200JSONResponseBodyCaTypeAwsAcmPublicCa GetPkiApplicationEnrollment200JSONResponseBodyCaType = "aws-acm-public-ca"
+	GetPkiApplicationEnrollment200JSONResponseBodyCaTypeAwsPca         GetPkiApplicationEnrollment200JSONResponseBodyCaType = "aws-pca"
+	GetPkiApplicationEnrollment200JSONResponseBodyCaTypeAzureAdCs      GetPkiApplicationEnrollment200JSONResponseBodyCaType = "azure-ad-cs"
+	GetPkiApplicationEnrollment200JSONResponseBodyCaTypeDigicert       GetPkiApplicationEnrollment200JSONResponseBodyCaType = "digicert"
+	GetPkiApplicationEnrollment200JSONResponseBodyCaTypeGodaddy        GetPkiApplicationEnrollment200JSONResponseBodyCaType = "godaddy"
+	GetPkiApplicationEnrollment200JSONResponseBodyCaTypeInternal       GetPkiApplicationEnrollment200JSONResponseBodyCaType = "internal"
+	GetPkiApplicationEnrollment200JSONResponseBodyCaTypeVenafiTpp      GetPkiApplicationEnrollment200JSONResponseBodyCaType = "venafi-tpp"
+)
+
+// Valid indicates whether the value is a known member of the GetPkiApplicationEnrollment200JSONResponseBodyCaType enum.
+func (e GetPkiApplicationEnrollment200JSONResponseBodyCaType) Valid() bool {
+	switch e {
+	case GetPkiApplicationEnrollment200JSONResponseBodyCaTypeAcme:
+		return true
+	case GetPkiApplicationEnrollment200JSONResponseBodyCaTypeAdcs:
+		return true
+	case GetPkiApplicationEnrollment200JSONResponseBodyCaTypeAwsAcmPublicCa:
+		return true
+	case GetPkiApplicationEnrollment200JSONResponseBodyCaTypeAwsPca:
+		return true
+	case GetPkiApplicationEnrollment200JSONResponseBodyCaTypeAzureAdCs:
+		return true
+	case GetPkiApplicationEnrollment200JSONResponseBodyCaTypeDigicert:
+		return true
+	case GetPkiApplicationEnrollment200JSONResponseBodyCaTypeGodaddy:
+		return true
+	case GetPkiApplicationEnrollment200JSONResponseBodyCaTypeInternal:
+		return true
+	case GetPkiApplicationEnrollment200JSONResponseBodyCaTypeVenafiTpp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeType.
+const (
+	GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeTypeDynamic         GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeType = "dynamic"
+	GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeTypeMicrosoftIntune GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeType = "microsoft-intune"
+	GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeTypeStatic          GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeType = "static"
+)
+
+// Valid indicates whether the value is a known member of the GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeType enum.
+func (e GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeType) Valid() bool {
+	switch e {
+	case GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeTypeDynamic:
+		return true
+	case GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeTypeMicrosoftIntune:
+		return true
+	case GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeTypeStatic:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetPkiApplicationEnrollment400JSONResponseBodyStatusCode.
+const (
+	GetPkiApplicationEnrollment400JSONResponseBodyStatusCodeN400 GetPkiApplicationEnrollment400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetPkiApplicationEnrollment400JSONResponseBodyStatusCode enum.
+func (e GetPkiApplicationEnrollment400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetPkiApplicationEnrollment400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetPkiApplicationEnrollment401JSONResponseBodyStatusCode.
+const (
+	GetPkiApplicationEnrollment401JSONResponseBodyStatusCodeN401 GetPkiApplicationEnrollment401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetPkiApplicationEnrollment401JSONResponseBodyStatusCode enum.
+func (e GetPkiApplicationEnrollment401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetPkiApplicationEnrollment401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetPkiApplicationEnrollment403JSONResponseBodyStatusCode.
+const (
+	GetPkiApplicationEnrollment403JSONResponseBodyStatusCodeN403 GetPkiApplicationEnrollment403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetPkiApplicationEnrollment403JSONResponseBodyStatusCode enum.
+func (e GetPkiApplicationEnrollment403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetPkiApplicationEnrollment403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetPkiApplicationEnrollment404JSONResponseBodyStatusCode.
+const (
+	GetPkiApplicationEnrollment404JSONResponseBodyStatusCodeN404 GetPkiApplicationEnrollment404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetPkiApplicationEnrollment404JSONResponseBodyStatusCode enum.
+func (e GetPkiApplicationEnrollment404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetPkiApplicationEnrollment404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetPkiApplicationEnrollment422JSONResponseBodyStatusCode.
+const (
+	GetPkiApplicationEnrollment422JSONResponseBodyStatusCodeN422 GetPkiApplicationEnrollment422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetPkiApplicationEnrollment422JSONResponseBodyStatusCode enum.
+func (e GetPkiApplicationEnrollment422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetPkiApplicationEnrollment422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetPkiApplicationEnrollment500JSONResponseBodyStatusCode.
+const (
+	GetPkiApplicationEnrollment500JSONResponseBodyStatusCodeN500 GetPkiApplicationEnrollment500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetPkiApplicationEnrollment500JSONResponseBodyStatusCode enum.
+func (e GetPkiApplicationEnrollment500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetPkiApplicationEnrollment500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ClearPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCode.
+const (
+	ClearPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCodeN400 ClearPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ClearPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCode enum.
+func (e ClearPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ClearPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ClearPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCode.
+const (
+	ClearPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCodeN401 ClearPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ClearPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCode enum.
+func (e ClearPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ClearPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ClearPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCode.
+const (
+	ClearPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCodeN403 ClearPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ClearPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCode enum.
+func (e ClearPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ClearPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ClearPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCode.
+const (
+	ClearPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCodeN404 ClearPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ClearPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCode enum.
+func (e ClearPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ClearPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ClearPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCode.
+const (
+	ClearPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCodeN422 ClearPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ClearPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCode enum.
+func (e ClearPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ClearPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ClearPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCode.
+const (
+	ClearPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCodeN500 ClearPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ClearPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCode enum.
+func (e ClearPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ClearPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SetPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCode.
 const (
 	SetPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCodeN400 SetPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCode = 400
@@ -38598,6 +39654,186 @@ const (
 func (e RevealPkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case RevealPkiApplicationAcmeEabSecret500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RotatePkiApplicationAcmeEabSecret400JSONResponseBodyStatusCode.
+const (
+	RotatePkiApplicationAcmeEabSecret400JSONResponseBodyStatusCodeN400 RotatePkiApplicationAcmeEabSecret400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the RotatePkiApplicationAcmeEabSecret400JSONResponseBodyStatusCode enum.
+func (e RotatePkiApplicationAcmeEabSecret400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RotatePkiApplicationAcmeEabSecret400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RotatePkiApplicationAcmeEabSecret401JSONResponseBodyStatusCode.
+const (
+	RotatePkiApplicationAcmeEabSecret401JSONResponseBodyStatusCodeN401 RotatePkiApplicationAcmeEabSecret401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the RotatePkiApplicationAcmeEabSecret401JSONResponseBodyStatusCode enum.
+func (e RotatePkiApplicationAcmeEabSecret401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RotatePkiApplicationAcmeEabSecret401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RotatePkiApplicationAcmeEabSecret403JSONResponseBodyStatusCode.
+const (
+	RotatePkiApplicationAcmeEabSecret403JSONResponseBodyStatusCodeN403 RotatePkiApplicationAcmeEabSecret403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the RotatePkiApplicationAcmeEabSecret403JSONResponseBodyStatusCode enum.
+func (e RotatePkiApplicationAcmeEabSecret403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RotatePkiApplicationAcmeEabSecret403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RotatePkiApplicationAcmeEabSecret404JSONResponseBodyStatusCode.
+const (
+	RotatePkiApplicationAcmeEabSecret404JSONResponseBodyStatusCodeN404 RotatePkiApplicationAcmeEabSecret404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the RotatePkiApplicationAcmeEabSecret404JSONResponseBodyStatusCode enum.
+func (e RotatePkiApplicationAcmeEabSecret404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RotatePkiApplicationAcmeEabSecret404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RotatePkiApplicationAcmeEabSecret422JSONResponseBodyStatusCode.
+const (
+	RotatePkiApplicationAcmeEabSecret422JSONResponseBodyStatusCodeN422 RotatePkiApplicationAcmeEabSecret422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the RotatePkiApplicationAcmeEabSecret422JSONResponseBodyStatusCode enum.
+func (e RotatePkiApplicationAcmeEabSecret422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RotatePkiApplicationAcmeEabSecret422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RotatePkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode.
+const (
+	RotatePkiApplicationAcmeEabSecret500JSONResponseBodyStatusCodeN500 RotatePkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the RotatePkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode enum.
+func (e RotatePkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RotatePkiApplicationAcmeEabSecret500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ClearPkiApplicationApiEnrollment400JSONResponseBodyStatusCode.
+const (
+	ClearPkiApplicationApiEnrollment400JSONResponseBodyStatusCodeN400 ClearPkiApplicationApiEnrollment400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ClearPkiApplicationApiEnrollment400JSONResponseBodyStatusCode enum.
+func (e ClearPkiApplicationApiEnrollment400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ClearPkiApplicationApiEnrollment400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ClearPkiApplicationApiEnrollment401JSONResponseBodyStatusCode.
+const (
+	ClearPkiApplicationApiEnrollment401JSONResponseBodyStatusCodeN401 ClearPkiApplicationApiEnrollment401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ClearPkiApplicationApiEnrollment401JSONResponseBodyStatusCode enum.
+func (e ClearPkiApplicationApiEnrollment401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ClearPkiApplicationApiEnrollment401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ClearPkiApplicationApiEnrollment403JSONResponseBodyStatusCode.
+const (
+	ClearPkiApplicationApiEnrollment403JSONResponseBodyStatusCodeN403 ClearPkiApplicationApiEnrollment403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ClearPkiApplicationApiEnrollment403JSONResponseBodyStatusCode enum.
+func (e ClearPkiApplicationApiEnrollment403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ClearPkiApplicationApiEnrollment403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ClearPkiApplicationApiEnrollment404JSONResponseBodyStatusCode.
+const (
+	ClearPkiApplicationApiEnrollment404JSONResponseBodyStatusCodeN404 ClearPkiApplicationApiEnrollment404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ClearPkiApplicationApiEnrollment404JSONResponseBodyStatusCode enum.
+func (e ClearPkiApplicationApiEnrollment404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ClearPkiApplicationApiEnrollment404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ClearPkiApplicationApiEnrollment422JSONResponseBodyStatusCode.
+const (
+	ClearPkiApplicationApiEnrollment422JSONResponseBodyStatusCodeN422 ClearPkiApplicationApiEnrollment422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ClearPkiApplicationApiEnrollment422JSONResponseBodyStatusCode enum.
+func (e ClearPkiApplicationApiEnrollment422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ClearPkiApplicationApiEnrollment422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ClearPkiApplicationApiEnrollment500JSONResponseBodyStatusCode.
+const (
+	ClearPkiApplicationApiEnrollment500JSONResponseBodyStatusCodeN500 ClearPkiApplicationApiEnrollment500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ClearPkiApplicationApiEnrollment500JSONResponseBodyStatusCode enum.
+func (e ClearPkiApplicationApiEnrollment500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ClearPkiApplicationApiEnrollment500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -38868,6 +40104,96 @@ const (
 func (e SetPkiApplicationEstEnrollment500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case SetPkiApplicationEstEnrollment500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ClearPkiApplicationScepEnrollment400JSONResponseBodyStatusCode.
+const (
+	ClearPkiApplicationScepEnrollment400JSONResponseBodyStatusCodeN400 ClearPkiApplicationScepEnrollment400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ClearPkiApplicationScepEnrollment400JSONResponseBodyStatusCode enum.
+func (e ClearPkiApplicationScepEnrollment400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ClearPkiApplicationScepEnrollment400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ClearPkiApplicationScepEnrollment401JSONResponseBodyStatusCode.
+const (
+	ClearPkiApplicationScepEnrollment401JSONResponseBodyStatusCodeN401 ClearPkiApplicationScepEnrollment401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ClearPkiApplicationScepEnrollment401JSONResponseBodyStatusCode enum.
+func (e ClearPkiApplicationScepEnrollment401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ClearPkiApplicationScepEnrollment401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ClearPkiApplicationScepEnrollment403JSONResponseBodyStatusCode.
+const (
+	ClearPkiApplicationScepEnrollment403JSONResponseBodyStatusCodeN403 ClearPkiApplicationScepEnrollment403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ClearPkiApplicationScepEnrollment403JSONResponseBodyStatusCode enum.
+func (e ClearPkiApplicationScepEnrollment403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ClearPkiApplicationScepEnrollment403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ClearPkiApplicationScepEnrollment404JSONResponseBodyStatusCode.
+const (
+	ClearPkiApplicationScepEnrollment404JSONResponseBodyStatusCodeN404 ClearPkiApplicationScepEnrollment404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ClearPkiApplicationScepEnrollment404JSONResponseBodyStatusCode enum.
+func (e ClearPkiApplicationScepEnrollment404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ClearPkiApplicationScepEnrollment404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ClearPkiApplicationScepEnrollment422JSONResponseBodyStatusCode.
+const (
+	ClearPkiApplicationScepEnrollment422JSONResponseBodyStatusCodeN422 ClearPkiApplicationScepEnrollment422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ClearPkiApplicationScepEnrollment422JSONResponseBodyStatusCode enum.
+func (e ClearPkiApplicationScepEnrollment422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ClearPkiApplicationScepEnrollment422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ClearPkiApplicationScepEnrollment500JSONResponseBodyStatusCode.
+const (
+	ClearPkiApplicationScepEnrollment500JSONResponseBodyStatusCodeN500 ClearPkiApplicationScepEnrollment500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ClearPkiApplicationScepEnrollment500JSONResponseBodyStatusCode enum.
+func (e ClearPkiApplicationScepEnrollment500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ClearPkiApplicationScepEnrollment500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -39180,6 +40506,96 @@ const (
 func (e RemovePkiApplicationUserMember500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case RemovePkiApplicationUserMember500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdatePkiApplicationUserMemberRole400JSONResponseBodyStatusCode.
+const (
+	UpdatePkiApplicationUserMemberRole400JSONResponseBodyStatusCodeN400 UpdatePkiApplicationUserMemberRole400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpdatePkiApplicationUserMemberRole400JSONResponseBodyStatusCode enum.
+func (e UpdatePkiApplicationUserMemberRole400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdatePkiApplicationUserMemberRole400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdatePkiApplicationUserMemberRole401JSONResponseBodyStatusCode.
+const (
+	UpdatePkiApplicationUserMemberRole401JSONResponseBodyStatusCodeN401 UpdatePkiApplicationUserMemberRole401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpdatePkiApplicationUserMemberRole401JSONResponseBodyStatusCode enum.
+func (e UpdatePkiApplicationUserMemberRole401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdatePkiApplicationUserMemberRole401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdatePkiApplicationUserMemberRole403JSONResponseBodyStatusCode.
+const (
+	UpdatePkiApplicationUserMemberRole403JSONResponseBodyStatusCodeN403 UpdatePkiApplicationUserMemberRole403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpdatePkiApplicationUserMemberRole403JSONResponseBodyStatusCode enum.
+func (e UpdatePkiApplicationUserMemberRole403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdatePkiApplicationUserMemberRole403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdatePkiApplicationUserMemberRole404JSONResponseBodyStatusCode.
+const (
+	UpdatePkiApplicationUserMemberRole404JSONResponseBodyStatusCodeN404 UpdatePkiApplicationUserMemberRole404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpdatePkiApplicationUserMemberRole404JSONResponseBodyStatusCode enum.
+func (e UpdatePkiApplicationUserMemberRole404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdatePkiApplicationUserMemberRole404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdatePkiApplicationUserMemberRole422JSONResponseBodyStatusCode.
+const (
+	UpdatePkiApplicationUserMemberRole422JSONResponseBodyStatusCodeN422 UpdatePkiApplicationUserMemberRole422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpdatePkiApplicationUserMemberRole422JSONResponseBodyStatusCode enum.
+func (e UpdatePkiApplicationUserMemberRole422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdatePkiApplicationUserMemberRole422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdatePkiApplicationUserMemberRole500JSONResponseBodyStatusCode.
+const (
+	UpdatePkiApplicationUserMemberRole500JSONResponseBodyStatusCodeN500 UpdatePkiApplicationUserMemberRole500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpdatePkiApplicationUserMemberRole500JSONResponseBodyStatusCode enum.
+func (e UpdatePkiApplicationUserMemberRole500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdatePkiApplicationUserMemberRole500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -44730,6 +46146,186 @@ func (e GetCaCrls500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for RegenerateCaCrl400JSONResponseBodyStatusCode.
+const (
+	RegenerateCaCrl400JSONResponseBodyStatusCodeN400 RegenerateCaCrl400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the RegenerateCaCrl400JSONResponseBodyStatusCode enum.
+func (e RegenerateCaCrl400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RegenerateCaCrl400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RegenerateCaCrl401JSONResponseBodyStatusCode.
+const (
+	RegenerateCaCrl401JSONResponseBodyStatusCodeN401 RegenerateCaCrl401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the RegenerateCaCrl401JSONResponseBodyStatusCode enum.
+func (e RegenerateCaCrl401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RegenerateCaCrl401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RegenerateCaCrl403JSONResponseBodyStatusCode.
+const (
+	RegenerateCaCrl403JSONResponseBodyStatusCodeN403 RegenerateCaCrl403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the RegenerateCaCrl403JSONResponseBodyStatusCode enum.
+func (e RegenerateCaCrl403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RegenerateCaCrl403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RegenerateCaCrl404JSONResponseBodyStatusCode.
+const (
+	RegenerateCaCrl404JSONResponseBodyStatusCodeN404 RegenerateCaCrl404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the RegenerateCaCrl404JSONResponseBodyStatusCode enum.
+func (e RegenerateCaCrl404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RegenerateCaCrl404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RegenerateCaCrl422JSONResponseBodyStatusCode.
+const (
+	RegenerateCaCrl422JSONResponseBodyStatusCodeN422 RegenerateCaCrl422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the RegenerateCaCrl422JSONResponseBodyStatusCode enum.
+func (e RegenerateCaCrl422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RegenerateCaCrl422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RegenerateCaCrl500JSONResponseBodyStatusCode.
+const (
+	RegenerateCaCrl500JSONResponseBodyStatusCodeN500 RegenerateCaCrl500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the RegenerateCaCrl500JSONResponseBodyStatusCode enum.
+func (e RegenerateCaCrl500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RegenerateCaCrl500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteCaCrossSignedCertificate400JSONResponseBodyStatusCode.
+const (
+	DeleteCaCrossSignedCertificate400JSONResponseBodyStatusCodeN400 DeleteCaCrossSignedCertificate400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteCaCrossSignedCertificate400JSONResponseBodyStatusCode enum.
+func (e DeleteCaCrossSignedCertificate400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteCaCrossSignedCertificate400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteCaCrossSignedCertificate401JSONResponseBodyStatusCode.
+const (
+	DeleteCaCrossSignedCertificate401JSONResponseBodyStatusCodeN401 DeleteCaCrossSignedCertificate401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteCaCrossSignedCertificate401JSONResponseBodyStatusCode enum.
+func (e DeleteCaCrossSignedCertificate401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteCaCrossSignedCertificate401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteCaCrossSignedCertificate403JSONResponseBodyStatusCode.
+const (
+	DeleteCaCrossSignedCertificate403JSONResponseBodyStatusCodeN403 DeleteCaCrossSignedCertificate403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the DeleteCaCrossSignedCertificate403JSONResponseBodyStatusCode enum.
+func (e DeleteCaCrossSignedCertificate403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteCaCrossSignedCertificate403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteCaCrossSignedCertificate404JSONResponseBodyStatusCode.
+const (
+	DeleteCaCrossSignedCertificate404JSONResponseBodyStatusCodeN404 DeleteCaCrossSignedCertificate404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteCaCrossSignedCertificate404JSONResponseBodyStatusCode enum.
+func (e DeleteCaCrossSignedCertificate404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteCaCrossSignedCertificate404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteCaCrossSignedCertificate422JSONResponseBodyStatusCode.
+const (
+	DeleteCaCrossSignedCertificate422JSONResponseBodyStatusCodeN422 DeleteCaCrossSignedCertificate422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the DeleteCaCrossSignedCertificate422JSONResponseBodyStatusCode enum.
+func (e DeleteCaCrossSignedCertificate422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteCaCrossSignedCertificate422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteCaCrossSignedCertificate500JSONResponseBodyStatusCode.
+const (
+	DeleteCaCrossSignedCertificate500JSONResponseBodyStatusCodeN500 DeleteCaCrossSignedCertificate500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the DeleteCaCrossSignedCertificate500JSONResponseBodyStatusCode enum.
+func (e DeleteCaCrossSignedCertificate500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteCaCrossSignedCertificate500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetCaCrossSignedCertificate400JSONResponseBodyStatusCode.
 const (
 	GetCaCrossSignedCertificate400JSONResponseBodyStatusCodeN400 GetCaCrossSignedCertificate400JSONResponseBodyStatusCode = 400
@@ -45459,6 +47055,186 @@ const (
 func (e SignIntermediateCa500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case SignIntermediateCa500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCaSigningConfig400JSONResponseBodyStatusCode.
+const (
+	GetCaSigningConfig400JSONResponseBodyStatusCodeN400 GetCaSigningConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetCaSigningConfig400JSONResponseBodyStatusCode enum.
+func (e GetCaSigningConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCaSigningConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCaSigningConfig401JSONResponseBodyStatusCode.
+const (
+	GetCaSigningConfig401JSONResponseBodyStatusCodeN401 GetCaSigningConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetCaSigningConfig401JSONResponseBodyStatusCode enum.
+func (e GetCaSigningConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCaSigningConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCaSigningConfig403JSONResponseBodyStatusCode.
+const (
+	GetCaSigningConfig403JSONResponseBodyStatusCodeN403 GetCaSigningConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetCaSigningConfig403JSONResponseBodyStatusCode enum.
+func (e GetCaSigningConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCaSigningConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCaSigningConfig404JSONResponseBodyStatusCode.
+const (
+	GetCaSigningConfig404JSONResponseBodyStatusCodeN404 GetCaSigningConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetCaSigningConfig404JSONResponseBodyStatusCode enum.
+func (e GetCaSigningConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCaSigningConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCaSigningConfig422JSONResponseBodyStatusCode.
+const (
+	GetCaSigningConfig422JSONResponseBodyStatusCodeN422 GetCaSigningConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetCaSigningConfig422JSONResponseBodyStatusCode enum.
+func (e GetCaSigningConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCaSigningConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCaSigningConfig500JSONResponseBodyStatusCode.
+const (
+	GetCaSigningConfig500JSONResponseBodyStatusCodeN500 GetCaSigningConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetCaSigningConfig500JSONResponseBodyStatusCode enum.
+func (e GetCaSigningConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCaSigningConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateCaSigningConfig400JSONResponseBodyStatusCode.
+const (
+	UpdateCaSigningConfig400JSONResponseBodyStatusCodeN400 UpdateCaSigningConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpdateCaSigningConfig400JSONResponseBodyStatusCode enum.
+func (e UpdateCaSigningConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateCaSigningConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateCaSigningConfig401JSONResponseBodyStatusCode.
+const (
+	UpdateCaSigningConfig401JSONResponseBodyStatusCodeN401 UpdateCaSigningConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpdateCaSigningConfig401JSONResponseBodyStatusCode enum.
+func (e UpdateCaSigningConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateCaSigningConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateCaSigningConfig403JSONResponseBodyStatusCode.
+const (
+	UpdateCaSigningConfig403JSONResponseBodyStatusCodeN403 UpdateCaSigningConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpdateCaSigningConfig403JSONResponseBodyStatusCode enum.
+func (e UpdateCaSigningConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateCaSigningConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateCaSigningConfig404JSONResponseBodyStatusCode.
+const (
+	UpdateCaSigningConfig404JSONResponseBodyStatusCodeN404 UpdateCaSigningConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpdateCaSigningConfig404JSONResponseBodyStatusCode enum.
+func (e UpdateCaSigningConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateCaSigningConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateCaSigningConfig422JSONResponseBodyStatusCode.
+const (
+	UpdateCaSigningConfig422JSONResponseBodyStatusCodeN422 UpdateCaSigningConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpdateCaSigningConfig422JSONResponseBodyStatusCode enum.
+func (e UpdateCaSigningConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateCaSigningConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateCaSigningConfig500JSONResponseBodyStatusCode.
+const (
+	UpdateCaSigningConfig500JSONResponseBodyStatusCodeN500 UpdateCaSigningConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpdateCaSigningConfig500JSONResponseBodyStatusCode enum.
+func (e UpdateCaSigningConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateCaSigningConfig500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -56020,6 +57796,7 @@ const (
 	ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppCloud66               ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsApp = "cloud-66"
 	ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppCloudflare            ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsApp = "cloudflare"
 	ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppConvex                ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsApp = "convex"
+	ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppCoolify               ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsApp = "coolify"
 	ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppDatabricks            ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsApp = "databricks"
 	ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppDatadog               ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsApp = "datadog"
 	ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppDaytona               ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsApp = "daytona"
@@ -56142,6 +57919,8 @@ func (e ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsApp) Valid() 
 	case ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppCloudflare:
 		return true
 	case ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppConvex:
+		return true
+	case ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppCoolify:
 		return true
 	case ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppDatabricks:
 		return true
@@ -56644,6 +58423,7 @@ const (
 	GetPkiDiscovery200JSONResponseBodyConnectionsAppCloud66               GetPkiDiscovery200JSONResponseBodyConnectionsApp = "cloud-66"
 	GetPkiDiscovery200JSONResponseBodyConnectionsAppCloudflare            GetPkiDiscovery200JSONResponseBodyConnectionsApp = "cloudflare"
 	GetPkiDiscovery200JSONResponseBodyConnectionsAppConvex                GetPkiDiscovery200JSONResponseBodyConnectionsApp = "convex"
+	GetPkiDiscovery200JSONResponseBodyConnectionsAppCoolify               GetPkiDiscovery200JSONResponseBodyConnectionsApp = "coolify"
 	GetPkiDiscovery200JSONResponseBodyConnectionsAppDatabricks            GetPkiDiscovery200JSONResponseBodyConnectionsApp = "databricks"
 	GetPkiDiscovery200JSONResponseBodyConnectionsAppDatadog               GetPkiDiscovery200JSONResponseBodyConnectionsApp = "datadog"
 	GetPkiDiscovery200JSONResponseBodyConnectionsAppDaytona               GetPkiDiscovery200JSONResponseBodyConnectionsApp = "daytona"
@@ -56766,6 +58546,8 @@ func (e GetPkiDiscovery200JSONResponseBodyConnectionsApp) Valid() bool {
 	case GetPkiDiscovery200JSONResponseBodyConnectionsAppCloudflare:
 		return true
 	case GetPkiDiscovery200JSONResponseBodyConnectionsAppConvex:
+		return true
+	case GetPkiDiscovery200JSONResponseBodyConnectionsAppCoolify:
 		return true
 	case GetPkiDiscovery200JSONResponseBodyConnectionsAppDatabricks:
 		return true
@@ -68467,6 +70249,7 @@ const (
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsCloud66               ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnections = "cloud-66"
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsCloudflare            ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnections = "cloudflare"
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsConvex                ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnections = "convex"
+	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsCoolify               ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnections = "coolify"
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsDatabricks            ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnections = "databricks"
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsDatadog               ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnections = "datadog"
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsDaytona               ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnections = "daytona"
@@ -68589,6 +70372,8 @@ func (e ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnections
 	case ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsCloudflare:
 		return true
 	case ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsConvex:
+		return true
+	case ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsCoolify:
 		return true
 	case ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsDatabricks:
 		return true
@@ -68773,6 +70558,7 @@ const (
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionCloud66               ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnection = "cloud-66"
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionCloudflare            ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnection = "cloudflare"
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionConvex                ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnection = "convex"
+	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionCoolify               ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnection = "coolify"
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionDatabricks            ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnection = "databricks"
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionDatadog               ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnection = "datadog"
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionDaytona               ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnection = "daytona"
@@ -68895,6 +70681,8 @@ func (e ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnection) Valid() b
 	case ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionCloudflare:
 		return true
 	case ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionConvex:
+		return true
+	case ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionCoolify:
 		return true
 	case ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionDatabricks:
 		return true
@@ -111401,6 +113189,7 @@ const (
 	CreateSecretReminderJSONBodyChannelsChannelTypeEmail     CreateSecretReminderJSONBodyChannelsChannelType = "email"
 	CreateSecretReminderJSONBodyChannelsChannelTypePagerduty CreateSecretReminderJSONBodyChannelsChannelType = "pagerduty"
 	CreateSecretReminderJSONBodyChannelsChannelTypeSlack     CreateSecretReminderJSONBodyChannelsChannelType = "slack"
+	CreateSecretReminderJSONBodyChannelsChannelTypeSlackApp  CreateSecretReminderJSONBodyChannelsChannelType = "slack-app"
 	CreateSecretReminderJSONBodyChannelsChannelTypeWebhook   CreateSecretReminderJSONBodyChannelsChannelType = "webhook"
 )
 
@@ -111412,6 +113201,8 @@ func (e CreateSecretReminderJSONBodyChannelsChannelType) Valid() bool {
 	case CreateSecretReminderJSONBodyChannelsChannelTypePagerduty:
 		return true
 	case CreateSecretReminderJSONBodyChannelsChannelTypeSlack:
+		return true
+	case CreateSecretReminderJSONBodyChannelsChannelTypeSlackApp:
 		return true
 	case CreateSecretReminderJSONBodyChannelsChannelTypeWebhook:
 		return true
@@ -145533,7 +147324,7 @@ type ListAlerts500JSONResponseBodyStatusCode float32
 
 // CreateAlertJSONBody defines parameters for CreateAlert.
 type CreateAlertJSONBody struct {
-	// Channels The channels the alert notifies. Each is email, Slack, webhook, or PagerDuty.
+	// Channels The channels the alert notifies. `channelType` is `email`, `slack-app` (posts through a Slack integration; set `config.workflowIntegrationId` and `config.channels`, 1 to 20 `{ id, name }` Slack channels), `slack` (incoming webhook), `webhook`, or `pagerduty`.
 	Channels []struct {
 		ChannelType CreateAlertJSONBodyChannelsChannelType `json:"channelType"`
 		Config      *map[string]interface{}                `json:"config,omitempty"`
@@ -152155,9 +153946,12 @@ type ListAppConnections200JSONResponseBodyAppConnections99RotationRotationStatus
 
 // ListAppConnections200JSONResponseBodyAppConnections100 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections100 struct {
-	App                          ListAppConnections200JSONResponseBodyAppConnections100App    `json:"app"`
-	CreatedAt                    time.Time                                                    `json:"createdAt"`
-	Credentials                  map[string]interface{}                                       `json:"credentials"`
+	App         ListAppConnections200JSONResponseBodyAppConnections100App `json:"app"`
+	CreatedAt   time.Time                                                 `json:"createdAt"`
+	Credentials struct {
+		// InstanceUrl The Coolify instance URL to connect to: 'https://app.coolify.io' for Coolify Cloud, or the URL of a self-hosted instance (e.g., 'https://coolify.example.com').
+		InstanceUrl string `json:"instanceUrl"`
+	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                          `json:"gatewayId,omitempty"`
@@ -152214,12 +154008,9 @@ type ListAppConnections200JSONResponseBodyAppConnections100RotationRotationStatu
 
 // ListAppConnections200JSONResponseBodyAppConnections101 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections101 struct {
-	App         ListAppConnections200JSONResponseBodyAppConnections101App `json:"app"`
-	CreatedAt   time.Time                                                 `json:"createdAt"`
-	Credentials struct {
-		// InstanceUrl The base URL of your LiteLLM instance (e.g. https://litellm.example.com).
-		InstanceUrl string `json:"instanceUrl"`
-	} `json:"credentials"`
+	App                          ListAppConnections200JSONResponseBodyAppConnections101App    `json:"app"`
+	CreatedAt                    time.Time                                                    `json:"createdAt"`
+	Credentials                  map[string]interface{}                                       `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                          `json:"gatewayId,omitempty"`
@@ -152279,8 +154070,8 @@ type ListAppConnections200JSONResponseBodyAppConnections102 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections102App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		// AccountId The Fireworks account ID used to identify the Fireworks account.
-		AccountId string `json:"accountId"`
+		// InstanceUrl The base URL of your LiteLLM instance (e.g. https://litellm.example.com).
+		InstanceUrl string `json:"instanceUrl"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -152341,10 +154132,8 @@ type ListAppConnections200JSONResponseBodyAppConnections103 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections103App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		Hostname              string  `json:"hostname"`
-		Port                  *int    `json:"port,omitempty"`
-		SslCertificate        *string `json:"sslCertificate,omitempty"`
-		SslRejectUnauthorized *bool   `json:"sslRejectUnauthorized,omitempty"`
+		// AccountId The Fireworks account ID used to identify the Fireworks account.
+		AccountId string `json:"accountId"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -152409,7 +154198,6 @@ type ListAppConnections200JSONResponseBodyAppConnections104 struct {
 		Port                  *int    `json:"port,omitempty"`
 		SslCertificate        *string `json:"sslCertificate,omitempty"`
 		SslRejectUnauthorized *bool   `json:"sslRejectUnauthorized,omitempty"`
-		Username              string  `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -152470,17 +154258,11 @@ type ListAppConnections200JSONResponseBodyAppConnections105 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections105App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		// ApiUrl The base URL of the PowerDNS web server, excluding the /api/v1 path.
-		ApiUrl string `json:"apiUrl"`
-
-		// ServerId The PowerDNS API server ID. Leave unset unless you connect through a proxy fronting several servers; the Authoritative Server always reports 'localhost'.
-		ServerId *string `json:"serverId,omitempty"`
-
-		// SslCertificate A PEM-encoded CA certificate to trust when connecting to PowerDNS over HTTPS.
-		SslCertificate *string `json:"sslCertificate,omitempty"`
-
-		// SslRejectUnauthorized Whether to reject PowerDNS TLS certificates that are not trusted. Defaults to true.
-		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
+		Hostname              string  `json:"hostname"`
+		Port                  *int    `json:"port,omitempty"`
+		SslCertificate        *string `json:"sslCertificate,omitempty"`
+		SslRejectUnauthorized *bool   `json:"sslRejectUnauthorized,omitempty"`
+		Username              string  `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -152541,8 +154323,17 @@ type ListAppConnections200JSONResponseBodyAppConnections106 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections106App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		ApiKeyId string `json:"apiKeyId"`
-		ApiUrl   string `json:"apiUrl"`
+		// ApiUrl The base URL of the PowerDNS web server, excluding the /api/v1 path.
+		ApiUrl string `json:"apiUrl"`
+
+		// ServerId The PowerDNS API server ID. Leave unset unless you connect through a proxy fronting several servers; the Authoritative Server always reports 'localhost'.
+		ServerId *string `json:"serverId,omitempty"`
+
+		// SslCertificate A PEM-encoded CA certificate to trust when connecting to PowerDNS over HTTPS.
+		SslCertificate *string `json:"sslCertificate,omitempty"`
+
+		// SslRejectUnauthorized Whether to reject PowerDNS TLS certificates that are not trusted. Defaults to true.
+		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -152603,8 +154394,8 @@ type ListAppConnections200JSONResponseBodyAppConnections107 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections107App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		// OrganizationId The Daytona organization the API key belongs to. Resolved from Daytona when the connection is created.
-		OrganizationId string `json:"organizationId"`
+		ApiKeyId string `json:"apiKeyId"`
+		ApiUrl   string `json:"apiUrl"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -152665,7 +154456,8 @@ type ListAppConnections200JSONResponseBodyAppConnections108 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections108App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		AccountId string `json:"accountId"`
+		// OrganizationId The Daytona organization the API key belongs to. Resolved from Daytona when the connection is created.
+		OrganizationId string `json:"organizationId"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -152726,8 +154518,7 @@ type ListAppConnections200JSONResponseBodyAppConnections109 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections109App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		// InstanceUrl The base URL of your Keeper Commander Service Mode instance (e.g. https://keeper.company.com).
-		InstanceUrl string `json:"instanceUrl"`
+		AccountId string `json:"accountId"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -152788,20 +154579,8 @@ type ListAppConnections200JSONResponseBodyAppConnections110 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections110App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		// Hostname The hostname or IP address of the HPE iLO management interface (e.g., 'ilo.example.com').
-		Hostname string `json:"hostname"`
-
-		// Port The HTTPS port of the HPE iLO Redfish API (default: 443).
-		Port *int `json:"port,omitempty"`
-
-		// SslCertificate The CA certificate (PEM format) used to verify the iLO interface's TLS certificate.
-		SslCertificate *string `json:"sslCertificate,omitempty"`
-
-		// SslRejectUnauthorized Whether or not to reject untrusted SSL certificates (true/false). Set to false for iLO interfaces using self-signed certificates.
-		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
-
-		// Username The iLO local account username used to authenticate with the Redfish API.
-		Username string `json:"username"`
+		// InstanceUrl The base URL of your Keeper Commander Service Mode instance (e.g. https://keeper.company.com).
+		InstanceUrl string `json:"instanceUrl"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -152862,10 +154641,19 @@ type ListAppConnections200JSONResponseBodyAppConnections111 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections111App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		// InstanceUrl The base URL of the ServiceNow instance to connect with, without a path or trailing slash.
-		InstanceUrl string `json:"instanceUrl"`
+		// Hostname The hostname or IP address of the HPE iLO management interface (e.g., 'ilo.example.com').
+		Hostname string `json:"hostname"`
 
-		// Username The User ID of the ServiceNow integration user.
+		// Port The HTTPS port of the HPE iLO Redfish API (default: 443).
+		Port *int `json:"port,omitempty"`
+
+		// SslCertificate The CA certificate (PEM format) used to verify the iLO interface's TLS certificate.
+		SslCertificate *string `json:"sslCertificate,omitempty"`
+
+		// SslRejectUnauthorized Whether or not to reject untrusted SSL certificates (true/false). Set to false for iLO interfaces using self-signed certificates.
+		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
+
+		// Username The iLO local account username used to authenticate with the Redfish API.
 		Username string `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
@@ -152927,14 +154715,11 @@ type ListAppConnections200JSONResponseBodyAppConnections112 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections112App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		// AccessKeyId The Access Key ID used to authenticate with the storage provider.
-		AccessKeyId string `json:"accessKeyId"`
+		// InstanceUrl The base URL of the ServiceNow instance to connect with, without a path or trailing slash.
+		InstanceUrl string `json:"instanceUrl"`
 
-		// Endpoint The S3 API endpoint of the storage provider, without a bucket name: 'https://s3.<region>.amazonaws.com' (AWS S3), 'https://<account-id>.r2.cloudflarestorage.com' (Cloudflare R2), 'https://storage.googleapis.com' (Google Cloud Storage), 'https://<namespace>.compat.objectstorage.<region>.oraclecloud.com' (OCI Object Storage), or a hostname allowed in the Server Console.
-		Endpoint string `json:"endpoint"`
-
-		// Region The region to sign requests for when the endpoint is a hostname allowed in the Server Console. Defaults to 'us-east-1'. The built-in providers take the region from the endpoint.
-		Region *string `json:"region,omitempty"`
+		// Username The User ID of the ServiceNow integration user.
+		Username string `json:"username"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -152995,11 +154780,14 @@ type ListAppConnections200JSONResponseBodyAppConnections113 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections113App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		// Email The email address of the Atlassian account that owns the API token.
-		Email openapi_types.Email `json:"email"`
+		// AccessKeyId The Access Key ID used to authenticate with the storage provider.
+		AccessKeyId string `json:"accessKeyId"`
 
-		// InstanceUrl The URL of your Jira site (e.g., 'https://your-domain.atlassian.net' for Jira Cloud or 'https://jira.example.com' for Jira Data Center).
-		InstanceUrl string `json:"instanceUrl"`
+		// Endpoint The S3 API endpoint of the storage provider, without a bucket name: 'https://s3.<region>.amazonaws.com' (AWS S3), 'https://<account-id>.r2.cloudflarestorage.com' (Cloudflare R2), 'https://storage.googleapis.com' (Google Cloud Storage), 'https://<namespace>.compat.objectstorage.<region>.oraclecloud.com' (OCI Object Storage), or a hostname allowed in the Server Console.
+		Endpoint string `json:"endpoint"`
+
+		// Region The region to sign requests for when the endpoint is a hostname allowed in the Server Console. Defaults to 'us-east-1'. The built-in providers take the region from the endpoint.
+		Region *string `json:"region,omitempty"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -153060,14 +154848,11 @@ type ListAppConnections200JSONResponseBodyAppConnections114 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections114App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
+		// Email The email address of the Atlassian account that owns the API token.
+		Email openapi_types.Email `json:"email"`
+
 		// InstanceUrl The URL of your Jira site (e.g., 'https://your-domain.atlassian.net' for Jira Cloud or 'https://jira.example.com' for Jira Data Center).
 		InstanceUrl string `json:"instanceUrl"`
-
-		// SslCertificate The CA certificate (PEM format) used to verify the Jira Data Center site's TLS certificate.
-		SslCertificate *string `json:"sslCertificate,omitempty"`
-
-		// SslRejectUnauthorized Whether or not to reject untrusted SSL certificates (true/false). Set to false for Jira Data Center sites using self-signed certificates.
-		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -153128,26 +154913,14 @@ type ListAppConnections200JSONResponseBodyAppConnections115 struct {
 	App         ListAppConnections200JSONResponseBodyAppConnections115App `json:"app"`
 	CreatedAt   time.Time                                                 `json:"createdAt"`
 	Credentials struct {
-		// Database The name of the database to connect to.
-		Database string `json:"database"`
+		// InstanceUrl The URL of your Jira site (e.g., 'https://your-domain.atlassian.net' for Jira Cloud or 'https://jira.example.com' for Jira Data Center).
+		InstanceUrl string `json:"instanceUrl"`
 
-		// Host The hostname of the database server.
-		Host string `json:"host"`
-
-		// Port The port number of the database.
-		Port int `json:"port"`
-
-		// SslCertificate The SSL certificate to use for connection.
+		// SslCertificate The CA certificate (PEM format) used to verify the Jira Data Center site's TLS certificate.
 		SslCertificate *string `json:"sslCertificate,omitempty"`
 
-		// SslEnabled Whether or not to use SSL when connecting to the database.
-		SslEnabled bool `json:"sslEnabled"`
-
-		// SslRejectUnauthorized Whether or not to reject unauthorized SSL certificates.
-		SslRejectUnauthorized bool `json:"sslRejectUnauthorized"`
-
-		// Username The username to connect to the database with.
-		Username string `json:"username"`
+		// SslRejectUnauthorized Whether or not to reject untrusted SSL certificates (true/false). Set to false for Jira Data Center sites using self-signed certificates.
+		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
 	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
@@ -153205,9 +154978,30 @@ type ListAppConnections200JSONResponseBodyAppConnections115RotationRotationStatu
 
 // ListAppConnections200JSONResponseBodyAppConnections116 defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections116 struct {
-	App                          ListAppConnections200JSONResponseBodyAppConnections116App    `json:"app"`
-	CreatedAt                    time.Time                                                    `json:"createdAt"`
-	Credentials                  map[string]interface{}                                       `json:"credentials"`
+	App         ListAppConnections200JSONResponseBodyAppConnections116App `json:"app"`
+	CreatedAt   time.Time                                                 `json:"createdAt"`
+	Credentials struct {
+		// Database The name of the database to connect to.
+		Database string `json:"database"`
+
+		// Host The hostname of the database server.
+		Host string `json:"host"`
+
+		// Port The port number of the database.
+		Port int `json:"port"`
+
+		// SslCertificate The SSL certificate to use for connection.
+		SslCertificate *string `json:"sslCertificate,omitempty"`
+
+		// SslEnabled Whether or not to use SSL when connecting to the database.
+		SslEnabled bool `json:"sslEnabled"`
+
+		// SslRejectUnauthorized Whether or not to reject unauthorized SSL certificates.
+		SslRejectUnauthorized bool `json:"sslRejectUnauthorized"`
+
+		// Username The username to connect to the database with.
+		Username string `json:"username"`
+	} `json:"credentials"`
 	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
 	Description                  *string                                                      `json:"description,omitempty"`
 	GatewayId                    *openapi_types.UUID                                          `json:"gatewayId,omitempty"`
@@ -153261,6 +155055,65 @@ type ListAppConnections200JSONResponseBodyAppConnections116Method string
 
 // ListAppConnections200JSONResponseBodyAppConnections116RotationRotationStatus defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections116RotationRotationStatus string
+
+// ListAppConnections200JSONResponseBodyAppConnections117 defines parameters for ListAppConnections.
+type ListAppConnections200JSONResponseBodyAppConnections117 struct {
+	App                          ListAppConnections200JSONResponseBodyAppConnections117App    `json:"app"`
+	CreatedAt                    time.Time                                                    `json:"createdAt"`
+	Credentials                  map[string]interface{}                                       `json:"credentials"`
+	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
+	Description                  *string                                                      `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                          `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                          `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                           `json:"id"`
+	IsAutoRotationEnabled        *bool                                                        `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                        `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       ListAppConnections200JSONResponseBodyAppConnections117Method `json:"method"`
+	Name                         string                                                       `json:"name"`
+	OrgId                        openapi_types.UUID                                           `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus ListAppConnections200JSONResponseBodyAppConnections117RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// ListAppConnections200JSONResponseBodyAppConnections117App defines parameters for ListAppConnections.
+type ListAppConnections200JSONResponseBodyAppConnections117App string
+
+// ListAppConnections200JSONResponseBodyAppConnections117Method defines parameters for ListAppConnections.
+type ListAppConnections200JSONResponseBodyAppConnections117Method string
+
+// ListAppConnections200JSONResponseBodyAppConnections117RotationRotationStatus defines parameters for ListAppConnections.
+type ListAppConnections200JSONResponseBodyAppConnections117RotationRotationStatus string
 
 // ListAppConnections200JSONResponseBody_AppConnections_Item defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBody_AppConnections_Item struct {
@@ -161810,6 +163663,48 @@ type BreakGlassCertRequestApprovalRequest422JSONResponseBodyStatusCode float32
 // BreakGlassCertRequestApprovalRequest500JSONResponseBodyStatusCode defines parameters for BreakGlassCertRequestApprovalRequest.
 type BreakGlassCertRequestApprovalRequest500JSONResponseBodyStatusCode float32
 
+// CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesType defines parameters for CancelCertRequestApprovalRequest.
+type CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesType string
+
+// CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsages defines parameters for CancelCertRequestApprovalRequest.
+type CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsages string
+
+// CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm defines parameters for CancelCertRequestApprovalRequest.
+type CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm string
+
+// CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsages defines parameters for CancelCertRequestApprovalRequest.
+type CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsages string
+
+// CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm defines parameters for CancelCertRequestApprovalRequest.
+type CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm string
+
+// CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalRenewalKeySource defines parameters for CancelCertRequestApprovalRequest.
+type CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalRenewalKeySource string
+
+// CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataVersion defines parameters for CancelCertRequestApprovalRequest.
+type CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataVersion float32
+
+// CancelCertRequestApprovalRequest200JSONResponseBodyRequestStepsApproversType defines parameters for CancelCertRequestApprovalRequest.
+type CancelCertRequestApprovalRequest200JSONResponseBodyRequestStepsApproversType string
+
+// CancelCertRequestApprovalRequest400JSONResponseBodyStatusCode defines parameters for CancelCertRequestApprovalRequest.
+type CancelCertRequestApprovalRequest400JSONResponseBodyStatusCode float32
+
+// CancelCertRequestApprovalRequest401JSONResponseBodyStatusCode defines parameters for CancelCertRequestApprovalRequest.
+type CancelCertRequestApprovalRequest401JSONResponseBodyStatusCode float32
+
+// CancelCertRequestApprovalRequest403JSONResponseBodyStatusCode defines parameters for CancelCertRequestApprovalRequest.
+type CancelCertRequestApprovalRequest403JSONResponseBodyStatusCode float32
+
+// CancelCertRequestApprovalRequest404JSONResponseBodyStatusCode defines parameters for CancelCertRequestApprovalRequest.
+type CancelCertRequestApprovalRequest404JSONResponseBodyStatusCode float32
+
+// CancelCertRequestApprovalRequest422JSONResponseBodyStatusCode defines parameters for CancelCertRequestApprovalRequest.
+type CancelCertRequestApprovalRequest422JSONResponseBodyStatusCode float32
+
+// CancelCertRequestApprovalRequest500JSONResponseBodyStatusCode defines parameters for CancelCertRequestApprovalRequest.
+type CancelCertRequestApprovalRequest500JSONResponseBodyStatusCode float32
+
 // RejectCertRequestApprovalRequestJSONBody defines parameters for RejectCertRequestApprovalRequest.
 type RejectCertRequestApprovalRequestJSONBody struct {
 	Comment *string `json:"comment,omitempty"`
@@ -166477,6 +168372,47 @@ type UpdatePkiApplication422JSONResponseBodyStatusCode float32
 // UpdatePkiApplication500JSONResponseBodyStatusCode defines parameters for UpdatePkiApplication.
 type UpdatePkiApplication500JSONResponseBodyStatusCode float32
 
+// RemovePkiApplicationGroupMember400JSONResponseBodyStatusCode defines parameters for RemovePkiApplicationGroupMember.
+type RemovePkiApplicationGroupMember400JSONResponseBodyStatusCode float32
+
+// RemovePkiApplicationGroupMember401JSONResponseBodyStatusCode defines parameters for RemovePkiApplicationGroupMember.
+type RemovePkiApplicationGroupMember401JSONResponseBodyStatusCode float32
+
+// RemovePkiApplicationGroupMember403JSONResponseBodyStatusCode defines parameters for RemovePkiApplicationGroupMember.
+type RemovePkiApplicationGroupMember403JSONResponseBodyStatusCode float32
+
+// RemovePkiApplicationGroupMember404JSONResponseBodyStatusCode defines parameters for RemovePkiApplicationGroupMember.
+type RemovePkiApplicationGroupMember404JSONResponseBodyStatusCode float32
+
+// RemovePkiApplicationGroupMember422JSONResponseBodyStatusCode defines parameters for RemovePkiApplicationGroupMember.
+type RemovePkiApplicationGroupMember422JSONResponseBodyStatusCode float32
+
+// RemovePkiApplicationGroupMember500JSONResponseBodyStatusCode defines parameters for RemovePkiApplicationGroupMember.
+type RemovePkiApplicationGroupMember500JSONResponseBodyStatusCode float32
+
+// UpdatePkiApplicationGroupMemberRoleJSONBody defines parameters for UpdatePkiApplicationGroupMemberRole.
+type UpdatePkiApplicationGroupMemberRoleJSONBody struct {
+	Role string `json:"role"`
+}
+
+// UpdatePkiApplicationGroupMemberRole400JSONResponseBodyStatusCode defines parameters for UpdatePkiApplicationGroupMemberRole.
+type UpdatePkiApplicationGroupMemberRole400JSONResponseBodyStatusCode float32
+
+// UpdatePkiApplicationGroupMemberRole401JSONResponseBodyStatusCode defines parameters for UpdatePkiApplicationGroupMemberRole.
+type UpdatePkiApplicationGroupMemberRole401JSONResponseBodyStatusCode float32
+
+// UpdatePkiApplicationGroupMemberRole403JSONResponseBodyStatusCode defines parameters for UpdatePkiApplicationGroupMemberRole.
+type UpdatePkiApplicationGroupMemberRole403JSONResponseBodyStatusCode float32
+
+// UpdatePkiApplicationGroupMemberRole404JSONResponseBodyStatusCode defines parameters for UpdatePkiApplicationGroupMemberRole.
+type UpdatePkiApplicationGroupMemberRole404JSONResponseBodyStatusCode float32
+
+// UpdatePkiApplicationGroupMemberRole422JSONResponseBodyStatusCode defines parameters for UpdatePkiApplicationGroupMemberRole.
+type UpdatePkiApplicationGroupMemberRole422JSONResponseBodyStatusCode float32
+
+// UpdatePkiApplicationGroupMemberRole500JSONResponseBodyStatusCode defines parameters for UpdatePkiApplicationGroupMemberRole.
+type UpdatePkiApplicationGroupMemberRole500JSONResponseBodyStatusCode float32
+
 // AddPkiApplicationGroupMemberJSONBody defines parameters for AddPkiApplicationGroupMember.
 type AddPkiApplicationGroupMemberJSONBody struct {
 	Role string `json:"role"`
@@ -166499,6 +168435,47 @@ type AddPkiApplicationGroupMember422JSONResponseBodyStatusCode float32
 
 // AddPkiApplicationGroupMember500JSONResponseBodyStatusCode defines parameters for AddPkiApplicationGroupMember.
 type AddPkiApplicationGroupMember500JSONResponseBodyStatusCode float32
+
+// RemovePkiApplicationIdentityMember400JSONResponseBodyStatusCode defines parameters for RemovePkiApplicationIdentityMember.
+type RemovePkiApplicationIdentityMember400JSONResponseBodyStatusCode float32
+
+// RemovePkiApplicationIdentityMember401JSONResponseBodyStatusCode defines parameters for RemovePkiApplicationIdentityMember.
+type RemovePkiApplicationIdentityMember401JSONResponseBodyStatusCode float32
+
+// RemovePkiApplicationIdentityMember403JSONResponseBodyStatusCode defines parameters for RemovePkiApplicationIdentityMember.
+type RemovePkiApplicationIdentityMember403JSONResponseBodyStatusCode float32
+
+// RemovePkiApplicationIdentityMember404JSONResponseBodyStatusCode defines parameters for RemovePkiApplicationIdentityMember.
+type RemovePkiApplicationIdentityMember404JSONResponseBodyStatusCode float32
+
+// RemovePkiApplicationIdentityMember422JSONResponseBodyStatusCode defines parameters for RemovePkiApplicationIdentityMember.
+type RemovePkiApplicationIdentityMember422JSONResponseBodyStatusCode float32
+
+// RemovePkiApplicationIdentityMember500JSONResponseBodyStatusCode defines parameters for RemovePkiApplicationIdentityMember.
+type RemovePkiApplicationIdentityMember500JSONResponseBodyStatusCode float32
+
+// UpdatePkiApplicationIdentityMemberRoleJSONBody defines parameters for UpdatePkiApplicationIdentityMemberRole.
+type UpdatePkiApplicationIdentityMemberRoleJSONBody struct {
+	Role string `json:"role"`
+}
+
+// UpdatePkiApplicationIdentityMemberRole400JSONResponseBodyStatusCode defines parameters for UpdatePkiApplicationIdentityMemberRole.
+type UpdatePkiApplicationIdentityMemberRole400JSONResponseBodyStatusCode float32
+
+// UpdatePkiApplicationIdentityMemberRole401JSONResponseBodyStatusCode defines parameters for UpdatePkiApplicationIdentityMemberRole.
+type UpdatePkiApplicationIdentityMemberRole401JSONResponseBodyStatusCode float32
+
+// UpdatePkiApplicationIdentityMemberRole403JSONResponseBodyStatusCode defines parameters for UpdatePkiApplicationIdentityMemberRole.
+type UpdatePkiApplicationIdentityMemberRole403JSONResponseBodyStatusCode float32
+
+// UpdatePkiApplicationIdentityMemberRole404JSONResponseBodyStatusCode defines parameters for UpdatePkiApplicationIdentityMemberRole.
+type UpdatePkiApplicationIdentityMemberRole404JSONResponseBodyStatusCode float32
+
+// UpdatePkiApplicationIdentityMemberRole422JSONResponseBodyStatusCode defines parameters for UpdatePkiApplicationIdentityMemberRole.
+type UpdatePkiApplicationIdentityMemberRole422JSONResponseBodyStatusCode float32
+
+// UpdatePkiApplicationIdentityMemberRole500JSONResponseBodyStatusCode defines parameters for UpdatePkiApplicationIdentityMemberRole.
+type UpdatePkiApplicationIdentityMemberRole500JSONResponseBodyStatusCode float32
 
 // AddPkiApplicationIdentityMemberJSONBody defines parameters for AddPkiApplicationIdentityMember.
 type AddPkiApplicationIdentityMemberJSONBody struct {
@@ -166600,6 +168577,48 @@ type DetachPkiApplicationProfile422JSONResponseBodyStatusCode float32
 // DetachPkiApplicationProfile500JSONResponseBodyStatusCode defines parameters for DetachPkiApplicationProfile.
 type DetachPkiApplicationProfile500JSONResponseBodyStatusCode float32
 
+// GetPkiApplicationEnrollment200JSONResponseBodyCaType defines parameters for GetPkiApplicationEnrollment.
+type GetPkiApplicationEnrollment200JSONResponseBodyCaType string
+
+// GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeType defines parameters for GetPkiApplicationEnrollment.
+type GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeType string
+
+// GetPkiApplicationEnrollment400JSONResponseBodyStatusCode defines parameters for GetPkiApplicationEnrollment.
+type GetPkiApplicationEnrollment400JSONResponseBodyStatusCode float32
+
+// GetPkiApplicationEnrollment401JSONResponseBodyStatusCode defines parameters for GetPkiApplicationEnrollment.
+type GetPkiApplicationEnrollment401JSONResponseBodyStatusCode float32
+
+// GetPkiApplicationEnrollment403JSONResponseBodyStatusCode defines parameters for GetPkiApplicationEnrollment.
+type GetPkiApplicationEnrollment403JSONResponseBodyStatusCode float32
+
+// GetPkiApplicationEnrollment404JSONResponseBodyStatusCode defines parameters for GetPkiApplicationEnrollment.
+type GetPkiApplicationEnrollment404JSONResponseBodyStatusCode float32
+
+// GetPkiApplicationEnrollment422JSONResponseBodyStatusCode defines parameters for GetPkiApplicationEnrollment.
+type GetPkiApplicationEnrollment422JSONResponseBodyStatusCode float32
+
+// GetPkiApplicationEnrollment500JSONResponseBodyStatusCode defines parameters for GetPkiApplicationEnrollment.
+type GetPkiApplicationEnrollment500JSONResponseBodyStatusCode float32
+
+// ClearPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCode defines parameters for ClearPkiApplicationAcmeEnrollment.
+type ClearPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCode float32
+
+// ClearPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCode defines parameters for ClearPkiApplicationAcmeEnrollment.
+type ClearPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCode float32
+
+// ClearPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCode defines parameters for ClearPkiApplicationAcmeEnrollment.
+type ClearPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCode float32
+
+// ClearPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCode defines parameters for ClearPkiApplicationAcmeEnrollment.
+type ClearPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCode float32
+
+// ClearPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCode defines parameters for ClearPkiApplicationAcmeEnrollment.
+type ClearPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCode float32
+
+// ClearPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCode defines parameters for ClearPkiApplicationAcmeEnrollment.
+type ClearPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCode float32
+
 // SetPkiApplicationAcmeEnrollmentJSONBody defines parameters for SetPkiApplicationAcmeEnrollment.
 type SetPkiApplicationAcmeEnrollmentJSONBody struct {
 	SkipDnsOwnershipVerification *bool `json:"skipDnsOwnershipVerification,omitempty"`
@@ -166641,6 +168660,42 @@ type RevealPkiApplicationAcmeEabSecret422JSONResponseBodyStatusCode float32
 
 // RevealPkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode defines parameters for RevealPkiApplicationAcmeEabSecret.
 type RevealPkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode float32
+
+// RotatePkiApplicationAcmeEabSecret400JSONResponseBodyStatusCode defines parameters for RotatePkiApplicationAcmeEabSecret.
+type RotatePkiApplicationAcmeEabSecret400JSONResponseBodyStatusCode float32
+
+// RotatePkiApplicationAcmeEabSecret401JSONResponseBodyStatusCode defines parameters for RotatePkiApplicationAcmeEabSecret.
+type RotatePkiApplicationAcmeEabSecret401JSONResponseBodyStatusCode float32
+
+// RotatePkiApplicationAcmeEabSecret403JSONResponseBodyStatusCode defines parameters for RotatePkiApplicationAcmeEabSecret.
+type RotatePkiApplicationAcmeEabSecret403JSONResponseBodyStatusCode float32
+
+// RotatePkiApplicationAcmeEabSecret404JSONResponseBodyStatusCode defines parameters for RotatePkiApplicationAcmeEabSecret.
+type RotatePkiApplicationAcmeEabSecret404JSONResponseBodyStatusCode float32
+
+// RotatePkiApplicationAcmeEabSecret422JSONResponseBodyStatusCode defines parameters for RotatePkiApplicationAcmeEabSecret.
+type RotatePkiApplicationAcmeEabSecret422JSONResponseBodyStatusCode float32
+
+// RotatePkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode defines parameters for RotatePkiApplicationAcmeEabSecret.
+type RotatePkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode float32
+
+// ClearPkiApplicationApiEnrollment400JSONResponseBodyStatusCode defines parameters for ClearPkiApplicationApiEnrollment.
+type ClearPkiApplicationApiEnrollment400JSONResponseBodyStatusCode float32
+
+// ClearPkiApplicationApiEnrollment401JSONResponseBodyStatusCode defines parameters for ClearPkiApplicationApiEnrollment.
+type ClearPkiApplicationApiEnrollment401JSONResponseBodyStatusCode float32
+
+// ClearPkiApplicationApiEnrollment403JSONResponseBodyStatusCode defines parameters for ClearPkiApplicationApiEnrollment.
+type ClearPkiApplicationApiEnrollment403JSONResponseBodyStatusCode float32
+
+// ClearPkiApplicationApiEnrollment404JSONResponseBodyStatusCode defines parameters for ClearPkiApplicationApiEnrollment.
+type ClearPkiApplicationApiEnrollment404JSONResponseBodyStatusCode float32
+
+// ClearPkiApplicationApiEnrollment422JSONResponseBodyStatusCode defines parameters for ClearPkiApplicationApiEnrollment.
+type ClearPkiApplicationApiEnrollment422JSONResponseBodyStatusCode float32
+
+// ClearPkiApplicationApiEnrollment500JSONResponseBodyStatusCode defines parameters for ClearPkiApplicationApiEnrollment.
+type ClearPkiApplicationApiEnrollment500JSONResponseBodyStatusCode float32
 
 // SetPkiApplicationApiEnrollmentJSONBody defines parameters for SetPkiApplicationApiEnrollment.
 type SetPkiApplicationApiEnrollmentJSONBody struct {
@@ -166708,6 +168763,24 @@ type SetPkiApplicationEstEnrollment422JSONResponseBodyStatusCode float32
 
 // SetPkiApplicationEstEnrollment500JSONResponseBodyStatusCode defines parameters for SetPkiApplicationEstEnrollment.
 type SetPkiApplicationEstEnrollment500JSONResponseBodyStatusCode float32
+
+// ClearPkiApplicationScepEnrollment400JSONResponseBodyStatusCode defines parameters for ClearPkiApplicationScepEnrollment.
+type ClearPkiApplicationScepEnrollment400JSONResponseBodyStatusCode float32
+
+// ClearPkiApplicationScepEnrollment401JSONResponseBodyStatusCode defines parameters for ClearPkiApplicationScepEnrollment.
+type ClearPkiApplicationScepEnrollment401JSONResponseBodyStatusCode float32
+
+// ClearPkiApplicationScepEnrollment403JSONResponseBodyStatusCode defines parameters for ClearPkiApplicationScepEnrollment.
+type ClearPkiApplicationScepEnrollment403JSONResponseBodyStatusCode float32
+
+// ClearPkiApplicationScepEnrollment404JSONResponseBodyStatusCode defines parameters for ClearPkiApplicationScepEnrollment.
+type ClearPkiApplicationScepEnrollment404JSONResponseBodyStatusCode float32
+
+// ClearPkiApplicationScepEnrollment422JSONResponseBodyStatusCode defines parameters for ClearPkiApplicationScepEnrollment.
+type ClearPkiApplicationScepEnrollment422JSONResponseBodyStatusCode float32
+
+// ClearPkiApplicationScepEnrollment500JSONResponseBodyStatusCode defines parameters for ClearPkiApplicationScepEnrollment.
+type ClearPkiApplicationScepEnrollment500JSONResponseBodyStatusCode float32
 
 // SetPkiApplicationScepEnrollmentJSONBody defines parameters for SetPkiApplicationScepEnrollment.
 type SetPkiApplicationScepEnrollmentJSONBody struct {
@@ -166787,6 +168860,29 @@ type RemovePkiApplicationUserMember422JSONResponseBodyStatusCode float32
 
 // RemovePkiApplicationUserMember500JSONResponseBodyStatusCode defines parameters for RemovePkiApplicationUserMember.
 type RemovePkiApplicationUserMember500JSONResponseBodyStatusCode float32
+
+// UpdatePkiApplicationUserMemberRoleJSONBody defines parameters for UpdatePkiApplicationUserMemberRole.
+type UpdatePkiApplicationUserMemberRoleJSONBody struct {
+	Role string `json:"role"`
+}
+
+// UpdatePkiApplicationUserMemberRole400JSONResponseBodyStatusCode defines parameters for UpdatePkiApplicationUserMemberRole.
+type UpdatePkiApplicationUserMemberRole400JSONResponseBodyStatusCode float32
+
+// UpdatePkiApplicationUserMemberRole401JSONResponseBodyStatusCode defines parameters for UpdatePkiApplicationUserMemberRole.
+type UpdatePkiApplicationUserMemberRole401JSONResponseBodyStatusCode float32
+
+// UpdatePkiApplicationUserMemberRole403JSONResponseBodyStatusCode defines parameters for UpdatePkiApplicationUserMemberRole.
+type UpdatePkiApplicationUserMemberRole403JSONResponseBodyStatusCode float32
+
+// UpdatePkiApplicationUserMemberRole404JSONResponseBodyStatusCode defines parameters for UpdatePkiApplicationUserMemberRole.
+type UpdatePkiApplicationUserMemberRole404JSONResponseBodyStatusCode float32
+
+// UpdatePkiApplicationUserMemberRole422JSONResponseBodyStatusCode defines parameters for UpdatePkiApplicationUserMemberRole.
+type UpdatePkiApplicationUserMemberRole422JSONResponseBodyStatusCode float32
+
+// UpdatePkiApplicationUserMemberRole500JSONResponseBodyStatusCode defines parameters for UpdatePkiApplicationUserMemberRole.
+type UpdatePkiApplicationUserMemberRole500JSONResponseBodyStatusCode float32
 
 // ListCertificateAuthoritiesV1GeneralParams defines parameters for ListCertificateAuthoritiesV1General.
 type ListCertificateAuthoritiesV1GeneralParams struct {
@@ -168133,6 +170229,42 @@ type GetCaCrls422JSONResponseBodyStatusCode float32
 // GetCaCrls500JSONResponseBodyStatusCode defines parameters for GetCaCrls.
 type GetCaCrls500JSONResponseBodyStatusCode float32
 
+// RegenerateCaCrl400JSONResponseBodyStatusCode defines parameters for RegenerateCaCrl.
+type RegenerateCaCrl400JSONResponseBodyStatusCode float32
+
+// RegenerateCaCrl401JSONResponseBodyStatusCode defines parameters for RegenerateCaCrl.
+type RegenerateCaCrl401JSONResponseBodyStatusCode float32
+
+// RegenerateCaCrl403JSONResponseBodyStatusCode defines parameters for RegenerateCaCrl.
+type RegenerateCaCrl403JSONResponseBodyStatusCode float32
+
+// RegenerateCaCrl404JSONResponseBodyStatusCode defines parameters for RegenerateCaCrl.
+type RegenerateCaCrl404JSONResponseBodyStatusCode float32
+
+// RegenerateCaCrl422JSONResponseBodyStatusCode defines parameters for RegenerateCaCrl.
+type RegenerateCaCrl422JSONResponseBodyStatusCode float32
+
+// RegenerateCaCrl500JSONResponseBodyStatusCode defines parameters for RegenerateCaCrl.
+type RegenerateCaCrl500JSONResponseBodyStatusCode float32
+
+// DeleteCaCrossSignedCertificate400JSONResponseBodyStatusCode defines parameters for DeleteCaCrossSignedCertificate.
+type DeleteCaCrossSignedCertificate400JSONResponseBodyStatusCode float32
+
+// DeleteCaCrossSignedCertificate401JSONResponseBodyStatusCode defines parameters for DeleteCaCrossSignedCertificate.
+type DeleteCaCrossSignedCertificate401JSONResponseBodyStatusCode float32
+
+// DeleteCaCrossSignedCertificate403JSONResponseBodyStatusCode defines parameters for DeleteCaCrossSignedCertificate.
+type DeleteCaCrossSignedCertificate403JSONResponseBodyStatusCode float32
+
+// DeleteCaCrossSignedCertificate404JSONResponseBodyStatusCode defines parameters for DeleteCaCrossSignedCertificate.
+type DeleteCaCrossSignedCertificate404JSONResponseBodyStatusCode float32
+
+// DeleteCaCrossSignedCertificate422JSONResponseBodyStatusCode defines parameters for DeleteCaCrossSignedCertificate.
+type DeleteCaCrossSignedCertificate422JSONResponseBodyStatusCode float32
+
+// DeleteCaCrossSignedCertificate500JSONResponseBodyStatusCode defines parameters for DeleteCaCrossSignedCertificate.
+type DeleteCaCrossSignedCertificate500JSONResponseBodyStatusCode float32
+
 // GetCaCrossSignedCertificate400JSONResponseBodyStatusCode defines parameters for GetCaCrossSignedCertificate.
 type GetCaCrossSignedCertificate400JSONResponseBodyStatusCode float32
 
@@ -168337,6 +170469,73 @@ type SignIntermediateCa422JSONResponseBodyStatusCode float32
 
 // SignIntermediateCa500JSONResponseBodyStatusCode defines parameters for SignIntermediateCa.
 type SignIntermediateCa500JSONResponseBodyStatusCode float32
+
+// GetCaSigningConfig400JSONResponseBodyStatusCode defines parameters for GetCaSigningConfig.
+type GetCaSigningConfig400JSONResponseBodyStatusCode float32
+
+// GetCaSigningConfig401JSONResponseBodyStatusCode defines parameters for GetCaSigningConfig.
+type GetCaSigningConfig401JSONResponseBodyStatusCode float32
+
+// GetCaSigningConfig403JSONResponseBodyStatusCode defines parameters for GetCaSigningConfig.
+type GetCaSigningConfig403JSONResponseBodyStatusCode float32
+
+// GetCaSigningConfig404JSONResponseBodyStatusCode defines parameters for GetCaSigningConfig.
+type GetCaSigningConfig404JSONResponseBodyStatusCode float32
+
+// GetCaSigningConfig422JSONResponseBodyStatusCode defines parameters for GetCaSigningConfig.
+type GetCaSigningConfig422JSONResponseBodyStatusCode float32
+
+// GetCaSigningConfig500JSONResponseBodyStatusCode defines parameters for GetCaSigningConfig.
+type GetCaSigningConfig500JSONResponseBodyStatusCode float32
+
+// UpdateCaSigningConfigJSONBody defines parameters for UpdateCaSigningConfig.
+type UpdateCaSigningConfigJSONBody struct {
+	AppConnectionId   *openapi_types.UUID                              `json:"appConnectionId,omitempty"`
+	DestinationConfig *UpdateCaSigningConfigJSONBody_DestinationConfig `json:"destinationConfig,omitempty"`
+	ParentCaId        *openapi_types.UUID                              `json:"parentCaId,omitempty"`
+}
+
+// UpdateCaSigningConfigJSONBodyDestinationConfig0 defines parameters for UpdateCaSigningConfig.
+type UpdateCaSigningConfigJSONBodyDestinationConfig0 struct {
+	ApplicationId     openapi_types.UUID `json:"applicationId"`
+	IssuingTemplateId openapi_types.UUID `json:"issuingTemplateId"`
+	ValidityPeriod    *int               `json:"validityPeriod,omitempty"`
+}
+
+// UpdateCaSigningConfigJSONBodyDestinationConfig1 defines parameters for UpdateCaSigningConfig.
+type UpdateCaSigningConfigJSONBodyDestinationConfig1 struct {
+	Template       string `json:"template"`
+	ValidityPeriod *int   `json:"validityPeriod,omitempty"`
+}
+
+// UpdateCaSigningConfigJSONBodyDestinationConfig2 defines parameters for UpdateCaSigningConfig.
+type UpdateCaSigningConfigJSONBodyDestinationConfig2 struct {
+	CaName   *string `json:"caName,omitempty"`
+	Template string  `json:"template"`
+}
+
+// UpdateCaSigningConfigJSONBody_DestinationConfig defines parameters for UpdateCaSigningConfig.
+type UpdateCaSigningConfigJSONBody_DestinationConfig struct {
+	union json.RawMessage
+}
+
+// UpdateCaSigningConfig400JSONResponseBodyStatusCode defines parameters for UpdateCaSigningConfig.
+type UpdateCaSigningConfig400JSONResponseBodyStatusCode float32
+
+// UpdateCaSigningConfig401JSONResponseBodyStatusCode defines parameters for UpdateCaSigningConfig.
+type UpdateCaSigningConfig401JSONResponseBodyStatusCode float32
+
+// UpdateCaSigningConfig403JSONResponseBodyStatusCode defines parameters for UpdateCaSigningConfig.
+type UpdateCaSigningConfig403JSONResponseBodyStatusCode float32
+
+// UpdateCaSigningConfig404JSONResponseBodyStatusCode defines parameters for UpdateCaSigningConfig.
+type UpdateCaSigningConfig404JSONResponseBodyStatusCode float32
+
+// UpdateCaSigningConfig422JSONResponseBodyStatusCode defines parameters for UpdateCaSigningConfig.
+type UpdateCaSigningConfig422JSONResponseBodyStatusCode float32
+
+// UpdateCaSigningConfig500JSONResponseBodyStatusCode defines parameters for UpdateCaSigningConfig.
+type UpdateCaSigningConfig500JSONResponseBodyStatusCode float32
 
 // CreateCaSigningConfigJSONBody defines parameters for CreateCaSigningConfig.
 type CreateCaSigningConfigJSONBody struct {
@@ -205255,8 +207454,14 @@ type CreatePkiApplicationJSONRequestBody CreatePkiApplicationJSONBody
 // UpdatePkiApplicationJSONRequestBody defines body for UpdatePkiApplication for application/json ContentType.
 type UpdatePkiApplicationJSONRequestBody UpdatePkiApplicationJSONBody
 
+// UpdatePkiApplicationGroupMemberRoleJSONRequestBody defines body for UpdatePkiApplicationGroupMemberRole for application/json ContentType.
+type UpdatePkiApplicationGroupMemberRoleJSONRequestBody UpdatePkiApplicationGroupMemberRoleJSONBody
+
 // AddPkiApplicationGroupMemberJSONRequestBody defines body for AddPkiApplicationGroupMember for application/json ContentType.
 type AddPkiApplicationGroupMemberJSONRequestBody AddPkiApplicationGroupMemberJSONBody
+
+// UpdatePkiApplicationIdentityMemberRoleJSONRequestBody defines body for UpdatePkiApplicationIdentityMemberRole for application/json ContentType.
+type UpdatePkiApplicationIdentityMemberRoleJSONRequestBody UpdatePkiApplicationIdentityMemberRoleJSONBody
 
 // AddPkiApplicationIdentityMemberJSONRequestBody defines body for AddPkiApplicationIdentityMember for application/json ContentType.
 type AddPkiApplicationIdentityMemberJSONRequestBody AddPkiApplicationIdentityMemberJSONBody
@@ -205278,6 +207483,9 @@ type SetPkiApplicationScepEnrollmentJSONRequestBody SetPkiApplicationScepEnrollm
 
 // AddPkiApplicationUserMembersJSONRequestBody defines body for AddPkiApplicationUserMembers for application/json ContentType.
 type AddPkiApplicationUserMembersJSONRequestBody AddPkiApplicationUserMembersJSONBody
+
+// UpdatePkiApplicationUserMemberRoleJSONRequestBody defines body for UpdatePkiApplicationUserMemberRole for application/json ContentType.
+type UpdatePkiApplicationUserMemberRoleJSONRequestBody UpdatePkiApplicationUserMemberRoleJSONBody
 
 // CreateAcmeCertificateAuthorityV1JSONRequestBody defines body for CreateAcmeCertificateAuthorityV1 for application/json ContentType.
 type CreateAcmeCertificateAuthorityV1JSONRequestBody CreateAcmeCertificateAuthorityV1JSONBody
@@ -205332,6 +207540,9 @@ type RenewCaCertificateJSONRequestBody RenewCaCertificateJSONBody
 
 // SignIntermediateCaJSONRequestBody defines body for SignIntermediateCa for application/json ContentType.
 type SignIntermediateCaJSONRequestBody SignIntermediateCaJSONBody
+
+// UpdateCaSigningConfigJSONRequestBody defines body for UpdateCaSigningConfig for application/json ContentType.
+type UpdateCaSigningConfigJSONRequestBody UpdateCaSigningConfigJSONBody
 
 // CreateCaSigningConfigJSONRequestBody defines body for CreateCaSigningConfig for application/json ContentType.
 type CreateCaSigningConfigJSONRequestBody CreateCaSigningConfigJSONBody
@@ -205772,6 +207983,8 @@ type UpdateProjectAuditLogSettingsJSONRequestBody UpdateProjectAuditLogSettingsJ
 type UpdateProjectAuditLogsRetentionJSONRequestBody UpdateProjectAuditLogsRetentionJSONBody
 
 // SearchProjectCertificatesJSONRequestBody defines body for SearchProjectCertificates for application/json ContentType.
+//
+// Deprecated: this type has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 type SearchProjectCertificatesJSONRequestBody SearchProjectCertificatesJSONBody
 
 // CreateEnvironmentJSONRequestBody defines body for CreateEnvironment for application/json ContentType.
@@ -210744,6 +212957,32 @@ func (t *ListAppConnections200JSONResponseBody_AppConnections_Item) FromListAppC
 
 // MergeListAppConnections200JSONResponseBodyAppConnections116 performs a merge with any union data inside the ListAppConnections200JSONResponseBody_AppConnections_Item, using the provided ListAppConnections200JSONResponseBodyAppConnections116
 func (t *ListAppConnections200JSONResponseBody_AppConnections_Item) MergeListAppConnections200JSONResponseBodyAppConnections116(v ListAppConnections200JSONResponseBodyAppConnections116) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListAppConnections200JSONResponseBodyAppConnections117 returns the union data inside the ListAppConnections200JSONResponseBody_AppConnections_Item as a ListAppConnections200JSONResponseBodyAppConnections117
+func (t ListAppConnections200JSONResponseBody_AppConnections_Item) AsListAppConnections200JSONResponseBodyAppConnections117() (ListAppConnections200JSONResponseBodyAppConnections117, error) {
+	var body ListAppConnections200JSONResponseBodyAppConnections117
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListAppConnections200JSONResponseBodyAppConnections117 overwrites any union data inside the ListAppConnections200JSONResponseBody_AppConnections_Item as the provided ListAppConnections200JSONResponseBodyAppConnections117
+func (t *ListAppConnections200JSONResponseBody_AppConnections_Item) FromListAppConnections200JSONResponseBodyAppConnections117(v ListAppConnections200JSONResponseBodyAppConnections117) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListAppConnections200JSONResponseBodyAppConnections117 performs a merge with any union data inside the ListAppConnections200JSONResponseBody_AppConnections_Item, using the provided ListAppConnections200JSONResponseBodyAppConnections117
+func (t *ListAppConnections200JSONResponseBody_AppConnections_Item) MergeListAppConnections200JSONResponseBodyAppConnections117(v ListAppConnections200JSONResponseBodyAppConnections117) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -223678,6 +225917,94 @@ func (t ListCertificateAuthoritiesV1General200JSONResponseBody_CertificateAuthor
 }
 
 func (t *ListCertificateAuthoritiesV1General200JSONResponseBody_CertificateAuthorities_Item) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsUpdateCaSigningConfigJSONBodyDestinationConfig0 returns the union data inside the UpdateCaSigningConfigJSONBody_DestinationConfig as a UpdateCaSigningConfigJSONBodyDestinationConfig0
+func (t UpdateCaSigningConfigJSONBody_DestinationConfig) AsUpdateCaSigningConfigJSONBodyDestinationConfig0() (UpdateCaSigningConfigJSONBodyDestinationConfig0, error) {
+	var body UpdateCaSigningConfigJSONBodyDestinationConfig0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateCaSigningConfigJSONBodyDestinationConfig0 overwrites any union data inside the UpdateCaSigningConfigJSONBody_DestinationConfig as the provided UpdateCaSigningConfigJSONBodyDestinationConfig0
+func (t *UpdateCaSigningConfigJSONBody_DestinationConfig) FromUpdateCaSigningConfigJSONBodyDestinationConfig0(v UpdateCaSigningConfigJSONBodyDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateCaSigningConfigJSONBodyDestinationConfig0 performs a merge with any union data inside the UpdateCaSigningConfigJSONBody_DestinationConfig, using the provided UpdateCaSigningConfigJSONBodyDestinationConfig0
+func (t *UpdateCaSigningConfigJSONBody_DestinationConfig) MergeUpdateCaSigningConfigJSONBodyDestinationConfig0(v UpdateCaSigningConfigJSONBodyDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateCaSigningConfigJSONBodyDestinationConfig1 returns the union data inside the UpdateCaSigningConfigJSONBody_DestinationConfig as a UpdateCaSigningConfigJSONBodyDestinationConfig1
+func (t UpdateCaSigningConfigJSONBody_DestinationConfig) AsUpdateCaSigningConfigJSONBodyDestinationConfig1() (UpdateCaSigningConfigJSONBodyDestinationConfig1, error) {
+	var body UpdateCaSigningConfigJSONBodyDestinationConfig1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateCaSigningConfigJSONBodyDestinationConfig1 overwrites any union data inside the UpdateCaSigningConfigJSONBody_DestinationConfig as the provided UpdateCaSigningConfigJSONBodyDestinationConfig1
+func (t *UpdateCaSigningConfigJSONBody_DestinationConfig) FromUpdateCaSigningConfigJSONBodyDestinationConfig1(v UpdateCaSigningConfigJSONBodyDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateCaSigningConfigJSONBodyDestinationConfig1 performs a merge with any union data inside the UpdateCaSigningConfigJSONBody_DestinationConfig, using the provided UpdateCaSigningConfigJSONBodyDestinationConfig1
+func (t *UpdateCaSigningConfigJSONBody_DestinationConfig) MergeUpdateCaSigningConfigJSONBodyDestinationConfig1(v UpdateCaSigningConfigJSONBodyDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateCaSigningConfigJSONBodyDestinationConfig2 returns the union data inside the UpdateCaSigningConfigJSONBody_DestinationConfig as a UpdateCaSigningConfigJSONBodyDestinationConfig2
+func (t UpdateCaSigningConfigJSONBody_DestinationConfig) AsUpdateCaSigningConfigJSONBodyDestinationConfig2() (UpdateCaSigningConfigJSONBodyDestinationConfig2, error) {
+	var body UpdateCaSigningConfigJSONBodyDestinationConfig2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateCaSigningConfigJSONBodyDestinationConfig2 overwrites any union data inside the UpdateCaSigningConfigJSONBody_DestinationConfig as the provided UpdateCaSigningConfigJSONBodyDestinationConfig2
+func (t *UpdateCaSigningConfigJSONBody_DestinationConfig) FromUpdateCaSigningConfigJSONBodyDestinationConfig2(v UpdateCaSigningConfigJSONBodyDestinationConfig2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateCaSigningConfigJSONBodyDestinationConfig2 performs a merge with any union data inside the UpdateCaSigningConfigJSONBody_DestinationConfig, using the provided UpdateCaSigningConfigJSONBodyDestinationConfig2
+func (t *UpdateCaSigningConfigJSONBody_DestinationConfig) MergeUpdateCaSigningConfigJSONBodyDestinationConfig2(v UpdateCaSigningConfigJSONBodyDestinationConfig2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t UpdateCaSigningConfigJSONBody_DestinationConfig) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *UpdateCaSigningConfigJSONBody_DestinationConfig) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -247374,6 +249701,11 @@ type ClientInterface interface {
 	// Self-approve an approval request, bypassing its policy
 	BreakGlassCertRequestApprovalRequest(ctx context.Context, requestId openapi_types.UUID, body BreakGlassCertRequestApprovalRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CancelCertRequestApprovalRequest performs a POST /api/v1/approval-policies/cert-request/requests/{requestId}/cancel (the `CancelCertRequestApprovalRequest` operationId) request.
+	//
+	// Cancel approval request.
+	CancelCertRequestApprovalRequest(ctx context.Context, requestId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RejectCertRequestApprovalRequestWithBody performs a POST /api/v1/approval-policies/cert-request/requests/{requestId}/reject (the `RejectCertRequestApprovalRequest` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -248442,6 +250774,23 @@ type ClientInterface interface {
 	// Update an application.
 	UpdatePkiApplication(ctx context.Context, applicationId openapi_types.UUID, body UpdatePkiApplicationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// RemovePkiApplicationGroupMember performs a DELETE /api/v1/cert-manager/applications/{applicationId}/groups/{groupId} (the `RemovePkiApplicationGroupMember` operationId) request.
+	//
+	// Remove a group from an application.
+	RemovePkiApplicationGroupMember(ctx context.Context, applicationId openapi_types.UUID, groupId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdatePkiApplicationGroupMemberRoleWithBody performs a PATCH /api/v1/cert-manager/applications/{applicationId}/groups/{groupId} (the `UpdatePkiApplicationGroupMemberRole` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update the role of a group member on an application.
+	UpdatePkiApplicationGroupMemberRoleWithBody(ctx context.Context, applicationId openapi_types.UUID, groupId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdatePkiApplicationGroupMemberRole performs a PATCH /api/v1/cert-manager/applications/{applicationId}/groups/{groupId} (the `UpdatePkiApplicationGroupMemberRole` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Update the role of a group member on an application.
+	UpdatePkiApplicationGroupMemberRole(ctx context.Context, applicationId openapi_types.UUID, groupId openapi_types.UUID, body UpdatePkiApplicationGroupMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AddPkiApplicationGroupMemberWithBody performs a POST /api/v1/cert-manager/applications/{applicationId}/groups/{groupId} (the `AddPkiApplicationGroupMember` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -248453,6 +250802,23 @@ type ClientInterface interface {
 	//
 	// Add a group as a member of an application.
 	AddPkiApplicationGroupMember(ctx context.Context, applicationId openapi_types.UUID, groupId openapi_types.UUID, body AddPkiApplicationGroupMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RemovePkiApplicationIdentityMember performs a DELETE /api/v1/cert-manager/applications/{applicationId}/identities/{identityId} (the `RemovePkiApplicationIdentityMember` operationId) request.
+	//
+	// Remove an identity from an application.
+	RemovePkiApplicationIdentityMember(ctx context.Context, applicationId openapi_types.UUID, identityId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdatePkiApplicationIdentityMemberRoleWithBody performs a PATCH /api/v1/cert-manager/applications/{applicationId}/identities/{identityId} (the `UpdatePkiApplicationIdentityMemberRole` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update the role of an identity member on an application.
+	UpdatePkiApplicationIdentityMemberRoleWithBody(ctx context.Context, applicationId openapi_types.UUID, identityId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdatePkiApplicationIdentityMemberRole performs a PATCH /api/v1/cert-manager/applications/{applicationId}/identities/{identityId} (the `UpdatePkiApplicationIdentityMemberRole` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Update the role of an identity member on an application.
+	UpdatePkiApplicationIdentityMemberRole(ctx context.Context, applicationId openapi_types.UUID, identityId openapi_types.UUID, body UpdatePkiApplicationIdentityMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AddPkiApplicationIdentityMemberWithBody performs a POST /api/v1/cert-manager/applications/{applicationId}/identities/{identityId} (the `AddPkiApplicationIdentityMember` operationId) request,
 	// with any type of body and a specified content type.
@@ -248493,6 +250859,16 @@ type ClientInterface interface {
 	// Detach a profile from an application.
 	DetachPkiApplicationProfile(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetPkiApplicationEnrollment performs a GET /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment (the `GetPkiApplicationEnrollment` operationId) request.
+	//
+	// Get the enrollment state for a profile on an application.
+	GetPkiApplicationEnrollment(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ClearPkiApplicationAcmeEnrollment performs a DELETE /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme (the `ClearPkiApplicationAcmeEnrollment` operationId) request.
+	//
+	// Disable the ACME enrollment method for a profile on an application.
+	ClearPkiApplicationAcmeEnrollment(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SetPkiApplicationAcmeEnrollmentWithBody performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme (the `SetPkiApplicationAcmeEnrollment` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -248509,6 +250885,16 @@ type ClientInterface interface {
 	//
 	// Reveal the ACME EAB secret for a profile on an application.
 	RevealPkiApplicationAcmeEabSecret(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RotatePkiApplicationAcmeEabSecret performs a POST /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme/eab/rotate (the `RotatePkiApplicationAcmeEabSecret` operationId) request.
+	//
+	// Rotate the ACME EAB secret for a profile on an application.
+	RotatePkiApplicationAcmeEabSecret(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ClearPkiApplicationApiEnrollment performs a DELETE /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/api (the `ClearPkiApplicationApiEnrollment` operationId) request.
+	//
+	// Disable the API enrollment method for a profile on an application.
+	ClearPkiApplicationApiEnrollment(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SetPkiApplicationApiEnrollmentWithBody performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/api (the `SetPkiApplicationApiEnrollment` operationId) request,
 	// with any type of body and a specified content type.
@@ -248539,6 +250925,11 @@ type ClientInterface interface {
 	// Enable or update the EST enrollment method for a profile on an application.
 	SetPkiApplicationEstEnrollment(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, body SetPkiApplicationEstEnrollmentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ClearPkiApplicationScepEnrollment performs a DELETE /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/scep (the `ClearPkiApplicationScepEnrollment` operationId) request.
+	//
+	// Disable the SCEP enrollment method for a profile on an application.
+	ClearPkiApplicationScepEnrollment(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SetPkiApplicationScepEnrollmentWithBody performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/scep (the `SetPkiApplicationScepEnrollment` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -248567,6 +250958,18 @@ type ClientInterface interface {
 	//
 	// Remove a user from an application.
 	RemovePkiApplicationUserMember(ctx context.Context, applicationId openapi_types.UUID, userId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdatePkiApplicationUserMemberRoleWithBody performs a PATCH /api/v1/cert-manager/applications/{applicationId}/users/{userId} (the `UpdatePkiApplicationUserMemberRole` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update the role of a user member on an application.
+	UpdatePkiApplicationUserMemberRoleWithBody(ctx context.Context, applicationId openapi_types.UUID, userId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdatePkiApplicationUserMemberRole performs a PATCH /api/v1/cert-manager/applications/{applicationId}/users/{userId} (the `UpdatePkiApplicationUserMemberRole` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Update the role of a user member on an application.
+	UpdatePkiApplicationUserMemberRole(ctx context.Context, applicationId openapi_types.UUID, userId openapi_types.UUID, body UpdatePkiApplicationUserMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListCertificateAuthoritiesV1General performs a GET /api/v1/cert-manager/ca (the `ListCertificateAuthoritiesV1General` operationId) request.
 	//
@@ -248722,6 +251125,16 @@ type ClientInterface interface {
 	// Get list of CRLs of the CA.
 	GetCaCrls(ctx context.Context, caId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// RegenerateCaCrl performs a POST /api/v1/cert-manager/ca/internal/{caId}/crls/regenerate (the `RegenerateCaCrl` operationId) request.
+	//
+	// Regenerate the CRL of an internal CA and return it.
+	RegenerateCaCrl(ctx context.Context, caId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteCaCrossSignedCertificate performs a DELETE /api/v1/cert-manager/ca/internal/{caId}/cross-signed-certificate (the `DeleteCaCrossSignedCertificate` operationId) request.
+	//
+	// Remove the cross-signed certificate of an internal CA. Certificates issued afterwards no longer carry it. Certificates already issued keep their chain.
+	DeleteCaCrossSignedCertificate(ctx context.Context, caId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetCaCrossSignedCertificate performs a GET /api/v1/cert-manager/ca/internal/{caId}/cross-signed-certificate (the `GetCaCrossSignedCertificate` operationId) request.
 	//
 	// Get the cross-signed certificate of an internal CA. `crossSignedCertificate` is null when the CA has none.
@@ -248803,6 +251216,23 @@ type ClientInterface interface {
 	//
 	// Create intermediate CA certificate from parent CA.
 	SignIntermediateCa(ctx context.Context, caId string, body SignIntermediateCaJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetCaSigningConfig performs a GET /api/v1/cert-manager/ca/internal/{caId}/signing-config (the `GetCaSigningConfig` operationId) request.
+	//
+	// Get the signing configuration for a CA.
+	GetCaSigningConfig(ctx context.Context, caId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateCaSigningConfigWithBody performs a PATCH /api/v1/cert-manager/ca/internal/{caId}/signing-config (the `UpdateCaSigningConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update the signing configuration for a CA.
+	UpdateCaSigningConfigWithBody(ctx context.Context, caId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateCaSigningConfig performs a PATCH /api/v1/cert-manager/ca/internal/{caId}/signing-config (the `UpdateCaSigningConfig` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Update the signing configuration for a CA.
+	UpdateCaSigningConfig(ctx context.Context, caId string, body UpdateCaSigningConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateCaSigningConfigWithBody performs a POST /api/v1/cert-manager/ca/internal/{caId}/signing-config (the `CreateCaSigningConfig` operationId) request,
 	// with any type of body and a specified content type.
@@ -251411,13 +253841,17 @@ type ClientInterface interface {
 	// SearchProjectCertificatesWithBody performs a POST /api/v1/projects/{projectId}/certificates/search (the `SearchProjectCertificates` operationId) request,
 	// with any type of body and a specified content type.
 	//
-	// Search and filter certificates within a project.
+	// Deprecated: Use POST /api/v1/cert-manager/certificates/search instead.
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	SearchProjectCertificatesWithBody(ctx context.Context, projectId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchProjectCertificates performs a POST /api/v1/projects/{projectId}/certificates/search (the `SearchProjectCertificates` operationId) request.
 	// Takes a body of the `application/json` content type.
 	//
-	// Search and filter certificates within a project.
+	// Deprecated: Use POST /api/v1/cert-manager/certificates/search instead.
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	SearchProjectCertificates(ctx context.Context, projectId string, body SearchProjectCertificatesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProjectEnvironmentFolderTree performs a GET /api/v1/projects/{projectId}/environment-folder-tree (the `GetProjectEnvironmentFolderTree` operationId) request.
@@ -256039,6 +258473,21 @@ func (c *Client) BreakGlassCertRequestApprovalRequest(ctx context.Context, reque
 	return c.Client.Do(req)
 }
 
+// CancelCertRequestApprovalRequest performs a POST /api/v1/approval-policies/cert-request/requests/{requestId}/cancel (the `CancelCertRequestApprovalRequest` operationId) request.
+//
+// Cancel approval request.
+func (c *Client) CancelCertRequestApprovalRequest(ctx context.Context, requestId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCancelCertRequestApprovalRequestRequest(c.Server, requestId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // RejectCertRequestApprovalRequestWithBody performs a POST /api/v1/approval-policies/cert-request/requests/{requestId}/reject (the `RejectCertRequestApprovalRequest` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -259167,6 +261616,53 @@ func (c *Client) UpdatePkiApplication(ctx context.Context, applicationId openapi
 	return c.Client.Do(req)
 }
 
+// RemovePkiApplicationGroupMember performs a DELETE /api/v1/cert-manager/applications/{applicationId}/groups/{groupId} (the `RemovePkiApplicationGroupMember` operationId) request.
+//
+// Remove a group from an application.
+func (c *Client) RemovePkiApplicationGroupMember(ctx context.Context, applicationId openapi_types.UUID, groupId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemovePkiApplicationGroupMemberRequest(c.Server, applicationId, groupId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdatePkiApplicationGroupMemberRoleWithBody performs a PATCH /api/v1/cert-manager/applications/{applicationId}/groups/{groupId} (the `UpdatePkiApplicationGroupMemberRole` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update the role of a group member on an application.
+func (c *Client) UpdatePkiApplicationGroupMemberRoleWithBody(ctx context.Context, applicationId openapi_types.UUID, groupId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdatePkiApplicationGroupMemberRoleRequestWithBody(c.Server, applicationId, groupId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdatePkiApplicationGroupMemberRole performs a PATCH /api/v1/cert-manager/applications/{applicationId}/groups/{groupId} (the `UpdatePkiApplicationGroupMemberRole` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Update the role of a group member on an application.
+func (c *Client) UpdatePkiApplicationGroupMemberRole(ctx context.Context, applicationId openapi_types.UUID, groupId openapi_types.UUID, body UpdatePkiApplicationGroupMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdatePkiApplicationGroupMemberRoleRequest(c.Server, applicationId, groupId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // AddPkiApplicationGroupMemberWithBody performs a POST /api/v1/cert-manager/applications/{applicationId}/groups/{groupId} (the `AddPkiApplicationGroupMember` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -259189,6 +261685,53 @@ func (c *Client) AddPkiApplicationGroupMemberWithBody(ctx context.Context, appli
 // Add a group as a member of an application.
 func (c *Client) AddPkiApplicationGroupMember(ctx context.Context, applicationId openapi_types.UUID, groupId openapi_types.UUID, body AddPkiApplicationGroupMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAddPkiApplicationGroupMemberRequest(c.Server, applicationId, groupId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RemovePkiApplicationIdentityMember performs a DELETE /api/v1/cert-manager/applications/{applicationId}/identities/{identityId} (the `RemovePkiApplicationIdentityMember` operationId) request.
+//
+// Remove an identity from an application.
+func (c *Client) RemovePkiApplicationIdentityMember(ctx context.Context, applicationId openapi_types.UUID, identityId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemovePkiApplicationIdentityMemberRequest(c.Server, applicationId, identityId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdatePkiApplicationIdentityMemberRoleWithBody performs a PATCH /api/v1/cert-manager/applications/{applicationId}/identities/{identityId} (the `UpdatePkiApplicationIdentityMemberRole` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update the role of an identity member on an application.
+func (c *Client) UpdatePkiApplicationIdentityMemberRoleWithBody(ctx context.Context, applicationId openapi_types.UUID, identityId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdatePkiApplicationIdentityMemberRoleRequestWithBody(c.Server, applicationId, identityId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdatePkiApplicationIdentityMemberRole performs a PATCH /api/v1/cert-manager/applications/{applicationId}/identities/{identityId} (the `UpdatePkiApplicationIdentityMemberRole` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Update the role of an identity member on an application.
+func (c *Client) UpdatePkiApplicationIdentityMemberRole(ctx context.Context, applicationId openapi_types.UUID, identityId openapi_types.UUID, body UpdatePkiApplicationIdentityMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdatePkiApplicationIdentityMemberRoleRequest(c.Server, applicationId, identityId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -259308,6 +261851,36 @@ func (c *Client) DetachPkiApplicationProfile(ctx context.Context, applicationId 
 	return c.Client.Do(req)
 }
 
+// GetPkiApplicationEnrollment performs a GET /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment (the `GetPkiApplicationEnrollment` operationId) request.
+//
+// Get the enrollment state for a profile on an application.
+func (c *Client) GetPkiApplicationEnrollment(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetPkiApplicationEnrollmentRequest(c.Server, applicationId, profileId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ClearPkiApplicationAcmeEnrollment performs a DELETE /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme (the `ClearPkiApplicationAcmeEnrollment` operationId) request.
+//
+// Disable the ACME enrollment method for a profile on an application.
+func (c *Client) ClearPkiApplicationAcmeEnrollment(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewClearPkiApplicationAcmeEnrollmentRequest(c.Server, applicationId, profileId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // SetPkiApplicationAcmeEnrollmentWithBody performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme (the `SetPkiApplicationAcmeEnrollment` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -259345,6 +261918,36 @@ func (c *Client) SetPkiApplicationAcmeEnrollment(ctx context.Context, applicatio
 // Reveal the ACME EAB secret for a profile on an application.
 func (c *Client) RevealPkiApplicationAcmeEabSecret(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRevealPkiApplicationAcmeEabSecretRequest(c.Server, applicationId, profileId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RotatePkiApplicationAcmeEabSecret performs a POST /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme/eab/rotate (the `RotatePkiApplicationAcmeEabSecret` operationId) request.
+//
+// Rotate the ACME EAB secret for a profile on an application.
+func (c *Client) RotatePkiApplicationAcmeEabSecret(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRotatePkiApplicationAcmeEabSecretRequest(c.Server, applicationId, profileId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ClearPkiApplicationApiEnrollment performs a DELETE /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/api (the `ClearPkiApplicationApiEnrollment` operationId) request.
+//
+// Disable the API enrollment method for a profile on an application.
+func (c *Client) ClearPkiApplicationApiEnrollment(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewClearPkiApplicationApiEnrollmentRequest(c.Server, applicationId, profileId)
 	if err != nil {
 		return nil, err
 	}
@@ -259434,6 +262037,21 @@ func (c *Client) SetPkiApplicationEstEnrollment(ctx context.Context, application
 	return c.Client.Do(req)
 }
 
+// ClearPkiApplicationScepEnrollment performs a DELETE /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/scep (the `ClearPkiApplicationScepEnrollment` operationId) request.
+//
+// Disable the SCEP enrollment method for a profile on an application.
+func (c *Client) ClearPkiApplicationScepEnrollment(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewClearPkiApplicationScepEnrollmentRequest(c.Server, applicationId, profileId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // SetPkiApplicationScepEnrollmentWithBody performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/scep (the `SetPkiApplicationScepEnrollment` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -259503,6 +262121,38 @@ func (c *Client) AddPkiApplicationUserMembers(ctx context.Context, applicationId
 // Remove a user from an application.
 func (c *Client) RemovePkiApplicationUserMember(ctx context.Context, applicationId openapi_types.UUID, userId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRemovePkiApplicationUserMemberRequest(c.Server, applicationId, userId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdatePkiApplicationUserMemberRoleWithBody performs a PATCH /api/v1/cert-manager/applications/{applicationId}/users/{userId} (the `UpdatePkiApplicationUserMemberRole` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update the role of a user member on an application.
+func (c *Client) UpdatePkiApplicationUserMemberRoleWithBody(ctx context.Context, applicationId openapi_types.UUID, userId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdatePkiApplicationUserMemberRoleRequestWithBody(c.Server, applicationId, userId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdatePkiApplicationUserMemberRole performs a PATCH /api/v1/cert-manager/applications/{applicationId}/users/{userId} (the `UpdatePkiApplicationUserMemberRole` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Update the role of a user member on an application.
+func (c *Client) UpdatePkiApplicationUserMemberRole(ctx context.Context, applicationId openapi_types.UUID, userId openapi_types.UUID, body UpdatePkiApplicationUserMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdatePkiApplicationUserMemberRoleRequest(c.Server, applicationId, userId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -260027,6 +262677,36 @@ func (c *Client) GetCaCrls(ctx context.Context, caId string, reqEditors ...Reque
 	return c.Client.Do(req)
 }
 
+// RegenerateCaCrl performs a POST /api/v1/cert-manager/ca/internal/{caId}/crls/regenerate (the `RegenerateCaCrl` operationId) request.
+//
+// Regenerate the CRL of an internal CA and return it.
+func (c *Client) RegenerateCaCrl(ctx context.Context, caId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRegenerateCaCrlRequest(c.Server, caId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteCaCrossSignedCertificate performs a DELETE /api/v1/cert-manager/ca/internal/{caId}/cross-signed-certificate (the `DeleteCaCrossSignedCertificate` operationId) request.
+//
+// Remove the cross-signed certificate of an internal CA. Certificates issued afterwards no longer carry it. Certificates already issued keep their chain.
+func (c *Client) DeleteCaCrossSignedCertificate(ctx context.Context, caId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteCaCrossSignedCertificateRequest(c.Server, caId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetCaCrossSignedCertificate performs a GET /api/v1/cert-manager/ca/internal/{caId}/cross-signed-certificate (the `GetCaCrossSignedCertificate` operationId) request.
 //
 // Get the cross-signed certificate of an internal CA. `crossSignedCertificate` is null when the CA has none.
@@ -260239,6 +262919,53 @@ func (c *Client) SignIntermediateCaWithBody(ctx context.Context, caId string, co
 // Create intermediate CA certificate from parent CA.
 func (c *Client) SignIntermediateCa(ctx context.Context, caId string, body SignIntermediateCaJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSignIntermediateCaRequest(c.Server, caId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetCaSigningConfig performs a GET /api/v1/cert-manager/ca/internal/{caId}/signing-config (the `GetCaSigningConfig` operationId) request.
+//
+// Get the signing configuration for a CA.
+func (c *Client) GetCaSigningConfig(ctx context.Context, caId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetCaSigningConfigRequest(c.Server, caId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateCaSigningConfigWithBody performs a PATCH /api/v1/cert-manager/ca/internal/{caId}/signing-config (the `UpdateCaSigningConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update the signing configuration for a CA.
+func (c *Client) UpdateCaSigningConfigWithBody(ctx context.Context, caId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateCaSigningConfigRequestWithBody(c.Server, caId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateCaSigningConfig performs a PATCH /api/v1/cert-manager/ca/internal/{caId}/signing-config (the `UpdateCaSigningConfig` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Update the signing configuration for a CA.
+func (c *Client) UpdateCaSigningConfig(ctx context.Context, caId string, body UpdateCaSigningConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateCaSigningConfigRequest(c.Server, caId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -268284,7 +271011,8 @@ func (c *Client) GetCertificatePqcTrend(ctx context.Context, projectId string, p
 // SearchProjectCertificatesWithBody performs a POST /api/v1/projects/{projectId}/certificates/search (the `SearchProjectCertificates` operationId) request,
 // with any type of body and a specified content type.
 //
-// Search and filter certificates within a project.
+// Deprecated: Use POST /api/v1/cert-manager/certificates/search instead.
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (c *Client) SearchProjectCertificatesWithBody(ctx context.Context, projectId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchProjectCertificatesRequestWithBody(c.Server, projectId, contentType, body)
 	if err != nil {
@@ -268300,7 +271028,8 @@ func (c *Client) SearchProjectCertificatesWithBody(ctx context.Context, projectI
 // SearchProjectCertificates performs a POST /api/v1/projects/{projectId}/certificates/search (the `SearchProjectCertificates` operationId) request.
 // Takes a body of the `application/json` content type.
 //
-// Search and filter certificates within a project.
+// Deprecated: Use POST /api/v1/cert-manager/certificates/search instead.
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (c *Client) SearchProjectCertificates(ctx context.Context, projectId string, body SearchProjectCertificatesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchProjectCertificatesRequest(c.Server, projectId, body)
 	if err != nil {
@@ -280150,6 +282879,40 @@ func NewBreakGlassCertRequestApprovalRequestRequestWithBody(server string, reque
 	return req, nil
 }
 
+// NewCancelCertRequestApprovalRequestRequest constructs an http.Request for the CancelCertRequestApprovalRequest method
+func NewCancelCertRequestApprovalRequestRequest(server string, requestId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "requestId", requestId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/approval-policies/cert-request/requests/%s/cancel", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewRejectCertRequestApprovalRequestRequest calls the generic RejectCertRequestApprovalRequest builder with application/json body
 func NewRejectCertRequestApprovalRequestRequest(server string, requestId openapi_types.UUID, body RejectCertRequestApprovalRequestJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -285744,6 +288507,101 @@ func NewUpdatePkiApplicationRequestWithBody(server string, applicationId openapi
 	return req, nil
 }
 
+// NewRemovePkiApplicationGroupMemberRequest constructs an http.Request for the RemovePkiApplicationGroupMember method
+func NewRemovePkiApplicationGroupMemberRequest(server string, applicationId openapi_types.UUID, groupId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "applicationId", applicationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "groupId", groupId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/applications/%s/groups/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdatePkiApplicationGroupMemberRoleRequest calls the generic UpdatePkiApplicationGroupMemberRole builder with application/json body
+func NewUpdatePkiApplicationGroupMemberRoleRequest(server string, applicationId openapi_types.UUID, groupId openapi_types.UUID, body UpdatePkiApplicationGroupMemberRoleJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdatePkiApplicationGroupMemberRoleRequestWithBody(server, applicationId, groupId, "application/json", bodyReader)
+}
+
+// NewUpdatePkiApplicationGroupMemberRoleRequestWithBody constructs an http.Request for the UpdatePkiApplicationGroupMemberRole method, with any body, and a specified content type
+func NewUpdatePkiApplicationGroupMemberRoleRequestWithBody(server string, applicationId openapi_types.UUID, groupId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "applicationId", applicationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "groupId", groupId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/applications/%s/groups/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewAddPkiApplicationGroupMemberRequest calls the generic AddPkiApplicationGroupMember builder with application/json body
 func NewAddPkiApplicationGroupMemberRequest(server string, applicationId openapi_types.UUID, groupId openapi_types.UUID, body AddPkiApplicationGroupMemberJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -285789,6 +288647,101 @@ func NewAddPkiApplicationGroupMemberRequestWithBody(server string, applicationId
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRemovePkiApplicationIdentityMemberRequest constructs an http.Request for the RemovePkiApplicationIdentityMember method
+func NewRemovePkiApplicationIdentityMemberRequest(server string, applicationId openapi_types.UUID, identityId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "applicationId", applicationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "identityId", identityId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/applications/%s/identities/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdatePkiApplicationIdentityMemberRoleRequest calls the generic UpdatePkiApplicationIdentityMemberRole builder with application/json body
+func NewUpdatePkiApplicationIdentityMemberRoleRequest(server string, applicationId openapi_types.UUID, identityId openapi_types.UUID, body UpdatePkiApplicationIdentityMemberRoleJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdatePkiApplicationIdentityMemberRoleRequestWithBody(server, applicationId, identityId, "application/json", bodyReader)
+}
+
+// NewUpdatePkiApplicationIdentityMemberRoleRequestWithBody constructs an http.Request for the UpdatePkiApplicationIdentityMemberRole method, with any body, and a specified content type
+func NewUpdatePkiApplicationIdentityMemberRoleRequestWithBody(server string, applicationId openapi_types.UUID, identityId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "applicationId", applicationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "identityId", identityId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/applications/%s/identities/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -286008,6 +288961,88 @@ func NewDetachPkiApplicationProfileRequest(server string, applicationId openapi_
 	return req, nil
 }
 
+// NewGetPkiApplicationEnrollmentRequest constructs an http.Request for the GetPkiApplicationEnrollment method
+func NewGetPkiApplicationEnrollmentRequest(server string, applicationId openapi_types.UUID, profileId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "applicationId", applicationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/applications/%s/profiles/%s/enrollment", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewClearPkiApplicationAcmeEnrollmentRequest constructs an http.Request for the ClearPkiApplicationAcmeEnrollment method
+func NewClearPkiApplicationAcmeEnrollmentRequest(server string, applicationId openapi_types.UUID, profileId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "applicationId", applicationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/applications/%s/profiles/%s/enrollment/acme", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewSetPkiApplicationAcmeEnrollmentRequest calls the generic SetPkiApplicationAcmeEnrollment builder with application/json body
 func NewSetPkiApplicationAcmeEnrollmentRequest(server string, applicationId openapi_types.UUID, profileId openapi_types.UUID, body SetPkiApplicationAcmeEnrollmentJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -286096,6 +289131,88 @@ func NewRevealPkiApplicationAcmeEabSecretRequest(server string, applicationId op
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRotatePkiApplicationAcmeEabSecretRequest constructs an http.Request for the RotatePkiApplicationAcmeEabSecret method
+func NewRotatePkiApplicationAcmeEabSecretRequest(server string, applicationId openapi_types.UUID, profileId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "applicationId", applicationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/applications/%s/profiles/%s/enrollment/acme/eab/rotate", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewClearPkiApplicationApiEnrollmentRequest constructs an http.Request for the ClearPkiApplicationApiEnrollment method
+func NewClearPkiApplicationApiEnrollmentRequest(server string, applicationId openapi_types.UUID, profileId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "applicationId", applicationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/applications/%s/profiles/%s/enrollment/api", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -286252,6 +289369,47 @@ func NewSetPkiApplicationEstEnrollmentRequestWithBody(server string, application
 	return req, nil
 }
 
+// NewClearPkiApplicationScepEnrollmentRequest constructs an http.Request for the ClearPkiApplicationScepEnrollment method
+func NewClearPkiApplicationScepEnrollmentRequest(server string, applicationId openapi_types.UUID, profileId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "applicationId", applicationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/applications/%s/profiles/%s/enrollment/scep", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewSetPkiApplicationScepEnrollmentRequest calls the generic SetPkiApplicationScepEnrollment builder with application/json body
 func NewSetPkiApplicationScepEnrollmentRequest(server string, applicationId openapi_types.UUID, profileId openapi_types.UUID, body SetPkiApplicationScepEnrollmentJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -286390,6 +289548,60 @@ func NewRemovePkiApplicationUserMemberRequest(server string, applicationId opena
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewUpdatePkiApplicationUserMemberRoleRequest calls the generic UpdatePkiApplicationUserMemberRole builder with application/json body
+func NewUpdatePkiApplicationUserMemberRoleRequest(server string, applicationId openapi_types.UUID, userId openapi_types.UUID, body UpdatePkiApplicationUserMemberRoleJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdatePkiApplicationUserMemberRoleRequestWithBody(server, applicationId, userId, "application/json", bodyReader)
+}
+
+// NewUpdatePkiApplicationUserMemberRoleRequestWithBody constructs an http.Request for the UpdatePkiApplicationUserMemberRole method, with any body, and a specified content type
+func NewUpdatePkiApplicationUserMemberRoleRequestWithBody(server string, applicationId openapi_types.UUID, userId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "applicationId", applicationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "userId", userId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/applications/%s/users/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -287391,6 +290603,74 @@ func NewGetCaCrlsRequest(server string, caId string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewRegenerateCaCrlRequest constructs an http.Request for the RegenerateCaCrl method
+func NewRegenerateCaCrlRequest(server string, caId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "caId", caId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/ca/internal/%s/crls/regenerate", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteCaCrossSignedCertificateRequest constructs an http.Request for the DeleteCaCrossSignedCertificate method
+func NewDeleteCaCrossSignedCertificateRequest(server string, caId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "caId", caId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/ca/internal/%s/cross-signed-certificate", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetCaCrossSignedCertificateRequest constructs an http.Request for the GetCaCrossSignedCertificate method
 func NewGetCaCrossSignedCertificateRequest(server string, caId openapi_types.UUID) (*http.Request, error) {
 	var err error
@@ -287759,6 +291039,87 @@ func NewSignIntermediateCaRequestWithBody(server string, caId string, contentTyp
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetCaSigningConfigRequest constructs an http.Request for the GetCaSigningConfig method
+func NewGetCaSigningConfigRequest(server string, caId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "caId", caId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/ca/internal/%s/signing-config", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateCaSigningConfigRequest calls the generic UpdateCaSigningConfig builder with application/json body
+func NewUpdateCaSigningConfigRequest(server string, caId string, body UpdateCaSigningConfigJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateCaSigningConfigRequestWithBody(server, caId, "application/json", bodyReader)
+}
+
+// NewUpdateCaSigningConfigRequestWithBody constructs an http.Request for the UpdateCaSigningConfig method, with any body, and a specified content type
+func NewUpdateCaSigningConfigRequestWithBody(server string, caId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "caId", caId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/ca/internal/%s/signing-config", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -323213,6 +326574,13 @@ type ClientWithResponsesInterface interface {
 	// Self-approve an approval request, bypassing its policy
 	BreakGlassCertRequestApprovalRequestWithResponse(ctx context.Context, requestId openapi_types.UUID, body BreakGlassCertRequestApprovalRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*BreakGlassCertRequestApprovalRequestResponse, error)
 
+	// CancelCertRequestApprovalRequestWithResponse performs a POST /api/v1/approval-policies/cert-request/requests/{requestId}/cancel (the `CancelCertRequestApprovalRequest` operationId) request.
+	//
+	// Cancel approval request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CancelCertRequestApprovalRequestWithResponse(ctx context.Context, requestId openapi_types.UUID, reqEditors ...RequestEditorFn) (*CancelCertRequestApprovalRequestResponse, error)
+
 	// RejectCertRequestApprovalRequestWithBodyWithResponse performs a POST /api/v1/approval-policies/cert-request/requests/{requestId}/reject (the `RejectCertRequestApprovalRequest` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -324557,6 +327925,27 @@ type ClientWithResponsesInterface interface {
 	// Update an application.
 	UpdatePkiApplicationWithResponse(ctx context.Context, applicationId openapi_types.UUID, body UpdatePkiApplicationJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePkiApplicationResponse, error)
 
+	// RemovePkiApplicationGroupMemberWithResponse performs a DELETE /api/v1/cert-manager/applications/{applicationId}/groups/{groupId} (the `RemovePkiApplicationGroupMember` operationId) request.
+	//
+	// Remove a group from an application.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	RemovePkiApplicationGroupMemberWithResponse(ctx context.Context, applicationId openapi_types.UUID, groupId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RemovePkiApplicationGroupMemberResponse, error)
+
+	// UpdatePkiApplicationGroupMemberRoleWithBodyWithResponse performs a PATCH /api/v1/cert-manager/applications/{applicationId}/groups/{groupId} (the `UpdatePkiApplicationGroupMemberRole` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update the role of a group member on an application.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpdatePkiApplicationGroupMemberRoleWithBodyWithResponse(ctx context.Context, applicationId openapi_types.UUID, groupId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePkiApplicationGroupMemberRoleResponse, error)
+
+	// UpdatePkiApplicationGroupMemberRoleWithResponse performs a PATCH /api/v1/cert-manager/applications/{applicationId}/groups/{groupId} (the `UpdatePkiApplicationGroupMemberRole` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Update the role of a group member on an application.
+	UpdatePkiApplicationGroupMemberRoleWithResponse(ctx context.Context, applicationId openapi_types.UUID, groupId openapi_types.UUID, body UpdatePkiApplicationGroupMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePkiApplicationGroupMemberRoleResponse, error)
+
 	// AddPkiApplicationGroupMemberWithBodyWithResponse performs a POST /api/v1/cert-manager/applications/{applicationId}/groups/{groupId} (the `AddPkiApplicationGroupMember` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -324570,6 +327959,27 @@ type ClientWithResponsesInterface interface {
 	//
 	// Add a group as a member of an application.
 	AddPkiApplicationGroupMemberWithResponse(ctx context.Context, applicationId openapi_types.UUID, groupId openapi_types.UUID, body AddPkiApplicationGroupMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*AddPkiApplicationGroupMemberResponse, error)
+
+	// RemovePkiApplicationIdentityMemberWithResponse performs a DELETE /api/v1/cert-manager/applications/{applicationId}/identities/{identityId} (the `RemovePkiApplicationIdentityMember` operationId) request.
+	//
+	// Remove an identity from an application.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	RemovePkiApplicationIdentityMemberWithResponse(ctx context.Context, applicationId openapi_types.UUID, identityId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RemovePkiApplicationIdentityMemberResponse, error)
+
+	// UpdatePkiApplicationIdentityMemberRoleWithBodyWithResponse performs a PATCH /api/v1/cert-manager/applications/{applicationId}/identities/{identityId} (the `UpdatePkiApplicationIdentityMemberRole` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update the role of an identity member on an application.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpdatePkiApplicationIdentityMemberRoleWithBodyWithResponse(ctx context.Context, applicationId openapi_types.UUID, identityId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePkiApplicationIdentityMemberRoleResponse, error)
+
+	// UpdatePkiApplicationIdentityMemberRoleWithResponse performs a PATCH /api/v1/cert-manager/applications/{applicationId}/identities/{identityId} (the `UpdatePkiApplicationIdentityMemberRole` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Update the role of an identity member on an application.
+	UpdatePkiApplicationIdentityMemberRoleWithResponse(ctx context.Context, applicationId openapi_types.UUID, identityId openapi_types.UUID, body UpdatePkiApplicationIdentityMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePkiApplicationIdentityMemberRoleResponse, error)
 
 	// AddPkiApplicationIdentityMemberWithBodyWithResponse performs a POST /api/v1/cert-manager/applications/{applicationId}/identities/{identityId} (the `AddPkiApplicationIdentityMember` operationId) request,
 	// with any type of body and a specified content type.
@@ -324620,6 +328030,20 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	DetachPkiApplicationProfileWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DetachPkiApplicationProfileResponse, error)
 
+	// GetPkiApplicationEnrollmentWithResponse performs a GET /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment (the `GetPkiApplicationEnrollment` operationId) request.
+	//
+	// Get the enrollment state for a profile on an application.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetPkiApplicationEnrollmentWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetPkiApplicationEnrollmentResponse, error)
+
+	// ClearPkiApplicationAcmeEnrollmentWithResponse performs a DELETE /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme (the `ClearPkiApplicationAcmeEnrollment` operationId) request.
+	//
+	// Disable the ACME enrollment method for a profile on an application.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ClearPkiApplicationAcmeEnrollmentWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*ClearPkiApplicationAcmeEnrollmentResponse, error)
+
 	// SetPkiApplicationAcmeEnrollmentWithBodyWithResponse performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme (the `SetPkiApplicationAcmeEnrollment` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -324640,6 +328064,20 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	RevealPkiApplicationAcmeEabSecretWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RevealPkiApplicationAcmeEabSecretResponse, error)
+
+	// RotatePkiApplicationAcmeEabSecretWithResponse performs a POST /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme/eab/rotate (the `RotatePkiApplicationAcmeEabSecret` operationId) request.
+	//
+	// Rotate the ACME EAB secret for a profile on an application.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	RotatePkiApplicationAcmeEabSecretWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RotatePkiApplicationAcmeEabSecretResponse, error)
+
+	// ClearPkiApplicationApiEnrollmentWithResponse performs a DELETE /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/api (the `ClearPkiApplicationApiEnrollment` operationId) request.
+	//
+	// Disable the API enrollment method for a profile on an application.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ClearPkiApplicationApiEnrollmentWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*ClearPkiApplicationApiEnrollmentResponse, error)
 
 	// SetPkiApplicationApiEnrollmentWithBodyWithResponse performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/api (the `SetPkiApplicationApiEnrollment` operationId) request,
 	// with any type of body and a specified content type.
@@ -324676,6 +328114,13 @@ type ClientWithResponsesInterface interface {
 	// Enable or update the EST enrollment method for a profile on an application.
 	SetPkiApplicationEstEnrollmentWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, body SetPkiApplicationEstEnrollmentJSONRequestBody, reqEditors ...RequestEditorFn) (*SetPkiApplicationEstEnrollmentResponse, error)
 
+	// ClearPkiApplicationScepEnrollmentWithResponse performs a DELETE /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/scep (the `ClearPkiApplicationScepEnrollment` operationId) request.
+	//
+	// Disable the SCEP enrollment method for a profile on an application.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ClearPkiApplicationScepEnrollmentWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*ClearPkiApplicationScepEnrollmentResponse, error)
+
 	// SetPkiApplicationScepEnrollmentWithBodyWithResponse performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/scep (the `SetPkiApplicationScepEnrollment` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -324710,6 +328155,20 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	RemovePkiApplicationUserMemberWithResponse(ctx context.Context, applicationId openapi_types.UUID, userId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RemovePkiApplicationUserMemberResponse, error)
+
+	// UpdatePkiApplicationUserMemberRoleWithBodyWithResponse performs a PATCH /api/v1/cert-manager/applications/{applicationId}/users/{userId} (the `UpdatePkiApplicationUserMemberRole` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update the role of a user member on an application.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpdatePkiApplicationUserMemberRoleWithBodyWithResponse(ctx context.Context, applicationId openapi_types.UUID, userId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePkiApplicationUserMemberRoleResponse, error)
+
+	// UpdatePkiApplicationUserMemberRoleWithResponse performs a PATCH /api/v1/cert-manager/applications/{applicationId}/users/{userId} (the `UpdatePkiApplicationUserMemberRole` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Update the role of a user member on an application.
+	UpdatePkiApplicationUserMemberRoleWithResponse(ctx context.Context, applicationId openapi_types.UUID, userId openapi_types.UUID, body UpdatePkiApplicationUserMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePkiApplicationUserMemberRoleResponse, error)
 
 	// ListCertificateAuthoritiesV1GeneralWithResponse performs a GET /api/v1/cert-manager/ca (the `ListCertificateAuthoritiesV1General` operationId) request.
 	//
@@ -324913,6 +328372,20 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	GetCaCrlsWithResponse(ctx context.Context, caId string, reqEditors ...RequestEditorFn) (*GetCaCrlsResponse, error)
 
+	// RegenerateCaCrlWithResponse performs a POST /api/v1/cert-manager/ca/internal/{caId}/crls/regenerate (the `RegenerateCaCrl` operationId) request.
+	//
+	// Regenerate the CRL of an internal CA and return it.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	RegenerateCaCrlWithResponse(ctx context.Context, caId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RegenerateCaCrlResponse, error)
+
+	// DeleteCaCrossSignedCertificateWithResponse performs a DELETE /api/v1/cert-manager/ca/internal/{caId}/cross-signed-certificate (the `DeleteCaCrossSignedCertificate` operationId) request.
+	//
+	// Remove the cross-signed certificate of an internal CA. Certificates issued afterwards no longer carry it. Certificates already issued keep their chain.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteCaCrossSignedCertificateWithResponse(ctx context.Context, caId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteCaCrossSignedCertificateResponse, error)
+
 	// GetCaCrossSignedCertificateWithResponse performs a GET /api/v1/cert-manager/ca/internal/{caId}/cross-signed-certificate (the `GetCaCrossSignedCertificate` operationId) request.
 	//
 	// Get the cross-signed certificate of an internal CA. `crossSignedCertificate` is null when the CA has none.
@@ -325010,6 +328483,27 @@ type ClientWithResponsesInterface interface {
 	//
 	// Create intermediate CA certificate from parent CA.
 	SignIntermediateCaWithResponse(ctx context.Context, caId string, body SignIntermediateCaJSONRequestBody, reqEditors ...RequestEditorFn) (*SignIntermediateCaResponse, error)
+
+	// GetCaSigningConfigWithResponse performs a GET /api/v1/cert-manager/ca/internal/{caId}/signing-config (the `GetCaSigningConfig` operationId) request.
+	//
+	// Get the signing configuration for a CA.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetCaSigningConfigWithResponse(ctx context.Context, caId string, reqEditors ...RequestEditorFn) (*GetCaSigningConfigResponse, error)
+
+	// UpdateCaSigningConfigWithBodyWithResponse performs a PATCH /api/v1/cert-manager/ca/internal/{caId}/signing-config (the `UpdateCaSigningConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update the signing configuration for a CA.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpdateCaSigningConfigWithBodyWithResponse(ctx context.Context, caId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCaSigningConfigResponse, error)
+
+	// UpdateCaSigningConfigWithResponse performs a PATCH /api/v1/cert-manager/ca/internal/{caId}/signing-config (the `UpdateCaSigningConfig` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Update the signing configuration for a CA.
+	UpdateCaSigningConfigWithResponse(ctx context.Context, caId string, body UpdateCaSigningConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCaSigningConfigResponse, error)
 
 	// CreateCaSigningConfigWithBodyWithResponse performs a POST /api/v1/cert-manager/ca/internal/{caId}/signing-config (the `CreateCaSigningConfig` operationId) request,
 	// with any type of body and a specified content type.
@@ -328412,15 +331906,19 @@ type ClientWithResponsesInterface interface {
 	// SearchProjectCertificatesWithBodyWithResponse performs a POST /api/v1/projects/{projectId}/certificates/search (the `SearchProjectCertificates` operationId) request,
 	// with any type of body and a specified content type.
 	//
-	// Search and filter certificates within a project.
+	// Deprecated: Use POST /api/v1/cert-manager/certificates/search instead.
 	//
 	// Returns a wrapper object for the known response body format(s).
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	SearchProjectCertificatesWithBodyWithResponse(ctx context.Context, projectId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchProjectCertificatesResponse, error)
 
 	// SearchProjectCertificatesWithResponse performs a POST /api/v1/projects/{projectId}/certificates/search (the `SearchProjectCertificates` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Search and filter certificates within a project.
+	// Deprecated: Use POST /api/v1/cert-manager/certificates/search instead.
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	SearchProjectCertificatesWithResponse(ctx context.Context, projectId string, body SearchProjectCertificatesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProjectCertificatesResponse, error)
 
 	// GetProjectEnvironmentFolderTreeWithResponse performs a GET /api/v1/projects/{projectId}/environment-folder-tree (the `GetProjectEnvironmentFolderTree` operationId) request.
@@ -350496,6 +353994,467 @@ func (r BreakGlassCertRequestApprovalRequestResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r BreakGlassCertRequestApprovalRequestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CancelCertRequestApprovalRequestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Request struct {
+			// AutoApproval How the policy's auto-approval rules evaluated this request at submission. Null when the policy had no rules or the resource does not allow auto-approval.
+			AutoApproval *struct {
+				ApprovedAt       *time.Time `json:"approvedAt"`
+				ApprovedByRuleId *string    `json:"approvedByRuleId"`
+				Inputs           []struct {
+					Label string  `json:"label"`
+					Url   *string `json:"url"`
+					Value string  `json:"value"`
+				} `json:"inputs"`
+				Rules []struct {
+					Conditions []struct {
+						Ai *struct {
+							Approve   bool    `json:"approve"`
+							Error     *string `json:"error"`
+							Model     string  `json:"model"`
+							Reason    string  `json:"reason"`
+							ToolCalls []struct {
+								ConnectionName *string     `json:"connectionName"`
+								Error          *string     `json:"error"`
+								Input          interface{} `json:"input,omitempty"`
+								Summary        *string     `json:"summary"`
+								Tool           string      `json:"tool"`
+							} `json:"toolCalls"`
+						} `json:"ai"`
+						Description string  `json:"description"`
+						Id          string  `json:"id"`
+						Passed      bool    `json:"passed"`
+						Reason      *string `json:"reason"`
+					} `json:"conditions"`
+					Id     string `json:"id"`
+					Name   string `json:"name"`
+					Passed bool   `json:"passed"`
+				} `json:"rules"`
+			} `json:"autoApproval,omitempty"`
+			AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
+			BypassReason      *string             `json:"bypassReason,omitempty"`
+			CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+			CreatedAt         time.Time           `json:"createdAt"`
+			CurrentStep       float32             `json:"currentStep"`
+			ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
+			Id                openapi_types.UUID  `json:"id"`
+			IsBreakGlass      *bool               `json:"isBreakGlass,omitempty"`
+			Justification     *string             `json:"justification,omitempty"`
+			MachineIdentityId *openapi_types.UUID `json:"machineIdentityId,omitempty"`
+			OrganizationId    openapi_types.UUID  `json:"organizationId"`
+			PolicyId          *openapi_types.UUID `json:"policyId,omitempty"`
+			ProjectId         string              `json:"projectId"`
+			RequestData       struct {
+				RequestData struct {
+					CertificateRequest struct {
+						AltNames *[]struct {
+							Type  string `json:"type"`
+							Value string `json:"value"`
+						} `json:"altNames,omitempty"`
+						BasicConstraints *struct {
+							IsCA       bool     `json:"isCA"`
+							PathLength *float32 `json:"pathLength,omitempty"`
+						} `json:"basicConstraints,omitempty"`
+						CommonName       *string `json:"commonName,omitempty"`
+						Country          *string `json:"country,omitempty"`
+						CustomExtensions *[]struct {
+							Critical     bool    `json:"critical"`
+							DisplayValue *string `json:"displayValue,omitempty"`
+							Oid          string  `json:"oid"`
+							Value        string  `json:"value"`
+						} `json:"customExtensions,omitempty"`
+						DomainComponents   *[]string `json:"domainComponents,omitempty"`
+						ExtendedKeyUsages  *[]string `json:"extendedKeyUsages,omitempty"`
+						KeyAlgorithm       *string   `json:"keyAlgorithm,omitempty"`
+						KeyUsages          *[]string `json:"keyUsages,omitempty"`
+						Locality           *string   `json:"locality,omitempty"`
+						NotAfter           *string   `json:"notAfter,omitempty"`
+						NotBefore          *string   `json:"notBefore,omitempty"`
+						Organization       *string   `json:"organization,omitempty"`
+						OrganizationalUnit *string   `json:"organizationalUnit,omitempty"`
+						SignatureAlgorithm *string   `json:"signatureAlgorithm,omitempty"`
+						State              *string   `json:"state,omitempty"`
+						Validity           struct {
+							Ttl string `json:"ttl"`
+						} `json:"validity"`
+					} `json:"certificateRequest"`
+					CertificateRequestId openapi_types.UUID `json:"certificateRequestId"`
+					ProfileId            openapi_types.UUID `json:"profileId"`
+					ProfileName          string             `json:"profileName"`
+					Renewal              *struct {
+						Attributes *struct {
+							AltNames *[]struct {
+								Type  CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesType `json:"type"`
+								Value string                                                                                                        `json:"value"`
+							} `json:"altNames,omitempty"`
+							BasicConstraints *struct {
+								IsCA       bool `json:"isCA"`
+								PathLength *int `json:"pathLength,omitempty"`
+							} `json:"basicConstraints,omitempty"`
+							CommonName       *string `json:"commonName,omitempty"`
+							Country          *string `json:"country,omitempty"`
+							CustomExtensions *[]struct {
+								Critical *bool   `json:"critical,omitempty"`
+								Oid      string  `json:"oid"`
+								Value    *string `json:"value,omitempty"`
+							} `json:"customExtensions,omitempty"`
+							DomainComponents   *[]string                                                                                                             `json:"domainComponents,omitempty"`
+							ExtendedKeyUsages  *[]CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsages `json:"extendedKeyUsages,omitempty"`
+							KeyAlgorithm       *CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm        `json:"keyAlgorithm,omitempty"`
+							KeyUsages          *[]CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsages         `json:"keyUsages,omitempty"`
+							Locality           *string                                                                                                               `json:"locality,omitempty"`
+							Organization       *string                                                                                                               `json:"organization,omitempty"`
+							OrganizationalUnit *string                                                                                                               `json:"organizationalUnit,omitempty"`
+							SignatureAlgorithm *CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm  `json:"signatureAlgorithm,omitempty"`
+							State              *string                                                                                                               `json:"state,omitempty"`
+							Ttl                *string                                                                                                               `json:"ttl,omitempty"`
+						} `json:"attributes,omitempty"`
+						CaId                  *openapi_types.UUID `json:"caId,omitempty"`
+						CertificateId         openapi_types.UUID  `json:"certificateId"`
+						Csr                   *string             `json:"csr,omitempty"`
+						ExternalConfiguration *struct {
+							Reissue *bool `json:"reissue,omitempty"`
+						} `json:"externalConfiguration,omitempty"`
+						RenewalKeySource CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalRenewalKeySource `json:"renewalKeySource"`
+					} `json:"renewal,omitempty"`
+				} `json:"requestData"`
+				Version CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataVersion `json:"version"`
+			} `json:"requestData"`
+			RequesterEmail string              `json:"requesterEmail"`
+			RequesterId    *openapi_types.UUID `json:"requesterId,omitempty"`
+			RequesterName  string              `json:"requesterName"`
+			ScopeId        *openapi_types.UUID `json:"scopeId,omitempty"`
+			ScopeType      *string             `json:"scopeType,omitempty"`
+			Status         string              `json:"status"`
+			Steps          []struct {
+				Approvals []struct {
+					ApproverUserId openapi_types.UUID `json:"approverUserId"`
+					Comment        *string            `json:"comment,omitempty"`
+					CreatedAt      *time.Time         `json:"createdAt,omitempty"`
+					Decision       string             `json:"decision"`
+					Id             openapi_types.UUID `json:"id"`
+					StepId         openapi_types.UUID `json:"stepId"`
+				} `json:"approvals"`
+				Approvers []struct {
+					Id   openapi_types.UUID                                                           `json:"id"`
+					Type CancelCertRequestApprovalRequest200JSONResponseBodyRequestStepsApproversType `json:"type"`
+				} `json:"approvers"`
+				CompletedAt       *time.Time         `json:"completedAt,omitempty"`
+				Id                openapi_types.UUID `json:"id"`
+				Name              *string            `json:"name,omitempty"`
+				NotifyApprovers   *bool              `json:"notifyApprovers,omitempty"`
+				RequestId         openapi_types.UUID `json:"requestId"`
+				RequiredApprovals float32            `json:"requiredApprovals"`
+				StartedAt         *time.Time         `json:"startedAt,omitempty"`
+				Status            string             `json:"status"`
+				StepNumber        float32            `json:"stepNumber"`
+			} `json:"steps"`
+			Type      string    `json:"type"`
+			UpdatedAt time.Time `json:"updatedAt"`
+		} `json:"request"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                   `json:"details,omitempty"`
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode CancelCertRequestApprovalRequest400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode CancelCertRequestApprovalRequest401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                   `json:"details,omitempty"`
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode CancelCertRequestApprovalRequest403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode CancelCertRequestApprovalRequest404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                        `json:"error"`
+		Message    interface{}                                                   `json:"message,omitempty"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode CancelCertRequestApprovalRequest422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode CancelCertRequestApprovalRequest500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CancelCertRequestApprovalRequestResponse) GetJSON200() *struct {
+	Request struct {
+		// AutoApproval How the policy's auto-approval rules evaluated this request at submission. Null when the policy had no rules or the resource does not allow auto-approval.
+		AutoApproval *struct {
+			ApprovedAt       *time.Time `json:"approvedAt"`
+			ApprovedByRuleId *string    `json:"approvedByRuleId"`
+			Inputs           []struct {
+				Label string  `json:"label"`
+				Url   *string `json:"url"`
+				Value string  `json:"value"`
+			} `json:"inputs"`
+			Rules []struct {
+				Conditions []struct {
+					Ai *struct {
+						Approve   bool    `json:"approve"`
+						Error     *string `json:"error"`
+						Model     string  `json:"model"`
+						Reason    string  `json:"reason"`
+						ToolCalls []struct {
+							ConnectionName *string     `json:"connectionName"`
+							Error          *string     `json:"error"`
+							Input          interface{} `json:"input,omitempty"`
+							Summary        *string     `json:"summary"`
+							Tool           string      `json:"tool"`
+						} `json:"toolCalls"`
+					} `json:"ai"`
+					Description string  `json:"description"`
+					Id          string  `json:"id"`
+					Passed      bool    `json:"passed"`
+					Reason      *string `json:"reason"`
+				} `json:"conditions"`
+				Id     string `json:"id"`
+				Name   string `json:"name"`
+				Passed bool   `json:"passed"`
+			} `json:"rules"`
+		} `json:"autoApproval,omitempty"`
+		AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
+		BypassReason      *string             `json:"bypassReason,omitempty"`
+		CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+		CreatedAt         time.Time           `json:"createdAt"`
+		CurrentStep       float32             `json:"currentStep"`
+		ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
+		Id                openapi_types.UUID  `json:"id"`
+		IsBreakGlass      *bool               `json:"isBreakGlass,omitempty"`
+		Justification     *string             `json:"justification,omitempty"`
+		MachineIdentityId *openapi_types.UUID `json:"machineIdentityId,omitempty"`
+		OrganizationId    openapi_types.UUID  `json:"organizationId"`
+		PolicyId          *openapi_types.UUID `json:"policyId,omitempty"`
+		ProjectId         string              `json:"projectId"`
+		RequestData       struct {
+			RequestData struct {
+				CertificateRequest struct {
+					AltNames *[]struct {
+						Type  string `json:"type"`
+						Value string `json:"value"`
+					} `json:"altNames,omitempty"`
+					BasicConstraints *struct {
+						IsCA       bool     `json:"isCA"`
+						PathLength *float32 `json:"pathLength,omitempty"`
+					} `json:"basicConstraints,omitempty"`
+					CommonName       *string `json:"commonName,omitempty"`
+					Country          *string `json:"country,omitempty"`
+					CustomExtensions *[]struct {
+						Critical     bool    `json:"critical"`
+						DisplayValue *string `json:"displayValue,omitempty"`
+						Oid          string  `json:"oid"`
+						Value        string  `json:"value"`
+					} `json:"customExtensions,omitempty"`
+					DomainComponents   *[]string `json:"domainComponents,omitempty"`
+					ExtendedKeyUsages  *[]string `json:"extendedKeyUsages,omitempty"`
+					KeyAlgorithm       *string   `json:"keyAlgorithm,omitempty"`
+					KeyUsages          *[]string `json:"keyUsages,omitempty"`
+					Locality           *string   `json:"locality,omitempty"`
+					NotAfter           *string   `json:"notAfter,omitempty"`
+					NotBefore          *string   `json:"notBefore,omitempty"`
+					Organization       *string   `json:"organization,omitempty"`
+					OrganizationalUnit *string   `json:"organizationalUnit,omitempty"`
+					SignatureAlgorithm *string   `json:"signatureAlgorithm,omitempty"`
+					State              *string   `json:"state,omitempty"`
+					Validity           struct {
+						Ttl string `json:"ttl"`
+					} `json:"validity"`
+				} `json:"certificateRequest"`
+				CertificateRequestId openapi_types.UUID `json:"certificateRequestId"`
+				ProfileId            openapi_types.UUID `json:"profileId"`
+				ProfileName          string             `json:"profileName"`
+				Renewal              *struct {
+					Attributes *struct {
+						AltNames *[]struct {
+							Type  CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesType `json:"type"`
+							Value string                                                                                                        `json:"value"`
+						} `json:"altNames,omitempty"`
+						BasicConstraints *struct {
+							IsCA       bool `json:"isCA"`
+							PathLength *int `json:"pathLength,omitempty"`
+						} `json:"basicConstraints,omitempty"`
+						CommonName       *string `json:"commonName,omitempty"`
+						Country          *string `json:"country,omitempty"`
+						CustomExtensions *[]struct {
+							Critical *bool   `json:"critical,omitempty"`
+							Oid      string  `json:"oid"`
+							Value    *string `json:"value,omitempty"`
+						} `json:"customExtensions,omitempty"`
+						DomainComponents   *[]string                                                                                                             `json:"domainComponents,omitempty"`
+						ExtendedKeyUsages  *[]CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsages `json:"extendedKeyUsages,omitempty"`
+						KeyAlgorithm       *CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm        `json:"keyAlgorithm,omitempty"`
+						KeyUsages          *[]CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsages         `json:"keyUsages,omitempty"`
+						Locality           *string                                                                                                               `json:"locality,omitempty"`
+						Organization       *string                                                                                                               `json:"organization,omitempty"`
+						OrganizationalUnit *string                                                                                                               `json:"organizationalUnit,omitempty"`
+						SignatureAlgorithm *CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm  `json:"signatureAlgorithm,omitempty"`
+						State              *string                                                                                                               `json:"state,omitempty"`
+						Ttl                *string                                                                                                               `json:"ttl,omitempty"`
+					} `json:"attributes,omitempty"`
+					CaId                  *openapi_types.UUID `json:"caId,omitempty"`
+					CertificateId         openapi_types.UUID  `json:"certificateId"`
+					Csr                   *string             `json:"csr,omitempty"`
+					ExternalConfiguration *struct {
+						Reissue *bool `json:"reissue,omitempty"`
+					} `json:"externalConfiguration,omitempty"`
+					RenewalKeySource CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalRenewalKeySource `json:"renewalKeySource"`
+				} `json:"renewal,omitempty"`
+			} `json:"requestData"`
+			Version CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataVersion `json:"version"`
+		} `json:"requestData"`
+		RequesterEmail string              `json:"requesterEmail"`
+		RequesterId    *openapi_types.UUID `json:"requesterId,omitempty"`
+		RequesterName  string              `json:"requesterName"`
+		ScopeId        *openapi_types.UUID `json:"scopeId,omitempty"`
+		ScopeType      *string             `json:"scopeType,omitempty"`
+		Status         string              `json:"status"`
+		Steps          []struct {
+			Approvals []struct {
+				ApproverUserId openapi_types.UUID `json:"approverUserId"`
+				Comment        *string            `json:"comment,omitempty"`
+				CreatedAt      *time.Time         `json:"createdAt,omitempty"`
+				Decision       string             `json:"decision"`
+				Id             openapi_types.UUID `json:"id"`
+				StepId         openapi_types.UUID `json:"stepId"`
+			} `json:"approvals"`
+			Approvers []struct {
+				Id   openapi_types.UUID                                                           `json:"id"`
+				Type CancelCertRequestApprovalRequest200JSONResponseBodyRequestStepsApproversType `json:"type"`
+			} `json:"approvers"`
+			CompletedAt       *time.Time         `json:"completedAt,omitempty"`
+			Id                openapi_types.UUID `json:"id"`
+			Name              *string            `json:"name,omitempty"`
+			NotifyApprovers   *bool              `json:"notifyApprovers,omitempty"`
+			RequestId         openapi_types.UUID `json:"requestId"`
+			RequiredApprovals float32            `json:"requiredApprovals"`
+			StartedAt         *time.Time         `json:"startedAt,omitempty"`
+			Status            string             `json:"status"`
+			StepNumber        float32            `json:"stepNumber"`
+		} `json:"steps"`
+		Type      string    `json:"type"`
+		UpdatedAt time.Time `json:"updatedAt"`
+	} `json:"request"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CancelCertRequestApprovalRequestResponse) GetJSON400() *struct {
+	Details    interface{}                                                   `json:"details,omitempty"`
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode CancelCertRequestApprovalRequest400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CancelCertRequestApprovalRequestResponse) GetJSON401() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode CancelCertRequestApprovalRequest401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CancelCertRequestApprovalRequestResponse) GetJSON403() *struct {
+	Details    interface{}                                                   `json:"details,omitempty"`
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode CancelCertRequestApprovalRequest403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CancelCertRequestApprovalRequestResponse) GetJSON404() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode CancelCertRequestApprovalRequest404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CancelCertRequestApprovalRequestResponse) GetJSON422() *struct {
+	Error      string                                                        `json:"error"`
+	Message    interface{}                                                   `json:"message,omitempty"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode CancelCertRequestApprovalRequest422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CancelCertRequestApprovalRequestResponse) GetJSON500() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode CancelCertRequestApprovalRequest500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CancelCertRequestApprovalRequestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CancelCertRequestApprovalRequestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CancelCertRequestApprovalRequestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CancelCertRequestApprovalRequestResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -373607,6 +377566,344 @@ func (r UpdatePkiApplicationResponse) ContentType() string {
 	return ""
 }
 
+type RemovePkiApplicationGroupMemberResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ApplicationId openapi_types.UUID `json:"applicationId"`
+		MembershipId  openapi_types.UUID `json:"membershipId"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                  `json:"details,omitempty"`
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode RemovePkiApplicationGroupMember400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode RemovePkiApplicationGroupMember401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                  `json:"details,omitempty"`
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode RemovePkiApplicationGroupMember403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode RemovePkiApplicationGroupMember404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                       `json:"error"`
+		Message    interface{}                                                  `json:"message,omitempty"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode RemovePkiApplicationGroupMember422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode RemovePkiApplicationGroupMember500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RemovePkiApplicationGroupMemberResponse) GetJSON200() *struct {
+	ApplicationId openapi_types.UUID `json:"applicationId"`
+	MembershipId  openapi_types.UUID `json:"membershipId"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r RemovePkiApplicationGroupMemberResponse) GetJSON400() *struct {
+	Details    interface{}                                                  `json:"details,omitempty"`
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode RemovePkiApplicationGroupMember400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RemovePkiApplicationGroupMemberResponse) GetJSON401() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode RemovePkiApplicationGroupMember401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RemovePkiApplicationGroupMemberResponse) GetJSON403() *struct {
+	Details    interface{}                                                  `json:"details,omitempty"`
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode RemovePkiApplicationGroupMember403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RemovePkiApplicationGroupMemberResponse) GetJSON404() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode RemovePkiApplicationGroupMember404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r RemovePkiApplicationGroupMemberResponse) GetJSON422() *struct {
+	Error      string                                                       `json:"error"`
+	Message    interface{}                                                  `json:"message,omitempty"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode RemovePkiApplicationGroupMember422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r RemovePkiApplicationGroupMemberResponse) GetJSON500() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode RemovePkiApplicationGroupMember500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r RemovePkiApplicationGroupMemberResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RemovePkiApplicationGroupMemberResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemovePkiApplicationGroupMemberResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemovePkiApplicationGroupMemberResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdatePkiApplicationGroupMemberRoleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Membership struct {
+			ActorGroupId    *openapi_types.UUID `json:"actorGroupId,omitempty"`
+			ActorIdentityId *openapi_types.UUID `json:"actorIdentityId,omitempty"`
+			ActorUserId     *openapi_types.UUID `json:"actorUserId,omitempty"`
+			ApplicationId   openapi_types.UUID  `json:"applicationId"`
+			CreatedAt       time.Time           `json:"createdAt"`
+			CustomRoleId    *openapi_types.UUID `json:"customRoleId,omitempty"`
+			Details         *struct {
+				AuthMethod *string `json:"authMethod,omitempty"`
+				Email      *string `json:"email,omitempty"`
+				Name       *string `json:"name"`
+				Slug       *string `json:"slug,omitempty"`
+				Username   *string `json:"username,omitempty"`
+			} `json:"details,omitempty"`
+			MembershipId openapi_types.UUID `json:"membershipId"`
+			Role         string             `json:"role"`
+			UpdatedAt    time.Time          `json:"updatedAt"`
+		} `json:"membership"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                      `json:"details,omitempty"`
+		Error      string                                                           `json:"error"`
+		Message    string                                                           `json:"message"`
+		ReqId      string                                                           `json:"reqId"`
+		StatusCode UpdatePkiApplicationGroupMemberRole400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                           `json:"error"`
+		Message    string                                                           `json:"message"`
+		ReqId      string                                                           `json:"reqId"`
+		StatusCode UpdatePkiApplicationGroupMemberRole401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                      `json:"details,omitempty"`
+		Error      string                                                           `json:"error"`
+		Message    string                                                           `json:"message"`
+		ReqId      string                                                           `json:"reqId"`
+		StatusCode UpdatePkiApplicationGroupMemberRole403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                           `json:"error"`
+		Message    string                                                           `json:"message"`
+		ReqId      string                                                           `json:"reqId"`
+		StatusCode UpdatePkiApplicationGroupMemberRole404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                           `json:"error"`
+		Message    interface{}                                                      `json:"message,omitempty"`
+		ReqId      string                                                           `json:"reqId"`
+		StatusCode UpdatePkiApplicationGroupMemberRole422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                           `json:"error"`
+		Message    string                                                           `json:"message"`
+		ReqId      string                                                           `json:"reqId"`
+		StatusCode UpdatePkiApplicationGroupMemberRole500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdatePkiApplicationGroupMemberRoleResponse) GetJSON200() *struct {
+	Membership struct {
+		ActorGroupId    *openapi_types.UUID `json:"actorGroupId,omitempty"`
+		ActorIdentityId *openapi_types.UUID `json:"actorIdentityId,omitempty"`
+		ActorUserId     *openapi_types.UUID `json:"actorUserId,omitempty"`
+		ApplicationId   openapi_types.UUID  `json:"applicationId"`
+		CreatedAt       time.Time           `json:"createdAt"`
+		CustomRoleId    *openapi_types.UUID `json:"customRoleId,omitempty"`
+		Details         *struct {
+			AuthMethod *string `json:"authMethod,omitempty"`
+			Email      *string `json:"email,omitempty"`
+			Name       *string `json:"name"`
+			Slug       *string `json:"slug,omitempty"`
+			Username   *string `json:"username,omitempty"`
+		} `json:"details,omitempty"`
+		MembershipId openapi_types.UUID `json:"membershipId"`
+		Role         string             `json:"role"`
+		UpdatedAt    time.Time          `json:"updatedAt"`
+	} `json:"membership"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdatePkiApplicationGroupMemberRoleResponse) GetJSON400() *struct {
+	Details    interface{}                                                      `json:"details,omitempty"`
+	Error      string                                                           `json:"error"`
+	Message    string                                                           `json:"message"`
+	ReqId      string                                                           `json:"reqId"`
+	StatusCode UpdatePkiApplicationGroupMemberRole400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdatePkiApplicationGroupMemberRoleResponse) GetJSON401() *struct {
+	Error      string                                                           `json:"error"`
+	Message    string                                                           `json:"message"`
+	ReqId      string                                                           `json:"reqId"`
+	StatusCode UpdatePkiApplicationGroupMemberRole401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdatePkiApplicationGroupMemberRoleResponse) GetJSON403() *struct {
+	Details    interface{}                                                      `json:"details,omitempty"`
+	Error      string                                                           `json:"error"`
+	Message    string                                                           `json:"message"`
+	ReqId      string                                                           `json:"reqId"`
+	StatusCode UpdatePkiApplicationGroupMemberRole403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdatePkiApplicationGroupMemberRoleResponse) GetJSON404() *struct {
+	Error      string                                                           `json:"error"`
+	Message    string                                                           `json:"message"`
+	ReqId      string                                                           `json:"reqId"`
+	StatusCode UpdatePkiApplicationGroupMemberRole404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdatePkiApplicationGroupMemberRoleResponse) GetJSON422() *struct {
+	Error      string                                                           `json:"error"`
+	Message    interface{}                                                      `json:"message,omitempty"`
+	ReqId      string                                                           `json:"reqId"`
+	StatusCode UpdatePkiApplicationGroupMemberRole422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpdatePkiApplicationGroupMemberRoleResponse) GetJSON500() *struct {
+	Error      string                                                           `json:"error"`
+	Message    string                                                           `json:"message"`
+	ReqId      string                                                           `json:"reqId"`
+	StatusCode UpdatePkiApplicationGroupMemberRole500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdatePkiApplicationGroupMemberRoleResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdatePkiApplicationGroupMemberRoleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdatePkiApplicationGroupMemberRoleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdatePkiApplicationGroupMemberRoleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type AddPkiApplicationGroupMemberResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -373786,6 +378083,344 @@ func (r AddPkiApplicationGroupMemberResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AddPkiApplicationGroupMemberResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RemovePkiApplicationIdentityMemberResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ApplicationId openapi_types.UUID `json:"applicationId"`
+		MembershipId  openapi_types.UUID `json:"membershipId"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                     `json:"details,omitempty"`
+		Error      string                                                          `json:"error"`
+		Message    string                                                          `json:"message"`
+		ReqId      string                                                          `json:"reqId"`
+		StatusCode RemovePkiApplicationIdentityMember400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                          `json:"error"`
+		Message    string                                                          `json:"message"`
+		ReqId      string                                                          `json:"reqId"`
+		StatusCode RemovePkiApplicationIdentityMember401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                     `json:"details,omitempty"`
+		Error      string                                                          `json:"error"`
+		Message    string                                                          `json:"message"`
+		ReqId      string                                                          `json:"reqId"`
+		StatusCode RemovePkiApplicationIdentityMember403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                          `json:"error"`
+		Message    string                                                          `json:"message"`
+		ReqId      string                                                          `json:"reqId"`
+		StatusCode RemovePkiApplicationIdentityMember404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                          `json:"error"`
+		Message    interface{}                                                     `json:"message,omitempty"`
+		ReqId      string                                                          `json:"reqId"`
+		StatusCode RemovePkiApplicationIdentityMember422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                          `json:"error"`
+		Message    string                                                          `json:"message"`
+		ReqId      string                                                          `json:"reqId"`
+		StatusCode RemovePkiApplicationIdentityMember500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RemovePkiApplicationIdentityMemberResponse) GetJSON200() *struct {
+	ApplicationId openapi_types.UUID `json:"applicationId"`
+	MembershipId  openapi_types.UUID `json:"membershipId"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r RemovePkiApplicationIdentityMemberResponse) GetJSON400() *struct {
+	Details    interface{}                                                     `json:"details,omitempty"`
+	Error      string                                                          `json:"error"`
+	Message    string                                                          `json:"message"`
+	ReqId      string                                                          `json:"reqId"`
+	StatusCode RemovePkiApplicationIdentityMember400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RemovePkiApplicationIdentityMemberResponse) GetJSON401() *struct {
+	Error      string                                                          `json:"error"`
+	Message    string                                                          `json:"message"`
+	ReqId      string                                                          `json:"reqId"`
+	StatusCode RemovePkiApplicationIdentityMember401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RemovePkiApplicationIdentityMemberResponse) GetJSON403() *struct {
+	Details    interface{}                                                     `json:"details,omitempty"`
+	Error      string                                                          `json:"error"`
+	Message    string                                                          `json:"message"`
+	ReqId      string                                                          `json:"reqId"`
+	StatusCode RemovePkiApplicationIdentityMember403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RemovePkiApplicationIdentityMemberResponse) GetJSON404() *struct {
+	Error      string                                                          `json:"error"`
+	Message    string                                                          `json:"message"`
+	ReqId      string                                                          `json:"reqId"`
+	StatusCode RemovePkiApplicationIdentityMember404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r RemovePkiApplicationIdentityMemberResponse) GetJSON422() *struct {
+	Error      string                                                          `json:"error"`
+	Message    interface{}                                                     `json:"message,omitempty"`
+	ReqId      string                                                          `json:"reqId"`
+	StatusCode RemovePkiApplicationIdentityMember422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r RemovePkiApplicationIdentityMemberResponse) GetJSON500() *struct {
+	Error      string                                                          `json:"error"`
+	Message    string                                                          `json:"message"`
+	ReqId      string                                                          `json:"reqId"`
+	StatusCode RemovePkiApplicationIdentityMember500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r RemovePkiApplicationIdentityMemberResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RemovePkiApplicationIdentityMemberResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemovePkiApplicationIdentityMemberResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemovePkiApplicationIdentityMemberResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdatePkiApplicationIdentityMemberRoleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Membership struct {
+			ActorGroupId    *openapi_types.UUID `json:"actorGroupId,omitempty"`
+			ActorIdentityId *openapi_types.UUID `json:"actorIdentityId,omitempty"`
+			ActorUserId     *openapi_types.UUID `json:"actorUserId,omitempty"`
+			ApplicationId   openapi_types.UUID  `json:"applicationId"`
+			CreatedAt       time.Time           `json:"createdAt"`
+			CustomRoleId    *openapi_types.UUID `json:"customRoleId,omitempty"`
+			Details         *struct {
+				AuthMethod *string `json:"authMethod,omitempty"`
+				Email      *string `json:"email,omitempty"`
+				Name       *string `json:"name"`
+				Slug       *string `json:"slug,omitempty"`
+				Username   *string `json:"username,omitempty"`
+			} `json:"details,omitempty"`
+			MembershipId openapi_types.UUID `json:"membershipId"`
+			Role         string             `json:"role"`
+			UpdatedAt    time.Time          `json:"updatedAt"`
+		} `json:"membership"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                         `json:"details,omitempty"`
+		Error      string                                                              `json:"error"`
+		Message    string                                                              `json:"message"`
+		ReqId      string                                                              `json:"reqId"`
+		StatusCode UpdatePkiApplicationIdentityMemberRole400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                              `json:"error"`
+		Message    string                                                              `json:"message"`
+		ReqId      string                                                              `json:"reqId"`
+		StatusCode UpdatePkiApplicationIdentityMemberRole401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                         `json:"details,omitempty"`
+		Error      string                                                              `json:"error"`
+		Message    string                                                              `json:"message"`
+		ReqId      string                                                              `json:"reqId"`
+		StatusCode UpdatePkiApplicationIdentityMemberRole403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                              `json:"error"`
+		Message    string                                                              `json:"message"`
+		ReqId      string                                                              `json:"reqId"`
+		StatusCode UpdatePkiApplicationIdentityMemberRole404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                              `json:"error"`
+		Message    interface{}                                                         `json:"message,omitempty"`
+		ReqId      string                                                              `json:"reqId"`
+		StatusCode UpdatePkiApplicationIdentityMemberRole422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                              `json:"error"`
+		Message    string                                                              `json:"message"`
+		ReqId      string                                                              `json:"reqId"`
+		StatusCode UpdatePkiApplicationIdentityMemberRole500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdatePkiApplicationIdentityMemberRoleResponse) GetJSON200() *struct {
+	Membership struct {
+		ActorGroupId    *openapi_types.UUID `json:"actorGroupId,omitempty"`
+		ActorIdentityId *openapi_types.UUID `json:"actorIdentityId,omitempty"`
+		ActorUserId     *openapi_types.UUID `json:"actorUserId,omitempty"`
+		ApplicationId   openapi_types.UUID  `json:"applicationId"`
+		CreatedAt       time.Time           `json:"createdAt"`
+		CustomRoleId    *openapi_types.UUID `json:"customRoleId,omitempty"`
+		Details         *struct {
+			AuthMethod *string `json:"authMethod,omitempty"`
+			Email      *string `json:"email,omitempty"`
+			Name       *string `json:"name"`
+			Slug       *string `json:"slug,omitempty"`
+			Username   *string `json:"username,omitempty"`
+		} `json:"details,omitempty"`
+		MembershipId openapi_types.UUID `json:"membershipId"`
+		Role         string             `json:"role"`
+		UpdatedAt    time.Time          `json:"updatedAt"`
+	} `json:"membership"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdatePkiApplicationIdentityMemberRoleResponse) GetJSON400() *struct {
+	Details    interface{}                                                         `json:"details,omitempty"`
+	Error      string                                                              `json:"error"`
+	Message    string                                                              `json:"message"`
+	ReqId      string                                                              `json:"reqId"`
+	StatusCode UpdatePkiApplicationIdentityMemberRole400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdatePkiApplicationIdentityMemberRoleResponse) GetJSON401() *struct {
+	Error      string                                                              `json:"error"`
+	Message    string                                                              `json:"message"`
+	ReqId      string                                                              `json:"reqId"`
+	StatusCode UpdatePkiApplicationIdentityMemberRole401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdatePkiApplicationIdentityMemberRoleResponse) GetJSON403() *struct {
+	Details    interface{}                                                         `json:"details,omitempty"`
+	Error      string                                                              `json:"error"`
+	Message    string                                                              `json:"message"`
+	ReqId      string                                                              `json:"reqId"`
+	StatusCode UpdatePkiApplicationIdentityMemberRole403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdatePkiApplicationIdentityMemberRoleResponse) GetJSON404() *struct {
+	Error      string                                                              `json:"error"`
+	Message    string                                                              `json:"message"`
+	ReqId      string                                                              `json:"reqId"`
+	StatusCode UpdatePkiApplicationIdentityMemberRole404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdatePkiApplicationIdentityMemberRoleResponse) GetJSON422() *struct {
+	Error      string                                                              `json:"error"`
+	Message    interface{}                                                         `json:"message,omitempty"`
+	ReqId      string                                                              `json:"reqId"`
+	StatusCode UpdatePkiApplicationIdentityMemberRole422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpdatePkiApplicationIdentityMemberRoleResponse) GetJSON500() *struct {
+	Error      string                                                              `json:"error"`
+	Message    string                                                              `json:"message"`
+	ReqId      string                                                              `json:"reqId"`
+	StatusCode UpdatePkiApplicationIdentityMemberRole500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdatePkiApplicationIdentityMemberRoleResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdatePkiApplicationIdentityMemberRoleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdatePkiApplicationIdentityMemberRoleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdatePkiApplicationIdentityMemberRoleResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -374651,6 +379286,380 @@ func (r DetachPkiApplicationProfileResponse) ContentType() string {
 	return ""
 }
 
+type GetPkiApplicationEnrollmentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Acme *struct {
+			DirectoryUrl                 string             `json:"directoryUrl"`
+			Id                           openapi_types.UUID `json:"id"`
+			SkipDnsOwnershipVerification bool               `json:"skipDnsOwnershipVerification"`
+			SkipEabBinding               bool               `json:"skipEabBinding"`
+		} `json:"acme"`
+		AcmeConfigured bool `json:"acmeConfigured"`
+		Api            *struct {
+			AutoRenew       bool               `json:"autoRenew"`
+			Id              openapi_types.UUID `json:"id"`
+			RenewBeforeDays *int               `json:"renewBeforeDays"`
+		} `json:"api"`
+		ApplicationId openapi_types.UUID                                   `json:"applicationId"`
+		CaType        GetPkiApplicationEnrollment200JSONResponseBodyCaType `json:"caType"`
+		Est           *struct {
+			DisableBootstrapCaValidation bool               `json:"disableBootstrapCaValidation"`
+			EstEndpointUrl               string             `json:"estEndpointUrl"`
+			Id                           openapi_types.UUID `json:"id"`
+		} `json:"est"`
+		EstConfigured bool               `json:"estConfigured"`
+		ProfileId     openapi_types.UUID `json:"profileId"`
+		Scep          *struct {
+			AllowCertBasedRenewal         bool                                                            `json:"allowCertBasedRenewal"`
+			ChallengeEndpointUrl          *string                                                         `json:"challengeEndpointUrl"`
+			ChallengeType                 GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeType `json:"challengeType"`
+			DynamicChallengeExpiryMinutes *int                                                            `json:"dynamicChallengeExpiryMinutes"`
+			DynamicChallengeMaxPending    *int                                                            `json:"dynamicChallengeMaxPending"`
+			Id                            openapi_types.UUID                                              `json:"id"`
+			IncludeCaCertInResponse       bool                                                            `json:"includeCaCertInResponse"`
+			RaCertExpiresAt               time.Time                                                       `json:"raCertExpiresAt"`
+			RaCertificatePem              string                                                          `json:"raCertificatePem"`
+			ScepEndpointUrl               string                                                          `json:"scepEndpointUrl"`
+			SignRaWithCa                  bool                                                            `json:"signRaWithCa"`
+			ValidationConnectionId        *openapi_types.UUID                                             `json:"validationConnectionId"`
+		} `json:"scep"`
+		ScepConfigured bool `json:"scepConfigured"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                              `json:"details,omitempty"`
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode GetPkiApplicationEnrollment400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode GetPkiApplicationEnrollment401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                              `json:"details,omitempty"`
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode GetPkiApplicationEnrollment403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode GetPkiApplicationEnrollment404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                   `json:"error"`
+		Message    interface{}                                              `json:"message,omitempty"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode GetPkiApplicationEnrollment422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode GetPkiApplicationEnrollment500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetPkiApplicationEnrollmentResponse) GetJSON200() *struct {
+	Acme *struct {
+		DirectoryUrl                 string             `json:"directoryUrl"`
+		Id                           openapi_types.UUID `json:"id"`
+		SkipDnsOwnershipVerification bool               `json:"skipDnsOwnershipVerification"`
+		SkipEabBinding               bool               `json:"skipEabBinding"`
+	} `json:"acme"`
+	AcmeConfigured bool `json:"acmeConfigured"`
+	Api            *struct {
+		AutoRenew       bool               `json:"autoRenew"`
+		Id              openapi_types.UUID `json:"id"`
+		RenewBeforeDays *int               `json:"renewBeforeDays"`
+	} `json:"api"`
+	ApplicationId openapi_types.UUID                                   `json:"applicationId"`
+	CaType        GetPkiApplicationEnrollment200JSONResponseBodyCaType `json:"caType"`
+	Est           *struct {
+		DisableBootstrapCaValidation bool               `json:"disableBootstrapCaValidation"`
+		EstEndpointUrl               string             `json:"estEndpointUrl"`
+		Id                           openapi_types.UUID `json:"id"`
+	} `json:"est"`
+	EstConfigured bool               `json:"estConfigured"`
+	ProfileId     openapi_types.UUID `json:"profileId"`
+	Scep          *struct {
+		AllowCertBasedRenewal         bool                                                            `json:"allowCertBasedRenewal"`
+		ChallengeEndpointUrl          *string                                                         `json:"challengeEndpointUrl"`
+		ChallengeType                 GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeType `json:"challengeType"`
+		DynamicChallengeExpiryMinutes *int                                                            `json:"dynamicChallengeExpiryMinutes"`
+		DynamicChallengeMaxPending    *int                                                            `json:"dynamicChallengeMaxPending"`
+		Id                            openapi_types.UUID                                              `json:"id"`
+		IncludeCaCertInResponse       bool                                                            `json:"includeCaCertInResponse"`
+		RaCertExpiresAt               time.Time                                                       `json:"raCertExpiresAt"`
+		RaCertificatePem              string                                                          `json:"raCertificatePem"`
+		ScepEndpointUrl               string                                                          `json:"scepEndpointUrl"`
+		SignRaWithCa                  bool                                                            `json:"signRaWithCa"`
+		ValidationConnectionId        *openapi_types.UUID                                             `json:"validationConnectionId"`
+	} `json:"scep"`
+	ScepConfigured bool `json:"scepConfigured"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetPkiApplicationEnrollmentResponse) GetJSON400() *struct {
+	Details    interface{}                                              `json:"details,omitempty"`
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode GetPkiApplicationEnrollment400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetPkiApplicationEnrollmentResponse) GetJSON401() *struct {
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode GetPkiApplicationEnrollment401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetPkiApplicationEnrollmentResponse) GetJSON403() *struct {
+	Details    interface{}                                              `json:"details,omitempty"`
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode GetPkiApplicationEnrollment403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetPkiApplicationEnrollmentResponse) GetJSON404() *struct {
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode GetPkiApplicationEnrollment404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetPkiApplicationEnrollmentResponse) GetJSON422() *struct {
+	Error      string                                                   `json:"error"`
+	Message    interface{}                                              `json:"message,omitempty"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode GetPkiApplicationEnrollment422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetPkiApplicationEnrollmentResponse) GetJSON500() *struct {
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode GetPkiApplicationEnrollment500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetPkiApplicationEnrollmentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetPkiApplicationEnrollmentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetPkiApplicationEnrollmentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetPkiApplicationEnrollmentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ClearPkiApplicationAcmeEnrollmentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ApplicationId openapi_types.UUID `json:"applicationId"`
+		ProfileId     openapi_types.UUID `json:"profileId"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                    `json:"details,omitempty"`
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode ClearPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode ClearPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                    `json:"details,omitempty"`
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode ClearPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode ClearPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                         `json:"error"`
+		Message    interface{}                                                    `json:"message,omitempty"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode ClearPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode ClearPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ClearPkiApplicationAcmeEnrollmentResponse) GetJSON200() *struct {
+	ApplicationId openapi_types.UUID `json:"applicationId"`
+	ProfileId     openapi_types.UUID `json:"profileId"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ClearPkiApplicationAcmeEnrollmentResponse) GetJSON400() *struct {
+	Details    interface{}                                                    `json:"details,omitempty"`
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode ClearPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ClearPkiApplicationAcmeEnrollmentResponse) GetJSON401() *struct {
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode ClearPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ClearPkiApplicationAcmeEnrollmentResponse) GetJSON403() *struct {
+	Details    interface{}                                                    `json:"details,omitempty"`
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode ClearPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ClearPkiApplicationAcmeEnrollmentResponse) GetJSON404() *struct {
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode ClearPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ClearPkiApplicationAcmeEnrollmentResponse) GetJSON422() *struct {
+	Error      string                                                         `json:"error"`
+	Message    interface{}                                                    `json:"message,omitempty"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode ClearPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ClearPkiApplicationAcmeEnrollmentResponse) GetJSON500() *struct {
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode ClearPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ClearPkiApplicationAcmeEnrollmentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ClearPkiApplicationAcmeEnrollmentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ClearPkiApplicationAcmeEnrollmentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ClearPkiApplicationAcmeEnrollmentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type SetPkiApplicationAcmeEnrollmentResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -374965,6 +379974,312 @@ func (r RevealPkiApplicationAcmeEabSecretResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r RevealPkiApplicationAcmeEabSecretResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RotatePkiApplicationAcmeEabSecretResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ApplicationId openapi_types.UUID `json:"applicationId"`
+		ProfileId     openapi_types.UUID `json:"profileId"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                    `json:"details,omitempty"`
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode RotatePkiApplicationAcmeEabSecret400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode RotatePkiApplicationAcmeEabSecret401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                    `json:"details,omitempty"`
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode RotatePkiApplicationAcmeEabSecret403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode RotatePkiApplicationAcmeEabSecret404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                         `json:"error"`
+		Message    interface{}                                                    `json:"message,omitempty"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode RotatePkiApplicationAcmeEabSecret422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode RotatePkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RotatePkiApplicationAcmeEabSecretResponse) GetJSON200() *struct {
+	ApplicationId openapi_types.UUID `json:"applicationId"`
+	ProfileId     openapi_types.UUID `json:"profileId"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r RotatePkiApplicationAcmeEabSecretResponse) GetJSON400() *struct {
+	Details    interface{}                                                    `json:"details,omitempty"`
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode RotatePkiApplicationAcmeEabSecret400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RotatePkiApplicationAcmeEabSecretResponse) GetJSON401() *struct {
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode RotatePkiApplicationAcmeEabSecret401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RotatePkiApplicationAcmeEabSecretResponse) GetJSON403() *struct {
+	Details    interface{}                                                    `json:"details,omitempty"`
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode RotatePkiApplicationAcmeEabSecret403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RotatePkiApplicationAcmeEabSecretResponse) GetJSON404() *struct {
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode RotatePkiApplicationAcmeEabSecret404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r RotatePkiApplicationAcmeEabSecretResponse) GetJSON422() *struct {
+	Error      string                                                         `json:"error"`
+	Message    interface{}                                                    `json:"message,omitempty"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode RotatePkiApplicationAcmeEabSecret422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r RotatePkiApplicationAcmeEabSecretResponse) GetJSON500() *struct {
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode RotatePkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r RotatePkiApplicationAcmeEabSecretResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RotatePkiApplicationAcmeEabSecretResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RotatePkiApplicationAcmeEabSecretResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RotatePkiApplicationAcmeEabSecretResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ClearPkiApplicationApiEnrollmentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ApplicationId openapi_types.UUID `json:"applicationId"`
+		ProfileId     openapi_types.UUID `json:"profileId"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                   `json:"details,omitempty"`
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode ClearPkiApplicationApiEnrollment400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode ClearPkiApplicationApiEnrollment401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                   `json:"details,omitempty"`
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode ClearPkiApplicationApiEnrollment403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode ClearPkiApplicationApiEnrollment404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                        `json:"error"`
+		Message    interface{}                                                   `json:"message,omitempty"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode ClearPkiApplicationApiEnrollment422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode ClearPkiApplicationApiEnrollment500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ClearPkiApplicationApiEnrollmentResponse) GetJSON200() *struct {
+	ApplicationId openapi_types.UUID `json:"applicationId"`
+	ProfileId     openapi_types.UUID `json:"profileId"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ClearPkiApplicationApiEnrollmentResponse) GetJSON400() *struct {
+	Details    interface{}                                                   `json:"details,omitempty"`
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode ClearPkiApplicationApiEnrollment400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ClearPkiApplicationApiEnrollmentResponse) GetJSON401() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode ClearPkiApplicationApiEnrollment401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ClearPkiApplicationApiEnrollmentResponse) GetJSON403() *struct {
+	Details    interface{}                                                   `json:"details,omitempty"`
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode ClearPkiApplicationApiEnrollment403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ClearPkiApplicationApiEnrollmentResponse) GetJSON404() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode ClearPkiApplicationApiEnrollment404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ClearPkiApplicationApiEnrollmentResponse) GetJSON422() *struct {
+	Error      string                                                        `json:"error"`
+	Message    interface{}                                                   `json:"message,omitempty"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode ClearPkiApplicationApiEnrollment422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ClearPkiApplicationApiEnrollmentResponse) GetJSON500() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode ClearPkiApplicationApiEnrollment500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ClearPkiApplicationApiEnrollmentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ClearPkiApplicationApiEnrollmentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ClearPkiApplicationApiEnrollmentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ClearPkiApplicationApiEnrollmentResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -375442,6 +380757,159 @@ func (r SetPkiApplicationEstEnrollmentResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r SetPkiApplicationEstEnrollmentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ClearPkiApplicationScepEnrollmentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ApplicationId openapi_types.UUID `json:"applicationId"`
+		ProfileId     openapi_types.UUID `json:"profileId"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                    `json:"details,omitempty"`
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode ClearPkiApplicationScepEnrollment400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode ClearPkiApplicationScepEnrollment401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                    `json:"details,omitempty"`
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode ClearPkiApplicationScepEnrollment403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode ClearPkiApplicationScepEnrollment404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                         `json:"error"`
+		Message    interface{}                                                    `json:"message,omitempty"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode ClearPkiApplicationScepEnrollment422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode ClearPkiApplicationScepEnrollment500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ClearPkiApplicationScepEnrollmentResponse) GetJSON200() *struct {
+	ApplicationId openapi_types.UUID `json:"applicationId"`
+	ProfileId     openapi_types.UUID `json:"profileId"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ClearPkiApplicationScepEnrollmentResponse) GetJSON400() *struct {
+	Details    interface{}                                                    `json:"details,omitempty"`
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode ClearPkiApplicationScepEnrollment400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ClearPkiApplicationScepEnrollmentResponse) GetJSON401() *struct {
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode ClearPkiApplicationScepEnrollment401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ClearPkiApplicationScepEnrollmentResponse) GetJSON403() *struct {
+	Details    interface{}                                                    `json:"details,omitempty"`
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode ClearPkiApplicationScepEnrollment403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ClearPkiApplicationScepEnrollmentResponse) GetJSON404() *struct {
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode ClearPkiApplicationScepEnrollment404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ClearPkiApplicationScepEnrollmentResponse) GetJSON422() *struct {
+	Error      string                                                         `json:"error"`
+	Message    interface{}                                                    `json:"message,omitempty"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode ClearPkiApplicationScepEnrollment422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ClearPkiApplicationScepEnrollmentResponse) GetJSON500() *struct {
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode ClearPkiApplicationScepEnrollment500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ClearPkiApplicationScepEnrollmentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ClearPkiApplicationScepEnrollmentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ClearPkiApplicationScepEnrollmentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ClearPkiApplicationScepEnrollmentResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -375945,6 +381413,191 @@ func (r RemovePkiApplicationUserMemberResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r RemovePkiApplicationUserMemberResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdatePkiApplicationUserMemberRoleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Membership struct {
+			ActorGroupId    *openapi_types.UUID `json:"actorGroupId,omitempty"`
+			ActorIdentityId *openapi_types.UUID `json:"actorIdentityId,omitempty"`
+			ActorUserId     *openapi_types.UUID `json:"actorUserId,omitempty"`
+			ApplicationId   openapi_types.UUID  `json:"applicationId"`
+			CreatedAt       time.Time           `json:"createdAt"`
+			CustomRoleId    *openapi_types.UUID `json:"customRoleId,omitempty"`
+			Details         *struct {
+				AuthMethod *string `json:"authMethod,omitempty"`
+				Email      *string `json:"email,omitempty"`
+				Name       *string `json:"name"`
+				Slug       *string `json:"slug,omitempty"`
+				Username   *string `json:"username,omitempty"`
+			} `json:"details,omitempty"`
+			MembershipId openapi_types.UUID `json:"membershipId"`
+			Role         string             `json:"role"`
+			UpdatedAt    time.Time          `json:"updatedAt"`
+		} `json:"membership"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                     `json:"details,omitempty"`
+		Error      string                                                          `json:"error"`
+		Message    string                                                          `json:"message"`
+		ReqId      string                                                          `json:"reqId"`
+		StatusCode UpdatePkiApplicationUserMemberRole400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                          `json:"error"`
+		Message    string                                                          `json:"message"`
+		ReqId      string                                                          `json:"reqId"`
+		StatusCode UpdatePkiApplicationUserMemberRole401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                     `json:"details,omitempty"`
+		Error      string                                                          `json:"error"`
+		Message    string                                                          `json:"message"`
+		ReqId      string                                                          `json:"reqId"`
+		StatusCode UpdatePkiApplicationUserMemberRole403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                          `json:"error"`
+		Message    string                                                          `json:"message"`
+		ReqId      string                                                          `json:"reqId"`
+		StatusCode UpdatePkiApplicationUserMemberRole404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                          `json:"error"`
+		Message    interface{}                                                     `json:"message,omitempty"`
+		ReqId      string                                                          `json:"reqId"`
+		StatusCode UpdatePkiApplicationUserMemberRole422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                          `json:"error"`
+		Message    string                                                          `json:"message"`
+		ReqId      string                                                          `json:"reqId"`
+		StatusCode UpdatePkiApplicationUserMemberRole500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdatePkiApplicationUserMemberRoleResponse) GetJSON200() *struct {
+	Membership struct {
+		ActorGroupId    *openapi_types.UUID `json:"actorGroupId,omitempty"`
+		ActorIdentityId *openapi_types.UUID `json:"actorIdentityId,omitempty"`
+		ActorUserId     *openapi_types.UUID `json:"actorUserId,omitempty"`
+		ApplicationId   openapi_types.UUID  `json:"applicationId"`
+		CreatedAt       time.Time           `json:"createdAt"`
+		CustomRoleId    *openapi_types.UUID `json:"customRoleId,omitempty"`
+		Details         *struct {
+			AuthMethod *string `json:"authMethod,omitempty"`
+			Email      *string `json:"email,omitempty"`
+			Name       *string `json:"name"`
+			Slug       *string `json:"slug,omitempty"`
+			Username   *string `json:"username,omitempty"`
+		} `json:"details,omitempty"`
+		MembershipId openapi_types.UUID `json:"membershipId"`
+		Role         string             `json:"role"`
+		UpdatedAt    time.Time          `json:"updatedAt"`
+	} `json:"membership"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdatePkiApplicationUserMemberRoleResponse) GetJSON400() *struct {
+	Details    interface{}                                                     `json:"details,omitempty"`
+	Error      string                                                          `json:"error"`
+	Message    string                                                          `json:"message"`
+	ReqId      string                                                          `json:"reqId"`
+	StatusCode UpdatePkiApplicationUserMemberRole400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdatePkiApplicationUserMemberRoleResponse) GetJSON401() *struct {
+	Error      string                                                          `json:"error"`
+	Message    string                                                          `json:"message"`
+	ReqId      string                                                          `json:"reqId"`
+	StatusCode UpdatePkiApplicationUserMemberRole401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdatePkiApplicationUserMemberRoleResponse) GetJSON403() *struct {
+	Details    interface{}                                                     `json:"details,omitempty"`
+	Error      string                                                          `json:"error"`
+	Message    string                                                          `json:"message"`
+	ReqId      string                                                          `json:"reqId"`
+	StatusCode UpdatePkiApplicationUserMemberRole403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdatePkiApplicationUserMemberRoleResponse) GetJSON404() *struct {
+	Error      string                                                          `json:"error"`
+	Message    string                                                          `json:"message"`
+	ReqId      string                                                          `json:"reqId"`
+	StatusCode UpdatePkiApplicationUserMemberRole404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdatePkiApplicationUserMemberRoleResponse) GetJSON422() *struct {
+	Error      string                                                          `json:"error"`
+	Message    interface{}                                                     `json:"message,omitempty"`
+	ReqId      string                                                          `json:"reqId"`
+	StatusCode UpdatePkiApplicationUserMemberRole422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpdatePkiApplicationUserMemberRoleResponse) GetJSON500() *struct {
+	Error      string                                                          `json:"error"`
+	Message    string                                                          `json:"message"`
+	ReqId      string                                                          `json:"reqId"`
+	StatusCode UpdatePkiApplicationUserMemberRole500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdatePkiApplicationUserMemberRoleResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdatePkiApplicationUserMemberRoleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdatePkiApplicationUserMemberRoleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdatePkiApplicationUserMemberRoleResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -380577,6 +386230,368 @@ func (r GetCaCrlsResponse) ContentType() string {
 	return ""
 }
 
+type RegenerateCaCrlResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Crl struct {
+			// Crl The certificate revocation list (CRL).
+			Crl string `json:"crl"`
+
+			// CrlNumber The CRL number of the new CRL.
+			CrlNumber int64 `json:"crlNumber"`
+
+			// Id The ID of certificate revocation list (CRL).
+			Id openapi_types.UUID `json:"id"`
+
+			// NextUpdate When the current CRL expires. A new CRL is issued before this time.
+			NextUpdate time.Time `json:"nextUpdate"`
+
+			// ThisUpdate When the current CRL was issued.
+			ThisUpdate time.Time `json:"thisUpdate"`
+		} `json:"crl"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                  `json:"details,omitempty"`
+		Error      string                                       `json:"error"`
+		Message    string                                       `json:"message"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode RegenerateCaCrl400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                       `json:"error"`
+		Message    string                                       `json:"message"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode RegenerateCaCrl401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                  `json:"details,omitempty"`
+		Error      string                                       `json:"error"`
+		Message    string                                       `json:"message"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode RegenerateCaCrl403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                       `json:"error"`
+		Message    string                                       `json:"message"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode RegenerateCaCrl404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                       `json:"error"`
+		Message    interface{}                                  `json:"message,omitempty"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode RegenerateCaCrl422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                       `json:"error"`
+		Message    string                                       `json:"message"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode RegenerateCaCrl500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RegenerateCaCrlResponse) GetJSON200() *struct {
+	Crl struct {
+		// Crl The certificate revocation list (CRL).
+		Crl string `json:"crl"`
+
+		// CrlNumber The CRL number of the new CRL.
+		CrlNumber int64 `json:"crlNumber"`
+
+		// Id The ID of certificate revocation list (CRL).
+		Id openapi_types.UUID `json:"id"`
+
+		// NextUpdate When the current CRL expires. A new CRL is issued before this time.
+		NextUpdate time.Time `json:"nextUpdate"`
+
+		// ThisUpdate When the current CRL was issued.
+		ThisUpdate time.Time `json:"thisUpdate"`
+	} `json:"crl"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r RegenerateCaCrlResponse) GetJSON400() *struct {
+	Details    interface{}                                  `json:"details,omitempty"`
+	Error      string                                       `json:"error"`
+	Message    string                                       `json:"message"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode RegenerateCaCrl400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RegenerateCaCrlResponse) GetJSON401() *struct {
+	Error      string                                       `json:"error"`
+	Message    string                                       `json:"message"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode RegenerateCaCrl401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RegenerateCaCrlResponse) GetJSON403() *struct {
+	Details    interface{}                                  `json:"details,omitempty"`
+	Error      string                                       `json:"error"`
+	Message    string                                       `json:"message"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode RegenerateCaCrl403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RegenerateCaCrlResponse) GetJSON404() *struct {
+	Error      string                                       `json:"error"`
+	Message    string                                       `json:"message"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode RegenerateCaCrl404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r RegenerateCaCrlResponse) GetJSON422() *struct {
+	Error      string                                       `json:"error"`
+	Message    interface{}                                  `json:"message,omitempty"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode RegenerateCaCrl422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r RegenerateCaCrlResponse) GetJSON500() *struct {
+	Error      string                                       `json:"error"`
+	Message    string                                       `json:"message"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode RegenerateCaCrl500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r RegenerateCaCrlResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RegenerateCaCrlResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RegenerateCaCrlResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RegenerateCaCrlResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteCaCrossSignedCertificateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CrossSignedCertificate struct {
+			// CaId The ID of the CA the cross-signed certificate belongs to.
+			CaId openapi_types.UUID `json:"caId"`
+
+			// Issuer The distinguished name of the CA that signed the cross-signed certificate.
+			Issuer string `json:"issuer"`
+
+			// NotAfter The date and time the cross-signed certificate expires. After this, new certificates no longer include it in their chain.
+			NotAfter time.Time `json:"notAfter"`
+
+			// NotBefore The date and time the cross-signed certificate becomes valid.
+			NotBefore time.Time `json:"notBefore"`
+
+			// SerialNumber The serial number of the cross-signed certificate.
+			SerialNumber string `json:"serialNumber"`
+		} `json:"crossSignedCertificate"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                 `json:"details,omitempty"`
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode DeleteCaCrossSignedCertificate400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode DeleteCaCrossSignedCertificate401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                 `json:"details,omitempty"`
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode DeleteCaCrossSignedCertificate403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode DeleteCaCrossSignedCertificate404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                      `json:"error"`
+		Message    interface{}                                                 `json:"message,omitempty"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode DeleteCaCrossSignedCertificate422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode DeleteCaCrossSignedCertificate500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteCaCrossSignedCertificateResponse) GetJSON200() *struct {
+	CrossSignedCertificate struct {
+		// CaId The ID of the CA the cross-signed certificate belongs to.
+		CaId openapi_types.UUID `json:"caId"`
+
+		// Issuer The distinguished name of the CA that signed the cross-signed certificate.
+		Issuer string `json:"issuer"`
+
+		// NotAfter The date and time the cross-signed certificate expires. After this, new certificates no longer include it in their chain.
+		NotAfter time.Time `json:"notAfter"`
+
+		// NotBefore The date and time the cross-signed certificate becomes valid.
+		NotBefore time.Time `json:"notBefore"`
+
+		// SerialNumber The serial number of the cross-signed certificate.
+		SerialNumber string `json:"serialNumber"`
+	} `json:"crossSignedCertificate"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteCaCrossSignedCertificateResponse) GetJSON400() *struct {
+	Details    interface{}                                                 `json:"details,omitempty"`
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode DeleteCaCrossSignedCertificate400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteCaCrossSignedCertificateResponse) GetJSON401() *struct {
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode DeleteCaCrossSignedCertificate401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteCaCrossSignedCertificateResponse) GetJSON403() *struct {
+	Details    interface{}                                                 `json:"details,omitempty"`
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode DeleteCaCrossSignedCertificate403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteCaCrossSignedCertificateResponse) GetJSON404() *struct {
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode DeleteCaCrossSignedCertificate404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteCaCrossSignedCertificateResponse) GetJSON422() *struct {
+	Error      string                                                      `json:"error"`
+	Message    interface{}                                                 `json:"message,omitempty"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode DeleteCaCrossSignedCertificate422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteCaCrossSignedCertificateResponse) GetJSON500() *struct {
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode DeleteCaCrossSignedCertificate500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteCaCrossSignedCertificateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteCaCrossSignedCertificateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteCaCrossSignedCertificateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteCaCrossSignedCertificateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetCaCrossSignedCertificateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -381911,6 +387926,340 @@ func (r SignIntermediateCaResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r SignIntermediateCaResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetCaSigningConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnectionId           *openapi_types.UUID `json:"appConnectionId,omitempty"`
+		CaId                      openapi_types.UUID  `json:"caId"`
+		CreatedAt                 time.Time           `json:"createdAt"`
+		DestinationConfig         interface{}         `json:"destinationConfig,omitempty"`
+		Id                        openapi_types.UUID  `json:"id"`
+		LastExternalCertificateId *string             `json:"lastExternalCertificateId,omitempty"`
+		ParentCaId                *openapi_types.UUID `json:"parentCaId,omitempty"`
+		Type                      string              `json:"type"`
+		UpdatedAt                 time.Time           `json:"updatedAt"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetCaSigningConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetCaSigningConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetCaSigningConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetCaSigningConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                          `json:"error"`
+		Message    interface{}                                     `json:"message,omitempty"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetCaSigningConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetCaSigningConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetCaSigningConfigResponse) GetJSON200() *struct {
+	AppConnectionId           *openapi_types.UUID `json:"appConnectionId,omitempty"`
+	CaId                      openapi_types.UUID  `json:"caId"`
+	CreatedAt                 time.Time           `json:"createdAt"`
+	DestinationConfig         interface{}         `json:"destinationConfig,omitempty"`
+	Id                        openapi_types.UUID  `json:"id"`
+	LastExternalCertificateId *string             `json:"lastExternalCertificateId,omitempty"`
+	ParentCaId                *openapi_types.UUID `json:"parentCaId,omitempty"`
+	Type                      string              `json:"type"`
+	UpdatedAt                 time.Time           `json:"updatedAt"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetCaSigningConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetCaSigningConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetCaSigningConfigResponse) GetJSON401() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetCaSigningConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetCaSigningConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetCaSigningConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetCaSigningConfigResponse) GetJSON404() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetCaSigningConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetCaSigningConfigResponse) GetJSON422() *struct {
+	Error      string                                          `json:"error"`
+	Message    interface{}                                     `json:"message,omitempty"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetCaSigningConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetCaSigningConfigResponse) GetJSON500() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetCaSigningConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetCaSigningConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetCaSigningConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetCaSigningConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCaSigningConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateCaSigningConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnectionId           *openapi_types.UUID `json:"appConnectionId,omitempty"`
+		CaId                      openapi_types.UUID  `json:"caId"`
+		CreatedAt                 time.Time           `json:"createdAt"`
+		DestinationConfig         interface{}         `json:"destinationConfig,omitempty"`
+		Id                        openapi_types.UUID  `json:"id"`
+		LastExternalCertificateId *string             `json:"lastExternalCertificateId,omitempty"`
+		ParentCaId                *openapi_types.UUID `json:"parentCaId,omitempty"`
+		Type                      string              `json:"type"`
+		UpdatedAt                 time.Time           `json:"updatedAt"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                        `json:"details,omitempty"`
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode UpdateCaSigningConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode UpdateCaSigningConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                        `json:"details,omitempty"`
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode UpdateCaSigningConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode UpdateCaSigningConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                             `json:"error"`
+		Message    interface{}                                        `json:"message,omitempty"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode UpdateCaSigningConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode UpdateCaSigningConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateCaSigningConfigResponse) GetJSON200() *struct {
+	AppConnectionId           *openapi_types.UUID `json:"appConnectionId,omitempty"`
+	CaId                      openapi_types.UUID  `json:"caId"`
+	CreatedAt                 time.Time           `json:"createdAt"`
+	DestinationConfig         interface{}         `json:"destinationConfig,omitempty"`
+	Id                        openapi_types.UUID  `json:"id"`
+	LastExternalCertificateId *string             `json:"lastExternalCertificateId,omitempty"`
+	ParentCaId                *openapi_types.UUID `json:"parentCaId,omitempty"`
+	Type                      string              `json:"type"`
+	UpdatedAt                 time.Time           `json:"updatedAt"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateCaSigningConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                        `json:"details,omitempty"`
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode UpdateCaSigningConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateCaSigningConfigResponse) GetJSON401() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode UpdateCaSigningConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateCaSigningConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                        `json:"details,omitempty"`
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode UpdateCaSigningConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateCaSigningConfigResponse) GetJSON404() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode UpdateCaSigningConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateCaSigningConfigResponse) GetJSON422() *struct {
+	Error      string                                             `json:"error"`
+	Message    interface{}                                        `json:"message,omitempty"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode UpdateCaSigningConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpdateCaSigningConfigResponse) GetJSON500() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode UpdateCaSigningConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateCaSigningConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateCaSigningConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateCaSigningConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateCaSigningConfigResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -520394,6 +526743,19 @@ func (c *ClientWithResponses) BreakGlassCertRequestApprovalRequestWithResponse(c
 	return ParseBreakGlassCertRequestApprovalRequestResponse(rsp)
 }
 
+// CancelCertRequestApprovalRequestWithResponse performs a POST /api/v1/approval-policies/cert-request/requests/{requestId}/cancel (the `CancelCertRequestApprovalRequest` operationId) request.
+//
+// Cancel approval request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CancelCertRequestApprovalRequestWithResponse(ctx context.Context, requestId openapi_types.UUID, reqEditors ...RequestEditorFn) (*CancelCertRequestApprovalRequestResponse, error) {
+	rsp, err := c.CancelCertRequestApprovalRequest(ctx, requestId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCancelCertRequestApprovalRequestResponse(rsp)
+}
+
 // RejectCertRequestApprovalRequestWithBodyWithResponse performs a POST /api/v1/approval-policies/cert-request/requests/{requestId}/reject (the `RejectCertRequestApprovalRequest` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -522974,6 +529336,45 @@ func (c *ClientWithResponses) UpdatePkiApplicationWithResponse(ctx context.Conte
 	return ParseUpdatePkiApplicationResponse(rsp)
 }
 
+// RemovePkiApplicationGroupMemberWithResponse performs a DELETE /api/v1/cert-manager/applications/{applicationId}/groups/{groupId} (the `RemovePkiApplicationGroupMember` operationId) request.
+//
+// Remove a group from an application.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) RemovePkiApplicationGroupMemberWithResponse(ctx context.Context, applicationId openapi_types.UUID, groupId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RemovePkiApplicationGroupMemberResponse, error) {
+	rsp, err := c.RemovePkiApplicationGroupMember(ctx, applicationId, groupId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemovePkiApplicationGroupMemberResponse(rsp)
+}
+
+// UpdatePkiApplicationGroupMemberRoleWithBodyWithResponse performs a PATCH /api/v1/cert-manager/applications/{applicationId}/groups/{groupId} (the `UpdatePkiApplicationGroupMemberRole` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update the role of a group member on an application.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdatePkiApplicationGroupMemberRoleWithBodyWithResponse(ctx context.Context, applicationId openapi_types.UUID, groupId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePkiApplicationGroupMemberRoleResponse, error) {
+	rsp, err := c.UpdatePkiApplicationGroupMemberRoleWithBody(ctx, applicationId, groupId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdatePkiApplicationGroupMemberRoleResponse(rsp)
+}
+
+// UpdatePkiApplicationGroupMemberRoleWithResponse performs a PATCH /api/v1/cert-manager/applications/{applicationId}/groups/{groupId} (the `UpdatePkiApplicationGroupMemberRole` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Update the role of a group member on an application.
+func (c *ClientWithResponses) UpdatePkiApplicationGroupMemberRoleWithResponse(ctx context.Context, applicationId openapi_types.UUID, groupId openapi_types.UUID, body UpdatePkiApplicationGroupMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePkiApplicationGroupMemberRoleResponse, error) {
+	rsp, err := c.UpdatePkiApplicationGroupMemberRole(ctx, applicationId, groupId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdatePkiApplicationGroupMemberRoleResponse(rsp)
+}
+
 // AddPkiApplicationGroupMemberWithBodyWithResponse performs a POST /api/v1/cert-manager/applications/{applicationId}/groups/{groupId} (the `AddPkiApplicationGroupMember` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -522998,6 +529399,45 @@ func (c *ClientWithResponses) AddPkiApplicationGroupMemberWithResponse(ctx conte
 		return nil, err
 	}
 	return ParseAddPkiApplicationGroupMemberResponse(rsp)
+}
+
+// RemovePkiApplicationIdentityMemberWithResponse performs a DELETE /api/v1/cert-manager/applications/{applicationId}/identities/{identityId} (the `RemovePkiApplicationIdentityMember` operationId) request.
+//
+// Remove an identity from an application.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) RemovePkiApplicationIdentityMemberWithResponse(ctx context.Context, applicationId openapi_types.UUID, identityId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RemovePkiApplicationIdentityMemberResponse, error) {
+	rsp, err := c.RemovePkiApplicationIdentityMember(ctx, applicationId, identityId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemovePkiApplicationIdentityMemberResponse(rsp)
+}
+
+// UpdatePkiApplicationIdentityMemberRoleWithBodyWithResponse performs a PATCH /api/v1/cert-manager/applications/{applicationId}/identities/{identityId} (the `UpdatePkiApplicationIdentityMemberRole` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update the role of an identity member on an application.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdatePkiApplicationIdentityMemberRoleWithBodyWithResponse(ctx context.Context, applicationId openapi_types.UUID, identityId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePkiApplicationIdentityMemberRoleResponse, error) {
+	rsp, err := c.UpdatePkiApplicationIdentityMemberRoleWithBody(ctx, applicationId, identityId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdatePkiApplicationIdentityMemberRoleResponse(rsp)
+}
+
+// UpdatePkiApplicationIdentityMemberRoleWithResponse performs a PATCH /api/v1/cert-manager/applications/{applicationId}/identities/{identityId} (the `UpdatePkiApplicationIdentityMemberRole` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Update the role of an identity member on an application.
+func (c *ClientWithResponses) UpdatePkiApplicationIdentityMemberRoleWithResponse(ctx context.Context, applicationId openapi_types.UUID, identityId openapi_types.UUID, body UpdatePkiApplicationIdentityMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePkiApplicationIdentityMemberRoleResponse, error) {
+	rsp, err := c.UpdatePkiApplicationIdentityMemberRole(ctx, applicationId, identityId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdatePkiApplicationIdentityMemberRoleResponse(rsp)
 }
 
 // AddPkiApplicationIdentityMemberWithBodyWithResponse performs a POST /api/v1/cert-manager/applications/{applicationId}/identities/{identityId} (the `AddPkiApplicationIdentityMember` operationId) request,
@@ -523091,6 +529531,32 @@ func (c *ClientWithResponses) DetachPkiApplicationProfileWithResponse(ctx contex
 	return ParseDetachPkiApplicationProfileResponse(rsp)
 }
 
+// GetPkiApplicationEnrollmentWithResponse performs a GET /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment (the `GetPkiApplicationEnrollment` operationId) request.
+//
+// Get the enrollment state for a profile on an application.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetPkiApplicationEnrollmentWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetPkiApplicationEnrollmentResponse, error) {
+	rsp, err := c.GetPkiApplicationEnrollment(ctx, applicationId, profileId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetPkiApplicationEnrollmentResponse(rsp)
+}
+
+// ClearPkiApplicationAcmeEnrollmentWithResponse performs a DELETE /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme (the `ClearPkiApplicationAcmeEnrollment` operationId) request.
+//
+// Disable the ACME enrollment method for a profile on an application.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ClearPkiApplicationAcmeEnrollmentWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*ClearPkiApplicationAcmeEnrollmentResponse, error) {
+	rsp, err := c.ClearPkiApplicationAcmeEnrollment(ctx, applicationId, profileId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseClearPkiApplicationAcmeEnrollmentResponse(rsp)
+}
+
 // SetPkiApplicationAcmeEnrollmentWithBodyWithResponse performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme (the `SetPkiApplicationAcmeEnrollment` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -523128,6 +529594,32 @@ func (c *ClientWithResponses) RevealPkiApplicationAcmeEabSecretWithResponse(ctx 
 		return nil, err
 	}
 	return ParseRevealPkiApplicationAcmeEabSecretResponse(rsp)
+}
+
+// RotatePkiApplicationAcmeEabSecretWithResponse performs a POST /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/acme/eab/rotate (the `RotatePkiApplicationAcmeEabSecret` operationId) request.
+//
+// Rotate the ACME EAB secret for a profile on an application.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) RotatePkiApplicationAcmeEabSecretWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RotatePkiApplicationAcmeEabSecretResponse, error) {
+	rsp, err := c.RotatePkiApplicationAcmeEabSecret(ctx, applicationId, profileId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRotatePkiApplicationAcmeEabSecretResponse(rsp)
+}
+
+// ClearPkiApplicationApiEnrollmentWithResponse performs a DELETE /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/api (the `ClearPkiApplicationApiEnrollment` operationId) request.
+//
+// Disable the API enrollment method for a profile on an application.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ClearPkiApplicationApiEnrollmentWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*ClearPkiApplicationApiEnrollmentResponse, error) {
+	rsp, err := c.ClearPkiApplicationApiEnrollment(ctx, applicationId, profileId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseClearPkiApplicationApiEnrollmentResponse(rsp)
 }
 
 // SetPkiApplicationApiEnrollmentWithBodyWithResponse performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/api (the `SetPkiApplicationApiEnrollment` operationId) request,
@@ -523195,6 +529687,19 @@ func (c *ClientWithResponses) SetPkiApplicationEstEnrollmentWithResponse(ctx con
 	return ParseSetPkiApplicationEstEnrollmentResponse(rsp)
 }
 
+// ClearPkiApplicationScepEnrollmentWithResponse performs a DELETE /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/scep (the `ClearPkiApplicationScepEnrollment` operationId) request.
+//
+// Disable the SCEP enrollment method for a profile on an application.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ClearPkiApplicationScepEnrollmentWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*ClearPkiApplicationScepEnrollmentResponse, error) {
+	rsp, err := c.ClearPkiApplicationScepEnrollment(ctx, applicationId, profileId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseClearPkiApplicationScepEnrollmentResponse(rsp)
+}
+
 // SetPkiApplicationScepEnrollmentWithBodyWithResponse performs a PUT /api/v1/cert-manager/applications/{applicationId}/profiles/{profileId}/enrollment/scep (the `SetPkiApplicationScepEnrollment` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -523258,6 +529763,32 @@ func (c *ClientWithResponses) RemovePkiApplicationUserMemberWithResponse(ctx con
 		return nil, err
 	}
 	return ParseRemovePkiApplicationUserMemberResponse(rsp)
+}
+
+// UpdatePkiApplicationUserMemberRoleWithBodyWithResponse performs a PATCH /api/v1/cert-manager/applications/{applicationId}/users/{userId} (the `UpdatePkiApplicationUserMemberRole` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update the role of a user member on an application.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdatePkiApplicationUserMemberRoleWithBodyWithResponse(ctx context.Context, applicationId openapi_types.UUID, userId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdatePkiApplicationUserMemberRoleResponse, error) {
+	rsp, err := c.UpdatePkiApplicationUserMemberRoleWithBody(ctx, applicationId, userId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdatePkiApplicationUserMemberRoleResponse(rsp)
+}
+
+// UpdatePkiApplicationUserMemberRoleWithResponse performs a PATCH /api/v1/cert-manager/applications/{applicationId}/users/{userId} (the `UpdatePkiApplicationUserMemberRole` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Update the role of a user member on an application.
+func (c *ClientWithResponses) UpdatePkiApplicationUserMemberRoleWithResponse(ctx context.Context, applicationId openapi_types.UUID, userId openapi_types.UUID, body UpdatePkiApplicationUserMemberRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePkiApplicationUserMemberRoleResponse, error) {
+	rsp, err := c.UpdatePkiApplicationUserMemberRole(ctx, applicationId, userId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdatePkiApplicationUserMemberRoleResponse(rsp)
 }
 
 // ListCertificateAuthoritiesV1GeneralWithResponse performs a GET /api/v1/cert-manager/ca (the `ListCertificateAuthoritiesV1General` operationId) request.
@@ -523678,6 +530209,32 @@ func (c *ClientWithResponses) GetCaCrlsWithResponse(ctx context.Context, caId st
 	return ParseGetCaCrlsResponse(rsp)
 }
 
+// RegenerateCaCrlWithResponse performs a POST /api/v1/cert-manager/ca/internal/{caId}/crls/regenerate (the `RegenerateCaCrl` operationId) request.
+//
+// Regenerate the CRL of an internal CA and return it.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) RegenerateCaCrlWithResponse(ctx context.Context, caId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RegenerateCaCrlResponse, error) {
+	rsp, err := c.RegenerateCaCrl(ctx, caId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRegenerateCaCrlResponse(rsp)
+}
+
+// DeleteCaCrossSignedCertificateWithResponse performs a DELETE /api/v1/cert-manager/ca/internal/{caId}/cross-signed-certificate (the `DeleteCaCrossSignedCertificate` operationId) request.
+//
+// Remove the cross-signed certificate of an internal CA. Certificates issued afterwards no longer carry it. Certificates already issued keep their chain.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteCaCrossSignedCertificateWithResponse(ctx context.Context, caId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteCaCrossSignedCertificateResponse, error) {
+	rsp, err := c.DeleteCaCrossSignedCertificate(ctx, caId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteCaCrossSignedCertificateResponse(rsp)
+}
+
 // GetCaCrossSignedCertificateWithResponse performs a GET /api/v1/cert-manager/ca/internal/{caId}/cross-signed-certificate (the `GetCaCrossSignedCertificate` operationId) request.
 //
 // Get the cross-signed certificate of an internal CA. `crossSignedCertificate` is null when the CA has none.
@@ -523858,6 +530415,45 @@ func (c *ClientWithResponses) SignIntermediateCaWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseSignIntermediateCaResponse(rsp)
+}
+
+// GetCaSigningConfigWithResponse performs a GET /api/v1/cert-manager/ca/internal/{caId}/signing-config (the `GetCaSigningConfig` operationId) request.
+//
+// Get the signing configuration for a CA.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetCaSigningConfigWithResponse(ctx context.Context, caId string, reqEditors ...RequestEditorFn) (*GetCaSigningConfigResponse, error) {
+	rsp, err := c.GetCaSigningConfig(ctx, caId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetCaSigningConfigResponse(rsp)
+}
+
+// UpdateCaSigningConfigWithBodyWithResponse performs a PATCH /api/v1/cert-manager/ca/internal/{caId}/signing-config (the `UpdateCaSigningConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update the signing configuration for a CA.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateCaSigningConfigWithBodyWithResponse(ctx context.Context, caId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCaSigningConfigResponse, error) {
+	rsp, err := c.UpdateCaSigningConfigWithBody(ctx, caId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateCaSigningConfigResponse(rsp)
+}
+
+// UpdateCaSigningConfigWithResponse performs a PATCH /api/v1/cert-manager/ca/internal/{caId}/signing-config (the `UpdateCaSigningConfig` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Update the signing configuration for a CA.
+func (c *ClientWithResponses) UpdateCaSigningConfigWithResponse(ctx context.Context, caId string, body UpdateCaSigningConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCaSigningConfigResponse, error) {
+	rsp, err := c.UpdateCaSigningConfig(ctx, caId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateCaSigningConfigResponse(rsp)
 }
 
 // CreateCaSigningConfigWithBodyWithResponse performs a POST /api/v1/cert-manager/ca/internal/{caId}/signing-config (the `CreateCaSigningConfig` operationId) request,
@@ -530519,9 +537115,11 @@ func (c *ClientWithResponses) GetCertificatePqcTrendWithResponse(ctx context.Con
 // SearchProjectCertificatesWithBodyWithResponse performs a POST /api/v1/projects/{projectId}/certificates/search (the `SearchProjectCertificates` operationId) request,
 // with any type of body and a specified content type.
 //
-// Search and filter certificates within a project.
+// Deprecated: Use POST /api/v1/cert-manager/certificates/search instead.
 //
 // Returns a wrapper object for the known response body format(s).
+//
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (c *ClientWithResponses) SearchProjectCertificatesWithBodyWithResponse(ctx context.Context, projectId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchProjectCertificatesResponse, error) {
 	rsp, err := c.SearchProjectCertificatesWithBody(ctx, projectId, contentType, body, reqEditors...)
 	if err != nil {
@@ -530533,7 +537131,8 @@ func (c *ClientWithResponses) SearchProjectCertificatesWithBodyWithResponse(ctx 
 // SearchProjectCertificatesWithResponse performs a POST /api/v1/projects/{projectId}/certificates/search (the `SearchProjectCertificates` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
-// Search and filter certificates within a project.
+// Deprecated: Use POST /api/v1/cert-manager/certificates/search instead.
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (c *ClientWithResponses) SearchProjectCertificatesWithResponse(ctx context.Context, projectId string, body SearchProjectCertificatesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchProjectCertificatesResponse, error) {
 	rsp, err := c.SearchProjectCertificates(ctx, projectId, body, reqEditors...)
 	if err != nil {
@@ -548769,6 +555368,263 @@ func ParseBreakGlassCertRequestApprovalRequestResponse(rsp *http.Response) (*Bre
 	return response, nil
 }
 
+// ParseCancelCertRequestApprovalRequestResponse parses an HTTP response from a CancelCertRequestApprovalRequestWithResponse call
+func ParseCancelCertRequestApprovalRequestResponse(rsp *http.Response) (*CancelCertRequestApprovalRequestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CancelCertRequestApprovalRequestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Request struct {
+				// AutoApproval How the policy's auto-approval rules evaluated this request at submission. Null when the policy had no rules or the resource does not allow auto-approval.
+				AutoApproval *struct {
+					ApprovedAt       *time.Time `json:"approvedAt"`
+					ApprovedByRuleId *string    `json:"approvedByRuleId"`
+					Inputs           []struct {
+						Label string  `json:"label"`
+						Url   *string `json:"url"`
+						Value string  `json:"value"`
+					} `json:"inputs"`
+					Rules []struct {
+						Conditions []struct {
+							Ai *struct {
+								Approve   bool    `json:"approve"`
+								Error     *string `json:"error"`
+								Model     string  `json:"model"`
+								Reason    string  `json:"reason"`
+								ToolCalls []struct {
+									ConnectionName *string     `json:"connectionName"`
+									Error          *string     `json:"error"`
+									Input          interface{} `json:"input,omitempty"`
+									Summary        *string     `json:"summary"`
+									Tool           string      `json:"tool"`
+								} `json:"toolCalls"`
+							} `json:"ai"`
+							Description string  `json:"description"`
+							Id          string  `json:"id"`
+							Passed      bool    `json:"passed"`
+							Reason      *string `json:"reason"`
+						} `json:"conditions"`
+						Id     string `json:"id"`
+						Name   string `json:"name"`
+						Passed bool   `json:"passed"`
+					} `json:"rules"`
+				} `json:"autoApproval,omitempty"`
+				AutoApprovedAt    *time.Time          `json:"autoApprovedAt,omitempty"`
+				BypassReason      *string             `json:"bypassReason,omitempty"`
+				CanBreakGlass     *bool               `json:"canBreakGlass,omitempty"`
+				CreatedAt         time.Time           `json:"createdAt"`
+				CurrentStep       float32             `json:"currentStep"`
+				ExpiresAt         *time.Time          `json:"expiresAt,omitempty"`
+				Id                openapi_types.UUID  `json:"id"`
+				IsBreakGlass      *bool               `json:"isBreakGlass,omitempty"`
+				Justification     *string             `json:"justification,omitempty"`
+				MachineIdentityId *openapi_types.UUID `json:"machineIdentityId,omitempty"`
+				OrganizationId    openapi_types.UUID  `json:"organizationId"`
+				PolicyId          *openapi_types.UUID `json:"policyId,omitempty"`
+				ProjectId         string              `json:"projectId"`
+				RequestData       struct {
+					RequestData struct {
+						CertificateRequest struct {
+							AltNames *[]struct {
+								Type  string `json:"type"`
+								Value string `json:"value"`
+							} `json:"altNames,omitempty"`
+							BasicConstraints *struct {
+								IsCA       bool     `json:"isCA"`
+								PathLength *float32 `json:"pathLength,omitempty"`
+							} `json:"basicConstraints,omitempty"`
+							CommonName       *string `json:"commonName,omitempty"`
+							Country          *string `json:"country,omitempty"`
+							CustomExtensions *[]struct {
+								Critical     bool    `json:"critical"`
+								DisplayValue *string `json:"displayValue,omitempty"`
+								Oid          string  `json:"oid"`
+								Value        string  `json:"value"`
+							} `json:"customExtensions,omitempty"`
+							DomainComponents   *[]string `json:"domainComponents,omitempty"`
+							ExtendedKeyUsages  *[]string `json:"extendedKeyUsages,omitempty"`
+							KeyAlgorithm       *string   `json:"keyAlgorithm,omitempty"`
+							KeyUsages          *[]string `json:"keyUsages,omitempty"`
+							Locality           *string   `json:"locality,omitempty"`
+							NotAfter           *string   `json:"notAfter,omitempty"`
+							NotBefore          *string   `json:"notBefore,omitempty"`
+							Organization       *string   `json:"organization,omitempty"`
+							OrganizationalUnit *string   `json:"organizationalUnit,omitempty"`
+							SignatureAlgorithm *string   `json:"signatureAlgorithm,omitempty"`
+							State              *string   `json:"state,omitempty"`
+							Validity           struct {
+								Ttl string `json:"ttl"`
+							} `json:"validity"`
+						} `json:"certificateRequest"`
+						CertificateRequestId openapi_types.UUID `json:"certificateRequestId"`
+						ProfileId            openapi_types.UUID `json:"profileId"`
+						ProfileName          string             `json:"profileName"`
+						Renewal              *struct {
+							Attributes *struct {
+								AltNames *[]struct {
+									Type  CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesAltNamesType `json:"type"`
+									Value string                                                                                                        `json:"value"`
+								} `json:"altNames,omitempty"`
+								BasicConstraints *struct {
+									IsCA       bool `json:"isCA"`
+									PathLength *int `json:"pathLength,omitempty"`
+								} `json:"basicConstraints,omitempty"`
+								CommonName       *string `json:"commonName,omitempty"`
+								Country          *string `json:"country,omitempty"`
+								CustomExtensions *[]struct {
+									Critical *bool   `json:"critical,omitempty"`
+									Oid      string  `json:"oid"`
+									Value    *string `json:"value,omitempty"`
+								} `json:"customExtensions,omitempty"`
+								DomainComponents   *[]string                                                                                                             `json:"domainComponents,omitempty"`
+								ExtendedKeyUsages  *[]CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesExtendedKeyUsages `json:"extendedKeyUsages,omitempty"`
+								KeyAlgorithm       *CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyAlgorithm        `json:"keyAlgorithm,omitempty"`
+								KeyUsages          *[]CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesKeyUsages         `json:"keyUsages,omitempty"`
+								Locality           *string                                                                                                               `json:"locality,omitempty"`
+								Organization       *string                                                                                                               `json:"organization,omitempty"`
+								OrganizationalUnit *string                                                                                                               `json:"organizationalUnit,omitempty"`
+								SignatureAlgorithm *CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalAttributesSignatureAlgorithm  `json:"signatureAlgorithm,omitempty"`
+								State              *string                                                                                                               `json:"state,omitempty"`
+								Ttl                *string                                                                                                               `json:"ttl,omitempty"`
+							} `json:"attributes,omitempty"`
+							CaId                  *openapi_types.UUID `json:"caId,omitempty"`
+							CertificateId         openapi_types.UUID  `json:"certificateId"`
+							Csr                   *string             `json:"csr,omitempty"`
+							ExternalConfiguration *struct {
+								Reissue *bool `json:"reissue,omitempty"`
+							} `json:"externalConfiguration,omitempty"`
+							RenewalKeySource CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataRequestDataRenewalRenewalKeySource `json:"renewalKeySource"`
+						} `json:"renewal,omitempty"`
+					} `json:"requestData"`
+					Version CancelCertRequestApprovalRequest200JSONResponseBodyRequestRequestDataVersion `json:"version"`
+				} `json:"requestData"`
+				RequesterEmail string              `json:"requesterEmail"`
+				RequesterId    *openapi_types.UUID `json:"requesterId,omitempty"`
+				RequesterName  string              `json:"requesterName"`
+				ScopeId        *openapi_types.UUID `json:"scopeId,omitempty"`
+				ScopeType      *string             `json:"scopeType,omitempty"`
+				Status         string              `json:"status"`
+				Steps          []struct {
+					Approvals []struct {
+						ApproverUserId openapi_types.UUID `json:"approverUserId"`
+						Comment        *string            `json:"comment,omitempty"`
+						CreatedAt      *time.Time         `json:"createdAt,omitempty"`
+						Decision       string             `json:"decision"`
+						Id             openapi_types.UUID `json:"id"`
+						StepId         openapi_types.UUID `json:"stepId"`
+					} `json:"approvals"`
+					Approvers []struct {
+						Id   openapi_types.UUID                                                           `json:"id"`
+						Type CancelCertRequestApprovalRequest200JSONResponseBodyRequestStepsApproversType `json:"type"`
+					} `json:"approvers"`
+					CompletedAt       *time.Time         `json:"completedAt,omitempty"`
+					Id                openapi_types.UUID `json:"id"`
+					Name              *string            `json:"name,omitempty"`
+					NotifyApprovers   *bool              `json:"notifyApprovers,omitempty"`
+					RequestId         openapi_types.UUID `json:"requestId"`
+					RequiredApprovals float32            `json:"requiredApprovals"`
+					StartedAt         *time.Time         `json:"startedAt,omitempty"`
+					Status            string             `json:"status"`
+					StepNumber        float32            `json:"stepNumber"`
+				} `json:"steps"`
+				Type      string    `json:"type"`
+				UpdatedAt time.Time `json:"updatedAt"`
+			} `json:"request"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                   `json:"details,omitempty"`
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode CancelCertRequestApprovalRequest400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode CancelCertRequestApprovalRequest401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                   `json:"details,omitempty"`
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode CancelCertRequestApprovalRequest403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode CancelCertRequestApprovalRequest404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    interface{}                                                   `json:"message,omitempty"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode CancelCertRequestApprovalRequest422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode CancelCertRequestApprovalRequest500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseRejectCertRequestApprovalRequestResponse parses an HTTP response from a RejectCertRequestApprovalRequestWithResponse call
 func ParseRejectCertRequestApprovalRequestResponse(rsp *http.Response) (*RejectCertRequestApprovalRequestResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -563686,6 +570542,228 @@ func ParseUpdatePkiApplicationResponse(rsp *http.Response) (*UpdatePkiApplicatio
 	return response, nil
 }
 
+// ParseRemovePkiApplicationGroupMemberResponse parses an HTTP response from a RemovePkiApplicationGroupMemberWithResponse call
+func ParseRemovePkiApplicationGroupMemberResponse(rsp *http.Response) (*RemovePkiApplicationGroupMemberResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemovePkiApplicationGroupMemberResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ApplicationId openapi_types.UUID `json:"applicationId"`
+			MembershipId  openapi_types.UUID `json:"membershipId"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                  `json:"details,omitempty"`
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode RemovePkiApplicationGroupMember400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode RemovePkiApplicationGroupMember401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                  `json:"details,omitempty"`
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode RemovePkiApplicationGroupMember403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode RemovePkiApplicationGroupMember404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    interface{}                                                  `json:"message,omitempty"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode RemovePkiApplicationGroupMember422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode RemovePkiApplicationGroupMember500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdatePkiApplicationGroupMemberRoleResponse parses an HTTP response from a UpdatePkiApplicationGroupMemberRoleWithResponse call
+func ParseUpdatePkiApplicationGroupMemberRoleResponse(rsp *http.Response) (*UpdatePkiApplicationGroupMemberRoleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdatePkiApplicationGroupMemberRoleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Membership struct {
+				ActorGroupId    *openapi_types.UUID `json:"actorGroupId,omitempty"`
+				ActorIdentityId *openapi_types.UUID `json:"actorIdentityId,omitempty"`
+				ActorUserId     *openapi_types.UUID `json:"actorUserId,omitempty"`
+				ApplicationId   openapi_types.UUID  `json:"applicationId"`
+				CreatedAt       time.Time           `json:"createdAt"`
+				CustomRoleId    *openapi_types.UUID `json:"customRoleId,omitempty"`
+				Details         *struct {
+					AuthMethod *string `json:"authMethod,omitempty"`
+					Email      *string `json:"email,omitempty"`
+					Name       *string `json:"name"`
+					Slug       *string `json:"slug,omitempty"`
+					Username   *string `json:"username,omitempty"`
+				} `json:"details,omitempty"`
+				MembershipId openapi_types.UUID `json:"membershipId"`
+				Role         string             `json:"role"`
+				UpdatedAt    time.Time          `json:"updatedAt"`
+			} `json:"membership"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                      `json:"details,omitempty"`
+			Error      string                                                           `json:"error"`
+			Message    string                                                           `json:"message"`
+			ReqId      string                                                           `json:"reqId"`
+			StatusCode UpdatePkiApplicationGroupMemberRole400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                           `json:"error"`
+			Message    string                                                           `json:"message"`
+			ReqId      string                                                           `json:"reqId"`
+			StatusCode UpdatePkiApplicationGroupMemberRole401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                      `json:"details,omitempty"`
+			Error      string                                                           `json:"error"`
+			Message    string                                                           `json:"message"`
+			ReqId      string                                                           `json:"reqId"`
+			StatusCode UpdatePkiApplicationGroupMemberRole403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                           `json:"error"`
+			Message    string                                                           `json:"message"`
+			ReqId      string                                                           `json:"reqId"`
+			StatusCode UpdatePkiApplicationGroupMemberRole404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                           `json:"error"`
+			Message    interface{}                                                      `json:"message,omitempty"`
+			ReqId      string                                                           `json:"reqId"`
+			StatusCode UpdatePkiApplicationGroupMemberRole422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                           `json:"error"`
+			Message    string                                                           `json:"message"`
+			ReqId      string                                                           `json:"reqId"`
+			StatusCode UpdatePkiApplicationGroupMemberRole500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseAddPkiApplicationGroupMemberResponse parses an HTTP response from a AddPkiApplicationGroupMemberWithResponse call
 func ParseAddPkiApplicationGroupMemberResponse(rsp *http.Response) (*AddPkiApplicationGroupMemberResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -563794,6 +570872,228 @@ func ParseAddPkiApplicationGroupMemberResponse(rsp *http.Response) (*AddPkiAppli
 			Message    string                                                    `json:"message"`
 			ReqId      string                                                    `json:"reqId"`
 			StatusCode AddPkiApplicationGroupMember500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRemovePkiApplicationIdentityMemberResponse parses an HTTP response from a RemovePkiApplicationIdentityMemberWithResponse call
+func ParseRemovePkiApplicationIdentityMemberResponse(rsp *http.Response) (*RemovePkiApplicationIdentityMemberResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemovePkiApplicationIdentityMemberResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ApplicationId openapi_types.UUID `json:"applicationId"`
+			MembershipId  openapi_types.UUID `json:"membershipId"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                     `json:"details,omitempty"`
+			Error      string                                                          `json:"error"`
+			Message    string                                                          `json:"message"`
+			ReqId      string                                                          `json:"reqId"`
+			StatusCode RemovePkiApplicationIdentityMember400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                          `json:"error"`
+			Message    string                                                          `json:"message"`
+			ReqId      string                                                          `json:"reqId"`
+			StatusCode RemovePkiApplicationIdentityMember401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                     `json:"details,omitempty"`
+			Error      string                                                          `json:"error"`
+			Message    string                                                          `json:"message"`
+			ReqId      string                                                          `json:"reqId"`
+			StatusCode RemovePkiApplicationIdentityMember403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                          `json:"error"`
+			Message    string                                                          `json:"message"`
+			ReqId      string                                                          `json:"reqId"`
+			StatusCode RemovePkiApplicationIdentityMember404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                          `json:"error"`
+			Message    interface{}                                                     `json:"message,omitempty"`
+			ReqId      string                                                          `json:"reqId"`
+			StatusCode RemovePkiApplicationIdentityMember422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                          `json:"error"`
+			Message    string                                                          `json:"message"`
+			ReqId      string                                                          `json:"reqId"`
+			StatusCode RemovePkiApplicationIdentityMember500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdatePkiApplicationIdentityMemberRoleResponse parses an HTTP response from a UpdatePkiApplicationIdentityMemberRoleWithResponse call
+func ParseUpdatePkiApplicationIdentityMemberRoleResponse(rsp *http.Response) (*UpdatePkiApplicationIdentityMemberRoleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdatePkiApplicationIdentityMemberRoleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Membership struct {
+				ActorGroupId    *openapi_types.UUID `json:"actorGroupId,omitempty"`
+				ActorIdentityId *openapi_types.UUID `json:"actorIdentityId,omitempty"`
+				ActorUserId     *openapi_types.UUID `json:"actorUserId,omitempty"`
+				ApplicationId   openapi_types.UUID  `json:"applicationId"`
+				CreatedAt       time.Time           `json:"createdAt"`
+				CustomRoleId    *openapi_types.UUID `json:"customRoleId,omitempty"`
+				Details         *struct {
+					AuthMethod *string `json:"authMethod,omitempty"`
+					Email      *string `json:"email,omitempty"`
+					Name       *string `json:"name"`
+					Slug       *string `json:"slug,omitempty"`
+					Username   *string `json:"username,omitempty"`
+				} `json:"details,omitempty"`
+				MembershipId openapi_types.UUID `json:"membershipId"`
+				Role         string             `json:"role"`
+				UpdatedAt    time.Time          `json:"updatedAt"`
+			} `json:"membership"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                         `json:"details,omitempty"`
+			Error      string                                                              `json:"error"`
+			Message    string                                                              `json:"message"`
+			ReqId      string                                                              `json:"reqId"`
+			StatusCode UpdatePkiApplicationIdentityMemberRole400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                              `json:"error"`
+			Message    string                                                              `json:"message"`
+			ReqId      string                                                              `json:"reqId"`
+			StatusCode UpdatePkiApplicationIdentityMemberRole401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                         `json:"details,omitempty"`
+			Error      string                                                              `json:"error"`
+			Message    string                                                              `json:"message"`
+			ReqId      string                                                              `json:"reqId"`
+			StatusCode UpdatePkiApplicationIdentityMemberRole403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                              `json:"error"`
+			Message    string                                                              `json:"message"`
+			ReqId      string                                                              `json:"reqId"`
+			StatusCode UpdatePkiApplicationIdentityMemberRole404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                              `json:"error"`
+			Message    interface{}                                                         `json:"message,omitempty"`
+			ReqId      string                                                              `json:"reqId"`
+			StatusCode UpdatePkiApplicationIdentityMemberRole422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                              `json:"error"`
+			Message    string                                                              `json:"message"`
+			ReqId      string                                                              `json:"reqId"`
+			StatusCode UpdatePkiApplicationIdentityMemberRole500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -564367,6 +571667,246 @@ func ParseDetachPkiApplicationProfileResponse(rsp *http.Response) (*DetachPkiApp
 	return response, nil
 }
 
+// ParseGetPkiApplicationEnrollmentResponse parses an HTTP response from a GetPkiApplicationEnrollmentWithResponse call
+func ParseGetPkiApplicationEnrollmentResponse(rsp *http.Response) (*GetPkiApplicationEnrollmentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetPkiApplicationEnrollmentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Acme *struct {
+				DirectoryUrl                 string             `json:"directoryUrl"`
+				Id                           openapi_types.UUID `json:"id"`
+				SkipDnsOwnershipVerification bool               `json:"skipDnsOwnershipVerification"`
+				SkipEabBinding               bool               `json:"skipEabBinding"`
+			} `json:"acme"`
+			AcmeConfigured bool `json:"acmeConfigured"`
+			Api            *struct {
+				AutoRenew       bool               `json:"autoRenew"`
+				Id              openapi_types.UUID `json:"id"`
+				RenewBeforeDays *int               `json:"renewBeforeDays"`
+			} `json:"api"`
+			ApplicationId openapi_types.UUID                                   `json:"applicationId"`
+			CaType        GetPkiApplicationEnrollment200JSONResponseBodyCaType `json:"caType"`
+			Est           *struct {
+				DisableBootstrapCaValidation bool               `json:"disableBootstrapCaValidation"`
+				EstEndpointUrl               string             `json:"estEndpointUrl"`
+				Id                           openapi_types.UUID `json:"id"`
+			} `json:"est"`
+			EstConfigured bool               `json:"estConfigured"`
+			ProfileId     openapi_types.UUID `json:"profileId"`
+			Scep          *struct {
+				AllowCertBasedRenewal         bool                                                            `json:"allowCertBasedRenewal"`
+				ChallengeEndpointUrl          *string                                                         `json:"challengeEndpointUrl"`
+				ChallengeType                 GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeType `json:"challengeType"`
+				DynamicChallengeExpiryMinutes *int                                                            `json:"dynamicChallengeExpiryMinutes"`
+				DynamicChallengeMaxPending    *int                                                            `json:"dynamicChallengeMaxPending"`
+				Id                            openapi_types.UUID                                              `json:"id"`
+				IncludeCaCertInResponse       bool                                                            `json:"includeCaCertInResponse"`
+				RaCertExpiresAt               time.Time                                                       `json:"raCertExpiresAt"`
+				RaCertificatePem              string                                                          `json:"raCertificatePem"`
+				ScepEndpointUrl               string                                                          `json:"scepEndpointUrl"`
+				SignRaWithCa                  bool                                                            `json:"signRaWithCa"`
+				ValidationConnectionId        *openapi_types.UUID                                             `json:"validationConnectionId"`
+			} `json:"scep"`
+			ScepConfigured bool `json:"scepConfigured"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                              `json:"details,omitempty"`
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode GetPkiApplicationEnrollment400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode GetPkiApplicationEnrollment401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                              `json:"details,omitempty"`
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode GetPkiApplicationEnrollment403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode GetPkiApplicationEnrollment404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                   `json:"error"`
+			Message    interface{}                                              `json:"message,omitempty"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode GetPkiApplicationEnrollment422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode GetPkiApplicationEnrollment500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseClearPkiApplicationAcmeEnrollmentResponse parses an HTTP response from a ClearPkiApplicationAcmeEnrollmentWithResponse call
+func ParseClearPkiApplicationAcmeEnrollmentResponse(rsp *http.Response) (*ClearPkiApplicationAcmeEnrollmentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ClearPkiApplicationAcmeEnrollmentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ApplicationId openapi_types.UUID `json:"applicationId"`
+			ProfileId     openapi_types.UUID `json:"profileId"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                    `json:"details,omitempty"`
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode ClearPkiApplicationAcmeEnrollment400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode ClearPkiApplicationAcmeEnrollment401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                    `json:"details,omitempty"`
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode ClearPkiApplicationAcmeEnrollment403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode ClearPkiApplicationAcmeEnrollment404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    interface{}                                                    `json:"message,omitempty"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode ClearPkiApplicationAcmeEnrollment422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode ClearPkiApplicationAcmeEnrollment500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseSetPkiApplicationAcmeEnrollmentResponse parses an HTTP response from a SetPkiApplicationAcmeEnrollmentWithResponse call
 func ParseSetPkiApplicationAcmeEnrollmentResponse(rsp *http.Response) (*SetPkiApplicationAcmeEnrollmentResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -564569,6 +572109,212 @@ func ParseRevealPkiApplicationAcmeEabSecretResponse(rsp *http.Response) (*Reveal
 			Message    string                                                         `json:"message"`
 			ReqId      string                                                         `json:"reqId"`
 			StatusCode RevealPkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRotatePkiApplicationAcmeEabSecretResponse parses an HTTP response from a RotatePkiApplicationAcmeEabSecretWithResponse call
+func ParseRotatePkiApplicationAcmeEabSecretResponse(rsp *http.Response) (*RotatePkiApplicationAcmeEabSecretResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RotatePkiApplicationAcmeEabSecretResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ApplicationId openapi_types.UUID `json:"applicationId"`
+			ProfileId     openapi_types.UUID `json:"profileId"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                    `json:"details,omitempty"`
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode RotatePkiApplicationAcmeEabSecret400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode RotatePkiApplicationAcmeEabSecret401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                    `json:"details,omitempty"`
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode RotatePkiApplicationAcmeEabSecret403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode RotatePkiApplicationAcmeEabSecret404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    interface{}                                                    `json:"message,omitempty"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode RotatePkiApplicationAcmeEabSecret422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode RotatePkiApplicationAcmeEabSecret500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseClearPkiApplicationApiEnrollmentResponse parses an HTTP response from a ClearPkiApplicationApiEnrollmentWithResponse call
+func ParseClearPkiApplicationApiEnrollmentResponse(rsp *http.Response) (*ClearPkiApplicationApiEnrollmentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ClearPkiApplicationApiEnrollmentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ApplicationId openapi_types.UUID `json:"applicationId"`
+			ProfileId     openapi_types.UUID `json:"profileId"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                   `json:"details,omitempty"`
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode ClearPkiApplicationApiEnrollment400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode ClearPkiApplicationApiEnrollment401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                   `json:"details,omitempty"`
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode ClearPkiApplicationApiEnrollment403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode ClearPkiApplicationApiEnrollment404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    interface{}                                                   `json:"message,omitempty"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode ClearPkiApplicationApiEnrollment422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode ClearPkiApplicationApiEnrollment500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -564887,6 +572633,109 @@ func ParseSetPkiApplicationEstEnrollmentResponse(rsp *http.Response) (*SetPkiApp
 			Message    string                                                      `json:"message"`
 			ReqId      string                                                      `json:"reqId"`
 			StatusCode SetPkiApplicationEstEnrollment500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseClearPkiApplicationScepEnrollmentResponse parses an HTTP response from a ClearPkiApplicationScepEnrollmentWithResponse call
+func ParseClearPkiApplicationScepEnrollmentResponse(rsp *http.Response) (*ClearPkiApplicationScepEnrollmentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ClearPkiApplicationScepEnrollmentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ApplicationId openapi_types.UUID `json:"applicationId"`
+			ProfileId     openapi_types.UUID `json:"profileId"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                    `json:"details,omitempty"`
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode ClearPkiApplicationScepEnrollment400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode ClearPkiApplicationScepEnrollment401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                    `json:"details,omitempty"`
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode ClearPkiApplicationScepEnrollment403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode ClearPkiApplicationScepEnrollment404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    interface{}                                                    `json:"message,omitempty"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode ClearPkiApplicationScepEnrollment422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode ClearPkiApplicationScepEnrollment500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -565218,6 +573067,125 @@ func ParseRemovePkiApplicationUserMemberResponse(rsp *http.Response) (*RemovePki
 			Message    string                                                      `json:"message"`
 			ReqId      string                                                      `json:"reqId"`
 			StatusCode RemovePkiApplicationUserMember500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdatePkiApplicationUserMemberRoleResponse parses an HTTP response from a UpdatePkiApplicationUserMemberRoleWithResponse call
+func ParseUpdatePkiApplicationUserMemberRoleResponse(rsp *http.Response) (*UpdatePkiApplicationUserMemberRoleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdatePkiApplicationUserMemberRoleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Membership struct {
+				ActorGroupId    *openapi_types.UUID `json:"actorGroupId,omitempty"`
+				ActorIdentityId *openapi_types.UUID `json:"actorIdentityId,omitempty"`
+				ActorUserId     *openapi_types.UUID `json:"actorUserId,omitempty"`
+				ApplicationId   openapi_types.UUID  `json:"applicationId"`
+				CreatedAt       time.Time           `json:"createdAt"`
+				CustomRoleId    *openapi_types.UUID `json:"customRoleId,omitempty"`
+				Details         *struct {
+					AuthMethod *string `json:"authMethod,omitempty"`
+					Email      *string `json:"email,omitempty"`
+					Name       *string `json:"name"`
+					Slug       *string `json:"slug,omitempty"`
+					Username   *string `json:"username,omitempty"`
+				} `json:"details,omitempty"`
+				MembershipId openapi_types.UUID `json:"membershipId"`
+				Role         string             `json:"role"`
+				UpdatedAt    time.Time          `json:"updatedAt"`
+			} `json:"membership"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                     `json:"details,omitempty"`
+			Error      string                                                          `json:"error"`
+			Message    string                                                          `json:"message"`
+			ReqId      string                                                          `json:"reqId"`
+			StatusCode UpdatePkiApplicationUserMemberRole400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                          `json:"error"`
+			Message    string                                                          `json:"message"`
+			ReqId      string                                                          `json:"reqId"`
+			StatusCode UpdatePkiApplicationUserMemberRole401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                     `json:"details,omitempty"`
+			Error      string                                                          `json:"error"`
+			Message    string                                                          `json:"message"`
+			ReqId      string                                                          `json:"reqId"`
+			StatusCode UpdatePkiApplicationUserMemberRole403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                          `json:"error"`
+			Message    string                                                          `json:"message"`
+			ReqId      string                                                          `json:"reqId"`
+			StatusCode UpdatePkiApplicationUserMemberRole404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                          `json:"error"`
+			Message    interface{}                                                     `json:"message,omitempty"`
+			ReqId      string                                                          `json:"reqId"`
+			StatusCode UpdatePkiApplicationUserMemberRole422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                          `json:"error"`
+			Message    string                                                          `json:"message"`
+			ReqId      string                                                          `json:"reqId"`
+			StatusCode UpdatePkiApplicationUserMemberRole500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -568178,6 +576146,240 @@ func ParseGetCaCrlsResponse(rsp *http.Response) (*GetCaCrlsResponse, error) {
 	return response, nil
 }
 
+// ParseRegenerateCaCrlResponse parses an HTTP response from a RegenerateCaCrlWithResponse call
+func ParseRegenerateCaCrlResponse(rsp *http.Response) (*RegenerateCaCrlResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RegenerateCaCrlResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Crl struct {
+				// Crl The certificate revocation list (CRL).
+				Crl string `json:"crl"`
+
+				// CrlNumber The CRL number of the new CRL.
+				CrlNumber int64 `json:"crlNumber"`
+
+				// Id The ID of certificate revocation list (CRL).
+				Id openapi_types.UUID `json:"id"`
+
+				// NextUpdate When the current CRL expires. A new CRL is issued before this time.
+				NextUpdate time.Time `json:"nextUpdate"`
+
+				// ThisUpdate When the current CRL was issued.
+				ThisUpdate time.Time `json:"thisUpdate"`
+			} `json:"crl"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                  `json:"details,omitempty"`
+			Error      string                                       `json:"error"`
+			Message    string                                       `json:"message"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode RegenerateCaCrl400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                       `json:"error"`
+			Message    string                                       `json:"message"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode RegenerateCaCrl401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                  `json:"details,omitempty"`
+			Error      string                                       `json:"error"`
+			Message    string                                       `json:"message"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode RegenerateCaCrl403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                       `json:"error"`
+			Message    string                                       `json:"message"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode RegenerateCaCrl404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                       `json:"error"`
+			Message    interface{}                                  `json:"message,omitempty"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode RegenerateCaCrl422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                       `json:"error"`
+			Message    string                                       `json:"message"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode RegenerateCaCrl500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteCaCrossSignedCertificateResponse parses an HTTP response from a DeleteCaCrossSignedCertificateWithResponse call
+func ParseDeleteCaCrossSignedCertificateResponse(rsp *http.Response) (*DeleteCaCrossSignedCertificateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteCaCrossSignedCertificateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CrossSignedCertificate struct {
+				// CaId The ID of the CA the cross-signed certificate belongs to.
+				CaId openapi_types.UUID `json:"caId"`
+
+				// Issuer The distinguished name of the CA that signed the cross-signed certificate.
+				Issuer string `json:"issuer"`
+
+				// NotAfter The date and time the cross-signed certificate expires. After this, new certificates no longer include it in their chain.
+				NotAfter time.Time `json:"notAfter"`
+
+				// NotBefore The date and time the cross-signed certificate becomes valid.
+				NotBefore time.Time `json:"notBefore"`
+
+				// SerialNumber The serial number of the cross-signed certificate.
+				SerialNumber string `json:"serialNumber"`
+			} `json:"crossSignedCertificate"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                 `json:"details,omitempty"`
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode DeleteCaCrossSignedCertificate400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode DeleteCaCrossSignedCertificate401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                 `json:"details,omitempty"`
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode DeleteCaCrossSignedCertificate403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode DeleteCaCrossSignedCertificate404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    interface{}                                                 `json:"message,omitempty"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode DeleteCaCrossSignedCertificate422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode DeleteCaCrossSignedCertificate500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetCaCrossSignedCertificateResponse parses an HTTP response from a GetCaCrossSignedCertificateWithResponse call
 func ParseGetCaCrossSignedCertificateResponse(rsp *http.Response) (*GetCaCrossSignedCertificateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -569049,6 +577251,226 @@ func ParseSignIntermediateCaResponse(rsp *http.Response) (*SignIntermediateCaRes
 			Message    string                                          `json:"message"`
 			ReqId      string                                          `json:"reqId"`
 			StatusCode SignIntermediateCa500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetCaSigningConfigResponse parses an HTTP response from a GetCaSigningConfigWithResponse call
+func ParseGetCaSigningConfigResponse(rsp *http.Response) (*GetCaSigningConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetCaSigningConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnectionId           *openapi_types.UUID `json:"appConnectionId,omitempty"`
+			CaId                      openapi_types.UUID  `json:"caId"`
+			CreatedAt                 time.Time           `json:"createdAt"`
+			DestinationConfig         interface{}         `json:"destinationConfig,omitempty"`
+			Id                        openapi_types.UUID  `json:"id"`
+			LastExternalCertificateId *string             `json:"lastExternalCertificateId,omitempty"`
+			ParentCaId                *openapi_types.UUID `json:"parentCaId,omitempty"`
+			Type                      string              `json:"type"`
+			UpdatedAt                 time.Time           `json:"updatedAt"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetCaSigningConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetCaSigningConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetCaSigningConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetCaSigningConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    interface{}                                     `json:"message,omitempty"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetCaSigningConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetCaSigningConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateCaSigningConfigResponse parses an HTTP response from a UpdateCaSigningConfigWithResponse call
+func ParseUpdateCaSigningConfigResponse(rsp *http.Response) (*UpdateCaSigningConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateCaSigningConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnectionId           *openapi_types.UUID `json:"appConnectionId,omitempty"`
+			CaId                      openapi_types.UUID  `json:"caId"`
+			CreatedAt                 time.Time           `json:"createdAt"`
+			DestinationConfig         interface{}         `json:"destinationConfig,omitempty"`
+			Id                        openapi_types.UUID  `json:"id"`
+			LastExternalCertificateId *string             `json:"lastExternalCertificateId,omitempty"`
+			ParentCaId                *openapi_types.UUID `json:"parentCaId,omitempty"`
+			Type                      string              `json:"type"`
+			UpdatedAt                 time.Time           `json:"updatedAt"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                        `json:"details,omitempty"`
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode UpdateCaSigningConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode UpdateCaSigningConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                        `json:"details,omitempty"`
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode UpdateCaSigningConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode UpdateCaSigningConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    interface{}                                        `json:"message,omitempty"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode UpdateCaSigningConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode UpdateCaSigningConfig500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

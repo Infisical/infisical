@@ -16,6 +16,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture/pki"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/id"
 	"github.com/stretchr/testify/require"
 )
 
@@ -64,6 +65,39 @@ func (l legacyRoot) crossSign(t *testing.T, ca *x509.Certificate, pub any) strin
 	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))
 }
 
+// importCrossSigned has a new legacy root cross-sign the CA's key and imports that copy
+// with the legacy root as its chain. It returns the legacy root and the copy's PEM.
+func importCrossSigned(t *testing.T, tn *harness.Tenant, ca pki.CA) (legacyRoot, string) {
+	t.Helper()
+	self := pki.CACertificate(t, tn.Admin, ca.ID)
+	legacy := newLegacyRoot(t)
+	copyPEM := legacy.crossSign(t, self, self.PublicKey)
+	imp, err := tn.Admin.API.ImportCaCrossSignedCertificateWithResponse(t.Context(), ca.ID, api.ImportCaCrossSignedCertificateJSONRequestBody{
+		Certificate:      copyPEM,
+		CertificateChain: legacy.pem,
+	})
+	require.NoError(t, err)
+	require.NotNilf(t, imp.JSON200, "importing returned %d: %s", imp.StatusCode(), apierr.Body(imp.Body))
+	return legacy, copyPEM
+}
+
+// chainEnd is the last certificate of a PEM chain.
+func chainEnd(t *testing.T, chain string) *x509.Certificate {
+	t.Helper()
+	var last *pem.Block
+	for rest := []byte(chain); ; {
+		block, next := pem.Decode(rest)
+		if block == nil {
+			break
+		}
+		last, rest = block, next
+	}
+	require.NotNil(t, last, "no certificate in the chain: %q", chain)
+	cert, err := x509.ParseCertificate(last.Bytes)
+	require.NoError(t, err)
+	return cert
+}
+
 func TestInternalCA_CrossSignedCertificate(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
@@ -74,15 +108,7 @@ func TestInternalCA_CrossSignedCertificate(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		root := pki.NewInternalCA(t, pki.CertManager(t, tn))
-		self := pki.CACertificate(t, tn.Admin, root.ID)
-		legacy := newLegacyRoot(t)
-		copyPEM := legacy.crossSign(t, self, self.PublicKey)
-		imp, err := tn.Admin.API.ImportCaCrossSignedCertificateWithResponse(t.Context(), root.ID, api.ImportCaCrossSignedCertificateJSONRequestBody{
-			Certificate:      copyPEM,
-			CertificateChain: legacy.pem,
-		})
-		require.NoError(t, err)
-		require.NotNilf(t, imp.JSON200, "importing returned %d: %s", imp.StatusCode(), apierr.Body(imp.Body))
+		legacy, copyPEM := importCrossSigned(t, tn, root)
 
 		// Action
 		res, err := tn.Admin.API.GetCaCrossSignedCertificateWithResponse(t.Context(), root.ID)
@@ -96,6 +122,35 @@ func TestInternalCA_CrossSignedCertificate(t *testing.T) {
 		require.Equal(t, pki.ParseLeaf(t, copyPEM).Raw, pki.ParseLeaf(t, got.Certificate).Raw)
 		require.Equal(t, legacy.cert.Raw, pki.ParseLeaf(t, got.CertificateChain).Raw)
 		require.Equal(t, "0a02", got.SerialNumber)
+	})
+
+	t.Run("should stop returning the cross-signed certificate once it is deleted, chain new certificates to the self-signed root and keep earlier chains", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		g := pki.NewGraph(t, tn)
+		legacy, _ := importCrossSigned(t, tn, g.Root)
+		before := g.Issue(t, pki.ServerCertificate(id.Short()+".cross.test"))
+		require.Equal(t, legacy.cert.Raw, chainEnd(t, before.Chain).Raw, "issued before deletion without the cross-signed chain")
+
+		// Action
+		res, err := tn.Admin.API.DeleteCaCrossSignedCertificateWithResponse(t.Context(), g.Root.ID)
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "deleting answered: %s", apierr.Body(res.Body))
+
+		// Assert
+		stored, err := tn.Admin.API.GetCaCrossSignedCertificateWithResponse(t.Context(), g.Root.ID)
+		require.NoError(t, err)
+		require.NotNilf(t, stored.JSON200, "reading returned %d: %s", stored.StatusCode(), apierr.Body(stored.Body))
+		require.Nil(t, stored.JSON200.CrossSignedCertificate)
+		after := g.Issue(t, pki.ServerCertificate(id.Short()+".cross.test"))
+		require.Equal(t, pki.CACertificate(t, tn.Admin, g.Root.ID).Raw, chainEnd(t, after.Chain).Raw)
+		bundle, err := tn.Admin.API.GetCertificateBundleWithResponse(t.Context(), before.ID)
+		require.NoError(t, err)
+		require.NotNilf(t, bundle.JSON200, "reading the earlier bundle returned %d: %s", bundle.StatusCode(), apierr.Body(bundle.Body))
+		require.NotNil(t, bundle.JSON200.CertificateChain)
+		require.Equal(t, before.Chain, *bundle.JSON200.CertificateChain)
 	})
 
 	t.Run("should refuse a cross-signed certificate for another key and store nothing", func(t *testing.T) {

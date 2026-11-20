@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"slices"
 	"testing"
 	"time"
 
@@ -16,6 +17,17 @@ import (
 	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/stretchr/testify/require"
 )
+
+// distributionPoint is the CRL distribution point an issued certificate carries, and the
+// CRL id in it.
+func distributionPoint(t *testing.T, cert pki.Certificate) (*url.URL, string) {
+	t.Helper()
+	leaf := pki.ParseLeaf(t, cert.Certificate)
+	require.NotEmpty(t, leaf.CRLDistributionPoints)
+	u, err := url.Parse(leaf.CRLDistributionPoints[0])
+	require.NoError(t, err)
+	return u, path.Base(path.Dir(u.Path))
+}
 
 func TestInternalCA_Crl(t *testing.T) {
 	t.Parallel()
@@ -56,11 +68,7 @@ func TestInternalCA_Crl(t *testing.T) {
 		g := pki.NewGraph(t, tn)
 		cert := g.Issue(t, pki.ServerCertificate(id.Short()+".crl.test"))
 		pki.Revoke(t, tn.Admin, cert, api.RevokeCertificateJSONBodyRevocationReasonKEYCOMPROMISE)
-		leaf := pki.ParseLeaf(t, cert.Certificate)
-		require.NotEmpty(t, leaf.CRLDistributionPoints)
-		u, err := url.Parse(leaf.CRLDistributionPoints[0])
-		require.NoError(t, err)
-		crlID := path.Base(path.Dir(u.Path))
+		u, crlID := distributionPoint(t, cert)
 
 		// Action
 		res, err := tn.Anonymous(t).GetCrlDerWithResponse(t.Context(), crlID)
@@ -72,6 +80,41 @@ func TestInternalCA_Crl(t *testing.T) {
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "fetching %s answered: %s", u, apierr.Body(res.Body))
 		require.Equal(t, "application/pkix-crl", res.HTTPResponse.Header.Get("Content-Type"))
 		require.Equal(t, pki.CurrentCRL(t, tn.Admin.API, g.CA), res.Body)
+	})
+
+	t.Run("should publish a new CRL with a higher number that still lists the revoked serial when regenerated", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		g := pki.NewGraph(t, tn)
+		cert := g.Issue(t, pki.ServerCertificate(id.Short()+".crl.test"))
+		pki.Revoke(t, tn.Admin, cert, api.RevokeCertificateJSONBodyRevocationReasonKEYCOMPROMISE)
+		before := pki.ParseCRL(t, pki.CurrentCRL(t, tn.Admin.API, g.CA))
+
+		// Action
+		res, err := tn.Admin.API.RegenerateCaCrlWithResponse(t.Context(), g.CA.ID)
+		require.NoError(t, err)
+		require.NotNilf(t, res.JSON200, "regenerating returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+
+		// Assert
+		published := pki.CurrentCRL(t, tn.Admin.API, g.CA)
+		require.Equal(t, published, pki.DecodeCRL(res.JSON200.Crl.Crl), "regenerating returned a different CRL from the one published")
+		_, crlID := distributionPoint(t, cert)
+		served, err := tn.Anonymous(t).GetCrlDerWithResponse(t.Context(), crlID)
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, served.StatusCode(), "fetching the distribution point answered: %s", apierr.Body(served.Body))
+		require.Equal(t, published, served.Body, "the certificate's distribution point serves a different CRL")
+		after := pki.ParseCRL(t, published)
+		require.NotNil(t, before.Number, "the CRL before regenerating has no CRL number")
+		require.NotNil(t, after.Number, "the regenerated CRL has no CRL number")
+		require.Equal(t, 1, after.Number.Cmp(before.Number), "the CRL number went from %s to %s", before.Number, after.Number)
+		require.True(t, after.Number.IsInt64(), "CRL number %s", after.Number)
+		require.Equal(t, after.Number.Int64(), res.JSON200.Crl.CrlNumber)
+		require.NoError(t, after.CheckSignatureFrom(pki.CACertificate(t, tn.Admin, g.CA.ID)))
+		serial := pki.ParseLeaf(t, cert.Certificate).SerialNumber
+		require.True(t, slices.ContainsFunc(after.RevokedCertificateEntries, func(e x509.RevocationListEntry) bool { return e.SerialNumber.Cmp(serial) == 0 }),
+			"the revoked serial is not on the regenerated CRL")
 	})
 
 	t.Run("should refuse another organization the CA's CRLs", func(t *testing.T) {

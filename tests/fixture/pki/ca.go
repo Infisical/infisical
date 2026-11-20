@@ -21,21 +21,35 @@ type CA struct{ ID uuid.UUID }
 // NewInternalCA creates an active root CA on an RSA-2048 key.
 func NewInternalCA(tt *testing.T, p *Project) CA {
 	tt.Helper()
+	return NewRootCA(tt, p, api.CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmRSA2048)
+}
+
+// NewRootCA creates an active root CA on a key of the algorithm.
+func NewRootCA(tt *testing.T, p *Project, keyAlgorithm api.CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm) CA {
+	tt.Helper()
+	res := CreateRootCA(tt, p, keyAlgorithm)
+	require.NotNilf(tt, res.JSON200, "creating an internal CA returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	return CA{ID: res.JSON200.Id}
+}
+
+// CreateRootCA asks for an active root CA on a key of the algorithm and returns the
+// response, whatever its status.
+func CreateRootCA(tt *testing.T, p *Project, keyAlgorithm api.CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithm) *api.CreateInternalCertificateAuthorityV1Response {
+	tt.Helper()
 	body := api.CreateInternalCertificateAuthorityV1JSONRequestBody{
 		ProjectId: &p.ID,
 		Name:      "ca-" + id.Short(),
 		Status:    api.CreateInternalCertificateAuthorityV1JSONBodyStatusActive,
 	}
 	body.Configuration.Type = api.CreateInternalCertificateAuthorityV1JSONBodyConfigurationTypeRoot
-	body.Configuration.KeyAlgorithm = api.CreateInternalCertificateAuthorityV1JSONBodyConfigurationKeyAlgorithmRSA2048
+	body.Configuration.KeyAlgorithm = keyAlgorithm
 	body.Configuration.Organization = new("Infisical Harness")
 	body.Configuration.NotAfter = new("2035-11-07")
 	body.Configuration.MaxPathLength = new(float32(-1))
 
 	res, err := p.tn.Admin.API.CreateInternalCertificateAuthorityV1WithResponse(tt.Context(), body)
 	require.NoError(tt, err, "creating an internal CA")
-	require.NotNilf(tt, res.JSON200, "creating an internal CA returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	return CA{ID: res.JSON200.Id}
+	return res
 }
 
 // NewAcmeCA creates a CA that orders from an upstream ACME directory, answering its

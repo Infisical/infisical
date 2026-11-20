@@ -27,18 +27,51 @@ import (
 // 5 second pause, so it takes longer than the default 30 seconds under a loaded suite.
 const installWait = 2 * time.Minute
 
-// signThrough points a pending intermediate's signing configuration at an external
-// signer and asks for the certificate to be installed.
-func signThrough(t *testing.T, tn *harness.Tenant, ca pki.CA, config map[string]any, install func(caID string, body *bytes.Reader) (int, []byte, error)) {
+// azureADCS is the signing configuration type for Azure AD CS.
+const azureADCS = "azure-ad-cs"
+
+// azureADCSConfig signs through Azure AD CS over the connection under a CA template.
+func azureADCSConfig(connID uuid.UUID, template string) map[string]any {
+	return map[string]any{"type": azureADCS, "appConnectionId": connID, "destinationConfig": map[string]any{"template": template}}
+}
+
+// createSigningConfig points a pending intermediate's signing configuration at an
+// external signer. The body is a union the generated client cannot serialise.
+func createSigningConfig(t *testing.T, tn *harness.Tenant, ca pki.CA, config map[string]any) {
 	t.Helper()
 	raw, err := json.Marshal(config)
 	require.NoError(t, err)
 	res, err := tn.Admin.API.CreateCaSigningConfigWithBodyWithResponse(t.Context(), ca.ID.String(), "application/json", bytes.NewReader(raw))
 	require.NoError(t, err)
 	require.Truef(t, res.StatusCode() < 300, "creating the signing configuration returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+}
+
+// requestInstall asks for a pending intermediate's certificate to be installed from its
+// external signer.
+func requestInstall(t *testing.T, ca pki.CA, install func(caID string, body *bytes.Reader) (int, []byte, error)) {
+	t.Helper()
 	status, body, err := install(ca.ID.String(), bytes.NewReader([]byte(`{}`)))
 	require.NoError(t, err)
 	require.Equalf(t, http.StatusAccepted, status, "installing returned %d: %s", status, apierr.Body(body))
+}
+
+// installAzureADCS installs a pending intermediate's certificate from Azure AD CS.
+func installAzureADCS(t *testing.T, tn *harness.Tenant) func(caID string, body *bytes.Reader) (int, []byte, error) {
+	return func(caID string, body *bytes.Reader) (int, []byte, error) {
+		res, err := tn.Admin.API.InstallCaCertificateAdcsWithBodyWithResponse(t.Context(), caID, "application/json", body)
+		if err != nil {
+			return 0, nil, err
+		}
+		return res.StatusCode(), res.Body, nil
+	}
+}
+
+// signThrough points a pending intermediate's signing configuration at an external
+// signer and asks for the certificate to be installed.
+func signThrough(t *testing.T, tn *harness.Tenant, ca pki.CA, config map[string]any, install func(caID string, body *bytes.Reader) (int, []byte, error)) {
+	t.Helper()
+	createSigningConfig(t, tn, ca, config)
+	requestInstall(t, ca, install)
 }
 
 func waitActive(t *testing.T, tn *harness.Tenant, ca pki.CA) {
@@ -73,14 +106,7 @@ func TestIntermediateCA_InstallExternal(t *testing.T) {
 		ca := pki.NewPendingIntermediateCA(t, proj)
 
 		// Action
-		signThrough(t, tn, ca, map[string]any{"type": "azure-ad-cs", "appConnectionId": conn.ID, "destinationConfig": map[string]any{"template": "HarnessSubCA"}},
-			func(caID string, body *bytes.Reader) (int, []byte, error) {
-				res, err := tn.Admin.API.InstallCaCertificateAdcsWithBodyWithResponse(t.Context(), caID, "application/json", body)
-				if err != nil {
-					return 0, nil, err
-				}
-				return res.StatusCode(), res.Body, nil
-			})
+		signThrough(t, tn, ca, azureADCSConfig(conn.ID, "HarnessSubCA"), installAzureADCS(t, tn))
 
 		// Assert
 		waitActive(t, tn, ca)

@@ -17,7 +17,11 @@ func CurrentCRL(tt *testing.T, client *api.ClientWithResponses, ca CA) []byte {
 	require.NoError(tt, err, "listing CRLs")
 	require.NotNilf(tt, res.JSON200, "listing CRLs returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 	require.Len(tt, *res.JSON200, 1)
-	raw := (*res.JSON200)[0].Crl
+	return DecodeCRL((*res.JSON200)[0].Crl)
+}
+
+// DecodeCRL is the DER of a CRL as the API returns it, PEM or DER.
+func DecodeCRL(raw string) []byte {
 	if block, _ := pem.Decode([]byte(raw)); block != nil {
 		return block.Bytes
 	}

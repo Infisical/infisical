@@ -182,6 +182,9 @@ actions:
   - target: $.paths['/api/v1/approval-policies/cert-request/requests/{requestId}'].get
     update:
       operationId: getCertRequestApprovalRequest
+  - target: $.paths['/api/v1/approval-policies/cert-request/requests/{requestId}/cancel'].post
+    update:
+      operationId: cancelCertRequestApprovalRequest
   - target: $.paths['/api/v1/approval-policies/cert-code-signing/requests/{requestId}/approve'].post
     update:
       operationId: approveCertCodeSigningApprovalRequest
@@ -203,3 +206,8 @@ actions:
           properties:
             replacementCertificateName:
               type: string
+  # crlNumber is Unix seconds plus a counter, past float32's precision, so neighbouring
+  # numbers would decode to the same value.
+  - target: $.paths['/api/v1/cert-manager/ca/internal/{caId}/crls/regenerate'].post.responses['200'].content['application/json'].schema.properties.crl.properties.crlNumber
+    update:
+      x-go-type: int64

@@ -1056,3 +1056,18 @@ output-options:
     - breakGlassCertRequestApprovalRequest
     - getCertRequestApprovalRequest
     - approveCertCodeSigningApprovalRequest
+    - updatePkiApplicationUserMemberRole
+    - updatePkiApplicationIdentityMemberRole
+    - updatePkiApplicationGroupMemberRole
+    - removePkiApplicationIdentityMember
+    - removePkiApplicationGroupMember
+    - clearPkiApplicationApiEnrollment
+    - clearPkiApplicationAcmeEnrollment
+    - clearPkiApplicationScepEnrollment
+    - getPkiApplicationEnrollment
+    - rotatePkiApplicationAcmeEabSecret
+    - cancelCertRequestApprovalRequest
+    - regenerateCaCrl
+    - deleteCaCrossSignedCertificate
+    - getCaSigningConfig
+    - updateCaSigningConfig

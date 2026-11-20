@@ -21,7 +21,7 @@ func TestCertificateApprovalPolicy_Manage(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		g := newGated(t, tn, false)
+		g := newGated(t, tn, separateApproverOnly)
 
 		// Action
 		res, err := tn.Admin.API.ListCertRequestApprovalPoliciesWithResponse(t.Context(), &api.ListCertRequestApprovalPoliciesParams{
@@ -44,7 +44,7 @@ func TestCertificateApprovalPolicy_Manage(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		g := newGated(t, tn, false)
+		g := newGated(t, tn, separateApproverOnly)
 
 		// Action
 		res, err := tn.Admin.API.UpdateCertRequestApprovalPolicyWithResponse(t.Context(), g.policyID, api.UpdateCertRequestApprovalPolicyJSONRequestBody{
@@ -67,7 +67,7 @@ func TestCertificateApprovalPolicy_Manage(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		g := newGated(t, tn, false)
+		g := newGated(t, tn, separateApproverOnly)
 
 		// Action
 		res, err := tn.Admin.API.DeleteCertRequestApprovalPolicyWithResponse(t.Context(), g.policyID)
@@ -97,7 +97,7 @@ func TestCertificateApproval_BreakGlass(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		g := newGated(t, tn, false)
+		g := newGated(t, tn, separateApproverOnly)
 		reqID := g.request(t).JSON200.CertificateRequestId
 		approval := g.approvalFor(t, reqID)
 

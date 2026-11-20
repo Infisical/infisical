@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
-	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/pki"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
@@ -212,13 +211,7 @@ func TestApplicationAccess_Membership(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		g := pki.NewGraph(t, tn)
-		user := member(t, tn, g, "")
-		group := fixture.NewGroup(t, tn)
-		group.AddUser(t, user)
-		fixture.ExistingProject(tn, g.Project.ID.String()).GrantGroup(t, group, "member")
-		add, err := tn.Admin.API.AddPkiApplicationGroupMemberWithResponse(t.Context(), g.App.ID, group.ID, api.AddPkiApplicationGroupMemberJSONRequestBody{Role: "operator"})
-		require.NoError(t, err)
-		require.Equalf(t, http.StatusOK, add.StatusCode(), "adding the group: %s", apierr.Body(add.Body))
+		user, _ := operatorGroupMember(t, tn, g)
 
 		// Action
 		res := pki.Request(t, user, g.App, g.Profile, pki.ServerCertificate(id.Short()+".app.test"))

@@ -20,7 +20,7 @@ func TestCertificateApproval_Request(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		g := newGated(t, tn, false)
+		g := newGated(t, tn, separateApproverOnly)
 
 		// Action
 		res := g.request(t)
@@ -36,7 +36,7 @@ func TestCertificateApproval_Request(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		g := newGated(t, tn, false)
+		g := newGated(t, tn, separateApproverOnly)
 		reqID := g.request(t).JSON200.CertificateRequestId
 		approval := g.approvalFor(t, reqID)
 
@@ -55,7 +55,7 @@ func TestCertificateApproval_Request(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		g := newGated(t, tn, false)
+		g := newGated(t, tn, separateApproverOnly)
 		reqID := g.request(t).JSON200.CertificateRequestId
 		approval := g.approvalFor(t, reqID)
 
@@ -74,7 +74,7 @@ func TestCertificateApproval_Request(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		g := newGated(t, tn, false)
+		g := newGated(t, tn, separateApproverOnly)
 		reqID := g.request(t).JSON200.CertificateRequestId
 		approval := g.approvalFor(t, reqID)
 
@@ -96,7 +96,7 @@ func TestCertificateApproval_Request(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		g := newGated(t, tn, true)
+		g := newGated(t, tn, requesterAlsoApproves)
 		reqID := g.request(t).JSON200.CertificateRequestId
 		approval := g.approvalFor(t, reqID)
 

@@ -22,47 +22,30 @@ type gated struct {
 	policyID uuid.UUID
 }
 
+// approverSet says who approves on a gated graph's policy besides the approver.
+type approverSet bool
+
+const (
+	// separateApproverOnly leaves the requesting operator off the approver list.
+	separateApproverOnly approverSet = false
+	// requesterAlsoApproves names the requesting operator as an approver too.
+	requesterAlsoApproves approverSet = true
+)
+
 // newGated puts an approval policy on a graph's profile, approved by a new Product
-// Member who administers the application, and also by the operator, who requests,
-// when requesterApproves.
-func newGated(t *testing.T, tn *harness.Tenant, requesterApproves bool) gated {
+// Member who administers the application, and by the requesting operator when the
+// set says so.
+func newGated(t *testing.T, tn *harness.Tenant, set approverSet) gated {
 	t.Helper()
 	g := pki.NewGraph(t, tn)
 	approver := tn.NewUser(t, harness.WithName("approver"))
 	g.Project.Grant(t, approver)
 	pki.AddMember(t, g.App, approver, "admin")
-
-	body := api.CreateCertRequestApprovalPolicyJSONRequestBody{
-		Name:    "policy-" + id.Short(),
-		Scope:   api.CreateCertRequestApprovalPolicyJSONBodyScopePkiApplication,
-		ScopeId: g.App.ID,
-		Conditions: []struct {
-			ProfileNames []string `json:"profileNames"`
-		}{{ProfileNames: []string{g.Profile.Slug}}},
+	approvers := []pki.Approver{pki.UserApprover(approver.ID)}
+	if set == requesterAlsoApproves {
+		approvers = append(approvers, pki.UserApprover(g.Operator.ID))
 	}
-	body.Steps = []struct {
-		Approvers []struct {
-			Id   uuid.UUID                                                     `json:"id"`
-			Type api.CreateCertRequestApprovalPolicyJSONBodyStepsApproversType `json:"type"`
-		} `json:"approvers"`
-		Name              *string `json:"name,omitempty"`
-		NotifyApprovers   *bool   `json:"notifyApprovers,omitempty"`
-		RequiredApprovals float32 `json:"requiredApprovals"`
-	}{{RequiredApprovals: 1}}
-	approvers := []uuid.UUID{approver.ID}
-	if requesterApproves {
-		approvers = append(approvers, g.Operator.ID)
-	}
-	for _, a := range approvers {
-		body.Steps[0].Approvers = append(body.Steps[0].Approvers, struct {
-			Id   uuid.UUID                                                     `json:"id"`
-			Type api.CreateCertRequestApprovalPolicyJSONBodyStepsApproversType `json:"type"`
-		}{Id: a, Type: api.CreateCertRequestApprovalPolicyJSONBodyStepsApproversTypeUser})
-	}
-	res, err := tn.Admin.API.CreateCertRequestApprovalPolicyWithResponse(t.Context(), body)
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "creating the approval policy returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	return gated{Graph: g, tn: tn, approver: approver, policyID: res.JSON200.Policy.Id}
+	return gated{Graph: g, tn: tn, approver: approver, policyID: pki.NewApprovalPolicy(t, g.App, g.Profile, approvers...)}
 }
 
 // request asks for a certificate as the operator and returns the certificate request.
@@ -100,6 +83,15 @@ func (g gated) approvalFor(t *testing.T, certificateRequestID string) uuid.UUID 
 	}
 	require.Failf(t, "no approval request", "none holds certificate request %s: %s", certificateRequestID, apierr.Body(res.Body))
 	return uuid.Nil
+}
+
+// approvalStatus is the approval request's own status, as the tenant admin reads it.
+func (g gated) approvalStatus(t *testing.T, approvalID uuid.UUID) string {
+	t.Helper()
+	res, err := g.tn.Admin.API.GetCertRequestApprovalRequestWithResponse(t.Context(), approvalID)
+	require.NoError(t, err)
+	require.NotNilf(t, res.JSON200, "reading the approval request returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	return res.JSON200.Request.Status
 }
 
 // certificateRequest is the certificate request as the tenant admin reads it.

@@ -135,7 +135,7 @@ func TestScepEnrollment_Enroll(t *testing.T) {
 		profile := pki.NewProfile(t, proj, pki.NewInternalCA(t, proj), pki.NewPolicy(t, proj, policy))
 		app := pki.NewApplication(t, proj, profile)
 		pki.EnableSCEP(t, app, profile, staticChallenge("testpassword123"))
-		p := scepProfile{api: tn.Anonymous(t), app: app, profile: profile}
+		p := scepProfile{api: tn.Anonymous(t), project: proj, app: app, profile: profile}
 
 		req := p.pkcsReq(t, newDevice(t, "x.denied.test"), "x.denied.test", "testpassword123")
 
