@@ -28,7 +28,8 @@ export const MetricTile = ({
   action
 }: {
   label: string;
-  link: CipherLinkProps["link"];
+  /** Omitted when the viewer can't open the product. */
+  link?: CipherLinkProps["link"];
   hue: number;
   seed: string;
   value?: ReactNode;
@@ -53,8 +54,14 @@ export const MetricTile = ({
     </span>
     <div className={styles.body}>
       <span className={styles.label}>
-        <CardLink link={link}>{label}</CardLink>
-        <Icon name="chev-right" size={14} />
+        {link ? (
+          <>
+            <CardLink link={link}>{label}</CardLink>
+            <Icon name="chev-right" size={14} />
+          </>
+        ) : (
+          label
+        )}
       </span>
       {loading ? (
         <Skeleton className={styles.valueSkeleton} />

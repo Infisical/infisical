@@ -91,6 +91,12 @@
   flex: none;
   color: var(--cipher-ok);
 }
+.allClear[data-unknown] > svg {
+  color: var(--cipher-warn);
+}
+.rowSkeleton {
+  height: 72px;
+}
 .hueMedia.hueMedia {
   border-color: transparent;
   background: var(--cipher-hue-soft);

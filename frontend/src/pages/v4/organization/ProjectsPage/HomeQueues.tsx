@@ -5,6 +5,7 @@ import { Button } from "@infisical/cipher/ui/button";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Item, Media } from "@infisical/cipher/ui/item";
 import { Stack } from "@infisical/cipher/ui/layout";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 
 import { errorMessage, toast } from "../../access/toast";
@@ -91,9 +92,9 @@ const Section = ({
   );
 };
 
-const AllClear = ({ children }: { children: ReactNode }) => (
-  <div className={styles.allClear}>
-    <Icon name="check-c" size={16} />
+const AllClear = ({ children, unknown }: { children: ReactNode; unknown?: boolean }) => (
+  <div className={styles.allClear} data-unknown={unknown || undefined}>
+    <Icon name={unknown ? "alert" : "check-c"} size={16} />
     {children}
   </div>
 );
@@ -170,7 +171,15 @@ const AttentionRow = ({ item, narrow }: { item: HomeAttention; narrow: boolean }
   />
 );
 
-export const HomeQueues = ({ queue }: { queue: HomeQueue }) => {
+export const HomeQueues = ({
+  queue,
+  checking,
+  error
+}: {
+  queue: HomeQueue;
+  checking: boolean;
+  error: unknown;
+}) => {
   const [ref, narrow] = useNarrow();
   const [filter, setFilter] = useState("all");
   const [expanded, setExpanded] = useState(false);
@@ -207,12 +216,21 @@ export const HomeQueues = ({ queue }: { queue: HomeQueue }) => {
           )
         }
       >
-        {shown.length ? (
-          shown.map((approval) => (
-            <ApprovalRow key={approval.id} approval={approval} narrow={narrow} />
-          ))
+        {shown.map((approval) => (
+          <ApprovalRow key={approval.id} approval={approval} narrow={narrow} />
+        ))}
+        {error ? (
+          <AllClear unknown>
+            {shown.length ? "Some requests couldn't be checked." : "Couldn't check your requests."}{" "}
+            {errorMessage(error)}
+          </AllClear>
         ) : (
-          <AllClear>Nothing needs your approval.</AllClear>
+          !shown.length &&
+          (checking ? (
+            <Skeleton className={styles.rowSkeleton} />
+          ) : (
+            <AllClear>Nothing needs your approval.</AllClear>
+          ))
         )}
       </Section>
       {filter === "all" && (

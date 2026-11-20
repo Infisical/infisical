@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Button } from "@infisical/cipher/ui/button";
 import { Icon } from "@infisical/cipher/ui/icon";
 import type { SidebarProps } from "@infisical/cipher/ui/sidebar";
@@ -18,15 +18,28 @@ type Step = { id: string; label: string; done: boolean; href: string };
 
 const storageKey = (orgId: string, card: string) => `v4-corner-dismissed:${orgId}:${card}`;
 
+const DISMISSED_EVENT = "v4-corner-dismissed";
+
+const subscribeDismissed = (onChange: () => void) => {
+  window.addEventListener(DISMISSED_EVENT, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(DISMISSED_EVENT, onChange);
+    window.removeEventListener("storage", onChange);
+  };
+};
+
 const useDismissed = (orgId: string, card: string) => {
-  const [dismissed, setDismissed] = useState(
-    () => window.localStorage.getItem(storageKey(orgId, card)) === "1"
+  const key = storageKey(orgId, card);
+  const dismissed = useSyncExternalStore(
+    subscribeDismissed,
+    () => window.localStorage.getItem(key) === "1"
   );
   return [
     dismissed,
     () => {
-      window.localStorage.setItem(storageKey(orgId, card), "1");
-      setDismissed(true);
+      window.localStorage.setItem(key, "1");
+      window.dispatchEvent(new Event(DISMISSED_EVENT));
     }
   ] as const;
 };

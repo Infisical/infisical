@@ -4,9 +4,11 @@ import { Icon, type IconName } from "@infisical/cipher/ui/icon";
 
 import { ProjectType } from "@app/hooks/api/projects/types";
 
+import { errorMessage } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, v4Path } from "../../links";
 import { productOf } from "../../shell/navigation";
+import { useBlockedProducts } from "../../shell/product-access";
 import { MetricTile } from "./MetricTile";
 
 import styles from "./ProjectsPage.module.css";
@@ -18,28 +20,45 @@ const compactNumber = new Intl.NumberFormat(undefined, { notation: "compact" });
 const formatCount = (value: number) =>
   (value >= 100_000 ? compactNumber : fullNumber).format(value);
 
-const tileLink = (orgId: string, path: string) => ({
-  to: v4Path("/organizations/$orgId/$"),
-  params: { orgId, _splat: path }
-});
-
 const SetupAction = ({ href, icon, label }: { href: string; icon: IconName; label: string }) => (
   <Button variant="outline" icon={icon} asChild>
     <a href={href}>{label}</a>
   </Button>
 );
 
+const useTile = (orgId: string, type: ProjectType, label: string, path: string) => {
+  const product = productOf(type);
+  const blocked = useBlockedProducts(orgId).has(type);
+  return {
+    blocked,
+    shared: {
+      label,
+      link: blocked
+        ? undefined
+        : { to: v4Path("/organizations/$orgId/$"), params: { orgId, _splat: path } },
+      hue: product.hue,
+      seed: product.type
+    },
+    unavailable: (error: unknown) => ({
+      muted: true,
+      value: "Unavailable",
+      note: errorMessage(error) ?? "Couldn't load this number. Refresh to try again."
+    }),
+    noAccess: `You don't have access to ${product.label}.`
+  };
+};
+
 const ReadsTile = ({ orgId }: { orgId: string }) => {
   const reads = useV4Adapter("home").useSecretReads(orgId);
-  const product = productOf(ProjectType.SecretManager);
+  const tile = useTile(
+    orgId,
+    ProjectType.SecretManager,
+    "Secret reads",
+    "projects/secret-management/insights"
+  );
   const total = reads.data?.total ?? 0;
-  const shared = {
-    label: "Secret reads",
-    link: tileLink(orgId, "projects/secret-management/insights"),
-    hue: product.hue,
-    seed: product.type,
-    loading: reads.isPending
-  };
+  const shared = { ...tile.shared, loading: reads.isPending };
+  if (reads.error) return <MetricTile {...shared} {...tile.unavailable(reads.error)} />;
   if (!total && !reads.isPending)
     return (
       <MetricTile
@@ -48,11 +67,13 @@ const ReadsTile = ({ orgId }: { orgId: string }) => {
         value="No reads yet"
         note="Reads appear once an app or machine fetches a secret."
         action={
-          <SetupAction
-            href={orgHref(orgId, "/integrations")}
-            icon="terminal"
-            label="Connect your app"
-          />
+          !tile.blocked && (
+            <SetupAction
+              href={orgHref(orgId, "/integrations")}
+              icon="terminal"
+              label="Connect your app"
+            />
+          )
         }
       />
     );
@@ -74,41 +95,46 @@ const ReadsTile = ({ orgId }: { orgId: string }) => {
 
 const FindingsTile = ({ orgId }: { orgId: string }) => {
   const findings = useV4Adapter("home").useFindings(orgId);
-  const product = productOf(ProjectType.SecretScanning);
-  const shared = {
-    label: "Secret scanning findings",
-    link: tileLink(orgId, "secret-scanning/findings"),
-    hue: product.hue,
-    seed: product.type,
-    loading: findings.isPending
-  };
+  const tile = useTile(
+    orgId,
+    ProjectType.SecretScanning,
+    "Secret scanning findings",
+    "secret-scanning/findings"
+  );
+  const shared = { ...tile.shared, loading: findings.isPending };
+  if (findings.error) return <MetricTile {...shared} {...tile.unavailable(findings.error)} />;
   if (!findings.data)
     return (
       <MetricTile
         {...shared}
         muted={!findings.isPending}
-        value="Not set up"
-        note="Find leaked secrets in your repositories."
+        value={tile.blocked ? "No access" : "Not set up"}
+        note={tile.blocked ? tile.noAccess : "Find leaked secrets in your repositories."}
         action={
-          <SetupAction
-            href={orgHref(orgId, "/secret-scanning/data-sources")}
-            icon="scan-key"
-            label="Connect a repository"
-          />
+          !tile.blocked && (
+            <SetupAction
+              href={orgHref(orgId, "/secret-scanning/data-sources")}
+              icon="scan-key"
+              label="Connect a repository"
+            />
+          )
         }
       />
     );
   const { dataSources } = findings.data;
+  const note = `Across ${formatCount(dataSources)} data ${dataSources === 1 ? "source" : "sources"}`;
   return (
     <MetricTile
       {...shared}
       value={formatCount(findings.data.findings)}
-      note={`Across ${formatCount(dataSources)} data ${dataSources === 1 ? "source" : "sources"}`}
+      note={tile.blocked ? `${note}. ${tile.noAccess}` : note}
       footer={
-        <a href={orgHref(orgId, "/secret-scanning/findings")}>
-          Review findings
-          <Icon name="chev-right" size={14} />
-        </a>
+        !tile.blocked && (
+          <a href={orgHref(orgId, "/secret-scanning/findings")}>
+            Review findings
+            <Icon name="chev-right" size={14} />
+          </a>
+        )
       }
     />
   );
@@ -116,27 +142,33 @@ const FindingsTile = ({ orgId }: { orgId: string }) => {
 
 const ExpiringTile = ({ orgId }: { orgId: string }) => {
   const expiring = useV4Adapter("home").useExpiringCertificates(orgId);
-  const product = productOf(ProjectType.CertificateManager);
-  const shared = {
-    label: "Certificates expiring",
-    link: tileLink(orgId, "cert-manager/inventory"),
-    hue: product.hue,
-    seed: product.type,
-    loading: expiring.isPending
-  };
+  const tile = useTile(
+    orgId,
+    ProjectType.CertificateManager,
+    "Certificates expiring",
+    "cert-manager/inventory"
+  );
+  const shared = { ...tile.shared, loading: expiring.isPending };
+  if (expiring.error) return <MetricTile {...shared} {...tile.unavailable(expiring.error)} />;
   if (!expiring.data)
     return (
       <MetricTile
         {...shared}
         muted={!expiring.isPending}
-        value="Not set up"
-        note="Issue and renew TLS certificates from a private CA or an ACME issuer."
+        value={tile.blocked ? "No access" : "Not set up"}
+        note={
+          tile.blocked
+            ? tile.noAccess
+            : "Issue and renew TLS certificates from a private CA or an ACME issuer."
+        }
         action={
-          <SetupAction
-            href={orgHref(orgId, "/cert-manager/overview")}
-            icon="cert"
-            label="Set up certificates"
-          />
+          !tile.blocked && (
+            <SetupAction
+              href={orgHref(orgId, "/cert-manager/overview")}
+              icon="cert"
+              label="Set up certificates"
+            />
+          )
         }
       />
     );

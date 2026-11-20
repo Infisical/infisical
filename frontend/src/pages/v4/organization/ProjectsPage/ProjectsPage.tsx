@@ -17,13 +17,18 @@ import { HomeTiles } from "./HomeTiles";
 export const ProjectsPage = () => {
   const { orgId } = useParams({ from: "/v4/organizations/$orgId" });
   const { organization, projects } = useV4Session();
-  const { data: queue } = useV4Adapter("home").useQueue(orgId);
+  const queue = useV4Adapter("home").useQueue(orgId);
   const getStarted = useGetStarted(orgId);
   const demoProject =
     useV4Mode() === "demo"
       ? projects.find((project) => project.type === ProjectType.SecretManager)
       : undefined;
-  const quietSetup = getStarted.active && !queue?.approvals.length && !queue?.attention.length;
+  const quietSetup =
+    getStarted.active &&
+    !queue.isPending &&
+    !queue.error &&
+    !queue.data?.approvals.length &&
+    !queue.data?.attention.length;
 
   return (
     <Stack gap={32}>
@@ -34,7 +39,7 @@ export const ProjectsPage = () => {
         <Item
           asChild
           variant="outline"
-          icon={productOf(demoProject.type).icon}
+          icon={productOf(demoProject.type).folder}
           title={demoProject.name}
           description={`Continue in ${productOf(demoProject.type).label}`}
           actions={<Icon name="chev-right" size={16} />}
@@ -45,7 +50,9 @@ export const ProjectsPage = () => {
         </Item>
       )}
       <HomeTiles orgId={orgId} />
-      {queue && !quietSetup && <HomeQueues queue={queue} />}
+      {queue.data && !quietSetup && (
+        <HomeQueues queue={queue.data} checking={queue.isPending} error={queue.error} />
+      )}
     </Stack>
   );
 };

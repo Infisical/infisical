@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import ms from "ms";
 
 import { apiRequest } from "@app/config/request";
+import { resolveCertManagerProjectId } from "@app/helpers/certManagerActiveProject";
 import { useReviewAccessRequest } from "@app/hooks/api/accessApproval/mutation";
 import type { TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
 import { useGetServerConfig } from "@app/hooks/api/admin/queries";
@@ -9,10 +11,10 @@ import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies/types";
 import { approvalRequestQuery, useApproveApprovalRequest } from "@app/hooks/api/approvalRequests";
 import {
   ApprovalRequestStatus,
+  ApprovalRequestStepStatus,
   type CertRequestRequestData,
   type CertRevocationRequestData,
   type CodeSigningRequestData,
-  type PamAccessRequestData,
   type TApprovalRequest
 } from "@app/hooks/api/approvalRequests/types";
 import { CertStatus } from "@app/hooks/api/certificates/enums";
@@ -21,7 +23,9 @@ import {
   fetchCertManagerInstanceState
 } from "@app/hooks/api/certManagerInstance";
 import { NotificationType, type TUserNotification } from "@app/hooks/api/notifications/types";
-import { useGetOrgProductStats } from "@app/hooks/api/organization/queries";
+import { useGetOrganizationById, useGetOrgProductStats } from "@app/hooks/api/organization/queries";
+import { pamKeys } from "@app/hooks/api/pam/queries";
+import type { TPamAccessRequest } from "@app/hooks/api/pam/types";
 import { fetchProjectById, useListWorkspaceCertificates } from "@app/hooks/api/projects/queries";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateSecretApprovalReviewStatus } from "@app/hooks/api/secretApprovalRequest/mutation";
@@ -75,12 +79,6 @@ const parseApproval = (notification: TUserNotification): Parsed | undefined => {
   if (notification.type === NotificationType.ACCESS_APPROVAL_REQUEST && project && requestId)
     return { kind: "access", requestId, projectId: project };
   if (notification.type !== NotificationType.APPROVAL_REQUIRED) return undefined;
-  if (url.pathname.endsWith("/pam/approval-requests") && requestId)
-    return {
-      kind: "policy",
-      requestId,
-      policyType: ApprovalPolicyType.PamAccess
-    };
   const certRequestId = url.pathname.match(/\/cert-manager\/approvals\/([^/]+)/)?.[1];
   const policyType = url.searchParams.get("policyType") as ApprovalPolicyType | null;
   if (certRequestId && policyType && Object.values(ApprovalPolicyType).includes(policyType))
@@ -141,17 +139,6 @@ const policyRow = (
       policyType: request.type
     } as const
   };
-  if (request.type === ApprovalPolicyType.PamAccess) {
-    const pam = data as PamAccessRequestData;
-    return {
-      ...shared,
-      product: ProjectType.PAM,
-      subject: pam.accountName ?? pam.resourceName ?? "Account",
-      action: ` access for ${pam.accessDuration}`,
-      urgent: request.isBreakGlass,
-      target: request.isBreakGlass ? undefined : shared.target
-    };
-  }
   if (request.type === ApprovalPolicyType.CertRevocation) {
     const revocation = data as CertRevocationRequestData;
     return {
@@ -178,6 +165,55 @@ const policyRow = (
     action: " certificate request"
   };
 };
+
+const humanDuration = (duration: string) => {
+  const parsed = ms(duration);
+  return typeof parsed === "number" ? ms(parsed, { long: true }) : duration;
+};
+
+const pamRow = (request: TPamAccessRequest, href: string): HomeApproval => {
+  const why = request.justification ? `. ${request.justification}` : "";
+  const duration = request.requestData?.requestData.duration;
+  return {
+    id: request.id,
+    createdAt: request.createdAt,
+    href,
+    product: ProjectType.PAM,
+    subject: request.accountName ?? "Account",
+    action: duration ? ` access for ${humanDuration(duration)}` : " access",
+    description: `${request.requesterName}${why}.`,
+    target: {
+      kind: "policy",
+      requestId: request.id,
+      policyType: ApprovalPolicyType.PamAccess
+    }
+  };
+};
+
+const BYPASS_TITLE = "Access approval bypassed";
+
+const breakGlassRow = (notification: TUserNotification): HomeApproval => {
+  const body = notification.body ?? "";
+  const [requester, account] = [...body.matchAll(/\*\*(.+?)\*\*/g)].map((match) =>
+    match[1].replace(/\\(.)/g, "$1")
+  );
+  const reason = body.match(/Reason: "(.*)"$/)?.[1]?.replace(/\\(.)/g, "$1");
+  return {
+    id: notification.id,
+    createdAt: notification.createdAt,
+    href: notification.link ?? undefined,
+    product: ProjectType.PAM,
+    subject: "Break-glass",
+    action: account ? ` access to ${account}` : " access",
+    description: `${[requester ?? "Someone", reason].filter(Boolean).join(". ")}.`,
+    urgent: true
+  };
+};
+
+const votedOnCurrentStep = (request: TApprovalRequest, userId: string) =>
+  request.steps
+    .find((step) => step.status === ApprovalRequestStepStatus.InProgress)
+    ?.approvals.some((approval) => approval.approverUserId === userId) ?? false;
 
 const useToday = () => useState(() => new Date(new Date().setHours(0, 0, 0, 0)))[0];
 
@@ -216,12 +252,19 @@ export const homeLive: HomeAdapter = {
   },
   useExpiringCertificates: (orgId) => {
     const today = useToday();
+    const { projects } = useV4Session();
     const stats = useGetOrgProductStats(orgId);
     const instance = useQuery({
       queryKey: certManagerInstanceKeys.state(orgId),
       queryFn: fetchCertManagerInstanceState
     });
-    const projectId = instance.data?.activeProjectId ?? "";
+    const projectId =
+      resolveCertManagerProjectId({
+        orgId,
+        activeProjectId: instance.data?.activeProjectId ?? null,
+        memberProjectIds: projects.map((project) => project.id)
+      }) ?? "";
+    const error = stats.error ?? instance.error;
     const setUp = Boolean(stats.data?.certificateManager.certificatesCount) && Boolean(projectId);
     const end = new Date(today.getTime() + 30 * DAY);
     const certificates = useListWorkspaceCertificates({
@@ -232,14 +275,10 @@ export const homeLive: HomeAdapter = {
       notAfterFrom: today,
       notAfterTo: end
     });
+    if (error) return { data: undefined, isPending: false, error };
     if (stats.isPending || instance.isPending)
       return { data: undefined, isPending: true, error: null };
-    if (!setUp)
-      return {
-        data: null,
-        isPending: false,
-        error: stats.error ?? instance.error
-      };
+    if (!setUp) return { data: null, isPending: false, error: null };
     const list = certificates.data?.certificates;
     const days: HomeDay[] = Array.from({ length: 31 }, (_, index) => {
       const cutoff = today.getTime() + (index + 1) * DAY;
@@ -305,7 +344,37 @@ export const homeLive: HomeAdapter = {
         })
       )
     });
-    const lookups = [...changeDetails, ...accessLists, ...policyRequests];
+    const pamProjectId = useGetOrganizationById(orgId).data?.pamProjectId;
+    const pamMember = Boolean(
+      pamProjectId && projects.some((project) => project.id === pamProjectId)
+    );
+    const pamPending = useQuery({
+      queryKey: pamKeys.pendingMyApproval(),
+      queryFn: async () => {
+        const { data } = await apiRequest.get<{ requests: TPamAccessRequest[] }>(
+          "/api/v1/pam/access-requests/pending-my-approval"
+        );
+        return data.requests;
+      },
+      enabled: pamMember,
+      refetchInterval: 30_000
+    });
+    const pamRequests = pamPending.data ?? [];
+    const pamDetails = useQueries({
+      queries: pamRequests.map((request) =>
+        approvalRequestQuery.getById({
+          requestId: request.id,
+          policyType: ApprovalPolicyType.PamAccess
+        })
+      )
+    });
+    const lookups = [
+      ...changeDetails,
+      ...accessLists,
+      ...policyRequests,
+      ...(pamMember ? [pamPending] : []),
+      ...pamDetails
+    ];
     const projectName = (id: string) => projects.find((project) => project.id === id)?.name ?? id;
     const approvals = parsed.flatMap(({ notification, parsed: entry }): HomeApproval[] => {
       const base = {
@@ -325,15 +394,37 @@ export const homeLive: HomeAdapter = {
       if (entry.kind === "access") {
         const list = accessLists[accessProjects.indexOf(entry.projectId)]?.data;
         const request = list?.requests.find((item) => item.id === entry.requestId);
-        if (!list || !request || request.status !== ApprovalStatus.PENDING) return [];
+        const reviewed = request?.reviewers.some(
+          (reviewer) => reviewer.userId === user.id && reviewer.status !== ApprovalStatus.PENDING
+        );
+        if (!list || !request || request.status !== ApprovalStatus.PENDING || reviewed) return [];
         return [accessRow(base, request, list.project)];
       }
       const request =
         policyRequests[policyEntries.findIndex((item) => item.parsed === entry)]?.data;
-      if (!request || request.status !== ApprovalRequestStatus.Pending || !request.canReview)
+      if (
+        !request ||
+        request.status !== ApprovalRequestStatus.Pending ||
+        !request.canReview ||
+        votedOnCurrentStep(request, user.id)
+      )
         return [];
       return [policyRow(base, request)];
     });
+    const pamApprovals = pamRequests.flatMap((request, index): HomeApproval[] => {
+      const detail = pamDetails[index]?.data;
+      if (!detail || !detail.canReview || votedOnCurrentStep(detail, user.id)) return [];
+      return [
+        pamRow(request, `/organizations/${orgId}/pam/approval-requests?requestId=${request.id}`)
+      ];
+    });
+    const breakGlass = all.flatMap((notification) =>
+      notification.type === NotificationType.ACCESS_APPROVAL_REQUEST_UPDATED &&
+      notification.title === BYPASS_TITLE &&
+      !notification.isRead
+        ? [breakGlassRow(notification)]
+        : []
+    );
     const attention = all.flatMap((notification): HomeAttention[] =>
       notification.type in ATTENTION_PRODUCT && !notification.isRead
         ? [
@@ -350,7 +441,7 @@ export const homeLive: HomeAdapter = {
     );
     return {
       data: notifications.data && {
-        approvals: approvals.sort(
+        approvals: [...approvals, ...pamApprovals, ...breakGlass].sort(
           (a, b) =>
             Number(Boolean(b.urgent)) - Number(Boolean(a.urgent)) ||
             b.createdAt.localeCompare(a.createdAt)
@@ -358,7 +449,7 @@ export const homeLive: HomeAdapter = {
         attention
       },
       isPending: notifications.isPending || lookups.some((lookup) => lookup.isPending),
-      error: notifications.error
+      error: notifications.error ?? lookups.find((lookup) => lookup.error)?.error ?? null
     };
   },
   useApprove: () => {
@@ -382,11 +473,14 @@ export const homeLive: HomeAdapter = {
         await queryClient.invalidateQueries({
           queryKey: ["v4-home", "access-requests"]
         });
-      } else
+      } else {
         await policy.mutateAsync({
           requestId: target.requestId,
           policyType: target.policyType as ApprovalPolicyType
         });
+        if (target.policyType === ApprovalPolicyType.PamAccess)
+          await queryClient.invalidateQueries({ queryKey: pamKeys.accessRequest() });
+      }
     };
     return {
       mutateAsync: approve,
