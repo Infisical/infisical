@@ -351,7 +351,8 @@ export enum ProjectPermissionAgentVaultSkillActions {
   Delete = "delete"
 }
 
-// Edit can repoint a service at another host and so read its credential there: it is as strong as read on the value.
+// Edit can widen what a service's stored values are used for at its destination (methods, paths, tools), but a move to
+// another destination has to send them again, so Edit never delivers a stored value somewhere new.
 export enum ProjectPermissionAgentVaultServiceActions {
   Read = "read",
   Use = "use",

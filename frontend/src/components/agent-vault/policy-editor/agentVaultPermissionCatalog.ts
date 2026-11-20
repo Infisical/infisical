@@ -366,7 +366,7 @@ export const PERMISSION_ROWS: TPermissionRow[] = [
     key: "services",
     label: "Services",
     description:
-      "Use puts a service in a session. Use and Edit can also change where a service sends its credential, so treat it like reading the credential. Denied overrides every other role.",
+      "Use puts a service in a session. Use and Edit can also change what agents can do with its credential, such as its allowed paths and tools. Pointing it somewhere else takes entering the credential again. Denied overrides every other role.",
     actions: resourceActions(Sub.AgentVaultServices, RESOURCE_COPY.services),
     levels: RESOURCE_LEVELS
   },
