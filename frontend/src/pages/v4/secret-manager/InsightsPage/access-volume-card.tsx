@@ -1,11 +1,15 @@
 import { Card } from "@infisical/cipher/ui/card";
+import { DataTable } from "@infisical/cipher/ui/data-table";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
-import { SmallText } from "@infisical/cipher/ui/text";
 import { format, parseISO } from "date-fns";
 
 import { useV4Adapter } from "../../data/adapters";
 import { AccessVolumeChart } from "./shared/access-volume-chart";
+
+type Actor = { name: string; type: string; count: number };
 
 export const AccessVolumeCard = ({ projectId }: { projectId: string }) => {
   const { data, isPending } = useV4Adapter("secretInsights").useAccessVolume(projectId);
@@ -14,42 +18,63 @@ export const AccessVolumeCard = ({ projectId }: { projectId: string }) => {
     label: format(parseISO(day.date), "EEE"),
     value: day.total
   }));
-  const totals = new Map<string, { name: string; type: string; count: number }>();
+  const totals = new Map<string, Actor>();
   days.forEach((day) =>
     day.actors.forEach((actor) => {
       const key = `${actor.type}:${actor.name}`;
       const existing = totals.get(key);
-      totals.set(key, { ...actor, count: (existing?.count ?? 0) + actor.count });
+      totals.set(key, {
+        ...actor,
+        count: (existing?.count ?? 0) + actor.count
+      });
     })
   );
   const topActors = [...totals.values()].sort((a, b) => b.count - a.count).slice(0, 5);
   const totalRequests = chartData.reduce((sum, day) => sum + day.value, 0);
 
+  let body;
+  if (isPending) body = <Skeleton height={280} />;
+  else if (totalRequests === 0)
+    body = <EmptyState size="sm" icon="activity" title="No secret reads in the past 7 days" />;
+  else
+    body = (
+      <Stack gap={16}>
+        <AccessVolumeChart data={chartData} valueLabel="Reads" />
+        <DataTable<Actor>
+          label="Top readers"
+          rows={topActors}
+          getRowId={(actor) => `${actor.type}:${actor.name}`}
+          rowLabel={(actor) => actor.name}
+          columns={[
+            {
+              id: "name",
+              header: "Top Readers",
+              primary: true,
+              grow: true,
+              text: (actor) => actor.name,
+              render: (actor) => (
+                <Inline gap={8} align="center" wrap={false}>
+                  <Icon name={actor.type === "user" ? "user" : "machine"} />
+                  <span>{actor.name}</span>
+                </Inline>
+              )
+            },
+            {
+              id: "count",
+              header: "Reads",
+              width: 112,
+              align: "end",
+              text: (actor) => actor.count.toLocaleString(),
+              render: (actor) => actor.count.toLocaleString()
+            }
+          ]}
+        />
+      </Stack>
+    );
+
   return (
-    <Card title="Secret Access Volume" description="Secret read requests over the past 7 days.">
-      {isPending ? (
-        <Skeleton height={280} />
-      ) : (
-        <Stack gap={16}>
-          <AccessVolumeChart data={chartData} />
-          {topActors.length > 0 && (
-            <Stack gap={8}>
-              <SmallText muted>
-                Top actors of {totalRequests.toLocaleString()} total requests
-              </SmallText>
-              <Inline gap={16}>
-                {topActors.map((actor) => (
-                  <Inline key={`${actor.type}:${actor.name}`} gap={4} wrap={false}>
-                    <SmallText muted>{actor.type}:</SmallText>
-                    <SmallText>{actor.name}</SmallText>
-                    <SmallText muted>({actor.count.toLocaleString()})</SmallText>
-                  </Inline>
-                ))}
-              </Inline>
-            </Stack>
-          )}
-        </Stack>
-      )}
+    <Card title="Secret Access Volume" description="Past 7 days">
+      {body}
     </Card>
   );
 };

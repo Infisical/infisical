@@ -2,11 +2,12 @@ import { useState } from "react";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
-import { Grid, Inline } from "@infisical/cipher/ui/layout";
+import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { StatCard } from "@infisical/cipher/ui/stat-card";
+import { StatusText } from "@infisical/cipher/ui/text";
 
 import { useV4Adapter } from "../../data/adapters";
 import { fromNow, overviewLink } from "./insights.utils";
@@ -104,21 +105,17 @@ const SummaryCard = ({
   icon,
   tone,
   note,
-  footnote,
-  viewLabel,
+  alert,
   isEmpty,
-  emptyReason,
   children
 }: {
   label: string;
   value: number;
   icon: "sync" | "bell" | "clock";
-  tone: "info" | "warn" | "bad";
+  tone?: "warn" | "bad";
   note: string;
-  footnote: { tone: "ok" | "bad" | "warn"; label: string };
-  viewLabel: string;
+  alert?: string;
   isEmpty: boolean;
-  emptyReason: string;
   children: React.ReactNode;
 }) => {
   const [open, setOpen] = useState(false);
@@ -129,28 +126,24 @@ const SummaryCard = ({
       icon={icon}
       tone={tone}
       note={
-        <Inline gap={8} justify="between" align="center">
+        <Stack gap={12} align="start">
           <Inline gap={8} align="center">
             <span>{note}</span>
-            <Badge tone={footnote.tone} icon={footnote.tone === "ok" ? "check" : "alert"}>
-              {footnote.label}
-            </Badge>
+            {alert && <StatusText tone="bad">{alert}</StatusText>}
           </Inline>
-          <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                disabledReason={isEmpty ? emptyReason : undefined}
-              >
-                {viewLabel}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" style={{ width: 720 }}>
-              {children}
-            </PopoverContent>
-          </Popover>
-        </Inline>
+          {!isEmpty && (
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm">
+                  View
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" style={{ width: "min(720px, calc(100vw - 32px))" }}>
+                {children}
+              </PopoverContent>
+            </Popover>
+          )}
+        </Stack>
       }
     />
   );
@@ -172,7 +165,7 @@ export const InsightsSummaryCards = ({
 
   if (isPending || !data)
     return (
-      <Grid gap={16} columns={3}>
+      <Grid gap={16}>
         <StatCard label="Upcoming Rotations" value="" loading />
         <StatCard label="Upcoming Reminders" value="" loading />
         <StatCard label="Stale Secrets" value="" loading />
@@ -238,21 +231,17 @@ export const InsightsSummaryCards = ({
   }));
 
   return (
-    <Grid gap={16} columns={3}>
+    <Grid gap={16}>
       <SummaryCard
         label="Upcoming Rotations"
         value={upcomingRotations.length}
         icon="sync"
-        tone="info"
-        note="In the next 7 days"
-        footnote={
-          failedRotations.length
-            ? { tone: "bad", label: `${failedRotations.length} failed` }
-            : { tone: "ok", label: "No failed rotations" }
+        tone={failedRotations.length ? "bad" : undefined}
+        note="Next 7 days"
+        alert={
+          failedRotations.length ? `${failedRotations.length.toLocaleString()} failed` : undefined
         }
-        viewLabel={failedRotations.length ? "View Failed Rotations" : "View Rotations"}
         isEmpty={rotationRows.length === 0}
-        emptyReason="No rotations in the next 7 days"
       >
         <ViewTable
           label="Rotations"
@@ -266,16 +255,14 @@ export const InsightsSummaryCards = ({
         label="Upcoming Reminders"
         value={upcomingReminders.length}
         icon="bell"
-        tone="warn"
-        note="In the next 7 days"
-        footnote={
+        tone={overdueReminders.length ? "bad" : undefined}
+        note="Next 7 days"
+        alert={
           overdueReminders.length
-            ? { tone: "bad", label: `${overdueReminders.length} overdue` }
-            : { tone: "ok", label: "No overdue reminders" }
+            ? `${overdueReminders.length.toLocaleString()} overdue`
+            : undefined
         }
-        viewLabel={overdueReminders.length ? "View Overdue Reminders" : "View Upcoming Reminders"}
         isEmpty={reminderRows.length === 0}
-        emptyReason="No reminders in the next 7 days"
       >
         <ViewTable
           label="Reminders"
@@ -289,19 +276,9 @@ export const InsightsSummaryCards = ({
         label="Stale Secrets"
         value={totalStale}
         icon="clock"
-        tone="bad"
-        note="Unmodified over 90 days"
-        footnote={
-          totalStale
-            ? {
-                tone: "warn",
-                label: `${totalStale.toLocaleString()} need${totalStale === 1 ? "s" : ""} review`
-              }
-            : { tone: "ok", label: "All secrets up to date" }
-        }
-        viewLabel="View Stale Secrets"
+        tone={totalStale ? "warn" : undefined}
+        note="Unchanged for 90 days"
         isEmpty={totalStale === 0}
-        emptyReason="No stale secrets"
       >
         <ViewTable
           label="Stale secrets"

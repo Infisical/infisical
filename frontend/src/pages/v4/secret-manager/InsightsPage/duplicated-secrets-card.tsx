@@ -43,11 +43,9 @@ const DuplicateGroups = ({
         <AccordionItem key={value} value={value}>
           <AccordionTrigger>
             <Inline gap={8} justify="between" wrap={false}>
-              <InlineGrow>{group.secrets.length} secrets share an identical value</InlineGrow>
+              <InlineGrow>{group.secrets.length} secrets share a value</InlineGrow>
               <InlineItem shrink={false}>
-                <Badge tone="soft" icon="folder">
-                  {plural(locations, "location")}
-                </Badge>
+                <Badge tone="soft">{plural(locations, "location")}</Badge>
               </InlineItem>
             </Inline>
           </AccordionTrigger>
@@ -129,18 +127,13 @@ const DetectionStatus = ({
       />
     );
   if ((triggered || migrationStatus === "pending") && migrationStatus !== "failed")
-    return (
-      <Loader
-        label="Indexing secrets for duplicate detection"
-        description="This may take a moment."
-      />
-    );
+    return <Loader label="Indexing secrets for duplicate detection" />;
   return (
     <EmptyState
       size="sm"
       icon="copy"
-      title="Secret duplication detection is not enabled"
-      description="Enable detection to find secrets that share the same value across environments and paths."
+      title="Duplicate detection is off"
+      description="Finds secrets that share a value across environments and paths."
       actions={
         <Button variant="primary" loading={isEnabling} onClick={onEnable}>
           Enable Detection
@@ -183,11 +176,6 @@ export const DuplicatedSecretsCard = ({
     }
   };
 
-  const remainingMinutes =
-    data?.remainingTtl != null && data.remainingTtl >= 0
-      ? Math.max(1, Math.ceil(data.remainingTtl / 60))
-      : null;
-
   let body;
   if (isPending) body = <Skeleton height={280} />;
   else if (!blindIndexEnabled)
@@ -201,29 +189,8 @@ export const DuplicatedSecretsCard = ({
       />
     );
   else if (groups.length === 0)
-    body = (
-      <EmptyState
-        size="sm"
-        icon="check-c"
-        title="No duplicated secrets found"
-        description="All secrets across environments and paths have unique values."
-      />
-    );
+    body = <EmptyState size="sm" icon="check-c" title="No duplicated secrets found" />;
   else body = <DuplicateGroups orgId={orgId} projectId={projectId} groups={groups} />;
 
-  return (
-    <Card
-      title="Duplicated Secrets"
-      badges={
-        blindIndexEnabled && remainingMinutes != null ? (
-          <Badge tone="soft">
-            Updates in {remainingMinutes} {remainingMinutes === 1 ? "minute" : "minutes"}
-          </Badge>
-        ) : undefined
-      }
-      description="Secrets that share the same value across environments and paths."
-    >
-      {body}
-    </Card>
-  );
+  return <Card title="Duplicated Secrets">{body}</Card>;
 };

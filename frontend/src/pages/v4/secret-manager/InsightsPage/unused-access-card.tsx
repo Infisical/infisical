@@ -21,7 +21,6 @@ import { UnusedAccessSheet } from "./unused-access-sheet";
 import {
   ACTOR_TYPE,
   accessPathLabels,
-  formatRemainingTtl,
   unusedSharePercent,
   unusedShareTone
 } from "./unused-access.utils";
@@ -51,10 +50,6 @@ export const UnusedAccessCard = ({
   });
   const totalCount = data?.totalCount ?? 0;
 
-  const updatesIn =
-    data?.remainingTtl != null && data.remainingTtl >= 0
-      ? formatRemainingTtl(data.remainingTtl)
-      : null;
   const isJudging = !data || new Date(data.unusedAccessFrom) <= new Date();
 
   const columns: DataTableColumn<TUnusedAccessActor>[] = [
@@ -63,6 +58,7 @@ export const UnusedAccessCard = ({
       header: "Name",
       primary: true,
       grow: true,
+      wrap: true,
       minWidth: 180,
       text: (row) => row.name,
       render: (row) => row.name
@@ -164,14 +160,7 @@ export const UnusedAccessCard = ({
       />
     );
   else if (debouncedSearch)
-    empty = (
-      <EmptyState
-        size="sm"
-        icon="search"
-        title="No matching identity"
-        description="No overprivileged user or machine identity matches your search."
-      />
-    );
+    empty = <EmptyState size="sm" icon="search" title="No matching identity" />;
   else if (!isJudging && data)
     empty = (
       <EmptyState
@@ -181,22 +170,13 @@ export const UnusedAccessCard = ({
         description={`Results show on ${format(new Date(data.unusedAccessFrom), "PP")}, once secret reads have been tracked for 30 days.`}
       />
     );
-  else
-    empty = (
-      <EmptyState
-        size="sm"
-        icon="check-c"
-        title="No overprivileged access found"
-        description="No identity has left a secret it can access unread in the last 30 days."
-      />
-    );
+  else empty = <EmptyState size="sm" icon="check-c" title="No overprivileged access found" />;
 
   return (
     <Card
       variant="framed"
       title="Overprivileged Access"
       hint="Users and machine identities with access to secrets they haven't read in the last 30 days."
-      badges={updatesIn ? <Badge tone="soft">Updates in {updatesIn}</Badge> : undefined}
       flush
       action={
         <Input

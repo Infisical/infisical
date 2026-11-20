@@ -27,16 +27,11 @@ export const AuthMethodsCard = ({ data }: { data: TOrgAuthMethodUsage }) => {
   return (
     <Card
       variant="framed"
-      title="Auth Methods Used to Fetch Secrets"
+      title="Auth Methods"
       hint="Share of authenticated fetches by machine identity auth method, past 7 days."
     >
       {data.totalFetches === 0 ? (
-        <EmptyState
-          size="sm"
-          icon={FingerprintIcon}
-          title="No secret fetches in the past 7 days"
-          description="Once a machine identity reads a secret, its auth method appears here."
-        />
+        <EmptyState size="sm" icon={FingerprintIcon} title="No secret fetches in the past 7 days" />
       ) : (
         <Stack gap={16}>
           <ShareBar
@@ -53,7 +48,7 @@ export const AuthMethodsCard = ({ data }: { data: TOrgAuthMethodUsage }) => {
           />
           {staticTokenShare > 0 && (
             <Alert tone="warn">
-              {`${Math.round(staticTokenShare)}% of fetches still use static tokens. Migrate those identities to a workload auth method to remove long-lived credentials.`}
+              {`${Math.round(staticTokenShare)}% of fetches use static tokens. Move those identities to a workload auth method.`}
             </Alert>
           )}
         </Stack>

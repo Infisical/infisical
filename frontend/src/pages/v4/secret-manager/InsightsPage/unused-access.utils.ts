@@ -9,7 +9,10 @@ export const ACTOR_TYPE: Record<
   { icon: "user" | "machine"; label: string }
 > = {
   [UnusedAccessActorType.User]: { icon: "user", label: "User" },
-  [UnusedAccessActorType.Identity]: { icon: "machine", label: "Machine Identity" }
+  [UnusedAccessActorType.Identity]: {
+    icon: "machine",
+    label: "Machine Identity"
+  }
 };
 
 const FOLDER_ROLE_LABELS: Record<SecretFolderRole, string> = {
@@ -57,17 +60,4 @@ export const unusedShareTone = (percent: number) => {
   if (percent >= 75) return "bad" as const;
   if (percent >= 25) return "warn" as const;
   return "ok" as const;
-};
-
-export const formatRemainingTtl = (seconds: number) => {
-  if (seconds < 60) {
-    const remaining = Math.max(1, seconds);
-    return `${remaining} ${remaining === 1 ? "second" : "seconds"}`;
-  }
-  if (seconds < 60 * 60) {
-    const minutes = Math.ceil(seconds / 60);
-    return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
-  }
-  const hours = Math.ceil(seconds / (60 * 60));
-  return `${hours} ${hours === 1 ? "hour" : "hours"}`;
 };
