@@ -6,8 +6,8 @@ import { TOauthAuthorizeInfo, TOauthClient } from "./types";
 
 export const oauthClientKeys = {
   list: (orgId: string) => [{ orgId }, "oauth-clients"] as const,
-  authorizeInfo: (clientId: string, redirectUri: string, scope?: string) =>
-    ["oauth-authorize-info", clientId, redirectUri, scope ?? ""] as const
+  authorizeInfo: (clientId: string, redirectUri: string, scope?: string, resource?: string) =>
+    ["oauth-authorize-info", clientId, redirectUri, scope ?? "", resource ?? ""] as const
 };
 
 export const useGetOauthClients = (orgId: string) => {
@@ -21,15 +21,21 @@ export const useGetOauthClients = (orgId: string) => {
   });
 };
 
-export const useGetOauthAuthorizeInfo = (clientId: string, redirectUri: string, scope?: string) => {
+export const useGetOauthAuthorizeInfo = (
+  clientId: string,
+  redirectUri: string,
+  scope?: string,
+  resource?: string
+) => {
   return useQuery({
-    queryKey: oauthClientKeys.authorizeInfo(clientId, redirectUri, scope),
+    queryKey: oauthClientKeys.authorizeInfo(clientId, redirectUri, scope, resource),
     queryFn: async () => {
       const { data } = await apiRequest.get<TOauthAuthorizeInfo>("/api/v1/oauth/authorize/info", {
         params: {
           client_id: clientId,
           redirect_uri: redirectUri,
-          ...(scope ? { scope } : {})
+          ...(scope ? { scope } : {}),
+          ...(resource ? { resource } : {})
         }
       });
       return data;

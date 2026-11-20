@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useSearch } from "@tanstack/react-router";
+import { Link, useRouteContext, useSearch } from "@tanstack/react-router";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -13,22 +13,81 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  FieldTitle,
+  RadioGroup,
+  RadioGroupItem,
   Skeleton
 } from "@app/components/v3";
 import { useGetOauthAuthorizeInfo, useOauthConsent } from "@app/hooks/api";
+import { useGetOrganizationById } from "@app/hooks/api/organization/queries";
+
+type TAccessLevel = "read" | "full";
+
+// The user picks one access level per product rather than individual scopes. Read-only grants the product's read
+// scope, Full access its read and write scopes, and only scopes the application asked for are ever granted.
+const PRODUCT_ACCESS = [
+  {
+    key: "secrets-management",
+    product: "Secrets Management",
+    readScope: "secrets:read",
+    writeScope: "secrets:write",
+    readDescription: "See projects, folders and secrets, including their values",
+    fullDescription: "Also create, change and delete secrets and folders"
+  }
+];
 
 export const OauthConsentPage = () => {
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [accessLevels, setAccessLevels] = useState<Record<string, TAccessLevel>>({});
 
   const search = useSearch({
     from: "/_authenticate/organization/oauth-consent"
+  });
+
+  const organizationId = useRouteContext({
+    from: "/_authenticate",
+    select: (el) => el.organizationId
   });
 
   const {
     data: authorizeInfo,
     isPending: isInfoPending,
     error: authorizeInfoError
-  } = useGetOauthAuthorizeInfo(search.client_id, search.redirect_uri, search.scope);
+  } = useGetOauthAuthorizeInfo(
+    search.client_id,
+    search.redirect_uri,
+    search.scope,
+    search.resource
+  );
+
+  // A public client is granted the organization the user is signed in to, so name it.
+  const { data: organization } = useGetOrganizationById(organizationId ?? "", {
+    enabled: Boolean(authorizeInfo?.publicClientHost && organizationId)
+  });
+
+  const requestedScopes = (authorizeInfo?.requestedScopes ?? []).map(({ scope }) => scope);
+  const requestedProducts = PRODUCT_ACCESS.filter(
+    ({ readScope, writeScope }) =>
+      requestedScopes.includes(readScope) || requestedScopes.includes(writeScope)
+  );
+  // Read-only unless the application asked only for write access.
+  const getAccessLevel = ({ key, readScope }: (typeof PRODUCT_ACCESS)[number]) =>
+    accessLevels[key] ?? (requestedScopes.includes(readScope) ? "read" : "full");
+  const grantedScopes = requestedProducts.flatMap((productAccess) =>
+    (getAccessLevel(productAccess) === "full"
+      ? [productAccess.readScope, productAccess.writeScope]
+      : [productAccess.readScope]
+    ).filter((scope) => requestedScopes.includes(scope))
+  );
+  const isNothingGranted = requestedScopes.length > 0 && grantedScopes.length === 0;
+
+  const isGrantingSecretValues = Boolean(
+    authorizeInfo?.publicClientHost && grantedScopes.includes("secrets:read")
+  );
 
   const { mutateAsync: consentOauth, isPending: isConsenting } = useOauthConsent();
 
@@ -48,7 +107,8 @@ export const OauthConsentPage = () => {
         state: search.state,
         codeChallenge: search.code_challenge,
         codeChallengeMethod: search.code_challenge_method,
-        scope: search.scope
+        scope: grantedScopes.join(" "),
+        resource: search.resource
       });
 
       setIsRedirecting(true);
@@ -120,28 +180,74 @@ export const OauthConsentPage = () => {
             <div className="rounded-md border border-border bg-container p-4">
               <p className="text-xs text-accent">Application</p>
               <p className="mt-1 font-medium text-foreground">{authorizeInfo.clientName}</p>
+              {authorizeInfo.publicClientHost && (
+                <p className="mt-1 text-sm text-accent">{authorizeInfo.publicClientHost}</p>
+              )}
               {authorizeInfo.clientDescription && (
                 <p className="mt-1 text-sm text-accent">{authorizeInfo.clientDescription}</p>
               )}
+              {organization && (
+                <p className="mt-3 text-xs text-muted">
+                  Access applies to the {organization.name} organization.
+                </p>
+              )}
               <p className="mt-3 text-xs text-muted">
-                {authorizeInfo.requestedScopes.length
-                  ? "This application is requesting the following access on your behalf, limited to your existing Infisical permissions, until you revoke its session."
+                {requestedScopes.length
+                  ? "Choose what this application can do on your behalf. It is limited to your existing Infisical permissions until you revoke its session."
                   : "This application will be able to act on your behalf with your existing Infisical permissions until you revoke its session."}
               </p>
-              {authorizeInfo.requestedScopes.length > 0 && (
-                <ul className="mt-3 flex flex-col gap-2">
-                  {authorizeInfo.requestedScopes.map(({ scope, description }) => (
-                    <li key={scope} className="flex items-start gap-2 text-sm text-foreground">
-                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
-                      <span>
-                        {description}
-                        <span className="ml-1 text-xs text-muted">({scope})</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {requestedProducts.map((productAccess) => (
+                <div key={productAccess.key} className="mt-3 flex flex-col gap-2">
+                  <p className="text-sm font-medium text-foreground">{productAccess.product}</p>
+                  <RadioGroup
+                    value={getAccessLevel(productAccess)}
+                    onValueChange={(level) =>
+                      setAccessLevels((prev) => ({
+                        ...prev,
+                        [productAccess.key]: level as TAccessLevel
+                      }))
+                    }
+                  >
+                    {requestedScopes.includes(productAccess.readScope) && (
+                      <FieldLabel htmlFor={`oauth-access-${productAccess.key}-read`} variant="org">
+                        <Field orientation="horizontal">
+                          <FieldContent>
+                            <FieldTitle>Read-only</FieldTitle>
+                            <FieldDescription>{productAccess.readDescription}</FieldDescription>
+                          </FieldContent>
+                          <RadioGroupItem
+                            value="read"
+                            id={`oauth-access-${productAccess.key}-read`}
+                          />
+                        </Field>
+                      </FieldLabel>
+                    )}
+                    {requestedScopes.includes(productAccess.writeScope) && (
+                      <FieldLabel htmlFor={`oauth-access-${productAccess.key}-full`} variant="org">
+                        <Field orientation="horizontal">
+                          <FieldContent>
+                            <FieldTitle>Full access</FieldTitle>
+                            <FieldDescription>{productAccess.fullDescription}</FieldDescription>
+                          </FieldContent>
+                          <RadioGroupItem
+                            value="full"
+                            id={`oauth-access-${productAccess.key}-full`}
+                          />
+                        </Field>
+                      </FieldLabel>
+                    )}
+                  </RadioGroup>
+                </div>
+              ))}
             </div>
+          )}
+          {isGrantingSecretValues && (
+            <Alert variant="warning">
+              <AlertDescription>
+                This allows the application to read secret values. Any value it reads is sent to the
+                application, and to the AI model it uses.
+              </AlertDescription>
+            </Alert>
           )}
           {!isInfoPending && authorizeInfoError && (
             <Alert variant="danger">
@@ -174,7 +280,7 @@ export const OauthConsentPage = () => {
               className="flex-1"
               onClick={handleAuthorize}
               isPending={isConsenting}
-              isDisabled={isConsenting || !isRequestValidated || isPkceMissing}
+              isDisabled={isConsenting || !isRequestValidated || isPkceMissing || isNothingGranted}
             >
               Authorize
             </Button>

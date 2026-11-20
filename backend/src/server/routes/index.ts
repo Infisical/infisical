@@ -242,6 +242,8 @@ import { workerHeartbeatFactory } from "@app/lib/worker-heartbeat/worker-heartbe
 import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { registerSecretScanningV2Webhooks } from "@app/server/plugins/secret-scanner-v2";
+import { registerMcpResourceMetadataRouter, registerMcpRouter } from "@app/server/routes/mcp/mcp-router";
+import { registerOauthServerMetadataRouter } from "@app/server/routes/v1/oauth-router";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
 import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
@@ -5257,7 +5259,10 @@ export const registerRoutes = async (
   if (envConfig.isApiRunModeEnabled) {
     // register special routes
     await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
+    await server.register(registerOauthServerMetadataRouter, { prefix: "/.well-known/oauth-authorization-server" });
+    await server.register(registerMcpResourceMetadataRouter, { prefix: "/.well-known/oauth-protected-resource" });
     await server.register(registerPkiScepRouter, { prefix: "/scep" });
+    await server.register(registerMcpRouter, { prefix: "/api/mcp" });
 
     // register routes for v1
     await server.register(

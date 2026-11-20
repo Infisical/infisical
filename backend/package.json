@@ -191,6 +191,7 @@
     "@google-cloud/kms": "^5.4.0",
     "@infisical/ldapjs": "3.0.11",
     "@infisical/pg-view-generator": "^1.1.0",
+    "@modelcontextprotocol/server": "^2.4.0",
     "@node-saml/passport-saml": "^5.1.0",
     "@octokit/auth-app": "^7.1.1",
     "@octokit/core": "^5.2.1",
