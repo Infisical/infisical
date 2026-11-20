@@ -1,3 +1,5 @@
+import { createMongoAbility, subject } from "@casl/ability";
+import { unpackRules } from "@casl/ability/extra";
 import { Knex } from "knex";
 import { v5 as uuidv5 } from "uuid";
 
@@ -307,6 +309,17 @@ export async function up(knex: Knex): Promise<void> {
   await grantsToRoles(knex);
 }
 
+// Whether a bundle's role still lets its holders use the bundle. An admin can edit the role after up(), and a grant can't
+// give less than use, so a role that no longer allows it gives no grants back. One that can't be read gives none either.
+const roleUsesBundle = (permissions: unknown, accessBundleId: string) => {
+  try {
+    const rules = unpackRules((permissions ?? []) as Parameters<typeof unpackRules>[0]);
+    return createMongoAbility(rules as never).can("use", subject("agent-vault-access-bundles", { accessBundleId }));
+  } catch {
+    return false;
+  }
+};
+
 // Best effort: grants come back from each bundle's role and the roles go, and every row on a Member role returns to the
 // built-in role, Viewer rows and the rows moved off custom roles included, which the old rules read the same way.
 // Anything else given to those roles since is lost with them. A membership whose only role was a bundle's gets Member,
@@ -323,27 +336,30 @@ export async function down(knex: Knex): Promise<void> {
 
     const bundles = (await knex(TableName.AgentVaultAccessBundle)
       .join(TableName.Project, `${TableName.Project}.id`, `${TableName.AgentVaultAccessBundle}.projectId`)
-      .whereNotNull(`${TableName.AgentVaultAccessBundle}.grantRoleId`)
+      .join(TableName.Role, `${TableName.Role}.id`, `${TableName.AgentVaultAccessBundle}.grantRoleId`)
       .select(
         knex.ref("id").withSchema(TableName.AgentVaultAccessBundle),
         knex.ref("projectId").withSchema(TableName.AgentVaultAccessBundle),
         knex.ref("grantRoleId").withSchema(TableName.AgentVaultAccessBundle),
-        knex.ref("orgId").withSchema(TableName.Project)
-      )) as { id: string; projectId: string; grantRoleId: string; orgId: string }[];
+        knex.ref("orgId").withSchema(TableName.Project),
+        knex.ref("permissions").withSchema(TableName.Role).as("grantRolePermissions")
+      )) as { id: string; projectId: string; grantRoleId: string; orgId: string; grantRolePermissions: unknown }[];
 
     const bundleRoleMembershipIds = new Set<string>();
     for await (const bundle of bundles) {
       // A grant can't carry a time limit, so a temporary assignment isn't restored: as a grant it would never end. That
       // holds for a group's too: its grant would count as long as any role the group holds, which can outlast the limit.
-      const holders = (await knex(TableName.MembershipRole)
-        .join(TableName.Membership, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
-        .where(`${TableName.MembershipRole}.customRoleId`, bundle.grantRoleId)
-        .where(`${TableName.MembershipRole}.isTemporary`, false)
-        .distinct(
-          `${TableName.Membership}.actorUserId`,
-          `${TableName.Membership}.actorIdentityId`,
-          `${TableName.Membership}.actorGroupId`
-        )) as { actorUserId: string | null; actorIdentityId: string | null; actorGroupId: string | null }[];
+      const holders = roleUsesBundle(bundle.grantRolePermissions, bundle.id)
+        ? ((await knex(TableName.MembershipRole)
+            .join(TableName.Membership, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+            .where(`${TableName.MembershipRole}.customRoleId`, bundle.grantRoleId)
+            .where(`${TableName.MembershipRole}.isTemporary`, false)
+            .distinct(
+              `${TableName.Membership}.actorUserId`,
+              `${TableName.Membership}.actorIdentityId`,
+              `${TableName.Membership}.actorGroupId`
+            )) as { actorUserId: string | null; actorIdentityId: string | null; actorGroupId: string | null }[])
+        : [];
 
       for await (const holder of holders) {
         const [grant] = (await knex(TableName.Membership)

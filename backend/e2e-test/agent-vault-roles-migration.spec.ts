@@ -266,11 +266,17 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
       await addIdentity(ProjectMembershipRole.NoAccess)
     ];
     const bundle = await addBundle(`round-trip-${randomUUID().slice(0, 8)}`);
+    const narrowed = await addBundle(`narrowed-${randomUUID().slice(0, 8)}`);
     await Promise.all(
       [active, revoked, ended, timed].map((holder) => grant(bundle, { actorIdentityId: holder.identityId }))
     );
+    await grant(narrowed, { actorIdentityId: active.identityId });
     await up(testDb);
     const grantRoleId = await grantRoleIdOf(bundle);
+    // An admin edits the other bundle's role so it no longer allows use.
+    await testDb(TableName.Role)
+      .where({ id: await grantRoleIdOf(narrowed) })
+      .update({ permissions: JSON.stringify([["read", "agent-vault-access-bundles", { accessBundleId: narrowed }]]) });
 
     // Revoked after the upgrade.
     await testDb(TableName.MembershipRole).where({ membershipId: revoked.membershipId, customRoleId: grantRoleId }).delete();
@@ -306,6 +312,8 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
         .select("actorIdentityId")) as { actorIdentityId: string }[]
     ).map((row) => row.actorIdentityId);
     expect(grantedTo.sort()).toEqual([active.identityId, assigned.identityId, bundleOnly.identityId].sort());
+    // A role that no longer allows use gives no grant back.
+    expect(await testDb(TableName.Membership).where({ scope: "resource", scopeResourceId: narrowed })).toHaveLength(0);
     // A membership needs a role, and Member is what the old rules read every role but admin as.
     expect(await rolesOf(bundleOnly.membershipId)).toMatchObject([
       { role: ProjectMembershipRole.Member, customRoleId: null }
