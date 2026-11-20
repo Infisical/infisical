@@ -1,3 +1,5 @@
+import { isEqual } from "lodash";
+
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   TRotationFactoryCheckActiveCredentials,
@@ -16,15 +18,17 @@ import {
   createGitLabToken,
   getGitLabTokenApiContext,
   revokeGitLabToken,
+  rotateGitLabToken,
   verifyGitLabToken
 } from "./gitlab-token-rotation-fns";
-import { TGitLabTokenApiContext, TGitLabTokenCredentials } from "./gitlab-token-rotation-types";
+import { TGitLabTokenApiContext, TGitLabTokenCredentials, TGitLabTokenSettings } from "./gitlab-token-rotation-types";
 
 type TGitLabTokenRotationCredentials = TGitLabTokenCredentials[];
 
 /**
- * The rotation flow shared by GitLab token rotations: create a token, save it, and revoke tokens by the id
- * the rotation tracks. Each rotation supplies the token collection and the token's settings.
+ * The rotation flow shared by GitLab token rotations: create a token, save it, rotate it in place while its
+ * settings stay the same, and revoke tokens by the id the rotation tracks. Each rotation supplies the token
+ * collection and the token's settings.
  */
 export const gitLabTokenRotationFactory = ({
   connection,
@@ -73,8 +77,15 @@ export const gitLabTokenRotationFactory = ({
     return context;
   };
 
-  const $createToken = (context: TGitLabTokenApiContext) =>
-    createGitLabToken({
+  const tokenSettings: TGitLabTokenSettings = {
+    name,
+    scopes: [...scopes].sort(),
+    ...(description ? { description } : {}),
+    ...(accessLevel ? { accessLevel } : {})
+  };
+
+  const $createToken = async (context: TGitLabTokenApiContext): Promise<TGitLabTokenCredentials> => ({
+    ...(await createGitLabToken({
       context,
       tokensPath,
       name,
@@ -84,7 +95,9 @@ export const gitLabTokenRotationFactory = ({
       rotationInterval,
       resourceLabel,
       permissionHint
-    });
+    })),
+    settings: tokenSettings
+  });
 
   // A token Infisical fails to save is one nothing tracks, so a retry or a delete can never revoke it.
   const $saveOrRevoke = async (
@@ -137,16 +150,30 @@ export const gitLabTokenRotationFactory = ({
     return callback();
   };
 
-  // The inactive token is revoked before the new one is created: the callback overwrites the inactive
-  // slot, so revoking afterwards would lose its id if the revoke failed. A failed create leaves a revoked
-  // token in the inactive slot, and the retry's revoke gets a 404, which counts as done.
+  // While the inactive token's settings match the rotation's, it is rotated in place so it keeps its user
+  // (a group access token's bot user). Otherwise it is revoked before the new token is created: the callback
+  // overwrites the inactive slot, so revoking afterwards would lose its id if the revoke failed. A failed
+  // create leaves a revoked token in the inactive slot, and the retry's revoke gets a 404, which counts as done.
   const rotateCredentials: TRotationFactoryRotateCredentials<TGitLabTokenRotationCredentials> = async (
     credentialsToRevoke,
     callback
   ) => {
     const context = await $getTokenCreationContext();
 
-    if (credentialsToRevoke?.tokenId) {
+    if (credentialsToRevoke?.tokenId && isEqual(credentialsToRevoke.settings, tokenSettings)) {
+      const rotatedCredentials = await rotateGitLabToken({
+        context,
+        tokensPath,
+        tokenId: credentialsToRevoke.tokenId,
+        rotationInterval,
+        resourceLabel,
+        permissionHint
+      });
+
+      if (rotatedCredentials) {
+        return $saveOrRevoke(context, { ...rotatedCredentials, settings: tokenSettings }, callback);
+      }
+    } else if (credentialsToRevoke?.tokenId) {
       await revokeGitLabToken({
         context,
         tokensPath,

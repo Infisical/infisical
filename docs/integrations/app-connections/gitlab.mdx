@@ -141,9 +141,9 @@ Infisical supports two methods for connecting to GitLab: **OAuth** and **Access 
                 </Tab>
             </Tabs>
 
-            <Info>
-              Personal Access Token connections require manual token rotation when your GitLab access token expires or is regenerated. Monitor your connection status and update the token as needed.
-            </Info>
+            <Warning>
+              A [GitLab Group Access Token](/documentation/platform/secret-rotation/gitlab-group-access-token) rotation doesn't work with a project access token connection, because GitLab doesn't let a project access token create group access tokens. Use a personal access token for this rotation.
+            </Warning>
           </Step>
           <Step title="Copy Token">
             Copy the generated token immediately as it won't be shown again.

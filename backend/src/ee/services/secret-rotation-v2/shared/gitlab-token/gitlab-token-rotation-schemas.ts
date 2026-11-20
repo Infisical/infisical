@@ -44,3 +44,20 @@ export const GitLabTokenRotationIntervalSchema = z.coerce
   .number()
   .min(1)
   .max(GITLAB_TOKEN_MAX_ROTATION_INTERVAL_DAYS, GITLAB_TOKEN_ROTATION_INTERVAL_ERROR);
+
+export const GitLabTokenGeneratedCredentialsSchema = z
+  .object({
+    tokenId: z.string(),
+    token: z.string(),
+    settings: z
+      .object({
+        name: z.string(),
+        description: z.string().optional(),
+        scopes: z.string().array(),
+        accessLevel: z.number().optional()
+      })
+      .optional()
+  })
+  .array()
+  .min(1)
+  .max(2);

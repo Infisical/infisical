@@ -587,6 +587,36 @@ describe.each([SecretRotation.GitLabServiceAccountToken, SecretRotation.GitLabGr
       );
     });
 
+    const createEditOnlyGitLabService = () => {
+      const created = createGitLabService();
+      created.deps.permissionService.getProjectPermission.mockResolvedValue({
+        permission: createMongoAbility([
+          { action: ["read", "edit"], subject: "secret-rotation" },
+          { action: "manage", subject: "secrets" }
+        ])
+      });
+      return created;
+    };
+
+    test("refuses an interval change from a role that can edit but not rotate, before writing anything", async () => {
+      const { service, deps } = createEditOnlyGitLabService();
+
+      await expect(update(service, { rotationInterval: 30 })).rejects.toThrow();
+
+      expect(rotateCredentials).not.toHaveBeenCalled();
+      expect(deps.secretRotationV2DAL.updateById).not.toHaveBeenCalled();
+      expect(deps.auditLogService.createAuditLog).not.toHaveBeenCalled();
+    });
+
+    test("lets a role that can edit but not rotate change other fields", async () => {
+      const { service, deps } = createEditOnlyGitLabService();
+
+      await update(service, { rotationInterval: 1, description: "same interval" });
+
+      expect(rotateCredentials).not.toHaveBeenCalled();
+      expect(deps.secretRotationV2DAL.updateById).toHaveBeenCalled();
+    });
+
     test("refuses an update sent to the other GitLab rotation's endpoint", async () => {
       const { service, deps } = createGitLabService();
       const otherType =

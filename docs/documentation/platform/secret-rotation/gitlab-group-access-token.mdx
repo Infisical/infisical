@@ -4,7 +4,7 @@ sidebarTitle: "GitLab group access token"
 description: "Learn how to automatically rotate GitLab group access tokens."
 ---
 
-Rotate a GitLab [group access token](https://docs.gitlab.com/user/group/settings/group_access_tokens/) on a schedule. A group access token gives access to the group's projects and subgroups without belonging to a person. On each rotation, Infisical revokes the token it created two rotations earlier, creates a new token with the scopes and role you choose, and stores the new token in a secret.
+Rotate a GitLab [group access token](https://docs.gitlab.com/user/group/settings/group_access_tokens/) on a schedule. A group access token gives access to the group's projects and subgroups without belonging to a person. Infisical keeps two tokens active. On each rotation, it rotates the older one in GitLab, which revokes it and issues a replacement for the same bot user, and stores the new token in a secret.
 
 <Info>
   **Rotation Type: Dual-Phase**
@@ -23,14 +23,14 @@ Rotate a GitLab [group access token](https://docs.gitlab.com/user/group/settings
 - On GitLab.com, a paid Premium or Ultimate subscription for the group. Group access tokens aren't available on Free or during a trial.
 - Group access token creation allowed in the top-level group's **Settings** > **General** > **Permissions and group features** (allowed by default)
 
-<Warning>
-    GitLab creates a new bot user for every group access token, so each rotation's token belongs to a different bot user. If you grant access to a bot user by name, such as on a protected branch's list of users allowed to push, the grant doesn't carry over to the next token. Grant access through the token's role on the group instead.
+<Note>
+    GitLab gives every group access token its own bot user. Because Infisical rotates each token in place, a rotation keeps the same two bot users, and access you grant them by name, such as on a protected branch's list of users allowed to push, carries over from one rotation to the next.
 
-    GitLab deletes a bot user 30 days after its last token is revoked or expires.
-</Warning>
+    When you change the token's name, description, scopes, or role, the next two rotations replace each token with a new one, which comes with a new bot user. GitLab deletes the old bot user 30 days after its token is revoked.
+</Note>
 
 <Warning>
-    Don't rotate the generated tokens outside Infisical. GitLab lets a token with the `api` or `self_rotate` scope [rotate itself](https://docs.gitlab.com/api/group_access_tokens/#self-rotate), which revokes it and issues a replacement that Infisical doesn't know about. Infisical keeps tracking the revoked token, so later rotations and **Revoke Credentials** leave the replacement active, and whoever holds it can keep rotating it.
+    Don't rotate the generated tokens outside Infisical. GitLab lets a token with the `api` or `self_rotate` scope [rotate itself](https://docs.gitlab.com/api/group_access_tokens/#self-rotate), which revokes it and issues a replacement that Infisical doesn't know about. The next time Infisical rotates that token, GitLab sees it was already rotated and revokes the replacement too. Until then, or if you delete the rotation first, the replacement stays active.
 </Warning>
 
 ## Step 1: Create a personal access token for Infisical
@@ -151,7 +151,7 @@ Infisical needs a GitLab connection whose user has the Owner role on the group, 
         After your applications read the token from Infisical, revoke any group access tokens you created by hand so they stop working.
     </Accordion>
     <Accordion title="Which permissions does the generated token have?">
-        The token's role decides what the token can do in the group's projects and subgroups, and its scopes decide which parts of GitLab it can reach. To change either, edit the rotation; the next rotation creates its token with the new role and scopes.
+        The token's role decides what the token can do in the group's projects and subgroups, and its scopes decide which parts of GitLab it can reach. To change either, edit the rotation; from the next rotation, Infisical replaces each token with a new one that has the new role and scopes.
     </Accordion>
 </AccordionGroup>
 

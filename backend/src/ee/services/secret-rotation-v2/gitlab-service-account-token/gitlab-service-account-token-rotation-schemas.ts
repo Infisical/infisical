@@ -9,6 +9,7 @@ import {
 import {
   GitLabNumericIdSchema,
   GitLabTokenDescriptionSchema,
+  GitLabTokenGeneratedCredentialsSchema,
   GitLabTokenNameSchema,
   GitLabTokenRotationIntervalSchema,
   GitLabTokenScopesSchema
@@ -17,14 +18,7 @@ import { SecretRotations } from "@app/lib/api-docs";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
-export const GitLabServiceAccountTokenRotationGeneratedCredentialsSchema = z
-  .object({
-    tokenId: z.string(),
-    token: z.string()
-  })
-  .array()
-  .min(1)
-  .max(2);
+export const GitLabServiceAccountTokenRotationGeneratedCredentialsSchema = GitLabTokenGeneratedCredentialsSchema;
 
 const GitLabServiceAccountTokenRotationParametersSchema = z.object({
   groupId: GitLabNumericIdSchema("Group ID").describe(SecretRotations.PARAMETERS.GITLAB_SERVICE_ACCOUNT_TOKEN.groupId),

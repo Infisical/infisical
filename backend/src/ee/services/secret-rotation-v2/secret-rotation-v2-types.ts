@@ -101,7 +101,6 @@ import {
 } from "./gcp-service-account-key";
 import {
   TGitLabGroupAccessTokenRotation,
-  TGitLabGroupAccessTokenRotationGeneratedCredentials,
   TGitLabGroupAccessTokenRotationInput,
   TGitLabGroupAccessTokenRotationListItem,
   TGitLabGroupAccessTokenRotationWithConnection
@@ -334,8 +333,7 @@ export type TSecretRotationV2GeneratedCredentials =
   | TCloudflareR2AccessKeyRotationGeneratedCredentials
   | TStripeApiKeyRotationGeneratedCredentials
   | TGcpServiceAccountKeyRotationGeneratedCredentials
-  | TGitLabServiceAccountTokenRotationGeneratedCredentials
-  | TGitLabGroupAccessTokenRotationGeneratedCredentials;
+  | TGitLabServiceAccountTokenRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
