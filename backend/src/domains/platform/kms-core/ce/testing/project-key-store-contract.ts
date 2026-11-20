@@ -190,5 +190,16 @@ export const describeProjectKeyStoreContract = (name: string, setup: () => Promi
       expect(await store.referencesKey(certificateKmsKeyId)).toBe(true);
       expect(await store.referencesKey(unused)).toBe(false);
     });
+
+    test("should find a project's org, including a project scheduled for deletion", async () => {
+      const { store, newProject, scheduleDeletion } = await setup();
+      const live = await newProject();
+      const pending = await newProject();
+      await scheduleDeletion(pending.projectId);
+
+      expect(await store.findOrgIdIncludingPendingDeletion(live.projectId)).toBe(live.orgId);
+      expect(await store.findOrgIdIncludingPendingDeletion(pending.projectId)).toBe(pending.orgId);
+      expect(await store.findOrgIdIncludingPendingDeletion(randomUUID())).toBeNull();
+    });
   });
 };
