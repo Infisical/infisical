@@ -1,0 +1,41 @@
+.sheet.sheet[data-side="right"] {
+  max-width: calc(var(--cipher-size-measure-form) + var(--cipher-size-measure-field));
+}
+.requestHead {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--cipher-space-8) var(--cipher-space-16);
+}
+.requestText {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 16rem;
+  flex-direction: column;
+  gap: var(--cipher-space-2);
+}
+.requestTitle {
+  font-weight: var(--cipher-type-label-font-weight);
+}
+.requestMeta {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--cipher-space-12);
+  row-gap: var(--cipher-space-2);
+  color: var(--cipher-muted);
+  font-size: var(--cipher-type-small-font-size);
+  line-height: var(--cipher-type-small-line-height);
+}
+.slug {
+  font-family: var(--cipher-type-mono-font-family);
+}
+.requestActions {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--cipher-space-8);
+  margin-inline-start: auto;
+}

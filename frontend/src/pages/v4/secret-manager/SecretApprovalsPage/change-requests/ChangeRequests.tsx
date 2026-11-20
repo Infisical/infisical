@@ -39,7 +39,8 @@ import { useV4Adapter } from "../../../data/adapters";
 import { useV4Session } from "../../../data/session/contract";
 import { useGo } from "../../../links";
 import { BulkReviewSheet } from "./BulkReviewSheet";
-import { authorName, type ChangeRequest, ChangeSummary, pathOf } from "./parts";
+import { ChangeSummary } from "./ChangeSummary";
+import { authorName, type ChangeRequest, pathOf } from "./parts";
 
 const TABLE = "changeRequestsTable";
 const MAX_SELECTION = 25;
