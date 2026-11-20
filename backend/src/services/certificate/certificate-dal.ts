@@ -573,20 +573,22 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByThumbprintInOrg = async ({
-    orgId,
-    column,
-    fingerprint,
-    limit
-  }: {
-    orgId: string;
-    column: "fingerprintSha1" | "fingerprintSha256";
-    fingerprint: string;
-    limit?: number;
-  }): Promise<TCertificates[]> => {
+  const findByThumbprintInOrg = async (
+    {
+      orgId,
+      column,
+      fingerprint,
+      limit
+    }: {
+      orgId: string;
+      column: "fingerprintSha1" | "fingerprintSha256";
+      fingerprint: string;
+      limit?: number;
+    },
+    tx?: Knex
+  ): Promise<TCertificates[]> => {
     try {
-      const query = db
-        .replicaNode()(TableName.Certificate)
+      const query = (tx || db.replicaNode())(TableName.Certificate)
         .join(TableName.Project, `${TableName.Certificate}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
         .where(`${TableName.Certificate}.${column}`, fingerprint)
@@ -948,6 +950,21 @@ export const certificateDALFactory = (db: TDbClient) => {
       return Boolean(row);
     } catch (error) {
       throw new DatabaseError({ error, name: "Check renewal awaiting approval" });
+    }
+  };
+
+  const findPendingRevocationApprovalRequest = async (
+    { certificateId, projectId }: { certificateId: string; projectId: string },
+    tx?: Knex
+  ) => {
+    try {
+      const row = await (tx || db)(TableName.ApprovalRequests)
+        .where({ projectId, type: ApprovalPolicyType.CertRevocation, status: ApprovalRequestStatus.Pending })
+        .whereRaw(`"${TableName.ApprovalRequests}"."requestData"->'requestData'->>'certificateId' = ?`, [certificateId])
+        .first("id", "expiresAt");
+      return row as { id: string; expiresAt: Date | null } | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find pending revocation approval request" });
     }
   };
 
@@ -1663,6 +1680,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     findLatestCertificatesByOrderIds,
     findCertificatesEligibleForRenewal,
     hasRenewalAwaitingApproval,
+    findPendingRevocationApprovalRequest,
     getRequestEnrollmentTypeByCertId,
     getOriginatingRequestByCertId,
     canRenewFromCsr,

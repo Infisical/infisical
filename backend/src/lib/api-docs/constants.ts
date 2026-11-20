@@ -1430,7 +1430,10 @@ export const PROJECT_IDENTITY_MEMBERSHIP = {
   },
   GET_IDENTITY_MEMBERSHIP_BY_ID: {
     projectId: "The ID of the project to get the identity membership for.",
-    identityId: "The ID of the machine identity to get the membership for."
+    identityId: "The ID of the machine identity to get the membership for.",
+    hasDeleteProtection: "Whether the machine identity is protected from deletion.",
+    activeLockoutAuthMethods:
+      "The auth methods currently locked out for the machine identity after too many failed logins."
   },
   LIST_AVAILABLE_IDENTITIES: {
     projectId: "The ID of the project to list available identities for.",
@@ -2552,7 +2555,10 @@ export const CERTIFICATES = {
       "The serial number of the certificate to revoke. The revoked certificate will be added to the certificate revocation list (CRL) of the CA.",
     revocationReason: "The reason for revoking the certificate.",
     revokedAt: "The date and time when the certificate was revoked.",
-    serialNumberRes: "The serial number of the revoked certificate.",
+    serialNumberRes: "The serial number of the certificate.",
+    status:
+      "revoked (HTTP 200) when the certificate was revoked. pending_approval (HTTP 202) when a revocation approval policy covers the certificate's profile. An approval request was created, and the certificate isn't revoked until the request is approved.",
+    approvalRequestId: "The ID of the approval request created for the revocation.",
     crlWarning: "Set when the certificate was revoked but the CRL could not be regenerated. Contains the reason."
   },
   DELETE: {
@@ -4598,6 +4604,12 @@ export const SECRET_SHARING = {
 } as const;
 
 export const GATEWAYS = {
+  RESPONSE: {
+    cliVersion:
+      "Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.",
+    cliVersionReportedAt:
+      "When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified."
+  },
   METRICS_REPORT: {
     activeChannels:
       "Number of channels the gateway is currently serving. Used to route new work to the least busy member of a gateway pool.",
@@ -5709,15 +5721,17 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
   ruleName: "A name that tells approvers why the rule approved a request.",
   conditions: "Every condition in a rule must pass for the rule to approve.",
   conditionConnectionId:
-    "The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'. Omit it for an 'ai' condition.",
+    "The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'. Omit it for an 'ai' condition, or for a 'requester' condition that checks the requester's Infisical user or groups.",
   conditionSubject:
-    "What the condition checks: one of the inputs' subjects, 'requester' for the requester's own account, or 'ai' to have the organization's AI model review the request.",
+    "What the condition checks: one of the inputs' subjects, 'requester' for the requester's own account (in the connected service, or in Infisical when the condition has no connection), or 'ai' to have the organization's AI model review the request.",
   conditionPrompt:
     "For an 'ai' condition, the instructions the AI model checks the request against. The model receives the request details and every request form field value.",
   conditionContextConnectionIds:
     "For an 'ai' condition, the IDs of App Connections the AI model can read from with read-only lookups (e.g. a Jira connection).",
-  constraint: "Which check to run, from the subject's constraints in the auto-approval catalog (e.g. 'status').",
-  values: "The values the check accepts. Several values mean any of them; checks that take no value use an empty list.",
+  constraint:
+    "Which check to run, from the subject's constraints in the auto-approval catalog (e.g. 'status'). A 'requester' condition without a connection uses 'is-one-of'.",
+  values:
+    "The values the check accepts. Several values mean any of them; checks that take no value use an empty list. 'is-one-of' takes users as 'user:<id>' and groups as 'group:<id>'.",
   requestInputs:
     "Values for the policy's request form fields, such as a Jira ticket key or link. Malformed values are rejected.",
   requestInputValue: "The value the requester entered, such as 'PAY-123' or a link to the ticket.",

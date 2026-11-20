@@ -19,6 +19,7 @@ type ControlPlane struct {
 	SecretsManager *fakenet.Scope[SecretsStore]
 	IAM            *fakenet.Scope[IAMAccount]
 	CloudFormation *fakenet.Scope[CloudFormationAccount]
+	KMS            *fakenet.Scope[KMSAccount]
 	ACM            *fakenet.Scope[CertificateManager]
 	ACMPCA         *fakenet.Scope[PrivateCAs]
 	ELB            *fakenet.Scope[LoadBalancing]
@@ -37,6 +38,7 @@ func Open(tt *testing.T, adminURL, accessKeyID string) *ControlPlane {
 		SecretsManager: tracked[SecretsStore](tt, adminURL, SecretsManager, accessKeyID),
 		IAM:            tracked[IAMAccount](tt, adminURL, IAM, accessKeyID),
 		CloudFormation: tracked[CloudFormationAccount](tt, adminURL, CloudFormation, accessKeyID),
+		KMS:            tracked[KMSAccount](tt, adminURL, KMS, accessKeyID),
 		ACM:            tracked[CertificateManager](tt, adminURL, ACM, accessKeyID),
 		ACMPCA:         tracked[PrivateCAs](tt, adminURL, ACMPCA, accessKeyID),
 		ELB:            tracked[LoadBalancing](tt, adminURL, ELB, accessKeyID),
@@ -77,6 +79,8 @@ func (cp *ControlPlane) seeder(tt *testing.T, svc service) interface{ Seed(*test
 		return cp.IAM
 	case CloudFormation.name:
 		return cp.CloudFormation
+	case KMS.name:
+		return cp.KMS
 	case ACM.name:
 		return cp.ACM
 	case ACMPCA.name:
@@ -136,6 +140,17 @@ func RemoveAccessKey(accessKeyID string) Fragment {
 // SeedStack seeds a stack in a status such as CREATE_COMPLETE.
 func SeedStack(name, status string) Fragment {
 	return Fragment{CloudFormation, map[string]any{"stacks": map[string]any{name: map[string]any{"stackStatus": status}}}}
+}
+
+// SeedRole seeds a role in the account accountKey addresses, assumable as its trust
+// policy allows (see TrustPolicy). Seed it on that same account's control plane.
+func SeedRole(accountKey, name, trustPolicy string) Fragment {
+	return Fragment{IAM, map[string]any{"roles": map[string]any{name: map[string]any{"owner": accountKey, "assumeRolePolicyDocument": trustPolicy}}}}
+}
+
+// SeedKey seeds a symmetric KMS key under a UUID key id.
+func SeedKey(keyID string) Fragment {
+	return Fragment{KMS, map[string]any{"keys": map[string]any{keyID: map[string]any{}}}}
 }
 
 // Deny makes the account's policy refuse one action, such as Deny(SSM, "PutParameter").

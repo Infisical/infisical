@@ -1,11 +1,12 @@
 // Package aws fakes the parts of AWS that Infisical calls: STS, SSM Parameter Store,
-// Secrets Manager, IAM access keys, CloudFormation stacks, Certificate Manager, Private
-// CA, Elastic Load Balancing listeners and Route 53.
+// Secrets Manager, IAM access keys and roles, KMS, CloudFormation stacks, Certificate
+// Manager, Private CA, Elastic Load Balancing listeners and Route 53.
 //
 // One fake for the provider, served on each hostname the SDK resolves. Each host is its
 // own fakenet scope, so a test reads Parameter Store state from the SSM host and access
-// keys from the IAM host. What AWS shares across services, the credentials IAM issues,
-// lives in a keyring every host reads, so a key IAM deleted is refused by STS too.
+// keys from the IAM host. What AWS shares across services, the credentials IAM and STS
+// issue and the roles accounts hold, lives in registries every host reads, so a key IAM
+// deleted is refused by STS too, and STS can find a role in another account.
 //
 // Requests are authenticated the way AWS does it: the SigV4 signature is checked
 // against the secret for the access key id. A connection's secret is derived from its
@@ -44,6 +45,7 @@ var (
 	SSM            = service{host: "ssm." + Region + ".amazonaws.com", name: "ssm", region: Region, newFake: newParameterStore}
 	SecretsManager = service{host: "secretsmanager." + Region + ".amazonaws.com", name: "secretsmanager", region: Region, newFake: newSecretsManager}
 	CloudFormation = service{host: "cloudformation." + Region + ".amazonaws.com", name: "cloudformation", region: Region, newFake: newCloudFormation}
+	KMS            = service{host: "kms." + Region + ".amazonaws.com", name: "kms", region: Region, newFake: newKMS}
 	ACM            = service{host: "acm." + Region + ".amazonaws.com", name: "acm", region: Region, newFake: newCertificateManager}
 	ACMPCA         = service{host: "acm-pca." + Region + ".amazonaws.com", name: "acm-pca", region: Region, newFake: newPrivateCAs}
 	ELB            = service{host: "elasticloadbalancing." + Region + ".amazonaws.com", name: "elasticloadbalancing", region: Region, newFake: newLoadBalancing}
@@ -56,7 +58,7 @@ var (
 )
 
 // Services is every AWS host fakenet answers for.
-var Services = []fakenet.Service{STS, STSGlobal, SSM, SecretsManager, IAM, CloudFormation, ACM, ACMPCA, ELB, Route53}
+var Services = []fakenet.Service{STS, STSGlobal, SSM, SecretsManager, IAM, CloudFormation, KMS, ACM, ACMPCA, ELB, Route53}
 
 type service struct {
 	host    string
@@ -97,12 +99,15 @@ func AccountID(credential string) string {
 	return string(out)
 }
 
-// issued is an access key IAM handed out.
+// issued is an access key IAM handed out, or the temporary key of an STS session, which
+// is only accepted with its session token and until it expires.
 type issued struct {
-	owner  string
-	user   string
-	secret string
-	active bool
+	owner        string
+	user         string
+	secret       string
+	sessionToken string
+	expires      time.Time
+	active       bool
 }
 
 // keyring is AWS's credential store, shared by every host. A process-wide value because
@@ -120,6 +125,18 @@ func issueKey(ownerKey, user string) (id, secret string) {
 	defer keyring.mu.Unlock()
 	keyring.keys[id] = &issued{owner: ownerKey, user: user, secret: secret, active: true}
 	return id, secret
+}
+
+// issueSessionKey is the temporary key STS hands out for an assumed role. It belongs to
+// the role's account, so what the session does lands in that account's state.
+func issueSessionKey(ownerKey, user string, expires time.Time) (id, secret, token string) {
+	id = "ASIA" + randomBase32(16)
+	secret = randomBase64(40)
+	token = randomBase64(64)
+	keyring.mu.Lock()
+	defer keyring.mu.Unlock()
+	keyring.keys[id] = &issued{owner: ownerKey, user: user, secret: secret, sessionToken: token, expires: expires, active: true}
+	return id, secret, token
 }
 
 func revokeKey(id string) {
@@ -207,8 +224,11 @@ func authenticate(svc service, r *http.Request, body []byte) (string, *apiError)
 
 	secret := SecretAccessKey(cred.accessKeyID)
 	if k, issuedByIAM := lookupKey(cred.accessKeyID); issuedByIAM {
-		if !k.active {
+		if !k.active || k.sessionToken != r.Header.Get("X-Amz-Security-Token") {
 			return "", invalidToken(svc)
+		}
+		if !k.expires.IsZero() && !time.Now().Before(k.expires) {
+			return "", expiredToken(svc)
 		}
 		secret = k.secret
 	}
@@ -229,8 +249,15 @@ func invalidToken(svc service) *apiError {
 	return errf(http.StatusForbidden, "InvalidClientTokenId", "The security token included in the request is invalid.")
 }
 
+func expiredToken(svc service) *apiError {
+	if svc.json() {
+		return errf(http.StatusBadRequest, "ExpiredTokenException", "The security token included in the request is expired")
+	}
+	return errf(http.StatusForbidden, "ExpiredToken", "The security token included in the request is expired")
+}
+
 func (s service) json() bool {
-	return s.name == "ssm" || s.name == "secretsmanager" || s.name == "acm" || s.name == "acm-pca"
+	return s.name == "ssm" || s.name == "secretsmanager" || s.name == "kms" || s.name == "acm" || s.name == "acm-pca"
 }
 
 func (s service) targetPrefix() string {
@@ -243,6 +270,8 @@ func (s service) targetPrefix() string {
 		return "CertificateManager."
 	case "acm-pca":
 		return "ACMPrivateCA."
+	case "kms":
+		return "TrentService."
 	}
 	return ""
 }
@@ -256,8 +285,8 @@ type handler struct {
 }
 
 // serve authenticates, resolves the action, applies the policy and renders the answer
-// in the service's protocol: JSON 1.1 with X-Amz-Target for SSM and Secrets Manager,
-// Query in and XML out for the rest.
+// in the service's protocol: JSON 1.1 with X-Amz-Target for SSM, Secrets Manager and
+// KMS, Query in and XML out for the rest.
 func (h handler) serve(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
