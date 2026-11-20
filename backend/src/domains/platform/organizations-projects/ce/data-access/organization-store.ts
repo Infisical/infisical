@@ -50,11 +50,9 @@ export class OrganizationStore implements TOrganizationStore {
       const row = (await knex(TableName.Project)
         .whereNull("deleteAfter")
         .whereNotIn("type", UNCOUNTED_WORKSPACE_TYPES)
-        .where((bd) => {
-          void bd
-            .where({ orgId })
-            .orWhereIn("orgId", knex(TableName.Organization).where({ rootOrgId: orgId }).select("id"));
-        })
+        // One IN over the org and its sub-orgs, not "orgId = ? OR orgId IN (...)": the OR keeps Postgres off the
+        // index and scans every project.
+        .whereIn("orgId", knex(TableName.Organization).where("id", orgId).orWhere("rootOrgId", orgId).select("id"))
         .count("* as count")
         .first()) as { count?: string | number } | undefined;
       return toCount(row?.count);

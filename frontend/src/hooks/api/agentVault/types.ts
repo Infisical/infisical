@@ -5,6 +5,7 @@ import {
   AgentVaultMcpTransport,
   AgentVaultMemberType,
   AgentVaultOauthAuthorizationStatus,
+  AgentVaultOauthClientAuthMethod,
   AgentVaultOauthStatus,
   AgentVaultServiceType,
   AgentVaultSessionLogDecision,
@@ -14,7 +15,8 @@ import {
   AgentVaultSubstitutionSurface,
   AgentVaultTrafficPolicy,
   AgentVaultVariableReferenceField,
-  AgentVaultVariableScope
+  AgentVaultVariableScope,
+  AgentVaultVariableType
 } from "./enums";
 
 /** A field an admin can leave to each member: a bearer token or basic password, or a basic username. */
@@ -26,12 +28,17 @@ export type TAgentVaultBearerMemberField = AgentVaultVariableReferenceField.Cred
 
 export type TAgentVaultOauthRegistration = "manual" | "dynamic";
 
+export type TAgentVaultOauthCredentialSource = "service" | "member" | "variable";
+
 // With the sign-in left to each member, the service holds no tokens of its own, so it has no status.
 export type TAgentVaultOauthCredentialSummary = {
   type: AgentVaultCredentialType.OAuth;
+  source: TAgentVaultOauthCredentialSource;
   memberProvidedFields: TAgentVaultBearerMemberField[];
+  // The OAuth variable a service signs in with. Left out for whoever can't read variables.
+  variable?: { id: string; key: string };
   status?: AgentVaultOauthStatus;
-  issuer: string;
+  issuer?: string;
   grantedScopes: string[];
   requiredScopes: string[];
   // Left out for Agent Vault members.
@@ -60,11 +67,12 @@ export type TAgentVaultCredentialSummary =
   | { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean }
   | TAgentVaultOauthCredentialSummary;
 
-// Either the admin's own sign-in (authorizationId) or, with memberProvidedFields, a sign-in left to each member, who
-// all sign in with the client set here (or one registered automatically).
+// The admin's own sign-in (authorizationId), an OAuth variable's (variable, by key) or, with memberProvidedFields, a
+// sign-in left to each member, who all sign in with the client set here (or one registered automatically).
 export type TAgentVaultOauthCredentialInput = {
   type: AgentVaultCredentialType.OAuth;
   authorizationId?: string;
+  variable?: string;
   memberProvidedFields?: TAgentVaultBearerMemberField[];
   clientId?: string;
   clientSecret?: string;
@@ -205,10 +213,12 @@ type TAgentVaultCredentialSummaryOf<T extends AgentVaultCredentialType> = Extrac
 // MCP services, substitutions on HTTP services.
 export type TAgentVaultService = (
   | (TAgentVaultServiceConfigOf<AgentVaultServiceType.Http> & {
+      // OAuth only through an OAuth variable.
       credential: TAgentVaultCredentialSummaryOf<
         | AgentVaultCredentialType.Bearer
         | AgentVaultCredentialType.Basic
         | AgentVaultCredentialType.Passthrough
+        | AgentVaultCredentialType.OAuth
       >;
       customHeaders: TAgentVaultCustomHeaderSummary[];
       substitutions: TAgentVaultSubstitutionSummary[];
@@ -243,7 +253,7 @@ export type TAgentVaultService = (
 
 export type TAgentVaultBundleRef = { id: string; name: string };
 
-// A service or skill an add request named that was already in the access bundle.
+// A service or skill in an add request that was already in the access bundle.
 export type TAgentVaultSkippedBundleItem = { id: string; name: string };
 
 // A service read from the project, with the access bundles it is in. A member gets only the ones they reach.
@@ -311,6 +321,7 @@ export type TListAgentVaultAccessBundlesDTO = Omit<TListAgentVaultProxiesDTO, "o
 
 export type TListAgentVaultVariablesDTO = {
   scope?: AgentVaultVariableScope;
+  type?: AgentVaultVariableType;
   search?: string;
   /** Exact keys. A key that doesn't exist is left out of the response. */
   keys?: string[];
@@ -419,21 +430,37 @@ export type TAgentVaultSessionInlineService = (
   hook?: TAgentVaultServiceHook | null;
 };
 
-/** A project service a session names. Only what identifies it is returned. */
-export type TAgentVaultSessionNamedService = {
-  id: string;
-  name: string;
-  type: AgentVaultServiceType;
-  description: string | null;
-  /** The host an HTTP or MCP service matches. Null for database and SSH services. */
-  hostPattern: string | null;
-  isInline: false;
-};
-
-/** A session's service: a project service it names, or one sent with it. */
+/**
+ * A session's service: one it lists by name, which carries only what identifies it, or one sent with it. isInline tells
+ * them apart.
+ */
 export type TAgentVaultSessionService =
   | (TAgentVaultSessionInlineService & { isInline: true })
-  | TAgentVaultSessionNamedService;
+  | {
+      id: string;
+      name: string;
+      type: AgentVaultServiceType;
+      description: string | null;
+      /** The host an HTTP or MCP service matches. Null for database and SSH services. */
+      hostPattern: string | null;
+      isInline: false;
+    };
+
+/**
+ * A session's skill: one it lists by name, which carries only what identifies it, or one sent with it, which also
+ * carries the hash and size of its files.
+ */
+export type TAgentVaultSessionSkill =
+  | { id: string; name: string; description: string; isInline: false }
+  | {
+      id: string;
+      name: string;
+      description: string;
+      sha256: string;
+      sizeBytes: number;
+      fileCount: number;
+      isInline: true;
+    };
 
 export type TAgentVaultSessionActor =
   | (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }>, "id"> & {
@@ -460,8 +487,10 @@ export type TAgentVaultSession = {
   revokedAt: string | null;
   createdAt: string;
   accessBundle: TAgentVaultSessionAccessBundle | null;
-  /** The services it names and the ones sent with it, in the order they were sent. Its access bundle's aren't listed. */
+  /** Its services, listed by name or sent with it, in the order they were sent. Its access bundle's aren't listed. */
   services: TAgentVaultSessionService[];
+  /** Its skills, listed by name or sent with it, in the order they were sent. Its access bundle's aren't listed. */
+  skills: TAgentVaultSessionSkill[];
   /** Null until the proxy uploads the session's first log chunk. */
   stats: TAgentVaultSessionStats | null;
 };
@@ -522,6 +551,7 @@ export type TAgentVaultMintedSession = {
   projectId: string;
   accessBundle: TAgentVaultSessionAccessBundle | null;
   services: TAgentVaultSessionService[];
+  skills: TAgentVaultSessionSkill[];
 };
 
 export type TAgentVaultProxy = {
@@ -584,7 +614,7 @@ export type TCreateAgentVaultServiceDTO = {
       hostPattern: string;
       allowedMethods?: AgentVaultHttpMethod[] | null;
       allowedPathPrefixes?: string[] | null;
-      credential: TAgentVaultCredentialInput;
+      credential: TAgentVaultCredentialInput | TAgentVaultOauthCredentialInput;
       customHeaders?: TAgentVaultCustomHeaderInput[];
       substitutions?: TAgentVaultSubstitutionInput[];
     }
@@ -700,11 +730,12 @@ export type TAddAgentVaultMembersDTO = TAgentVaultActorIdsDTO & {
   accessBundleId: string;
 };
 
-// Needs an access bundle, at least one service, or both. Each is named rather than referenced by ID. The API also takes
-// services defined inline, which this UI doesn't send.
+// Needs an access bundle, or at least one service or skill. Each is named rather than referenced by ID. The API also
+// takes services and skills defined inline, which this UI doesn't send.
 export type TCreateAgentVaultSessionDTO = {
   accessBundle?: string;
   services?: string[];
+  skills?: string[];
   ttl: string;
   label?: string;
   metadata?: Record<string, string>;
@@ -908,10 +939,39 @@ export type TAgentVaultVariableUsedByService = {
   accessBundles?: TAgentVaultBundleRef[];
 };
 
+export type TAgentVaultOauthVariableConnection = {
+  issuer: string;
+  grantedScopes: string[];
+  requiredScopes: string[];
+  expiresAt: string | null;
+  authorizedAt: string | null;
+  lastError: string | null;
+};
+
+// An OAuth variable's provider settings and sign-in. Its tokens and client secret never come back.
+export type TAgentVaultOauthVariable = {
+  status: AgentVaultOauthStatus;
+  serverUrl: string | null;
+  issuer: string | null;
+  authorizationEndpoint: string | null;
+  tokenEndpoint: string | null;
+  clientId: string | null;
+  registration: TAgentVaultOauthRegistration;
+  tokenEndpointAuthMethod: AgentVaultOauthClientAuthMethod | null;
+  scopes: string[];
+  resource: string | null;
+  clientName: string | null;
+  // Set when an app hosts the sign-in callback, so a sign-in started here would return to that app.
+  redirectUri: string | null;
+  connection: TAgentVaultOauthVariableConnection | null;
+};
+
 export type TAgentVaultVariable = {
   id: string;
   key: string;
   scope: AgentVaultVariableScope;
+  type: AgentVaultVariableType;
+  oauth?: TAgentVaultOauthVariable | null;
   // Every service that references the variable, across all access bundles. For a personal variable, the services
   // whose personal values, as the caller set them, use it.
   usedByServices: TAgentVaultVariableUsedByService[];
@@ -919,16 +979,65 @@ export type TAgentVaultVariable = {
   updatedAt: string;
 };
 
-export type TCreateAgentVaultVariableDTO = {
-  scope: AgentVaultVariableScope;
-  key: string;
-  value: string;
+export type TAgentVaultOauthVariableSettingsInput = {
+  serverUrl?: string;
+  issuer?: string;
+  authorizationEndpoint?: string;
+  tokenEndpoint?: string;
+  clientId?: string;
+  tokenEndpointAuthMethod?: AgentVaultOauthClientAuthMethod;
+  scopes?: string[];
+  resource?: string;
+  clientName?: string;
+  redirectUri?: string;
 };
+
+// null clears a setting.
+export type TAgentVaultOauthVariableSettingsUpdate = {
+  [K in keyof TAgentVaultOauthVariableSettingsInput]?: K extends "scopes"
+    ? string[]
+    : TAgentVaultOauthVariableSettingsInput[K] | null;
+};
+
+export type TCreateAgentVaultVariableDTO =
+  | {
+      scope: AgentVaultVariableScope;
+      type?: AgentVaultVariableType.Text;
+      key: string;
+      value: string;
+    }
+  | {
+      scope: AgentVaultVariableScope.Global;
+      type: AgentVaultVariableType.OAuth;
+      key: string;
+      oauth?: TAgentVaultOauthVariableSettingsInput;
+    };
 
 export type TUpdateAgentVaultVariableDTO = {
   variableId: string;
   key?: string;
-  value?: string;
+  // null disconnects an OAuth variable.
+  value?: string | null;
+  oauth?: TAgentVaultOauthVariableSettingsUpdate;
+};
+
+// What starting a sign-in for an OAuth variable returns: the link, or what the variable needs before there can be one.
+export type TAgentVaultOauthVariableSignInStart = {
+  authorization: { id: string; authorizeUrl: string; expiresAt: string } | null;
+  registrationRequired: boolean;
+  manualSetupRequired: boolean;
+  prefill: {
+    authorizationEndpoint: string;
+    tokenEndpoint: string;
+    issuer: string | null;
+    scopes: string[];
+  } | null;
+  redirectUri: string;
+};
+
+export type TStartAgentVaultOauthVariableSignInDTO = {
+  variableId: string;
+  clientSecret?: string;
 };
 
 // The caller's own values for one service, and which of them they have set. Values never come back.

@@ -162,7 +162,7 @@ export const secretReplicationServiceFactory = ({
         return { ...el, secretKey: decryptedSecret.key, secretValue: decryptedSecret.value };
       });
 
-    for (let i = importedSecrets.length - 1; i >= 0; i = -1) {
+    for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
       importedSecrets[i].secrets.forEach((el) => {
         const decryptedSecret = getDecryptedKeyValue(botKey, el);
         if (deDupe.has(decryptedSecret.key) || !el.secretBlindIndex) {
@@ -193,7 +193,7 @@ export const secretReplicationServiceFactory = ({
     const deDupe = new Set<string>(localSecrets.map(({ key }) => key));
     const secrets = [...localSecrets];
 
-    for (let i = importedSecrets.length - 1; i >= 0; i = -1) {
+    for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
       importedSecrets[i].secrets.forEach((el) => {
         if (deDupe.has(el.key)) {
           return;
@@ -230,7 +230,7 @@ export const secretReplicationServiceFactory = ({
 
     // the the replicated imports made to the source. These are the destinations
     const destinationSecretImports = await secretImportDAL.find({
-      importPath: secretPath,
+      importPath: folder.path,
       importEnv: folder.envId
     });
 
@@ -340,7 +340,7 @@ export const secretReplicationServiceFactory = ({
       );
 
       const lock = await keyStore.acquireLock(
-        [getReplicationKeyLockPrefix(projectId, environmentSlug, secretPath)],
+        [getReplicationKeyLockPrefix(projectId, environmentSlug, folder.path)],
         5000
       );
 
@@ -671,7 +671,7 @@ export const secretReplicationServiceFactory = ({
     const sourceSecretsGroupByBlindIndex = groupBy(sourceSecrets, (i) => i.secretBlindIndex as string);
 
     const lock = await keyStore.acquireLock(
-      [getReplicationKeyLockPrefix(projectId, environmentSlug, secretPath)],
+      [getReplicationKeyLockPrefix(projectId, environmentSlug, folder.path)],
       5000
     );
 

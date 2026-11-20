@@ -7,6 +7,8 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { groupBy, groupByUnique, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { EnforcementLevel } from "@app/lib/types";
 import {
   ApprovalPolicyType,
@@ -168,7 +170,13 @@ export const secretChangeRequestServiceFactory = ({
   };
 
   const $findSecretChangePolicyOrThrow = async (policyId: string | null | undefined, tx?: Knex) => {
-    const policy = policyId ? await secretChangePolicyService.findSecretChangePolicyById(policyId, tx) : undefined;
+    const findPolicy = (id: string) => secretChangePolicyService.findSecretChangePolicyById(id, tx);
+    let policy;
+    if (policyId) {
+      policy = tx
+        ? await findPolicy(policyId)
+        : await requestMemoize(requestMemoKeys.secretChangePolicyFindById(policyId), () => findPolicy(policyId));
+    }
     if (!policy) {
       throw new BadRequestError({ message: POLICY_DELETED_MESSAGE });
     }
@@ -205,7 +213,9 @@ export const secretChangeRequestServiceFactory = ({
       });
     }
 
-    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actorId, actorOrgId);
+    const userGroups = await requestMemoize(requestMemoKeys.userGroupMembershipsInOrg(actorId, actorOrgId), () =>
+      userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actorId, actorOrgId)
+    );
     const userGroupIds = new Set(userGroups.map((group) => group.groupId));
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
@@ -515,7 +525,9 @@ export const secretChangeRequestServiceFactory = ({
       });
     resolveBypass(steps);
 
-    const project = await projectDAL.findById(projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
     const folder = await findMergedFolder(projectId, secretChangeRequest.folderId);
     if (!policy.environments.some((env) => env.id === folder.envId)) {
@@ -686,10 +698,14 @@ export const secretChangeRequestServiceFactory = ({
     });
 
     try {
-      const project = await projectDAL.findById(approvalRequest.projectId);
-      const [folder] = await folderDAL.findSecretPathByFolderIds(approvalRequest.projectId, [
-        secretChangeRequest.folderId
-      ]);
+      const { projectId } = approvalRequest;
+      const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+        projectDAL.findById(projectId)
+      );
+      const [folder] = await requestMemoize(
+        requestMemoKeys.folderSecretPath(projectId, secretChangeRequest.folderId),
+        () => folderDAL.findSecretPathByFolderIds(projectId, [secretChangeRequest.folderId])
+      );
       if (project && folder) {
         await queueChangeRequestWebhook({
           action: ChangeRequestWebhookAction.Reviewed,

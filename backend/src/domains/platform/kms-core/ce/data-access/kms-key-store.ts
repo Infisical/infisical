@@ -18,7 +18,11 @@ type TKmsKeyRow = TKmsKeys & {
   externalKmsEncryptedProviderInputs?: Buffer | null;
   externalKmsStatus?: string | null;
   externalKmsStatusDetails?: string | null;
+  externalKmsProviderInputsVersion?: number | null;
 };
+
+// The column default, which every row written before the column existed has.
+const LEGACY_PROVIDER_INPUTS_VERSION = 1;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -55,7 +59,8 @@ const toModel = (row: TKmsKeyRow): KmsKey => {
           provider: row.externalKmsProvider as string,
           encryptedProviderInputs: row.externalKmsEncryptedProviderInputs as Buffer,
           status: row.externalKmsStatus ?? null,
-          statusDetails: row.externalKmsStatusDetails ?? null
+          statusDetails: row.externalKmsStatusDetails ?? null,
+          providerInputsVersion: row.externalKmsProviderInputsVersion ?? LEGACY_PROVIDER_INPUTS_VERSION
         }
       : null
   });
@@ -63,7 +68,15 @@ const toModel = (row: TKmsKeyRow): KmsKey => {
 
 // Owns kms_keys, internal_kms and external_kms: one KmsKey is stored across them.
 export class KmsKeyStore implements TKmsKeyStore {
+  // Data migrations older than 20261117210000_external-kms-provider-inputs-version run KMS Core before this column
+  // exists. Once seen it stays, so the schema is only probed until then.
+  private static providerInputsVersionColumnSeen = false;
+
   constructor(private readonly connection: TStoreConnection) {}
+
+  static resetColumnProbe(): void {
+    KmsKeyStore.providerInputsVersionColumnSeen = false;
+  }
 
   async findById(id: string, options?: TReadOptions): Promise<KmsKey | null> {
     const [key] = await this.find({ id }, options);
@@ -81,7 +94,7 @@ export class KmsKeyStore implements TKmsKeyStore {
     if (single.some((value) => !UUID_PATTERN.test(value)) || (ids && !ids.length)) return [];
 
     try {
-      const query = KmsKeyStore.withMaterial(knex);
+      const query = KmsKeyStore.withMaterial(knex, await KmsKeyStore.hasProviderInputsVersionColumn(knex));
       if (filter.id !== undefined) void query.where(`${TableName.KmsKey}.id`, filter.id);
       if (ids) void query.whereIn(`${TableName.KmsKey}.id`, ids);
       if (filter.orgId !== undefined) void query.where(`${TableName.KmsKey}.orgId`, filter.orgId);
@@ -109,7 +122,8 @@ export class KmsKeyStore implements TKmsKeyStore {
   async findPublishedById(id: string, options?: TReadOptions): Promise<KmsKey | null> {
     if (!UUID_PATTERN.test(id)) return null;
     try {
-      const row = (await KmsKeyStore.withMaterial(this.connection.reader(options))
+      const knex = this.connection.reader(options);
+      const row = (await KmsKeyStore.withMaterial(knex, await KmsKeyStore.hasProviderInputsVersionColumn(knex))
         .join(TableName.Project, `${TableName.Project}.id`, `${TableName.KmsKey}.projectId`)
         .where(`${TableName.KmsKey}.id`, id)
         .where(`${TableName.KmsKey}.isPublicKeyPublished`, true)
@@ -198,8 +212,9 @@ export class KmsKeyStore implements TKmsKeyStore {
         isDisabled: record.isDisabled,
         isReserved: record.isReserved,
         isExportable: record.isExportable,
-        hasDeleteProtection: record.hasDeleteProtection,
-        isPublicKeyPublished: record.isPublicKeyPublished,
+        // Omitted when false so historical migrations can insert before these columns exist.
+        ...(record.hasDeleteProtection && { hasDeleteProtection: true }),
+        ...(record.isPublicKeyPublished && { isPublicKeyPublished: true }),
         kmipMetadata: record.kmipMetadata
       } as never);
       if (record.internal) {
@@ -216,7 +231,10 @@ export class KmsKeyStore implements TKmsKeyStore {
           id: record.external.id,
           kmsKeyId: record.id,
           provider: record.external.provider,
-          encryptedProviderInputs: record.external.encryptedProviderInputs
+          encryptedProviderInputs: record.external.encryptedProviderInputs,
+          ...((await KmsKeyStore.hasProviderInputsVersionColumn(knex))
+            ? { providerInputsVersion: record.external.providerInputsVersion }
+            : {})
         } as never);
       }
     } catch (error) {
@@ -247,7 +265,12 @@ export class KmsKeyStore implements TKmsKeyStore {
       if (record.external) {
         await knex(TableName.ExternalKms)
           .where({ id: record.external.id })
-          .update({ encryptedProviderInputs: record.external.encryptedProviderInputs });
+          .update({
+            encryptedProviderInputs: record.external.encryptedProviderInputs,
+            ...((await KmsKeyStore.hasProviderInputsVersionColumn(knex))
+              ? { providerInputsVersion: record.external.providerInputsVersion }
+              : {})
+          });
       }
     } catch (error) {
       throw new DatabaseError({ error, name: "Save KMS key" });
@@ -286,8 +309,15 @@ export class KmsKeyStore implements TKmsKeyStore {
     }
   }
 
-  private static withMaterial(knex: Knex) {
-    return knex(TableName.KmsKey)
+  private static async hasProviderInputsVersionColumn(knex: Knex): Promise<boolean> {
+    if (KmsKeyStore.providerInputsVersionColumnSeen) return true;
+    const exists = await knex.schema.hasColumn(TableName.ExternalKms, "providerInputsVersion");
+    if (exists) KmsKeyStore.providerInputsVersionColumnSeen = true;
+    return exists;
+  }
+
+  private static withMaterial(knex: Knex, hasProviderInputsVersion: boolean) {
+    const query = knex(TableName.KmsKey)
       .leftJoin(TableName.InternalKms, `${TableName.KmsKey}.id`, `${TableName.InternalKms}.kmsKeyId`)
       .leftJoin(TableName.ExternalKms, `${TableName.KmsKey}.id`, `${TableName.ExternalKms}.kmsKeyId`)
       .select(`${TableName.KmsKey}.*`)
@@ -302,5 +332,11 @@ export class KmsKeyStore implements TKmsKeyStore {
         knex.ref("status").withSchema(TableName.ExternalKms).as("externalKmsStatus"),
         knex.ref("statusDetails").withSchema(TableName.ExternalKms).as("externalKmsStatusDetails")
       );
+    if (hasProviderInputsVersion) {
+      void query.select(
+        knex.ref("providerInputsVersion").withSchema(TableName.ExternalKms).as("externalKmsProviderInputsVersion")
+      );
+    }
+    return query;
   }
 }

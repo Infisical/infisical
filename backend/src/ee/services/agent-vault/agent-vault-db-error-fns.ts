@@ -7,3 +7,7 @@ import { DatabaseError } from "@app/lib/errors";
  */
 export const isUniqueViolation = (err: unknown) =>
   err instanceof DatabaseError && (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation;
+
+// A row a write points at, deleted between the service's read of it and the write.
+export const isForeignKeyViolation = (err: unknown) =>
+  err instanceof DatabaseError && (err.error as { code?: string })?.code === DatabaseErrorCode.ForeignKeyViolation;

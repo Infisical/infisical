@@ -8,7 +8,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
+import { actorContext, recordOauthVariableConnected, resolveRequestedProjectId } from "./agent-vault-router-fns";
 import {
   AgentVaultOauthClientIdSchema,
   AgentVaultOauthClientSecretSchema,
@@ -84,7 +84,7 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
       hide: true,
       operationId: "completeAgentVaultOauthAuthorization",
       description:
-        "Finish an OAuth authorization with what the authorization server's redirect carried. An exchange failure returns 200 with status `failed`, so the callback page can show why.",
+        "Finish an OAuth authorization with what the authorization server's redirect carried. An exchange failure returns 200 with status `failed`, so the callback page can show why. An OAuth variable's sign-in is written into the variable here.",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({ authorizationId: z.string().uuid().describe(AGENT_VAULT.OAUTH.authorizationId) }),
       body: z.object({
@@ -104,12 +104,14 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
         actorContext(req),
         req.params.authorizationId
       );
-      return server.services.agentVaultOauth.completeAuthorization({
+      const { authorization, variableConnected } = await server.services.agentVaultOauth.completeAuthorization({
         projectId,
         ctx: actorContext(req),
         authorizationId: req.params.authorizationId,
         ...req.body
       });
+      if (variableConnected) await recordOauthVariableConnected(req, projectId, variableConnected);
+      return { authorization };
     }
   });
 

@@ -34,6 +34,14 @@ Rules:
   them fresh each fetch (`findOrganization`), since orgs get renamed.
 - **Key names, TTLs and queue names are frozen** (`plan-cache.ts`, `usage-report-cache.ts`, `UsageQueues`): old
   pods share them during a rolling deploy.
+- **A project create, delete or restore calls `refreshWorkspacesUsed`, never `invalidatePlan`.** Dropping the plan
+  sends every in-flight request for the org to the License Server and the project count at once.
+  `refreshWorkspacesUsed` rewrites only the separate `workspacesUsed` key, and only when the plan has a project
+  limit; `invalidatePlan` is for changes to the plan itself. The project limit is enforced by
+  `lockAndCountWorkspaces` under the create lock, so the cached count is for display only.
+- **A plan cache miss fetches once per root org** (`fetchOnMiss`, under the revalidate lock). The others serve the
+  last-known plan meanwhile, and fetch themselves only when there is none. A cached plan past its `fresh` marker
+  is served and refreshed in the background, so a busy org never misses.
 - **Only a License Server failure writes the fallback plan** (`fetchPlanOrFallback`). In `getPlan`, a DB or key
   store error serves the fallback for that call only and writes nothing, so it never clobbers a cached paid plan.
   `refreshPlan` throws on them instead. `getPlan` reads the cache under the given org id before resolving the

@@ -36,10 +36,10 @@ If a scheduled job, CI, or your own code creates sessions, it creates them as a 
         Select **Your Own Sandbox**, then select the **Create Now** tab.
       </Step>
       <Step>
-        In **Access Bundle**, select the bundle the agent should use. In **Services**, select any other services the agent should reach. You can pick a bundle, services, or both. Optionally, enter a **Label** that says what the session is for. Set a duration under **Expires**, then select **Create Session**.
+        In **Access Bundle**, select the bundle the agent should use. In **Services**, select any other services the agent should reach. In **Skills**, select any skills from the project that the agent should get. You can pick a bundle, services, skills, or any mix of them. Optionally, enter a **Label** that says what the session is for. Set a duration under **Expires**, then select **Create Session**.
 
         <Frame>
-          <img src="/images/platform/agent-vault/session-create.png" alt="The Create Now tab of the Your Own Sandbox dialog, with the on-call access bundle and the vercel service picked, Incident bot as the label, and a seven day expiry" />
+          <img src="/images/platform/agent-vault/session-create.png" alt="The Create Now tab of the Your Own Sandbox dialog, with the on-call access bundle, the vercel service and the triage-notes skill picked, Incident bot as the label, and a seven day expiry" />
         </Frame>
       </Step>
       <Step>
@@ -143,7 +143,7 @@ If a scheduled job, CI, or your own code creates sessions, it creates them as a 
       -d '{"projectId": "<project-id>", "accessBundle": "<access-bundle-name>", "ttl": "1h", "label": "nightly deploy"}'
     ```
 
-    To give the session other services from the project, list their names in `services`, such as `"services": ["github", "linear"]`.
+    To give the session other services from the project, list their names in `services`, such as `"services": ["github", "linear"]`. To give it skills from the project, list their names in `skills`, such as `"skills": ["code-review"]`. You can also [send skills with the session](/documentation/platform/agent-vault/skills#send-skills-with-a-session).
 
     The response includes the session's ID, project ID, label, token, and expiry time:
 
@@ -365,11 +365,17 @@ In your Agent Vault project, go to **Sessions**. If you're an admin of the proje
   <Accordion title="Creating the session fails with &quot;No access bundle named ... is granted to you&quot;">
     The user or machine identity doesn't have a grant on the access bundle, the name you sent is wrong, or the access bundle is in a different project from the one you sent. Check the name on the project's **Access Bundles** page, and [grant the bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) to whoever creates the session.
   </Accordion>
-  <Accordion title="Creating the session fails with &quot;You can't name a service called ...&quot;">
+  <Accordion title="Creating the session fails with &quot;You can't use a service called ...&quot;">
     No access bundle granted to whoever creates the session holds the service, or no service in the project has that name. Check the name on the project's **Services** page, and [grant an access bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) that holds the service to whoever creates the session.
   </Accordion>
   <Accordion title="Creating the session fails with 422 and &quot;More than one service in this session is named ...&quot;">
     Two of the session's services have the same name. This happens if you list a service twice, or if you list a service from the project and an [inline service](/documentation/platform/agent-vault/inline-services) with the same name. Remove one of the two, or give the inline service a different name.
+  </Accordion>
+  <Accordion title="Creating the session fails with &quot;You can't use a skill called ...&quot;">
+    No access bundle granted to whoever creates the session holds the skill, or no skill in the project has that name. Check the name on the project's **Skills** page, and [grant an access bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) that holds the skill to whoever creates the session.
+  </Accordion>
+  <Accordion title="Creating the session fails with 422 and &quot;More than one skill in this session is named ...&quot;">
+    Two of the session's skills have the same name. This happens if you list a skill twice, or if you list a skill from the project and [send a skill](/documentation/platform/agent-vault/skills#send-skills-with-a-session) whose `SKILL.md` has the same `name`. Remove one of the two, or rename the skill you send.
   </Accordion>
   <Accordion title="The CLI hangs or fails before the agent starts">
     If the output mentions logging in, the CLI didn't find the machine identity's credentials. Check that `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` and `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` are set in the job's environment. Cron starts jobs with an almost empty environment, so load the variables in the cron job, as the [cron example](#create-a-session-for-each-run-automatically) shows.

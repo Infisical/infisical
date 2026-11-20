@@ -2,7 +2,7 @@ import { TableName } from "@app/db/schemas";
 
 import { agentVaultVariableDALFactory } from "./agent-vault-variable-dal";
 
-type TRow = { id: string; projectId: string; userId: string | null; encryptedValue: Buffer };
+type TRow = { id: string; projectId: string; userId: string | null; type: string; encryptedValue: Buffer | null };
 
 const PROJECT_ID = "0b6f6c1e-5a8d-4c2b-9e7f-3d1a2b4c5d6e";
 const FIRST_ID = "4f1e2d3c-6b5a-4978-8a6b-5c4d3e2f1a0b";
@@ -14,6 +14,7 @@ const row = (id: string, userId: string | null = null): TRow => ({
   id,
   projectId: PROJECT_ID,
   userId,
+  type: "text",
   encryptedValue: Buffer.from(id)
 });
 
@@ -27,6 +28,7 @@ const buildNode = (rows: TRow[]) => {
   const node = (table: string) => {
     const lookup = { table, ids: [] as string[], projectId: undefined as string | undefined };
     let userId: string | null | undefined;
+    let type: string | undefined;
     const chain = {
       whereIn: (column: string, values: string[]) => {
         if (columnOf(column) === "id") lookup.ids = values;
@@ -35,6 +37,7 @@ const buildNode = (rows: TRow[]) => {
       where: (column: string, value: string) => {
         if (columnOf(column) === "projectId") lookup.projectId = value;
         if (columnOf(column) === "userId") userId = value;
+        if (columnOf(column) === "type") type = value;
         return chain;
       },
       whereNull: (column: string) => {
@@ -47,7 +50,8 @@ const buildNode = (rows: TRow[]) => {
           (candidate) =>
             lookup.ids.includes(candidate.id) &&
             candidate.projectId === lookup.projectId &&
-            (userId === undefined || candidate.userId === userId)
+            (userId === undefined || candidate.userId === userId) &&
+            (type === undefined || candidate.type === type)
         );
       }
     };
@@ -140,5 +144,33 @@ describe("findValuesForResolve", () => {
 
     expect(global.map((value) => value.id)).toEqual([FIRST_ID]);
     expect(own.map((value) => value.id)).toEqual([SECOND_ID]);
+  });
+
+  test("an OAuth variable is never returned, so text naming one stays unresolved", async () => {
+    const oauth = { ...row(SECOND_ID), type: "oauth", encryptedValue: null };
+    const { dal, primary } = buildDAL({ primaryRows: [row(FIRST_ID), oauth], replicaRows: [row(FIRST_ID), oauth] });
+
+    const values = await dal.findValuesForResolve({
+      variableIds: [FIRST_ID, SECOND_ID],
+      projectId: PROJECT_ID,
+      owner: null
+    });
+
+    expect(values.map((value) => value.id)).toEqual([FIRST_ID]);
+    expect(primary.lookups).toHaveLength(1);
+  });
+});
+
+describe("findOauthForResolve", () => {
+  test("returns only the project's OAuth variables, asking the primary for any the replica lacks", async () => {
+    const oauth = { ...row(SECOND_ID), type: "oauth", encryptedValue: null };
+    const { dal, primary } = buildDAL({ primaryRows: [row(FIRST_ID), oauth], replicaRows: [row(FIRST_ID)] });
+
+    const rows = await dal.findOauthForResolve({ variableIds: [FIRST_ID, SECOND_ID], projectId: PROJECT_ID });
+
+    expect(rows.map((value) => value.id)).toEqual([SECOND_ID]);
+    expect(primary.lookups).toEqual([
+      { table: TableName.AgentVaultVariable, ids: [FIRST_ID, SECOND_ID], projectId: PROJECT_ID }
+    ]);
   });
 });

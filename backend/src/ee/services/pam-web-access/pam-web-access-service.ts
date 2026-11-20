@@ -25,6 +25,7 @@ import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+import { TUserServiceFactory } from "@app/services/user/user-service";
 
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
@@ -87,11 +88,15 @@ type TPamWebAccessServiceFactoryDep = {
   >;
   kmsDataKeyService: TKmsDataKeyService;
   userDAL: Pick<TUserDALFactory, "findById">;
+  userService: Pick<TUserServiceFactory, "getEnrolledMfaMethods">;
   mfaSessionService: Pick<
     TMfaSessionServiceFactory,
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
+  orgDAL: Pick<
+    TOrgDALFactory,
+    "findById" | "findRootOrgDetails" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess"
+  >;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
@@ -128,6 +133,7 @@ export const pamWebAccessServiceFactory = ({
   kmsDataKeyService,
   userDAL,
   mfaSessionService,
+  userService,
   orgDAL,
   membershipDAL,
   membershipRoleDAL,
@@ -276,7 +282,7 @@ export const pamWebAccessServiceFactory = ({
 
     if (policy.requireMfa) {
       await enforceMfa(
-        { mfaSessionService, orgDAL, userDAL },
+        { mfaSessionService, orgDAL, userDAL, userService },
         {
           userId: actor.id,
           orgId: actor.orgId,

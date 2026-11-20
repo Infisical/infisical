@@ -19,6 +19,7 @@ import { CloudflarePagesSyncDestinationSchema } from "./cloudflare-pages-sync-de
 import { CloudflareSecretsStoreSyncDestinationSchema } from "./cloudflare-secrets-store-sync-destination-schema";
 import { CloudflareWorkersSyncDestinationSchema } from "./cloudflare-workers-sync-destination-schema";
 import { ConvexSyncDestinationSchema } from "./convex-sync-destination-schema";
+import { CoolifySyncDestinationSchema } from "./coolify-sync-destination-schema";
 import { DatabricksSyncDestinationSchema } from "./databricks-sync-destination-schema";
 import { DaytonaSyncDestinationSchema } from "./daytona-sync-destination-schema";
 import { DevinSyncDestinationSchema } from "./devin-sync-destination-schema";
@@ -111,7 +112,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   DaytonaSyncDestinationSchema,
   KeeperSyncDestinationSchema,
   SpaceliftSyncDestinationSchema,
-  JenkinsSyncDestinationSchema
+  JenkinsSyncDestinationSchema,
+  CoolifySyncDestinationSchema
 ]);
 
 const FailureAlertChannelsSchema = z
