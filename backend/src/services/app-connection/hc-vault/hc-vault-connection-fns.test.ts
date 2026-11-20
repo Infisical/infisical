@@ -1,6 +1,6 @@
 import { BadRequestError } from "@app/lib/errors";
 
-import { resolveKvMount, resolveVaultSecretPathWithinMount } from "./hc-vault-connection-fns";
+import { getVaultKvSecretUrl, resolveKvMount, resolveVaultSecretPathWithinMount } from "./hc-vault-connection-fns";
 import { THCVaultMount } from "./hc-vault-connection-types";
 
 const kvMount = (overrides: Partial<THCVaultMount> = {}): THCVaultMount => ({
@@ -102,6 +102,13 @@ describe("resolveVaultSecretPathWithinMount", () => {
     );
   });
 
+  test.each(["kv/..#x", "kv/..?x", "kv/.. ", "kv/app/..#"])(
+    "refuses a dot segment that ends at a query, fragment or trailing whitespace in %j",
+    (secretPath) => {
+      expect(() => resolveVaultSecretPathWithinMount(secretPath, ["kv"])).toThrowError(BadRequestError);
+    }
+  );
+
   test("keeps dots that are part of a segment name", () => {
     expect(resolveVaultSecretPathWithinMount("kv/app.v1/.env", ["kv"])).toBe("app.v1/.env");
   });
@@ -110,5 +117,27 @@ describe("resolveVaultSecretPathWithinMount", () => {
     expect(() => resolveVaultSecretPathWithinMount("apps/kv", ["apps", "kv"])).toThrowError(
       /points at the 'apps\/kv' secrets engine itself/
     );
+  });
+});
+
+describe("getVaultKvSecretUrl", () => {
+  const INSTANCE_URL = "https://vault.example.com";
+  const kvV2 = { mountSegments: ["kv"], mountUrlPath: "kv", kvVersion: "2" as const };
+  const kvV1 = { mountSegments: ["kv"], mountUrlPath: "kv", kvVersion: "1" as const };
+
+  test("reads KV v2 secrets under the data prefix and KV v1 secrets directly", () => {
+    expect(getVaultKvSecretUrl(INSTANCE_URL, kvV2, "kv/team/app")).toBe(
+      "https://vault.example.com/v1/kv/data/team/app"
+    );
+    expect(getVaultKvSecretUrl(INSTANCE_URL, kvV1, "kv/team/app")).toBe("https://vault.example.com/v1/kv/team/app");
+  });
+
+  test.each(["kv/team app", "kv/caf\u00e9", "kv/a%23b", "kv/a%3Fb"])("accepts %j", (secretPath) => {
+    expect(getVaultKvSecretUrl(INSTANCE_URL, kvV1, secretPath)).toBe(`https://vault.example.com/v1/${secretPath}`);
+  });
+
+  test.each(["kv/app#x", "kv/app?x", "kv/app ", "kv/a\\b", "kv/a\tb"])("refuses %j", (secretPath) => {
+    expect(() => getVaultKvSecretUrl(INSTANCE_URL, kvV2, secretPath)).toThrowError(BadRequestError);
+    expect(() => getVaultKvSecretUrl(INSTANCE_URL, kvV2, secretPath)).toThrowError(/cannot contain '\?', '#'/);
   });
 });

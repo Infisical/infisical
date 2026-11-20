@@ -37,7 +37,11 @@ import {
   THCVaultMountResponse,
   TResolvedKvMount
 } from "./hc-vault-connection-types";
-import { hasHCVaultDotSegment } from "./hc-vault-path-fns";
+import {
+  HC_VAULT_URL_PATH_CHARACTERS_MESSAGE,
+  hasHCVaultDotSegment,
+  isHCVaultUrlPathPreserved
+} from "./hc-vault-path-fns";
 
 // HashiCorp Vault stores JSON data, so values can be any valid JSON type
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
@@ -1014,6 +1018,22 @@ export const resolveVaultSecretPathWithinMount = (secretPath: string, mountSegme
   return actualPath;
 };
 
+export const getVaultKvSecretUrl = (instanceUrl: string, kvMount: TResolvedKvMount, secretPath: string) => {
+  const actualPath = resolveVaultSecretPathWithinMount(secretPath, kvMount.mountSegments);
+  const url =
+    kvMount.kvVersion === "2"
+      ? `${instanceUrl}/v1/${kvMount.mountUrlPath}/data/${actualPath}`
+      : `${instanceUrl}/v1/${kvMount.mountUrlPath}/${actualPath}`;
+
+  if (!isHCVaultUrlPathPreserved(url)) {
+    throw new BadRequestError({
+      message: `Vault path '${secretPath}' ${HC_VAULT_URL_PATH_CHARACTERS_MESSAGE}`
+    });
+  }
+
+  return url;
+};
+
 const fetchVaultSecretAtPath = async ({
   namespace,
   secretPath,
@@ -1034,12 +1054,10 @@ const fetchVaultSecretAtPath = async ({
   skipNamespaceHeader: boolean;
 }): Promise<Record<string, JsonValue>> => {
   try {
-    const { mountSegments, mountUrlPath, kvVersion } = kvMount;
-    const actualPath = resolveVaultSecretPathWithinMount(secretPath, mountSegments);
+    const url = getVaultKvSecretUrl(instanceUrl, kvMount, secretPath);
 
     // Fetch secrets based on KV version
-    if (kvVersion === "2") {
-      // For KV v2: /v1/{mount}/data/{path}
+    if (kvMount.kvVersion === "2") {
       const { data } = await requestWithHCVaultGateway<{
         data: {
           data: Record<string, JsonValue>; // KV v2 has nested data structure, supports all JSON types
@@ -1051,7 +1069,7 @@ const fetchVaultSecretAtPath = async ({
           };
         };
       }>(connection, gatewayV2Service, {
-        url: `${instanceUrl}/v1/${mountUrlPath}/data/${actualPath}`,
+        url,
         method: "GET",
         headers: {
           "X-Vault-Token": accessToken,
@@ -1062,14 +1080,13 @@ const fetchVaultSecretAtPath = async ({
       return data.data.data;
     }
 
-    // For KV v1: /v1/{mount}/{path}
     const { data } = await requestWithHCVaultGateway<{
       data: Record<string, JsonValue>; // KV v1 has flat data structure, supports all JSON types
       lease_duration: number;
       lease_id: string;
       renewable: boolean;
     }>(connection, gatewayV2Service, {
-      url: `${instanceUrl}/v1/${mountUrlPath}/${actualPath}`,
+      url,
       method: "GET",
       headers: {
         "X-Vault-Token": accessToken,

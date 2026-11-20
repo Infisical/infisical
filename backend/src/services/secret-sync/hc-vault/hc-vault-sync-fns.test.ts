@@ -75,6 +75,29 @@ describe("HCVaultSyncFns.getSecrets", () => {
     ]);
   });
 
+  test("requests a mount whose name contains a space as written", async () => {
+    requestMock
+      .mockResolvedValueOnce(mountsResponse({ "team kv/": { type: "kv", version: "2" } }) as never)
+      .mockResolvedValueOnce({ data: { data: { data: {} } } } as never);
+
+    await HCVaultSyncFns.getSecrets(buildSync("team kv", "app"), gatewayV2Service, gatewayPoolService);
+
+    expect(requestedUrls()).toEqual([
+      "https://vault.example.com/v1/sys/mounts",
+      "https://vault.example.com/v1/team kv/data/app"
+    ]);
+  });
+
+  test.each(["team#1", "team?1"])("refuses a stored mount with '?' or '#' ('%s')", async (mount) => {
+    requestMock.mockResolvedValueOnce(mountsResponse({ [`${mount}/`]: { type: "kv", version: "2" } }) as never);
+
+    const result = HCVaultSyncFns.getSecrets(buildSync(mount, "app"), gatewayV2Service, gatewayPoolService);
+
+    await expect(result).rejects.toBeInstanceOf(SecretSyncError);
+    await expect(result).rejects.toThrowError(/cannot contain '\?', '#'/);
+    expect(requestedUrls()).toEqual(["https://vault.example.com/v1/sys/mounts"]);
+  });
+
   test("refuses a mount that is not a KV secrets engine", async () => {
     requestMock.mockResolvedValueOnce(mountsResponse({ "database/": { type: "database" } }) as never);
 

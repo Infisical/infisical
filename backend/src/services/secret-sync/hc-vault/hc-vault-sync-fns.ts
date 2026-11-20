@@ -7,7 +7,9 @@ import { removeTrailingSlash } from "@app/lib/fn";
 import {
   getHCVaultAccessToken,
   getHCVaultInstanceUrl,
+  HC_VAULT_URL_PATH_CHARACTERS_MESSAGE,
   hasHCVaultDotSegment,
+  isHCVaultUrlPathPreserved,
   isKvMount,
   requestWithHCVaultGateway,
   THCVaultConnection
@@ -32,7 +34,7 @@ const assertMountHasNoDotSegment = (mount: string) => {
   }
 };
 
-const getKvUrlPath = (mount: string, path: string, mountVersion: KvVersion) => {
+const getKvUrl = (instanceUrl: string, mount: string, path: string, mountVersion: KvVersion) => {
   assertMountHasNoDotSegment(mount);
 
   if (hasHCVaultDotSegment(path)) {
@@ -43,9 +45,20 @@ const getKvUrlPath = (mount: string, path: string, mountVersion: KvVersion) => {
   }
 
   // KV v2 uses /data/ in the path, KV v1 does not
-  return mountVersion === KvVersion.V2
-    ? `${removeTrailingSlash(mount)}/data/${path}`
-    : `${removeTrailingSlash(mount)}/${path}`;
+  const urlPath =
+    mountVersion === KvVersion.V2
+      ? `${removeTrailingSlash(mount)}/data/${path}`
+      : `${removeTrailingSlash(mount)}/${path}`;
+  const url = `${instanceUrl}/v1/${urlPath}`;
+
+  if (!isHCVaultUrlPathPreserved(url)) {
+    throw new SecretSyncError({
+      message: `Secrets engine mount '${mount}' and path '${path}' ${HC_VAULT_URL_PATH_CHARACTERS_MESSAGE}`,
+      shouldRetry: false
+    });
+  }
+
+  return url;
 };
 
 const getKvMountVersion = async ({
@@ -111,13 +124,13 @@ const listHCVaultVariables = async (
   connection: THCVaultConnection,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ): Promise<{ [key: string]: string }> => {
-  const urlPath = getKvUrlPath(mount, path, mountVersion);
+  const url = getKvUrl(instanceUrl, mount, path, mountVersion);
 
   try {
     if (mountVersion === KvVersion.V2) {
       // KV v2 response structure
       const { data } = await requestWithHCVaultGateway<THCVaultListVariablesResponse>(connection, gatewayV2Service, {
-        url: `${instanceUrl}/v1/${urlPath}`,
+        url,
         method: "GET",
         headers: {
           "X-Vault-Token": accessToken,
@@ -133,7 +146,7 @@ const listHCVaultVariables = async (
         [key: string]: string;
       };
     }>(connection, gatewayV2Service, {
-      url: `${instanceUrl}/v1/${urlPath}`,
+      url,
       method: "GET",
       headers: {
         "X-Vault-Token": accessToken,
@@ -160,13 +173,13 @@ const updateHCVaultVariables = async (
   connection: THCVaultConnection,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
-  const urlPath = getKvUrlPath(mount, path, mountVersion);
+  const url = getKvUrl(instanceUrl, mount, path, mountVersion);
 
   // KV v2 wraps data in { data: { ... } }, KV v1 sends data directly
   const payload = mountVersion === KvVersion.V2 ? { data } : data;
 
   return requestWithHCVaultGateway(connection, gatewayV2Service, {
-    url: `${instanceUrl}/v1/${urlPath}`,
+    url,
     method: "POST",
     headers: {
       "X-Vault-Token": accessToken,
@@ -250,9 +263,9 @@ export const HCVaultSyncFns = {
       // for kv v1: must DELETE the path entirely (empty secrets not allowed)
       // for kv v2: can write empty data to keep the path with metadata
       if (mountVersion === KvVersion.V1) {
-        const urlPath = getKvUrlPath(mount, path, mountVersion);
+        const url = getKvUrl(instanceUrl, mount, path, mountVersion);
         await requestWithHCVaultGateway(connection, gatewayV2Service, {
-          url: `${instanceUrl}/v1/${urlPath}`,
+          url,
           method: "DELETE",
           headers: {
             "X-Vault-Token": accessToken,
@@ -327,9 +340,9 @@ export const HCVaultSyncFns = {
         // for kv v1: must DELETE the path entirely (empty secrets not allowed)
         // for kv v2: can write empty data to keep the path with metadata
         if (mountVersion === KvVersion.V1) {
-          const urlPath = getKvUrlPath(mount, path, mountVersion);
+          const url = getKvUrl(instanceUrl, mount, path, mountVersion);
           await requestWithHCVaultGateway(connection, gatewayV2Service, {
-            url: `${instanceUrl}/v1/${urlPath}`,
+            url,
             method: "DELETE",
             headers: {
               "X-Vault-Token": accessToken,
