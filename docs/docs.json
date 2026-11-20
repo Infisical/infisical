@@ -673,7 +673,8 @@
                     "root": "documentation/platform/pam/sessions/overview",
                     "pages": [
                       "documentation/platform/pam/sessions/session-recording",
-                      "documentation/platform/pam/sessions/external-storage"
+                      "documentation/platform/pam/sessions/external-storage",
+                      "documentation/platform/pam/sessions/activity-streaming"
                     ]
                   },
                   "documentation/platform/pam/auditing",
