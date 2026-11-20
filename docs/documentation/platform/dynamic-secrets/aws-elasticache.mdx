@@ -10,6 +10,12 @@ The AWS ElastiCache dynamic secret creates a user on your [ElastiCache](https://
 
 To learn how leases work across providers, see [Dynamic secrets](/documentation/platform/dynamic-secrets/overview).
 
+## Prerequisites
+
+- An ElastiCache cluster running Redis OSS 6.0 or later, with encryption in transit turned on and set to **Required**
+- A cluster that doesn't already use a user group of your own (see [How Infisical controls access to the cluster](#how-infisical-controls-access-to-the-cluster))
+- A [role](/documentation/platform/access-controls/role-based-access-controls) in the Infisical project that lets you create dynamic secrets
+
 ## How Infisical controls access to the cluster
 
 ElastiCache uses [user groups](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Clusters.RBAC.html) to decide who can log in to a cluster. Infisical creates a user group for each cluster, named `infisical-` followed by a hash of the cluster name, and attaches the group to the cluster:
@@ -17,12 +23,6 @@ ElastiCache uses [user groups](https://docs.aws.amazon.com/AmazonElastiCache/lat
 - Each lease adds a user to its own cluster's group, so the lease works only on that cluster
 - The cluster refuses clients that connect without a username and password
 - A cluster can use only one user group, so Infisical can't use a cluster that already has a user group of your own
-
-## Prerequisites
-
-- An ElastiCache cluster running Redis OSS 6.0 or later, with encryption in transit turned on and set to **Required**
-- A cluster that doesn't already use a user group of your own (see [How Infisical controls access to the cluster](#how-infisical-controls-access-to-the-cluster))
-- A [role](/documentation/platform/access-controls/role-based-access-controls) in the Infisical project that lets you create dynamic secrets
 
 ## Step 1: Create an IAM user for Infisical
 
@@ -156,10 +156,15 @@ When a lease expires, Infisical deletes its user from the cluster.
 Earlier versions of Infisical attached one shared user group, `infisical-managed-group-elasticache`, to every cluster. If your cluster uses that group, Infisical moves the cluster to its own user group:
 
 1. The first lease after you upgrade asks you to try again in a minute, while Infisical creates the cluster's group
-2. The next lease moves the cluster to its own group, and the users of existing leases move with it, so those leases keep working
+2. The next lease moves the cluster to its own group, and existing leases from the same dynamic secret keep working
 3. From then on, the cluster refuses clients that connect without a username and password
 
-Make sure every application that connects to the cluster logs in with a username and password before the cluster moves. Each cluster moves on its own next lease. When no cluster uses `infisical-managed-group-elasticache` anymore, you can delete the group in the ElastiCache console.
+Before the cluster moves:
+
+- Make sure every application that connects to the cluster logs in with a username and password
+- If other dynamic secrets also use the cluster, plan to create new leases for them, because their existing leases stop working when the cluster moves
+
+Each cluster moves on its own next lease. When no cluster uses `infisical-managed-group-elasticache` anymore, you can delete the group in the ElastiCache console.
 
 ## Troubleshooting
 
