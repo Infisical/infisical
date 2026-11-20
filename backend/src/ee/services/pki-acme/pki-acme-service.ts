@@ -36,7 +36,7 @@ import {
   TCertificateIssuanceQueueFactory,
   TIssueCertificateFromProfileJobData
 } from "@app/services/certificate-authority/certificate-issuance-queue";
-import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import { ACME_SAN_TYPES, CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
@@ -1277,11 +1277,7 @@ export const pkiAcmeServiceFactory = ({
         return error;
       };
 
-      const allowedSanTypes = new Set([
-        CertSubjectAlternativeNameType.DNS_NAME,
-        CertSubjectAlternativeNameType.IP_ADDRESS
-      ]);
-      if (certificateRequest.subjectAlternativeNames?.some((san) => !allowedSanTypes.has(san.type))) {
+      if (certificateRequest.subjectAlternativeNames?.some((san) => !ACME_SAN_TYPES.includes(san.type))) {
         throw await $rejectCsr("Invalid CSR: Only DNS and IP subject alternative names are supported");
       }
 

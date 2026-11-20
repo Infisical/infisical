@@ -60,6 +60,10 @@ import {
   useUpdateCertificatePolicy
 } from "@app/hooks/api/certificatePolicies";
 import { isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
+import {
+  isSupportedSanRuleValue,
+  UNSUPPORTED_REFERENCE_MESSAGE
+} from "@app/pages/cert-manager/CertificatesPage/components/certificateUtils";
 
 import { RequestReferenceCombobox } from "../../../components/RequestReferenceCombobox";
 import { PkiDocsUrls } from "../../../pki-docs-urls";
@@ -1100,6 +1104,14 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
         }
         if (restrictSans && watchedSans.some((s) => !s.value?.[0]?.trim())) {
           stepErrors.sans = "Every subject alternative name needs a value (use * for any).";
+        }
+        if (
+          restrictSans &&
+          watchedSans.some((san) =>
+            (san.value ?? []).some((value) => !isSupportedSanRuleValue(value))
+          )
+        ) {
+          stepErrors.sans = UNSUPPORTED_REFERENCE_MESSAGE;
         }
         const allowsCommonName =
           !restrictSubject ||

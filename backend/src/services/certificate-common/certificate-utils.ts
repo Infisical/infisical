@@ -3,12 +3,7 @@ import RE2 from "re2";
 import { PlanFeature, PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import {
-  matchesNormalizedPattern,
-  matchesSanRuleValue,
-  resolveSanRules,
-  TSanRuleValue
-} from "@app/services/certificate-policy/certificate-policy-fns";
+import { matchesNormalizedPattern, matchesSanRuleValue } from "@app/services/certificate-policy/certificate-policy-fns";
 import { TSubjectRule } from "@app/services/certificate-policy/certificate-policy-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -210,24 +205,24 @@ export const buildSubjectAlternativeNamesFromTemplate = (
     return request.subjectAlternativeNames.map((san) => san.value).join(",");
   }
 
-  const sanRules = resolveSanRules(templateSans, request);
   const allowedSans: string[] = [];
 
   request.subjectAlternativeNames.forEach((san) => {
-    const sanRule = sanRules.find((rule) => rule.type === san.type);
+    const sanRule = templateSans.find((rule) => rule.type === san.type);
 
     if (!sanRule) {
       allowedSans.push(san.value);
       return;
     }
 
-    const matchesAny = (ruleValues?: TSanRuleValue[]) =>
+    const matchesAny = (ruleValues?: string[]) =>
       Boolean(
         ruleValues?.some((ruleValue) =>
           matchesSanRuleValue({
             sanType: san.type,
             sanValue: san.value,
             ruleValue,
+            commonName: request.commonName,
             matchesPattern: (value, pattern) => matchesNormalizedPattern(value.toLowerCase(), pattern.toLowerCase())
           })
         )

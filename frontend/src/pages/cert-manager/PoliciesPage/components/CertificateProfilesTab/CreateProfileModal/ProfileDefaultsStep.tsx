@@ -156,7 +156,7 @@ const AttributeListEditor = <T extends string>({
               <RequestReferenceCombobox
                 aria-label="Default value"
                 placeholder={getPlaceholder(entry.type)}
-                referenceHint="The common name of each request is added as this SAN type when it is valid for it, even when the request lists other SANs."
+                referenceHint="Added as this SAN type when the request lists no SANs and its common name is valid for the type."
                 value={entry.value}
                 onChange={(value) => {
                   const next = [...items];
@@ -396,7 +396,7 @@ export const ProfileDefaultsStep = ({
       {policyConstraints.shouldShowSanSection && (
         <AttributeListEditor<CertSubjectAlternativeNameType>
           title="Subject Alternative Names"
-          description='Default subject alternative names applied when a request omits them. A "Same as common name" default is added even when the request lists its own SANs.'
+          description="Default subject alternative names applied when a request omits them."
           emptyMessage="No SAN defaults configured."
           keyPrefix="def-san-"
           selectTriggerClassName="w-40"

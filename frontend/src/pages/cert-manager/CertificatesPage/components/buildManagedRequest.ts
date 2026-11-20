@@ -4,7 +4,14 @@ import { TUnifiedCertificateIssuanceDTO } from "@app/hooks/api/certificates/type
 import { CertSubjectAttributeType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import type { FormData } from "./CertificateIssuanceModal";
-import { filterUsages, formatSubjectAltNames, SUBJECT_ATTR_MAP } from "./certificateUtils";
+import {
+  filterUsages,
+  formatSubjectAltNames,
+  getProfileReferenceSans,
+  getProfileStaticSans,
+  isOnlyProfileStaticSans,
+  SUBJECT_ATTR_MAP
+} from "./certificateUtils";
 import type { TemplateConstraints } from "./useCertificatePolicy";
 
 type ManagedFormData = Extract<FormData, { requestMethod: "managed" }>;
@@ -91,7 +98,10 @@ export const buildManagedRequest = ({
   }
 
   if (constraints.shouldShowSanSection) {
-    if (subjectAltNames && subjectAltNames.length > 0) {
+    const isLeftToProfileDefaults =
+      getProfileReferenceSans(defaults).length > 0 &&
+      isOnlyProfileStaticSans(subjectAltNames ?? [], getProfileStaticSans(defaults));
+    if (subjectAltNames && subjectAltNames.length > 0 && !isLeftToProfileDefaults) {
       const formattedSans = formatSubjectAltNames(subjectAltNames);
       if (formattedSans && formattedSans.length > 0) {
         request.attributes.altNames = formattedSans;

@@ -39,14 +39,8 @@ import {
 } from "../certificate-common/certificate-extension-fns";
 import { mapEnumsForValidation } from "../certificate-common/certificate-utils";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
-import { EnrollmentType, TCertificateProfileDefaults } from "../certificate-profile/certificate-profile-types";
-import { applyCommonNameDefaultSan, parseExtendedKeyUsages, parseKeyUsages } from "./certificate-v3-fns";
-import {
-  CertificateRenewalKeySource,
-  TAltNameEntry,
-  TRenewalAttributes,
-  TRenewalAuditChange
-} from "./certificate-v3-types";
+import { parseExtendedKeyUsages, parseKeyUsages } from "./certificate-v3-fns";
+import { CertificateRenewalKeySource, TRenewalAttributes, TRenewalAuditChange } from "./certificate-v3-types";
 
 export enum CertificateRenewalMode {
   SelfSigned = "self-signed",
@@ -265,7 +259,7 @@ export const assertCsrRenewalAttributes = (
     );
     throw new BadRequestError({
       message: isStoredCsr
-        ? `Reusing this key pair renews from the signing request Infisical holds for it, which sets ${rejected.join(", ")}. To change them, renew with a new CSR or a new key pair. Only ${settable.join(", ")} can be set when reusing the key pair.`
+        ? `Reusing this key pair renews from the signing request Infisical holds for it and the certificate's current names, which set ${rejected.join(", ")}. To change them, renew with a new CSR or a new key pair. Only ${settable.join(", ")} can be set when reusing the key pair.`
         : `The CSR is the source of truth for ${rejected.join(", ")}. Update the CSR instead, or renew without one. Only ${settable.join(", ")} can be set alongside a CSR.`
     });
   }
@@ -483,23 +477,6 @@ export const keepCertificateFactsInCsrRenewal = (
     : certificate.extendedKeyUsages,
   basicConstraints: csrRequest.basicConstraints ?? certificate.basicConstraints
 });
-
-export const withCommonNameDefaultSan = <T extends Pick<TCertificateRequest, "commonName" | "subjectAlternativeNames">>(
-  request: T,
-  {
-    defaults,
-    isCsrSignedAsSent = false
-  }: { defaults: TCertificateProfileDefaults | null | undefined; isCsrSignedAsSent?: boolean }
-): { request: T; altNameEntries?: TAltNameEntry[] } => {
-  const { subjectAlternativeNames, altNameEntries } = applyCommonNameDefaultSan({
-    defaults,
-    enrollmentType: EnrollmentType.API,
-    commonName: request.commonName,
-    subjectAlternativeNames: request.subjectAlternativeNames,
-    isCsrSignedAsSent
-  });
-  return { request: { ...request, subjectAlternativeNames }, altNameEntries };
-};
 
 export const buildRenewalAuditChanges = (
   replayedRequest: TCertificateRequest,

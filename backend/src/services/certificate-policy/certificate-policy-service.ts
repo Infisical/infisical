@@ -44,8 +44,7 @@ import {
   matchesNormalizedPattern,
   matchesSanRuleValue,
   normalizeUriForComparison,
-  resolveSanRules,
-  TSanRuleValue,
+  RequestReference,
   validateDomainComponentsAgainstRule
 } from "./certificate-policy-fns";
 import {
@@ -167,6 +166,16 @@ export const certificatePolicyServiceFactory = ({
             });
           }
         }
+      }
+
+      const deniedValues = new Set(san.denied);
+      const conflicting = (san.required ?? []).filter((value) => deniedValues.has(value));
+      if (conflicting.length > 0) {
+        throw new BadRequestError({
+          message: `SAN rule for type '${san.type}' both requires and denies ${conflicting
+            .map((value) => (value === RequestReference.CommonName ? `"Same as common name" (${value})` : value))
+            .join(", ")}, so no request could ever satisfy it.`
+        });
       }
     }
   };
@@ -453,7 +462,7 @@ export const certificatePolicyServiceFactory = ({
 
     // Validate Subject Alternative Names. An undefined SAN policy means no constraint (allow all);
     // an empty array means nothing is allowed, so every request SAN below is rejected as uncovered.
-    const sansPolicies = template.sans && resolveSanRules(template.sans, request);
+    const sansPolicies = template.sans;
     if (sansPolicies) {
       const requestSansByType = new Map<string, string[]>();
 
@@ -472,11 +481,12 @@ export const certificatePolicyServiceFactory = ({
         const requestSans = requestSansByType.get(sanPolicy.type) || [];
 
         const isUriSan = sanPolicy.type === CertSubjectAlternativeNameType.URI;
-        const matchesRuleValue = (sanValue: string, ruleValue: TSanRuleValue) =>
+        const matchesRuleValue = (sanValue: string, ruleValue: string) =>
           matchesSanRuleValue({
             sanType: sanPolicy.type,
             sanValue,
             ruleValue,
+            commonName: request.commonName,
             matchesPattern: (value, pattern) =>
               validateValueAgainstConstraints(value, [pattern], `${sanPolicy.type} SAN`, isUriSan).isValid
           });
@@ -485,7 +495,7 @@ export const certificatePolicyServiceFactory = ({
         if (!options?.skipRequired && sanPolicy.required && sanPolicy.required.length > 0) {
           for (const requiredValue of sanPolicy.required) {
             if (!requestSans.some((sanValue) => matchesRuleValue(sanValue, requiredValue))) {
-              errors.push(describeMissingRequiredSan(sanPolicy.type, requiredValue));
+              errors.push(describeMissingRequiredSan(sanPolicy.type, requiredValue, request.commonName));
             }
           }
         }
@@ -505,7 +515,7 @@ export const certificatePolicyServiceFactory = ({
           const permittedValues = [...(sanPolicy.required ?? []), ...sanPolicy.allowed];
           for (const sanValue of requestSans) {
             if (!permittedValues.some((ruleValue) => matchesRuleValue(sanValue, ruleValue))) {
-              errors.push(describeDisallowedSan(sanPolicy.type, sanValue, sanPolicy.allowed));
+              errors.push(describeDisallowedSan(sanPolicy.type, sanValue, sanPolicy.allowed, request.commonName));
             }
           }
         }

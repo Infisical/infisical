@@ -102,6 +102,7 @@ import {
   removeRootCaFromChain,
   validateCertificateRequestLicense
 } from "../certificate-common/certificate-utils";
+import { isRequestReference } from "../certificate-policy/certificate-policy-fns";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import {
   holdCertificateRequestForApproval,
@@ -663,7 +664,8 @@ export const certificateV3ServiceFactory = ({
         defaults: profile.defaults,
         enrollmentType: EnrollmentType.API,
         commonName: profileDefaultedRequest.commonName,
-        subjectAlternativeNames: profileDefaultedRequest.altNames
+        subjectAlternativeNames: profileDefaultedRequest.altNames,
+        requestedSubjectAlternativeNames: certificateRequest.altNames ?? []
       }).subjectAlternativeNames
     };
 
@@ -1369,7 +1371,8 @@ export const certificateV3ServiceFactory = ({
     removeRootsFromChain,
     basicConstraints,
     applicationId: explicitApplicationId,
-    acmeOrderId
+    acmeOrderId,
+    skipCommonNameDefaultSan
   }: TSignCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
     const profile = await validateProfileAndPermissions({
       profileId,
@@ -1427,7 +1430,7 @@ export const certificateV3ServiceFactory = ({
       subjectAlternativeNames: subjectAlternativeNamesWithCommonName,
       altNameEntries: altNameEntriesWithCommonName
     } = applyCommonNameDefaultSan({
-      defaults: profile.defaults,
+      defaults: skipCommonNameDefaultSan ? null : profile.defaults,
       enrollmentType,
       commonName: certificateRequest.commonName,
       csrCommonName: csrCertificateRequest.commonName,
@@ -1914,7 +1917,9 @@ export const certificateV3ServiceFactory = ({
         commonName: certificateOrder.commonName,
         keyUsages: certificateOrder.keyUsages,
         extendedKeyUsages: certificateOrder.extendedKeyUsages,
-        subjectAlternativeNames: certificateOrder.altNames,
+        subjectAlternativeNames: certificateOrder.altNames?.length
+          ? certificateOrder.altNames
+          : profile.defaults?.subjectAltNames?.filter((san) => !isRequestReference(san.value)),
         notBefore: certificateOrder.notBefore,
         notAfter: certificateOrder.notAfter,
         signatureAlgorithm: certificateOrder.signatureAlgorithm,
@@ -1940,6 +1945,9 @@ export const certificateV3ServiceFactory = ({
       enrollmentType: EnrollmentType.API,
       commonName: certificateRequest.commonName,
       subjectAlternativeNames: certificateRequest.subjectAlternativeNames,
+      requestedSubjectAlternativeNames: certificateOrder.csr
+        ? certificateRequest.subjectAlternativeNames
+        : (certificateOrder.altNames ?? []),
       isCsrSignedAsSent:
         Boolean(certificateOrder.csr) && caSignsCsrAsSent(preflightCa?.externalCa?.type as CaType | undefined)
     }).subjectAlternativeNames;
@@ -2017,7 +2025,7 @@ export const certificateV3ServiceFactory = ({
       validateAcmIssuanceInputs({
         csr: certificateOrder.csr,
         keyAlgorithm: certificateOrder.keyAlgorithm,
-        altNames: certificateOrder.altNames,
+        altNames: certificateRequest.subjectAlternativeNames,
         ttl: orderEffectiveTtl,
         notBefore: certificateOrder.notBefore,
         notAfter: certificateOrder.notAfter,
@@ -2191,7 +2199,7 @@ export const certificateV3ServiceFactory = ({
         validateAcmIssuanceInputs({
           csr: certificateOrder.csr,
           keyAlgorithm: certificateOrder.keyAlgorithm,
-          altNames: certificateOrder.altNames,
+          altNames: certificateRequest.subjectAlternativeNames,
           ttl: orderEffectiveTtl,
           notBefore: certificateOrder.notBefore,
           notAfter: certificateOrder.notAfter,
@@ -2212,8 +2220,8 @@ export const certificateV3ServiceFactory = ({
           keyAlgorithm: certificateOrder.csr
             ? extractAlgorithmsFromCSR(certificateOrder.csr).keyAlgorithm
             : certificateOrder.keyAlgorithm,
-          altNames: csrDerived?.subjectAlternativeNames ?? certificateOrder.altNames,
-          commonName: csrDerived?.commonName ?? certificateOrder.commonName
+          altNames: csrDerived?.subjectAlternativeNames ?? certificateRequest.subjectAlternativeNames,
+          commonName: csrDerived?.commonName ?? certificateRequest.commonName
         });
       }
 

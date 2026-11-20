@@ -18,7 +18,12 @@ import {
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import { buildPolicyRules, withRequiredRows } from "./certificatePolicyGuidance";
-import { getProfileReferenceSans, SubjectAltName, SubjectAttribute } from "./certificateUtils";
+import {
+  getProfileReferenceSans,
+  getProfileStaticSans,
+  SubjectAltName,
+  SubjectAttribute
+} from "./certificateUtils";
 
 const convertTemplateTtlToCertificateTtl = (templateTtl: string): string => {
   const match = templateTtl.match(/^(\d+)([dmyh])$/);
@@ -238,6 +243,10 @@ export const useCertificatePolicy = (
     () => getProfileReferenceSans(selectedProfile?.defaults),
     [selectedProfile]
   );
+  const profileStaticSans = useMemo(
+    () => getProfileStaticSans(selectedProfile?.defaults),
+    [selectedProfile]
+  );
 
   const prevProfileIdRef = useRef<string | undefined>(undefined);
 
@@ -366,7 +375,8 @@ export const useCertificatePolicy = (
         buildPolicyRules(templateData),
         nextSubjectAttrs,
         nextSans,
-        getProfileReferenceSans(defaults)
+        getProfileReferenceSans(defaults),
+        getProfileStaticSans(defaults)
       );
       if (!isSameRows(watch("subjectAltNames"), seeded.subjectAltNames)) {
         setValue("subjectAltNames", seeded.subjectAltNames);
@@ -464,6 +474,7 @@ export const useCertificatePolicy = (
     availableSignatureAlgorithms,
     availableKeyAlgorithms,
     resetConstraints,
-    profileReferenceSans
+    profileReferenceSans,
+    profileStaticSans
   };
 };

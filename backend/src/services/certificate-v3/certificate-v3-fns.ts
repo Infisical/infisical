@@ -1,11 +1,13 @@
+import * as x509 from "@peculiar/x509";
+
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
-import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
+import { CertExtendedKeyUsage, CertKeyUsage, toAltNameMappings } from "@app/services/certificate/certificate-types";
 
 import {
+  ACME_SAN_TYPES,
   CertExtendedKeyUsageType,
   CertKeyUsageType,
-  CertSubjectAlternativeNameType,
   mapLegacyExtendedKeyUsageToStandard,
   mapLegacyKeyUsageToStandard
 } from "../certificate-common/certificate-constants";
@@ -148,17 +150,13 @@ export const applyProfileDefaults = <
   };
 };
 
-const ACME_COMMON_NAME_SAN_TYPES: CertSubjectAlternativeNameType[] = [
-  CertSubjectAlternativeNameType.DNS_NAME,
-  CertSubjectAlternativeNameType.IP_ADDRESS
-];
-
 export const applyCommonNameDefaultSan = ({
   defaults,
   enrollmentType,
   commonName: requestedCommonName,
   csrCommonName,
   subjectAlternativeNames,
+  requestedSubjectAlternativeNames = subjectAlternativeNames,
   isCsrSignedAsSent = false
 }: {
   defaults: TCertificateProfileDefaults | null | undefined;
@@ -166,17 +164,17 @@ export const applyCommonNameDefaultSan = ({
   commonName?: string | null;
   csrCommonName?: string | null;
   subjectAlternativeNames?: TAltNameEntry[];
+  requestedSubjectAlternativeNames?: TAltNameEntry[];
   isCsrSignedAsSent?: boolean;
 }): { subjectAlternativeNames?: TAltNameEntry[]; altNameEntries?: TAltNameEntry[] } => {
   const isAcme = enrollmentType === EnrollmentType.ACME;
   const commonName = isAcme ? csrCommonName : requestedCommonName;
-  if (!commonName || isCsrSignedAsSent) return { subjectAlternativeNames };
+  if (!commonName || isCsrSignedAsSent || requestedSubjectAlternativeNames?.length) {
+    return { subjectAlternativeNames };
+  }
 
   const subjectAlternativeNamesWithCommonName = (defaults?.subjectAltNames ?? [])
-    .filter(
-      ({ type, value }) =>
-        value === RequestReference.CommonName && (!isAcme || ACME_COMMON_NAME_SAN_TYPES.includes(type))
-    )
+    .filter(({ type, value }) => value === RequestReference.CommonName && (!isAcme || ACME_SAN_TYPES.includes(type)))
     .reduce<TAltNameEntry[]>((sans, { type }) => {
       const san = { type, value: commonName };
       return isValidSanValue(type, commonName) && !includesSan(sans, san) ? [...sans, san] : sans;
@@ -189,6 +187,32 @@ export const applyCommonNameDefaultSan = ({
     subjectAlternativeNames: subjectAlternativeNamesWithCommonName,
     altNameEntries: subjectAlternativeNamesWithCommonName
   };
+};
+
+export const getCommonNameDefaultSubjectAltNames = ({
+  defaults,
+  enrollmentType,
+  csr,
+  isCsrSignedAsSent
+}: {
+  defaults: TCertificateProfileDefaults | null | undefined;
+  enrollmentType: EnrollmentType;
+  csr: x509.Pkcs10CertificateRequest;
+  isCsrSignedAsSent?: boolean;
+}): x509.Extension | null => {
+  const hasCommonNameDefault = defaults?.subjectAltNames?.some((san) => san.value === RequestReference.CommonName);
+  if (!hasCommonNameDefault || csr.extensions.some((extension) => extension.type === "2.5.29.17")) return null;
+
+  const [commonName] = csr.subjectName.getField("CN");
+  const { altNameEntries } = applyCommonNameDefaultSan({
+    defaults,
+    enrollmentType,
+    commonName,
+    csrCommonName: commonName,
+    subjectAlternativeNames: [],
+    isCsrSignedAsSent
+  });
+  return altNameEntries?.length ? new x509.SubjectAlternativeNameExtension(toAltNameMappings(altNameEntries)) : null;
 };
 
 export const parseKeyUsages = (keyUsages: unknown): CertKeyUsageType[] => {

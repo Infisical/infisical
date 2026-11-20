@@ -333,7 +333,9 @@ export enum ScepRenewalDenyReason {
   SubjectAltNameMismatch = "subject-alt-name-mismatch"
 }
 
-export type TScepRenewalAuthResult = { authorized: true } | { authorized: false; reason: ScepRenewalDenyReason };
+export type TScepRenewalAuthResult =
+  | { authorized: true; isCsrSanMatch: boolean }
+  | { authorized: false; reason: ScepRenewalDenyReason };
 
 const DN_WHITESPACE_RE = new RE2("\\s+", "g");
 
@@ -421,6 +423,7 @@ export const evaluateScepRenewalAuthorization = ({
   csrSubjectName,
   signerCertSubjectName,
   csrSubjectAltNames,
+  csrCommonNameDefaultSubjectAltNames,
   signerCertSubjectAltNames
 }: {
   isValidSigner: boolean;
@@ -432,6 +435,7 @@ export const evaluateScepRenewalAuthorization = ({
   csrSubjectName: x509.Name;
   signerCertSubjectName: x509.Name;
   csrSubjectAltNames?: x509.Extension | null;
+  csrCommonNameDefaultSubjectAltNames?: x509.Extension | null;
   signerCertSubjectAltNames?: x509.Extension | null;
 }): TScepRenewalAuthResult => {
   if (!isValidSigner) {
@@ -454,8 +458,12 @@ export const evaluateScepRenewalAuthorization = ({
     return { authorized: false, reason: ScepRenewalDenyReason.SubjectMismatch };
   }
 
+  const signerCertSans = normalizeIssuedSubjectAltNames(signerCertSubjectAltNames);
+  const isCsrSanMatch = normalizeIssuedSubjectAltNames(csrSubjectAltNames) === signerCertSans;
   if (
-    normalizeIssuedSubjectAltNames(csrSubjectAltNames) !== normalizeIssuedSubjectAltNames(signerCertSubjectAltNames)
+    !isCsrSanMatch &&
+    (!csrCommonNameDefaultSubjectAltNames ||
+      normalizeIssuedSubjectAltNames(csrCommonNameDefaultSubjectAltNames) !== signerCertSans)
   ) {
     return { authorized: false, reason: ScepRenewalDenyReason.SubjectAltNameMismatch };
   }
@@ -473,7 +481,7 @@ export const evaluateScepRenewalAuthorization = ({
     }
   }
 
-  return { authorized: true };
+  return { authorized: true, isCsrSanMatch };
 };
 
 export const getScepCapabilities = ({ allowCertBasedRenewal }: { allowCertBasedRenewal: boolean }): string => {

@@ -1,8 +1,10 @@
-import { isValidEmail } from "@app/helpers/email";
+import { z } from "zod";
+
 import { isIPv4, isIPv6 } from "@app/helpers/ip";
 import { CaType } from "@app/hooks/api/ca";
 import { TCertificateProfileDefaults } from "@app/hooks/api/certificateProfiles/types";
 import {
+  COMMON_NAME_REFERENCE_LABEL,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
   isRequestReference
@@ -45,9 +47,34 @@ export const getProfileReferenceSans = (
     isRequestReference(san.value)
   );
 
+export const getProfileStaticSans = (
+  defaults?: TCertificateProfileDefaults | null
+): SubjectAltName[] =>
+  (defaults?.subjectAltNames ?? []).filter(
+    (san): san is SubjectAltName => !isRequestReference(san.value)
+  );
+
+export const isOnlyProfileStaticSans = (
+  subjectAltNames: SubjectAltName[],
+  profileStaticSans: SubjectAltName[]
+): boolean => {
+  const toKeys = (sans: SubjectAltName[]) =>
+    sans
+      .filter((san) => san.value.trim())
+      .map((san) => `${san.type}:${san.value.trim()}`)
+      .sort()
+      .join("\n");
+  return profileStaticSans.length > 0 && toKeys(subjectAltNames) === toKeys(profileStaticSans);
+};
+
 const REQUEST_REFERENCE_OPENING = "{{";
 
 export const isLiteralSanValue = (value: string) => !value.includes(REQUEST_REFERENCE_OPENING);
+
+export const isSupportedSanRuleValue = (value: string) =>
+  isLiteralSanValue(value) || isRequestReference(value);
+
+export const UNSUPPORTED_REFERENCE_MESSAGE = `Only "${COMMON_NAME_REFERENCE_LABEL}" is supported`;
 
 export type SubjectAttribute = {
   type: CertSubjectAttributeType;
@@ -80,6 +107,8 @@ const MAX_DNS_NAME_LENGTH = 253;
 const DNS_NAME_REGEX =
   /^(\*\.)?([a-z0-9_]([a-z0-9_-]{0,61}[a-z0-9_])?\.)*[a-z0-9_]([a-z0-9_-]{0,61}[a-z0-9_])?\.?$/i;
 
+const isEmailValue = (value: string) => z.string().email().safeParse(value).success;
+
 const isUriValue = (value: string) => {
   try {
     return Boolean(new URL(value).protocol);
@@ -95,8 +124,8 @@ const SAN_VALUE_VALIDATORS: Record<CertSubjectAlternativeNameType, (value: strin
     !isIPv6(value) &&
     DNS_NAME_REGEX.test(value),
   [CertSubjectAlternativeNameType.IP_ADDRESS]: (value) => isIPv4(value) || isIPv6(value),
-  [CertSubjectAlternativeNameType.EMAIL]: isValidEmail,
-  [CertSubjectAlternativeNameType.UPN]: isValidEmail,
+  [CertSubjectAlternativeNameType.EMAIL]: isEmailValue,
+  [CertSubjectAlternativeNameType.UPN]: isEmailValue,
   [CertSubjectAlternativeNameType.URI]: isUriValue
 };
 

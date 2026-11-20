@@ -202,6 +202,26 @@ describe("CertificatePolicyService", () => {
       expect(mockCertificatePolicyDAL.create).not.toHaveBeenCalled();
     });
 
+    it("refuses a SAN rule that requires and denies the same value", async () => {
+      await expect(
+        service.createPolicy({
+          ...mockActor,
+          projectId: "project-123",
+          data: {
+            ...createData,
+            sans: [
+              {
+                type: CertSubjectAlternativeNameType.DNS_NAME,
+                required: [RequestReference.CommonName],
+                denied: [RequestReference.CommonName]
+              }
+            ]
+          }
+        })
+      ).rejects.toThrow("both requires and denies");
+      expect(mockCertificatePolicyDAL.create).not.toHaveBeenCalled();
+    });
+
     // Previously tested service-level validations that are now schema-level:
     // - Missing attributes validation (now mandatory in schema)
     // - Missing key usages validation (now mandatory in schema)

@@ -6,7 +6,7 @@ description: "Manually renew a certificate, and change its subject, names, valid
 
 Certificates expire, and the details they carry go out of date. A manual renewal issues a replacement for a certificate you already have, and lets you correct it at the same time: add a name the service now answers to, extend the validity, or decide whether the replacement keeps the current key pair.
 
-This is the counterpart to automatic renewal, which renews a certificate on a schedule. Reach for a manual renewal when something about the certificate needs to change, or when you want the replacement now rather than at the next renewal window.
+This is the counterpart to automatic renewal, which renews a certificate exactly as it is on a schedule. Reach for a manual renewal when something about the certificate needs to change, or when you want the replacement now rather than at the next renewal window.
 
 <Note>
   A certificate can be renewed when it was issued from a [certificate profile](/documentation/platform/pki/applications/enrollment-methods/api), is still active, and hasn't already been renewed. Certificates obtained through [ACME](/documentation/platform/pki/applications/enrollment-methods/acme), [EST](/documentation/platform/pki/applications/enrollment-methods/est), or [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) are renewed by the client that requested them, not from here.
@@ -14,7 +14,7 @@ This is the counterpart to automatic renewal, which renews a certificate on a sc
 
 ## How a renewal is built
 
-The renewed certificate starts as a copy of the one being renewed. Only what you explicitly change is different, apart from the common name SAN described below.
+The renewed certificate starts as an exact copy of the one being renewed. Only what you explicitly change is different.
 
 | What you do | What happens |
 |-------------|--------------|
@@ -23,9 +23,7 @@ The renewed certificate starts as a copy of the one being renewed. Only what you
 | Clear a field | The attribute is dropped from the renewed certificate |
 | Edit a list, such as names or key usages | The list you submit replaces the current one |
 
-If the certificate profile has a [default SAN that copies the common name](/documentation/platform/pki/settings/profiles#add-the-common-name-as-a-san) and the certificate doesn't have that SAN, the renewal adds it. That counts as a change to the certificate's names, the same as adding a name yourself, so it can require approval and counts toward your certificate limits.
-
-Other defaults configured on the certificate profile are deliberately not applied. They describe what a **new** certificate should look like, so applying them during a renewal would rewrite fields you never touched. The profile's [certificate policy](/documentation/platform/pki/settings/policies) still validates the result, so a renewal can't produce a certificate the policy would have rejected at issuance.
+Defaults configured on the certificate profile are deliberately not applied. They describe what a **new** certificate should look like, so applying them during a renewal would rewrite fields you never touched. The profile's [certificate policy](/documentation/platform/pki/settings/policies) still validates the result, so a renewal can't produce a certificate the policy would have rejected at issuance.
 
 ## Choosing how the key pair is handled
 
@@ -61,7 +59,7 @@ AWS Certificate Manager can't issue from a CSR, so its certificates renew only w
 
 On a private CA, Reuse works for any certificate whose private key Infisical holds. It also works without the key when Infisical holds a CSR generated from it, either the one the certificate was issued from or one you supplied at [import](/documentation/platform/pki/applications/certificates#keeping-your-private-key-on-your-own-servers). An external CA can reuse a key pair only this way.
 
-If Infisical holds a CSR but not the private key, a Reuse renewal works like **Use a CSR**. The CSR sets the subject and names, as [Renewing from a signing request](#renewing-from-a-signing-request) describes.
+If Infisical holds a CSR but not the private key, a Reuse renewal works like **Use a CSR**, as [Renewing from a signing request](#renewing-from-a-signing-request) describes. The CSR sets the subject, and the renewed certificate keeps the names the current one was issued with.
 
 ## What you can change
 
@@ -155,7 +153,7 @@ Automatic renewal always places a new order. To reissue on the existing order, r
 
     `renewalKeySource` accepts `new`, `reuse`, or `csr`. Supply `csr` alongside `renewalKeySource: "csr"`. To clear an attribute, send it as `null`.
 
-    If Infisical holds a CSR for the certificate but not its private key, a `reuse` renewal accepts only `ttl`, `basicConstraints`, and `customExtensions` in `attributes`, because the CSR sets everything else.
+    If Infisical holds a CSR for the certificate but not its private key, a `reuse` renewal accepts only `ttl`, `basicConstraints`, and `customExtensions` in `attributes`, because the CSR and the current certificate set everything else.
 
     To reissue a DigiCert certificate on its current order, send `"externalConfiguration": { "reissue": true }` and leave out `ttl`.
 

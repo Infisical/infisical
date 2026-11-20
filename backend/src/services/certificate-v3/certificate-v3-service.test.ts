@@ -1565,16 +1565,7 @@ describe("CertificateV3Service", () => {
       );
     });
 
-    it("counts the common name SAN the profile default adds to a CSR that has no SANs", async () => {
-      const probedKey = await signCsrAndReadQuotaKey(
-        { subjectAltNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: RequestReference.CommonName }] },
-        { commonName: "app.example.com" }
-      );
-
-      expect(probedKey).toBe(buildCertificateQuotaKey({ commonName: "app.example.com", altNames: "app.example.com" }));
-    });
-
-    it("signs the CSR with the common name SAN the profile default adds", async () => {
+    it("counts and signs the common name SAN the profile default adds to a CSR that has no SANs", async () => {
       vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
         isValid: true,
         errors: [],
@@ -1582,11 +1573,12 @@ describe("CertificateV3Service", () => {
       });
       vi.mocked(mockInternalCaService.signCertFromCa).mockRejectedValue(new Error("stop after signing"));
 
-      await signCsrAndReadQuotaKey(
+      const probedKey = await signCsrAndReadQuotaKey(
         { subjectAltNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: RequestReference.CommonName }] },
         { commonName: "app.example.com" }
       );
 
+      expect(probedKey).toBe(buildCertificateQuotaKey({ commonName: "app.example.com", altNames: "app.example.com" }));
       expect(mockInternalCaService.signCertFromCa).toHaveBeenCalledWith(
         expect.objectContaining({
           altNameEntries: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "app.example.com" }]
@@ -2586,10 +2578,6 @@ describe("CertificateV3Service", () => {
   });
 
   describe("renewCertificate", () => {
-    const commonNameDefaultSans = {
-      subjectAltNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: RequestReference.CommonName }]
-    };
-
     const mockOriginalCert = {
       id: "cert-123",
       status: CertStatus.ACTIVE,
@@ -2766,19 +2754,6 @@ describe("CertificateV3Service", () => {
         ).rejects.toThrow(/wildcard/i);
       });
 
-      it("counts a renewal whose only new name is the common name SAN the profile default adds as a name change", async () => {
-        atCap();
-        vi.mocked(mockCertificateDAL.findById).mockResolvedValue({ ...mockOriginalCert, altNames: "api.example.com" });
-        vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue({
-          ...mockProfile,
-          defaults: commonNameDefaultSans
-        } as never);
-
-        await service.renewCertificate({ certificateId: "cert-123", ...mockActor }).catch(() => undefined);
-
-        expect(mockCertManagerService.countActiveCertificateQuota).toHaveBeenCalled();
-      });
-
       it("never consults the cap when the names are unchanged, so a live certificate cannot be blocked from renewing", async () => {
         atCap();
 
@@ -2917,19 +2892,6 @@ describe("CertificateV3Service", () => {
         });
 
         expect(result.status).toBe(CertificateRequestStatus.PENDING_APPROVAL);
-      });
-
-      it("holds a renewal that adds the profile's common name SAN for approval, like any other name change", async () => {
-        setupRenewal({ ...mockOriginalCert, altNames: "api.example.com" });
-        vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue({
-          ...mockProfile,
-          defaults: commonNameDefaultSans
-        } as never);
-
-        const result = await service.renewCertificate({ certificateId: "cert-123", ...mockActor });
-
-        expect(result.status).toBe(CertificateRequestStatus.PENDING_APPROVAL);
-        expect(mockInternalCaService.issueCertFromCa).not.toHaveBeenCalled();
       });
 
       it("renews an unchanged certificate it issued without asking for approval", async () => {
@@ -3286,25 +3248,6 @@ describe("CertificateV3Service", () => {
           ...(attributes && { attributes }),
           ...mockActor
         });
-
-      it("forwards the common name SAN the profile default adds to the signer when reusing the key", async () => {
-        setupKeylessRenewal({ caType: CaType.INTERNAL, importedCsr: STORED_CSR });
-        vi.mocked(extractCertificateRequestFromCSR).mockReturnValue({ commonName: "test.example.com" });
-        vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue({
-          ...mockProfile,
-          defaults: {
-            subjectAltNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: RequestReference.CommonName }]
-          }
-        } as any);
-
-        await reuse().catch(() => undefined);
-
-        expect(mockInternalCaService.signCertFromCa).toHaveBeenCalledWith(
-          expect.objectContaining({
-            altNameEntries: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "test.example.com" }]
-          })
-        );
-      });
 
       it.each(Object.values(CaType).filter((type) => type !== CaType.AWS_ACM_PUBLIC_CA))(
         "renews a %s certificate as a CSR renewal from the CSR supplied at import",

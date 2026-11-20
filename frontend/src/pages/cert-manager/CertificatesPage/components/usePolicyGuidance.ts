@@ -47,6 +47,7 @@ type UsePolicyGuidanceParams = {
   /** Identity of the current policy source; a change here starts every violation hidden again. */
   resetKey?: string;
   profileReferenceSans?: SubjectAltName[];
+  profileStaticSans?: SubjectAltName[];
 };
 
 export type PolicyGuidance = {
@@ -79,7 +80,8 @@ export const usePolicyGuidance = ({
   isSubjectEvaluated = true,
   isValidityEvaluated = true,
   resetKey,
-  profileReferenceSans = EMPTY_SUBJECT_ALT_NAMES
+  profileReferenceSans = EMPTY_SUBJECT_ALT_NAMES,
+  profileStaticSans = EMPTY_SUBJECT_ALT_NAMES
 }: UsePolicyGuidanceParams): PolicyGuidance => {
   const subjectAttributes: SubjectAttribute[] =
     watch("subjectAttributes") ?? EMPTY_SUBJECT_ATTRIBUTES;
@@ -101,7 +103,8 @@ export const usePolicyGuidance = ({
         subjectAltNames,
         isSubjectSectionShown,
         isSanSectionShown,
-        profileReferenceSans
+        profileReferenceSans,
+        profileStaticSans
       }),
     [
       rules,
@@ -109,7 +112,8 @@ export const usePolicyGuidance = ({
       subjectAltNames,
       isSubjectSectionShown,
       isSanSectionShown,
-      profileReferenceSans
+      profileReferenceSans,
+      profileStaticSans
     ]
   );
 

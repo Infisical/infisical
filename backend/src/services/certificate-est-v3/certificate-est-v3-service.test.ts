@@ -21,6 +21,9 @@ import { certificateEstV3ServiceFactory, TCertificateEstV3ServiceFactory } from 
 vi.mock("@peculiar/x509", () => ({
   Pkcs10CertificateRequest: vi.fn(),
   GeneralNames: vi.fn(),
+  SubjectAlternativeNameExtension: vi
+    .fn()
+    .mockImplementation((names: unknown) => ({ type: "2.5.29.17", value: names })),
   KeyUsagesExtension: vi.fn(),
   ExtendedKeyUsageExtension: vi.fn(),
   X509Certificate: vi.fn().mockImplementation(() => ({
@@ -427,6 +430,46 @@ describe("CertificateEstV3Service", () => {
       });
 
       expect(result).toBe("mocked-pkcs7-response");
+      expect(mockCertificateV3Service.signCertificateFromProfile).toHaveBeenCalledWith(
+        expect.objectContaining({ skipCommonNameDefaultSan: true })
+      );
+    });
+
+    it("re-enrolls a SAN-less CSR whose certificate carries the common name SAN the profile added", async () => {
+      const { Pkcs10CertificateRequest, X509Certificate, GeneralNames } = await import("@peculiar/x509");
+      const commonNameSan = [{ type: "dns", value: "test.example.com" }];
+      (Pkcs10CertificateRequest as any).mockImplementation(() => ({
+        subject: "CN=test.example.com",
+        subjectName: { getField: () => ["test.example.com"] },
+        extensions: []
+      }));
+      (X509Certificate as any).mockImplementation(() => ({
+        subject: "CN=test.example.com",
+        extensions: [{ type: "2.5.29.17", value: "issued-sans" }],
+        rawData: new ArrayBuffer(0)
+      }));
+      (GeneralNames as any).mockImplementation((value: unknown) => ({
+        items: value === "issued-sans" || Array.isArray(value) ? commonNameSan : []
+      }));
+      mockCertificateProfileDAL.findByIdWithConfigs.mockResolvedValue({
+        ...mockProfile,
+        defaults: { subjectAltNames: [{ type: "dns_name", value: "{{request.commonName}}" }] }
+      });
+      mockCertificateV3Service.signCertificateFromProfile.mockResolvedValue({
+        status: CertificateRequestStatus.ISSUED,
+        certificate: "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
+        certificateId: "cert-123"
+      });
+
+      await service.simpleReenrollByProfile({
+        csr: "mock-csr",
+        profileId: "profile-123",
+        sslClientCert: encodeURIComponent("-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----")
+      });
+
+      expect(mockCertificateV3Service.signCertificateFromProfile).toHaveBeenCalledWith(
+        expect.objectContaining({ skipCommonNameDefaultSan: false })
+      );
     });
 
     it("should throw error when subjects do not match", async () => {

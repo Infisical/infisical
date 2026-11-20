@@ -1,23 +1,23 @@
 import { useRef } from "react";
 
 import { Combobox } from "@app/components/v3";
-import { isLiteralSanValue } from "@app/pages/cert-manager/CertificatesPage/components/certificateUtils";
 import {
+  isSupportedSanRuleValue,
+  UNSUPPORTED_REFERENCE_MESSAGE
+} from "@app/pages/cert-manager/CertificatesPage/components/certificateUtils";
+import {
+  COMMON_NAME_REFERENCE_DESCRIPTION,
+  COMMON_NAME_REFERENCE_LABEL,
+  CertRequestReference,
   formatRequestReferenceValue,
-  isRequestReference,
-  REQUEST_REFERENCES
+  isRequestReference
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 type TRequestReferenceOption = { value: string; label: string };
 
-const REQUEST_REFERENCE_OPTIONS: TRequestReferenceOption[] = Object.entries(REQUEST_REFERENCES).map(
-  ([value, reference]) => ({ value, label: reference.label })
-);
-
-const UNKNOWN_REFERENCE_HINT = `Only ${REQUEST_REFERENCE_OPTIONS.map(({ label }) => `"${label}"`).join(", ")} is supported`;
-
-const isTypedValueAllowed = (inputValue: string) =>
-  isLiteralSanValue(inputValue) || isRequestReference(inputValue);
+const REQUEST_REFERENCE_OPTIONS: TRequestReferenceOption[] = [
+  { value: CertRequestReference.COMMON_NAME, label: COMMON_NAME_REFERENCE_LABEL }
+];
 
 type Props = {
   value: string;
@@ -46,14 +46,14 @@ export const RequestReferenceCombobox = ({
     const matchingOption = REQUEST_REFERENCE_OPTIONS.find(
       (option) => option.label.toLowerCase() === typedValue.toLowerCase()
     );
-    if (matchingOption) onChange(matchingOption.value);
-    else if (typedValue === "" || isTypedValueAllowed(typedValue)) onChange(typedValue);
+    onChange(matchingOption ? matchingOption.value : typedValue);
   };
 
   return (
     <div className="min-w-0 flex-1">
       <Combobox
         aria-label={ariaLabel}
+        isError={!isSupportedSanRuleValue(value)}
         title={value ? formatRequestReferenceValue(value) : undefined}
         options={REQUEST_REFERENCE_OPTIONS}
         value={value ? { value, label: formatRequestReferenceValue(value) } : null}
@@ -74,11 +74,13 @@ export const RequestReferenceCombobox = ({
             typedValueRef.current = null;
             onChange(inputValue.trim());
           },
-          isValid: isTypedValueAllowed,
+          isValid: isSupportedSanRuleValue,
           isDuplicate: (inputValue, option) =>
             inputValue === option.value || inputValue === option.label,
           formatLabel: (inputValue) =>
-            isTypedValueAllowed(inputValue.trim()) ? `Use "${inputValue}"` : UNKNOWN_REFERENCE_HINT,
+            isSupportedSanRuleValue(inputValue.trim())
+              ? `Use "${inputValue}"`
+              : UNSUPPORTED_REFERENCE_MESSAGE,
           emptyLabel: "Type a value"
         }}
         getOptionValue={(option) => option.value}
@@ -88,9 +90,7 @@ export const RequestReferenceCombobox = ({
           <div className="min-w-0">
             <p className="truncate">{option.label}</p>
             {isRequestReference(option.value) && (
-              <p className="truncate text-xs text-muted">
-                {REQUEST_REFERENCES[option.value].description}
-              </p>
+              <p className="truncate text-xs text-muted">{COMMON_NAME_REFERENCE_DESCRIPTION}</p>
             )}
           </div>
         )}
@@ -99,6 +99,9 @@ export const RequestReferenceCombobox = ({
       />
       {referenceHint && isRequestReference(value) && (
         <p className="mt-1 text-xs text-muted">{referenceHint}</p>
+      )}
+      {!isSupportedSanRuleValue(value) && (
+        <p className="mt-1 text-xs text-danger">{UNSUPPORTED_REFERENCE_MESSAGE}</p>
       )}
     </div>
   );

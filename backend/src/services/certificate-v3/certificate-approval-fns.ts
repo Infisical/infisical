@@ -160,8 +160,12 @@ const buildRevalidationRequest = ({
   profileDefaults: Parameters<typeof applyProfileDefaults>[1];
   ttl?: string;
 }): TCertificateRequest => {
-  const reconstructedRequest: TCertificateRequest = csr
-    ? applyProfileDefaults(extractCertificateRequestFromCSR(csr), profileDefaults)
+  const csrRequest = csr ? extractCertificateRequestFromCSR(csr) : undefined;
+  const reconstructedRequest: TCertificateRequest = csrRequest
+    ? applyProfileDefaults(
+        csrRequest.commonName || !commonName ? csrRequest : { ...csrRequest, commonName },
+        profileDefaults
+      )
     : applyProfileDefaults(
         {
           commonName: commonName || undefined,
@@ -574,7 +578,12 @@ export const certificateApprovalServiceFactory = (
     }
 
     const csrRequest = extractCertificateRequestFromCSR(csr || "");
-    const reconstructedRequest = applyProfileDefaults(csrRequest, profile.defaults);
+    const reconstructedRequest = applyProfileDefaults(
+      csrRequest.commonName || !certRequest.commonName
+        ? csrRequest
+        : { ...csrRequest, commonName: certRequest.commonName },
+      profile.defaults
+    );
     const { keyAlgorithm: reconstructedKeyAlg, signatureAlgorithm: reconstructedSigAlg } = extractAlgorithmsFromCSR(
       csr || ""
     );

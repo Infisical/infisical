@@ -34,7 +34,6 @@ import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } 
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { CERT_SUBJECT_ALTERNATIVE_NAMES } from "@app/services/certificate-common/certificate-constants";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -66,7 +65,8 @@ import {
   CertKeyUsage,
   CertStatus,
   TAltNameMapping,
-  TAltNameType
+  TAltNameType,
+  toAltNameMappings
 } from "../../certificate/certificate-types";
 import { isExternalCaKeySource } from "../ca-key-source/ca-key-source-fns";
 import type { TCaKeySourceServiceFactory } from "../ca-key-source/ca-key-source-service";
@@ -2277,10 +2277,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     let altNamesArray: TAltNameMapping[] = [];
 
     if (altNameEntries?.length) {
-      altNamesArray = altNameEntries.map(({ type, value }) => ({
-        type: CERT_SUBJECT_ALTERNATIVE_NAMES[type].generalNameType,
-        value
-      }));
+      altNamesArray = toAltNameMappings(altNameEntries);
     } else if (altNames) {
       altNamesArray = altNames
         .split(",")
@@ -2751,10 +2748,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     let altNamesArray: TAltNameMapping[] = [];
 
     if (altNameEntries?.length) {
-      altNamesArray = altNameEntries.map(({ type, value }) => ({
-        type: CERT_SUBJECT_ALTERNATIVE_NAMES[type].generalNameType,
-        value
-      }));
+      altNamesArray = toAltNameMappings(altNameEntries);
     } else if (altNames) {
       altNamesArray = altNames
         .split(",")

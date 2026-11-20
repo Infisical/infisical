@@ -74,7 +74,11 @@ import {
 import { ApiErrorTypes } from "@app/hooks/api/types";
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import { normalizeSlugInput } from "@app/lib/schemas";
-import { filterUsages } from "@app/pages/cert-manager/CertificatesPage/components/certificateUtils";
+import {
+  filterUsages,
+  isSupportedSanRuleValue,
+  UNSUPPORTED_REFERENCE_MESSAGE
+} from "@app/pages/cert-manager/CertificatesPage/components/certificateUtils";
 import { useCaCreation } from "@app/pages/cert-manager/components/useCaCreation";
 import {
   CertPolicyState,
@@ -107,7 +111,7 @@ const certificateDefaultsSchema = z
       .array(
         z.object({
           type: z.nativeEnum(CertSubjectAlternativeNameType),
-          value: z.string()
+          value: z.string().refine(isSupportedSanRuleValue, UNSUPPORTED_REFERENCE_MESSAGE)
         })
       )
       .optional(),
@@ -174,7 +178,7 @@ const STEPS = [
     subtitle: "Set default values applied when a request omits its own.",
     rightLabel: "CERTIFICATE DEFAULTS",
     rightDescription:
-      'These defaults pre-fill certificate requests issued from this profile. A request can override any of them, within the bounds of the selected policy, except a "Same as common name" SAN, which is added at issuance. Leave a field empty to apply no default.',
+      "These defaults pre-fill certificate requests issued from this profile. A request can override any of them, within the bounds of the selected policy. Leave a field empty to apply no default.",
     fields: ["defaults"] as string[]
   }
 ] as const;

@@ -73,7 +73,7 @@ import {
   getRemovedCertificateNamesFromCsr,
   unionUsageOptions
 } from "./certificateRenewalUtils";
-import { getProfileReferenceSans, isExternalTemplateCa, rowErrorsOf } from "./certificateUtils";
+import { isExternalTemplateCa, rowErrorsOf } from "./certificateUtils";
 import { CertificateWizardSheet, WizardStep } from "./CertificateWizardSheet";
 import { IssuerModifiedNotice } from "./IssuerModifiedNotice";
 import { KeyUsageSection } from "./KeyUsageSection";
@@ -461,7 +461,6 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
 
   const isPolicyResolved =
     Boolean(policyData) || (Boolean(profile) && !profile?.certificatePolicyId);
-  const profileReferenceSans = useMemo(() => getProfileReferenceSans(profile?.defaults), [profile]);
   const {
     filteredKeyUsages,
     filteredExtendedKeyUsages,
@@ -702,8 +701,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     isSanSectionShown: constraints.shouldShowSanSection,
     isSubjectEvaluated: keySource !== CertificateRenewalKeySource.Csr && !renewsFromStoredCsr,
     isValidityEvaluated: !isExternalTemplateProfile,
-    resetKey: certificate?.id,
-    profileReferenceSans
+    resetKey: certificate?.id
   });
 
   const { step, setStep, currentStepKey, goBack, goNext, onFormInvalid } = useWizardSteps({
@@ -784,8 +782,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     const seeded = withRequiredRows(
       buildPolicyRules(policyData),
       renewalDefaults.subjectAttributes ?? [],
-      renewalDefaults.subjectAltNames ?? [],
-      profileReferenceSans
+      renewalDefaults.subjectAltNames ?? []
     );
     reset({
       ...renewalDefaults,
@@ -803,7 +800,6 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     renewalPreview,
     constraints,
     policyData,
-    profileReferenceSans,
     reset,
     getValues
   ]);
@@ -1095,7 +1091,6 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
               policyRows={policy.sans.rows}
               policyNotices={policy.sans.notices}
               revealPolicyErrors={policy.isRevealed("subjectAltNames")}
-              profileReferenceSans={profileReferenceSans}
             />
           )}
           {removedNames.length > 0 && !nameRemovalError && (

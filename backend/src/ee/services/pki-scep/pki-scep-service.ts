@@ -58,6 +58,7 @@ import { CertificateRequestStatus } from "@app/services/certificate-request/cert
 import {
   applyCommonNameDefaultSan,
   applyProfileDefaults,
+  getCommonNameDefaultSubjectAltNames,
   resolveEffectiveTtl
 } from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
@@ -728,6 +729,12 @@ export const pkiScepServiceFactory = ({
           csrSubjectName: csrObj.subjectName,
           signerCertSubjectName: signerCertObj.subjectName,
           csrSubjectAltNames: csrSanExt,
+          csrCommonNameDefaultSubjectAltNames: getCommonNameDefaultSubjectAltNames({
+            defaults: profile.defaults,
+            enrollmentType: EnrollmentType.SCEP,
+            csr: csrObj,
+            isCsrSignedAsSent: caSignsCsrAsSent(caType)
+          }),
           signerCertSubjectAltNames: signerSanExt
         })
       : { authorized: false, reason: ScepRenewalDenyReason.InvalidSigner };
@@ -800,6 +807,7 @@ export const pkiScepServiceFactory = ({
       csrPem,
       applicationId,
       isRenewal: true,
+      skipCommonNameDefaultSan: renewalAuth.isCsrSanMatch,
       clientIp
     });
 
@@ -921,7 +929,8 @@ export const pkiScepServiceFactory = ({
     parsed,
     csrPem,
     ttl,
-    applicationId
+    applicationId,
+    skipCommonNameDefaultSan
   }: {
     profile: TScepContext["profile"];
     project: TScepContext["project"];
@@ -930,6 +939,7 @@ export const pkiScepServiceFactory = ({
     csrPem: string;
     ttl: string;
     applicationId?: string;
+    skipCommonNameDefaultSan?: boolean;
   }): Promise<TIssuanceResult> => {
     // Internal CAs use direct signing
     if (caType === CaType.INTERNAL) {
@@ -942,7 +952,8 @@ export const pkiScepServiceFactory = ({
         csr: csrPem,
         validity: { ttl },
         enrollmentType: EnrollmentType.SCEP,
-        applicationId
+        applicationId,
+        skipCommonNameDefaultSan
       });
 
       if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {
@@ -987,7 +998,7 @@ export const pkiScepServiceFactory = ({
     );
 
     const { subjectAlternativeNames } = applyCommonNameDefaultSan({
-      defaults: profile.defaults,
+      defaults: skipCommonNameDefaultSan ? null : profile.defaults,
       enrollmentType: EnrollmentType.SCEP,
       commonName: approvalPolicy ? certRequestWithDefaults.commonName : certRequest.commonName,
       subjectAlternativeNames: certRequest.subjectAlternativeNames,

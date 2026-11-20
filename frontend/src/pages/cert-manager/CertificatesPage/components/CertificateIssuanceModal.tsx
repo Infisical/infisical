@@ -415,7 +415,8 @@ export const CertificateIssuanceModal = ({
     availableSignatureAlgorithms,
     availableKeyAlgorithms,
     resetConstraints,
-    profileReferenceSans
+    profileReferenceSans,
+    profileStaticSans
   } = useCertificatePolicy(
     policyData,
     actualSelectedProfile,
@@ -434,7 +435,8 @@ export const CertificateIssuanceModal = ({
     isSubjectEvaluated: requestMethod === RequestMethod.MANAGED,
     isValidityEvaluated: !isAdcsProfile,
     resetKey: actualSelectedProfileId,
-    profileReferenceSans
+    profileReferenceSans,
+    profileStaticSans
   });
 
   const resetAllState = useCallback(() => {

@@ -2514,7 +2514,8 @@ export const CERTIFICATES = {
     renewalKeySource:
       "How the renewed certificate's key pair is handled. 'new' generates a fresh pair, 'reuse' keeps the current one so the renewed certificate carries the same public key, and 'csr' takes the key from a supplied signing request. Defaults to 'new'.",
     csr: "A PEM-encoded certificate signing request to renew from. Its subject, key and extensions take precedence, so only TTL and basic constraints may be set alongside it.",
-    attributes: `Certificate fields to change on renewal. Anything omitted is copied from the certificate being renewed. Profile defaults are not applied, except a default SAN of ${RequestReference.CommonName}, which adds the common name as a SAN when the certificate lacks it.`,
+    attributes:
+      "Certificate fields to change on renewal. Anything omitted is copied from the certificate being renewed. Profile defaults are not applied.",
     removeRootsFromChain: "Whether to remove the root certificate from the returned certificate chain.",
     externalConfiguration: "Options for certificates issued by an external certificate authority.",
     reissue:
@@ -2588,15 +2589,12 @@ const domainComponentRule = (rule: string) =>
 const DOMAIN_COMPONENT_DENIED_RULE = `Domain component sequences that are rejected, each comma-joined most specific first. A sequence is rejected wherever it appears in the chain, so "example,com" rejects DC=example,DC=com and DC=host,DC=example,DC=com alike.`;
 
 const sanRuleValues = (rule: string, reference: string) =>
-  `SAN values ${rule}, with * as a wildcard. ${RequestReference.CommonName} as the whole value ${reference}, ignoring case, except that in a URI only the scheme and host ignore case. Any other value containing "{{" is refused.`;
+  `SAN values ${rule}, with * as a wildcard. ${RequestReference.CommonName} as the whole value ${reference}. That comparison ignores case, except in a URI with "://", where only the scheme and authority ignore case. Any other value containing "{{" is refused.`;
 
 export const CERTIFICATE_POLICIES = {
   SAN_RULE: {
-    allowed: `${sanRuleValues("this type may take", "allows a SAN equal to the request's common name")} That reference is only as strict as the policy's common name rule.`,
-    required: sanRuleValues(
-      "the request must include",
-      "requires a SAN of this type equal to the request's common name (a request without a common name is refused)"
-    ),
+    allowed: `${sanRuleValues("this type may take", "allows a SAN equal to the request's common name")} The requester sets the common name, so this allows any value the policy's common name rule allows, unless a denied value matches it.`,
+    required: `${sanRuleValues("the request must include", "requires a SAN of this type equal to the request's common name")} If it lists ${RequestReference.CommonName}, a request without a common name is refused.`,
     denied: sanRuleValues("that are rejected", "rejects a SAN of this type equal to the request's common name")
   },
   CUSTOM_EXTENSION_RULES:
@@ -2617,7 +2615,7 @@ export const CERTIFICATE_POLICIES = {
 };
 
 export const CERTIFICATE_PROFILES = {
-  DEFAULT_SUBJECT_ALT_NAMES: `Subject alternative names added to a request that has none. An entry whose value is ${RequestReference.CommonName} works differently: on every enrollment method and on renewal, when the request has a common name that is valid for the entry's SAN type and no SAN of that type equal to it, the common name is added as a SAN of that type, even if the request lists other SANs. ACME adds only the CSR's own common name, and only for dns_name and ip_address. A request with a CSR to a Microsoft AD CS or Venafi TPP certificate authority is signed as sent, so nothing is added. Saving the entry requires the profile's policy to allow a common name and SANs of that type. Any other value containing "{{" is refused.`
+  DEFAULT_SUBJECT_ALT_NAMES: `Subject alternative names added to a request without a CSR that lists none. An entry whose value is ${RequestReference.CommonName} adds the request's common name as a SAN of the entry's type, also to a CSR that lists no SANs. Some enrollment methods add nothing for it, see https://infisical.com/docs/documentation/platform/pki/settings/profiles#add-the-common-name-as-a-san. Any other value containing "{{" is refused.`
 };
 
 export const CERTIFICATE_TEMPLATES = {

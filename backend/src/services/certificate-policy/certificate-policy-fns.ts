@@ -212,80 +212,55 @@ export enum RequestReference {
   CommonName = "{{request.commonName}}"
 }
 
-type TRequestReferenceSource = { commonName?: string | null };
-
-const REQUEST_REFERENCES: Record<
-  RequestReference,
-  { label: string; resolve: (request: TRequestReferenceSource) => string | undefined }
-> = {
-  [RequestReference.CommonName]: { label: "common name", resolve: (request) => request.commonName || undefined }
-};
+const COMMON_NAME_REFERENCE_LABEL = "common name";
 
 const REQUEST_REFERENCE_OPENING = "{{";
 
 export const isRequestReference = (value: string): value is RequestReference =>
-  Object.prototype.hasOwnProperty.call(REQUEST_REFERENCES, value);
+  (Object.values(RequestReference) as string[]).includes(value);
 
 const hasRequestReferenceSyntax = (value: string): boolean => value.includes(REQUEST_REFERENCE_OPENING);
 
 export const isUnknownRequestReference = (value: string): boolean =>
   hasRequestReferenceSyntax(value) && !isRequestReference(value);
 
-export type TSanRuleValue = { pattern: string } | { reference: RequestReference; value?: string };
-
-type TSanRuleValueLists = { allowed?: string[]; required?: string[]; denied?: string[] };
-
-const resolveSanRuleValue = (ruleValue: string, request: TRequestReferenceSource): TSanRuleValue =>
-  isRequestReference(ruleValue)
-    ? { reference: ruleValue, value: REQUEST_REFERENCES[ruleValue].resolve(request) }
-    : { pattern: ruleValue };
-
-export const resolveSanRules = <T extends TSanRuleValueLists>(
-  rules: T[],
-  request: TRequestReferenceSource
-): (Omit<T, keyof TSanRuleValueLists> & { [K in keyof TSanRuleValueLists]?: TSanRuleValue[] })[] =>
-  rules.map((rule) => ({
-    ...rule,
-    allowed: rule.allowed?.map((ruleValue) => resolveSanRuleValue(ruleValue, request)),
-    required: rule.required?.map((ruleValue) => resolveSanRuleValue(ruleValue, request)),
-    denied: rule.denied?.map((ruleValue) => resolveSanRuleValue(ruleValue, request))
-  }));
-
 export const matchesSanRuleValue = ({
   sanType,
   sanValue,
   ruleValue,
+  commonName,
   matchesPattern
 }: {
   sanType: string;
   sanValue: string;
-  ruleValue: TSanRuleValue;
+  ruleValue: string;
+  commonName?: string | null;
   matchesPattern: (sanValue: string, pattern: string) => boolean;
 }): boolean => {
-  if ("pattern" in ruleValue) return matchesPattern(sanValue, ruleValue.pattern);
-  return ruleValue.value !== undefined && isSameSanValue(sanType, sanValue, ruleValue.value);
+  if (ruleValue !== RequestReference.CommonName) return matchesPattern(sanValue, ruleValue);
+  return commonName ? isSameSanValue(sanType, sanValue, commonName) : false;
 };
 
-const formatSanRuleValue = (ruleValue: TSanRuleValue): string => {
-  if ("pattern" in ruleValue) return ruleValue.pattern;
-  const { label } = REQUEST_REFERENCES[ruleValue.reference];
-  return ruleValue.value ? `the ${label} '${ruleValue.value}'` : `the ${label} (the request has none)`;
+const formatSanRuleValue = (ruleValue: string, commonName?: string | null): string => {
+  if (ruleValue !== RequestReference.CommonName) return ruleValue;
+  return commonName
+    ? `the ${COMMON_NAME_REFERENCE_LABEL} '${commonName}'`
+    : `the ${COMMON_NAME_REFERENCE_LABEL} (the request has none)`;
 };
 
-export const describeMissingRequiredSan = (sanType: string, ruleValue: TSanRuleValue): string => {
-  if ("pattern" in ruleValue) {
-    return `Required ${sanType} SAN matching pattern '${ruleValue.pattern}' not found in request`;
+export const describeMissingRequiredSan = (sanType: string, ruleValue: string, commonName?: string | null): string => {
+  if (ruleValue !== RequestReference.CommonName) {
+    return `Required ${sanType} SAN matching pattern '${ruleValue}' not found in request`;
   }
-  const { label } = REQUEST_REFERENCES[ruleValue.reference];
-  return ruleValue.value
-    ? `Required ${sanType} SAN equal to the ${label} '${ruleValue.value}' not found in request`
-    : `This policy requires a ${sanType} SAN equal to the ${label}, but the request has no ${label}`;
+  return commonName
+    ? `Required ${sanType} SAN equal to the ${COMMON_NAME_REFERENCE_LABEL} '${commonName}' not found in request`
+    : `This policy requires a ${sanType} SAN equal to the ${COMMON_NAME_REFERENCE_LABEL}, but the request has no ${COMMON_NAME_REFERENCE_LABEL}`;
 };
 
-export const describeDeniedSan = (sanType: string, sanValue: string, ruleValue: TSanRuleValue): string =>
-  "pattern" in ruleValue
+export const describeDeniedSan = (sanType: string, sanValue: string, ruleValue: string): string =>
+  ruleValue !== RequestReference.CommonName
     ? `${sanType} SAN matching denied pattern '${sanValue}' found in request`
-    : `${sanType} SAN '${sanValue}' is denied by this policy because it equals the ${REQUEST_REFERENCES[ruleValue.reference].label}. If the request did not list it, the certificate profile's "Same as common name" default SAN added it.`;
+    : `${sanType} SAN '${sanValue}' is denied by this policy because it equals the ${COMMON_NAME_REFERENCE_LABEL}. Remove it from the request, or from the profile's default SANs if a default added it.`;
 
 export const describeValueNotAllowed = ({
   fieldName,
@@ -302,12 +277,17 @@ export const describeValueNotAllowed = ({
     ? `${fieldName} value '${value}' does not match allowed patterns: ${allowedValues.join(", ")}`
     : `${fieldName} value '${value}' is not in allowed values list`;
 
-export const describeDisallowedSan = (sanType: string, sanValue: string, allowed: TSanRuleValue[]): string =>
+export const describeDisallowedSan = (
+  sanType: string,
+  sanValue: string,
+  allowed: string[],
+  commonName?: string | null
+): string =>
   describeValueNotAllowed({
     fieldName: `${sanType} SAN`,
     value: sanValue,
-    allowedValues: allowed.map(formatSanRuleValue),
-    hasPatterns: allowed.some((ruleValue) => !("pattern" in ruleValue) || isWildcardPattern(ruleValue.pattern))
+    allowedValues: allowed.map((ruleValue) => formatSanRuleValue(ruleValue, commonName)),
+    hasPatterns: allowed.some((ruleValue) => isRequestReference(ruleValue) || isWildcardPattern(ruleValue))
   });
 
 const allowsCommonName = (policy: Pick<TCertificatePolicy, "subject">): boolean => {

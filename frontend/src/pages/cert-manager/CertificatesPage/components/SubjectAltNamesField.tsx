@@ -22,8 +22,7 @@ import {
 import { useSubscription } from "@app/context";
 import {
   CertSubjectAlternativeNameType,
-  formatSANType,
-  withIndefiniteArticle
+  formatSANType
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import { PolicyNotice, PolicyRowGuidance } from "./certificatePolicyGuidance";
@@ -50,7 +49,7 @@ type SubjectAltNamesFieldProps = {
 const describeProfileReferenceSans = (sans: SubjectAltName[]): string | undefined => {
   if (sans.length === 0) return undefined;
   const types = [...new Set(sans.map((san) => formatSANType(san.type)))];
-  return `This profile adds the common name as ${withIndefiniteArticle(types.join(" or "))} SAN when it is valid for that type.`;
+  return `If you leave the SANs empty, this profile adds the common name as a SAN of each of these types it is valid for: ${types.join(", ")}.`;
 };
 
 export const SubjectAltNamesField = ({

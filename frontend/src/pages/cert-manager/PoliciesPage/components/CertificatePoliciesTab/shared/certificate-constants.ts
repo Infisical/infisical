@@ -199,29 +199,18 @@ export type TCertRequestReferenceValues = {
   commonName?: string;
 };
 
-export const REQUEST_REFERENCES: Record<
-  CertRequestReference,
-  {
-    label: string;
-    description: string;
-    resolve: (request: TCertRequestReferenceValues) => string | undefined;
-  }
-> = {
-  [CertRequestReference.COMMON_NAME]: {
-    label: "Same as common name",
-    description: "The common name of each request",
-    resolve: (request) => request.commonName
-  }
-};
+export const COMMON_NAME_REFERENCE_LABEL = "Same as common name";
+
+export const COMMON_NAME_REFERENCE_DESCRIPTION = "The common name of each request";
 
 export const isRequestReference = (value: string): value is CertRequestReference =>
-  Object.prototype.hasOwnProperty.call(REQUEST_REFERENCES, value);
+  (Object.values(CertRequestReference) as string[]).includes(value);
 
 export const withIndefiniteArticle = (label: string): string =>
   `${/^[AEIO]/i.test(label) ? "an" : "a"} ${label}`;
 
 export const formatRequestReferenceValue = (value: string): string =>
-  isRequestReference(value) ? REQUEST_REFERENCES[value].label : value;
+  value === CertRequestReference.COMMON_NAME ? COMMON_NAME_REFERENCE_LABEL : value;
 
 export const USAGE_STATES = {
   REQUIRED: "required",

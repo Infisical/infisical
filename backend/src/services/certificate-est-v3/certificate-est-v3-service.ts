@@ -18,7 +18,10 @@ import { recordCertificateIssuanceFailure } from "@app/services/certificate-comm
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
+import {
+  getCommonNameDefaultSubjectAltNames,
+  resolveEffectiveTtl
+} from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { isCertChainValid } from "@app/services/certificate/certificate-fns";
@@ -404,6 +407,17 @@ export const certificateEstV3ServiceFactory = ({
       csrSanSet = new Set([...sanNames.items.map((name) => `${name.type}-${name.value}`)]);
     }
 
+    const commonNameDefaultSanExtension = getCommonNameDefaultSubjectAltNames({
+      defaults: profile.defaults,
+      enrollmentType: EnrollmentType.EST,
+      csr: csrObj
+    });
+    const commonNameDefaultSanSet = commonNameDefaultSanExtension
+      ? new Set(
+          new x509.GeneralNames(commonNameDefaultSanExtension.value).items.map((name) => `${name.type}-${name.value}`)
+        )
+      : null;
+
     let certSanSet: Set<string> = new Set();
     const certSanExtension = cert.extensions.find((ext) => ext.type === "2.5.29.17");
     if (certSanExtension) {
@@ -411,7 +425,10 @@ export const certificateEstV3ServiceFactory = ({
       certSanSet = new Set([...sanNames.items.map((name) => `${name.type}-${name.value}`)]);
     }
 
-    if (csrSanSet.size !== certSanSet.size || ![...csrSanSet].every((element) => certSanSet.has(element))) {
+    const matchesCertSans = (sanSet: Set<string>) =>
+      sanSet.size === certSanSet.size && [...sanSet].every((element) => certSanSet.has(element));
+    const isCsrSanMatch = matchesCertSans(csrSanSet);
+    if (!isCsrSanMatch && !(commonNameDefaultSanSet && matchesCertSans(commonNameDefaultSanSet))) {
       throw await $rejectReenrollCsr("Subject alternative names mismatch");
     }
 
@@ -440,6 +457,7 @@ export const certificateEstV3ServiceFactory = ({
       applicationId,
       issuanceOperation: CertificateIssuanceOperation.RENEW,
       originalCertificateId: storedCert?.id,
+      skipCommonNameDefaultSan: isCsrSanMatch,
       auditLogInfo: auditLogInfo && {
         ...auditLogInfo,
         actor: { type: ActorType.EST_ACCOUNT, metadata: { profileId } }

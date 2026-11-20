@@ -232,15 +232,20 @@ describe("applyCommonNameDefaultSan", () => {
       ...overrides
     }).subjectAlternativeNames;
 
-  it("adds the common name as a DNS SAN beside the SANs the request already has", () => {
-    expect(apply({ subjectAlternativeNames: [dns("other.example.com")] })).toEqual([
-      dns("other.example.com"),
-      dns("app.example.com")
-    ]);
+  it("adds nothing when the request lists its own SANs, like every other default SAN", () => {
+    expect(apply({ subjectAlternativeNames: [dns("other.example.com")] })).toEqual([dns("other.example.com")]);
   });
 
-  it("does not add the common name again when a DNS SAN already equals it in another case", () => {
-    expect(apply({ subjectAlternativeNames: [dns("APP.example.com")] })).toEqual([dns("APP.example.com")]);
+  it("adds the common name after the profile's other default SANs when the request listed none", () => {
+    expect(
+      apply({ subjectAlternativeNames: [dns("static.example.com")], requestedSubjectAlternativeNames: [] })
+    ).toEqual([dns("static.example.com"), dns("app.example.com")]);
+  });
+
+  it("does not add the common name again when a default SAN already equals it in another case", () => {
+    expect(apply({ subjectAlternativeNames: [dns("APP.example.com")], requestedSubjectAlternativeNames: [] })).toEqual([
+      dns("APP.example.com")
+    ]);
   });
 
   it("adds nothing when the common name is not a valid value for the default's SAN type", () => {
@@ -255,9 +260,13 @@ describe("applyCommonNameDefaultSan", () => {
   });
 
   it("treats a trailing dot as the same DNS name, so the common name is not added twice", () => {
-    expect(apply({ commonName: "app.example.com.", subjectAlternativeNames: [dns("app.example.com")] })).toEqual([
-      dns("app.example.com")
-    ]);
+    expect(
+      apply({
+        commonName: "app.example.com.",
+        subjectAlternativeNames: [dns("app.example.com")],
+        requestedSubjectAlternativeNames: []
+      })
+    ).toEqual([dns("app.example.com")]);
   });
 
   it("adds nothing when the CA signs the CSR as sent", () => {
@@ -268,6 +277,7 @@ describe("applyCommonNameDefaultSan", () => {
     const acme = { enrollmentType: EnrollmentType.ACME, commonName: "profile-default.example.com" };
 
     expect(apply({ ...acme, csrCommonName: "app.example.com" })).toEqual([dns("app.example.com")]);
+    expect(apply(acme)).toBeUndefined();
     expect(
       apply({
         ...acme,
