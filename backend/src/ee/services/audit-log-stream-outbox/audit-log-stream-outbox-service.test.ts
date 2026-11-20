@@ -86,6 +86,8 @@ const buildRow = (overrides: Partial<TAuditLogStreamOutboxRow> = {}): TAuditLogS
 // DAL calls inside it asserting against the same object.
 const TX = { tx: true, transaction: async (cb: (savepoint: unknown) => Promise<unknown>) => cb(TX) };
 
+const PRIMARY = { primary: true } as never;
+
 const createService = () => {
   const auditLogStreamOutboxDAL = {
     transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb(TX)),
@@ -104,6 +106,7 @@ const createService = () => {
 
   const auditLogStreamDAL = {
     find: vi.fn(async () => []),
+    primaryNode: vi.fn(() => PRIMARY),
     findById: vi.fn(
       async (): Promise<{
         id: string;
@@ -206,6 +209,29 @@ describe("audit-log-stream-outbox-service drainStream failure handling", () => {
     expect(batchStreamLog).toHaveBeenCalledWith(expect.objectContaining({ auditLogs: [auditLog.payload] }));
     const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as { successIds: number[] };
     expect(call.successIds).toEqual([2, 1]);
+  });
+
+  test("delivers queued session activity when only a lagging replica shows it switched off", async () => {
+    const { service, auditLogStreamOutboxDAL, auditLogStreamDAL } = createService();
+    const activity = buildRow({ id: 2, payload: { id: "act-1", eventType: "pam-session-activity-command" } as never });
+    const stream = {
+      id: STREAM_ID,
+      provider: PROVIDER,
+      orgId: ORG_ID,
+      encryptedCredentials: Buffer.from("x"),
+      streamMode: StreamMode.Batch
+    };
+
+    auditLogStreamDAL.findById
+      .mockResolvedValueOnce(stream)
+      .mockResolvedValueOnce({ ...stream, filters: { pamSessionActivity: { includeOutput: false } } });
+    auditLogStreamOutboxDAL.claimBatchForStream.mockResolvedValueOnce([activity]).mockResolvedValueOnce([]);
+    batchStreamLog.mockResolvedValueOnce(undefined);
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+
+    expect(auditLogStreamDAL.findById).toHaveBeenLastCalledWith(STREAM_ID, PRIMARY);
+    expect(batchStreamLog).toHaveBeenCalledWith(expect.objectContaining({ auditLogs: [activity.payload] }));
   });
 
   test("delivers queued session activity while the stream still receives it", async () => {

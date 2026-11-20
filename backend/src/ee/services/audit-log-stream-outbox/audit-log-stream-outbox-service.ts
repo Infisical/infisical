@@ -79,7 +79,7 @@ const computeBackoffMs = (attemptsAfterIncrement: number): number => {
 
 export type TAuditLogStreamOutboxServiceFactoryDep = {
   auditLogStreamOutboxDAL: TAuditLogStreamOutboxDALFactory;
-  auditLogStreamDAL: Pick<TAuditLogStreamDALFactory, "find" | "findById">;
+  auditLogStreamDAL: Pick<TAuditLogStreamDALFactory, "find" | "findById" | "primaryNode">;
   projectDAL: Pick<TProjectDALFactory, "findProjectTypesByIds">;
   kmsDataKeyService: TKmsDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
@@ -316,13 +316,23 @@ export const auditLogStreamOutboxServiceFactory = ({
     // Once a PAM product admin turns session activity off, anyone with stream access can repoint the
     // stream, so activity still queued for it is never delivered.
     const withholdsSessionActivity = !(stream.filters as TAuditLogStreamFilters | null)?.pamSessionActivity;
+    // The read above can come from a replica that hasn't seen session activity turned on yet.
+    let optOutOnPrimary: Promise<boolean> | undefined;
+    const isOptedOutOnPrimary = () => {
+      optOutOnPrimary ??= auditLogStreamDAL
+        .findById(streamId, auditLogStreamDAL.primaryNode())
+        .then((current) => !(current?.filters as TAuditLogStreamFilters | null)?.pamSessionActivity);
+      return optOutOnPrimary;
+    };
 
     for (let batchIdx = 0; batchIdx < MAX_BATCHES_PER_JOB; batchIdx += 1) {
       // eslint-disable-next-line no-await-in-loop
       const claimed = await auditLogStreamOutboxDAL.claimBatchForStream(streamId, BATCH_SIZE);
       if (claimed.length === 0) return;
 
-      const withheld = withholdsSessionActivity ? claimed.filter(isPamSessionActivityRow) : [];
+      const activityRows = withholdsSessionActivity ? claimed.filter(isPamSessionActivityRow) : [];
+      // eslint-disable-next-line no-await-in-loop
+      const withheld = activityRows.length > 0 && (await isOptedOutOnPrimary()) ? activityRows : [];
       const deliverable = withheld.length > 0 ? claimed.filter((row) => !isPamSessionActivityRow(row)) : claimed;
 
       const chunks = isSingleMode
