@@ -59,7 +59,7 @@ const buildService = (permission: unknown = allowAll) => {
     permissionService: {
       getOrgPermission: vi.fn(async () => ({ permission }))
     },
-    kmsService: {}
+    kmsDataKeyService: {}
   } as unknown as TAuditLogStreamServiceFactoryDep;
 
   return { service: auditLogStreamServiceFactory(deps), auditLogStreamDAL };
@@ -213,7 +213,7 @@ describe("auditLogStreamServiceFactory PAM session activity", () => {
       auditLogStreamDAL,
       licenseService,
       permissionService: { getOrgPermission: vi.fn(async () => ({ permission: allowAll })), getProjectPermission },
-      kmsService: {},
+      kmsDataKeyService: {},
       pamProjectResolver: { findDefaultProjectId: vi.fn(async () => "pam-project") }
     } as unknown as TAuditLogStreamServiceFactoryDep;
 

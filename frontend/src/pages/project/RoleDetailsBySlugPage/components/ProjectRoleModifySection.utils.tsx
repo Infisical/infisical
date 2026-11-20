@@ -309,7 +309,8 @@ const AgentVaultSessionPolicyActionSchema = z.object({
   [ProjectPermissionAgentVaultSessionActions.ReadAny]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.EditAny]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.RevokeAny]: z.boolean().optional(),
-  [ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices]: z.boolean().optional()
+  [ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills]: z.boolean().optional()
 });
 
 const AgentVaultProxyPolicyActionSchema = z.object({
@@ -2609,7 +2610,12 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Create With Inline Services",
         value: ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
-        description: "Send services with a session instead of only naming an access bundle"
+        description: "Send services that last only as long as the session"
+      },
+      {
+        label: "Create With Inline Skills",
+        value: ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills,
+        description: "Send skills that last only as long as the session"
       }
     ]
   },

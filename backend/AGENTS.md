@@ -357,9 +357,9 @@ Two grants issue them: the authorization code flow (consented `scopes`) and the 
 product `AuthMode.JWT` routes do. Two things have to hold before adding it. The route must not be an
 administration route (below). And the handler must actually **check** a CASL ability, because that check
 is where the granted scopes get intersected in: building an ability and throwing it away
-(`getOrgPermission` used as a membership gate), or reading `hasRole(...)` off its return value, narrows
-nothing; `hasRole` is the easy one to miss because it reads like authorization. Rough proxy: nothing
-passing `requireOrg: false` accepts `AuthMode.OAUTH`.
+(`getOrgPermission` used as a membership gate) narrows nothing. `hasRole(...)` returns false for a
+scope-narrowed token, so a route that authorizes on a role alone denies every such token; it does not
+narrow a fully-delegated one. Rough proxy: nothing passing `requireOrg: false` accepts `AuthMode.OAUTH`.
 
 **Administration is read-only for a delegated token.** A delegated token can look at anything the
 authorizing user can, but it changes nothing under **Administration**: no create, update, or delete, at
@@ -472,6 +472,8 @@ Uses CASL (`@casl/ability`) with MongoDB-style rules. Permission logic lives in 
 **Project permission actions** include standard CRUD plus specialized ones like `DescribeSecret` (see metadata without value), `ReadValue`, `GrantPrivileges`, `AssumePrivileges`, `Lease` (for dynamic secrets). See `ProjectPermissionActions`, `ProjectPermissionSecretActions`, `ProjectPermissionDynamicSecretActions`, and `ProjectPermissionIdentityActions` enums in `project-permission.ts`.
 
 Built-in roles: `Admin`, `Member`, `Viewer`, `NoAccess`. For PAM and Agent Vault `getPredefinedRoles` (`project-role-fns.ts`) returns only `Admin` and `Member`, because their permission dispatch resolves every other slug to the member set; the role factory delegates to that one function, so every role picker follows. Custom roles use unpacked CASL rules stored in the database. Rules can include conditions with operators `$IN`, `$EQ`, `$NEQ`, `$GLOB` (for pattern matching like `prod-*`). See `PermissionConditionSchema` in `permission-types.ts`.
+
+**Build every ability with `conditionsMatcher` from `@app/lib/casl`, and compare secret paths with `canonicalizeSecretPath` (`lib/fn/string.ts`).** Folder lookups skip empty segments, so `prod`, `//prod` and `/prod/` all resolve to the `/prod` folder; the matcher canonicalizes a subject's `secretPath` so rules see that folder, and `resolvePolicyForPath` does the same for change policies. An ability built with another matcher, or a path check outside CASL that compares raw strings, evaluates rules against a different path than the folder the request acts on.
 
 **Privilege boundaries mean different things on the two privilege systems.** `organizations.shouldUseNewPrivilegeSystem` (default `true`, backfilled `false` for orgs predating March 2025) picks which. `validatePrivilegeChangeOperation` / `assertRoleSetBoundary` (`permission-fns.ts`) are the shim: on the new system they collapse to `actorPermission.can(action, subject)`, on the legacy one they run `validatePermissionBoundary`, requiring the actor to out-rank every role the target holds. So a boundary at a call site that already gated on the same action is a no-op for new-system orgs and the only protection for legacy ones. Two consequences: "the route checks the action" is not a substitute for a boundary, and adding one is not a behavior change for most tenants. Prefer `getOrgPermissionByRoles` / `getProjectPermissionByRoles` + `assertRoleSetBoundary` over fetching the target's merged ability. It bounds each role separately, and it avoids `getProjectPermission`, which stamps whichever actor it was called for onto the request context the audit log reads.
 
@@ -644,7 +646,7 @@ That's it — CRUD routes, channel creation/rotation, recipient resolution, KMS 
 Invariants worth knowing before extending it:
 
 - **The alert module owns no CASL subject.** Each provider reuses its own resource's existing permissions inside `assertPermission`, so authorization stays with the domain that owns the resource.
-- **New delivery mediums are channel definitions**, not providers: add one under `src/services/alert/channels/` and register it in `ALERT_CHANNEL_REGISTRY`. `directed: true` means the channel addresses principals and needs recipients (email); undirected channels carry their destination in config. `secretFields` drives masking on read and merge-from-stored on update.
+- **New delivery mediums are channel definitions**, not providers: add one under `src/services/alert/channels/` and register it in `ALERT_CHANNEL_REGISTRY`. `directed: true` means the channel addresses principals and needs recipients (email); undirected channels carry their destination in config. `secretFields` drives masking on read and merge-from-stored on update. A channel whose config names something else the org owns implements `assertConfigInScope`, which `alert-channel-service.ts` runs on create and whenever that reference changes on update, so an alert can't post through another org's resource. A channel that posts through a workflow integration (`slack-app`) also implements `getWorkflowIntegrationId`, which mirrors the id into `alert_channels.workflowIntegrationId` (FK, `ON DELETE SET NULL`), because the config is encrypted and can't be queried.
 - **Channel configs are encrypted** with the org/project KMS cipher (`alert-channel-crypto-fns.ts`) — never store or return them in plaintext.
 - **One alert per `(scope, resource, event)` for resource-bound alerts**, enforced by the partial `alert_unique_scope_resource_event_bound` index. A provider that sets `supportsScopeWideAlerts` also accepts alerts with no `resourceId`: such an alert watches every resource of its type in scope, several can watch the same event because they differ by condition, and `assertConditionInScope` is where the provider checks the IDs inside a condition, on create and on update (newly added IDs only). `findEnabledForEvent` matches exactly: the bound alerts for a `resourceId`, or the resource-less ones when it is null. To let a scope-wide provider hear another provider's events without a second outbox write, an event definition can declare `sourceEvent: { resourceType, eventKey }`; the consumer then runs the source resource's alerts plus the resource-less alerts of every event sourced from it (`alertProviderRegistry.findEventsBySource`), each under its own `eventType`. Certificate Manager-wide (`cert-manager`) and signer (`cert-manager.signer`) alerts are scope-wide providers, and creating or editing either requires the project Admin role, since PKI permissions are admin or member, not granular. **Every provider hook is opt-in, and its absence must reproduce the behaviour identity alerts had before any other provider existed.** `recipientPolicy` decides who can receive: `atOrgScope` validates and resolves user and group recipients against the org instead of the alert's project, and `allowEmailAddresses` accepts plain `EMAIL` recipients and makes test sends validate recipients like create and update do, instead of silently dropping out-of-scope ones (application alerts set both). `includeLastRun` adds `lastRun` to alert responses, and `resourceName` is only returned by providers that implement `getResourceNames`, and `filters` (read-only `{ id, name }` lists for the IDs inside a condition, keyed by kind, such as `applications` and `profiles` on a Certificate Manager-wide alert, with a null name for deleted IDs, matching how approval policies return approvers) only by providers that implement `getFilters`. Resolve such names there rather than adding ID filters to another domain's list endpoint. `assertChannelTypesAllowed` is where a provider gates paid channel types on create and on update (new, retyped, or re-enabled channels only, so a downgraded org can still edit the alert). `getResourceNames` (batched) supplies the resource's display name for alert responses. `resolveProjectId` lets create, list and test sends omit `projectId` when the resource already belongs to one project (`resolveAlertProjectId` in `alert-provider-registry.ts`). `getTelemetryEvent` lets a provider map alert create, update and delete to its own PostHog event, so the shared router never branches on a resource type. Audit logs are not a provider hook: every alert, whatever its resource type, logs the generic `create-alert`, `update-alert`, `delete-alert` and `test-alert-channel` events (`getAuditEvent` in `alert-service.ts`), which carry `resourceType`, `resourceId` and `resourceName` (from `getResourceNames`, so a provider with resource-bound alerts must implement it) so admins can tell them apart. Do not add per-provider audit event types. The deprecated `pki/alerts` and `applications/:applicationId/alerts` routes only serve legacy PKI Alerts V2 rows. Add features to `/api/v1/alerts`, not to them.
 - **Email channels accept plain addresses as `EMAIL` recipients when the provider opts in** (`recipientPolicy.allowEmailAddresses`), with the address as `principalId`, besides users and groups. Every address must be on one of the org's verified email domains, checked on create, update and test sends (`alert-channel-service.ts`), and again at send time, so an address on a domain the org has since removed stops receiving alerts. The resolver sends to them directly and skips an address that a user recipient on the same channel already covers.
@@ -898,7 +900,19 @@ Do not hand such a URL to a vendor SDK that makes its own requests; it follows r
 [`src/ee/services/certificate-authority-ocsp/AGENTS.md`](src/ee/services/certificate-authority-ocsp/AGENTS.md).**
 One rule binds code elsewhere: **any new path that revokes a certificate must bump
 `internal_certificate_authorities.ocspGeneration` in the same transaction as the status write** (as
-`revokeCert` does), or cached OCSP responses keep answering `good`.
+`revokeCert` does), or cached OCSP responses keep answering `good`. A job that revokes on a signal from an
+outside system, where the CA hasn't revoked yet, calls `certificateService.revokeCertAsPlatform` (the
+upstream CA call, OCSP bump, syncs and alerts) instead of writing `status` itself, writes the `REVOKE_CERT`
+audit log with the `PLATFORM` actor, and calls `rebuildCrlsAfterPlatformRevocations` once per batch, since
+`revokeCertAsPlatform` never rebuilds the CRL itself. A sync that mirrors a revocation the CA already made (the
+DigiCert revocation sync) keeps writing `status` directly.
+
+**A revoke someone asks for goes through `certificateService.revokeCert`**, never straight to
+`$performRevocation` or a CA's revoke call, because `revokeCert` is where an Application's revocation
+approval policy holds the request (`cert-revocation` type). Only an approved request revokes through
+`revokeApprovedCertificate`. Not gated, by decision: revocations that come with another action (signer
+delete, DigiCert reissue), ones that record an upstream fact (the DigiCert revocation sync), and ones an
+outside system asks for through `revokeCertAsPlatform` (the Microsoft Intune revocation sync).
 
 ### Internal CA key sources
 
@@ -987,6 +1001,8 @@ Enterprise code lives in `src/ee/`:
 
 EE routes register before community routes so they can override/extend endpoints. Licensing lives in the License domain (`src/domains/platform/license/`, read its `AGENTS.md` first). For feature gating take `licenseService: TLicenseService` and call `getPlan(orgId)`: check with `plan.has(PlanFeature.Rbac)` or refuse with `plan.assert(PlanFeature.Rbac)`, which names the feature in the error, and check numeric limits through `plan.exceeds(PlanLimit.X, used)`, never by reading the field. For usage take `usageMeteringService: TUsageMeteringService`: `emit(orgId, Meter.X)` after a metered write commits, `syncSeats(orgId)` after a member change commits. License never joins your transaction: read `getSeatUsage(orgId)` before opening it and check with `seatUsage.assertAvailable(plan)` inside it.
 
+Encryption (the root key, KMS keys, org and project data keys, HSM, external KMS keys, root key rotation) lives in the KMS Core domain (`src/domains/platform/kms-core/`, read its `AGENTS.md` before touching it): take the service you call, named with a `kms` prefix so it reads as KMS in a deps list: `kmsDataKeyService: TKmsDataKeyService` (org and project cipher pairs, key ids, backups), `kmsKeyService: TKmsKeyService` (KMS keys and cryptography with them) or `kmsRootKeyService: TKmsRootKeyService` (root key, cookie signing key, rotation). Inside a transaction you hold, call it through `within(sealKnexTransaction(trx))` (`kmsDataKeyService.within(...).createCipherPairWithDataKey(...)`) so the keys it creates commit or roll back with your rows; outside one, call the service directly.
+
 **PAM**: Before working on any `pam-*` service or router, read [`src/ee/services/pam/AGENTS.md`](src/ee/services/pam/AGENTS.md) for a high-level map of the PAM backend — module layout, permission model, and non-obvious invariants. It is intentionally a concept map, not a spec: read the referenced code for implementation detail. If you add a feature, keep any addition there brief (a concept or invariant, not code mechanics).
 
 **Certificate discovery**: before working on `pki-discovery-*` or `pki-installation-*`, read [`src/ee/services/pki-discovery/AGENTS.md`](src/ee/services/pki-discovery/AGENTS.md). Linux Server discovery splits work between the backend and the gateway's certificate scanner in the CLI repo, and keystore passwords live on installations, not jobs.
@@ -995,8 +1011,8 @@ EE routes register before community routes so they can override/extend endpoints
 
 **Secret Scanning** is single-project (see the root `AGENTS.md`): `secret-scanning-v2-project-bootstrap.ts` creates the project with the org when it has a creator to make admin (like PAM), `secret-scanning-v2-project-resolver.ts` picks the active project and lazily creates it, with every org admin as project admin, for older orgs and for orgs created from the admin console, whose admins are only invited after the org exists, and routes that take `projectId` read `req.internalSecretScanningProjectId`. A data source covers the resources it has rows for (added by a user or discovered from a push); its `config` only says where to look (Bitbucket workspace, GitLab group), never which resources, so scans, "included" state and GitLab account-scope webhooks all key off rows. Stored configs may still carry the old `includeRepos` / `includeProjects` keys, which nothing reads.
 
-**Secret scanning scans and GitHub pull request checks**: before changing scan triggers,
-`secret-scanning-v2-queue.ts` or the PR check flow, read
+**Secret scanning scans, findings and GitHub pull request checks**: before changing scan triggers,
+`secret-scanning-v2-queue.ts`, how findings are saved or triaged, or the PR check flow, read
 [`src/ee/services/secret-scanning-v2/AGENTS.md`](src/ee/services/secret-scanning-v2/AGENTS.md). The queue stays
 provider-agnostic: provider behavior goes behind hooks on the data source factory, never a provider check in the
 queue.
@@ -1195,15 +1211,15 @@ The gate has to sit at the call site because **a `DROP` aggregation does not bou
 
 ### Instance Root Encryption Key (rotation)
 
-`ENCRYPTION_KEY` wraps the in-DB root key in `kms_root_config` and is rotatable; the design is documented
-in `kms-service.ts` and `kms-root-config-dal.ts`. Two rules for code elsewhere:
+`ENCRYPTION_KEY` wraps the in-DB root key in `kms_root_config` and is rotatable; KMS Core owns it (see
+`src/domains/platform/kms-core/AGENTS.md`). Two rules for code elsewhere:
 
 - **`KMS_ROOT_CONFIG_UUID` always holds the active key** so app versions predating rotation can boot. New
   code never looks a root config row up by id or by `kekLabel`; it trial-decrypts (sentinel, staged, retained).
-- **Migrations must never call `*WithRootEncryptionKey` or `buildSecretBlindIndexFromName`**: they run before
-  `kmsService.startService`, so they fall back to the environment key, which on a rotated instance is wrong:
-  decrypts fail the auth tag and encrypts silently write unreadable rows. Oxlint blocks this under
-  `src/db/migrations/`.
+- **Migrations must never call `*WithRootEncryptionKey` or `buildSecretBlindIndexFromName`**: KMS Core starts in a
+  migration without the legacy key snapshot (`startStandaloneKmsCore`), so they fall back to the environment key,
+  which on a rotated instance is wrong: decrypts fail the auth tag and encrypts silently write unreadable rows.
+  Oxlint blocks this under `src/db/migrations/`.
 
 ### Database Configuration
 

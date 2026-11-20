@@ -49,6 +49,8 @@ const form = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   oauthAuthorizationId: "",
   oauthAuthorizedUrl: "",
   oauthScopes: [],
+  oauthUsesVariable: false,
+  oauthVariableKey: "",
   memberProvidedFields: [],
   methods: [...HTTP_METHODS],
   pathPrefixes: [],
@@ -245,6 +247,7 @@ const storedMcp = (credential: TStoredMcp["credential"]): TStoredMcp => ({
 const memberOAuth = (clientId: string | null = null) =>
   storedMcp({
     type: AgentVaultCredentialType.OAuth,
+    source: "member",
     memberProvidedFields: MEMBER,
     issuer: "https://mcp.linear.app",
     grantedScopes: [],
@@ -255,6 +258,7 @@ const memberOAuth = (clientId: string | null = null) =>
 
 const sharedOAuth = storedMcp({
   type: AgentVaultCredentialType.OAuth,
+  source: "service",
   memberProvidedFields: [],
   status: AgentVaultOauthStatus.Connected,
   issuer: "https://mcp.linear.app",
@@ -417,6 +421,13 @@ describe("buildUpdateServiceRequest", () => {
 });
 
 describe("buildListMcpToolsRequest", () => {
+  const bearerMcp = storedMcp({
+    type: AgentVaultCredentialType.Bearer,
+    headerName: "Authorization",
+    headerPrefix: "Bearer",
+    memberProvidedFields: []
+  });
+
   it("sends a typed token and header values for a new service", () => {
     expect(
       buildListMcpToolsRequest(
@@ -450,7 +461,7 @@ describe("buildListMcpToolsRequest", () => {
     expect(
       buildListMcpToolsRequest(
         "project-1",
-        "service-1",
+        bearerMcp,
         mcpForm({
           credentialType: AgentVaultCredentialType.Bearer,
           secret: UNCHANGED_SECRET,
@@ -481,7 +492,7 @@ describe("buildListMcpToolsRequest", () => {
         mcpForm({ oauthAuthorizationId: "auth-1", oauthAuthorizedUrl: SERVER_URL })
       ).credential
     ).toEqual({ type: AgentVaultCredentialType.OAuth, authorizationId: "auth-1" });
-    expect(buildListMcpToolsRequest("project-1", "service-1", mcpForm())).not.toHaveProperty(
+    expect(buildListMcpToolsRequest("project-1", bearerMcp, mcpForm())).not.toHaveProperty(
       "credential"
     );
   });
@@ -490,7 +501,7 @@ describe("buildListMcpToolsRequest", () => {
     expect(
       buildListMcpToolsRequest(
         "project-1",
-        "service-1",
+        bearerMcp,
         mcpForm({
           credentialType: AgentVaultCredentialType.Bearer,
           secret: UNCHANGED_SECRET,
@@ -944,5 +955,120 @@ describe("hook requests", () => {
 
   it("sends nothing for a service with no hook and the toggle off", () => {
     expect(hookOf(buildUpdateServiceRequest({ ...storedHttp, hook: null }, form()))).toBe("absent");
+  });
+});
+
+describe("OAuth variable credentials", () => {
+  const variableMcp = storedMcp({
+    type: AgentVaultCredentialType.OAuth,
+    source: "variable",
+    variable: { id: "variable-1", key: "LINEAR" },
+    memberProvidedFields: [],
+    status: AgentVaultOauthStatus.Connected,
+    issuer: "https://mcp.linear.app",
+    grantedScopes: [],
+    requiredScopes: []
+  });
+
+  it("sends an HTTP API's OAuth credential as the chosen variable", () => {
+    expect(
+      buildCreateServiceRequest(
+        undefined,
+        form({ credentialType: AgentVaultCredentialType.OAuth, oauthVariableKey: "GDRIVE" })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.OAuth, variable: "GDRIVE" });
+  });
+
+  it("sends an MCP server's OAuth credential as the variable only when one is chosen", () => {
+    expect(
+      buildCreateServiceRequest(
+        undefined,
+        mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR" })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.OAuth, variable: "LINEAR" });
+    expect(
+      buildListMcpToolsRequest(
+        "project-1",
+        undefined,
+        mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR" })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.OAuth, variable: "LINEAR" });
+  });
+
+  it("leaves an unchanged variable out on edit, so saving needs no permission to read its value", () => {
+    expect(
+      buildUpdateServiceRequest(
+        variableMcp,
+        mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR" })
+      )
+    ).not.toHaveProperty("credential");
+    expect(
+      buildUpdateServiceRequest(
+        { ...storedHttp, credential: variableMcp.credential },
+        form({ credentialType: AgentVaultCredentialType.OAuth, oauthVariableKey: "LINEAR" })
+      )
+    ).not.toHaveProperty("credential");
+  });
+
+  it("sends the variable on edit when it changes or the service didn't use one", () => {
+    expect(
+      buildUpdateServiceRequest(
+        variableMcp,
+        mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR_2" })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.OAuth, variable: "LINEAR_2" });
+    expect(
+      buildUpdateServiceRequest(
+        storedHttp,
+        form({ credentialType: AgentVaultCredentialType.OAuth, oauthVariableKey: "LINEAR" })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.OAuth, variable: "LINEAR" });
+    expect(
+      buildUpdateServiceRequest(
+        sharedOAuth,
+        mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR" })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.OAuth, variable: "LINEAR" });
+  });
+
+  it("loads tools with the saved variable without naming it, and names a newly chosen one", () => {
+    expect(
+      buildListMcpToolsRequest(
+        "project-1",
+        variableMcp,
+        mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR" })
+      )
+    ).not.toHaveProperty("credential");
+    expect(
+      buildListMcpToolsRequest(
+        "project-1",
+        variableMcp,
+        mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR_2" })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.OAuth, variable: "LINEAR_2" });
+  });
+
+  it("keeps a variable the caller can't see by leaving the credential out", () => {
+    expect(
+      buildUpdateServiceRequest(
+        variableMcp,
+        mcpForm({ oauthUsesVariable: true, oauthVariableKey: "" })
+      ).credential
+    ).toBeUndefined();
+  });
+
+  it("says sessions use the variable when members' connections are removed for it", () => {
+    expect(
+      membersClearedNotice(
+        mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR" }),
+        memberOAuth()
+      )?.description
+    ).toBe(
+      "Every member's connection to mcp.linear.app will be removed, and sessions will use the sign-in of the LINEAR variable."
+    );
+  });
+
+  it("asks nothing when a variable service is left to each member", () => {
+    expect(membersClearedNotice(mcpForm({ memberProvidedFields: MEMBER }), variableMcp)).toBe(null);
   });
 });

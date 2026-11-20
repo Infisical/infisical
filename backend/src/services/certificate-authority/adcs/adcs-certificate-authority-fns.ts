@@ -2,6 +2,7 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -43,9 +44,6 @@ import {
   CertStatus,
   CrlReason
 } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -147,11 +145,8 @@ type TADCSCertificateAuthorityFnsDeps = {
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "findOne" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
-  >;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -165,8 +160,8 @@ export const ADCSCertificateAuthorityFns = ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  kmsService,
-  projectDAL,
+  kmsDataKeyService,
+  kmsKeyService,
   certificateProfileDAL,
   gatewayV2Service,
   gatewayPoolService
@@ -207,7 +202,7 @@ export const ADCSCertificateAuthorityFns = ({
     // gateway (before the transaction, since discovery is a network call).
     const resolvedCaName = await resolveAdcsCaName(
       caName,
-      () => getAdcsConnectionCredentials(appConnectionId, appConnectionDAL, kmsService),
+      () => getAdcsConnectionCredentials(appConnectionId, appConnectionDAL, kmsDataKeyService),
       { gatewayV2Service, gatewayPoolService },
       { ensureReachable: true }
     );
@@ -306,7 +301,7 @@ export const ADCSCertificateAuthorityFns = ({
       } else {
         resolvedUpdateCaName = await resolveAdcsCaName(
           configuration.caName,
-          () => getAdcsConnectionCredentials(configuration.appConnectionId, appConnectionDAL, kmsService),
+          () => getAdcsConnectionCredentials(configuration.appConnectionId, appConnectionDAL, kmsDataKeyService),
           { gatewayV2Service, gatewayPoolService },
           { ensureReachable: true }
         );
@@ -438,20 +433,16 @@ export const ADCSCertificateAuthorityFns = ({
       });
     }
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
     const { credentials, gatewayId, gatewayPoolId } = await getAdcsConnectionCredentials(
       adcsCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService
     );
 
     let alg;
@@ -565,6 +556,10 @@ export const ADCSCertificateAuthorityFns = ({
       plainText: Buffer.from(certificateChainPem)
     });
 
+    const encryptedPrivateKey = skLeaf
+      ? (await kmsEncryptor({ plainText: Buffer.from(skLeaf) })).cipherTextBlob
+      : undefined;
+
     if (isCancelled && (await isCancelled())) {
       throw new CertificateRequestCancelledError();
     }
@@ -609,10 +604,7 @@ export const ADCSCertificateAuthorityFns = ({
         tx
       );
 
-      if (skLeaf) {
-        const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
-          plainText: Buffer.from(skLeaf)
-        });
+      if (encryptedPrivateKey) {
         await certificateSecretDAL.create(
           {
             certId: cert.id,
@@ -667,7 +659,7 @@ export const ADCSCertificateAuthorityFns = ({
     const { credentials, gatewayId, gatewayPoolId } = await getAdcsConnectionCredentials(
       adcsCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService
     );
 
     const { templates } = await executeAdcsGatewayOperation<AdcsTemplatesResult>(
@@ -715,7 +707,7 @@ export const ADCSCertificateAuthorityFns = ({
     const { credentials, gatewayId, gatewayPoolId } = await getAdcsConnectionCredentials(
       adcsCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService
     );
 
     // Unlike issuance, revocation is an MS-CSRA (ICertAdminD::RevokeCertificate) operation,

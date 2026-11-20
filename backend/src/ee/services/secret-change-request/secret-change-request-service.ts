@@ -1,11 +1,14 @@
 import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, TApprovalRequests } from "@app/db/schemas";
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, groupByUnique, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { EnforcementLevel } from "@app/lib/types";
 import {
   ApprovalPolicyType,
@@ -20,8 +23,7 @@ import {
   upsertApprovalRequestStepDecision
 } from "@app/services/approval-policy/approval-request-fns";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { KmsDataKey } from "@app/services/kms/kms-types";
-import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
+import { prepareSecretWriteCiphers } from "@app/services/secret-v2-bridge/secret-write-cipher-fns";
 import { ChangeRequestWebhookAction } from "@app/services/webhook/webhook-types";
 
 import { BypasserType } from "../access-approval-policy/access-approval-policy-types";
@@ -82,7 +84,7 @@ export const secretChangeRequestServiceFactory = ({
   folderDAL,
   projectDAL,
   projectEnvDAL,
-  kmsService,
+  kmsDataKeyService,
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
@@ -106,7 +108,7 @@ export const secretChangeRequestServiceFactory = ({
     permissionService,
     folderDAL,
     projectDAL,
-    kmsService,
+    kmsDataKeyService,
     secretV2BridgeDAL,
     secretVersionV2BridgeDAL,
     secretTagDAL,
@@ -142,7 +144,7 @@ export const secretChangeRequestServiceFactory = ({
       identityDAL,
       projectDAL,
       projectEnvDAL,
-      kmsService,
+      kmsDataKeyService,
       projectSlackConfigDAL,
       projectMicrosoftTeamsConfigDAL,
       microsoftTeamsService,
@@ -168,7 +170,13 @@ export const secretChangeRequestServiceFactory = ({
   };
 
   const $findSecretChangePolicyOrThrow = async (policyId: string | null | undefined, tx?: Knex) => {
-    const policy = policyId ? await secretChangePolicyService.findSecretChangePolicyById(policyId, tx) : undefined;
+    const findPolicy = (id: string) => secretChangePolicyService.findSecretChangePolicyById(id, tx);
+    let policy;
+    if (policyId) {
+      policy = tx
+        ? await findPolicy(policyId)
+        : await requestMemoize(requestMemoKeys.secretChangePolicyFindById(policyId), () => findPolicy(policyId));
+    }
     if (!policy) {
       throw new BadRequestError({ message: POLICY_DELETED_MESSAGE });
     }
@@ -205,7 +213,9 @@ export const secretChangeRequestServiceFactory = ({
       });
     }
 
-    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actorId, actorOrgId);
+    const userGroups = await requestMemoize(requestMemoKeys.userGroupMembershipsInOrg(actorId, actorOrgId), () =>
+      userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actorId, actorOrgId)
+    );
     const userGroupIds = new Set(userGroups.map((group) => group.groupId));
     if (
       !hasRole(ProjectMembershipRole.Admin) &&
@@ -515,7 +525,9 @@ export const secretChangeRequestServiceFactory = ({
       });
     resolveBypass(steps);
 
-    const project = await projectDAL.findById(projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
     const folder = await findMergedFolder(projectId, secretChangeRequest.folderId);
     if (!policy.environments.some((env) => env.id === folder.envId)) {
@@ -528,8 +540,11 @@ export const secretChangeRequestServiceFactory = ({
       folderId: folder.id,
       commits
     });
-    const cipher = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
-    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService });
+    const { secretManager: cipher, blindIndexer } = await prepareSecretWriteCiphers({
+      kmsDataKeyService,
+      projectId,
+      orgId: actorOrgId
+    });
 
     const merged = await approvalRequestDAL.transaction(async (tx) => {
       const locked = await approvalRequestDAL.findByIdForUpdate(approvalRequest.id, tx);
@@ -683,10 +698,14 @@ export const secretChangeRequestServiceFactory = ({
     });
 
     try {
-      const project = await projectDAL.findById(approvalRequest.projectId);
-      const [folder] = await folderDAL.findSecretPathByFolderIds(approvalRequest.projectId, [
-        secretChangeRequest.folderId
-      ]);
+      const { projectId } = approvalRequest;
+      const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+        projectDAL.findById(projectId)
+      );
+      const [folder] = await requestMemoize(
+        requestMemoKeys.folderSecretPath(projectId, secretChangeRequest.folderId),
+        () => folderDAL.findSecretPathByFolderIds(projectId, [secretChangeRequest.folderId])
+      );
       if (project && folder) {
         await queueChangeRequestWebhook({
           action: ChangeRequestWebhookAction.Reviewed,
@@ -930,7 +949,10 @@ export const secretChangeRequestServiceFactory = ({
       : toDeletedSecretChangePolicyStub(approvalRequest, steps);
 
     const commits = await secretChangeRequestDAL.findBySecretChangeIdBridgeSecretV2(secretChangeRequest.id);
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
 
     return {
       ...toSecretChangeRequestBase({ approvalRequest, secretChangeRequest }),

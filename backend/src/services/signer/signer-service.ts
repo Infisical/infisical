@@ -15,6 +15,8 @@ import {
   TPkiSignerCertificateRevocations,
   TPkiSigners
 } from "@app/db/schemas";
+import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -28,7 +30,8 @@ import {
   ResourcePermissionSignerActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { withCache } from "@app/lib/cache/with-cache";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { signingService } from "@app/lib/crypto/sign/signing";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
@@ -95,13 +98,11 @@ import {
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { TCertificateServiceFactory } from "../certificate/certificate-service";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertStatus, CrlReason } from "../certificate/certificate-types";
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
 import { TProjectDALFactory } from "../project/project-dal";
-import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import { isBuiltInSignerRole, unknownSignerRoleMessage } from "../signer-membership/signer-membership-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { withSignerCertificateLock } from "./signer-certificate-lock";
@@ -135,6 +136,7 @@ import { TSignerIssuanceServiceFactory } from "./signer-issuance-service";
 import { TSignerRevocationDALFactory } from "./signer-revocation-dal";
 import {
   SignerExternalCaConfigSchema,
+  SigningActivityRange,
   TCheckCertificateImportDTO,
   TCreateSignerDTO,
   TDeleteSignerDTO,
@@ -143,6 +145,7 @@ import {
   TExportCertificateDTO,
   TGetPublicKeyDTO,
   TGetSignerDTO,
+  TGetSigningActivityTrendDTO,
   TGetSigningOperationDTO,
   TImportCertificateDTO,
   TListSignersDTO,
@@ -276,8 +279,9 @@ type TSignerServiceFactoryDep = {
     | "fetchIssuedCodeSigningCertificate"
     | "prepareCodeSigningCertificateImport"
   >;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "encryptWithKmsKey" | "generateKmsKey">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "transaction">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   approvalPolicyDAL: TApprovalPolicyDALFactory;
   approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "create">;
@@ -291,7 +295,7 @@ type TSignerServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete" | "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem" | "setItemWithExpiry">;
   orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess" | "findMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -464,7 +468,8 @@ export const signerServiceFactory = ({
   internalCertificateAuthorityService,
   digicertFns,
   projectDAL,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   permissionService,
   approvalPolicyDAL,
   approvalPolicyStepsDAL,
@@ -485,19 +490,15 @@ export const signerServiceFactory = ({
   const hsmCertIssuanceDeps = {
     certificateAuthorityDAL,
     internalCertificateAuthorityService,
-    certificateBodyDAL,
     certificateDAL,
-    hsmConnectorService,
-    projectDAL,
-    kmsService
+    hsmConnectorService
   };
   const softwareCertIssuanceDeps = {
     certificateAuthorityDAL,
     internalCertificateAuthorityService,
-    certificateBodyDAL,
     certificateSecretDAL,
-    projectDAL,
-    kmsService
+    kmsDataKeyService,
+    kmsKeyService
   };
 
   const $loadSignerResourcePermission = async (
@@ -2182,7 +2183,7 @@ export const signerServiceFactory = ({
     try {
       requestStatus = await digicertFns.getRevocationRequestStatus({ caId: ca.id, requestId });
     } catch (err) {
-      if (!(err instanceof BadRequestError)) throw err;
+      if (!(err instanceof BadRequestError || err instanceof RuleViolationError)) throw err;
       await $stopTrackingRevocation(revocation, `DigiCert refused the status check (${err.message})`);
       return;
     }
@@ -2245,7 +2246,7 @@ export const signerServiceFactory = ({
       await $settleRevocation(revocation, {
         status: SignerRevocationStatus.Failed,
         failureReason:
-          err instanceof BadRequestError
+          err instanceof BadRequestError || err instanceof RuleViolationError
             ? `DigiCert refused the status check for revocation request #${requestId} (${err.message.replace(/\.$/, "")}). Fix the DigiCert connection or certificate authority, then revoke the certificate again.`
             : UNFINISHED_REVOKE_REASON
       });
@@ -2421,7 +2422,11 @@ export const signerServiceFactory = ({
         await $settleRevocation(revocation, { status: SignerRevocationStatus.Completed });
         return $buildRevokeResponse(signer, certificate);
       }
-      const isRefusal = err instanceof BadRequestError || err instanceof NotFoundError;
+      const isRefusal =
+        err instanceof BadRequestError ||
+        err instanceof NotFoundError ||
+        err instanceof RuleViolationError ||
+        err instanceof EntityNotFoundError;
       const refusalMessage = (err as Error).message;
       if (isRefusal && isRetryOfUnknownOutcome) {
         await $settleRevocation(revocation, {
@@ -2484,12 +2489,8 @@ export const signerServiceFactory = ({
       });
     }
 
-    const keyId = await getProjectKmsCertificateKeyId({
-      projectId: signer.projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: keyId });
+    const keyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(signer.projectId);
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: keyId });
     const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
     const cert = new x509.X509Certificate(decryptedCert);
     const certificatePem = cert.toString("pem");
@@ -2713,8 +2714,8 @@ export const signerServiceFactory = ({
         certId: signer.certificateId,
         projectId,
         certificateSecretDAL,
-        projectDAL,
-        kmsService
+        kmsDataKeyService,
+        kmsKeyService
       });
       certPrivateKey = Buffer.from(creds.certPrivateKey);
       const privateKeyObject = crypto.nativeCrypto.createPrivateKey({
@@ -2920,8 +2921,8 @@ export const signerServiceFactory = ({
       if (!certBody?.encryptedCertificate) {
         throw new BadRequestError({ message: `Certificate body not found for signer '${signer.name}'.` });
       }
-      const keyId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
-      const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: keyId });
+      const keyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
+      const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId: keyId });
       const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
       const cert = new x509.X509Certificate(decryptedCert);
       publicKeyObject = crypto.nativeCrypto.createPublicKey({
@@ -2934,8 +2935,8 @@ export const signerServiceFactory = ({
         certId: signer.certificateId,
         projectId,
         certificateSecretDAL,
-        projectDAL,
-        kmsService
+        kmsDataKeyService,
+        kmsKeyService
       });
 
       if (!certPublicKey) {
@@ -2962,6 +2963,84 @@ export const signerServiceFactory = ({
       signerName: signer.name,
       projectId
     };
+  };
+
+  const getActivityTrend = async (dto: TGetSigningActivityTrendDTO) => {
+    const { permission, hasRole } = await permissionService.getProjectPermission({
+      actor: dto.actor,
+      actorId: dto.actorId,
+      projectId: dto.projectId,
+      actorAuthMethod: dto.actorAuthMethod,
+      actorOrgId: dto.actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCodeSigningActions.Read,
+      ProjectPermissionSub.CodeSigners
+    );
+
+    const canReadSigner = async (signerId: string) => {
+      const { permission: signerPermission } = await $loadSignerResourcePermission(
+        signerId,
+        dto.projectId,
+        dto.actor,
+        dto.actorId,
+        dto.actorAuthMethod,
+        dto.actorOrgId
+      );
+      return signerPermission.can(ResourcePermissionSignerActions.Read, ResourcePermissionSub.Signer);
+    };
+
+    const isCacheable = Boolean(dto.signerId) || hasRole(ProjectMembershipRole.Admin);
+
+    let signerIds: string[] | undefined;
+    if (dto.signerId) {
+      const signer = await signerDAL.findById(dto.signerId);
+      if (!signer || signer.projectId !== dto.projectId) {
+        throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
+      }
+      if (!(await canReadSigner(signer.id))) {
+        throw new ForbiddenRequestError({ message: `You do not have permission to read signer '${dto.signerId}'` });
+      }
+      signerIds = [signer.id];
+    } else if (!hasRole(ProjectMembershipRole.Admin)) {
+      const memberships = await membershipDAL.findResourceMembershipsForActor({
+        projectId: dto.projectId,
+        resourceType: ResourceType.Signer,
+        actorType: dto.actor === ActorType.IDENTITY ? ActorType.IDENTITY : ActorType.USER,
+        actorId: dto.actorId
+      });
+      const memberSignerIds = Array.from(
+        new Set(memberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id)))
+      );
+      const readable = await Promise.all(memberSignerIds.map(canReadSigner));
+      signerIds = memberSignerIds.filter((_, i) => readable[i]);
+    }
+
+    const daysBackByRange: Record<SigningActivityRange, number> = {
+      [SigningActivityRange.SevenDays]: 7,
+      [SigningActivityRange.ThirtyDays]: 30,
+      [SigningActivityRange.SixMonths]: 180
+    };
+
+    const fetchPeriods = () =>
+      signingOperationDAL.getActivityTrend({
+        projectId: dto.projectId,
+        signerIds,
+        daysBack: daysBackByRange[dto.range]
+      });
+
+    const periods = isCacheable
+      ? await withCache({
+          keyStore,
+          key: KeyStorePrefixes.SigningActivityTrend(dto.projectId, dto.range, dto.signerId),
+          ttlSeconds: KeyStoreTtls.SigningActivityTrendInSeconds,
+          fetcher: fetchPeriods
+        })
+      : await fetchPeriods();
+
+    return { periods };
   };
 
   const listOperations = async (dto: TListSigningOperationsDTO) => {
@@ -3114,6 +3193,7 @@ export const signerServiceFactory = ({
     exportCertificate,
     sign,
     getPublicKey,
+    getActivityTrend,
     listOperations,
     getOperationById,
     autoRenewCertificate,

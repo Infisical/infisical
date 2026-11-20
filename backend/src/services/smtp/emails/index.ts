@@ -4,6 +4,8 @@ export * from "./AccessPamRequestAutoApprovedTemplate";
 export * from "./AccessPamRequestBypassedTemplate";
 export * from "./AccessPamRequestTemplate";
 export * from "./AccountDeletionConfirmationTemplate";
+export * from "./AgentVaultFreeUsageLimitTemplate";
+export * from "./AgentVaultFreeUsageWarningTemplate";
 export * from "./AlertNotificationTemplate";
 export * from "./AuditLogMigrationAlertTemplate";
 export * from "./AuditReportTemplate";

@@ -33,6 +33,7 @@ export type TPreparedChannelCreate = {
     name: string;
     channelType: string;
     encryptedConfig: Buffer;
+    workflowIntegrationId: string | null;
     enabled: boolean;
     orgId: string;
     projectId: string | null;
@@ -44,6 +45,6 @@ export type TPreparedChannelCreate = {
 
 export type TPreparedChannelUpdate = {
   channelId: string;
-  patch: { name?: string; enabled?: boolean; encryptedConfig?: Buffer };
+  patch: { name?: string; enabled?: boolean; encryptedConfig?: Buffer; workflowIntegrationId?: string | null };
   recipients?: TChannelRecipientInput[];
 };
