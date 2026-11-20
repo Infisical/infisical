@@ -34,6 +34,7 @@ import { AccessRestricted, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
+import { TruncatedValue } from "../../networking/truncated-value";
 import { CertManagerNotSetUp, useCertManagerProjectId } from "../components/certificate";
 import { DeletePolicyDialog } from "../components/delete-dialogs";
 import {
@@ -268,12 +269,13 @@ const ExtensionsCard = ({
 const Sections = ({ policy }: { policy: TCertificatePolicy }) => {
   if (!hasEnforcement(policy))
     return (
-      <Card variant="framed" title="No restrictions">
+      <Card variant="framed" title="Restrictions">
         <EmptyState
           size="sm"
+          media="bare"
           icon="shield-check"
-          title="This policy enforces no constraints"
-          description="Certificates issued under it can use any subject attributes, subject alternative names, algorithms, key usages, and validity period. Edit the policy to add restrictions."
+          title="No restrictions"
+          description="Certificates issued under this policy can use any subject, algorithm, key usage and validity period."
         />
       </Card>
     );
@@ -401,7 +403,14 @@ const PolicyDetail = ({
               variant="props"
               density="compact"
               items={[
-                ["Policy ID", <code key="id">{policy.id}</code>],
+                [
+                  "Policy ID",
+                  <TruncatedValue
+                    key="id"
+                    value={policy.id}
+                    copyLabel="Copy policy ID to clipboard"
+                  />
+                ],
                 ...(policy.description ? ([["Description", policy.description]] as const) : []),
                 ...(policy.createdAt ? ([["Created", timestamp(policy.createdAt)]] as const) : []),
                 ...(policy.updatedAt

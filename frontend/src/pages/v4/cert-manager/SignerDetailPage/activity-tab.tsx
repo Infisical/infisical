@@ -33,8 +33,14 @@ const OPERATION_TONES: Record<SigningOperationStatus, "ok" | "bad" | "warn" | "o
   [SigningOperationStatus.Pending]: "outline"
 };
 
-export const OperationStatusBadge = ({ status }: { status: SigningOperationStatus }) => (
-  <Badge tone={OPERATION_TONES[status] ?? "outline"} dot>
+export const OperationStatusBadge = ({
+  status,
+  size
+}: {
+  status: SigningOperationStatus;
+  size?: "control-sm";
+}) => (
+  <Badge tone={OPERATION_TONES[status] ?? "outline"} dot size={size} collapse={Boolean(size)}>
     {signingOperationStatusLabels[status] ?? status}
   </Badge>
 );

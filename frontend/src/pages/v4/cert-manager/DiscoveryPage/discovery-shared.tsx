@@ -222,16 +222,18 @@ export const DiscoveryTypeIcon = ({ type }: { type: PkiDiscoveryType }) => {
 export const BadgeList = ({
   items,
   max = 2,
-  mono
+  mono,
+  wrap = false
 }: {
   items: readonly string[];
   max?: number;
   mono?: boolean;
+  wrap?: boolean;
 }) => {
   if (!items.length) return <span>-</span>;
   const overflow = items.slice(max);
   return (
-    <Inline gap={4} align="center" wrap={false}>
+    <Inline gap={4} align="center" wrap={wrap}>
       {items.slice(0, max).map((item) => (
         <Badge key={item} tone="soft" mono={mono} title={item}>
           {item}

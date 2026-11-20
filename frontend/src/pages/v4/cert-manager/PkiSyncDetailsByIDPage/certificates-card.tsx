@@ -287,9 +287,7 @@ export const PkiSyncCertificatesCard = ({
             icon="search"
             title={pkiSync.applicationId ? "No filters set" : "Certificates can't be changed"}
             description={
-              pkiSync.applicationId
-                ? "Edit this sync to choose certificates."
-                : "This sync is not attached to an application."
+              pkiSync.applicationId ? undefined : "This sync is not attached to an application."
             }
           />
         )}

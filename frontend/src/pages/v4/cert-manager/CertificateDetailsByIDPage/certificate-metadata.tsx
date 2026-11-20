@@ -98,8 +98,8 @@ export const CertificateMetadataCard = ({
       action={
         <Button
           variant="ghost"
-          size="xs"
-          icon="pencil"
+          size="sm"
+          aria-label="Edit metadata"
           disabledReason={editReason}
           onClick={() => setEditing(true)}
         >

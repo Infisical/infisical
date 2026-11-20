@@ -91,14 +91,14 @@ const Page = () => {
           { label: signerName, link: go.link(signerHref) }
         ]}
         title="Signing operation"
-        description={dateTimeSeconds(operation.createdAt)}
-        badges={<OperationStatusBadge status={operation.status} />}
+        badges={<OperationStatusBadge status={operation.status} size="control-sm" />}
       />
       <Card variant="framed" title="Details">
         <Stack gap={16}>
           <DataList
             variant="props"
             items={[
+              ["Signed", dateTimeSeconds(operation.createdAt)],
               [
                 "Algorithm",
                 signingAlgorithmLabels[operation.signingAlgorithm] ?? operation.signingAlgorithm

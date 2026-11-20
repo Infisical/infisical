@@ -17,7 +17,7 @@ import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Snippet } from "@infisical/cipher/ui/snippet";
 import * as x509 from "@peculiar/x509";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { differenceInCalendarDays, format } from "date-fns";
+import { format } from "date-fns";
 
 import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCertificateAuthorityActions } from "@app/context/ProjectPermissionContext/types";
@@ -41,7 +41,7 @@ import { CA_DOCS, caBlock, useCaScope } from "../CertificateAuthoritiesPage/scop
 import { CaStatusBadge, DeleteCaDialog } from "../CertificateAuthoritiesPage/shared";
 import { CertManagerNotSetUp } from "../components/certificate";
 import { CrossSignedCertificateCard } from "./cross-signed";
-import { CaDetailsCard, SubjectCard } from "./details-card";
+import { CaDetailsCard } from "./details-card";
 import { GenerateRootCertificateDialog, RenewCaDialog } from "./renew-dialogs";
 import { RenewalCard } from "./renewal";
 import { CrlList, RevocationCard } from "./revocation";
@@ -55,18 +55,6 @@ const RENEWS_THROUGH_PROVIDER = new Set([
 ]);
 
 const INSTALLING = "Certificate installation is in progress";
-
-const ledeOf = (ca: TInternalCertificateAuthority) => {
-  if (ca.status === CaStatus.PENDING_CERTIFICATE)
-    return ca.configuration.type === InternalCaType.ROOT
-      ? "Pending a certificate. Generate one to start issuing."
-      : "Pending a certificate. Install a signed CA certificate to start issuing.";
-  if (ca.status === CaStatus.DISABLED) return "Disabled. It doesn't issue certificates.";
-  if (!ca.configuration.notAfter) return undefined;
-  const left = differenceInCalendarDays(new Date(ca.configuration.notAfter), new Date());
-  if (left < 0) return `Expired ${-left} days ago. Renew it to keep issuing.`;
-  return `Valid for ${left} more ${left === 1 ? "day" : "days"}.`;
-};
 
 const validityOf = (pem: string) => {
   try {
@@ -216,8 +204,7 @@ const CaHeader = ({
     <PageHeader
       breadcrumb={[breadcrumb]}
       title={ca.name}
-      badges={<CaStatusBadge status={ca.status} />}
-      description={ledeOf(ca)}
+      badges={<CaStatusBadge status={ca.status} size="control-sm" />}
       actions={
         <>
           <DropdownMenu>
@@ -270,19 +257,7 @@ const CaCertificatesList = ({
       size="sm"
       loading={isPending}
       loadingRows={2}
-      empty={
-        <EmptyState
-          size="sm"
-          media="bare"
-          icon="cert"
-          title="No CA certificates installed"
-          description={
-            ca.configuration.type === InternalCaType.ROOT
-              ? "Generate a certificate to start issuing."
-              : "Install a CA certificate to start issuing."
-          }
-        />
-      }
+      empty={<EmptyState size="sm" media="bare" icon="cert" title="No CA certificates installed" />}
     >
       {certificates.map((cert, index) => (
         <CaCertificateRow
@@ -396,21 +371,16 @@ const CaDetail = ({
       />
       <DetailLayout
         asideLabel="Certificate authority details"
-        aside={
-          <>
-            <CaDetailsCard ca={ca} org={org} parentName={parent?.name} />
-            {renewal && renewable && <RenewalCard ca={ca} renewal={renewal} />}
-            {signingConfig && !pendingCertificate && (
-              <SigningConfigCard ca={ca} config={signingConfig} />
-            )}
-            <SubjectCard ca={ca} />
-          </>
-        }
+        aside={<CaDetailsCard ca={ca} org={org} parentName={parent?.name} />}
       >
         <CaCertificatesList
           ca={ca}
           readBlock={block(ProjectPermissionCertificateAuthorityActions.Read)}
         />
+        {renewal && renewable && <RenewalCard ca={ca} renewal={renewal} />}
+        {signingConfig && !pendingCertificate && (
+          <SigningConfigCard ca={ca} config={signingConfig} />
+        )}
         <CrossSignedCertificateCard
           ca={ca}
           entitled={Boolean(plan?.pkiCrossSignedCa)}

@@ -28,13 +28,14 @@ import type { Actor, AuditLog } from "@app/hooks/api/auditLogs/types";
 import { PkiSyncStatus } from "@app/hooks/api/pkiSyncs/enums";
 import type { TPkiSync } from "@app/hooks/api/pkiSyncs/types";
 
-import { CopyButton, Dash } from "../../access/org/detail-parts";
+import { Dash } from "../../access/org/detail-parts";
 import { formatDateTime } from "../../access/roles";
 import { toast } from "../../access/toast";
-import { RESTRICTED } from "../../access/ui";
+import { EditDetailsButton, RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, useGo, v4Path } from "../../links";
+import { TruncatedValue } from "../../networking/truncated-value";
 import { CertManagerNotSetUp, useCertManagerProjectId } from "../components/certificate";
 import { EditPkiSyncSheet, type PkiSyncEditSection } from "../components/pki-syncs/edit-sync-sheet";
 import { notifyUnhandledHostCommandError } from "../components/pki-syncs/options/host-command-errors";
@@ -206,21 +207,17 @@ const SyncDetails = ({
   const destinationItems = usePkiSyncDestinationItems(sync);
   const mappingItems = pkiSyncFieldMappingItems(sync);
   const failure = getPkiSyncFailureMessage(sync.syncStatus, sync.lastSyncMessage);
-  const editReason = permissions.canEdit ? undefined : RESTRICTED;
   const hasHealthCheck = Boolean(
     syncOption?.canRunHealthCheckCommand &&
     (sync.syncOptions as { healthCheckCommand?: string }).healthCheckCommand
   );
 
-  const editButton = (section: PkiSyncEditSection) => (
-    <Button
-      variant="ghost"
-      size="sm"
-      disabledReason={editReason}
+  const editButton = (section: PkiSyncEditSection, label: string) => (
+    <EditDetailsButton
+      label={label}
+      allowed={permissions.canEdit}
       onClick={() => setEditing(section)}
-    >
-      Edit
-    </Button>
+    />
   );
 
   const runCheck = async () => {
@@ -247,14 +244,8 @@ const SyncDetails = ({
   const details: DataListItem[] = [
     ["Name", sync.name],
     ["Description", sync.description || <Dash key="description" />],
-    [
-      "ID",
-      <Inline key="id" gap={4} align="center" wrap={false}>
-        <MiddleTruncate mono keepEnd={6} text={sync.id} />
-        <CopyButton value={sync.id} label="Copy sync ID" />
-      </Inline>
-    ],
-    ["Status", <SyncStatus key="status" sync={sync} />],
+    ["ID", <TruncatedValue key="id" value={sync.id} copyLabel="Copy sync ID" />],
+    ["Status", <SyncStatus key="status" sync={sync} badge="sm" />],
     ["Auto-sync", sync.isAutoSyncEnabled ? "Enabled" : "Disabled"],
     [
       "Last synced",
@@ -274,10 +265,14 @@ const SyncDetails = ({
           breadcrumb={[{ label: backLabel, href: backHref }]}
           title={sync.name}
           badges={
-            <Inline gap={12} align="center" wrap={false}>
-              <SyncStatus sync={sync} />
-              {!sync.isAutoSyncEnabled && <AutoSyncOff />}
-              <SyncJobs sync={sync} canImport={Boolean(syncOption?.canImportCertificates)} />
+            <Inline gap={8} align="center" wrap={false}>
+              <SyncStatus sync={sync} badge="control-sm" />
+              {!sync.isAutoSyncEnabled && <AutoSyncOff badge="control-sm" />}
+              <SyncJobs
+                sync={sync}
+                canImport={Boolean(syncOption?.canImportCertificates)}
+                badge="control-sm"
+              />
             </Inline>
           }
           actions={
@@ -324,23 +319,42 @@ const SyncDetails = ({
         <DetailLayout
           asideLabel="Sync details"
           aside={
-            <Card variant="framed" title="Details" action={editButton("details")}>
+            <Card
+              variant="framed"
+              title="Details"
+              action={editButton("details", "Edit sync details")}
+            >
               <DataList variant="props" density="compact" items={details} />
             </Card>
           }
         >
-          <Card variant="framed" title="Destination" action={editButton("destination")}>
+          <Card
+            variant="framed"
+            title="Destination"
+            action={editButton("destination", "Edit destination")}
+          >
             <DataList variant="props" density="compact" items={destinationItems} />
           </Card>
           {hasFieldMappings(sync.destination) && mappingItems.length > 0 && (
-            <Card variant="framed" title="Field mappings" action={editButton("mappings")}>
+            <Card
+              variant="framed"
+              title="Field mappings"
+              action={editButton("mappings", "Edit field mappings")}
+            >
               <DataList variant="props" density="compact" items={mappingItems} />
             </Card>
           )}
-          <Card variant="framed" title="Sync options" action={editButton("options")}>
+          <Card
+            variant="framed"
+            title="Sync options"
+            action={editButton("options", "Edit sync options")}
+          >
             <DataList variant="props" density="compact" items={pkiSyncOptionItems(sync)} />
           </Card>
-          <PkiSyncCommandsCard pkiSync={sync} action={editButton("hostCommands")} />
+          <PkiSyncCommandsCard
+            pkiSync={sync}
+            action={editButton("hostCommands", "Edit host commands")}
+          />
           <PkiSyncCertificatesCard
             pkiSync={sync}
             onEditCertificates={() => setEditing("certificates")}

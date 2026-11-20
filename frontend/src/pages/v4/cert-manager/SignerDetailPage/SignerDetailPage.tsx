@@ -119,10 +119,10 @@ const SignerBadges = ({ signer }: { signer: TSigner }) => {
   const renewal = renewalNote(signer);
   return (
     <>
-      <SignerStatusBadge signer={signer} note={statusNote(signer)} />
+      <SignerStatusBadge signer={signer} note={statusNote(signer)} size="control-sm" />
       {renewal && (
         <Tooltip content={renewal}>
-          <Badge tone="info" icon="clock">
+          <Badge tone="info" icon="clock" size="control-sm" collapse>
             Renewal in progress
           </Badge>
         </Tooltip>
@@ -131,7 +131,7 @@ const SignerBadges = ({ signer }: { signer: TSigner }) => {
         <Tooltip
           content={`${(signer.certificateFailureReason ?? "").replace(/\.$/, "")}. The signer still has its current certificate.`}
         >
-          <Badge tone="warn" icon="alert">
+          <Badge tone="warn" icon="alert" size="control-sm" collapse>
             Request failed
           </Badge>
         </Tooltip>
@@ -333,7 +333,6 @@ const SignerDetail = ({
       <PageHeader
         breadcrumb={[{ label: "Signers", link: go.link(listHref) }]}
         title={signer.name}
-        description={signer.description || undefined}
         badges={<SignerBadges signer={signer} />}
         actions={<SignerActionsMenu signer={signer} can={can} onOpen={setDialog} />}
         tabs={
@@ -363,7 +362,7 @@ const SignerDetail = ({
       )}
       {tab === "overview" && (
         <DetailLayout
-          asideLabel="Certificate details"
+          asideLabel="Signer details"
           aside={<SignerCertificateCard orgId={orgId} signer={signer} />}
         >
           <ActivityTab
