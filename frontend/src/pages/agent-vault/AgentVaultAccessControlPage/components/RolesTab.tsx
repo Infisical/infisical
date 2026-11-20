@@ -146,7 +146,8 @@ export const RolesTab = () => {
             <TableHead isTruncatable className="w-full">
               Name
             </TableHead>
-            <TableHead className="w-36">Type</TableHead>
+            {/* A width here loses to Name's w-full, so Type holds its space with a minimum. */}
+            <TableHead className="min-w-48">Type</TableHead>
             <TableHead variant="action" />
           </TableRow>
         </TableHeader>

@@ -156,9 +156,9 @@ export const AgentVaultPolicyEditor = ({
               <AlertDescription>{warning}</AlertDescription>
             </Alert>
           )}
-          <AccessBundlesAccessCard projectId={projectId} {...scopeProps} />
           <ServicesAccessCard projectId={projectId} {...scopeProps} />
           <SkillsAccessCard projectId={projectId} {...scopeProps} />
+          <AccessBundlesAccessCard projectId={projectId} {...scopeProps} />
           <CapabilitiesCard {...scopeProps} />
         </TabsContent>
         <TabsContent value="json">

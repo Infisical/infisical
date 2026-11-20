@@ -363,14 +363,6 @@ const SESSION_OWN = [
 
 export const PERMISSION_ROWS: TPermissionRow[] = [
   {
-    key: "accessBundles",
-    label: "Access Bundles",
-    description:
-      "Use starts sessions from a bundle and reaches every service and skill in it, with no access to them below. Use and Edit can also change what a bundle holds. Denied overrides every other role.",
-    actions: resourceActions(Sub.AgentVaultAccessBundles, RESOURCE_COPY.accessBundles),
-    levels: RESOURCE_LEVELS
-  },
-  {
     key: "services",
     label: "Services",
     description:
@@ -384,6 +376,14 @@ export const PERMISSION_ROWS: TPermissionRow[] = [
     description:
       "Use puts a skill in a session. Use and Edit can also change a skill's files, which every session that loads it runs. Denied overrides every other role.",
     actions: resourceActions(Sub.AgentVaultSkills, RESOURCE_COPY.skills),
+    levels: RESOURCE_LEVELS
+  },
+  {
+    key: "accessBundles",
+    label: "Access Bundles",
+    description:
+      "Use starts sessions from a bundle and reaches every service and skill in it, without Use on them under Services or Skills. Use and Edit can also change what a bundle holds. Denied overrides every other role.",
+    actions: resourceActions(Sub.AgentVaultAccessBundles, RESOURCE_COPY.accessBundles),
     levels: RESOURCE_LEVELS
   },
   {

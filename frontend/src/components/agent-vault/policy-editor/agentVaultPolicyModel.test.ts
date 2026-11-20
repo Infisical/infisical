@@ -1386,8 +1386,8 @@ describe("templates", () => {
       { subject: PROXIES, action: ["read"] }
     ]);
     expect(policyToRules(template("builder"))).toEqual([
-      { subject: BUNDLES, action: ["read", "use", "edit", "create"] },
       { subject: SERVICES, action: ["read", "use", "edit", "create"] },
+      { subject: BUNDLES, action: ["read", "use", "edit", "create"] },
       { subject: SESSIONS, action: ownSessions },
       { subject: PROXIES, action: ["read"] }
     ]);
