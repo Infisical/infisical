@@ -105,3 +105,45 @@
 .urgent {
   color: var(--cipher-bad);
 }
+.tile.tile {
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+}
+@media (min-width: 1100px) {
+  .tile.tile {
+    min-height: 230px;
+  }
+}
+.mutedValue {
+  color: var(--cipher-text2);
+  font-family: var(--cipher-type-title-font-family);
+  font-size: var(--cipher-type-title-font-size);
+  line-height: var(--cipher-type-title-line-height);
+  font-weight: var(--cipher-type-title-font-weight);
+  letter-spacing: var(--cipher-type-title-letter-spacing);
+}
+.tileFooter {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cipher-space-8);
+  color: var(--cipher-ink);
+  text-decoration: none;
+}
+.tileFooter > svg {
+  color: var(--cipher-muted);
+}
+
+.tile:is(:hover, :focus-within) [data-slot="halftone"] {
+  opacity: calc(var(--cipher-halftone-peak-hover) * var(--halftone-intensity, 1));
+}
+.tile:is(:hover, :focus-within) [data-slot="halftone"] > svg:first-child {
+  opacity: 0;
+}
+.tile:is(:hover, :focus-within) [data-slot="halftone"] > svg:last-child {
+  opacity: 1;
+  clip-path: ellipse(var(--halftone-grown) at var(--halftone-at));
+}
+

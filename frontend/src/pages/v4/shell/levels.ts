@@ -1,3 +1,5 @@
+import { createElement } from "react";
+import { Badge } from "@infisical/cipher/ui/badge";
 import type { SidebarSection } from "@infisical/cipher/ui/sidebar";
 import type { LinkOptions } from "@tanstack/react-router";
 
@@ -77,6 +79,10 @@ const withProducts = (
         id: `org:${product.id}`,
         label: product.label,
         icon: product.icon,
+        badge:
+          product.id === "agent-vault"
+            ? createElement(Badge, { size: "sm", collapse: true }, "Preview")
+            : undefined,
         disabled: product.disabled,
         ...(product.children && !product.disabled
           ? {

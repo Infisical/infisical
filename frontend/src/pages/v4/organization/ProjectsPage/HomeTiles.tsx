@@ -1,6 +1,9 @@
-import { lazy, Suspense } from "react";
+import { type ComponentProps, lazy, type ReactNode, Suspense } from "react";
+import { hueScope } from "@infisical/cipher/lib/hue";
 import { Button } from "@infisical/cipher/ui/button";
+import { Halftone } from "@infisical/cipher/ui/halftone";
 import { Icon, type IconName } from "@infisical/cipher/ui/icon";
+import { StatCard } from "@infisical/cipher/ui/stat-card";
 
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -9,11 +12,48 @@ import { useV4Adapter } from "../../data/adapters";
 import { orgHref, v4Path } from "../../links";
 import { productOf } from "../../shell/navigation";
 import { useBlockedProducts } from "../../shell/product-access";
-import { MetricTile } from "./MetricTile";
 
 import styles from "./ProjectsPage.module.css";
 
-const BleedChart = lazy(() => import("./BleedChart"));
+const StatCardChart = lazy(() =>
+  import("@infisical/cipher/ui/stat-card-chart").then((module) => ({
+    default: module.StatCardChart
+  }))
+);
+
+const MetricTile = ({
+  hue,
+  seed,
+  muted,
+  value,
+  ...props
+}: Omit<ComponentProps<typeof StatCard>, "value"> & {
+  hue: number;
+  seed: string;
+  /** The Not set up state: a muted value and a faint gray hover corner. */
+  muted?: boolean;
+  value?: ReactNode;
+}) => (
+  <StatCard
+    {...hueScope(hue)}
+    {...props}
+    variant="plain"
+    className={styles.tile}
+    value={muted ? <span className={styles.mutedValue}>{value}</span> : value}
+    backdrop={
+      <Halftone
+        reveal="hover"
+        reach={107}
+        depth={0.667}
+        width={160}
+        height={96}
+        seed={seed}
+        tone={muted ? "ink" : "hue"}
+        intensity={muted ? 0.33 : 1}
+      />
+    }
+  />
+);
 
 const fullNumber = new Intl.NumberFormat();
 const compactNumber = new Intl.NumberFormat(undefined, { notation: "compact" });
@@ -40,9 +80,7 @@ const useTile = (orgId: string, type: ProjectType, label: string, path: string) 
       seed: product.type
     },
     unavailable: (error: unknown) => ({
-      muted: true,
-      value: "Unavailable",
-      note: errorMessage(error) ?? "Couldn't load this number. Refresh to try again."
+      error: errorMessage(error) ?? "Couldn't load this number. Refresh to try again."
     }),
     noAccess: `You don't have access to ${product.label}.`
   };
@@ -82,10 +120,11 @@ const ReadsTile = ({ orgId }: { orgId: string }) => {
       {...shared}
       value={formatCount(total)}
       note="Last 7 days"
+      chartPlacement="bleed"
       chart={
         reads.data && (
           <Suspense fallback={null}>
-            <BleedChart days={reads.data.days} label="Secret reads" />
+            <StatCardChart data={reads.data.days.map((day) => day.value)} label="Secret reads" />
           </Suspense>
         )
       }
@@ -128,9 +167,10 @@ const FindingsTile = ({ orgId }: { orgId: string }) => {
       {...shared}
       value={formatCount(findings.data.findings)}
       note={tile.blocked ? `${note}. ${tile.noAccess}` : note}
+      footerPlacement="frame"
       footer={
-        !tile.blocked && (
-          <a href={orgHref(orgId, "/secret-scanning/findings")}>
+        tile.blocked ? undefined : (
+          <a href={orgHref(orgId, "/secret-scanning/findings")} className={styles.tileFooter}>
             Review findings
             <Icon name="chev-right" size={14} />
           </a>
@@ -177,9 +217,14 @@ const ExpiringTile = ({ orgId }: { orgId: string }) => {
       {...shared}
       value={formatCount(expiring.data.count)}
       note="In the next 30 days"
+      chartPlacement="bleed"
       chart={
         <Suspense fallback={null}>
-          <BleedChart days={expiring.data.days} label="Certificates expiring" step />
+          <StatCardChart
+            data={expiring.data.days.map((day) => day.value)}
+            label="Certificates expiring"
+            curve="step"
+          />
         </Suspense>
       }
     />

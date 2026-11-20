@@ -1,4 +1,4 @@
-import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { hueScope } from "@infisical/cipher/lib/hue";
 import { Button } from "@infisical/cipher/ui/button";
@@ -17,21 +17,6 @@ import styles from "./ProjectsPage.module.css";
 
 const QUEUE_BREAKPOINT = 720;
 const SHOWN = 5;
-
-const useNarrow = () => {
-  const ref = useRef<HTMLDivElement>(null);
-  const [narrow, setNarrow] = useState(false);
-  useLayoutEffect(() => {
-    const element = ref.current;
-    if (!element) return undefined;
-    const observer = new ResizeObserver(([entry]) =>
-      setNarrow(entry.contentRect.width < QUEUE_BREAKPOINT)
-    );
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  return [ref, narrow] as const;
-};
 
 const shortDate = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
 
@@ -99,7 +84,7 @@ const AllClear = ({ children, unknown }: { children: ReactNode; unknown?: boolea
   </div>
 );
 
-const ApprovalRow = ({ approval, narrow }: { approval: HomeApproval; narrow: boolean }) => {
+const ApprovalRow = ({ approval }: { approval: HomeApproval }) => {
   const approve = useV4Adapter("home").useApprove();
   const [pending, setPending] = useState(false);
   const onApprove = async () => {
@@ -133,7 +118,7 @@ const ApprovalRow = ({ approval, narrow }: { approval: HomeApproval; narrow: boo
         <span className={approval.urgent ? styles.urgent : undefined}>{approval.description}</span>
       }
       meta={age(approval.createdAt)}
-      actionsPlacement={narrow ? "below" : "end"}
+      actionsBreakpoint={QUEUE_BREAKPOINT}
       actions={
         <>
           {approval.href && (
@@ -152,7 +137,7 @@ const ApprovalRow = ({ approval, narrow }: { approval: HomeApproval; narrow: boo
   );
 };
 
-const AttentionRow = ({ item, narrow }: { item: HomeAttention; narrow: boolean }) => (
+const AttentionRow = ({ item }: { item: HomeAttention }) => (
   <Item
     variant="outline"
     media={<ProductMedia type={item.product} />}
@@ -160,7 +145,7 @@ const AttentionRow = ({ item, narrow }: { item: HomeAttention; narrow: boolean }
     titleLines={2}
     description={item.description && emphasis(item.description)}
     meta={age(item.createdAt)}
-    actionsPlacement={narrow ? "below" : "end"}
+    actionsBreakpoint={QUEUE_BREAKPOINT}
     actions={
       item.href ? (
         <Button variant="outline" asChild>
@@ -180,13 +165,12 @@ export const HomeQueues = ({
   checking: boolean;
   error: unknown;
 }) => {
-  const [ref, narrow] = useNarrow();
   const [filter, setFilter] = useState("all");
   const [expanded, setExpanded] = useState(false);
   const { approvals, attention } = queue;
   const shown = expanded ? approvals : approvals.slice(0, SHOWN);
   return (
-    <div ref={ref} className={styles.queues}>
+    <div className={styles.queues}>
       <Tabs
         variant="segmented"
         label="Show"
@@ -217,7 +201,7 @@ export const HomeQueues = ({
         }
       >
         {shown.map((approval) => (
-          <ApprovalRow key={approval.id} approval={approval} narrow={narrow} />
+          <ApprovalRow key={approval.id} approval={approval} />
         ))}
         {error ? (
           <AllClear unknown>
@@ -236,7 +220,7 @@ export const HomeQueues = ({
       {filter === "all" && (
         <Section title="Needs attention" count={attention.length}>
           {attention.length ? (
-            attention.map((item) => <AttentionRow key={item.id} item={item} narrow={narrow} />)
+            attention.map((item) => <AttentionRow key={item.id} item={item} />)
           ) : (
             <AllClear>Nothing is broken.</AllClear>
           )}
