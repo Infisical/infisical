@@ -60,7 +60,7 @@ const deleteDto = {
 };
 
 describe("deleteEnvironment", () => {
-  test("reads the grant targets before a hard delete cascades them and invalidates them after commit", async () => {
+  test("reads the grant targets before a hard delete cascades them and invalidates them", async () => {
     const { service, projectEnvDAL, secretV2BridgeDAL, invalidatedInTransaction } = buildService();
 
     await service.deleteEnvironment({ ...deleteDto, hardDelete: true });
@@ -69,20 +69,18 @@ describe("deleteEnvironment", () => {
     expect(secretV2BridgeDAL.findGrantTargetProjectIds.mock.invocationCallOrder[0]).toBeLessThan(
       projectEnvDAL.delete.mock.invocationCallOrder[0]
     );
-    expect(secretV2BridgeDAL.invalidateSecretCacheByProjectId).toHaveBeenCalledWith("project-1", undefined, {
+    expect(secretV2BridgeDAL.invalidateSecretCacheByProjectId).toHaveBeenCalledWith("project-1", tx, {
       grantTargetProjectIds: ["importing-project"]
     });
-    expect(invalidatedInTransaction).toEqual([false]);
+    expect(invalidatedInTransaction).toEqual([true]);
   });
 
-  test("invalidates the secret cache after commit when an environment is soft-deleted", async () => {
+  test("invalidates the secret cache when an environment is soft-deleted", async () => {
     const { service, secretV2BridgeDAL, invalidatedInTransaction } = buildService();
 
     await service.deleteEnvironment(deleteDto);
 
-    expect(secretV2BridgeDAL.invalidateSecretCacheByProjectId).toHaveBeenCalledWith("project-1", undefined, {
-      grantTargetProjectIds: []
-    });
-    expect(invalidatedInTransaction).toEqual([false]);
+    expect(secretV2BridgeDAL.invalidateSecretCacheByProjectId).toHaveBeenCalledWith("project-1", tx);
+    expect(invalidatedInTransaction).toEqual([true]);
   });
 });

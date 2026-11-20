@@ -268,8 +268,6 @@ export const projectEnvServiceFactory = ({
         });
       }
 
-      // Read inside the transaction because deleting the environment cascades its folders' grants away.
-      let grantTargetProjectIds: string[] = [];
       const env = await projectEnvDAL.transaction(async (tx) => {
         const approvalPolicy = await approvalPolicySecretEnvironmentDAL.findPolicyByEnvId(id, tx);
         if (approvalPolicy) {
@@ -279,7 +277,8 @@ export const projectEnvServiceFactory = ({
           });
         }
         if (hardDelete) {
-          grantTargetProjectIds = await secretV2BridgeDAL.findGrantTargetProjectIds(projectId, tx);
+          // Read before the delete, which cascades the environment's folder grants away.
+          const grantTargetProjectIds = await secretV2BridgeDAL.findGrantTargetProjectIds(projectId, tx);
           const [doc] = await projectEnvDAL.delete({ id, projectId }, tx);
           if (!doc)
             throw new NotFoundError({
@@ -288,6 +287,7 @@ export const projectEnvServiceFactory = ({
             });
 
           await projectEnvDAL.closePositionGap(projectId, doc.position, tx);
+          await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx, { grantTargetProjectIds });
           await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
 
           return doc;
@@ -326,7 +326,7 @@ export const projectEnvServiceFactory = ({
             name: "DeleteEnvironment"
           });
 
-        await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx, { grantTargetProjectIds });
+        await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx);
         await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
         return doc;
       });
