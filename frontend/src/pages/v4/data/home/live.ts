@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import ms from "ms";
 
@@ -94,19 +94,19 @@ const personName = (person?: { firstName?: string; lastName?: string; email?: st
 const secretChangeRow = (
   base: Pick<HomeApproval, "id" | "createdAt" | "href">,
   request: TSecretApprovalRequest,
-  projectName: string
+  project: { id: string; name: string }
 ): HomeApproval => {
   const keys = request.commits.map((commit) => commit.secretKey ?? commit.secretVersion?.secretKey);
   return {
     ...base,
     product: ProjectType.SecretManager,
     subject: keys.length === 1 && keys[0] ? keys[0] : plural(keys.length, "secret"),
-    action: ` changed in ${projectName}, ${request.environment}`,
+    action: ` changed in ${project.name}, ${request.environment}`,
     description: `${request.committerIdentity?.name ?? personName(request.committerUser)}. Needs ${plural(request.policy.approvals, "approval")}.`,
     target: {
       kind: "secret-change",
       requestId: request.id,
-      projectId: request.project
+      projectId: project.id
     }
   };
 };
@@ -316,7 +316,18 @@ export const homeLive: HomeAdapter = {
   },
   useQueue: (orgId) => {
     const { user, projects } = useV4Session();
+    const queryClient = useQueryClient();
     const notifications = shellLive.useNotifications(orgId);
+    useEffect(() => {
+      const timer = window.setInterval(
+        () =>
+          queryClient.invalidateQueries({
+            predicate: (query) => query.queryKey[1] === "secret-approval-request-detail"
+          }),
+        30_000
+      );
+      return () => window.clearInterval(timer);
+    }, [queryClient]);
     const all = notifications.data ?? [];
     const parsed = all
       .map((notification) => ({
@@ -342,6 +353,7 @@ export const homeLive: HomeAdapter = {
     const accessLists = useQueries({
       queries: accessProjects.map((projectId) => ({
         queryKey: ["v4-home", "access-requests", projectId],
+        refetchInterval: 30_000,
         queryFn: async () => {
           const project = await fetchProjectById(projectId);
           const { data } = await apiRequest.get<{
@@ -358,12 +370,13 @@ export const homeLive: HomeAdapter = {
     });
     const policyEntries = parsed.filter((entry) => entry.parsed.kind === "policy");
     const policyRequests = useQueries({
-      queries: policyEntries.map((entry) =>
-        approvalRequestQuery.getById({
+      queries: policyEntries.map((entry) => ({
+        ...approvalRequestQuery.getById({
           requestId: entry.parsed.requestId,
           policyType: (entry.parsed as Extract<Parsed, { kind: "policy" }>).policyType
-        })
-      )
+        }),
+        refetchInterval: 30_000
+      }))
     });
     const pamProjectId = useGetOrganizationById(orgId).data?.pamProjectId;
     const pamMember = Boolean(
@@ -382,12 +395,13 @@ export const homeLive: HomeAdapter = {
     });
     const pamRequests = pamPending.data ?? [];
     const pamDetails = useQueries({
-      queries: pamRequests.map((request) =>
-        approvalRequestQuery.getById({
+      queries: pamRequests.map((request) => ({
+        ...approvalRequestQuery.getById({
           requestId: request.id,
           policyType: ApprovalPolicyType.PamAccess
-        })
-      )
+        }),
+        refetchInterval: 30_000
+      }))
     });
     const bypasses = all.filter(
       (notification) =>
@@ -426,8 +440,16 @@ export const homeLive: HomeAdapter = {
         const reviewed = request?.reviewers.some(
           (reviewer) => reviewer.userId === user.id && reviewer.status !== ApprovalStatus.PENDING
         );
-        if (!request || request.status !== "open" || request.hasMerged || reviewed) return [];
-        return [secretChangeRow(base, request, projectName(request.project))];
+        const ownBlocked =
+          request?.committerUserId === user.id && request.policy.allowedSelfApprovals === false;
+        if (!request || request.status !== "open" || request.hasMerged || reviewed || ownBlocked)
+          return [];
+        return [
+          secretChangeRow(base, request, {
+            id: entry.projectId,
+            name: projectName(entry.projectId)
+          })
+        ];
       }
       if (entry.kind === "access") {
         const list = accessLists[accessProjects.indexOf(entry.projectId)]?.data;
@@ -435,7 +457,16 @@ export const homeLive: HomeAdapter = {
         const reviewed = request?.reviewers.some(
           (reviewer) => reviewer.userId === user.id && reviewer.status !== ApprovalStatus.PENDING
         );
-        if (!list || !request || request.status !== ApprovalStatus.PENDING || reviewed) return [];
+        const ownBlocked =
+          request?.requestedByUserId === user.id && !request.policy.allowedSelfApprovals;
+        if (
+          !list ||
+          !request ||
+          request.status !== ApprovalStatus.PENDING ||
+          reviewed ||
+          ownBlocked
+        )
+          return [];
         return [accessRow(base, request, list.project)];
       }
       const request =

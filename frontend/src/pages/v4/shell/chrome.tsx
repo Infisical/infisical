@@ -174,7 +174,9 @@ export const useShellChrome = () => {
   const onAnnouncementsOpenChange = (open: boolean) => {
     setAnnouncementsOpen(open);
     if (!open && latest && latest.id !== announcementData?.lastSeenAnnouncementId)
-      markSeen.mutateAsync(latest.id).catch(() => undefined);
+      markSeen
+        .mutateAsync(latest.id)
+        .catch((error) => failed("Couldn't mark the announcement as seen", error));
   };
   const account: TopBarAccount = {
     name: user.name,
@@ -248,7 +250,9 @@ export const useShellChrome = () => {
             }),
             open: openAnnouncements,
             dismiss: () => {
-              markSeen.mutateAsync(latest.id).catch(() => undefined);
+              markSeen
+                .mutateAsync(latest.id)
+                .catch((error) => failed("Couldn't mark the announcement as seen", error));
             }
           }
         : undefined,
