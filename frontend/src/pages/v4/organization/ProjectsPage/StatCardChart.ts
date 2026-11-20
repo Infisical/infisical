@@ -1,1 +1,1 @@
-export { StatCardChart as default } from "@infisical/cipher/ui/stat-card-chart";
+export { StatCardChart } from "@infisical/cipher/ui/stat-card-chart";

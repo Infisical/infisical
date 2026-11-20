@@ -15,7 +15,9 @@ import { useBlockedProducts } from "../../shell/product-access";
 
 import styles from "./ProjectsPage.module.css";
 
-const StatCardChart = lazy(() => import("./StatCardChart"));
+const StatCardChart = lazy(() =>
+  import("./StatCardChart").then((module) => ({ default: module.StatCardChart }))
+);
 
 const MetricTile = ({
   hue,
