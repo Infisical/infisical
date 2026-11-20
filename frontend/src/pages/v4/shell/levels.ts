@@ -1,12 +1,16 @@
 import type { SidebarSection } from "@infisical/cipher/ui/sidebar";
 import type { LinkOptions } from "@tanstack/react-router";
 
+import type { ProjectType } from "@app/hooks/api/projects/types";
+
 import type { ShellLocation } from "./location";
 import {
   orgSections,
+  productNavItems,
   productOf,
   productSections,
   settingsSections,
+  type ShellNavItem,
   type ShellNavSection
 } from "./navigation";
 
@@ -18,6 +22,15 @@ export type V4ShellLevel = {
 };
 
 type LinkTo = (path: string, search?: Record<string, string>) => LinkOptions;
+
+const navLink = (linkTo: LinkTo, item: Pick<ShellNavItem, "id" | "path" | "search">) =>
+  ({
+    ...linkTo(item.path, item.search),
+    activeOptions: {
+      exact: item.id === "home" || item.id === "projects",
+      includeSearch: Boolean(item.search)
+    }
+  }) as LinkOptions;
 
 const shellLevel = (
   linkTo: LinkTo,
@@ -40,31 +53,59 @@ const shellLevel = (
         count: item.count,
         ...(opens[item.id]
           ? { drillIn: true, link: opens[item.id].landing }
-          : {
-              link: {
-                ...linkTo(item.path, item.search),
-                activeOptions: {
-                  exact: item.id === "home" || item.id === "projects",
-                  includeSearch: Boolean(item.search)
-                }
-              } as LinkOptions
-            })
+          : { link: navLink(linkTo, item) })
       }))
     }))
   };
 };
+
+/** The sidebar id of a product page's row in the org level's Products section. */
+export const productNavId = (slug: string, itemId: string) => `org:${slug}:${itemId}`;
+
+const withProducts = (
+  level: V4ShellLevel,
+  linkTo: LinkTo,
+  blocked: ReadonlySet<ProjectType>
+): V4ShellLevel => ({
+  ...level,
+  sections: [
+    level.sections[0],
+    {
+      label: "Products",
+      items: productNavItems(blocked).map((product) => ({
+        id: `org:${product.id}`,
+        label: product.label,
+        icon: product.icon,
+        disabled: product.disabled,
+        ...(product.children && !product.disabled
+          ? {
+              defaultOpen: product.id === "secret-management",
+              children: product.children.map((page) => ({
+                id: productNavId(product.id, page.id),
+                label: page.label,
+                link: navLink(linkTo, page)
+              }))
+            }
+          : { link: navLink(linkTo, { id: product.id, path: product.path }) })
+      }))
+    },
+    ...level.sections.slice(1)
+  ]
+});
 
 /** The sidebar levels from the org down to the one the route is on; each lands on its first row. */
 export const shellTrail = ({
   at,
   projectName,
   isSubOrganization,
+  blocked,
   nested = [],
   linkTo
 }: {
   at: ShellLocation;
   projectName?: string;
   isSubOrganization: boolean;
+  blocked: ReadonlySet<ProjectType>;
   nested?: readonly V4ShellLevel[];
   linkTo: LinkTo;
 }): V4ShellLevel[] => {
@@ -76,11 +117,17 @@ export const shellTrail = ({
     settingsSections(isSubOrganization)
   );
   const trail = [
-    shellLevel(linkTo, "org", "Home", orgSections(isSubOrganization), { settings: orgSettings }),
+    withProducts(
+      shellLevel(linkTo, "org", "Home", orgSections(isSubOrganization), {
+        settings: orgSettings
+      }),
+      linkTo,
+      blocked
+    ),
     ...nested
   ];
   if (at.level === "settings") trail.push(orgSettings);
-  if (product && (at.level === "product" || at.projectId))
+  if (product && at.projectId)
     trail.push(shellLevel(linkTo, "product", product.label, productSections(product)));
   const projectSettings =
     at.settings && shellLevel(linkTo, "project-settings", "Settings", at.settings);

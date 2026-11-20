@@ -23,7 +23,19 @@ export type ShellNavItem = {
   drillIn?: boolean;
 };
 
-export type ShellNavSection = { label?: string; items: readonly ShellNavItem[] };
+export type ShellNavSection = {
+  label?: string;
+  items: readonly ShellNavItem[];
+};
+
+export type ShellProductNavItem = {
+  id: string;
+  label: string;
+  icon: IconName;
+  path: string;
+  disabled?: boolean;
+  children?: readonly ShellNavItem[];
+};
 
 export const SECRETS_HUE = 113.8;
 export const ORG_HUE = 250;
@@ -146,7 +158,12 @@ export const orgSections = (isSubOrganization: boolean): readonly ShellNavSectio
   {
     items: [
       { id: "home", label: "Home", icon: "home", path: "/projects" },
-      { id: "integrations", label: "Integrations", icon: "apps", path: "/integrations" }
+      {
+        id: "integrations",
+        label: "Integrations",
+        icon: "apps",
+        path: "/integrations"
+      }
     ]
   },
   {
@@ -164,7 +181,11 @@ export const orgSections = (isSubOrganization: boolean): readonly ShellNavSectio
             }
           ]),
       audit(""),
-      { ...settings(""), drillIn: true, search: { selectedTab: "tab-org-general" } }
+      {
+        ...settings(""),
+        drillIn: true,
+        search: { selectedTab: "tab-org-general" }
+      }
     ]
   }
 ];
@@ -184,7 +205,12 @@ export const settingsSections = (isSubOrganization: boolean): readonly ShellNavS
       ...(isSubOrganization
         ? []
         : [
-            { id: "sso", label: "SSO & provisioning", icon: "sign-in" as const, path: "/sso" },
+            {
+              id: "sso",
+              label: "SSO & provisioning",
+              icon: "sign-in" as const,
+              path: "/sso"
+            },
             {
               id: "oauth",
               label: "OAuth applications",
@@ -192,7 +218,12 @@ export const settingsSections = (isSubOrganization: boolean): readonly ShellNavS
               path: "/oauth-applications"
             }
           ]),
-      { id: "networking", label: "Networking", icon: "network", path: "/networking" },
+      {
+        id: "networking",
+        label: "Networking",
+        icon: "network",
+        path: "/networking"
+      },
       ...(isSubOrganization
         ? []
         : [settingsTab("security", "Security", "shield-check", "tab-org-security")]),
@@ -208,11 +239,22 @@ export const settingsSections = (isSubOrganization: boolean): readonly ShellNavS
 export const productSections = (product: ShellProduct): readonly ShellNavSection[] => {
   const base = `/projects/${product.slug}`;
   const items: ShellNavItem[] = [
-    { id: "projects", label: "Projects", icon: product.folder, path: base, drillIn: true }
+    {
+      id: "projects",
+      label: "Projects",
+      icon: product.folder,
+      path: base,
+      drillIn: true
+    }
   ];
   if (product.type === ProjectType.SecretManager) {
     items.push(
-      { id: "product-insights", label: "Insights", icon: "chart-column", path: `${base}/insights` },
+      {
+        id: "product-insights",
+        label: "Insights",
+        icon: "chart-column",
+        path: `${base}/insights`
+      },
       {
         id: "secret-sharing",
         label: "Secret sharing",
@@ -244,6 +286,23 @@ export const productSections = (product: ShellProduct): readonly ShellNavSection
   }
   return [{ items }];
 };
+
+const productNavLabel = (product: ShellProduct) =>
+  product.type === ProjectType.PAM ? "Privileged Access" : product.label;
+
+/** The org sidebar's Products section. A product with product-level pages expands in place to them; the rest link to their home. */
+export const productNavItems = (blocked: ReadonlySet<ProjectType>): ShellProductNavItem[] =>
+  products.map((product) => {
+    const pages = productSections(product)[0].items;
+    return {
+      id: product.slug,
+      label: productNavLabel(product),
+      icon: product.icon,
+      path: productHome(product),
+      disabled: blocked.has(product.type),
+      children: pages.length > 1 ? pages : undefined
+    };
+  });
 
 const settingsTabOf =
   (path: string) => (id: string, label: string, icon: IconName, selectedTab: string) => ({
@@ -296,11 +355,31 @@ export const projectSettingsSections = (
 export const projectSections = (base: string): readonly ShellNavSection[] => [
   {
     items: [
-      { id: "secrets", label: "Secrets", icon: "key", path: `${base}/overview` },
+      {
+        id: "secrets",
+        label: "Secrets",
+        icon: "key",
+        path: `${base}/overview`
+      },
       access(base),
-      { id: "integrations", label: "Integrations", icon: "apps", path: `${base}/integrations` },
-      { id: "insights", label: "Insights", icon: "chart-column", path: `${base}/insights` },
-      { id: "approvals", label: "Approvals", icon: "inbox", path: `${base}/approval` }
+      {
+        id: "integrations",
+        label: "Integrations",
+        icon: "apps",
+        path: `${base}/integrations`
+      },
+      {
+        id: "insights",
+        label: "Insights",
+        icon: "chart-column",
+        path: `${base}/insights`
+      },
+      {
+        id: "approvals",
+        label: "Approvals",
+        icon: "inbox",
+        path: `${base}/approval`
+      }
     ]
   },
   { label: "Administration", items: [audit(base), settings(base)] }
@@ -313,17 +392,40 @@ export const kmsSections = (base: string): readonly ShellNavSection[] => [
       { id: "kmip", label: "KMIP", icon: "server", path: `${base}/kmip` }
     ]
   },
-  { label: "Administration", items: [access(base), audit(base), settings(base)] }
+  {
+    label: "Administration",
+    items: [access(base), audit(base), settings(base)]
+  }
 ];
 
 const pki = "/cert-manager";
 export const pkiSections: readonly ShellNavSection[] = [
   {
     items: [
-      { id: "dashboard", label: "Dashboard", icon: "chart-column", path: `${pki}/overview` },
-      { id: "inventory", label: "Inventory", icon: "cert", path: `${pki}/inventory` },
-      { id: "discovery", label: "Discovery", icon: "radar", path: `${pki}/discovery` },
-      { id: "requests", label: "Requests", icon: "inbox", path: `${pki}/requests` }
+      {
+        id: "dashboard",
+        label: "Dashboard",
+        icon: "chart-column",
+        path: `${pki}/overview`
+      },
+      {
+        id: "inventory",
+        label: "Inventory",
+        icon: "cert",
+        path: `${pki}/inventory`
+      },
+      {
+        id: "discovery",
+        label: "Discovery",
+        icon: "radar",
+        path: `${pki}/discovery`
+      },
+      {
+        id: "requests",
+        label: "Requests",
+        icon: "inbox",
+        path: `${pki}/requests`
+      }
     ]
   },
   {
@@ -335,8 +437,18 @@ export const pkiSections: readonly ShellNavSection[] = [
         icon: "app-window",
         path: `${pki}/applications`
       },
-      { id: "syncs", label: "Certificate syncs", icon: "sync", path: `${pki}/integrations` },
-      { id: "signers", label: "Signers", icon: "pen-nib", path: `${pki}/code-signing` },
+      {
+        id: "syncs",
+        label: "Certificate syncs",
+        icon: "sync",
+        path: `${pki}/integrations`
+      },
+      {
+        id: "signers",
+        label: "Signers",
+        icon: "pen-nib",
+        path: `${pki}/code-signing`
+      },
       {
         id: "authorities",
         label: "Certificate authorities",
@@ -364,8 +476,18 @@ const scanning = "/secret-scanning";
 export const scanningSections: readonly ShellNavSection[] = [
   {
     items: [
-      { id: "data-sources", label: "Data sources", icon: "git", path: `${scanning}/data-sources` },
-      { id: "findings", label: "Findings", icon: "alert", path: `${scanning}/findings` },
+      {
+        id: "data-sources",
+        label: "Data sources",
+        icon: "git",
+        path: `${scanning}/data-sources`
+      },
+      {
+        id: "findings",
+        label: "Findings",
+        icon: "alert",
+        path: `${scanning}/findings`
+      },
       {
         id: "app-connections",
         label: "App connections",
@@ -374,12 +496,24 @@ export const scanningSections: readonly ShellNavSection[] = [
       }
     ]
   },
-  { label: "Administration", items: [access(scanning), audit(scanning), settings(scanning)] }
+  {
+    label: "Administration",
+    items: [access(scanning), audit(scanning), settings(scanning)]
+  }
 ];
 
 const pam = "/pam";
 export const pamSections: readonly ShellNavSection[] = [
-  { items: [{ id: "accounts", label: "Accounts", icon: "user-key", path: `${pam}/accounts` }] },
+  {
+    items: [
+      {
+        id: "accounts",
+        label: "Accounts",
+        icon: "user-key",
+        path: `${pam}/accounts`
+      }
+    ]
+  },
   {
     label: "Manage",
     items: [
@@ -389,13 +523,23 @@ export const pamSections: readonly ShellNavSection[] = [
         icon: "clipboard-list",
         path: `${pam}/templates`
       },
-      { id: "discovery", label: "Discovery", icon: "radar", path: `${pam}/discovery` }
+      {
+        id: "discovery",
+        label: "Discovery",
+        icon: "radar",
+        path: `${pam}/discovery`
+      }
     ]
   },
   {
     label: "Monitor",
     items: [
-      { id: "sessions", label: "Sessions", icon: "monitor", path: `${pam}/sessions` },
+      {
+        id: "sessions",
+        label: "Sessions",
+        icon: "monitor",
+        path: `${pam}/sessions`
+      },
       {
         id: "approval-requests",
         label: "Approval requests",
@@ -411,21 +555,46 @@ export const pamSections: readonly ShellNavSection[] = [
 export const agentVaultSections = (base: string): readonly ShellNavSection[] => [
   {
     items: [
-      { id: "sessions", label: "Sessions", icon: "id-card", path: `${base}/sessions` },
+      {
+        id: "sessions",
+        label: "Sessions",
+        icon: "id-card",
+        path: `${base}/sessions`
+      },
       {
         id: "access-bundles",
         label: "Access bundles",
         icon: "package",
         path: `${base}/access-bundles`
       },
-      { id: "services", label: "Services", icon: "proxy", path: `${base}/services` },
-      { id: "variables", label: "Variables", icon: "braces", path: `${base}/variables` },
+      {
+        id: "services",
+        label: "Services",
+        icon: "proxy",
+        path: `${base}/services`
+      },
+      {
+        id: "variables",
+        label: "Variables",
+        icon: "braces",
+        path: `${base}/variables`
+      },
       { id: "skills", label: "Skills", icon: "book", path: `${base}/skills` }
     ]
   },
   {
     label: "Infrastructure",
-    items: [{ id: "proxies", label: "Proxies", icon: "server", path: `${base}/proxies` }]
+    items: [
+      {
+        id: "proxies",
+        label: "Proxies",
+        icon: "server",
+        path: `${base}/proxies`
+      }
+    ]
   },
-  { label: "Administration", items: [access(base), audit(base), settings(base)] }
+  {
+    label: "Administration",
+    items: [access(base), audit(base), settings(base)]
+  }
 ];

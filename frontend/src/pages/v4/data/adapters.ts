@@ -16,6 +16,7 @@ import type { CertManagerSettingsAdapter } from "./cert-manager-settings/contrac
 import type { CertificateAuthoritiesAdapter } from "./certificate-authorities/contract";
 import type { CertificatesAdapter } from "./certificates/contract";
 import type { CodeSigningAdapter } from "./code-signing/contract";
+import type { HomeAdapter } from "./home/contract";
 import type { HsmConnectorsAdapter } from "./hsm-connectors/contract";
 import type { IntegrationsAdapter } from "./integrations/contract";
 import type { KmipAdapter } from "./kmip/contract";
@@ -85,6 +86,7 @@ export type V4Adapters = {
   secretInsights: SecretInsightsAdapter;
   pamAccess: PamAccessAdapter;
   shell: ShellAdapter;
+  home: HomeAdapter;
 };
 
 type V4RouteContext = { v4Mode?: V4Mode; adapters?: V4Adapters };
