@@ -23,7 +23,19 @@
     "eyebrows": "breadcrumbs"
   },
   "thumbnails": {
-    "appearance": "light"
+    "preset": "classic",
+    "appearance": "light",
+    "background": "https://infisical.com/docs/images/docs-preview-yellow.png",
+    "fonts": {
+      "family": "Alliance",
+      "source": "/fonts/AllianceNo2-Regular.woff",
+      "format": "woff"
+    },
+    "eyebrow": {
+      "source": "group",
+      "style": "plain",
+      "color": "#000000"
+    }
   },
   "icons": {
     "library": "lucide"

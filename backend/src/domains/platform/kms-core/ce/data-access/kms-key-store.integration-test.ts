@@ -191,4 +191,27 @@ describe("KmsKeyStore on Postgres", () => {
       expect(() => restored?.openDataKey(rootKeyForTests, sealed)).not.toThrow();
     });
   });
+
+  describe("schema before the delete protection and public key publishing columns", () => {
+    test("should insert a key a historical migration creates", async () => {
+      // Setup
+      const tn = await h.newTenant();
+      const trx = await h.db.transaction();
+      onTestFinished(async () => {
+        if (!trx.isCompleted()) await trx.rollback();
+      });
+      await trx.schema.alterTable(TableName.KmsKey, (t) => {
+        t.dropColumn("hasDeleteProtection");
+        t.dropColumn("isPublicKeyPublished");
+      });
+      const key = KmsKey.createReserved({ orgId: tn.org.id, rootKey: rootKeyForTests });
+
+      // Action
+      await new KmsKeyStore(singleStoreConnection(trx)).insert(key);
+
+      // Assert
+      const restored = await new KmsKeyStore(singleStoreConnection(trx)).findById(key.id);
+      expect(restored?.toJSON()).toMatchObject({ id: key.id, hasDeleteProtection: false, isPublicKeyPublished: false });
+    });
+  });
 });
