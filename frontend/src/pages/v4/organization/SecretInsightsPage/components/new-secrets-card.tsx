@@ -1,4 +1,3 @@
-import { Badge, type BadgeTone } from "@infisical/cipher/ui/badge";
 import { Card } from "@infisical/cipher/ui/card";
 import {
   type ChartConfig,
@@ -8,7 +7,6 @@ import {
 } from "@infisical/cipher/ui/chart";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { format, parseISO } from "date-fns";
-import { TrendingDownIcon, TrendingUpIcon } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from "recharts";
 
 import type { TOrgStaticSecretUsage } from "@app/hooks/api/secretInsights/types";
@@ -19,17 +17,6 @@ const axisTick = { fill: "var(--cipher-text2)", style: { fill: "var(--cipher-tex
 const compact = new Intl.NumberFormat("en-US", { notation: "compact" });
 const config: ChartConfig = { created: { label: "Secrets created", color: "var(--chart-1)" } };
 
-const creationTrend = (weeks: TOrgStaticSecretUsage["weeks"]) => {
-  const complete = weeks.filter((week) => !week.isPartial);
-  if (complete.length < 3) return null;
-  const [a, b, c] = complete.slice(-3).map((week) => week.totalSecrets);
-  if (a < b && b < c)
-    return { label: "Increasing", tone: "warn" as BadgeTone, icon: TrendingUpIcon };
-  if (a > b && b > c)
-    return { label: "Decreasing", tone: "ok" as BadgeTone, icon: TrendingDownIcon };
-  return { label: "Steady", tone: "soft" as BadgeTone, icon: undefined };
-};
-
 export const NewSecretsCard = ({ data }: { data: TOrgStaticSecretUsage }) => {
   const weeks: WeekPoint[] = data.weeks.map((week) => ({
     label: format(parseISO(week.weekStart), "MMM d"),
@@ -37,28 +24,15 @@ export const NewSecretsCard = ({ data }: { data: TOrgStaticSecretUsage }) => {
     created: week.totalSecrets,
     isPartial: week.isPartial
   }));
-  const trend = creationTrend(data.weeks);
 
   return (
     <Card
       variant="framed"
       title="New Secrets Created"
       hint="Secrets created across all projects, past 12 weeks."
-      badges={
-        trend && (
-          <Badge tone={trend.tone} icon={trend.icon}>
-            {trend.label}
-          </Badge>
-        )
-      }
     >
       {weeks.length === 0 ? (
-        <EmptyState
-          size="sm"
-          icon="key"
-          title="No secrets created in the past 12 weeks"
-          description="Secrets your projects create appear here, one bar per week."
-        />
+        <EmptyState size="sm" icon="key" title="No secrets created in the past 12 weeks" />
       ) : (
         <ChartContainer config={config} height={240} initialDimension={{ width: 640, height: 240 }}>
           <BarChart

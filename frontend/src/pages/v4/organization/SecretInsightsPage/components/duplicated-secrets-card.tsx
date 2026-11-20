@@ -98,12 +98,12 @@ const DuplicateGroups = ({ groups }: { groups: TOrgDuplicatedSecretGroup[] }) =>
             <AccordionTrigger>
               <Inline gap={12} wrap={false}>
                 <InlineGrow>
-                  <Text>{`${group.secrets.length} secrets share an identical value`}</Text>
+                  <Text>{`${group.secrets.length} secrets share a value`}</Text>
                 </InlineGrow>
-                <Badge tone={isCrossProject ? "accent" : "soft"} icon="layers">
+                <Badge tone="soft">
                   {isCrossProject
-                    ? `${counted(group.projectCount, "Project")}, ${counted(group.locationCount, "Location")}`
-                    : counted(group.locationCount, "Location")}
+                    ? `${counted(group.projectCount, "project")}, ${counted(group.locationCount, "location")}`
+                    : counted(group.locationCount, "location")}
                 </Badge>
               </Inline>
             </AccordionTrigger>
@@ -192,8 +192,8 @@ const TrackingPrompt = ({
     <EmptyState
       size="sm"
       icon="search"
-      title="Duplicate Secret Detection Is Not Enabled"
-      description="Enable duplicate secret detection to locate secrets that share a value across the organization."
+      title="Duplicate detection is off"
+      description="Finds secrets that share a value across the organization."
       actions={
         <Button variant="primary" onClick={enable}>
           Enable
@@ -222,25 +222,8 @@ const DuplicatedSecretsBody = ({ orgId }: { orgId: string }) => {
       />
     );
   if (!data?.groups.length)
-    return (
-      <EmptyState
-        size="sm"
-        icon="check-c"
-        title="No duplicated secrets found"
-        description="No secret shares its value with another anywhere in the organization."
-      />
-    );
+    return <EmptyState size="sm" icon="check-c" title="No duplicated secrets found" />;
   return <DuplicateGroups groups={data.groups} />;
-};
-
-const RefreshBadge = ({ orgId }: { orgId: string }) => {
-  const insights = useV4Adapter("secretInsights");
-  const { data: status } = insights.useOrgValueTrackingStatus(orgId);
-  const isTrackingOn = status?.status === "completed";
-  const { data } = insights.useOrgDuplication(orgId, { enabled: isTrackingOn });
-  if (!isTrackingOn || data?.remainingTtl == null || data.remainingTtl < 0) return null;
-  const minutes = Math.max(1, Math.ceil(data.remainingTtl / 60));
-  return <Badge tone="soft">{`Updates in ${counted(minutes, "Minute")}`}</Badge>;
 };
 
 export const DuplicatedSecretsCard = () => {
@@ -256,7 +239,6 @@ export const DuplicatedSecretsCard = () => {
       variant="framed"
       title="Duplicated Secrets"
       hint="Secrets that share the same value, across every project in the organization."
-      badges={canSearchAllValues && <RefreshBadge orgId={orgId} />}
     >
       {canSearchAllValues ? (
         <DuplicatedSecretsBody orgId={orgId} />
