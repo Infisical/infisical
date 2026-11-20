@@ -669,7 +669,7 @@ export const PERMISSION_ROWS: TPermissionRow[] = [
       {
         value: "full",
         label: "Full Control",
-        summary: "Everything, including assigning roles and additional privileges",
+        summary: "Everything, including assigning roles",
         // The API refuses the legacy action next to the ones that replaced it, so everything leaves it out.
         allow: DIRECTORY_ACTIONS.map(({ key }) => key).filter(
           (key) => !DIRECTORY_LEGACY_KEYS.includes(key)

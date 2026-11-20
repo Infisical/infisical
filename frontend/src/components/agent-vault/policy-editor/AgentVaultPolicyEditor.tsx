@@ -9,6 +9,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DocumentationLinkBadge,
   Tabs,
   TabsContent,
   TabsList,
@@ -16,6 +17,7 @@ import {
 } from "@app/components/v3";
 import { CodeEditor } from "@app/components/v3/generic/CodeEditor";
 import { cn } from "@app/components/v3/utils";
+import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
 import {
   getPolicyWarning,
@@ -162,7 +164,10 @@ export const AgentVaultPolicyEditor = ({
         <TabsContent value="json">
           <Card>
             <CardHeader>
-              <CardTitle>Rules</CardTitle>
+              <CardTitle>
+                Rules
+                <DocumentationLinkBadge href={AgentVaultDocsUrls.permissions} />
+              </CardTitle>
               <CardDescription>
                 {canEdit
                   ? `This ${noun}'s rules in the API's format. Saving sends them as written, and the API checks them.`
