@@ -332,7 +332,9 @@ const ProfileDetail = ({
                 ...(profile.certificatePolicy?.description
                   ? ([["Policy description", profile.certificatePolicy.description]] as const)
                   : []),
-                ...(profile.createdAt ? ([["Created", timestamp(profile.createdAt)]] as const) : []),
+                ...(profile.createdAt
+                  ? ([["Created", timestamp(profile.createdAt)]] as const)
+                  : []),
                 ...(profile.updatedAt
                   ? ([["Last updated", timestamp(profile.updatedAt)]] as const)
                   : [])

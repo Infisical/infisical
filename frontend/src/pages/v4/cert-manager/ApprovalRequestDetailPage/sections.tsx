@@ -84,10 +84,7 @@ export const CertificateSections = ({
   const subject = present([
     Boolean(certRequest?.commonName) && ["Common name (CN)", certRequest?.commonName],
     Boolean(organization) && ["Organization (O)", organization],
-    Boolean(organizationalUnit) && [
-      "Organizational unit (OU)",
-      organizationalUnit
-    ],
+    Boolean(organizationalUnit) && ["Organizational unit (OU)", organizationalUnit],
     Boolean(country) && ["Country (C)", country],
     Boolean(state) && ["State (ST)", state],
     Boolean(locality) && ["Locality (L)", locality],
@@ -119,10 +116,7 @@ export const CertificateSections = ({
               ],
               ["Certificate authority", caValue()],
               ["Certificate profile", data?.profileName],
-              basicConstraints?.isCA && [
-                "Basic constraints",
-                "Certificate authority"
-              ],
+              basicConstraints?.isCA && ["Basic constraints", "Certificate authority"],
               basicConstraints?.isCA &&
                 basicConstraints.pathLength !== undefined && [
                   "Path length",

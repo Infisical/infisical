@@ -499,9 +499,7 @@ const CertificateDetail = ({
       <PageHeader
         breadcrumb={[backCrumbOf(org, parentApplication, fromHsmConnector)]}
         title={name}
-        badges={
-          <CertificateStatusBadge cert={cert} revocation={revocation} size="control-sm" />
-        }
+        badges={<CertificateStatusBadge cert={cert} revocation={revocation} size="control-sm" />}
         actions={
           <>
             <CertificateActionsMenu
@@ -546,10 +544,7 @@ const CertificateDetail = ({
               items={[
                 ["Common name", cert.subject?.commonName || cert.commonName || "None"],
                 ["Organization", cert.subject?.organization || "None"],
-                [
-                  "Organizational unit",
-                  cert.subject?.organizationalUnit || "None"
-                ],
+                ["Organizational unit", cert.subject?.organizationalUnit || "None"],
                 ["Locality", cert.subject?.locality || "None"],
                 ["State", cert.subject?.state || "None"],
                 ["Country", cert.subject?.country || "None"]
@@ -584,13 +579,7 @@ const CertificateDetail = ({
           title="Subject alternative names"
           size="sm"
           empty={
-            <EmptyState
-              size="sm"
-              media="bare"
-              icon="cert"
-              title="No subject alternative names"
-              description="This certificate identifies by common name only."
-            />
+            <EmptyState size="sm" media="bare" icon="cert" title="No subject alternative names" />
           }
         >
           {sans.map((san) => (

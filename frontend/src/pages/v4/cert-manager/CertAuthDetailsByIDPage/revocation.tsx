@@ -367,7 +367,7 @@ export const CrlList = ({ ca, plan }: { ca: TInternalCertificateAuthority; plan?
             media="bare"
             icon="file"
             title="No CRLs yet"
-            description="A CRL is published once this CA has a certificate. Each one is regenerated before it expires."
+            description="A CRL is published once this CA has a certificate."
           />
         }
       >

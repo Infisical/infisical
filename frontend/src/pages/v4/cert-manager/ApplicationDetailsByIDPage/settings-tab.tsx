@@ -931,10 +931,7 @@ const LegacyAlertSheet = ({ alert, onClose }: { alert?: TPkiAlertV2; onClose: ()
                   ? alert.channels.map((channel) => channel.channelType).join(", ")
                   : "None"
               ],
-              [
-                "Filters",
-                alert.filters.length ? `${alert.filters.length}` : "None"
-              ],
+              ["Filters", alert.filters.length ? `${alert.filters.length}` : "None"],
               [
                 "Last run",
                 alert.lastRun

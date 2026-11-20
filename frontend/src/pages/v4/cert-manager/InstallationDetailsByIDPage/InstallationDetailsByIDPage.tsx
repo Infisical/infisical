@@ -309,11 +309,7 @@ const InstallationDetail = ({
                   }
                 />
               ) : (
-                <EmptyState
-                  size="sm"
-                  icon="cert"
-                  title="No certificates found"
-                />
+                <EmptyState size="sm" icon="cert" title="No certificates found" />
               )
             }
           />

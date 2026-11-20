@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Alert } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,7 +10,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from "@infisical/cipher/ui/alert-dialog";
-import { Alert } from "@infisical/cipher/ui/alert";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
@@ -392,7 +392,9 @@ const RequestDetail = ({
           }
         >
           {request.approversCanNoLongerApprove && (
-            <Alert tone="warn">Not enough of this request&apos;s approvers can still approve it.</Alert>
+            <Alert tone="warn">
+              Not enough of this request&apos;s approvers can still approve it.
+            </Alert>
           )}
           {request.steps.length === 0 && request.status === ApprovalRequestStatus.Approved ? (
             <List

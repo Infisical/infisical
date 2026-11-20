@@ -31,7 +31,7 @@ import type { TPkiSync } from "@app/hooks/api/pkiSyncs/types";
 import { Dash } from "../../access/org/detail-parts";
 import { formatDateTime } from "../../access/roles";
 import { toast } from "../../access/toast";
-import { RESTRICTED } from "../../access/ui";
+import { EditDetailsButton, RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, useGo, v4Path } from "../../links";
@@ -207,21 +207,17 @@ const SyncDetails = ({
   const destinationItems = usePkiSyncDestinationItems(sync);
   const mappingItems = pkiSyncFieldMappingItems(sync);
   const failure = getPkiSyncFailureMessage(sync.syncStatus, sync.lastSyncMessage);
-  const editReason = permissions.canEdit ? undefined : RESTRICTED;
   const hasHealthCheck = Boolean(
     syncOption?.canRunHealthCheckCommand &&
     (sync.syncOptions as { healthCheckCommand?: string }).healthCheckCommand
   );
 
-  const editButton = (section: PkiSyncEditSection) => (
-    <Button
-      variant="ghost"
-      size="sm"
-      disabledReason={editReason}
+  const editButton = (section: PkiSyncEditSection, label: string) => (
+    <EditDetailsButton
+      label={label}
+      allowed={permissions.canEdit}
       onClick={() => setEditing(section)}
-    >
-      Edit
-    </Button>
+    />
   );
 
   const runCheck = async () => {
@@ -248,10 +244,7 @@ const SyncDetails = ({
   const details: DataListItem[] = [
     ["Name", sync.name],
     ["Description", sync.description || <Dash key="description" />],
-    [
-      "ID",
-      <TruncatedValue key="id" value={sync.id} copyLabel="Copy sync ID" />
-    ],
+    ["ID", <TruncatedValue key="id" value={sync.id} copyLabel="Copy sync ID" />],
     ["Status", <SyncStatus key="status" sync={sync} badge="sm" />],
     ["Auto-sync", sync.isAutoSyncEnabled ? "Enabled" : "Disabled"],
     [
@@ -326,23 +319,42 @@ const SyncDetails = ({
         <DetailLayout
           asideLabel="Sync details"
           aside={
-            <Card variant="framed" title="Details" action={editButton("details")}>
+            <Card
+              variant="framed"
+              title="Details"
+              action={editButton("details", "Edit sync details")}
+            >
               <DataList variant="props" density="compact" items={details} />
             </Card>
           }
         >
-          <Card variant="framed" title="Destination" action={editButton("destination")}>
+          <Card
+            variant="framed"
+            title="Destination"
+            action={editButton("destination", "Edit destination")}
+          >
             <DataList variant="props" density="compact" items={destinationItems} />
           </Card>
           {hasFieldMappings(sync.destination) && mappingItems.length > 0 && (
-            <Card variant="framed" title="Field mappings" action={editButton("mappings")}>
+            <Card
+              variant="framed"
+              title="Field mappings"
+              action={editButton("mappings", "Edit field mappings")}
+            >
               <DataList variant="props" density="compact" items={mappingItems} />
             </Card>
           )}
-          <Card variant="framed" title="Sync options" action={editButton("options")}>
+          <Card
+            variant="framed"
+            title="Sync options"
+            action={editButton("options", "Edit sync options")}
+          >
             <DataList variant="props" density="compact" items={pkiSyncOptionItems(sync)} />
           </Card>
-          <PkiSyncCommandsCard pkiSync={sync} action={editButton("hostCommands")} />
+          <PkiSyncCommandsCard
+            pkiSync={sync}
+            action={editButton("hostCommands", "Edit host commands")}
+          />
           <PkiSyncCertificatesCard
             pkiSync={sync}
             onEditCertificates={() => setEditing("certificates")}

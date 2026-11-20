@@ -257,19 +257,7 @@ const CaCertificatesList = ({
       size="sm"
       loading={isPending}
       loadingRows={2}
-      empty={
-        <EmptyState
-          size="sm"
-          media="bare"
-          icon="cert"
-          title="No CA certificates installed"
-          description={
-            ca.configuration.type === InternalCaType.ROOT
-              ? "Generate a certificate to start issuing."
-              : "Install a CA certificate to start issuing."
-          }
-        />
-      }
+      empty={<EmptyState size="sm" media="bare" icon="cert" title="No CA certificates installed" />}
     >
       {certificates.map((cert, index) => (
         <CaCertificateRow
