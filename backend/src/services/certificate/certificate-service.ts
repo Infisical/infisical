@@ -867,7 +867,7 @@ export const certificateServiceFactory = ({
       // since would let this delete skip that Application's deletion policy.
       if (lockedCert.applicationId !== cert.applicationId || lockedCert.profileId !== cert.profileId) {
         throw new BadRequestError({
-          message: `Certificate '${getCertificateDisplayName(cert)}' was assigned to an Application while it was being deleted. Delete it again.`
+          message: `The Application or profile of certificate '${getCertificateDisplayName(cert)}' changed while it was being deleted, so it wasn't deleted. Delete it again.`
         });
       }
 
