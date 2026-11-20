@@ -95,13 +95,30 @@ jobs:
         working-directory: upgrade-impact
 
       # The chart's upgrade notes come from this data, so the chart is never bumped without it.
+      # It is aggregated from the fragments pull requests added under upgrade-impact/changes, so
+      # the same tag always produces the same file.
       - name: Generate upgrade impact data
         if: steps.impact.outputs.generate == 'true'
         run: npm run generate -- --tag "${{ steps.release.outputs.tag }}"
         working-directory: upgrade-impact
+
+      # The AI reads the whole release range and lists what it would have reported, which is
+      # posted on the PR so a change that shipped without a fragment is noticed. It never writes
+      # release data and never fails the run.
+      - name: Draft AI cross-check
+        if: steps.impact.outputs.generate == 'true'
+        continue-on-error: true
+        working-directory: upgrade-impact
         env:
+          TAG_NAME: ${{ steps.release.outputs.tag }}
           UPGRADE_TOOL_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          npm run --silent generate:dry-run -- --tag "$TAG_NAME" --ai > "$RUNNER_TEMP/ai-draft.json"
+          jq -r '.releaseImpact
+            | (.breakingChanges + .configChanges + .deploymentNotes + .knownIssues)[]
+            | "- **\(.title)**: \(.description) Action: \(.action)"' "$RUNNER_TEMP/ai-draft.json" > "$RUNNER_TEMP/ai-cross-check.md"
 
       - name: Validate upgrade impact data
         if: steps.impact.outputs.generate == 'true'
@@ -230,9 +247,7 @@ jobs:
 
           Adds the generated upgrade impact data for each Infisical release below and points the \`infisical-standalone\` Helm chart at Infisical \`${TAG_NAME}\`. ${CHART_LINE} If a newer release ships before this merges, this PR is updated in place.
 
-          Before merging:
-          - Review each release's generated YAML for self-hosted upgrade accuracy.
-          - Review the upgrade notes generated from those breaking changes in the chart \`${CHART_VERSION}\` CHANGELOG section.
+          The upgrade impact data is aggregated from the fragments each pull request added under \`upgrade-impact/changes/\`, which were reviewed in those pull requests, so it needs no second review here. Before merging, read any AI cross-check comment on this PR: it lists impact the AI inferred from the whole release, and an item there with no matching entry below may be a change that shipped without a fragment.
 
           ### Releases in this PR
 
@@ -252,6 +267,11 @@ jobs:
           - [ ] Breaking
           - [ ] Docs
           - [x] Chore
+
+          ## Self-hosted upgrade impact
+
+          - [x] None
+          - [ ] Yes, I added a fragment under \`upgrade-impact/changes/\`
           EOF
 
       - name: Open or update PR
@@ -294,6 +314,30 @@ jobs:
 
           gh pr edit "$PR_NUMBER" --title "$PR_TITLE" --body-file "$RUNNER_TEMP/pr-body.md"
           echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Post AI cross-check
+        if: steps.pr.outputs.number != '' && steps.impact.outputs.generate == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ steps.release.outputs.tag }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          CROSS_CHECK="$RUNNER_TEMP/ai-cross-check.md"
+          if [ ! -s "$CROSS_CHECK" ]; then
+            echo "The AI cross-check found nothing to report for ${TAG_NAME}, or did not run."
+            exit 0
+          fi
+
+          {
+            echo "### AI cross-check for \`${TAG_NAME}\`"
+            echo
+            echo "The AI inferred the items below from the whole release range. They are not part of the release data. If one has no matching entry in \`upgrade-impact/data/releases/${TAG_NAME}.yaml\`, a change may have shipped without a fragment: add the entry to that file on this branch."
+            echo
+            cat "$CROSS_CHECK"
+          } > "$RUNNER_TEMP/ai-comment.md"
+          gh pr comment "$PR_NUMBER" --body-file "$RUNNER_TEMP/ai-comment.md"
 
       - name: Request review from the release author
         if: steps.pr.outputs.number != ''

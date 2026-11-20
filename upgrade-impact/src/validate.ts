@@ -3,11 +3,13 @@ import path from "node:path";
 
 import { parse } from "yaml";
 
+import { FRAGMENT_FILE_NAME, parseFragment } from "./fragments.js";
 import { compareVersions, getAddedFiles, hasGitRef } from "./git.js";
 import { ReleaseImpact, ReleaseImpactSchema, ReleaseIndex, ReleaseIndexSchema } from "./schema.js";
 
 type ValidateUpgradeImpactDataOptions = {
   dataDir: string;
+  changesDir?: string;
   skipGitChecks?: boolean;
 };
 
@@ -178,8 +180,40 @@ const validateReleaseFile = async (
   return release;
 };
 
+const validateFragments = async (changesDir: string, errors: string[]) => {
+  let files: string[];
+
+  try {
+    files = (await fs.readdir(changesDir)).sort();
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return;
+    }
+
+    throw error;
+  }
+
+  for (const file of files) {
+    if (file === "README.md") {
+      continue;
+    }
+
+    if (!FRAGMENT_FILE_NAME.test(file)) {
+      errors.push(`changes/${file} must be named <lowercase-kebab-case>.yaml`);
+      continue;
+    }
+
+    try {
+      parseFragment(await fs.readFile(path.join(changesDir, file), "utf8"), `changes/${file}`);
+    } catch (error) {
+      errors.push((error as Error).message);
+    }
+  }
+};
+
 export const validateUpgradeImpactData = async ({
   dataDir,
+  changesDir,
   skipGitChecks = false
 }: ValidateUpgradeImpactDataOptions): Promise<ValidateUpgradeImpactDataResult> => {
   const errors: string[] = [];
@@ -238,6 +272,10 @@ export const validateUpgradeImpactData = async ({
         `Skipping ${file}; it is not listed in index.yaml. A release may have been skipped or its impact data not yet indexed.\n`
       );
     }
+  }
+
+  if (changesDir) {
+    await validateFragments(changesDir, errors);
   }
 
   return { errors };

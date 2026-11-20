@@ -298,4 +298,26 @@ describe("validateUpgradeImpactData", () => {
       stderrSpy.mockRestore();
     }
   });
+
+  it("validates fragments in the changes directory", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "upgrade-impact-"));
+    const dataDir = path.join(dir, "data");
+    const changesDir = path.join(dir, "changes");
+    await fs.mkdir(path.join(dataDir, "releases"), { recursive: true });
+    await fs.mkdir(changesDir);
+    await fs.writeFile(path.join(dataDir, "index.yaml"), stringify(makeIndex([])));
+    await fs.writeFile(path.join(changesDir, "README.md"), "docs");
+    await fs.writeFile(
+      path.join(changesDir, "good.yaml"),
+      stringify({ category: "config", impactLevel: "low", title: "T", description: "D", action: "A" })
+    );
+    await fs.writeFile(path.join(changesDir, "bad.yaml"), stringify({ category: "config", title: "T" }));
+    await fs.writeFile(path.join(changesDir, "Bad_Name.yml"), "");
+
+    const { errors } = await validateUpgradeImpactData({ dataDir, changesDir, skipGitChecks: true });
+
+    expect(errors).toHaveLength(2);
+    expect(errors[0]).toContain("changes/Bad_Name.yml must be named");
+    expect(errors[1]).toContain("changes/bad.yaml is not a valid upgrade impact fragment");
+  });
 });

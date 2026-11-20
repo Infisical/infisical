@@ -8,7 +8,8 @@ const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 
 const main = async () => {
   const { errors } = await validateUpgradeImpactData({
-    dataDir: path.join(packageRoot, "data")
+    dataDir: path.join(packageRoot, "data"),
+    changesDir: path.join(packageRoot, "changes")
   });
 
   if (errors.length > 0) {

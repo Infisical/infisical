@@ -5,19 +5,16 @@ import { fileURLToPath } from "node:url";
 
 import { parse, stringify } from "yaml";
 
-import { collectEvidence, ReleaseEvidenceBundle } from "../src/evidence.js";
-import {
-  deterministicDraft,
-  GeneratedDraft,
-  generateWithOpenAiAgentic,
-  MODEL
-} from "../src/generate-ai.js";
+import { collectEvidence } from "../src/evidence.js";
+import { collectFragmentRelease, ReleaseDraft } from "../src/fragments.js";
+import { generateWithOpenAiAgentic, MODEL } from "../src/generate-ai.js";
 import { loadPackageEnv } from "../src/env.js";
 import { compareVersions, isStableVersion } from "../src/git.js";
 import { ReleaseImpact, ReleaseImpactSchema, ReleaseIndex, ReleaseIndexSchema } from "../src/schema.js";
 
 const GENERATOR_NAME = "@infisical/upgrade-impact";
-const GENERATOR_VERSION = "1";
+const GENERATOR_VERSION = "2";
+const FRAGMENTS_SOURCE = "fragments";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dataDir = path.join(packageRoot, "data");
@@ -34,16 +31,14 @@ const parseArgs = () => {
   return {
     tag: getValue("--tag") ?? process.env.GITHUB_REF_NAME,
     dryRun: args.includes("--dry-run"),
-    noAi: args.includes("--no-ai"),
+    ai: args.includes("--ai"),
     fromFile: getValue("--from-file")
   };
 };
 
-export const assembleReleaseImpact = (
-  bundle: ReleaseEvidenceBundle,
-  draft: GeneratedDraft,
-  model: string
-): ReleaseImpact =>
+type ReleaseRange = { tag: string; previousTag: string | null; releasedAt: string };
+
+export const assembleReleaseImpact = (bundle: ReleaseRange, draft: ReleaseDraft, model: string): ReleaseImpact =>
   ReleaseImpactSchema.parse({
     version: bundle.tag,
     releasedAt: bundle.releasedAt,
@@ -51,7 +46,7 @@ export const assembleReleaseImpact = (
     previousTag: bundle.previousTag,
     impactLevel: draft.impactLevel,
     summary: draft.summary,
-    requiresDbMigration: draft.requiresDbMigration || bundle.migrationFiles.length > 0,
+    requiresDbMigration: draft.requiresDbMigration,
     breakingChanges: draft.breakingChanges,
     dbSchemaChanges: draft.dbSchemaChanges,
     configChanges: draft.configChanges,
@@ -109,24 +104,35 @@ const writeReleaseImpact = async (releaseImpact: ReleaseImpact) => {
 
 type GenerateReleaseImpactOptions = {
   tag: string;
-  noAi?: boolean;
+  ai?: boolean;
 };
 
-export const generateReleaseImpact = async ({
-  tag,
-  noAi = false
-}: GenerateReleaseImpactOptions) => {
-  const bundle = await collectEvidence(tag);
-  const sourceModel = noAi ? "deterministic" : MODEL;
-  const draft = noAi ? deterministicDraft(bundle) : await generateWithOpenAiAgentic(bundle);
-  const releaseImpact = assembleReleaseImpact(bundle, draft, sourceModel);
+// Release data is aggregated from the fragments each pull request added under
+// upgrade-impact/changes. The AI path infers impact from the whole release range instead and is
+// kept only to cross-check the fragments, never to write release data in CI.
+export const generateReleaseImpact = async ({ tag, ai = false }: GenerateReleaseImpactOptions) => {
+  if (!ai) {
+    const release = collectFragmentRelease(tag);
 
-  return { bundle, releaseImpact };
+    return { evidence: release.fragments, releaseImpact: assembleReleaseImpact(release, release.draft, FRAGMENTS_SOURCE) };
+  }
+
+  const bundle = await collectEvidence(tag);
+  const draft = await generateWithOpenAiAgentic(bundle);
+
+  return {
+    evidence: bundle,
+    releaseImpact: assembleReleaseImpact(
+      bundle,
+      { ...draft, requiresDbMigration: draft.requiresDbMigration || bundle.migrationFiles.length > 0 },
+      MODEL
+    )
+  };
 };
 
 const main = async () => {
   loadPackageEnv(packageRoot);
-  const { tag, dryRun, noAi, fromFile } = parseArgs();
+  const { tag, dryRun, ai, fromFile } = parseArgs();
 
   // Writes data generated earlier, so a caller can add it to an index that changed since.
   if (fromFile) {
@@ -140,10 +146,10 @@ const main = async () => {
     throw new Error(`Expected a stable vX.Y.Z tag. Received: ${tag ?? "<missing>"}`);
   }
 
-  const { bundle, releaseImpact } = await generateReleaseImpact({ tag, noAi });
+  const { evidence, releaseImpact } = await generateReleaseImpact({ tag, ai });
 
   if (dryRun) {
-    process.stdout.write(`${JSON.stringify({ evidence: bundle, releaseImpact }, null, 2)}\n`);
+    process.stdout.write(`${JSON.stringify({ evidence, releaseImpact }, null, 2)}\n`);
     return;
   }
 

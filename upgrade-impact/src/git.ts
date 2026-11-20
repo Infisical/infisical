@@ -86,3 +86,19 @@ export const getCommitSummaries = (fromTag: string | null, toTag: string) => {
     })
     .filter(({ sha }) => Boolean(sha));
 };
+
+export const getFileAtRef = (ref: string, file: string) => runGit(["show", `${ref}:${file}`]);
+
+export const getAddingCommit = (fromTag: string, toTag: string, file: string) => {
+  const lines = runGit(["log", "--diff-filter=A", "--pretty=format:%H%x09%s", `${fromTag}..${toTag}`, "--", file])
+    .split("\n")
+    .filter(Boolean);
+  const oldest = lines[lines.length - 1];
+
+  if (!oldest) {
+    return null;
+  }
+
+  const [sha, ...subjectParts] = oldest.split("\t");
+  return { sha, subject: subjectParts.join("\t") };
+};

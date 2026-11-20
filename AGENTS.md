@@ -26,6 +26,7 @@ infisical/
 ├── e2e/                   # External Playwright suite — gates prod deploys against gamma (see e2e/AGENTS.md)
 ├── tests/                 # Go blackbox suite — real containers, HTTP only (see tests/AGENTS.md)
 ├── docs/                  # Documentation site (Mintlify-based)
+├── upgrade-impact/        # Self-hosted upgrade notes: per-PR fragments and the release aggregator
 ├── build-versions.env            # Versions pinned across several Dockerfiles (see Dependency Policy)
 ├── docker-compose.dev.yml        # Local dev (PostgreSQL, Redis, backend, frontend, Nginx)
 ├── docker-compose.prod.yml       # Production deployment stack
@@ -54,6 +55,23 @@ Infisical supports self-hosted deployment via Docker. Key considerations:
 - **`Dockerfile.fips.standalone-infisical`** — FIPS 140-2 compliant variant for regulated environments. Be strict about not introducing dependencies that break FIPS compliance.
 - **`docker-compose.prod.yml`** — production compose with backend, PostgreSQL, and Redis.
 - New backend dependencies should be evaluated carefully — they affect container size, FIPS compliance, and the encryption boundary. Check `docs/` for self-hosted deployment documentation when in doubt.
+
+### Self-Hosted Upgrade Impact
+
+**When your change means a self-hosted operator has to do or know something to upgrade, add a fragment in the same change, without being asked.** Create `upgrade-impact/changes/<short-kebab-case-name>.yaml`, fill it in for an operator (what is different for a running instance and the exact step to take), and tell the user you added it. Each release collects the fragments added since the previous one into the upgrade notes operators read, and nobody reviews the whole release for impact afterwards, so a change with no fragment ships unannounced.
+
+Write one when the change:
+- removes or changes an API, CLI flag, default or behavior that existing setups rely on (`breaking`);
+- removes, renames or newly requires an environment variable, or changes its default (`config`; check every edit to `backend/src/lib/config/env.ts`);
+- changes the Docker image, entrypoint, ports, startup order, or the Postgres or Redis version required (`deployment`);
+- adds a migration that is long-running, runs outside a transaction, or cannot be rolled back (`database`);
+- leaves something an operator should check before or after upgrading (`known-issue`).
+
+Write none for features, fixes, refactors, docs, changes that only affect Infisical Cloud, or ordinary additive migrations, which the release lists by itself. A fragment on every change would bury the ones that matter.
+
+The format and the meaning of each `impactLevel` are in [`upgrade-impact/changes/README.md`](upgrade-impact/changes/README.md); check the file with `make validate-upgrade-impact`. Never edit, rename or delete a fragment that is already on `main`: a release owns the fragments its range added, so a moved file is counted again and an edit never ships.
+
+In the pull request description, tick exactly one box under "Self-hosted upgrade impact": **Yes** when the PR adds a fragment, **None** otherwise. `validate-pr-description.yml` fails when the box and the files disagree, or when a PR marked `Breaking` (or titled with `!`) adds no fragment.
 
 ### Dependency Policy
 
@@ -331,7 +349,8 @@ When a section in a package file grows past about 30 lines of internals, move th
 1. **Backend**: Create service module, migration, wire DI, add routes — see checklist in `backend/AGENTS.md`
 2. **Frontend**: Add API hooks in `src/hooks/api/<domain>/`, create page/view, wire route — see `frontend/AGENTS.md` for routing and component patterns
 3. Check the backend work against [`backend/CODE_QUALITY.md`](backend/CODE_QUALITY.md)
-4. Run `make reviewable-api` and `make reviewable-ui` before submitting
+4. Add an upgrade impact fragment if self-hosted operators are affected (see Self-Hosted Upgrade Impact)
+5. Run `make reviewable-api` and `make reviewable-ui` before submitting
 
 ## Backend Development
 

@@ -19,10 +19,9 @@
 - [ ] Docs
 - [ ] Chore
 
-## Checklist
+## Self-hosted upgrade impact
 
-- [ ] Title follows the [conventional commit](https://www.conventionalcommits.org/en/v1.0.0/#summary) format: `type(scope): short description` (scope is optional, e.g., `fix: prevent crash on sync` or `fix(api): handle null response`). 
-- [ ] Tested locally
-- [ ] Updated docs (if needed)
-- [ ] Updated AGENTS.md files (if needed)
-- [ ] Read the [contributing guide](https://infisical.com/docs/contributing/getting-started/overview)
+<!-- Tick exactly one. Tick "Yes" when a self-hosted operator has to do or know something to upgrade: a removed or changed API, flag, default or env var, a Docker or deployment change, a risky migration, or a known issue. See upgrade-impact/changes/README.md. CI fails if the box and the files disagree. -->
+
+- [ ] None
+- [ ] Yes, I added a fragment under `upgrade-impact/changes/`

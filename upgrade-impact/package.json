@@ -7,7 +7,7 @@
     "generate": "tsx scripts/generate.ts",
     "generate:dry-run": "tsx scripts/generate.ts --dry-run",
     "generate:local": "tsx scripts/local-generate.ts",
-    "generate:local:no-ai": "tsx scripts/local-generate.ts --no-ai",
+    "generate:local:ai": "tsx scripts/local-generate.ts --ai",
     "test": "vitest run",
     "type:check": "tsc --noEmit",
     "validate": "tsx scripts/validate.ts"

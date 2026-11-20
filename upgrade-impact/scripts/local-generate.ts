@@ -31,7 +31,7 @@ const parseArgs = () => {
   return {
     tag: getValue("--tag"),
     output: getValue("--output"),
-    noAi: args.includes("--no-ai"),
+    ai: args.includes("--ai"),
     skipFetch: args.includes("--skip-fetch")
   };
 };
@@ -83,7 +83,7 @@ const ensureTag = (tag: string, skipFetch: boolean) => {
 
 const main = async () => {
   loadPackageEnv(packageRoot);
-  const { tag: requestedTag, output, noAi, skipFetch } = parseArgs();
+  const { tag: requestedTag, output, ai, skipFetch } = parseArgs();
   let tag: string;
   let previousTag: string | null;
 
@@ -107,7 +107,7 @@ const main = async () => {
     ensureTag(previousTag, skipFetch);
   }
 
-  const { releaseImpact } = await generateReleaseImpact({ tag, noAi });
+  const { releaseImpact } = await generateReleaseImpact({ tag, ai });
   const parsedReleaseImpact = ReleaseImpactSchema.parse(releaseImpact);
   const yaml = stringify(parsedReleaseImpact);
   const outputPath = path.resolve(output ?? path.join(defaultOutputDir, `${tag}.yaml`));
