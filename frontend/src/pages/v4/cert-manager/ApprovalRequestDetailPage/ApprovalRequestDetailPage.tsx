@@ -299,9 +299,7 @@ const RequestDetail = ({
   const block = decisionBlock(request, { userId: user.id, groupIds: viewer?.groupIds ?? [] });
   const cancelBlock =
     request.requesterId === user.id ? undefined : "Only the requester can cancel this request";
-  const subject = revocationData
-    ? revocationData.commonName || revocationData.serialNumber.toUpperCase()
-    : certData?.certificateRequest?.commonName || certData?.profileName;
+  const requestedCommonName = revocationData ? undefined : certData?.certificateRequest?.commonName;
   const facts: DataListItem[] = [
     ["Requester", requester],
     ["Email", request.requesterEmail || "None"],
@@ -319,7 +317,7 @@ const RequestDetail = ({
         ] as DataListItem[])
       : ([
           ["Profile", revocationData?.profileName ?? certData?.profileName],
-          ...(subject && !revocationData ? [["Subject", subject]] : []),
+          ...(requestedCommonName ? [["Common name", requestedCommonName]] : []),
           ...(application
             ? [
                 [
