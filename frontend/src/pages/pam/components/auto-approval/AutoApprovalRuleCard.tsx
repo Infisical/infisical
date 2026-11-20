@@ -119,8 +119,11 @@ const getSubjectChoices = (
   return [...fromInputs, ...fromRequester];
 };
 
+const getRequesterIcon = (option: TRequesterCheckOption) =>
+  option.kind === ApproverType.Group ? UsersIcon : UserIcon;
+
 const renderRequesterOption = (option: TRequesterCheckOption) => {
-  const Icon = option.kind === ApproverType.Group ? UsersIcon : UserIcon;
+  const Icon = getRequesterIcon(option);
   return (
     <div className="flex items-center gap-2.5">
       <Icon className="size-4 shrink-0 text-muted" />
@@ -131,6 +134,16 @@ const renderRequesterOption = (option: TRequesterCheckOption) => {
         )}
       </div>
     </div>
+  );
+};
+
+const renderRequesterValue = (option: TRequesterCheckOption) => {
+  const Icon = getRequesterIcon(option);
+  return (
+    <span className="flex items-center gap-1">
+      <Icon className="size-3 shrink-0 text-muted" />
+      <span className="truncate">{option.label}</span>
+    </span>
   );
 };
 
@@ -248,6 +261,7 @@ const ConditionRow = ({
           getOptionLabel={(option) => option.label}
           getOptionKeywords={(option) => (option.subtitle ? [option.subtitle] : [])}
           renderOption={renderRequesterOption}
+          renderValue={renderRequesterValue}
           includeMissingSelectedOptions
           isError={Boolean(error)}
           size="sm"
