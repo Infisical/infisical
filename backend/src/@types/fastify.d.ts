@@ -271,7 +271,7 @@ declare module "fastify" {
       userId: string;
       orgId?: string;
       user: TUsers;
-      requiredMfaMethod: MfaMethod;
+      allowedMfaMethods: MfaMethod[];
     };
     // identity injection. depending on which kinda of token the information is filled in auth
     auth: TAuthMode;

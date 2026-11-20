@@ -32,6 +32,10 @@ import {
   UpdateCertRequestPolicySchema
 } from "@app/services/approval-policy/cert-request/cert-request-policy-schemas";
 import {
+  CreateCertRevocationPolicySchema,
+  UpdateCertRevocationPolicySchema
+} from "@app/services/approval-policy/cert-revocation/cert-revocation-policy-schemas";
+import {
   CreateCodeSigningPolicySchema,
   UpdateCodeSigningPolicySchema
 } from "@app/services/approval-policy/code-signing/code-signing-policy-schemas";
@@ -45,11 +49,19 @@ import { PostHogEventTypes, TPostHogEvent } from "@app/services/telemetry/teleme
 type TCreatePolicySchema =
   | typeof CreatePamAccessPolicySchema
   | typeof CreateCertRequestPolicySchema
+  | typeof CreateCertRevocationPolicySchema
   | typeof CreateCodeSigningPolicySchema;
 type TUpdatePolicySchema =
   | typeof UpdatePamAccessPolicySchema
   | typeof UpdateCertRequestPolicySchema
+  | typeof UpdateCertRevocationPolicySchema
   | typeof UpdateCodeSigningPolicySchema;
+
+const PKI_APPROVAL_POLICY_TYPES = new Set<ApprovalPolicyType>([
+  ApprovalPolicyType.CertRequest,
+  ApprovalPolicyType.CertRevocation,
+  ApprovalPolicyType.CertCodeSigning
+]);
 
 export const registerApprovalPolicyEndpoints = ({
   server,
@@ -128,7 +140,7 @@ export const registerApprovalPolicyEndpoints = ({
         }
       });
 
-      if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
+      if (PKI_APPROVAL_POLICY_TYPES.has(policyType)) {
         await sendTelemetry({
           event: PostHogEventTypes.PkiApprovalPolicyCreated,
           distinctId: getTelemetryDistinctId(req),
@@ -272,7 +284,7 @@ export const registerApprovalPolicyEndpoints = ({
         }
       });
 
-      if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
+      if (PKI_APPROVAL_POLICY_TYPES.has(policyType)) {
         await sendTelemetry({
           event: PostHogEventTypes.PkiApprovalPolicyUpdated,
           distinctId: getTelemetryDistinctId(req),
@@ -328,7 +340,7 @@ export const registerApprovalPolicyEndpoints = ({
         }
       });
 
-      if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
+      if (PKI_APPROVAL_POLICY_TYPES.has(policyType)) {
         await sendTelemetry({
           event: PostHogEventTypes.PkiApprovalPolicyDeleted,
           distinctId: getTelemetryDistinctId(req),
@@ -559,7 +571,7 @@ export const registerApprovalPolicyEndpoints = ({
           });
         }
 
-        if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
+        if (PKI_APPROVAL_POLICY_TYPES.has(policyType)) {
           await sendTelemetry({
             event: PostHogEventTypes.PkiApprovalRequestCreated,
             distinctId: getTelemetryDistinctId(req),

@@ -129,7 +129,7 @@ export const FolderTableRow = ({
         colSpan={isSingleEnvView ? 2 : undefined}
         className={
           isSingleEnvView
-            ? "transition-all duration-75"
+            ? "relative transition-all duration-75"
             : "sticky left-10 z-10 border-r bg-container transition-all duration-75 group-hover:bg-container-hover"
         }
       >

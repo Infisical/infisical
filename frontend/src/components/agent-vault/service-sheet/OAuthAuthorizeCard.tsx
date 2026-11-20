@@ -1,6 +1,13 @@
 import { ReactNode, useEffect, useId, useState } from "react";
-import { useFormContext, useWatch } from "react-hook-form";
-import { CheckIcon, CircleAlertIcon, CircleXIcon, InfoIcon, TriangleAlertIcon } from "lucide-react";
+import { Controller, useFormContext, useWatch } from "react-hook-form";
+import {
+  CheckIcon,
+  CircleAlertIcon,
+  CircleDashedIcon,
+  CircleXIcon,
+  InfoIcon,
+  TriangleAlertIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -28,9 +35,12 @@ import { AgentVaultCredentialType, AgentVaultOauthStatus } from "@app/hooks/api/
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
+import { ClientSecretInput } from "../ClientSecretInput";
+import { OAuthAppSelect } from "../OAuthAppSelect";
 import { MemberProvidedToggle } from "./CredentialFields";
 import { ExpandableValueList } from "./ExpandableValueList";
 import {
+  defaultOAuthRedirectUri,
   hostOf,
   isMemberProvidedOAuthService,
   newOAuthAuthorizationId,
@@ -43,24 +53,33 @@ import {
 } from "./serviceSchema";
 import { useOAuthAuthorize } from "./useOAuthAuthorize";
 
-const CALLBACK_PATH = "/agent-vault/oauth/callback";
-
 const OAUTH_STATUS_VARIANTS = {
   [AgentVaultOauthStatus.Connected]: "success",
   [AgentVaultOauthStatus.NeedsReauthorization]: "danger",
-  [AgentVaultOauthStatus.NeedsAdditionalScopes]: "warning"
+  [AgentVaultOauthStatus.NeedsAdditionalScopes]: "warning",
+  [AgentVaultOauthStatus.NotConnected]: "neutral"
 } as const;
 
-export const OAuthStatusBadge = ({ status }: { status: AgentVaultOauthStatus }) => (
-  <Badge variant={OAUTH_STATUS_VARIANTS[status]}>
-    {status === AgentVaultOauthStatus.Connected ? <CheckIcon /> : <CircleAlertIcon />}
-    {OAUTH_STATUS_LABELS[status]}
-  </Badge>
-);
+const OAUTH_STATUS_ICONS = {
+  [AgentVaultOauthStatus.Connected]: CheckIcon,
+  [AgentVaultOauthStatus.NeedsReauthorization]: CircleAlertIcon,
+  [AgentVaultOauthStatus.NeedsAdditionalScopes]: CircleAlertIcon,
+  [AgentVaultOauthStatus.NotConnected]: CircleDashedIcon
+} as const;
+
+export const OAuthStatusBadge = ({ status }: { status: AgentVaultOauthStatus }) => {
+  const Icon = OAUTH_STATUS_ICONS[status];
+  return (
+    <Badge variant={OAUTH_STATUS_VARIANTS[status]}>
+      <Icon />
+      {OAUTH_STATUS_LABELS[status]}
+    </Badge>
+  );
+};
 
 const TONE_CLASS = { danger: "[&>svg]:text-danger", warning: "[&>svg]:text-warning" } as const;
 
-const Status = ({
+export const Status = ({
   icon,
   tone,
   title,
@@ -434,6 +453,12 @@ export const OAuthAuthorizeCard = ({
       <FieldContent>
         <div className="flex flex-col gap-3">
           {isMemberProvided && !isOwnApp && <div>{memberAuthorizeButton}</div>}
+          {(isMemberProvided || (!isClientRequired && !isNewlyAuthorized && !isWaiting)) && (
+            <OAuthAppSelect
+              isOwnApp={isUsingOwnApp}
+              onChange={(own) => (own ? switchToOwnApp() : switchToAutomaticSetup())}
+            />
+          )}
           {!isMemberProvided && status && (
             <div className="flex items-start justify-between gap-4">
               <div className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -466,11 +491,11 @@ export const OAuthAuthorizeCard = ({
                     <InputGroupInput
                       id={redirectUriInputId}
                       readOnly
-                      value={redirectUri ?? `${window.location.origin}${CALLBACK_PATH}`}
+                      value={redirectUri ?? defaultOAuthRedirectUri()}
                     />
                     <InputGroupAddon align="inline-end">
                       <CopyButton
-                        value={redirectUri ?? `${window.location.origin}${CALLBACK_PATH}`}
+                        value={redirectUri ?? defaultOAuthRedirectUri()}
                         ariaLabel="Copy redirect URI"
                       />
                     </InputGroupAddon>
@@ -496,35 +521,26 @@ export const OAuthAuthorizeCard = ({
                 <Field className="flex-1">
                   <FieldLabel htmlFor={clientSecretInputId}>Client Secret (optional)</FieldLabel>
                   <FieldContent>
-                    <Input
-                      type="password"
-                      {...register("oauthClientSecret")}
-                      id={clientSecretInputId}
-                      maxLength={4096}
-                      autoComplete="new-password"
-                      placeholder={
-                        isStoredClientKept ? "Leave blank to keep the saved secret" : undefined
-                      }
-                      isError={Boolean(errors.oauthClientSecret)}
+                    <Controller
+                      control={control}
+                      name="oauthClientSecret"
+                      render={({ field }) => (
+                        <ClientSecretInput
+                          {...field}
+                          id={clientSecretInputId}
+                          maxLength={4096}
+                          placeholder={
+                            isStoredClientKept ? "Leave blank to keep the saved secret" : undefined
+                          }
+                          isError={Boolean(errors.oauthClientSecret)}
+                        />
+                      )}
                     />
                     <FieldError>{errors.oauthClientSecret?.message}</FieldError>
                   </FieldContent>
                 </Field>
               </div>
               <div>{isMemberProvided ? memberAuthorizeButton : authorizeButton}</div>
-            </div>
-          )}
-
-          {(isMemberProvided || (!isClientRequired && !isNewlyAuthorized && !isWaiting)) && (
-            <div>
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                onClick={isUsingOwnApp ? switchToAutomaticSetup : switchToOwnApp}
-              >
-                {isUsingOwnApp ? "Use automatic setup" : "Use your own OAuth app"}
-              </Button>
             </div>
           )}
         </div>

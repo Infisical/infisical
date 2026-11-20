@@ -194,6 +194,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
         .where(`${TableName.Project}.orgId`, orgId)
         .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Project}.type`, ProjectType.AgentVault)
+        .whereNull(`${TableName.AgentVaultSkill}.sessionId`)
         .count(`${TableName.AgentVaultSkill}.id as count`)
         .first()) as { count: string } | undefined;
 

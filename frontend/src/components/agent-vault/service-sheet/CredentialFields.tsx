@@ -37,14 +37,17 @@ import {
   Toggle
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
+import { useProject } from "@app/context";
 import { isVariableReferenceOnly } from "@app/helpers/agentVaultVariables";
 import {
   AgentVaultCredentialType,
   AgentVaultVariableReferenceField,
   TAgentVaultMemberProvidedField
 } from "@app/hooks/api/agentVault";
+import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
+import { OAuthVariableField } from "./OAuthVariableField";
 import { ReferenceHighlights } from "./ReferenceHighlights";
 import { SendsPreview } from "./SendsPreview";
 import {
@@ -375,6 +378,8 @@ type Props = {
   showsSendsPreview?: boolean;
   /** Puts the username above the password instead of beside it. */
   stacksLogin?: boolean;
+  /** The saved service, for an OAuth credential, which names the variable it uses. */
+  service?: TAgentVaultService | null;
 };
 
 export const CredentialFields = ({
@@ -383,8 +388,10 @@ export const CredentialFields = ({
   credentialTypes = HTTP_CREDENTIAL_TYPES,
   typeLabels = CREDENTIAL_LABELS,
   showsSendsPreview = true,
-  stacksLogin = false
+  stacksLogin = false,
+  service
 }: Props) => {
+  const { projectId } = useProject();
   const { control, watch, setValue, clearErrors } = useFormContext<TServiceForm>();
   const { storedKeys } = useServiceVariables();
   const credentialType = watch("credentialType");
@@ -618,6 +625,10 @@ export const CredentialFields = ({
           />
           {secretField}
         </div>
+      )}
+
+      {credentialType === AgentVaultCredentialType.OAuth && (
+        <OAuthVariableField projectId={projectId} service={service} />
       )}
 
       {showsSendsPreview && credentialType !== AgentVaultCredentialType.Passthrough && (

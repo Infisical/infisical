@@ -55,6 +55,7 @@ import {
   AgentVaultMcpTransport,
   AgentVaultServiceType,
   AgentVaultVariableReferenceField,
+  AgentVaultVariableType,
   isNativeServiceType,
   SERVICE_SAVE_HANDLED_ERROR_CODES,
   TAgentVaultMemberProvidedField,
@@ -73,7 +74,7 @@ import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 
 import { NATIVE_SERVICE_META } from "../nativeServiceMeta";
 import { ServiceTemplateSelect } from "../ServiceTemplateSelect";
-import { VariableFormDialog } from "../VariableFormDialog";
+import { VariableFormSheet } from "../VariableFormSheet";
 import { CredentialFields } from "./CredentialFields";
 import { DetailsFields } from "./DetailsFields";
 import { HookFields } from "./HookFields";
@@ -97,6 +98,8 @@ import {
   isCredentialMemberProvided,
   isNativeService,
   isOAuthAuthorizationMissing,
+  isOAuthVariableCredential,
+  isOAuthVariableService,
   MCP_SERVICE_STEP_FIELDS,
   McpToolScope,
   NATIVE_SERVICE_STEP_FIELDS,
@@ -106,6 +109,7 @@ import {
   serviceKindOf,
   ServiceStep,
   storedMemberFields,
+  storedOAuthVariableKey,
   TServiceForm,
   TServiceKind,
   UNCHANGED_SECRET
@@ -158,6 +162,8 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   oauthClientId: "",
   oauthClientSecret: "",
   oauthAutomaticSetup: false,
+  oauthUsesVariable: false,
+  oauthVariableKey: "",
   memberProvidedFields: [],
   methods: [...HTTP_METHODS],
   pathPrefixes: [],
@@ -419,8 +425,14 @@ export const ServiceSheet = ({
 
   // Read when the form validates, so the schema isn't rebuilt each time a lookup answers.
   const missingKeysRef = useRef<ReadonlySet<string>>(NO_MISSING_KEYS);
+  const oauthKeysRef = useRef<ReadonlySet<string>>(NO_MISSING_KEYS);
   const schema = useMemo(
-    () => buildServiceSchema(service, () => missingKeysRef.current),
+    () =>
+      buildServiceSchema(
+        service,
+        () => missingKeysRef.current,
+        () => oauthKeysRef.current
+      ),
     [service]
   );
 
@@ -464,12 +476,18 @@ export const ServiceSheet = ({
     return [...new Set(keys.filter((key) => VARIABLE_KEY_RE.test(key)))].sort().join(",");
   }, [secret, username, customHeaders, substitutions]);
   const [debouncedReferencedKeys] = useDebounce(referencedKeys, 300);
-  const { missing: missingKeys } = useAgentVaultVariableKeyStatus(
+  const { missing, ofOtherType: oauthKeys } = useAgentVaultVariableKeyStatus(
     projectId,
     debouncedReferencedKeys ? debouncedReferencedKeys.split(",") : [],
-    { enabled: isOpen }
+    { enabled: isOpen, type: AgentVaultVariableType.Text }
   );
-  missingKeysRef.current = missingKeys;
+  missingKeysRef.current = missing;
+  oauthKeysRef.current = oauthKeys;
+  // Text can't use an OAuth variable, so its key is marked as unknown wherever a reference is shown.
+  const missingKeys = useMemo(
+    () => (oauthKeys.size ? new Set([...missing, ...oauthKeys]) : missing),
+    [missing, oauthKeys]
+  );
 
   const serviceVariables = useMemo(
     () => ({ missingKeys, storedKeys, requestVariable }),
@@ -602,6 +620,8 @@ export const ServiceSheet = ({
         // The admin-entered client every member signs in with, shown so it can be kept or changed.
         oauthClientId:
           credential.type === AgentVaultCredentialType.OAuth ? (credential.clientId ?? "") : "",
+        oauthUsesVariable: isOAuthVariableService(service),
+        oauthVariableKey: storedOAuthVariableKey(service),
         customHeaders: service.customHeaders.map((header) => ({
           id: header.id,
           name: header.name,
@@ -640,6 +660,7 @@ export const ServiceSheet = ({
           return storedValue(AgentVaultVariableReferenceField.CredentialValue);
         })(),
         memberProvidedFields,
+        oauthVariableKey: storedOAuthVariableKey(service),
         methods: service.allowedMethods ?? [...HTTP_METHODS],
         pathPrefixes: service.allowedPathPrefixes ?? [],
         // The stored values never come back, so each row carries the sentinel until it is retyped.
@@ -782,8 +803,19 @@ export const ServiceSheet = ({
         return;
       }
 
+      // A variable deleted, or replaced by a text one, since the picker listed it.
+      if (
+        isOAuthVariableCredential(data) &&
+        serverResponse?.error === ApiErrorTypes.BadRequestError &&
+        (serverResponse.details as { field?: string } | undefined)?.field === "credential.variable"
+      ) {
+        setError("oauthVariableKey", { type: "server", message: serverResponse.message });
+        setStep(stepKeys.indexOf(ServiceStep.Credential));
+        return;
+      }
+
       const rejectedAuthorization =
-        data.credentialType === AgentVaultCredentialType.OAuth
+        data.credentialType === AgentVaultCredentialType.OAuth && !isOAuthVariableCredential(data)
           ? rejectedAuthorizationMessage(error)
           : null;
       if (rejectedAuthorization) {
@@ -858,10 +890,12 @@ export const ServiceSheet = ({
           allowedMethods: "methods",
           allowedPathPrefixes: "pathPrefixes",
           tls: "tlsCa",
-          credential:
-            data.credentialType === AgentVaultCredentialType.OAuth
+          credential: (() => {
+            if (isOAuthVariableCredential(data)) return "oauthVariableKey";
+            return data.credentialType === AgentVaultCredentialType.OAuth
               ? "oauthAuthorizationId"
-              : "secret",
+              : "secret";
+          })(),
           hook: "hookUrl"
         };
         const FORM_FIELD_OF_CREDENTIAL_PART: Record<string, keyof TServiceForm> = {
@@ -959,14 +993,16 @@ export const ServiceSheet = ({
     oauthAuthorizationId,
     oauthAuthorizedUrl,
     oauthAuthorizationRejection,
-    memberProvidedFields
+    memberProvidedFields,
+    oauthUsesVariable
   ] = watch([
     "credentialType",
     "serverUrl",
     "oauthAuthorizationId",
     "oauthAuthorizedUrl",
     "oauthAuthorizationRejection",
-    "memberProvidedFields"
+    "memberProvidedFields",
+    "oauthUsesVariable"
   ]);
   const isMcpCredentialMemberProvided =
     isMcp && isCredentialMemberProvided({ memberProvidedFields });
@@ -994,7 +1030,8 @@ export const ServiceSheet = ({
       serverUrl,
       oauthAuthorizationId,
       oauthAuthorizedUrl,
-      memberProvidedFields
+      memberProvidedFields,
+      oauthUsesVariable
     },
     service
   );
@@ -1004,6 +1041,7 @@ export const ServiceSheet = ({
   const isAuthorizationRejected =
     isMcp &&
     credentialType === AgentVaultCredentialType.OAuth &&
+    !oauthUsesVariable &&
     !isMcpCredentialMemberProvided &&
     Boolean(oauthAuthorizationRejection);
   const isTemplateStep = current.step === ServiceStep.Template;
@@ -1136,6 +1174,7 @@ export const ServiceSheet = ({
                         <CredentialFields
                           storedType={service?.credential.type}
                           storedMemberFields={storedMemberFields(service)}
+                          service={service}
                         />
                         <TransformationsFields openItem={openItem} onOpenChange={setOpenItem} />
                       </div>
@@ -1221,7 +1260,7 @@ export const ServiceSheet = ({
           )}
         </FormProvider>
 
-        <VariableFormDialog
+        <VariableFormSheet
           isOpen={newVariableKey !== null}
           onOpenChange={(open) => {
             if (!open) setNewVariableKey(null);

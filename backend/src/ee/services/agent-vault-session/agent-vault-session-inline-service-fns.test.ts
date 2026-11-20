@@ -1,14 +1,19 @@
 import { describe, expect, test } from "vitest";
 
+import { hashAccessToken } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
+import { AgentVaultOauthClientAuthMethod } from "../agent-vault-oauth/agent-vault-oauth-types";
 import {
   AgentVaultCredentialType,
   AgentVaultMcpTransport,
+  AgentVaultOauthStatus,
   AgentVaultServiceType,
-  AgentVaultSubstitutionSurface
+  AgentVaultSubstitutionSurface,
+  AgentVaultVariableType
 } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultInlineServiceSecretsRow } from "./agent-vault-session-inline-service-dal";
 import {
   assertNoAccessBundleConflicts,
+  bindInlineOauthVariables,
   inlineServiceDisplayName,
   openInlineServiceSecrets,
   prepareInlineServices,
@@ -146,7 +151,7 @@ describe("prepareInlineServices", () => {
         httpBearer(),
         httpBearer({ hostPattern: "other.example.com", credential: { type: AgentVaultCredentialType.OAuth } })
       ])
-    ).toThrow(/^Service at index 1: Services sent with a session can't use OAuth/);
+    ).toThrow(/^Service at index 1: An OAuth credential sent with a session needs 'variable'/);
   });
 
   test("refuses fields left to members", () => {
@@ -163,7 +168,7 @@ describe("prepareInlineServices", () => {
     ).toThrow(/can't leave a field to members/);
   });
 
-  test("offers only a bearer token for an MCP service, since OAuth isn't available inline", () => {
+  test("offers a bearer token or OAuth for an MCP service", () => {
     expect(() =>
       prepareInlineServices([
         {
@@ -173,7 +178,9 @@ describe("prepareInlineServices", () => {
           credential: { type: AgentVaultCredentialType.Passthrough }
         }
       ])
-    ).toThrow("Service at index 0: An MCP service can't use pass-through as its credential. Use a bearer token.");
+    ).toThrow(
+      "Service at index 0: An MCP service can't use pass-through as its credential. Use a bearer token or OAuth."
+    );
   });
 
   test("refuses a custom header that would shadow the credential's", () => {
@@ -498,8 +505,8 @@ describe("inline services with a hook", () => {
   });
 
   test("the list an agent reads leaves out a pass-through service with only a hook once its session ended", () => {
-    expect(toInlineServiceFacts(passthroughWithHook())).not.toBeNull();
-    expect(toInlineServiceFacts(passthroughWithHook({ secretsDeletedAt: new Date() }))).toBeNull();
+    expect(toInlineServiceFacts(passthroughWithHook(), () => true)).not.toBeNull();
+    expect(toInlineServiceFacts(passthroughWithHook({ secretsDeletedAt: new Date() }), () => true)).toBeNull();
   });
 });
 
@@ -651,6 +658,171 @@ describe("openInlineServiceSecrets", () => {
     });
     expect(openInlineServiceSecrets(row, open)).toBeNull();
     expect(toResolvedInlineService(row, null)?.credential).toEqual({ type: AgentVaultCredentialType.Passthrough });
+  });
+});
+
+describe("OAuth sent with a session", () => {
+  const VARIABLE_ID = "77777777-7777-4777-8777-777777777777";
+  const variables = [
+    { id: VARIABLE_ID, key: "GDRIVE_U123", type: AgentVaultVariableType.OAuth },
+    { id: "text-1", key: "OPENAI_KEY", type: AgentVaultVariableType.Text }
+  ];
+  const withVariable = (key: string) =>
+    httpBearer({ name: "gdrive", credential: { type: AgentVaultCredentialType.OAuth, variable: key } });
+  const tokens = {
+    type: AgentVaultCredentialType.OAuth,
+    accessToken: "ya29.access",
+    refreshToken: "1//refresh",
+    expiresAt: "2026-11-18T12:00:00Z",
+    authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+    tokenEndpoint: "https://oauth2.googleapis.com/token",
+    clientId: "client-1",
+    clientSecret: "secret-1",
+    scopes: ["https://www.googleapis.com/auth/drive"]
+  } as const;
+
+  test("an OAuth variable is stored by id, with nothing sealed", () => {
+    const [service] = bindInlineOauthVariables(prepareInlineServices([withVariable("GDRIVE_U123")]), variables);
+
+    expect(service.credentialConfig).toEqual({
+      type: AgentVaultCredentialType.OAuth,
+      source: "variable",
+      variableId: VARIABLE_ID
+    });
+    expect(service.secrets).toBeNull();
+  });
+
+  test("a key that names no variable, or a text variable, is refused by name", () => {
+    const prepared = (key: string) => prepareInlineServices([withVariable(key)]);
+    expect(() => bindInlineOauthVariables(prepared("MISSING"), variables)).toThrow(
+      "Service 'gdrive': There's no global variable named 'MISSING'"
+    );
+    expect(() => bindInlineOauthVariables(prepared("OPENAI_KEY"), variables)).toThrow(
+      "Service 'gdrive': 'OPENAI_KEY' is a text variable"
+    );
+  });
+
+  test("a variable and tokens together, or a sign-in, are refused", () => {
+    expect(() =>
+      prepareInlineServices([
+        httpBearer({ credential: { type: AgentVaultCredentialType.OAuth, variable: "GDRIVE_U123", accessToken: "x" } })
+      ])
+    ).toThrow("Send either 'variable' or the tokens and the provider's details, not both. Leave out 'accessToken'.");
+    expect(() =>
+      prepareInlineServices([
+        httpBearer({
+          credential: { type: AgentVaultCredentialType.OAuth, authorizationId: "88888888-8888-4888-8888-888888888888" }
+        })
+      ])
+    ).toThrow(/can't use an OAuth sign-in/);
+  });
+
+  test("tokens are stored as sent, with the connection a refresh needs", () => {
+    const [service] = prepareInlineServices([httpBearer({ credential: { ...tokens, scopes: [...tokens.scopes] } })]);
+
+    expect(service.secrets?.credential).toEqual({
+      accessToken: "ya29.access",
+      refreshToken: "1//refresh",
+      clientSecret: "secret-1"
+    });
+    expect(service.credentialConfig).toMatchObject({
+      type: AgentVaultCredentialType.OAuth,
+      issuer: "https://accounts.google.com",
+      tokenEndpoint: "https://oauth2.googleapis.com/token",
+      clientId: "client-1",
+      tokenEndpointAuthMethod: AgentVaultOauthClientAuthMethod.ClientSecretBasic,
+      status: AgentVaultOauthStatus.Connected,
+      expiresAt: "2026-11-18T12:00:00.000Z",
+      accessTokenHash: hashAccessToken("ya29.access")
+    });
+  });
+
+  test("tokens need the provider's endpoints, the client and the scopes", () => {
+    const send = (credential: Record<string, unknown>) => () =>
+      prepareInlineServices([httpBearer({ credential: { ...tokens, scopes: [...tokens.scopes], ...credential } })]);
+    expect(send({ tokenEndpoint: undefined })).toThrow(/need the provider's 'tokenEndpoint'/);
+    expect(send({ clientId: undefined })).toThrow(/need the provider's 'clientId'/);
+    expect(send({ scopes: [] })).toThrow(/scopes they were granted/);
+    expect(send({ accessToken: undefined })).toThrow(/needs 'variable'/);
+    expect(send({ tokenEndpointAuthMethod: AgentVaultOauthClientAuthMethod.None })).toThrow(
+      /'tokenEndpointAuthMethod' is 'none'/
+    );
+  });
+
+  test("tokens go out on resolve, and the variable's resolution is used for a variable", () => {
+    const sealed = { accessToken: "ya29.access", refreshToken: "1//refresh" };
+    const tokenRow = storedRow({
+      credentialType: AgentVaultCredentialType.OAuth,
+      credentialConfig: { type: AgentVaultCredentialType.OAuth, status: AgentVaultOauthStatus.Connected },
+      encryptedCredential: Buffer.from(JSON.stringify(sealed))
+    });
+    const secrets = openInlineServiceSecrets(tokenRow, (blob) => JSON.parse(blob.toString("utf-8")));
+    expect(toResolvedInlineService(tokenRow, secrets)?.credential).toMatchObject({
+      type: AgentVaultCredentialType.Bearer,
+      value: "ya29.access",
+      source: "oauth"
+    });
+
+    const variableRow = storedRow({
+      credentialType: AgentVaultCredentialType.OAuth,
+      credentialConfig: { type: AgentVaultCredentialType.OAuth, source: "variable", variableId: VARIABLE_ID }
+    });
+    expect(openInlineServiceSecrets(variableRow, () => ({}))).toBeNull();
+    const notConnected = toResolvedInlineService(variableRow, null, {});
+    expect(notConnected).toMatchObject({
+      credential: { type: AgentVaultCredentialType.Passthrough },
+      personalValuesMissing: true
+    });
+    expect(notConnected?.credentialRemoved).toBeUndefined();
+    expect(notConnected?.credentialNotConnected).toBeUndefined();
+    expect(toResolvedInlineService(variableRow, null, { notConnected: true })).toMatchObject({
+      credential: { type: AgentVaultCredentialType.Passthrough },
+      personalValuesMissing: true,
+      credentialNotConnected: true
+    });
+    const removed = toResolvedInlineService(variableRow, null, { removed: true });
+    expect(removed).toMatchObject({
+      credential: { type: AgentVaultCredentialType.Passthrough },
+      personalValuesMissing: true,
+      credentialRemoved: true
+    });
+    expect(removed?.credentialNotConnected).toBeUndefined();
+  });
+
+  test("the agent is told the proxy adds an OAuth credential, and the summary never holds a token", () => {
+    const variableRow = storedRow({
+      credentialType: AgentVaultCredentialType.OAuth,
+      credentialConfig: { type: AgentVaultCredentialType.OAuth, source: "variable", variableId: VARIABLE_ID }
+    });
+    expect(toInlineServiceFacts(variableRow, () => true)?.credential).toEqual({ type: "oauth" });
+    expect(toInlineServiceFacts(variableRow, () => false)).toMatchObject({
+      credential: { type: "none" },
+      personalValuesMissing: true,
+      credentialNotConnected: true
+    });
+    expect(
+      toInlineServiceSummary(variableRow, new Map([[VARIABLE_ID, { id: VARIABLE_ID, key: "GDRIVE_U123" }]])).credential
+    ).toEqual({
+      type: AgentVaultCredentialType.OAuth,
+      source: "variable",
+      variable: { id: VARIABLE_ID, key: "GDRIVE_U123" }
+    });
+    expect(toInlineServiceSummary(variableRow).credential).toEqual({
+      type: AgentVaultCredentialType.OAuth,
+      source: "variable"
+    });
+
+    const [prepared] = prepareInlineServices([httpBearer({ credential: { ...tokens, scopes: [...tokens.scopes] } })]);
+    const tokenRow = storedRow({
+      credentialType: AgentVaultCredentialType.OAuth,
+      credentialConfig: prepared.credentialConfig
+    });
+    expect(toInlineServiceSummary(tokenRow).credential).toEqual({
+      type: AgentVaultCredentialType.OAuth,
+      source: "inline",
+      issuer: "https://accounts.google.com",
+      grantedScopes: ["https://www.googleapis.com/auth/drive"]
+    });
   });
 });
 

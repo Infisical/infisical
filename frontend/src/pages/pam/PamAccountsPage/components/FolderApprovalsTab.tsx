@@ -602,6 +602,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                   ? undefined
                   : {
                       lockedChannelTypes: [
+                        AlertChannelType.SlackApp,
                         AlertChannelType.Slack,
                         AlertChannelType.Webhook,
                         AlertChannelType.PagerDuty

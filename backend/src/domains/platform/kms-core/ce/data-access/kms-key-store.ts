@@ -198,8 +198,9 @@ export class KmsKeyStore implements TKmsKeyStore {
         isDisabled: record.isDisabled,
         isReserved: record.isReserved,
         isExportable: record.isExportable,
-        hasDeleteProtection: record.hasDeleteProtection,
-        isPublicKeyPublished: record.isPublicKeyPublished,
+        // Omitted when false so historical migrations can insert before these columns exist.
+        ...(record.hasDeleteProtection && { hasDeleteProtection: true }),
+        ...(record.isPublicKeyPublished && { isPublicKeyPublished: true }),
         kmipMetadata: record.kmipMetadata
       } as never);
       if (record.internal) {
