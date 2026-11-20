@@ -333,18 +333,12 @@ export async function down(knex: Knex): Promise<void> {
 
     const bundleRoleMembershipIds = new Set<string>();
     for await (const bundle of bundles) {
-      // A grant can't carry a time limit, so a temporary assignment isn't restored: as a grant it would never end. A
-      // group's live one is, since a group's grant counts only while the group holds a live role, which bounds it.
+      // A grant can't carry a time limit, so a temporary assignment isn't restored: as a grant it would never end. That
+      // holds for a group's too: its grant would count as long as any role the group holds, which can outlast the limit.
       const holders = (await knex(TableName.MembershipRole)
         .join(TableName.Membership, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .where(`${TableName.MembershipRole}.customRoleId`, bundle.grantRoleId)
-        .where((qb) => {
-          void qb.where(`${TableName.MembershipRole}.isTemporary`, false).orWhere((groupQb) => {
-            void groupQb
-              .whereNotNull(`${TableName.Membership}.actorGroupId`)
-              .where(`${TableName.MembershipRole}.temporaryAccessEndTime`, ">", new Date());
-          });
-        })
+        .where(`${TableName.MembershipRole}.isTemporary`, false)
         .distinct(
           `${TableName.Membership}.actorUserId`,
           `${TableName.Membership}.actorIdentityId`,

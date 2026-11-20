@@ -242,14 +242,15 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
     // Its role had ended, so its grant gave nothing.
     expect(await bundleRoleOf(ended.membershipId)).toEqual([]);
 
-    // Both groups that still hold it get their grant back.
+    // A grant can't carry the time-limited group's end time, and would count for as long as any role the group holds, so
+    // only the permanent group's comes back.
     await down(testDb);
     const grantedTo = (
       (await testDb(TableName.Membership)
         .where({ scope: "resource", scopeResourceId: bundle })
         .select("actorGroupId")) as { actorGroupId: string }[]
     ).map((row) => row.actorGroupId);
-    expect(grantedTo.sort()).toEqual([permanent.groupId, timed.groupId].sort());
+    expect(grantedTo).toEqual([permanent.groupId]);
 
     // Back to the migrated shape, which the specs after this one run on.
     await up(testDb);
