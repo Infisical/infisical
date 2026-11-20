@@ -61,6 +61,28 @@ export type THsmConnectorKey = {
   keyAlgorithm: string;
 };
 
+export enum HsmKeyAlgorithm {
+  RSA_2048 = "RSA_2048",
+  RSA_3072 = "RSA_3072",
+  RSA_4096 = "RSA_4096",
+  ECC_P256 = "ECC_P256",
+  ECC_P384 = "ECC_P384",
+  ML_DSA_44 = "ML_DSA_44",
+  ML_DSA_65 = "ML_DSA_65",
+  ML_DSA_87 = "ML_DSA_87"
+}
+
+export const hsmKeyAlgorithmLabels: Record<HsmKeyAlgorithm, string> = {
+  [HsmKeyAlgorithm.RSA_2048]: "RSA-2048",
+  [HsmKeyAlgorithm.RSA_3072]: "RSA-3072",
+  [HsmKeyAlgorithm.RSA_4096]: "RSA-4096",
+  [HsmKeyAlgorithm.ECC_P256]: "ECDSA P-256",
+  [HsmKeyAlgorithm.ECC_P384]: "ECDSA P-384",
+  [HsmKeyAlgorithm.ML_DSA_44]: "ML-DSA-44",
+  [HsmKeyAlgorithm.ML_DSA_65]: "ML-DSA-65",
+  [HsmKeyAlgorithm.ML_DSA_87]: "ML-DSA-87"
+};
+
 export type THsmConnectorLinkedCertificate = {
   id: string;
   commonName: string;

@@ -16,6 +16,8 @@ import { Cloud66SyncDestinationCol } from "./Cloud66SyncDestinationCol";
 import { CloudflarePagesSyncDestinationCol } from "./CloudflarePagesSyncDestinationCol";
 import { CloudflareSecretsStoreSyncDestinationCol } from "./CloudflareSecretsStoreSyncDestinationCol";
 import { CloudflareWorkersSyncDestinationCol } from "./CloudflareWorkersSyncDestinationCol";
+import { ConvexSyncDestinationCol } from "./ConvexSyncDestinationCol";
+import { CoolifySyncDestinationCol } from "./CoolifySyncDestinationCol";
 import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
 import { DaytonaSyncDestinationCol } from "./DaytonaSyncDestinationCol";
 import { DevinSyncDestinationCol } from "./DevinSyncDestinationCol";
@@ -29,6 +31,7 @@ import { HasuraCloudSyncDestinationCol } from "./HasuraCloudSyncDestinationCol";
 import { HCVaultSyncDestinationCol } from "./HCVaultSyncDestinationCol";
 import { HerokuSyncDestinationCol } from "./HerokuSyncDestinationCol";
 import { HumanitecSyncDestinationCol } from "./HumanitecSyncDestinationCol";
+import { JenkinsSyncDestinationCol } from "./JenkinsSyncDestinationCol";
 import { KeeperSyncDestinationCol } from "./KeeperSyncDestinationCol";
 import { LaravelForgeSyncDestinationCol } from "./LaravelForgeSyncDestinationCol";
 import { NetlifySyncDestinationCol } from "./NetlifySyncDestinationCol";
@@ -107,6 +110,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <CloudflareWorkersSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.CloudflareSecretsStore:
       return <CloudflareSecretsStoreSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Convex:
+      return <ConvexSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Zabbix:
       return <ZabbixSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Railway:
@@ -163,6 +168,10 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <KeeperSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Spacelift:
       return <SpaceliftSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Jenkins:
+      return <JenkinsSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Coolify:
+      return <CoolifySyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

@@ -29,10 +29,10 @@ import { NotificationType } from "@app/services/notification/notification-types"
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { PamFolderCallerAccess, PamProductRole, PamResourceRole } from "../pam/pam-enums";
-import { getResourceIdsWithActions, TActorContext, verifyProductMembership } from "../pam/pam-permission";
 import { PAM_FOLDER_RESOURCE_TYPE } from "../pam-access-request/pam-access-request-events";
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
+import { PamFolderCallerAccess, PamProductRole, PamResourceRole } from "../pam/pam-enums";
+import { getResourceIdsWithActions, TActorContext, verifyProductMembership } from "../pam/pam-permission";
 import { TPamFolderDALFactory } from "./pam-folder-dal";
 import {
   TCreatePamFolderDTO,

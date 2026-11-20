@@ -1,6 +1,9 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, OrgMembershipStatus, ProjectMembershipRole, TAgentVaultProxies } from "@app/db/schemas";
+import { ActionProjectType, OrgMembershipStatus, TAgentVaultProxies, TAgentVaultSessions } from "@app/db/schemas";
+import { TAgentVaultAccessService } from "@app/domains/agent-vault/agent-vault/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultProxyActions,
@@ -10,6 +13,7 @@ import {
 import { PgSqlLock } from "@app/keystore/keystore";
 import {
   BadRequestError,
+  ConflictError,
   ForbiddenRequestError,
   InternalServerError,
   NotFoundError,
@@ -17,79 +21,164 @@ import {
 } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
+import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
+import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
+import {
+  AGENT_VAULT_SERVICE_MOVED_MESSAGE,
+  TAgentVaultOauthServiceFactory
+} from "../agent-vault-oauth/agent-vault-oauth-service";
+import {
+  isInlineTokensOauth,
+  isMemberOauthConnectionUsable,
+  isMemberProvidedOauth,
+  isVariableOauth,
+  oauthVariableIdOf,
+  toResolvedOauthCredential
+} from "../agent-vault-oauth/agent-vault-oauth-token-fns";
+import { TAgentVaultOauthConfig, TAgentVaultOauthSecret } from "../agent-vault-oauth/agent-vault-oauth-types";
+import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
+import { TAgentVaultSessionLogConfigDALFactory } from "../agent-vault-session-log/agent-vault-session-log-config-dal";
+import { getSessionLogEntitlement } from "../agent-vault-session-log/agent-vault-session-log-license-fns";
+import { openSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
+import { getEffectiveSessionLogConfig } from "../agent-vault-session-log/agent-vault-session-log-storage-fns";
+import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
+import { describeSessionForAudit, hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
+import { TAgentVaultSessionInlineServiceDALFactory } from "../agent-vault-session/agent-vault-session-inline-service-dal";
+import {
+  openInlineServiceSecrets,
+  TInlineOauthResolution,
+  toInlineServiceFacts,
+  toResolvedInlineService,
+  withoutShadowedServices
+} from "../agent-vault-session/agent-vault-session-inline-service-fns";
+import { TAgentVaultSessionInlineSkillDALFactory } from "../agent-vault-session/agent-vault-session-inline-skill-dal";
+import { deserializeSkillFiles } from "../agent-vault-skill/agent-vault-skill-fns";
+import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
+import { TAgentVaultOauthVariableConfig } from "../agent-vault-variable/agent-vault-variable-types";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import {
   AgentVaultCredentialType,
+  AgentVaultMemberType,
+  AgentVaultOauthStatus,
+  AgentVaultServiceType,
   AgentVaultTrafficPolicy,
   AgentVaultVariableReferenceField,
-  TAgentVaultMemberProvidedField
+  TAgentVaultMemberProvidedField,
+  toStoredTrafficPolicy,
+  toTrafficPolicyView
 } from "../agent-vault/agent-vault-enums";
+import { toResolvedNativeTarget } from "../agent-vault/agent-vault-native-config-schemas";
 import { TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
-import { findReachableAccessBundleIds, liveGroupIdsFrom } from "../agent-vault/agent-vault-permission";
-import { expandStoredVariableReferences, findStoredVariableIds } from "../agent-vault/agent-vault-variable-fns";
-import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
-import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
-import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
-import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
-import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
-import { TAgentVaultSessionLogConfigDALFactory } from "../agent-vault-session-log/agent-vault-session-log-config-dal";
 import {
-  getSessionLogEntitlement,
-  TSessionLogLicenseService
-} from "../agent-vault-session-log/agent-vault-session-log-license-fns";
-import { openSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
-import { getEffectiveSessionLogConfig } from "../agent-vault-session-log/agent-vault-session-log-storage-fns";
-import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
+  findReachableAccessBundleIds,
+  hasRoleReachingEveryBundle,
+  intersectAccessBundleIds,
+  liveGroupIdsFrom
+} from "../agent-vault/agent-vault-permission";
+import { getServiceServerUrl } from "../agent-vault/agent-vault-service-type-fns";
+import { expandStoredVariableReferences, findStoredVariableIds } from "../agent-vault/agent-vault-variable-fns";
 import {
   mintAgentVaultProxyJwt,
   RESOURCE_TYPE_AGENT_VAULT_PROXY
 } from "../resource-auth-method/resource-auth-method-fns";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
-import { generateProxyRootCa, parseRootCaCertificate } from "./agent-vault-ca-fns";
+import { generateProxyRootCa, getRootCaFingerprint, parseRootCaCertificate } from "./agent-vault-ca-fns";
 import { TAgentVaultProxyDALFactory } from "./agent-vault-proxy-dal";
 import {
   TAgentVaultProxyConfig,
   TAgentVaultProxyScoped,
+  TAuthorizeSessionDTO,
   TBootstrapProxyDTO,
   TCreateProxyDTO,
+  TGetSessionProxyCaFingerprintsDTO,
+  TGetSessionServicesDTO,
+  TGetSessionSkillsDTO,
+  TRevokeSessionByTokenDTO,
   THeartbeatDTO,
   TListProxiesDTO,
   TProxyByIdDTO,
   TProxyRootCa,
+  TRefreshCredentialDTO,
+  TReportMissingScopesDTO,
   TResolvedService,
   TResolveSessionDTO,
   TUpdateProxyDTO
 } from "./agent-vault-proxy-types";
 import { TAgentVaultResolveDALFactory, TResolveServiceRow } from "./agent-vault-resolve-dal";
+import {
+  buildSessionServicesDocument,
+  oauthVariableSignedInOf,
+  toBundleServiceFacts,
+  toSetPersonalFields
+} from "./agent-vault-session-services-fns";
 
-export const AGENT_VAULT_MAX_PROXIES_PER_ORG = 10;
+export const AGENT_VAULT_MAX_PROXIES_PER_PROJECT = 10;
+
+type TPersonalValueResolveRow = Awaited<ReturnType<TAgentVaultPersonalValueDALFactory["findForResolve"]>>[number];
 
 // Health is derived from the last heartbeat and the poll interval, never stored.
 const HEARTBEAT_MISSES_BEFORE_UNHEALTHY = 3;
 
+const RESOLVE_REFRESH_BUDGET_MS = 4_000;
+
 type TAgentVaultProxyServiceFactoryDep = {
   agentVaultProxyDAL: TAgentVaultProxyDALFactory;
-  agentVaultResolveDAL: TAgentVaultResolveDALFactory;
+  agentVaultResolveDAL: Pick<
+    TAgentVaultResolveDALFactory,
+    "findResolvableServices" | "findSessionSkills" | "findReachableBundles"
+  >;
   agentVaultServiceCustomHeaderDAL: Pick<TAgentVaultServiceCustomHeaderDALFactory, "findByServiceIds">;
   agentVaultServiceSubstitutionDAL: Pick<TAgentVaultServiceSubstitutionDALFactory, "findByServiceIds">;
-  agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findValuesForResolve">;
+  agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findValuesForResolve" | "findOauthForResolve">;
   agentVaultPersonalValueDAL: Pick<TAgentVaultPersonalValueDALFactory, "findForResolve">;
-  agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findByTokenHash">;
+  agentVaultSessionDAL: Pick<
+    TAgentVaultSessionDALFactory,
+    | "findByTokenHash"
+    | "findByTokenHashOnPrimary"
+    | "revokeIfActive"
+    | "findByIdOnPrimary"
+    | "findForList"
+    | "transaction"
+  >;
+  agentVaultSessionInlineServiceDAL: Pick<
+    TAgentVaultSessionInlineServiceDALFactory,
+    "findBySessionId" | "deleteSecretsBySessionId"
+  >;
+  agentVaultSessionInlineSkillDAL: Pick<
+    TAgentVaultSessionInlineSkillDALFactory,
+    "findWithFilesBySessionId" | "deleteFilesBySessionId"
+  >;
+  agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "identityCoversUser">;
   agentVaultSessionLogConfigDAL: Pick<TAgentVaultSessionLogConfigDALFactory, "findOne" | "findByProjectIdFromPrimary">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  userDAL: Pick<TUserDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  licenseService: TSessionLogLicenseService;
+  kmsDataKeyService: TKmsDataKeyService;
+  licenseService: TLicenseService;
+  agentVaultAccessService: Pick<TAgentVaultAccessService, "assertCanBroker">;
   resourceAuthMethodService: Pick<TResourceAuthMethodServiceFactory, "initAtCreate" | "revokeAccess">;
+  agentVaultOauthService: Pick<TAgentVaultOauthServiceFactory, "refreshServiceToken" | "reportMissingScopes">;
 };
 
 export type TAgentVaultProxyServiceFactory = ReturnType<typeof agentVaultProxyServiceFactory>;
+
+// A session on a user's behalf uses that user's personal values, never those of the identity that owns it. Called only
+// after the session is authorized, which refuses one whose owner or user is gone.
+const personalValuesOwner = (
+  session: Pick<TAgentVaultSessions, "userId" | "identityId" | "onBehalfOfUserId">
+): TAgentVaultOwner => {
+  if (session.onBehalfOfUserId) return { userId: session.onBehalfOfUserId };
+  if (session.userId) return { userId: session.userId };
+  return { identityId: session.identityId! };
+};
 
 // Opens each variable at most once per resolve. An id with no row stays as text, and the service that used it is
 // recorded so one log line can name every service affected.
@@ -124,13 +213,20 @@ export const agentVaultProxyServiceFactory = ({
   agentVaultVariableDAL,
   agentVaultPersonalValueDAL,
   agentVaultSessionDAL,
+  agentVaultSessionInlineServiceDAL,
+  agentVaultSessionInlineSkillDAL,
+  agentVaultDelegationDAL,
   agentVaultSessionLogConfigDAL,
   membershipDAL,
   orgDAL,
+  projectDAL,
+  userDAL,
   permissionService,
-  kmsService,
+  kmsDataKeyService,
   licenseService,
-  resourceAuthMethodService
+  agentVaultAccessService,
+  resourceAuthMethodService,
+  agentVaultOauthService
 }: TAgentVaultProxyServiceFactoryDep) => {
   const isHealthy = (proxy: Pick<TAgentVaultProxies, "heartbeat" | "pollInterval" | "heartbeatTTL">) => {
     if (!proxy.heartbeat) return false;
@@ -142,7 +238,7 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   const toConfig = (proxy: TAgentVaultProxies): TAgentVaultProxyConfig => ({
-    trafficPolicy: proxy.trafficPolicy as AgentVaultTrafficPolicy,
+    trafficPolicy: toStoredTrafficPolicy(proxy.trafficPolicy as AgentVaultTrafficPolicy),
     allowedHosts: proxy.allowedHosts ?? null,
     pollInterval: proxy.pollInterval
   });
@@ -150,23 +246,28 @@ export const agentVaultProxyServiceFactory = ({
   const toMemberView = (proxy: TAgentVaultProxies) => ({
     id: proxy.id,
     name: proxy.name,
+    description: proxy.description ?? null,
     heartbeat: proxy.heartbeat ?? null,
     isHealthy: isHealthy(proxy),
     rootCaFingerprint: proxy.rootCaFingerprint ?? null,
     rootCaExpiresAt: proxy.rootCaExpiresAt ?? null
   });
 
-  const toAdminView = (proxy: TAgentVaultProxies) => ({
-    ...toMemberView(proxy),
-    ...toConfig(proxy),
-    createdAt: proxy.createdAt
-  });
+  const toAdminView = (proxy: TAgentVaultProxies) => {
+    const config = toConfig(proxy);
+    return {
+      ...toMemberView(proxy),
+      ...config,
+      trafficPolicy: toTrafficPolicyView(config.trafficPolicy),
+      createdAt: proxy.createdAt
+    };
+  };
 
   const $authorize = async (
     { projectId, ctx }: TAgentVaultProxyScoped,
     action: ProjectPermissionAgentVaultProxyActions
   ) => {
-    const { permission, hasRole } = await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor: ctx.actor,
       actorId: ctx.actorId,
       projectId,
@@ -175,7 +276,7 @@ export const agentVaultProxyServiceFactory = ({
       actionProjectType: ActionProjectType.AgentVault
     });
     ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AgentVaultProxies);
-    return { isAdmin: hasRole(ProjectMembershipRole.Admin) };
+    return { permission };
   };
 
   const $findProxyOr404 = async ({ projectId, proxyId }: { projectId: string; proxyId: string }) => {
@@ -187,7 +288,7 @@ export const agentVaultProxyServiceFactory = ({
   const getProxyForAuth = (proxyId: string) => agentVaultProxyDAL.findByIdWithOrg(proxyId);
 
   const $sealRootCaKey = async (projectId: string, privateKey: string) => {
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -196,7 +297,7 @@ export const agentVaultProxyServiceFactory = ({
 
   const $openRootCa = async (proxy: TAgentVaultProxies): Promise<TProxyRootCa | null> => {
     if (!proxy.rootCaCertificate || !proxy.encryptedRootCaPrivateKey) return null;
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: proxy.projectId
     });
@@ -252,7 +353,12 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   const listProxies = async ({ search, orderBy, orderDirection, limit, offset, ...dto }: TListProxiesDTO) => {
-    const { isAdmin } = await $authorize(dto, ProjectPermissionAgentVaultProxyActions.Read);
+    const { permission } = await $authorize(dto, ProjectPermissionAgentVaultProxyActions.Read);
+    // Whoever can change a proxy's settings sees them; everyone else gets the view without them.
+    const showsSettings = permission.can(
+      ProjectPermissionAgentVaultProxyActions.Edit,
+      ProjectPermissionSub.AgentVaultProxies
+    );
     const { proxies, totalCount } = await agentVaultProxyDAL.findForList({
       projectId: dto.projectId,
       search,
@@ -261,7 +367,31 @@ export const agentVaultProxyServiceFactory = ({
       limit,
       offset
     });
-    return { proxies: proxies.map((proxy) => (isAdmin ? toAdminView(proxy) : toMemberView(proxy))), totalCount };
+    return {
+      proxies: proxies.map((proxy) => (showsSettings ? toAdminView(proxy) : toMemberView(proxy))),
+      totalCount
+    };
+  };
+
+  // A proxy started with its own CA reports only that CA's fingerprint, so the certificate Infisical holds is not
+  // the one it serves and can't be handed out as if it were.
+  const getProxyCa = async ({ projectId, ctx, proxyId }: TProxyByIdDTO) => {
+    await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.Read);
+    const proxy = await $findProxyOr404({ projectId, proxyId });
+    const servesOwnCa = new ConflictError({
+      message: `Proxy '${proxy.name}' serves its own certificate authority. Use the certificate you passed to it with --ca-cert.`
+    });
+    // Rows without a certificate predate stored CAs and proxy tokens. A rotation stores a CA and issues a token.
+    if (!proxy.rootCaCertificate) {
+      throw new ConflictError({
+        message: proxy.rootCaFingerprint
+          ? `Proxy '${proxy.name}' was set up before Infisical stored its certificate authority, so it serves the ca.crt in its data directory. To manage the CA from Infisical, rotate the proxy token and restart the proxy with it.`
+          : `Proxy '${proxy.name}' has no certificate authority yet. Rotate its proxy token, then start the proxy with the new token.`
+      });
+    }
+    const held = parseRootCaCertificate(proxy.rootCaCertificate);
+    if (proxy.rootCaFingerprint && proxy.rootCaFingerprint !== held.fingerprint) throw servesOwnCa;
+    return { ca: { certificate: proxy.rootCaCertificate, fingerprint: held.fingerprint, expiresAt: held.expiresAt } };
   };
 
   const $resourceActor = (ctx: TCreateProxyDTO["ctx"]) => ({
@@ -276,7 +406,7 @@ export const agentVaultProxyServiceFactory = ({
   const $signProxyToken = (proxyId: string, orgId: string, tokenVersion: number) =>
     mintAgentVaultProxyJwt({ agentVaultProxyId: proxyId, orgId, tokenVersion, accessTokenTTL: 0 });
 
-  const createProxy = async ({ projectId, ctx, name, ...settings }: TCreateProxyDTO) => {
+  const createProxy = async ({ projectId, ctx, name, description, ...settings }: TCreateProxyDTO) => {
     await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.Create);
 
     const existing = await agentVaultProxyDAL.findOne({ projectId, name });
@@ -290,9 +420,9 @@ export const agentVaultProxyServiceFactory = ({
         // Serialised per project so two creates at once can't both slip under the cap.
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateAgentVaultProxy(projectId)]);
-        if ((await agentVaultProxyDAL.countByProjectId(projectId, tx)) >= AGENT_VAULT_MAX_PROXIES_PER_ORG) {
+        if ((await agentVaultProxyDAL.countByProjectId(projectId, tx)) >= AGENT_VAULT_MAX_PROXIES_PER_PROJECT) {
           throw new BadRequestError({
-            message: `Agent Vault allows up to ${AGENT_VAULT_MAX_PROXIES_PER_ORG} proxies per organization. Delete one you no longer use to add another.`
+            message: `Agent Vault allows up to ${AGENT_VAULT_MAX_PROXIES_PER_PROJECT} proxies per project. Delete one you no longer use to add another.`
           });
         }
 
@@ -301,7 +431,8 @@ export const agentVaultProxyServiceFactory = ({
           {
             projectId,
             name,
-            trafficPolicy: settings.trafficPolicy ?? AgentVaultTrafficPolicy.AnyHost,
+            description,
+            trafficPolicy: toStoredTrafficPolicy(settings.trafficPolicy ?? AgentVaultTrafficPolicy.AnyHost),
             allowedHosts: settings.allowedHosts ?? null,
             pollInterval: settings.pollInterval ?? 60,
             tokenVersion: 1,
@@ -338,6 +469,12 @@ export const agentVaultProxyServiceFactory = ({
     const proxy = await $findProxyOr404({ projectId, proxyId });
 
     const { stored, reported } = await $newRootCa(proxy.projectId);
+    // The fingerprint is the only record that a proxy serves its own CA, and its next start reports that CA again.
+    // Overwriting it here would make the CA download hand out the new CA, which the proxy never serves. A row with no
+    // certificate predates stored CAs, and its next start serves the CA stored here.
+    const servesOwnCa =
+      Boolean(proxy.rootCaCertificate && proxy.rootCaFingerprint) &&
+      proxy.rootCaFingerprint !== getRootCaFingerprint(proxy.rootCaCertificate as string);
 
     const rotated = await agentVaultProxyDAL.transaction(async (tx) => {
       const updated = await agentVaultProxyDAL.updateById(
@@ -347,7 +484,7 @@ export const agentVaultProxyServiceFactory = ({
           heartbeat: null,
           heartbeatTTL: null,
           ...stored,
-          ...reported
+          ...(servesOwnCa ? {} : reported)
         },
         tx
       );
@@ -373,7 +510,11 @@ export const agentVaultProxyServiceFactory = ({
     }
 
     try {
-      const updated = await agentVaultProxyDAL.updateById(proxy.id, { name, ...settings });
+      const updated = await agentVaultProxyDAL.updateById(proxy.id, {
+        name,
+        ...settings,
+        ...(settings.trafficPolicy && { trafficPolicy: toStoredTrafficPolicy(settings.trafficPolicy) })
+      });
       return toAdminView(updated);
     } catch (err) {
       if (isUniqueViolation(err)) throw new BadRequestError({ message: `A proxy named '${name}' already exists` });
@@ -429,19 +570,34 @@ export const agentVaultProxyServiceFactory = ({
     return { proxyId: proxy.id, name: proxy.name, config: toConfig(proxy), rootCa: infisicalCa?.rootCa };
   };
 
-  const heartbeat = async ({ proxyId }: THeartbeatDTO) => {
-    const proxy = await agentVaultProxyDAL.recordHeartbeat(proxyId);
-    if (!proxy) throw new UnauthorizedError({ message: "This proxy no longer exists" });
+  const heartbeat = async ({ proxyId, tokenVersion }: THeartbeatDTO) => {
+    // The auth check ran on an earlier read, so a revoke or rotation landing in between leaves no row to update.
+    const proxy = await agentVaultProxyDAL.recordHeartbeat(proxyId, tokenVersion);
+    if (!proxy) {
+      throw new UnauthorizedError({ name: "ProxyTokenRejected", message: "Agent Vault proxy token has been revoked" });
+    }
     return { config: toConfig(proxy) };
   };
 
   const $decryptCredential = (
-    row: { credentialType: string; credentialConfig: unknown; encryptedCredential: Buffer | null },
+    row: {
+      credentialType: string;
+      credentialConfig: unknown;
+      encryptedCredential: Buffer | null;
+      memberProvidedFields: string[] | null;
+    },
     decryptor: ((input: { cipherTextBlob: Buffer }) => Buffer) | null
   ): TResolvedService["credential"] => {
     const config = (row.credentialConfig ?? {}) as Record<string, string>;
-    if (row.credentialType === AgentVaultCredentialType.Passthrough || !row.encryptedCredential) {
-      return { type: "passthrough" };
+    // The sealed half of a sign-in left to members is the client's secret, never a token. $applyPersonalValues fills in
+    // the member's own token, and an OAuth variable's token is read from the variable.
+    if (
+      row.credentialType === AgentVaultCredentialType.Passthrough ||
+      !row.encryptedCredential ||
+      isMemberProvidedOauth(row) ||
+      isVariableOauth(row)
+    ) {
+      return { type: AgentVaultCredentialType.Passthrough };
     }
     if (!decryptor) throw new InternalServerError({ message: "Failed to resolve the session's credentials" });
 
@@ -452,13 +608,27 @@ export const agentVaultProxyServiceFactory = ({
 
     if (row.credentialType === AgentVaultCredentialType.Bearer) {
       return {
-        type: "bearer",
+        type: AgentVaultCredentialType.Bearer,
         headerName: config.headerName,
         headerPrefix: config.headerPrefix,
         value: secret.value
       };
     }
-    return { type: "basic", username: secret.username ?? "", password: secret.password ?? "" };
+    if (row.credentialType === AgentVaultCredentialType.OAuth) {
+      return toResolvedOauthCredential(row.credentialConfig as TAgentVaultOauthConfig, secret.accessToken);
+    }
+    if (row.credentialType === AgentVaultCredentialType.SshKey) {
+      return {
+        type: AgentVaultCredentialType.SshKey,
+        username: secret.username,
+        privateKey: secret.privateKey,
+        ...(secret.certificate ? { certificate: secret.certificate } : {})
+      };
+    }
+    if (row.credentialType !== AgentVaultCredentialType.Basic) {
+      throw new InternalServerError({ message: `Unknown credential type '${row.credentialType}'` });
+    }
+    return { type: AgentVaultCredentialType.Basic, username: secret.username ?? "", password: secret.password ?? "" };
   };
 
   // The ids come out of the decrypted fields rather than the reference rows, so a service saved mid-poll can
@@ -475,8 +645,9 @@ export const agentVaultProxyServiceFactory = ({
     services: TResolvedService[];
     decryptValue: (encryptedValue: Buffer) => string;
   }): Promise<TResolvedService[]> => {
+    // An OAuth token is issued by the provider, never typed, so it holds no reference to expand.
     const sealedTextsOf = ({ credential, customHeaders, substitutions }: TResolvedService) => [
-      ...(credential.type === AgentVaultCredentialType.Bearer ? [credential.value] : []),
+      ...(credential.type === AgentVaultCredentialType.Bearer && !credential.source ? [credential.value] : []),
       ...(credential.type === AgentVaultCredentialType.Basic ? [credential.username, credential.password] : []),
       ...customHeaders.map((header) => header.value),
       ...substitutions.map((substitution) => substitution.value)
@@ -498,7 +669,7 @@ export const agentVaultProxyServiceFactory = ({
       const expand = (text: string) => expandStoredVariableReferences(text, valueOf);
 
       let { credential } = service;
-      if (credential.type === AgentVaultCredentialType.Bearer) {
+      if (credential.type === AgentVaultCredentialType.Bearer && !credential.source) {
         credential = { ...credential, value: expand(credential.value) };
       }
       // A typed username is trimmed on save, and a username can't start or end with a space (RFC 8265), so one a
@@ -531,10 +702,10 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   /**
-   * A member-provided field comes from what the session's actor saved for the service, expanded against their own
-   * personal variables only, after the admin's fields were expanded against the global ones: a value is never
-   * expanded twice. A service whose actor hasn't set every field the admin leaves to them goes out flagged and
-   * without a credential, so the proxy refuses it instead of sending a half-built one.
+   * A member-provided field comes from what the session's owner saved for the service, or, on a user's behalf, what
+   * that user saved, expanded against their own personal variables only, after the admin's fields were expanded
+   * against the global ones: a value is never expanded twice. If they haven't set every field the admin leaves to them,
+   * the service goes out flagged and without a credential, so the proxy refuses it instead of sending a half-built one.
    */
   const $applyPersonalValues = async ({
     sessionId,
@@ -542,6 +713,8 @@ export const agentVaultProxyServiceFactory = ({
     owner,
     rows,
     services,
+    personalValueRows,
+    refreshedOauth,
     decryptValue,
     decryptJson
   }: {
@@ -550,6 +723,9 @@ export const agentVaultProxyServiceFactory = ({
     owner: TAgentVaultOwner;
     rows: TResolveServiceRow[];
     services: TResolvedService[];
+    personalValueRows: TPersonalValueResolveRow[];
+    // A member's OAuth token resolve refreshed within its budget, by service.
+    refreshedOauth: Map<string, { credential: TResolvedService["credential"]; status: AgentVaultOauthStatus }>;
     decryptValue: (encryptedValue: Buffer) => string;
     decryptJson: (encrypted: Buffer) => unknown;
   }): Promise<TResolvedService[]> => {
@@ -560,9 +736,15 @@ export const agentVaultProxyServiceFactory = ({
     const serviceIds = services.filter((service) => memberFieldsOf(service.id).length).map((service) => service.id);
     if (!serviceIds.length) return services;
 
+    // A member's OAuth connection holds tokens the provider issued, so like a shared one it is never expanded.
+    const oauthByService = new Map(
+      personalValueRows.filter((row) => row.oauthConfig).map((row) => [row.serviceId, row])
+    );
+
     // Stored text per service, then per field, with personal variable references still as ids.
     const stored = new Map<string, Map<string, string>>();
-    (await agentVaultPersonalValueDAL.findForResolve({ serviceIds, owner })).forEach((row) => {
+    personalValueRows.forEach((row) => {
+      if (row.oauthConfig) return;
       const fields = stored.get(row.serviceId) ?? new Map<string, string>();
       fields.set(row.field, (decryptJson(row.encryptedValue) as { value: string }).value);
       stored.set(row.serviceId, fields);
@@ -576,26 +758,49 @@ export const agentVaultProxyServiceFactory = ({
       decryptValue
     );
 
+    const missing = (service: TResolvedService): TResolvedService => ({
+      ...service,
+      credential: { type: AgentVaultCredentialType.Passthrough },
+      personalValuesMissing: true
+    });
+
     const resolved = services.map((service): TResolvedService => {
       const memberFields = memberFieldsOf(service.id);
       if (!memberFields.length) return service;
 
-      const fields = stored.get(service.id);
-      if (!fields || memberFields.some((field) => !fields.has(field))) {
-        return { ...service, credential: { type: "passthrough" }, personalValuesMissing: true };
+      // A login that died reads as not set up: the proxy refuses the service rather than sending a token the
+      // provider has already refused, and a token authorized for another server is refused the same way.
+      const row = rowById.get(service.id)!;
+      if (isMemberProvidedOauth(row)) {
+        const connection = oauthByService.get(service.id);
+        const refreshed = refreshedOauth.get(service.id);
+        if (!connection || !isMemberOauthConnectionUsable(row, connection.oauthConfig, refreshed?.status)) {
+          return missing(service);
+        }
+        return {
+          ...service,
+          credential:
+            refreshed?.credential ??
+            toResolvedOauthCredential(
+              connection.oauthConfig as TAgentVaultOauthConfig,
+              (decryptJson(connection.encryptedValue) as TAgentVaultOauthSecret).accessToken
+            )
+        };
       }
+
+      const fields = stored.get(service.id);
+      if (!fields || memberFields.some((field) => !fields.has(field))) return missing(service);
 
       const valueOf = valueOfFor(service.id);
       const personalValue = (field: TAgentVaultMemberProvidedField) =>
         expandStoredVariableReferences(fields.get(field) ?? "", valueOf);
 
-      const row = rowById.get(service.id)!;
       const config = (row.credentialConfig ?? {}) as Record<string, string>;
       if (row.credentialType === AgentVaultCredentialType.Bearer) {
         return {
           ...service,
           credential: {
-            type: "bearer",
+            type: AgentVaultCredentialType.Bearer,
             headerName: config.headerName,
             headerPrefix: config.headerPrefix,
             value: personalValue(AgentVaultVariableReferenceField.CredentialValue)
@@ -603,11 +808,14 @@ export const agentVaultProxyServiceFactory = ({
         };
       }
 
-      const adminHalves = service.credential.type === "basic" ? service.credential : { username: "", password: "" };
+      const adminHalves =
+        service.credential.type === AgentVaultCredentialType.Basic
+          ? service.credential
+          : { username: "", password: "" };
       return {
         ...service,
         credential: {
-          type: "basic",
+          type: AgentVaultCredentialType.Basic,
           // Trimmed for the same reason as an admin's username a variable fills in.
           username: memberFields.includes(AgentVaultVariableReferenceField.CredentialUsername)
             ? personalValue(AgentVaultVariableReferenceField.CredentialUsername).trim()
@@ -627,17 +835,73 @@ export const agentVaultProxyServiceFactory = ({
     return resolved;
   };
 
-  /** The only endpoint that decrypts a credential. The proxy's JWT authorizes; the session token is a selector. */
-  const resolveSession = async ({ proxyId, orgId, sessionToken, hasSessionLogKey }: TResolveSessionDTO) => {
-    const session = await agentVaultSessionDAL.findByTokenHash(hashSessionToken(sessionToken));
-    if (!session) throw new NotFoundError({ message: "Session not found" });
+  // The user a session was started on behalf of has to still be in the org and in Agent Vault, and the delegation of the
+  // identity that owns the session has to still cover them. Read on every resolve, so taking any of them away ends the
+  // session on the proxy's next poll. Returns the bundles the user reaches (null for every bundle), since the session
+  // reaches only what both the identity and the user reach.
+  const $getOnBehalfOfUserReach = async ({
+    projectId,
+    orgId,
+    identityId,
+    userId
+  }: {
+    projectId: string;
+    orgId: string;
+    identityId: string | null;
+    userId: string | null;
+  }): Promise<string[] | null> => {
+    const refused = () =>
+      new UnauthorizedError({
+        message: "The machine identity that owns this session is no longer allowed to act on behalf of its user"
+      });
+    if (!identityId || !userId) throw refused();
 
-    // A mismatch is 404, not 403, so a proxy cannot probe another tenant for session ids.
-    const proxy = await agentVaultProxyDAL.findByIdWithOrg(proxyId);
-    if (!proxy || proxy.projectId !== session.projectId || proxy.orgId !== orgId) {
-      throw new NotFoundError({ message: "Session not found" });
+    const orgMembership = await orgDAL.findEffectiveOrgMembership({
+      actorType: ActorType.USER,
+      actorId: userId,
+      orgId,
+      status: OrgMembershipStatus.Accepted
+    });
+    if (!orgMembership?.isActive) throw refused();
+
+    let reachesEveryBundle: boolean;
+    let liveGroupIds: string[];
+    try {
+      const { permission, hasRole, memberships } = await permissionService.getProjectPermission({
+        actor: ActorType.USER,
+        actorId: userId,
+        projectId,
+        actorAuthMethod: null,
+        actorOrgId: orgId,
+        actionProjectType: ActionProjectType.AgentVault
+      });
+      if (!permission.can(ProjectPermissionAgentVaultSessionActions.Read, ProjectPermissionSub.AgentVaultSessions)) {
+        throw refused();
+      }
+      reachesEveryBundle = hasRoleReachingEveryBundle(hasRole);
+      liveGroupIds = liveGroupIdsFrom(memberships);
+    } catch (error) {
+      if (error instanceof ForbiddenRequestError && error.name === "ProjectMembershipNotFound") throw refused();
+      throw error;
     }
 
+    if (!(await agentVaultDelegationDAL.identityCoversUser({ projectId, identityId, userId }))) {
+      throw refused();
+    }
+
+    if (reachesEveryBundle) return null;
+    return findReachableAccessBundleIds(membershipDAL, {
+      projectId,
+      actor: { type: ActorType.USER, id: userId },
+      groupIds: liveGroupIds
+    });
+  };
+
+  // Shared by the proxy's session routes and the CLI's skills fetch, so none of them can reach a bundle resolve
+  // would not. Returns the bundles the session reaches now, null for every bundle: its owner's, and on a user's behalf
+  // only those the user reaches too. Also whether the owner may still send inline services and inline skills, which
+  // each need to be delivered.
+  const $authorizeSessionOwner = async (session: TAgentVaultSessions, orgId: string) => {
     if (session.revokedAt) throw new UnauthorizedError({ message: "This session has been revoked" });
     if (session.expiresAt && session.expiresAt <= new Date()) {
       throw new UnauthorizedError({ message: "This session has expired" });
@@ -648,6 +912,18 @@ export const agentVaultProxyServiceFactory = ({
     if (!session.userId && !session.identityId) {
       throw new UnauthorizedError({ message: "The identity this session belonged to has been deleted" });
     }
+    // The name marks an on-behalf-of session, even after deleting the user nulls its id.
+    const onBehalfOf =
+      session.onBehalfOfUserName != null
+        ? {
+            reach: await $getOnBehalfOfUserReach({
+              projectId: session.projectId,
+              orgId,
+              identityId: session.identityId ?? null,
+              userId: session.onBehalfOfUserId ?? null
+            })
+          }
+        : null;
 
     const actor = session.userId
       ? { type: ActorType.USER as const, id: session.userId }
@@ -669,7 +945,9 @@ export const agentVaultProxyServiceFactory = ({
     // The role is re-derived here, never trusted from mint, and it has to be a live role: a time-limited one
     // leaves its row behind when it lapses. actorAuthMethod is passed as null *explicitly* — validateOrgSSO
     // throws on `undefined` but passes on `null`, and the session row stores no auth method.
-    let isAdmin: boolean;
+    let reachesEveryBundle: boolean;
+    let canUseInlineServices: boolean;
+    let canUseInlineSkills: boolean;
     let liveGroupIds: string[];
     try {
       const { permission, hasRole, memberships } = await permissionService.getProjectPermission({
@@ -683,7 +961,15 @@ export const agentVaultProxyServiceFactory = ({
       if (!permission.can(ProjectPermissionAgentVaultSessionActions.Read, ProjectPermissionSub.AgentVaultSessions)) {
         throw new UnauthorizedError({ message: "The role this session's actor held has expired" });
       }
-      isAdmin = hasRole(ProjectMembershipRole.Admin);
+      reachesEveryBundle = hasRoleReachingEveryBundle(hasRole);
+      canUseInlineServices = permission.can(
+        ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
+        ProjectPermissionSub.AgentVaultSessions
+      );
+      canUseInlineSkills = permission.can(
+        ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills,
+        ProjectPermissionSub.AgentVaultSessions
+      );
       liveGroupIds = liveGroupIdsFrom(memberships);
     } catch (error) {
       // A 403 reads to the proxy as "Infisical is unreachable", which would keep a removed member's agent
@@ -694,19 +980,263 @@ export const agentVaultProxyServiceFactory = ({
       throw error;
     }
 
-    const accessBundleIds = isAdmin
+    const actorReach = reachesEveryBundle
       ? null
       : await findReachableAccessBundleIds(membershipDAL, {
           projectId: session.projectId,
           actor,
           groupIds: liveGroupIds
         });
+    return {
+      accessBundleIds: onBehalfOf ? intersectAccessBundleIds(actorReach, onBehalfOf.reach) : actorReach,
+      ownerCanUseInlineServices: canUseInlineServices,
+      ownerCanUseInlineSkills: canUseInlineSkills
+    };
+  };
 
-    const rows = await agentVaultResolveDAL.findResolvableServices({
-      sessionId: session.id,
-      projectId: session.projectId,
-      accessBundleIds
+  // A session minted a moment ago may not be on the replica yet. Reading the primary on a miss keeps a proxy from
+  // refusing the new session, and remembering the refusal, while the replica catches up. The rows minted with the
+  // session are just as new, so onPrimary sends the reads for them to the primary too.
+  const $findSessionByToken = async (sessionToken: string) => {
+    const tokenHash = hashSessionToken(sessionToken);
+    const fromReplica = await agentVaultSessionDAL.findByTokenHash(tokenHash);
+    if (fromReplica) return { session: fromReplica, onPrimary: false };
+    const fromPrimary = await agentVaultSessionDAL.findByTokenHashOnPrimary(tokenHash);
+    return { session: fromPrimary, onPrimary: Boolean(fromPrimary) };
+  };
+
+  const $authorizeSession = async ({ proxyId, orgId, sessionToken }: TAuthorizeSessionDTO) => {
+    const { session, onPrimary } = await $findSessionByToken(sessionToken);
+    if (!session) throw new NotFoundError({ message: "Session not found" });
+
+    // A mismatch is 404, not 403, so a proxy cannot probe another tenant for session ids.
+    const proxy = await agentVaultProxyDAL.findByIdWithOrg(proxyId);
+    if (!proxy || proxy.projectId !== session.projectId || proxy.orgId !== orgId) {
+      throw new NotFoundError({ message: "Session not found" });
+    }
+
+    const { accessBundleIds, ownerCanUseInlineServices } = await $authorizeSessionOwner(session, orgId);
+    return { session, onPrimary, proxy, accessBundleIds, ownerCanUseInlineServices };
+  };
+
+  /** Resolve services and decrypt their credentials. The proxy's JWT authorizes; the session token is a selector. */
+  const resolveSession = async ({ proxyId, orgId, sessionToken, hasSessionLogKey }: TResolveSessionDTO) => {
+    const { session, onPrimary, proxy, accessBundleIds, ownerCanUseInlineServices } = await $authorizeSession({
+      proxyId,
+      orgId,
+      sessionToken
     });
+    // After the session check, so a refusal never tells a caller anything about a token that isn't theirs.
+    await agentVaultAccessService.assertCanBroker(orgId);
+
+    // Sending inline services takes its own permission, and like a grant it is re-checked on every resolve: an owner who
+    // loses it keeps the session's bundle, if it has one, and loses its inline services until they hold it again.
+    const { bundleServices: rows, inlineServices: inlineServiceRows } = withoutShadowedServices(
+      await agentVaultResolveDAL.findResolvableServices({
+        sessionId: session.id,
+        projectId: session.projectId,
+        accessBundleIds,
+        onPrimary
+      }),
+      ownerCanUseInlineServices
+        ? await agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary })
+        : []
+    );
+
+    // The values of whoever the session uses (its owner, or the user it acts for), read once: a member's OAuth
+    // connection is refreshed below with the services' own tokens, and every value is applied after expansion.
+    const owner = personalValuesOwner(session);
+    const personalValueRows = await agentVaultPersonalValueDAL.findForResolve({
+      serviceIds: rows.filter((row) => row.memberProvidedFields?.length).map((row) => row.id),
+      owner
+    });
+    const personalOauthConfigs = new Map(
+      personalValueRows
+        .filter((row) => row.oauthConfig)
+        .map((row) => [row.serviceId, row.oauthConfig as TAgentVaultOauthConfig])
+    );
+
+    // The OAuth variables the session's services send, read once like the personal values: a variable shared by several
+    // services is refreshed once, and each service sends what it holds.
+    const liveInlineRows = inlineServiceRows.filter((row) => !row.secretsDeletedAt);
+    const oauthVariableRows = await agentVaultVariableDAL.findOauthForResolve({
+      variableIds: [
+        ...new Set([...rows, ...liveInlineRows].map(oauthVariableIdOf).filter((id): id is string => Boolean(id)))
+      ],
+      projectId: session.projectId
+    });
+    const oauthVariableById = new Map(oauthVariableRows.map((row) => [row.id, row]));
+    const oauthVariableConnectionOf = (variableId: string) =>
+      (oauthVariableById.get(variableId)?.oauthConfig as TAgentVaultOauthVariableConfig | undefined)?.connection ??
+      null;
+
+    // A token that expires before the proxy's next poll is refreshed now, which also keeps proxies that can't
+    // refresh on their own working. The proxy gives up on resolve after 15 seconds, and one refresh can wait on
+    // another's lock and then on a slow provider, so resolve waits for all of them together for a short budget
+    // only. A refresh that fails or is still running sends the stored token; one still running finishes in the
+    // background and stores its result for the next poll.
+    const refreshWithinSeconds = proxy.pollInterval + 60;
+    type TRefreshed = { credential: TResolvedService["credential"]; status: AgentVaultOauthStatus };
+    // By service, for a service's own tokens, a member's and those sent with the session; by variable for the rest.
+    const refreshedCredentials = new Map<string, TRefreshed>();
+    const refreshedVariables = new Map<string, TRefreshed>();
+    // Services whose refresh was refused because they moved or switched variables: a token refreshed through a
+    // sibling must not reach the host this snapshot still holds for them. Only services tried before the one that
+    // refreshed are checked; a later one that moved gets the token until the next poll, an accepted window.
+    const refusedVariableServices = new Set<string>();
+    const isDue = (oauth: Pick<TAgentVaultOauthConfig, "status" | "expiresAt">) =>
+      oauth.status !== AgentVaultOauthStatus.NeedsReauthorization &&
+      Boolean(oauth.expiresAt) &&
+      new Date(oauth.expiresAt!).getTime() <= Date.now() + refreshWithinSeconds * 1000;
+    const destinationOf = (row: { hostPattern?: string | null; config?: unknown }) => ({
+      hostPattern: row.hostPattern ?? null,
+      serverUrl: getServiceServerUrl(row.config)
+    });
+
+    type TRefreshTask = { id: string; run: (isCurrent: () => boolean) => Promise<void> };
+    const refreshTasks: TRefreshTask[] = [];
+    const logRefreshFailure = (error: unknown, label: string, removedMessage?: string) => {
+      if (error instanceof ConflictError) {
+        logger.info(
+          `agentVaultResolve: service moved during its OAuth refresh, sending the stored token until the next poll [sessionId=${session.id}] ${label}`
+        );
+        return;
+      }
+      if (error instanceof NotFoundError && removedMessage) {
+        logger.info(`agentVaultResolve: ${removedMessage} [sessionId=${session.id}] ${label}`);
+        return;
+      }
+      logger.error(
+        error,
+        `agentVaultResolve: OAuth refresh failed, sending the stored token [sessionId=${session.id}] ${label}`
+      );
+    };
+
+    rows.forEach((row) => {
+      if (row.credentialType !== AgentVaultCredentialType.OAuth || isVariableOauth(row)) return;
+      const memberOauth = isMemberProvidedOauth(row);
+      const connection = memberOauth
+        ? personalOauthConfigs.get(row.id)
+        : (row.credentialConfig as TAgentVaultOauthConfig);
+      if (!connection || !isDue(connection)) return;
+      refreshTasks.push({
+        id: row.id,
+        run: (isCurrent) =>
+          agentVaultOauthService
+            .refreshServiceToken({
+              serviceId: row.id,
+              projectId: session.projectId,
+              ...(memberOauth ? { owner } : {}),
+              expiresWithinSeconds: refreshWithinSeconds,
+              // The answer pairs this row's host with the credential, so a refreshed one has to be for the same server.
+              destination: destinationOf(row)
+            })
+            .then((refreshed) => {
+              if (isCurrent()) refreshedCredentials.set(row.id, refreshed);
+            })
+            .catch((error) =>
+              // The member disconnected, or an admin's edit ended every member's connection, while it ran.
+              logRefreshFailure(
+                error,
+                `[serviceId=${row.id}]${memberOauth ? ` [ownerId=${owner.userId ?? owner.identityId}]` : ""}`,
+                memberOauth ? "member's OAuth connection removed during its refresh" : undefined
+              )
+            )
+      });
+    });
+
+    liveInlineRows.forEach((row) => {
+      if (!isInlineTokensOauth(row) || !isDue(row.credentialConfig as TAgentVaultOauthConfig)) return;
+      refreshTasks.push({
+        id: row.id,
+        run: (isCurrent) =>
+          agentVaultOauthService
+            .refreshServiceToken({
+              serviceId: row.id,
+              projectId: session.projectId,
+              inline: true,
+              expiresWithinSeconds: refreshWithinSeconds,
+              destination: destinationOf(row)
+            })
+            .then((refreshed) => {
+              if (isCurrent()) refreshedCredentials.set(row.id, refreshed);
+            })
+            .catch((error) =>
+              logRefreshFailure(
+                error,
+                `[inlineServiceId=${row.id}]`,
+                "session's OAuth tokens deleted during their refresh"
+              )
+            )
+      });
+    });
+
+    // Once per variable, through the first service that still points where this snapshot says. Every service using the
+    // variable then sends its token, which is the variable's whichever service refreshed it.
+    const servicesByVariable = new Map<string, { id: string; hostPattern?: string | null; config?: unknown }[]>();
+    [...rows, ...liveInlineRows].forEach((row) => {
+      const variableId = oauthVariableIdOf(row);
+      if (!variableId) return;
+      servicesByVariable.set(variableId, [...(servicesByVariable.get(variableId) ?? []), row]);
+    });
+    servicesByVariable.forEach((services, variableId) => {
+      const connection = oauthVariableConnectionOf(variableId);
+      if (!connection || !isDue(connection)) return;
+      refreshTasks.push({
+        id: `variable:${variableId}`,
+        run: async (isCurrent) => {
+          for (const service of services) {
+            try {
+              // eslint-disable-next-line no-await-in-loop
+              const refreshed = await agentVaultOauthService.refreshServiceToken({
+                serviceId: service.id,
+                projectId: session.projectId,
+                variableId,
+                expiresWithinSeconds: refreshWithinSeconds,
+                destination: destinationOf(service)
+              });
+              if (isCurrent()) refreshedVariables.set(variableId, refreshed);
+              return;
+            } catch (error) {
+              if (!(error instanceof ConflictError)) {
+                logRefreshFailure(
+                  error,
+                  `[variableId=${variableId}] [serviceId=${service.id}]`,
+                  "OAuth variable disconnected or deleted during its refresh"
+                );
+                return;
+              }
+              refusedVariableServices.add(service.id);
+            }
+          }
+          logger.info(
+            `agentVaultResolve: every service using an OAuth variable moved during its refresh, sending the stored token until the next poll [sessionId=${session.id}] [variableId=${variableId}]`
+          );
+        }
+      });
+    });
+
+    if (refreshTasks.length) {
+      let budgetSpent = false;
+      const pending = new Set(refreshTasks.map((task) => task.id));
+      const refreshes = refreshTasks.map((task) => task.run(() => !budgetSpent).finally(() => pending.delete(task.id)));
+
+      let budgetTimer: NodeJS.Timeout | undefined;
+      await Promise.race([
+        Promise.all(refreshes),
+        new Promise<void>((resolve) => {
+          budgetTimer = setTimeout(resolve, RESOLVE_REFRESH_BUDGET_MS);
+        })
+      ]);
+      clearTimeout(budgetTimer);
+      budgetSpent = true;
+
+      if (pending.size) {
+        logger.warn(
+          `agentVaultResolve: OAuth refresh still running, sending the stored token [sessionId=${session.id}] [serviceIds=${[...pending].join(",")}]`
+        );
+      }
+    }
 
     const serviceIds = rows.map((row) => row.id);
     const [customHeaderRows, substitutionRows] = await Promise.all([
@@ -728,13 +1258,19 @@ export const agentVaultProxyServiceFactory = ({
     // A bundle of pass-through services has nothing sealed, so deriving the project data key would be
     // a kms_keys read (or an external KMS round trip) per resolve for nothing.
     const hasSealedValue =
-      rows.some((row) => row.encryptedCredential || row.memberProvidedFields?.length) ||
+      rows.some((row) => row.encryptedCredential || row.encryptedHookSecret || row.memberProvidedFields?.length) ||
+      oauthVariableRows.some((row) => row.encryptedValue) ||
+      inlineServiceRows.some(
+        (row) =>
+          !row.secretsDeletedAt &&
+          (row.encryptedCredential || row.encryptedHookSecret || row.customHeaders.length || row.substitutions.length)
+      ) ||
       customHeaderRows.length > 0 ||
       substitutionRows.length > 0 ||
       sessionLogKeyNeeded;
     const decryptor = hasSealedValue
       ? (
-          await kmsService.createCipherPairWithDataKey({
+          await kmsDataKeyService.createCipherPairWithDataKey({
             type: KmsDataKey.SecretManager,
             projectId: session.projectId
           })
@@ -745,16 +1281,52 @@ export const agentVaultProxyServiceFactory = ({
       if (!decryptor) throw new InternalServerError({ message: "Failed to resolve the session's credentials" });
       return JSON.parse(decryptor({ cipherTextBlob: encrypted }).toString("utf-8"));
     };
-    const $decryptValue = (encryptedValue: Buffer) => ($decryptJson(encryptedValue) as { value: string }).value;
+    // Only an inline service's values are ever deleted, and those are opened by openInlineServiceSecrets.
+    const $decryptValue = (encryptedValue: Buffer | null | undefined) => {
+      if (!encryptedValue) throw new InternalServerError({ message: "Failed to resolve the session's credentials" });
+      return ($decryptJson(encryptedValue) as { value: string }).value;
+    };
+
+    // An OAuth variable's token as resolve sends it: the one just refreshed, else the stored one. A service whose
+    // variable is gone or isn't connected is flagged so the proxy refuses it rather than send it without a token.
+    const $oauthVariableCredential = (variableId: string, serviceId: string): TInlineOauthResolution => {
+      const variable = oauthVariableById.get(variableId);
+      if (!variable) return { removed: true };
+      const refreshed = refreshedVariables.get(variableId);
+      if (refreshed && !refusedVariableServices.has(serviceId)) return { credential: refreshed.credential };
+      const connection = oauthVariableConnectionOf(variableId);
+      if (!variable.encryptedValue || !connection) return { notConnected: true };
+      return {
+        credential: toResolvedOauthCredential(
+          connection as TAgentVaultOauthConfig,
+          ($decryptJson(variable.encryptedValue) as TAgentVaultOauthSecret).accessToken
+        )
+      };
+    };
+    const variableCredentialFields = (variableId: string, serviceId: string) => {
+      const { credential, removed, notConnected } = $oauthVariableCredential(variableId, serviceId);
+      return {
+        credential: credential ?? { type: AgentVaultCredentialType.Passthrough as const },
+        personalValuesMissing: !credential,
+        ...(removed ? { credentialRemoved: true } : {}),
+        ...(notConnected ? { credentialNotConnected: true } : {})
+      };
+    };
 
     const decryptedServices: TResolvedService[] = rows.map((row) => ({
       id: row.id,
       name: row.name,
       accessBundleName: row.accessBundleName,
-      hostPattern: row.hostPattern,
+      accessBundleId: row.accessBundleId,
+      type: row.type as AgentVaultServiceType,
+      hostPattern: row.hostPattern ?? null,
+      native: toResolvedNativeTarget(row.type, row.config),
       allowedMethods: row.allowedMethods,
       allowedPathPrefixes: row.allowedPathPrefixes,
-      credential: $decryptCredential(row, decryptor),
+      allowedTools: row.allowedTools,
+      credential:
+        (isMemberProvidedOauth(row) ? undefined : refreshedCredentials.get(row.id)?.credential) ??
+        $decryptCredential(row, decryptor),
       customHeaders: customHeaderRows
         .filter((header) => header.serviceId === row.id)
         .map((header) => ({ name: header.name, prefix: header.prefix, value: $decryptValue(header.encryptedValue) })),
@@ -765,14 +1337,19 @@ export const agentVaultProxyServiceFactory = ({
           surfaces: substitution.surfaces,
           value: $decryptValue(substitution.encryptedValue)
         })),
-      personalValuesMissing: false
+      personalValuesMissing: false,
+      memberProvided: Boolean(row.memberProvidedFields?.length),
+      hook: row.hookUrl ? { url: row.hookUrl, secret: $decryptValue(row.encryptedHookSecret) } : null,
+      ...(isVariableOauth(row) ? variableCredentialFields(oauthVariableIdOf(row)!, row.id) : {})
     }));
 
-    const services = await $applyPersonalValues({
+    const bundleServices = await $applyPersonalValues({
       sessionId: session.id,
       projectId: session.projectId,
-      owner: session.userId ? { userId: session.userId } : { identityId: session.identityId! },
+      owner,
       rows,
+      personalValueRows,
+      refreshedOauth: refreshedCredentials,
       services: await $expandVariableReferences({
         sessionId: session.id,
         projectId: session.projectId,
@@ -782,6 +1359,34 @@ export const agentVaultProxyServiceFactory = ({
       decryptValue: $decryptValue,
       decryptJson: $decryptJson
     });
+
+    // Never expanded: an inline service's values were sent exactly as they are. After the bundle's services, so a host a
+    // later bundle edit shares with one goes to the bundle's service, which the Go matcher picks on a tie by order.
+    const inlineServices = inlineServiceRows.flatMap((row) => {
+      const variableId = oauthVariableIdOf(row);
+      const resolved = toResolvedInlineService(
+        row,
+        openInlineServiceSecrets(row, $decryptJson),
+        variableId
+          ? $oauthVariableCredential(variableId, row.id)
+          : { credential: refreshedCredentials.get(row.id)?.credential }
+      );
+      if (!resolved) {
+        logger.warn(
+          `agentVaultResolve: inline service has no secrets to send, leaving it out [sessionId=${session.id}] [inlineServiceId=${row.id}]`
+        );
+        return [];
+      }
+      return [resolved];
+    });
+    // An override goes last, so it takes only a host that nothing else in the session names exactly: an exact host beats
+    // a wildcard wherever it sits, and the Go matcher breaks a tie between two exact ones by order.
+    const overrideIds = new Set(rows.filter((row) => row.isOverride).map((row) => row.id));
+    const services = [
+      ...bundleServices.filter((service) => !overrideIds.has(service.id)),
+      ...inlineServices,
+      ...bundleServices.filter((service) => overrideIds.has(service.id))
+    ];
 
     // A key that can't be opened turns logs off for this session instead of cutting the agent off from its services.
     const $sessionLogs = (): { enabled: boolean; sessionKey: string | null } => {
@@ -805,20 +1410,379 @@ export const agentVaultProxyServiceFactory = ({
     const sessionLogs = $sessionLogs();
 
     logger.info(
-      `agentVaultResolve: resolved [sessionId=${session.id}] [proxyId=${proxyId}] [services=${services.length}] [personalValuesMissing=${services.filter((service) => service.personalValuesMissing).length}]`
+      `agentVaultResolve: resolved [sessionId=${session.id}] [proxyId=${proxyId}] [services=${services.length}] [inlineServices=${inlineServices.length}] [personalValuesMissing=${services.filter((service) => service.personalValuesMissing).length}]`
     );
 
     return {
       sessionId: session.id,
       expiresAt: session.expiresAt ?? null,
       services,
-      sessionLogs
+      sessionLogs,
+      session: {
+        label: session.label ?? null,
+        actor: {
+          // Null only on rows a pod on the previous release wrote. Resolve refused a session with neither id above.
+          type:
+            (session.actorType as AgentVaultMemberType.User | AgentVaultMemberType.MachineIdentity | null) ??
+            (session.identityId ? AgentVaultMemberType.MachineIdentity : AgentVaultMemberType.User),
+          id: (session.userId ?? session.identityId)!,
+          name: session.actorName,
+          email: session.actorEmail ?? null
+        },
+        onBehalfOf:
+          session.onBehalfOfUserName != null
+            ? {
+                id: session.onBehalfOfUserId!,
+                name: session.onBehalfOfUserName,
+                email: session.onBehalfOfUserEmail ?? null
+              }
+            : null
+      }
+    };
+  };
+
+  const $findSessionOauthService = async ({
+    proxyId,
+    orgId,
+    sessionToken,
+    serviceId,
+    hostPattern
+  }: Pick<TRefreshCredentialDTO, "proxyId" | "orgId" | "sessionToken" | "serviceId" | "hostPattern">) => {
+    const { session, onPrimary, accessBundleIds, ownerCanUseInlineServices } = await $authorizeSession({
+      proxyId,
+      orgId,
+      sessionToken
+    });
+    const [bundleRow] = await agentVaultResolveDAL.findResolvableServices({
+      sessionId: session.id,
+      projectId: session.projectId,
+      accessBundleIds,
+      serviceId,
+      onPrimary
+    });
+    // A session's own service, while its owner may still send them and its secrets are kept, as resolve sends it.
+    const inlineRow =
+      !bundleRow && ownerCanUseInlineServices
+        ? (await agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary })).find(
+            (candidate) => candidate.id === serviceId && !candidate.secretsDeletedAt
+          )
+        : undefined;
+    const row = bundleRow ?? inlineRow;
+    if (!row) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found in this session` });
+    if (row.credentialType !== AgentVaultCredentialType.OAuth) {
+      throw new BadRequestError({
+        message: `The service '${row.name}' doesn't use an OAuth credential.`
+      });
+    }
+    // The proxy retries with whatever comes back against the host it cached, so a service that moved since must
+    // not hand it the new server's token. The refresh re-checks against the primary, which this replica read may
+    // trail.
+    if ((row.hostPattern ?? null) !== hostPattern) {
+      throw new ConflictError({ message: AGENT_VAULT_SERVICE_MOVED_MESSAGE });
+    }
+    return { session, row };
+  };
+
+  // Which tokens a proxy's call is about: an OAuth variable's, tokens sent with the session, or the session's member's.
+  const $tokenHolderFieldsOf = (
+    session: TAgentVaultSessions,
+    row: {
+      credentialType: string;
+      credentialConfig?: unknown;
+      memberProvidedFields?: string[] | null;
+      sessionId?: string | null;
+    }
+  ) => {
+    const variableId = oauthVariableIdOf(row);
+    if (variableId) return { variableId };
+    if (isInlineTokensOauth(row)) return { inline: true };
+    // The proxy caches credentials per session, so the token it was refused with is this session's member's.
+    return isMemberProvidedOauth(row) ? { owner: personalValuesOwner(session) } : {};
+  };
+
+  // After the upstream rejected a token. Never audited, like resolve: it is proxy-driven and per request.
+  const refreshCredential = async ({ rejectedTokenHash, ...dto }: TRefreshCredentialDTO) => {
+    const { session, row } = await $findSessionOauthService(dto);
+    await agentVaultAccessService.assertCanBroker(dto.orgId);
+    const result = await agentVaultOauthService.refreshServiceToken({
+      serviceId: row.id,
+      projectId: session.projectId,
+      ...$tokenHolderFieldsOf(session, row),
+      rejectedTokenHash: rejectedTokenHash.toLowerCase(),
+      destination: { hostPattern: dto.hostPattern }
+    });
+    logger.info(
+      `agentVaultCredentialRefresh: answered [sessionId=${session.id}] [proxyId=${dto.proxyId}] [serviceId=${row.id}] [status=${result.status}]`
+    );
+    return result;
+  };
+
+  // After the upstream refused a token with `insufficient_scope`. Not audited, for the same reason as a refresh.
+  const reportMissingScopes = async ({ rejectedTokenHash, requiredScopes, ...dto }: TReportMissingScopesDTO) => {
+    const { session, row } = await $findSessionOauthService(dto);
+    await agentVaultOauthService.reportMissingScopes({
+      serviceId: row.id,
+      ...$tokenHolderFieldsOf(session, row),
+      rejectedTokenHash: rejectedTokenHash.toLowerCase(),
+      requiredScopes,
+      hostPattern: dto.hostPattern
+    });
+    logger.info(
+      `agentVaultMissingScopes: recorded [sessionId=${session.id}] [proxyId=${dto.proxyId}] [serviceId=${row.id}] [scopes=${requiredScopes.length}]`
+    );
+  };
+
+  // Called by the CLI once when an agent starts: the latest files of every skill on the session's reachable bundles and
+  // every skill it lists that its owner still reaches, and the files of the skills sent with it. The session
+  // token is the only credential, so an unknown one gets the same 401 as any other refusal.
+  const getSessionSkills = async ({ sessionToken }: TGetSessionSkillsDTO) => {
+    const { session } = await $findSessionByToken(sessionToken);
+    const project = session ? await projectDAL.findById(session.projectId) : undefined;
+    if (!session || !project) {
+      throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });
+    }
+
+    const { accessBundleIds, ownerCanUseInlineSkills } = await $authorizeSessionOwner(session, project.orgId);
+
+    // Sending inline skills takes its own permission, re-checked on every fetch like the one inline services take.
+    const [projectRows, inlineRows] = await Promise.all([
+      agentVaultResolveDAL.findSessionSkills({
+        sessionId: session.id,
+        projectId: session.projectId,
+        accessBundleIds
+      }),
+      ownerCanUseInlineSkills ? agentVaultSessionInlineSkillDAL.findWithFilesBySessionId(session.id) : []
+    ]);
+    // The project's skill wins over one sent with the session that has its name. Creating the session refuses that clash,
+    // so it only arises when a skill of the name joins the session's bundle, or a project skill takes the name, after the
+    // session exists, and the project's copy is the one an admin put there. Each skill installs as a folder of its name,
+    // so the agent can have only one by that name.
+    const projectNames = new Set(projectRows.map((row) => row.name));
+    const sentRows = inlineRows.filter((row) => !projectNames.has(row.name));
+
+    const decryptor =
+      projectRows.length || sentRows.length
+        ? (
+            await kmsDataKeyService.createCipherPairWithDataKey({
+              type: KmsDataKey.SecretManager,
+              projectId: session.projectId
+            })
+          ).decryptor
+        : null;
+    const filesOf = (encryptedFiles: Buffer) => deserializeSkillFiles(decryptor!({ cipherTextBlob: encryptedFiles }));
+
+    const skills = [
+      ...projectRows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        version: row.version,
+        sha256: row.sha256,
+        files: filesOf(row.encryptedFiles),
+        accessBundleId: row.accessBundleId,
+        accessBundleName: row.accessBundleName,
+        isInline: false
+      })),
+      // An inline skill has one version, the files it was sent with.
+      ...sentRows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        version: 1,
+        sha256: row.sha256,
+        files: filesOf(row.encryptedFiles),
+        accessBundleId: null,
+        accessBundleName: null,
+        isInline: true
+      }))
+    ].sort((a, b) => (a.name < b.name ? -1 : 1));
+
+    // The session snapshots its owner at mint. Name a user as they are now, as PAM does, and fall back to the
+    // snapshot for one who is gone.
+    let ownerUser: { username: string; email: string | null } | null = null;
+    if (session.userId) {
+      const user = await userDAL.findById(session.userId);
+      ownerUser = user
+        ? { username: user.username, email: user.email ?? null }
+        : { username: session.actorEmail ?? session.actorName, email: session.actorEmail ?? null };
+    }
+
+    // The user a session acts for is named the same way, so the audit event can say whose session it was.
+    let onBehalfOfUser: { id: string | null; username: string; email: string | null } | null = null;
+    if (session.onBehalfOfUserName != null) {
+      const user = session.onBehalfOfUserId ? await userDAL.findById(session.onBehalfOfUserId) : undefined;
+      onBehalfOfUser = user
+        ? { id: user.id, username: user.username, email: user.email ?? null }
+        : {
+            id: null,
+            username: session.onBehalfOfUserEmail ?? session.onBehalfOfUserName,
+            email: session.onBehalfOfUserEmail ?? null
+          };
+    }
+
+    return { skills, session, ownerUser, onBehalfOfUser, orgId: project.orgId };
+  };
+
+  // Lets `infisical agent-vault connect` pin the proxy's CA without trusting the proxy for it. Only the fingerprint
+  // each proxy serves is returned: a stored certificate that differs from it is one no proxy serves.
+  const getSessionProxyCaFingerprints = async ({ sessionToken }: TGetSessionProxyCaFingerprintsDTO) => {
+    const session = await agentVaultSessionDAL.findByTokenHashOnPrimary(hashSessionToken(sessionToken));
+    const project = session ? await projectDAL.findById(session.projectId) : undefined;
+    if (!session || !project) {
+      throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });
+    }
+    await $authorizeSessionOwner(session, project.orgId);
+
+    return { fingerprints: await agentVaultProxyDAL.findCaFingerprintsByProjectId(session.projectId) };
+  };
+
+  // What an agent reads to learn its session's services, through its proxy or, before an agent starts, straight from an
+  // orchestrator. Built without decrypting anything, so it can never carry a credential or a value the proxy fills in.
+  // Never audited, like resolve: an agent asks when it starts a task and again after any access error.
+  const getSessionServices = async ({ sessionToken, proxyId, proxyVersion }: TGetSessionServicesDTO) => {
+    const { session, onPrimary } = await $findSessionByToken(sessionToken);
+    const project = session ? await projectDAL.findById(session.projectId) : undefined;
+    if (!session || !project) {
+      throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });
+    }
+
+    const { accessBundleIds, ownerCanUseInlineServices } = await $authorizeSessionOwner(session, project.orgId);
+
+    const scope = { sessionId: session.id, projectId: session.projectId, accessBundleIds, onPrimary };
+    const [resolvableRows, bundles, sessionInlineRows] = await Promise.all([
+      agentVaultResolveDAL.findResolvableServices(scope),
+      agentVaultResolveDAL.findReachableBundles(scope),
+      ownerCanUseInlineServices ? agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary }) : []
+    ]);
+    // The same services resolve sends, one per name.
+    const { bundleServices: rows, inlineServices: inlineRows } = withoutShadowedServices(
+      resolvableRows,
+      sessionInlineRows
+    );
+    const serviceIds = rows.map((row) => row.id);
+    const [customHeaderRows, substitutionRows, personalValueRows, oauthVariableRows, proxy] = await Promise.all([
+      agentVaultServiceCustomHeaderDAL.findByServiceIds(serviceIds),
+      agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds),
+      agentVaultPersonalValueDAL.findForResolve({
+        serviceIds: rows.filter((row) => row.memberProvidedFields?.length).map((row) => row.id),
+        owner: personalValuesOwner(session)
+      }),
+      // Only to tell whether each variable is signed in, read for the same rows as resolve; nothing sealed is opened.
+      agentVaultVariableDAL.findOauthForResolve({
+        variableIds: [
+          ...new Set(
+            [...rows, ...inlineRows.filter((row) => !row.secretsDeletedAt)]
+              .map(oauthVariableIdOf)
+              .filter((id): id is string => Boolean(id))
+          )
+        ],
+        projectId: session.projectId
+      }),
+      proxyId ? agentVaultProxyDAL.findByIdWithOrg(proxyId) : undefined
+    ]);
+
+    const setPersonalFields = toSetPersonalFields(rows, personalValueRows);
+    const isOauthVariableSignedIn = oauthVariableSignedInOf(oauthVariableRows);
+    const factsOf = (row: (typeof rows)[number]) =>
+      toBundleServiceFacts(row, {
+        customHeaderNames: customHeaderRows.filter((header) => header.serviceId === row.id).map(({ name }) => name),
+        substitutions: substitutionRows
+          .filter((substitution) => substitution.serviceId === row.id)
+          .map(({ placeholder, surfaces }) => ({ placeholder, surfaces })),
+        setPersonalFields: setPersonalFields.get(row.id) ?? new Set<string>(),
+        isOauthVariableSignedIn
+      });
+
+    // The order resolve sends them in: bundle and listed services, inline ones, then overrides.
+    const services = [
+      ...rows.filter((row) => !row.isOverride).map(factsOf),
+      ...inlineRows.flatMap((row) => {
+        const facts = toInlineServiceFacts(row, isOauthVariableSignedIn);
+        return facts ? [facts] : [];
+      }),
+      ...rows.filter((row) => row.isOverride).map(factsOf)
+    ];
+
+    // A proxy names itself on the requests it forwards. One outside the session's project is ignored rather than
+    // refused, the same as no name: it only decides whether the list describes a traffic policy.
+    const isSessionProxy = Boolean(proxy && proxy.projectId === session.projectId && proxy.orgId === project.orgId);
+    return buildSessionServicesDocument({
+      proxy:
+        isSessionProxy && proxy
+          ? {
+              name: proxy.name,
+              version: proxyVersion ?? null,
+              trafficPolicy: proxy.trafficPolicy,
+              allowedHosts: proxy.allowedHosts ?? null
+            }
+          : null,
+      // A session carries one access bundle today.
+      // No label: someone's short summary of the session could steer an agent away from the prompt it was given.
+      session: {
+        expiresAt: session.expiresAt ?? null,
+        accessBundle: bundles[0]?.name ?? null,
+        onBehalfOfUser: Boolean(session.onBehalfOfUserId)
+      },
+      services
+    });
+  };
+
+  const $describeSessionOwner = async (session: TAgentVaultSessions) => {
+    if (!session.userId) return null;
+    const user = await userDAL.findById(session.userId);
+    return user
+      ? { username: user.username, email: user.email ?? null }
+      : { username: session.actorEmail ?? session.actorName, email: session.actorEmail ?? null };
+  };
+
+  // Whoever holds the token can end its session, as with Vault's token revoke: it already lets them use it. Unlike
+  // resolve, nothing checks the owner can still reach the project, since ending a session is always allowed.
+  const revokeSessionByToken = async ({ sessionToken }: TRevokeSessionByTokenDTO) => {
+    const session = await agentVaultSessionDAL.findByTokenHashOnPrimary(hashSessionToken(sessionToken));
+    if (!session) {
+      throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });
+    }
+
+    // The timestamp comes from the written row: a read-back could land on a replica that has not seen it.
+    const { project, revoked, current, view } = await agentVaultSessionDAL.transaction(async (tx) => {
+      const sessionProject = await projectDAL.findById(session.projectId, tx);
+      if (!sessionProject) {
+        throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });
+      }
+
+      // revokeIfActive skips a session whose owner was deleted, which already reads as revoked.
+      const revokedRow = session.revokedAt
+        ? undefined
+        : await agentVaultSessionDAL.revokeIfActive(session.id, new Date(), tx);
+      // Revoked by this call or found already over, the session can't use its inline services' secrets or its inline
+      // skills' files again.
+      await agentVaultSessionInlineServiceDAL.deleteSecretsBySessionId(session.id, tx);
+      await agentVaultSessionInlineSkillDAL.deleteFilesBySessionId(session.id, tx);
+
+      const currentRow =
+        revokedRow ?? (await agentVaultSessionDAL.findByIdOnPrimary(session.id, session.projectId, tx)) ?? session;
+      const {
+        sessions: [listRow]
+      } = await agentVaultSessionDAL.findForList(
+        { projectId: session.projectId, sessionId: session.id, limit: 1, offset: 0 },
+        tx
+      );
+      return { project: sessionProject, revoked: revokedRow, current: currentRow, view: listRow };
+    });
+
+    return {
+      session: current,
+      revokedNow: Boolean(revoked),
+      ownerUser: await $describeSessionOwner(session),
+      auditDescription: view
+        ? describeSessionForAudit(view)
+        : { sessionOwner: session.actorEmail ?? session.actorName, accessBundleName: null },
+      orgId: project.orgId
     };
   };
 
   return {
     getProxyForAuth,
     listProxies,
+    getProxyCa,
     createProxy,
     rotateProxyToken,
     updateProxy,
@@ -826,6 +1790,12 @@ export const agentVaultProxyServiceFactory = ({
     revokeProxyAccess,
     bootstrap,
     heartbeat,
-    resolveSession
+    resolveSession,
+    refreshCredential,
+    reportMissingScopes,
+    getSessionSkills,
+    getSessionProxyCaFingerprints,
+    getSessionServices,
+    revokeSessionByToken
   };
 };

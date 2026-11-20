@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
 import { AlertTriangleIcon, CheckIcon, RefreshCwIcon } from "lucide-react";
 
 import { SecretSyncStatusBadge } from "@app/components/secret-syncs";
@@ -9,6 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
   ProviderIcon,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -19,7 +20,7 @@ import {
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject } from "@app/context";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
-import { SecretSyncStatus, TSecretSync, useListSecretSyncs } from "@app/hooks/api/secretSyncs";
+import { SecretSyncStatus, useListSecretSyncs } from "@app/hooks/api/secretSyncs";
 
 type BadgeState = {
   variant: "info" | "danger" | "success";
@@ -34,7 +35,6 @@ type Props = {
 };
 
 export const SecretSyncStatusBadgeOverview = ({ environmentSlugs }: Props) => {
-  const navigate = useNavigate();
   const { projectId } = useProject();
   const orgId = useParams({
     from: ROUTE_PATHS.SecretManager.OverviewPage.id,
@@ -107,18 +107,6 @@ export const SecretSyncStatusBadgeOverview = ({ environmentSlugs }: Props) => {
     setIsOpen(open);
   };
 
-  const handleNavigateToSync = (sync: TSecretSync) => {
-    navigate({
-      to: ROUTE_PATHS.SecretManager.SecretSyncDetailsByIDPage.path,
-      params: {
-        syncId: sync.id,
-        destination: sync.destination,
-        projectId,
-        orgId
-      }
-    });
-  };
-
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
@@ -143,7 +131,7 @@ export const SecretSyncStatusBadgeOverview = ({ environmentSlugs }: Props) => {
           </TableHeader>
           <TableBody>
             {filteredSyncs.map((sync) => (
-              <TableRow key={sync.id} onClick={() => handleNavigateToSync(sync)}>
+              <TableRow key={sync.id} linked>
                 <TableCell>
                   <ProviderIcon
                     alt={`${SECRET_SYNC_MAP[sync.destination].name} sync`}
@@ -153,16 +141,28 @@ export const SecretSyncStatusBadgeOverview = ({ environmentSlugs }: Props) => {
                 </TableCell>
                 <TableCell className="max-w-0 min-w-32!">
                   <div className="flex items-center gap-2">
-                    <span className="truncate">{sync.name}</span>
+                    <RowLink
+                      to={ROUTE_PATHS.SecretManager.SecretSyncDetailsByIDPage.path}
+                      params={{
+                        syncId: sync.id,
+                        destination: sync.destination,
+                        projectId,
+                        orgId
+                      }}
+                    >
+                      {sync.name}
+                    </RowLink>
                   </div>
                 </TableCell>
                 <TableCell>
                   {sync.syncStatus && (
-                    <SecretSyncStatusBadge
-                      status={sync.syncStatus}
-                      lastSyncedAt={sync.lastSyncedAt}
-                      lastSyncMessage={sync.lastSyncMessage}
-                    />
+                    <span data-row-interactive>
+                      <SecretSyncStatusBadge
+                        status={sync.syncStatus}
+                        lastSyncedAt={sync.lastSyncedAt}
+                        lastSyncMessage={sync.lastSyncMessage}
+                      />
+                    </span>
                   )}
                 </TableCell>
               </TableRow>

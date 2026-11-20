@@ -5,6 +5,7 @@ import { AsnConvert } from "@peculiar/asn1-schema";
 import * as x509 from "@peculiar/x509";
 import { beforeAll, describe, expect, it } from "vitest";
 
+import { asNonSharedBuffer } from "@app/lib/fn";
 import { HsmKeyAlgorithm } from "@app/services/signer/signer-enums";
 
 import { buildCsrWithExternalSigner } from "./build-csr-with-external-signer";
@@ -53,7 +54,8 @@ describe.each(CASES)("buildCsrWithExternalSigner: $hsmKeyAlgorithm", (testCase) 
         publicKeySpkiDer,
         keyAlgorithm: testCase.hsmKeyAlgorithm,
         subjectCommonName: "Example Code Signing",
-        signCallback: async (tbs) => Buffer.from(await webcrypto.subtle.sign(testCase.sign, keys.privateKey, tbs))
+        signCallback: async (tbs) =>
+          Buffer.from(await webcrypto.subtle.sign(testCase.sign, keys.privateKey, asNonSharedBuffer(tbs)))
       });
       const csr = AsnConvert.parse(csrDer, CertificationRequest);
       const isValid = verify(

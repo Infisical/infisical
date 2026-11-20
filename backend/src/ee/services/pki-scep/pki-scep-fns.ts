@@ -3,12 +3,11 @@ import { GeneralName, GeneralNames } from "@peculiar/asn1-x509";
 import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { isCertChainValid } from "@app/services/certificate/certificate-fns";
-import { CertStatus } from "@app/services/certificate/certificate-types";
+import { asNonSharedBuffer } from "@app/lib/fn";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCaSigner } from "@app/services/certificate-authority/ca-signer";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -17,9 +16,9 @@ import { CaType } from "@app/services/certificate-authority/certificate-authorit
 import { getCaCertChains, getCaSigner } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { SUPPORTED_GENERAL_NAME_TYPES } from "@app/services/certificate-common/certificate-constants";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { isCertChainValid } from "@app/services/certificate/certificate-fns";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 
 const RA_CERT_VALIDITY_YEARS = 10;
 
@@ -30,7 +29,7 @@ const CHALLENGE_PASSWORD_OID = "1.2.840.113549.1.9.7";
 // prefix (short- and long-form) to recover the UTF-8 value.
 export const decodeAsn1ChallengePasswordValue = (raw: ArrayBuffer | Uint8Array | string): string => {
   if (raw instanceof ArrayBuffer || raw instanceof Uint8Array) {
-    const buf = Buffer.from(raw);
+    const buf = Buffer.from(new Uint8Array(raw));
     let offset = 1; // skip the ASN.1 tag byte
     // eslint-disable-next-line no-bitwise
     if (buf[offset] & 0x80) {
@@ -124,9 +123,8 @@ type TGenerateScepRaCertificateDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Parameters<typeof getCaCertChains>[0]["kmsService"] &
-    Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
 };
 
@@ -178,8 +176,8 @@ const buildCaSignedRaCertificate = async (slug: string, caId: string, deps: TGen
     caId,
     certificateAuthorityDAL: deps.certificateAuthorityDAL,
     certificateAuthoritySecretDAL: deps.certificateAuthoritySecretDAL,
-    projectDAL: deps.projectDAL,
-    kmsService: deps.kmsService,
+    kmsDataKeyService: deps.kmsDataKeyService,
+    kmsKeyService: deps.kmsKeyService,
     caKeySourceService: deps.caKeySourceService
   });
 
@@ -187,8 +185,8 @@ const buildCaSignedRaCertificate = async (slug: string, caId: string, deps: TGen
     caId,
     certificateAuthorityDAL: deps.certificateAuthorityDAL,
     certificateAuthorityCertDAL: deps.certificateAuthorityCertDAL,
-    projectDAL: deps.projectDAL,
-    kmsService: deps.kmsService
+    kmsDataKeyService: deps.kmsDataKeyService,
+    kmsKeyService: deps.kmsKeyService
   });
   const activeChain = chains[chains.length - 1];
   if (!activeChain) {
@@ -240,12 +238,8 @@ export const generateAndEncryptScepRaCertificate = async ({
 }): Promise<{ certificatePem: string; expiresAt: Date; encryptedPrivateKey: Buffer }> => {
   const raCert = await generateScepRaCertificate({ slug, caId, signRaWithCa, deps });
 
-  const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-    projectId,
-    projectDAL: deps.projectDAL,
-    kmsService: deps.kmsService
-  });
-  const kmsEncryptor = await deps.kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+  const certificateManagerKmsId = await deps.kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
+  const kmsEncryptor = await deps.kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
   const { cipherTextBlob } = await kmsEncryptor({ plainText: Buffer.from(raCert.privateKeyDer) });
 
   return { certificatePem: raCert.certificatePem, expiresAt: raCert.expiresAt, encryptedPrivateKey: cipherTextBlob };
@@ -258,8 +252,8 @@ export const isSignerCertIssuedByCa = async ({
   certificateDAL,
   certificateAuthorityCertDAL,
   certificateAuthorityDAL,
-  projectDAL,
-  kmsService
+  kmsDataKeyService,
+  kmsKeyService
 }: {
   signerCertDer: Buffer;
   signerCert?: x509.X509Certificate;
@@ -267,11 +261,11 @@ export const isSignerCertIssuedByCa = async ({
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
 }): Promise<boolean> => {
   try {
-    const signerCert = providedSignerCert ?? new x509.X509Certificate(signerCertDer);
+    const signerCert = providedSignerCert ?? new x509.X509Certificate(asNonSharedBuffer(signerCertDer));
 
     if (new Date() > signerCert.notAfter) {
       return false;
@@ -281,8 +275,8 @@ export const isSignerCertIssuedByCa = async ({
       caId,
       certificateAuthorityCertDAL,
       certificateAuthorityDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     const verifiedChains = await Promise.all(
@@ -325,6 +319,7 @@ export const isSignerCertIssuedByCa = async ({
 
 export enum ScepRenewalDenyReason {
   InvalidSigner = "invalid-signer",
+  SignerDeleted = "signer-deleted",
   WrongProfile = "wrong-profile",
   WrongApplication = "wrong-application",
   SubjectMismatch = "subject-mismatch",
@@ -422,7 +417,7 @@ export const evaluateScepRenewalAuthorization = ({
   signerCertSubjectAltNames
 }: {
   isValidSigner: boolean;
-  storedSignerCert?: { profileId?: string | null; applicationId?: string | null } | null;
+  storedSignerCert?: { profileId?: string | null; applicationId?: string | null; deletedAt?: Date | null } | null;
   profileId: string;
   applicationId?: string | null;
   csrForwardedToCa: boolean;
@@ -434,6 +429,10 @@ export const evaluateScepRenewalAuthorization = ({
 }): TScepRenewalAuthResult => {
   if (!isValidSigner) {
     return { authorized: false, reason: ScepRenewalDenyReason.InvalidSigner };
+  }
+
+  if (storedSignerCert?.deletedAt) {
+    return { authorized: false, reason: ScepRenewalDenyReason.SignerDeleted };
   }
 
   if (!storedSignerCert || storedSignerCert.profileId !== profileId) {

@@ -5,12 +5,37 @@ import { PamAccountType } from "./pam-enums";
 
 export enum PamPolicyType {
   RequiresApproval = "requires-approval",
+  AllowAutoApproval = "allow-auto-approval",
   AllowBreakGlass = "allow-break-glass",
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",
   MaxSessionDuration = "max-session-duration",
-  CommandBlocking = "command-blocking"
+  CommandBlocking = "command-blocking",
+  OutputMasking = "output-masking"
 }
+
+export enum PamOutputMaskingPreset {
+  Jwt = "jwt",
+  CreditCard = "credit-card",
+  Ssn = "ssn",
+  Email = "email",
+  IpAddress = "ip-address",
+  PhoneNumber = "phone-number",
+  ConnectionString = "connection-string",
+  AccountCredentials = "account-credentials"
+}
+
+export const PAM_OUTPUT_MASKING_PRESET_PATTERNS: Record<
+  Exclude<PamOutputMaskingPreset, PamOutputMaskingPreset.AccountCredentials | PamOutputMaskingPreset.CreditCard>,
+  string
+> = {
+  [PamOutputMaskingPreset.Jwt]: String.raw`\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*`,
+  [PamOutputMaskingPreset.ConnectionString]: String.raw`[A-Za-z][A-Za-z0-9+.-]*://[^\s:/@]*:[^\s/"]*@`,
+  [PamOutputMaskingPreset.Ssn]: String.raw`\b\d{3}-\d{2}-\d{4}\b`,
+  [PamOutputMaskingPreset.Email]: String.raw`[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}`,
+  [PamOutputMaskingPreset.IpAddress]: String.raw`\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b`,
+  [PamOutputMaskingPreset.PhoneNumber]: String.raw`(?:\+\d{1,3}[ .-]?)?(?:\(\d{2,4}\)|\b\d{2,4})[ .-]\d{3,4}[ .-]\d{3,4}\b|\+\d{10,15}\b`
+};
 
 export enum PamSettingType {
   SessionLogMasking = "session-log-masking"
@@ -51,6 +76,15 @@ export const patternsStringSchema = (maxPatterns = 20, maxPatternLength = 500) =
       { message: "One or more patterns are not valid regular expressions" }
     );
 
+const PamOutputMaskingSchema = z.object({
+  presets: z
+    .array(z.nativeEnum(PamOutputMaskingPreset))
+    .max(Object.values(PamOutputMaskingPreset).length)
+    .transform((presets) => [...new Set(presets)])
+    .default([]),
+  patterns: patternsStringSchema().default("")
+});
+
 type TPamPolicyTypeOverride = {
   description?: string;
   schema?: z.ZodTypeAny;
@@ -68,6 +102,13 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
   [PamPolicyType.RequiresApproval]: {
     label: "Require Approval",
     description: "Users must request and receive approval before launching sessions and viewing credentials.",
+    appliesTo: "all",
+    schema: z.boolean()
+  },
+  [PamPolicyType.AllowAutoApproval]: {
+    label: "Allow Auto-Approval",
+    description:
+      "Requests are approved instantly when they pass one of the folder's auto-approval rules. Set the rules under the folder's Approvals tab.",
     appliesTo: "all",
     schema: z.boolean()
   },
@@ -115,6 +156,18 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
         description: "Matching SQL statements will be rejected (one regex per line)."
       }
     }
+  },
+  [PamPolicyType.OutputMasking]: {
+    label: "Output Masking",
+    description: "Matching output is replaced with [MASKED] before the user sees it.",
+    appliesTo: [PamAccountType.SSH, PamAccountType.Postgres],
+    schema: PamOutputMaskingSchema,
+    typeOverrides: {
+      [PamAccountType.Postgres]: {
+        description:
+          "Matching text in query results is replaced with [MASKED], and other matching values are returned as NULL."
+      }
+    }
   }
 };
 
@@ -128,6 +181,11 @@ export const policyAppliesTo = (policy: PamPolicyType, accountType: PamAccountTy
   const { appliesTo } = PAM_POLICY_DEFINITIONS[policy];
   return appliesTo === "all" || appliesTo.includes(accountType);
 };
+
+export const defaultTemplatePolicies = (accountType: PamAccountType): Record<string, unknown> | undefined =>
+  policyAppliesTo(PamPolicyType.OutputMasking, accountType)
+    ? { [PamPolicyType.OutputMasking]: { presets: [PamOutputMaskingPreset.AccountCredentials], patterns: "" } }
+    : undefined;
 
 export const getApplicablePolicies = (accountType: PamAccountType) =>
   (Object.entries(PAM_POLICY_DEFINITIONS) as [PamPolicyType, TPamPolicyDefinition][])
@@ -187,6 +245,7 @@ export const resolvePolicy = (policyMap: unknown, policy: PamPolicyType): unknow
 
 export type TPamAccessControls = {
   requiresApproval: boolean;
+  allowAutoApproval: boolean;
   allowBreakGlass: boolean;
   requireReason: boolean;
   requireMfa: boolean;
@@ -202,6 +261,10 @@ const PamSessionLogMaskingRuleSchema = PamPolicyRulePatternSchema.extend({
 export const PamPolicyRulesSchema = z
   .object({
     [PamPolicyType.CommandBlocking]: PamPolicyRulePatternSchema.optional(),
+    [PamPolicyType.OutputMasking]: PamPolicyRulePatternSchema.extend({
+      accountCredentials: z.boolean(),
+      creditCards: z.boolean()
+    }).optional(),
     [PamSettingType.SessionLogMasking]: PamSessionLogMaskingRuleSchema.optional()
   })
   .nullable()
@@ -217,10 +280,12 @@ export type TPamPolicyRules = z.infer<typeof PamPolicyRulesSchema>;
  */
 export const buildPamPolicyRules = ({
   commandBlockingPatterns,
+  outputMasking = null,
   maskingPatterns,
   maskingBuiltInDetection
 }: {
   commandBlockingPatterns: string[];
+  outputMasking?: TPamOutputMaskingRule | null;
   maskingPatterns: string[];
   maskingBuiltInDetection: boolean;
 }): TPamPolicyRules => {
@@ -228,6 +293,10 @@ export const buildPamPolicyRules = ({
 
   if (commandBlockingPatterns.length > 0) {
     rules[PamPolicyType.CommandBlocking] = { patterns: commandBlockingPatterns };
+  }
+
+  if (outputMasking) {
+    rules[PamPolicyType.OutputMasking] = outputMasking;
   }
 
   if (maskingBuiltInDetection || maskingPatterns.length > 0) {
@@ -240,11 +309,48 @@ export const buildPamPolicyRules = ({
   return Object.keys(rules).length > 0 ? (rules as TPamPolicyRules) : null;
 };
 
+type TPamOutputMaskingRule = { patterns: string[]; accountCredentials: boolean; creditCards: boolean };
+
+// The gateway handles account credentials (it already holds them) and card numbers (a Luhn check isn't a regex).
+export const resolveOutputMasking = (policyMap: unknown): TPamOutputMaskingRule | null => {
+  const masking = resolvePolicy(policyMap, PamPolicyType.OutputMasking) as z.infer<
+    typeof PamOutputMaskingSchema
+  > | null;
+  if (!masking) return null;
+
+  const presets = (
+    Object.keys(PAM_OUTPUT_MASKING_PRESET_PATTERNS) as (keyof typeof PAM_OUTPUT_MASKING_PRESET_PATTERNS)[]
+  )
+    .filter((preset) => masking.presets.includes(preset))
+    .map((preset) => PAM_OUTPUT_MASKING_PRESET_PATTERNS[preset]);
+  const patterns = [...presets, ...splitPatternString(masking.patterns)];
+  const accountCredentials = masking.presets.includes(PamOutputMaskingPreset.AccountCredentials);
+  const creditCards = masking.presets.includes(PamOutputMaskingPreset.CreditCard);
+  return patterns.length > 0 || accountCredentials || creditCards
+    ? { patterns, accountCredentials, creditCards }
+    : null;
+};
+
+// An older gateway ignores rules it does not know, so a masked account's session only goes to a gateway that enforces them.
+export const outputMaskingGatewayOptions = (account: {
+  accountType: string;
+  templatePolicies: unknown;
+}): { filter?: (gateway: { capabilities?: unknown }) => boolean; unavailableMessage?: string } =>
+  policyAppliesTo(PamPolicyType.OutputMasking, account.accountType as PamAccountType) &&
+  resolveOutputMasking(account.templatePolicies)
+    ? {
+        filter: (gateway) => (gateway.capabilities as { outputMasking?: boolean } | null)?.outputMasking === true,
+        unavailableMessage:
+          "No healthy gateway in this account's gateway pool can enforce output masking. Update the pool's gateways to the latest version."
+      }
+    : {};
+
 export const resolveAccessControls = (policyMap: unknown): TPamAccessControls => {
   const duration = resolvePolicy(policyMap, PamPolicyType.MaxSessionDuration);
   const requiresApproval = resolvePolicy(policyMap, PamPolicyType.RequiresApproval) === true;
   return {
     requiresApproval,
+    allowAutoApproval: requiresApproval && resolvePolicy(policyMap, PamPolicyType.AllowAutoApproval) === true,
     allowBreakGlass: requiresApproval && resolvePolicy(policyMap, PamPolicyType.AllowBreakGlass) === true,
     requireReason: resolvePolicy(policyMap, PamPolicyType.RequireReason) === true,
     requireMfa: resolvePolicy(policyMap, PamPolicyType.RequireMfa) === true,

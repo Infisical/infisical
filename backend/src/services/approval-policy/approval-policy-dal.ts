@@ -1,8 +1,9 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { ApprovalPoliciesSchema, TableName } from "@app/db/schemas";
+import { ApprovalPoliciesSchema, TableName, TApprovalPolicies } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { canonicalizeSecretPathPattern } from "@app/lib/fn";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 import { ApprovalPolicyType, ApproverType } from "./approval-policy-enums";
@@ -124,10 +125,11 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
   const findByProjectId = async (
     policyType: ApprovalPolicyType,
     projectId: string,
-    options?: { scopeType?: string | null; scopeId?: string | null }
+    options?: { scopeType?: string | null; scopeId?: string | null },
+    tx?: Knex
   ) => {
     try {
-      const dbInstance = db.replicaNode();
+      const dbInstance = tx || db.replicaNode();
       const baseQuery = dbInstance(TableName.ApprovalPolicies)
         .where({ type: policyType, projectId })
         .orderBy("id", "asc");
@@ -224,17 +226,9 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findSecretAccessPolicyByEnvIdAndSecretPath = async ({
-    projectId,
-    envId,
-    secretPath
-  }: {
-    projectId: string;
-    envId: string;
-    secretPath: string;
-  }) => {
+  const findSecretAccessPoliciesByEnvId = async ({ projectId, envId }: { projectId: string; envId: string }) => {
     try {
-      const policy = await db
+      return (await db
         .replicaNode()(TableName.ApprovalPolicies)
         .join(
           TableName.ApprovalPolicySecretEnvironment,
@@ -244,20 +238,12 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
         .where(`${TableName.ApprovalPolicies}.type`, ApprovalPolicyType.SecretAccess)
         .where(`${TableName.ApprovalPolicies}.projectId`, projectId)
         .where(`${TableName.ApprovalPolicySecretEnvironment}.envId`, envId)
-        .where(`${TableName.ApprovalPolicySecretEnvironment}.secretPath`, secretPath)
         .select(selectAllTableCols(TableName.ApprovalPolicies))
-        .first();
-
-      if (!policy) return null;
-
-      const [steps, bypassers] = await Promise.all([
-        findStepsByPolicyId(policy.id),
-        findBypassersByPolicyId(policy.id)
-      ]);
-
-      return { ...policy, steps, bypassers };
+        .select(db.ref("secretPath").withSchema(TableName.ApprovalPolicySecretEnvironment))) as (TApprovalPolicies & {
+        secretPath: string;
+      })[];
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find secret access approval policy by environment and secret path" });
+      throw new DatabaseError({ error, name: "Find secret access approval policies by environment" });
     }
   };
 
@@ -373,13 +359,14 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Of the given scopes, return those whose policy actually has at least one approver configured.
-  // A policy row with no approvers does not count as "configured".
-  const findScopeIdsWithApprovers = async (args: {
+  // Of the given scopes, those whose policy can grant a request: it has an approver or an auto-approval rule.
+  // A policy row with neither does not count as "configured".
+  // Scopes whose policy has an approver or an auto-approval rule, and whether it has an approver
+  const findRequestableScopes = async (args: {
     type: string;
     scopeType: string;
     scopeIds: string[];
-  }): Promise<string[]> => {
+  }): Promise<{ scopeId: string; hasApprovers: boolean }[]> => {
     try {
       if (!args.scopeIds.length) return [];
       const dbInstance = db.replicaNode();
@@ -388,24 +375,59 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
         .where(`${TableName.ApprovalPolicies}.type`, args.type)
         .where(`${TableName.ApprovalPolicies}.scopeType`, args.scopeType)
         .whereIn(`${TableName.ApprovalPolicies}.scopeId`, args.scopeIds)
-        .innerJoin(
-          TableName.ApprovalPolicySteps,
-          `${TableName.ApprovalPolicySteps}.policyId`,
-          `${TableName.ApprovalPolicies}.id`
+        .where((qb) => {
+          void qb
+            .whereExists((sub) => {
+              void sub
+                .select(dbInstance.raw("1"))
+                .from(TableName.ApprovalPolicySteps)
+                .innerJoin(
+                  TableName.ApprovalPolicyStepApprovers,
+                  `${TableName.ApprovalPolicyStepApprovers}.policyStepId`,
+                  `${TableName.ApprovalPolicySteps}.id`
+                )
+                .whereRaw("??.?? = ??.??", [
+                  TableName.ApprovalPolicySteps,
+                  "policyId",
+                  TableName.ApprovalPolicies,
+                  "id"
+                ]);
+            })
+            .orWhereExists((sub) => {
+              void sub
+                .select(dbInstance.raw("1"))
+                .from(TableName.ApprovalPolicyAutoApprovalRules)
+                .whereRaw("??.?? = ??.??", [
+                  TableName.ApprovalPolicyAutoApprovalRules,
+                  "policyId",
+                  TableName.ApprovalPolicies,
+                  "id"
+                ]);
+            });
+        })
+        .select(`${TableName.ApprovalPolicies}.scopeId`)
+        .select(
+          dbInstance.raw(
+            `bool_or(exists (select 1 from ?? inner join ?? on ??.?? = ??.?? where ??.?? = ??.??)) as "hasApprovers"`,
+            [
+              TableName.ApprovalPolicySteps,
+              TableName.ApprovalPolicyStepApprovers,
+              TableName.ApprovalPolicyStepApprovers,
+              "policyStepId",
+              TableName.ApprovalPolicySteps,
+              "id",
+              TableName.ApprovalPolicySteps,
+              "policyId",
+              TableName.ApprovalPolicies,
+              "id"
+            ]
+          )
         )
-        .innerJoin(
-          TableName.ApprovalPolicyStepApprovers,
-          `${TableName.ApprovalPolicyStepApprovers}.policyStepId`,
-          `${TableName.ApprovalPolicySteps}.id`
-        )
-        .distinct(`${TableName.ApprovalPolicies}.scopeId`)
-        .select<{ scopeId: string | null }[]>(`${TableName.ApprovalPolicies}.scopeId`)) as {
-        scopeId: string | null;
-      }[];
+        .groupBy(`${TableName.ApprovalPolicies}.scopeId`)) as { scopeId: string | null; hasApprovers: boolean }[];
 
-      return rows.map((r) => r.scopeId).filter((id): id is string => Boolean(id));
+      return rows.flatMap((r) => (r.scopeId ? [{ scopeId: r.scopeId, hasApprovers: Boolean(r.hasApprovers) }] : []));
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find scope ids with approvers" });
+      throw new DatabaseError({ error, name: "Find requestable scopes" });
     }
   };
 
@@ -550,21 +572,46 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
+  const deleteUserBypassersInProjects = async (
+    args: { projectIds: string[]; userIds: string[]; scopeTypes: string[] },
+    tx?: Knex
+  ): Promise<void> => {
+    try {
+      if (!args.projectIds.length || !args.userIds.length || !args.scopeTypes.length) return;
+
+      const conn = tx || db;
+
+      const policyIds = conn(TableName.ApprovalPolicies)
+        .whereIn("projectId", args.projectIds)
+        .whereIn("scopeType", args.scopeTypes)
+        .select("id");
+
+      await conn(TableName.ApprovalPolicyBypassers)
+        .whereIn("policyId", policyIds)
+        .whereIn("userId", args.userIds)
+        .delete();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete user bypassers in projects" });
+    }
+  };
+
   return {
     ...orm,
+    primaryNode: () => db.primaryNode(),
     findByIdForUpdate,
     findByIdForShare,
     findStepsByPolicyId,
     findBypassersByPolicyId,
     findBypassersByPolicyIds,
     findByProjectId,
-    findSecretAccessPolicyByEnvIdAndSecretPath,
+    findSecretAccessPoliciesByEnvId,
     findPoliciesWhereSubjectIsApprover,
     isProjectApprover,
-    findScopeIdsWithApprovers,
+    findRequestableScopes,
     deleteStepApproversBySubject,
     deleteBypassersBySubject,
-    deleteUserStepApproversInProjects
+    deleteUserStepApproversInProjects,
+    deleteUserBypassersInProjects
   };
 };
 
@@ -642,17 +689,19 @@ export const approvalPolicySecretEnvironmentDALFactory = (db: TDbClient) => {
         })
         .where(`${TableName.ApprovalPolicies}.type`, ApprovalPolicyType.SecretChange)
         .whereIn(`${TableName.ApprovalPolicySecretEnvironment}.envId`, envIds)
-        .where(`${TableName.ApprovalPolicySecretEnvironment}.secretPath`, secretPath)
         .where((qb) => {
           if (excludePolicyId) void qb.whereNot(`${TableName.ApprovalPolicies}.id`, excludePolicyId);
         })
         .select(selectAllTableCols(TableName.ApprovalPolicies))
+        .select(db.ref("secretPath").withSchema(TableName.ApprovalPolicySecretEnvironment).as("policySecretPath"))
         .select(db.ref("name").withSchema(TableName.Environment).as("envName"))
         .select(db.ref("slug").withSchema(TableName.Environment).as("envSlug"))
         .select(db.ref("id").withSchema(TableName.Environment).as("environmentId"));
 
+      // Compared in code because a policy stored as "prod" governs the same folder as "/prod".
+      const canonicalSecretPath = canonicalizeSecretPathPattern(secretPath);
       const formattedDocs = sqlNestRelationships({
-        data: docs,
+        data: docs.filter((doc) => canonicalizeSecretPathPattern(doc.policySecretPath) === canonicalSecretPath),
         key: "id",
         parentMapper: (data) => ApprovalPoliciesSchema.parse(data),
         childrenMapper: [

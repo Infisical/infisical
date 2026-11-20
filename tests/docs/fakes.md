@@ -20,6 +20,7 @@ gh := github.Open(t, conn.FakenetAdmin(t), conn.Nonce())
 gh.Seed(t, github.RepoSecret("acme/app", "UNMANAGED", "keep")) // state before the action
 gh.Repo(t, "acme/app").Secrets                                 // state now
 gh.Fail(t, "PUT", "/repos/*", 500, fakenet.Times(1))           // inject a failure
+gh.Fail(t, "GET", "/user", 0, fakenet.Hangup())                // drop the connection instead
 gh.Received(t, "GET", "/user")                                 // count calls
 ```
 
@@ -104,6 +105,25 @@ type SecretDeleted struct{ SecretDetail }
 func (SecretDeleted) EventName() string { return "github.secret-deleted" }
 ```
 
+## Identity providers
+
+The test plays the workload or the person and holds the credential; the fake plays the
+provider that checks it.
+
+| Fake | Host | Scope | Used by |
+|---|---|---|---|
+| `oidcidp` | `idp.oidc.test/<scope>` | path | OIDC SSO; machine identity OIDC, JWT (jwks) and SPIFFE (`TrustKey` publishes a key the test signs with) |
+| `oauth` | `www.googleapis.com`, `github.com`, `gitlab.com` | authorization code, which is also the access token | Google, GitHub, GitLab login; GCP service account certificates |
+| `kubernetes` | `api.kubernetes.test` | reviewer JWT | machine identity Kubernetes auth (TokenReview) |
+| `aws` | `sts.amazonaws.com`, `sts.us-east-1.amazonaws.com` | access key id | AWS IAM auth (JSON when asked) |
+| `azure` | `login.microsoftonline.com/<tenant>` | tenant id | Azure auth signing keys |
+| `alicloud` | `sts.aliyuncs.com` | access key id | Alibaba Cloud auth (checks the signature) |
+| `oci` | `identity.us-ashburn-1.oraclecloud.com` | signature key id | OCI auth (checks the signature) |
+| `ldap` | LDAP on port 389, any name | `dc=<scope>,dc=ldap,dc=test` | LDAP SSO and machine identity LDAP auth |
+
+LDAP is not HTTP: fakenet serves it on its own listener and finds the directory by the
+DN of each bind or search. Seed it through the admin API like any other fake.
+
 ## DNS records
 
 Every A query resolves to fakenet. A product that proves domain ownership reads a TXT
@@ -112,6 +132,20 @@ record, so publish it first; it is removed when the test ends.
 ```go
 fakenet.SetTXT(t, fixture.FakenetAdmin(t, tn), "_infisical-verification.acme.test", "value")
 ```
+
+DNS provider fakes (`cloudflare`, `dnsmadeeasy`) serve the TXT records created through
+their APIs the same way, through `Emitter.SetTXT`, as the provider's nameservers would.
+
+## Certificate Manager
+
+| Fake | Host | Scope | Used by |
+|---|---|---|---|
+| `website` | every name under `web.test`, over plain HTTP on port 80 | the label left of `web.test` | ACME HTTP-01: the web server behind a name the test makes up (`website.Name(scope, "www")`) |
+| `acmeca` | `acme.ca.test/<scope>` | path | the upstream CA an ACME CA in Infisical orders from; verifies JWS, nonces and CSR names, and validates DNS-01 against the TXT records the DNS provider fakes publish |
+| `cloudflare` | `api.cloudflare.com` | bearer API token | Cloudflare App Connections and DNS-01 records |
+| `dnsmadeeasy` | `api.dnsmadeeasy.com` | `x-dnsme-apiKey`, with the HMAC checked | DNS Made Easy App Connections and DNS-01 records |
+
+A host registered as `*.<domain>` answers for every name under it; an exact host wins.
 
 ## Test plumbing once
 

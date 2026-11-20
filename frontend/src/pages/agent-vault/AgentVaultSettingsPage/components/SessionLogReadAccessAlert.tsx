@@ -2,6 +2,7 @@ import { ReactNode, useState } from "react";
 import { TriangleAlertIcon } from "lucide-react";
 
 import { Alert, AlertAction, AlertDescription, Button } from "@app/components/v3";
+import { useProject } from "@app/context";
 import {
   useGetAgentVaultSessionLogCorsProbe,
   useGetAgentVaultSessionLogSettings
@@ -31,13 +32,14 @@ const READ_ACCESS_ALERTS: Record<
 };
 
 export const SessionLogReadAccessAlert = () => {
+  const { projectId } = useProject();
   const [isAwsSetupOpen, setIsAwsSetupOpen] = useState(false);
-  const { data: state } = useGetAgentVaultSessionLogSettings();
+  const { data: state } = useGetAgentVaultSessionLogSettings(projectId);
   const external =
     state?.settings?.storage.type === AgentVaultSessionLogStorageType.External
       ? state.settings.storage
       : null;
-  const { data: readCheck } = useGetAgentVaultSessionLogCorsProbe();
+  const { data: readCheck } = useGetAgentVaultSessionLogCorsProbe(projectId);
   const readAlert =
     readCheck && readCheck.status !== "readable" ? READ_ACCESS_ALERTS[readCheck.status] : null;
 

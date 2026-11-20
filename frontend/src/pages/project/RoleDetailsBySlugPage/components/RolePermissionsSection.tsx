@@ -287,6 +287,11 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                     .filter(
                       (subject) => ProjectTypePermissionSubjects[currentProject.type][subject]
                     )
+                    .sort((a, b) =>
+                      PROJECT_PERMISSION_OBJECT[a].title.localeCompare(
+                        PROJECT_PERMISSION_OBJECT[b].title
+                      )
+                    )
                     .map((subject) => (
                       <GeneralPermissionPolicies
                         subject={subject}
@@ -306,12 +311,9 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                         onRemoveLastRule={
                           !isDisabled
                             ? () =>
-                                form.setValue(
-                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                  `permissions.${subject}` as any,
-                                  [],
-                                  { shouldDirty: true }
-                                )
+                                form.setValue(`permissions.${subject}` as any, [], {
+                                  shouldDirty: true
+                                })
                             : undefined
                         }
                         onShowAccessTree={

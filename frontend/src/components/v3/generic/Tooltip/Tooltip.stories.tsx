@@ -150,7 +150,7 @@ export const HoverableContent: Story = {
     docs: {
       description: {
         story:
-          "Set `hoverable` on `Tooltip` to let users move the pointer into a brief informational hint and keep it open without making its text selectable. Use this opt-in when preserving legacy tooltip hover residence. `selectable` also enables hoverability, even if `hoverable` is false. Ordinary tooltips keep their existing trigger-leave dismissal. Neither opt-in permits links, buttons, forms, or other interactive controls."
+          "Set `hoverable` on `Tooltip` to let users move the pointer into a brief informational hint and keep it open without making its text selectable. `selectable` also enables hoverability, even if `hoverable` is false. Ordinary tooltips keep their existing trigger-leave dismissal. Neither opt-in permits links, buttons, forms, or other interactive controls."
       }
     }
   },

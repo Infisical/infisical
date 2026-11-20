@@ -7,9 +7,8 @@ import { useServerConfig } from "@app/context";
 export const Banner = () => {
   const { config } = useServerConfig();
 
-  // eslint-disable-next-line react/no-danger-with-children
   return config.pageFrameContent ? (
-    <div className="h-[3vh] w-full text-center">
+    <div className="h-[3dvh] w-full text-center">
       <ReactMarkdown rehypePlugins={[rehypeRaw]}>
         {DOMPurify.sanitize(config.pageFrameContent)}
       </ReactMarkdown>

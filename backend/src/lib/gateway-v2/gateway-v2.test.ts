@@ -7,8 +7,8 @@ import forge from "node-forge";
 import { issueGatewayServerCertificate } from "@app/ee/services/gateway-v2/gateway-v2-certificate-fns";
 import { GATEWAY_IDENTITY_URI_PREFIX } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { keyAlgorithmToAlgCfg } from "@app/services/certificate-authority/certificate-authority-fns";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 import { setupGatewayProxy } from "./gateway-v2";
 

@@ -4,14 +4,11 @@ import {
   ProjectMembershipRole,
   TSecretScanningDataSources,
   TSecretScanningFindings,
+  TSecretScanningResources,
   TSecretScanningResourcesInsert
 } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import {
-  createTempFolder,
-  deleteTempFolder,
-  writeTextToFile
-} from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import {
   assertClonedRepositoryWithinSizeLimit,
   parseScanErrorMessage,
@@ -19,6 +16,11 @@ import {
   repositoryHasCommits,
   scanGitRepositoryAndGetFindings
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
+import {
+  createTempFolder,
+  deleteTempFolder,
+  writeTextToFile
+} from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, getSecretScanningScanBudgetMs } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
@@ -30,26 +32,36 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { createOrgSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes, TSecretScanningScanCompletedEvent } from "@app/services/telemetry/telemetry-types";
 
 import { TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
-import { SecretScanningDataSource, SecretScanningScanStatus, SecretScanningScanType } from "./secret-scanning-v2-enums";
+import {
+  SecretScanningDataSource,
+  SecretScanningFindingStatus,
+  SecretScanningScanStatus,
+  SecretScanningScanTrigger,
+  SecretScanningScanType
+} from "./secret-scanning-v2-enums";
 import { SECRET_SCANNING_FACTORY_MAP } from "./secret-scanning-v2-factory";
 import {
+  TFindingLocationRow,
   TFindingsPayload,
+  TGitRepositoryScanFindingDetails,
+  TQueueSecretScanningDataSourceEvent,
   TQueueSecretScanningDataSourceFullScan,
   TQueueSecretScanningResourceDiffScan,
   TQueueSecretScanningResourceDiffScanPayload,
   TQueueSecretScanningSendNotification,
   TSecretScanningDataSourceWithConnection,
-  TSecretScanningFinding
+  TSecretScanningDiscoverResource,
+  TSecretScanningQueueReportedRealtimeScan
 } from "./secret-scanning-v2-types";
 
 type TSecretRotationV2QueueServiceFactoryDep = {
@@ -59,7 +71,7 @@ type TSecretRotationV2QueueServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "setItemWithExpiryNX" | "getItemPrimary" | "deleteItem">;
@@ -74,6 +86,7 @@ const STUCK_SCAN_REAP_BATCH_SIZE = 100;
 const QUEUED_SCAN_REDELIVERY_GRACE = ms("5m");
 const STUCK_SCAN_STATUS_MESSAGE =
   "The scan did not complete and was cancelled. This usually means the resource is too large to scan.";
+const NEVER_STARTED_SCAN_STATUS_MESSAGE = "The scan was queued but never started.";
 
 // A full scan usually dies because the worker was OOM-killed on a large repository, which retrying
 // does resolve — the pod that picks it up next is not the one that ran out of memory. The two
@@ -83,6 +96,9 @@ const STUCK_SCAN_STATUS_MESSAGE =
 const FULL_SCAN_ATTEMPTS = 3;
 const FULL_SCAN_MAX_STALLED_COUNT = 2;
 const FULL_SCAN_RETRY_DELAY = ms("1m");
+
+const DATA_SOURCE_EVENT_ATTEMPTS = 3;
+const DATA_SOURCE_EVENT_RETRY_DELAY = ms("30s");
 
 const DUPLICATE_FULL_SCAN_STATUS_MESSAGE =
   "Another scan of this resource was already in progress, so this scan was not started.";
@@ -94,13 +110,60 @@ export const secretScanningV2QueueServiceFactory = ({
   projectMembershipDAL,
   projectDAL,
   smtpService,
-  kmsService,
+  kmsDataKeyService,
   auditLogService,
   keyStore,
   appConnectionDAL,
   notificationService,
   telemetryService
 }: TSecretRotationV2QueueServiceFactoryDep) => {
+  // Resolves the org data key once per scan rather than once per finding. The blind index is generated the same way as
+  // secrets_v2.secretValueOrgBlindIndex, so a finding can be matched against secrets in the org without decrypting.
+  const createFindingRowsBuilder = async (projectId: string) => {
+    const project = await projectDAL.findById(projectId);
+    const blindIndexer = await createOrgSecretBlindIndexer({ orgId: project.orgId, kmsDataKeyService });
+
+    // A rule that matches only a file's path reports no value, so its matches get no blind index rather than all
+    // sharing the one of an empty value, which would group them into one finding.
+    return (findings: TFindingsPayload): Promise<TFindingLocationRow[]> =>
+      Promise.all(
+        findings.map(async ({ secretValue, ...finding }) => ({
+          ...finding,
+          secretFindingBlindIndex: secretValue
+            ? await blindIndexer.generateOrgLevelBlindIndex(Buffer.from(secretValue))
+            : null
+        }))
+      );
+  };
+
+  // Written after the transaction that reopened them commits, so the log never shows a reopen that rolled back.
+  const auditReopenedFindings = (
+    projectId: string,
+    resource: Pick<TSecretScanningResources, "id" | "name">,
+    findings: Pick<TSecretScanningFindings, "id" | "rule">[]
+  ) =>
+    Promise.all(
+      findings.map((finding) =>
+        auditLogService.createAuditLog({
+          projectId,
+          actor: {
+            type: ActorType.PLATFORM,
+            metadata: {}
+          },
+          event: {
+            type: EventType.SECRET_SCANNING_FINDING_UPDATE,
+            metadata: {
+              findingId: finding.id,
+              findingRule: finding.rule,
+              resourceId: resource.id,
+              resourceName: resource.name,
+              status: SecretScanningFindingStatus.Unresolved
+            }
+          }
+        })
+      )
+    );
+
   /**
    * Full scans of one resource are serialized across pods by a lease in Redis holding the ID of the
    * scan that owns it. A retry or a stalled-job recovery carries the same scan ID, so it reclaims
@@ -207,20 +270,22 @@ export const secretScanningV2QueueServiceFactory = ({
   const queueDataSourceFullScan = async (
     dataSource: TSecretScanningDataSourceWithConnection,
     {
+      trigger,
       resourceExternalId,
       triggeredByUserId,
       shouldScanResource
     }: {
+      trigger: SecretScanningScanTrigger.Manual | SecretScanningScanTrigger.ResourcesAdded;
       resourceExternalId?: string;
       triggeredByUserId?: string;
       shouldScanResource?: (resource: Pick<TSecretScanningResourcesInsert, "externalId" | "name">) => boolean;
-    } = {}
+    }
   ) => {
     try {
       const { type } = dataSource;
 
       const factory = SECRET_SCANNING_FACTORY_MAP[type]({
-        kmsService,
+        kmsDataKeyService,
         appConnectionDAL
       });
 
@@ -288,6 +353,7 @@ export const secretScanningV2QueueServiceFactory = ({
           resourcesToScan.map((resource) => ({
             resourceId: resource.id,
             type: SecretScanningScanType.Historical,
+            trigger,
             triggeredByUserId: triggeredByUserId ?? null
           })),
           tx
@@ -373,10 +439,10 @@ export const secretScanningV2QueueServiceFactory = ({
       }
 
       let connection: TAppConnection | null = null;
-      if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
+      if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsDataKeyService);
 
       const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]({
-        kmsService,
+        kmsDataKeyService,
         appConnectionDAL
       });
 
@@ -402,6 +468,8 @@ export const secretScanningV2QueueServiceFactory = ({
         await writeTextToFile(configPath, config.content);
       }
 
+      const buildFindingRows = await createFindingRowsBuilder(dataSource.projectId);
+
       // Counts what this attempt scanned, for the progress logs only. The scan's finding total is
       // read from the database at the end, because an attempt that resumes a partly-scanned scan
       // never sees the batches an earlier one already persisted.
@@ -417,20 +485,12 @@ export const secretScanningV2QueueServiceFactory = ({
         batchFindings: TFindingsPayload,
         resumePoint?: { lastScannedCommit: string; lastScannedCommitDigest: string }
       ) => {
-        const owned = await secretScanningV2DAL.findings.transaction(async (tx) => {
-          if (batchFindings.length) {
-            await secretScanningV2DAL.findings.upsert(
-              batchFindings.map((finding) => ({
-                ...finding,
-                resourceId,
-                scanId
-              })),
-              ["resourceId", "fingerprint"],
-              tx,
-              // a no-op merge, so rows already found by an earlier scan are returned with their original scanId
-              ["rule"]
-            );
-          }
+        const findingRows = await buildFindingRows(batchFindings);
+
+        const { owned, reopenedFindings } = await secretScanningV2DAL.findings.transaction(async (tx) => {
+          const persisted = findingRows.length
+            ? await secretScanningV2DAL.findings.persistLocations({ resourceId, scanId, rows: findingRows }, tx)
+            : undefined;
 
           const progressed = await secretScanningV2DAL.scans.update(
             { id: scanId, status: SecretScanningScanStatus.Scanning },
@@ -438,8 +498,11 @@ export const secretScanningV2QueueServiceFactory = ({
             tx
           );
 
-          return Boolean(progressed.length);
+          return { owned: Boolean(progressed.length), reopenedFindings: persisted?.reopenedFindings ?? [] };
         });
+
+        // the batch committed even when the scan was taken from this run, so its reopens happened
+        await auditReopenedFindings(dataSource.projectId, resource, reopenedFindings);
 
         if (!owned) return false;
 
@@ -537,18 +600,23 @@ export const secretScanningV2QueueServiceFactory = ({
 
       // Read back rather than counted in the handler: the findings an earlier attempt persisted are
       // part of this scan's total, and a resumed attempt never scanned the batches they came from.
-      const findingsCount = await secretScanningV2DAL.findings.countByScanId(scanId);
+      const {
+        locations: locationsCount,
+        findings: findingsCount,
+        unresolvedFindings: unresolvedFindingsCount
+      } = await secretScanningV2DAL.findings.countByScanId(scanId);
 
       sendScanTelemetry(dataSource, {
         event: PostHogEventTypes.SecretScanningScanCompleted,
         properties: {
           type: dataSource.type as SecretScanningDataSource,
           scanType: SecretScanningScanType.Historical,
-          findingCount: findingsCount
+          findingCount: locationsCount
         }
       });
 
-      if (findingsCount) {
+      // a new location of a false positive or an ignored finding needs no action, so it isn't a leak
+      if (unresolvedFindingsCount) {
         await queueService.queue(
           QueueName.SecretScanningV2,
           QueueJobs.SecretScanningV2SendNotification,
@@ -557,7 +625,7 @@ export const secretScanningV2QueueServiceFactory = ({
             resourceName: resource.name,
             isDiffScan: false,
             dataSource,
-            numberOfSecrets: findingsCount,
+            numberOfSecrets: unresolvedFindingsCount,
             scanId
           },
           { removeOnFail: true, jobId: `secret-scanning-notification-${scanId}` }
@@ -658,7 +726,7 @@ export const secretScanningV2QueueServiceFactory = ({
     isDiscovered?: boolean;
   }) => {
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType as SecretScanningDataSource]({
-      kmsService,
+      kmsDataKeyService,
       appConnectionDAL
     });
 
@@ -696,7 +764,8 @@ export const secretScanningV2QueueServiceFactory = ({
         const scan = await secretScanningV2DAL.scans.create(
           {
             resourceId: resource.id,
-            type: SecretScanningScanType.Realtime
+            type: SecretScanningScanType.Realtime,
+            trigger: SecretScanningScanTrigger.Push
           },
           tx
         );
@@ -745,29 +814,60 @@ export const secretScanningV2QueueServiceFactory = ({
     attemptsMade: number;
     opts: { attempts?: number };
   }) => {
-    const { payload, dataSourceId, resourceId, scanId } = job.data;
+    const { payload, dataSourceId, dataSourceType, resourceId, scanId } = job.data;
     const retryCount = job.attemptsMade + 1;
     const retryLimit = job.opts.attempts || 1;
     const startedAt = Date.now();
 
     const logDetails = `[dataSourceId=${dataSourceId}] [scanId=${scanId}] [resourceId=${resourceId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
 
-    // Primary for the same reason as the full scan: a lagging replica would drop a just-queued scan.
-    const primary = secretScanningV2DAL.primaryNode();
-    const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId, primary);
-    const resource = dataSource ? await secretScanningV2DAL.resources.findById(resourceId, primary) : undefined;
-
-    if (!dataSource || !resource) {
-      logger.info(`secretScanningV2Queue: Diff Scan aborted, scan no longer exists ${logDetails}`);
-      return;
-    }
-
-    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]({
-      kmsService,
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType]({
+      kmsDataKeyService,
       appConnectionDAL
     });
 
-    const tempFolder = await createTempFolder();
+    const report = factory.getRealtimeScanReport?.(payload);
+
+    const prepareScan = async () => {
+      // Primary for the same reason as the full scan: a lagging replica would drop a just-queued scan.
+      const primary = secretScanningV2DAL.primaryNode();
+      const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId, primary);
+      const resource = dataSource ? await secretScanningV2DAL.resources.findById(resourceId, primary) : undefined;
+
+      if (!dataSource || !resource) return null;
+
+      return { dataSource, resource, tempFolder: await createTempFolder() };
+    };
+
+    let prepared: Awaited<ReturnType<typeof prepareScan>>;
+
+    try {
+      prepared = await prepareScan();
+    } catch (error) {
+      logger.error(error, `secretScanningV2Queue: Diff Scan could not be prepared ${logDetails}`);
+
+      // Nothing redelivers a diff scan, so its last attempt closes it out here rather than leaving it queued. If even
+      // that fails, the stuck-scan reaper fails it later.
+      if (retryCount === retryLimit) {
+        const statusMessage = parseScanErrorMessage(error);
+
+        try {
+          if (await markScanAsFailed({ scanId, statusMessage })) await report?.fail({ reason: statusMessage });
+        } catch (markError) {
+          logger.error(markError, `secretScanningV2Queue: Failed to mark unprepared diff scan as failed ${logDetails}`);
+        }
+      }
+
+      throw error;
+    }
+
+    if (!prepared) {
+      logger.info(`secretScanningV2Queue: Diff Scan aborted, scan no longer exists ${logDetails}`);
+      await report?.cancel();
+      return;
+    }
+
+    const { dataSource, resource, tempFolder } = prepared;
 
     logger.info(
       `secretScanningV2Queue: Diff Scan Started ${logDetails} [scanType=${SecretScanningScanType.Realtime}] [tempFolder=${tempFolder}]`
@@ -783,8 +883,10 @@ export const secretScanningV2QueueServiceFactory = ({
         return;
       }
 
+      await report?.start();
+
       let connection: TAppConnection | null = null;
-      if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
+      if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsDataKeyService);
 
       const config = await secretScanningV2DAL.configs.findOne({
         projectId: dataSource.projectId
@@ -797,7 +899,7 @@ export const secretScanningV2QueueServiceFactory = ({
         await writeTextToFile(configPath, config.content);
       }
 
-      const findingsPayload = await factory.getDiffScanFindingsPayload({
+      const { findings: findingsPayload, details } = await factory.getDiffScanFindingsPayload({
         dataSource: {
           ...dataSource,
           connection
@@ -807,34 +909,33 @@ export const secretScanningV2QueueServiceFactory = ({
         configPath
       });
 
-      const { allFindings, closedOutByThisRun } = await secretScanningV2DAL.findings.transaction(async (tx) => {
-        let findings: TSecretScanningFindings[] = [];
+      const buildFindingRows = await createFindingRowsBuilder(dataSource.projectId);
+      const findingRows = await buildFindingRows(findingsPayload);
 
-        if (findingsPayload.length) {
-          findings = await secretScanningV2DAL.findings.upsert(
-            findingsPayload.map((finding) => ({
-              ...finding,
-              resourceId,
-              scanId
-            })),
-            ["resourceId", "fingerprint"],
-            tx,
-            ["rule"]
+      const { scannedLocations, reopenedFindings, closedOutByThisRun } = await secretScanningV2DAL.findings.transaction(
+        async (tx) => {
+          const persisted = findingRows.length
+            ? await secretScanningV2DAL.findings.persistLocations({ resourceId, scanId, rows: findingRows }, tx)
+            : { scannedLocations: [], reopenedFindings: [] };
+
+          // Same guard as the full scan: a scan the reaper already failed keeps that outcome.
+          const completedScans = await secretScanningV2DAL.scans.update(
+            { id: scanId, status: SecretScanningScanStatus.Scanning },
+            {
+              status: SecretScanningScanStatus.Completed,
+              completedAt: new Date(),
+              ...(report
+                ? { metadata: report.getCompletedScanMetadata({ findings: persisted.scannedLocations, details }) }
+                : {})
+            },
+            tx
           );
+
+          return { ...persisted, closedOutByThisRun: Boolean(completedScans.length) };
         }
+      );
 
-        // Same guard as the full scan: a scan the reaper already failed keeps that outcome.
-        const completedScans = await secretScanningV2DAL.scans.update(
-          { id: scanId, status: SecretScanningScanStatus.Scanning },
-          {
-            status: SecretScanningScanStatus.Completed,
-            completedAt: new Date()
-          },
-          tx
-        );
-
-        return { allFindings: findings, closedOutByThisRun: Boolean(completedScans.length) };
-      });
+      await auditReopenedFindings(dataSource.projectId, resource, reopenedFindings);
 
       if (!closedOutByThisRun) {
         logger.warn(
@@ -843,19 +944,28 @@ export const secretScanningV2QueueServiceFactory = ({
         return;
       }
 
-      const newFindings = allFindings.filter((finding) => finding.scanId === scanId);
+      // Every location the scan matched, including ones an earlier scan saved first, with its finding's status.
+      await report?.complete({ findings: scannedLocations, details });
+
+      const { locations: locationsCount, unresolvedFindings: unresolvedFindingsCount } =
+        await secretScanningV2DAL.findings.countByScanId(scanId);
 
       sendScanTelemetry(dataSource, {
         event: PostHogEventTypes.SecretScanningScanCompleted,
         properties: {
           type: dataSource.type as SecretScanningDataSource,
           scanType: SecretScanningScanType.Realtime,
-          findingCount: newFindings.length
+          findingCount: locationsCount
         }
       });
 
-      if (newFindings.length) {
-        const finding = newFindings[0] as TSecretScanningFinding;
+      // a new location of a false positive or an ignored finding needs no action, so it isn't a leak
+      if (unresolvedFindingsCount) {
+        // a pull request's scan also matches leaks an earlier push saved, so the author comes from a leak this scan saved
+        const leakDetails = scannedLocations.find(
+          ({ isNew, status }) => isNew && status === SecretScanningFindingStatus.Unresolved
+        )?.details as TGitRepositoryScanFindingDetails | undefined;
+
         await queueService.queue(
           QueueName.SecretScanningV2,
           QueueJobs.SecretScanningV2SendNotification,
@@ -864,10 +974,10 @@ export const secretScanningV2QueueServiceFactory = ({
             resourceName: resource.name,
             isDiffScan: true,
             dataSource,
-            numberOfSecrets: newFindings.length,
+            numberOfSecrets: unresolvedFindingsCount,
             scanId,
-            authorName: finding?.details?.author,
-            authorEmail: finding?.details?.email
+            authorName: leakDetails?.author,
+            authorEmail: leakDetails?.email
           },
           { jobId: `secret-scanning-notification-${scanId}` }
         );
@@ -901,6 +1011,7 @@ export const secretScanningV2QueueServiceFactory = ({
     } catch (error) {
       if (!(await secretScanningV2DAL.scans.findById(scanId, secretScanningV2DAL.primaryNode()))) {
         logger.info(`secretScanningV2Queue: Diff Scan aborted, scan was deleted while running ${logDetails}`);
+        await report?.cancel();
         return;
       }
 
@@ -910,6 +1021,8 @@ export const secretScanningV2QueueServiceFactory = ({
         const failed = await markScanAsFailed({ scanId, statusMessage: errorMessage });
 
         if (failed) {
+          await report?.fail({ reason: errorMessage });
+
           await queueService.queue(
             QueueName.SecretScanningV2,
             QueueJobs.SecretScanningV2SendNotification,
@@ -1011,8 +1124,8 @@ export const secretScanningV2QueueServiceFactory = ({
               : `Encountered an error while attempting to scan the resource **${resourceName}**: ${payload.errorMessage}`,
           link:
             payload.status === SecretScanningScanStatus.Completed
-              ? `/projects/secret-scanning/${projectId}/findings?search=scanId:${payload.scanId}`
-              : `/projects/secret-scanning/${projectId}/data-sources/${dataSource.type}/${dataSource.id}`
+              ? `/organizations/${project.orgId}/projects/secret-scanning/${projectId}/findings?scanId=${payload.scanId}`
+              : `/organizations/${project.orgId}/projects/secret-scanning/${projectId}/data-sources/${dataSource.type}/${dataSource.id}`
         }))
       );
 
@@ -1032,7 +1145,7 @@ export const secretScanningV2QueueServiceFactory = ({
                 numberOfSecrets: payload.numberOfSecrets,
                 isDiffScan: payload.isDiffScan,
                 url: encodeURI(
-                  `${appCfg.SITE_URL}/organizations/${project.orgId}/projects/secret-scanning/${projectId}/findings?search=scanId:${payload.scanId}`
+                  `${appCfg.SITE_URL}/organizations/${project.orgId}/projects/secret-scanning/${projectId}/findings?scanId=${payload.scanId}`
                 ),
                 timestamp
               }
@@ -1061,14 +1174,19 @@ export const secretScanningV2QueueServiceFactory = ({
   const failStuckScan = async (scan: Awaited<ReturnType<typeof secretScanningV2DAL.scans.findStuck>>[number]) => {
     const logDetails = `[scanId=${scan.id}] [resourceId=${scan.resourceId}] [dataSourceId=${scan.dataSourceId}] [startedAt=${scan.startedAt?.toISOString()}]`;
 
+    // A queued scan here is a realtime scan whose job was lost before it started; its payload isn't stored, so it can't
+    // be redelivered the way a queued historical scan is.
+    const statusMessage =
+      scan.status === SecretScanningScanStatus.Queued ? NEVER_STARTED_SCAN_STATUS_MESSAGE : STUCK_SCAN_STATUS_MESSAGE;
+
     try {
       // Guarded on the status we read: if the worker did finish between the read and this write, the
       // update matches nothing and the scan keeps its real outcome.
       const updatedScans = await secretScanningV2DAL.scans.update(
-        { id: scan.id, status: SecretScanningScanStatus.Scanning },
+        { id: scan.id, status: scan.status },
         {
           status: SecretScanningScanStatus.Failed,
-          statusMessage: STUCK_SCAN_STATUS_MESSAGE,
+          statusMessage,
           completedAt: new Date()
         }
       );
@@ -1081,6 +1199,13 @@ export const secretScanningV2QueueServiceFactory = ({
 
       if (!dataSource) return;
 
+      await SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]({
+        kmsDataKeyService,
+        appConnectionDAL
+      })
+        .getScanReport?.({ scan, dataSource, resourceName: scan.resourceName })
+        ?.fail({ reason: statusMessage, isTimedOut: true });
+
       await queueService.queue(
         QueueName.SecretScanningV2,
         QueueJobs.SecretScanningV2SendNotification,
@@ -1088,7 +1213,7 @@ export const secretScanningV2QueueServiceFactory = ({
           status: SecretScanningScanStatus.Failed,
           resourceName: scan.resourceName,
           dataSource,
-          errorMessage: STUCK_SCAN_STATUS_MESSAGE
+          errorMessage: statusMessage
         },
         { jobId: `secret-scanning-notification-${scan.id}`, removeOnFail: true }
       );
@@ -1176,6 +1301,138 @@ export const secretScanningV2QueueServiceFactory = ({
     { concurrency: 2 }
   );
 
+  const queueResourceFullScan = async ({
+    dataSourceId,
+    resourcePayload,
+    trigger
+  }: {
+    dataSourceId: string;
+    resourcePayload: Pick<TSecretScanningResourcesInsert, "externalId" | "name">;
+    trigger: SecretScanningScanTrigger.Push | SecretScanningScanTrigger.PullRequest;
+  }) => {
+    try {
+      const { resource, scan } = await secretScanningV2DAL.resources.transaction(async (tx) => {
+        const [upsertedResource] = await secretScanningV2DAL.resources.upsert(
+          [{ ...resourcePayload, dataSourceId }],
+          ["externalId", "dataSourceId"],
+          tx
+        );
+
+        const createdScan = await secretScanningV2DAL.scans.create(
+          { resourceId: upsertedResource.id, type: SecretScanningScanType.Historical, trigger },
+          tx
+        );
+
+        return { resource: upsertedResource, scan: createdScan };
+      });
+
+      try {
+        await enqueueFullScanJob(scan, dataSourceId);
+      } catch (error) {
+        logger.error(
+          error,
+          `secretScanningV2Queue: Failed to submit full scan for discovered resource, leaving it for redelivery [scanId=${scan.id}] [dataSourceId=${dataSourceId}] [resourceExternalId=${resourcePayload.externalId}]`
+        );
+      }
+
+      return resource;
+    } catch (error) {
+      logger.error(
+        error,
+        `secretScanningV2Queue: Failed to queue full scan for discovered resource [dataSourceId=${dataSourceId}] [resourceExternalId=${resourcePayload.externalId}]`
+      );
+    }
+  };
+
+  // Adds a resource discovered from a webhook, and scans its history when the data source scans new resources' history.
+  const discoverResource: TSecretScanningDiscoverResource = async ({ dataSource, resourcePayload, trigger }) => {
+    if (dataSource.isHistoricalScanEnabled) {
+      return queueResourceFullScan({ dataSourceId: dataSource.id, resourcePayload, trigger });
+    }
+
+    const [resource] = await secretScanningV2DAL.resources.upsert(
+      [{ ...resourcePayload, dataSourceId: dataSource.id }],
+      ["externalId", "dataSourceId"]
+    );
+
+    return resource;
+  };
+
+  /**
+   * For a scan reported back to where it was requested: the report is created first, so the scan is inserted with the
+   * ID the report already carries. Nothing redelivers a realtime scan whose job was never submitted, so if either step
+   * fails the scan is failed and its report closed here, rather than left queued.
+   */
+  const queueReportedRealtimeScan: TSecretScanningQueueReportedRealtimeScan = async ({
+    scanId,
+    dataSourceId,
+    dataSourceType,
+    resourceId,
+    trigger,
+    metadata,
+    payload
+  }) => {
+    const logDetails = `[dataSourceId=${dataSourceId}] [scanId=${scanId}] [resourceId=${resourceId}] [trigger=${trigger}]`;
+
+    try {
+      await secretScanningV2DAL.scans.create({
+        // @ts-expect-error id is generated before the insert because the report was created with it
+        id: scanId,
+        resourceId,
+        type: SecretScanningScanType.Realtime,
+        trigger,
+        metadata
+      });
+
+      await queueService.queue(
+        QueueName.SecretScanningV2RealtimeScan,
+        QueueJobs.SecretScanningV2DiffScan,
+        {
+          payload,
+          dataSourceId,
+          dataSourceType,
+          scanId,
+          resourceId
+        } as TQueueSecretScanningResourceDiffScan,
+        {
+          jobId: scanId,
+          removeOnFail: true
+        }
+      );
+    } catch (error) {
+      logger.error(error, `secretScanningV2Queue: Failed to queue reported realtime scan ${logDetails}`);
+
+      const statusMessage = "The scan could not be started.";
+
+      try {
+        await markScanAsFailed({ scanId, statusMessage });
+      } catch (markError) {
+        logger.error(markError, `secretScanningV2Queue: Failed to mark reported realtime scan as failed ${logDetails}`);
+      }
+
+      await SECRET_SCANNING_FACTORY_MAP[dataSourceType]({ kmsDataKeyService, appConnectionDAL })
+        .getRealtimeScanReport?.(payload)
+        ?.fail({ reason: statusMessage });
+    }
+  };
+
+  const processDataSourceEvent = async ({ dataSourceType, event }: TQueueSecretScanningDataSourceEvent) => {
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType]({ kmsDataKeyService, appConnectionDAL });
+
+    if (!factory.processEvent) {
+      logger.error(`secretScanningV2Queue: Data source has no event processing [dataSourceType=${dataSourceType}]`);
+      return;
+    }
+
+    await factory.processEvent({
+      event,
+      secretScanningV2DAL,
+      auditLogService,
+      discoverResource,
+      queueReportedRealtimeScan
+    });
+  };
+
   queueService.start(QueueName.SecretScanningV2, async (job) => {
     // We are keeping this for now because once deployed, the queue might still have
     // full scan and diff scan messages in it and need to be processed.
@@ -1185,37 +1442,19 @@ export const secretScanningV2QueueServiceFactory = ({
       await handleDiffScan(job as Parameters<typeof handleDiffScan>[0]);
     } else if (job.name === QueueJobs.SecretScanningV2SendNotification) {
       await handleSendNotification(job as Parameters<typeof handleSendNotification>[0]);
+    } else if (job.name === QueueJobs.SecretScanningV2DataSourceEvent) {
+      await processDataSourceEvent(job.data as TQueueSecretScanningDataSourceEvent);
     }
   });
 
-  const queueResourceFullScan = async ({
-    dataSourceId,
-    resourcePayload
-  }: {
-    dataSourceId: string;
-    resourcePayload: Pick<TSecretScanningResourcesInsert, "externalId" | "name">;
-  }) => {
-    try {
-      const scan = await secretScanningV2DAL.resources.transaction(async (tx) => {
-        const [resource] = await secretScanningV2DAL.resources.upsert(
-          [{ ...resourcePayload, dataSourceId }],
-          ["externalId", "dataSourceId"],
-          tx
-        );
-
-        return secretScanningV2DAL.scans.create(
-          { resourceId: resource.id, type: SecretScanningScanType.Historical },
-          tx
-        );
-      });
-
-      await enqueueFullScanJob(scan, dataSourceId);
-    } catch (error) {
-      logger.error(
-        error,
-        `secretScanningV2Queue: Failed to queue full scan for discovered resource [dataSourceId=${dataSourceId}] [resourceExternalId=${resourcePayload.externalId}]`
-      );
-    }
+  // Keyed by the provider's delivery ID, so a redelivered webhook isn't processed twice while the first is pending.
+  // Processors must be safe to retry up to the point they create something at the provider.
+  const queueDataSourceEvent = async (payload: TQueueSecretScanningDataSourceEvent, deliveryId: string) => {
+    await queueService.queue(QueueName.SecretScanningV2, QueueJobs.SecretScanningV2DataSourceEvent, payload, {
+      jobId: `secret-scanning-data-source-event-${payload.dataSourceType}-${deliveryId}`,
+      attempts: DATA_SOURCE_EVENT_ATTEMPTS,
+      backoff: { type: "fixed", delay: DATA_SOURCE_EVENT_RETRY_DELAY }
+    });
   };
 
   // A push from a repository with no resource row means it was added after setup, so discovery decides
@@ -1233,7 +1472,7 @@ export const secretScanningV2QueueServiceFactory = ({
     payload: TQueueSecretScanningResourceDiffScanPayload["payload"];
   }) => {
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType]({
-      kmsService,
+      kmsDataKeyService,
       appConnectionDAL
     });
 
@@ -1264,7 +1503,11 @@ export const secretScanningV2QueueServiceFactory = ({
 
     // The historical scan covers the pushed commits too, so it replaces the diff scan.
     if (dataSource.isHistoricalScanEnabled) {
-      await queueResourceFullScan({ dataSourceId: dataSource.id, resourcePayload });
+      await queueResourceFullScan({
+        dataSourceId: dataSource.id,
+        resourcePayload,
+        trigger: SecretScanningScanTrigger.Push
+      });
       return;
     }
 
@@ -1282,6 +1525,7 @@ export const secretScanningV2QueueServiceFactory = ({
   return {
     queueDataSourceFullScan,
     queueResourceDiffScan,
+    queueDataSourceEvent,
     handleResourcePushEvent
   };
 };

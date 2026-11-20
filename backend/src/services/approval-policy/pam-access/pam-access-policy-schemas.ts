@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ms } from "@app/lib/ms";
+import { auditSafeText } from "@app/server/lib/schemas";
 
 import {
   BaseApprovalPolicySchema,
@@ -87,7 +88,9 @@ export const PamAccessRequestSchema = BaseApprovalRequestSchema.extend({
 });
 
 export const CreatePamAccessRequestSchema = BaseCreateApprovalRequestSchema.extend({
-  requestData: PamAccessPolicyRequestDataSchema
+  requestData: PamAccessPolicyRequestDataSchema.extend({
+    reason: auditSafeText(z.string().trim().max(1024), { allowMultiline: true }).optional()
+  })
 });
 
 // Grants

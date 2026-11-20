@@ -12,6 +12,7 @@ import {
   MapPin,
   Plug,
   ScanSearch,
+  ScrollText,
   Search,
   Shield,
   Tag,
@@ -71,6 +72,16 @@ export const SM_SETTINGS_SUBMENU: Submenu = {
     { label: "Encryption", icon: Lock, tab: "tab-project-encryption" },
     { label: "Workflow Integrations", icon: Plug, tab: "tab-workflow-integrations" },
     { label: "Webhooks", icon: Webhook, tab: "tab-project-webhooks" }
+  ]
+};
+
+export const AGENT_VAULT_SETTINGS_SUBMENU: Submenu = {
+  title: "Settings",
+  pathSuffix: "settings",
+  defaultTab: "tab-project-general",
+  items: [
+    { label: "General", icon: Cog, tab: "tab-project-general" },
+    { label: "Session Logs", icon: ScrollText, tab: "tab-session-logs" }
   ]
 };
 

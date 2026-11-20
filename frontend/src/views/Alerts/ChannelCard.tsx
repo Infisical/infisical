@@ -18,7 +18,9 @@ import { useScopeVariant } from "@app/hooks";
 import {
   ALERT_CHANNEL_TYPE_LABELS,
   ALERT_RESOURCE_TYPES_WITH_EMAIL_ADDRESSES,
+  ALERT_RESOURCE_TYPES_WITH_PROJECT_RECIPIENTS,
   AlertChannelType,
+  SLACK_CHANNEL_TYPES,
   TAlertChannelRecipient,
   TChannelsForm,
   toChannelInput,
@@ -28,6 +30,8 @@ import {
 import { getChannelIcon } from "./channelIcons";
 import { ChannelRecipientsField } from "./ChannelRecipientsField";
 import { ChannelSecretInput, KEEP_PLACEHOLDER } from "./ChannelSecretInput";
+import { SlackAppChannelFields } from "./SlackAppChannelFields";
+import { SlackMethodSwitch } from "./SlackMethodSwitch";
 import { WebhookAuthenticationField } from "./WebhookAuthenticationField";
 import { WebhookHeadersField } from "./WebhookHeadersField";
 import { WebhookSigningSecretField } from "./WebhookSigningSecretField";
@@ -93,7 +97,13 @@ export const ChannelCard = ({
         recipients
       });
 
-      if (result.success) {
+      if (result.success && result.error) {
+        createNotification({
+          title: `Test ${channelLabel} alert only partly sent`,
+          text: result.error,
+          type: "warning"
+        });
+      } else if (result.success) {
         createNotification({
           text: `Test ${channelLabel} alert sent${
             result.deliveredTo && result.deliveredTo > 1
@@ -182,6 +192,9 @@ export const ChannelCard = ({
                     allowEmailAddresses={ALERT_RESOURCE_TYPES_WITH_EMAIL_ADDRESSES.includes(
                       resourceType
                     )}
+                    allowProjectRecipients={ALERT_RESOURCE_TYPES_WITH_PROJECT_RECIPIENTS.includes(
+                      resourceType
+                    )}
                     value={field.value ?? []}
                     onChange={field.onChange}
                     isError={Boolean(channelErrors?.recipients)}
@@ -193,6 +206,10 @@ export const ChannelCard = ({
           </FieldContent>
         </Field>
       )}
+
+      {SLACK_CHANNEL_TYPES.includes(channelType) && <SlackMethodSwitch index={index} />}
+
+      {channelType === AlertChannelType.SlackApp && <SlackAppChannelFields index={index} />}
 
       {channelType === AlertChannelType.Slack && (
         <Field>

@@ -21,6 +21,7 @@ import { useScopeVariant } from "@app/hooks";
 
 type Props = {
   isPlatformManagedCredentials: boolean;
+  supportsPlatformManagedCredentials?: boolean;
   selectedTabIndex: number;
   setSelectedTabIndex: Dispatch<SetStateAction<number>>;
 };
@@ -30,6 +31,7 @@ const SSL_TAB = "ssl";
 
 export const SqlConnectionFields = ({
   isPlatformManagedCredentials,
+  supportsPlatformManagedCredentials = true,
   setSelectedTabIndex,
   selectedTabIndex
 }: Props) => {
@@ -214,7 +216,7 @@ export const SqlConnectionFields = ({
           />
         </TabsContent>
       </Tabs>
-      {!isPlatformManagedCredentials && (
+      {supportsPlatformManagedCredentials && !isPlatformManagedCredentials && (
         <Controller
           name="isPlatformManagedCredentials"
           control={control}

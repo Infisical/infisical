@@ -49,7 +49,6 @@ export const EnrollmentTokenContent = ({
   useEffect(() => {
     setCommandRelay(relay);
     // A newly minted token commits the currently selected relay to the displayed command.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enrollmentToken]);
 
   const isCommandDirty = !isDirect && relay.id !== commandRelay.id;

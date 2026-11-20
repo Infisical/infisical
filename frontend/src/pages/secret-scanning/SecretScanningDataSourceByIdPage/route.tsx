@@ -6,7 +6,8 @@ import { DataSourceTab } from "./data-source-tabs";
 import { SecretScanningDataSourceByIdPage } from "./SecretScanningDataSourceByIdPage";
 
 const SearchSchema = z.object({
-  selectedTab: z.nativeEnum(DataSourceTab).catch(DataSourceTab.Findings).optional()
+  selectedTab: z.nativeEnum(DataSourceTab).catch(DataSourceTab.Findings).optional(),
+  resourceId: z.string().uuid().optional().catch(undefined)
 });
 
 export const Route = createFileRoute(
@@ -18,7 +19,9 @@ export const Route = createFileRoute(
   beforeLoad: ({ context, params }) => {
     return {
       breadcrumbs: [
-        ...context.breadcrumbs,
+        // When the first load rewrites the search (a malformed resourceId or selectedTab, or the
+        // stripped default tab), the router reruns this before the layout's context has arrived
+        ...(context.breadcrumbs ?? []),
         {
           label: "Data Sources",
           link: linkOptions({

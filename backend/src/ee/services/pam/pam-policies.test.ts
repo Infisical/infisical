@@ -1,12 +1,17 @@
+import RE2 from "re2";
 import { describe, expect, test } from "vitest";
 
 import { accountTypeSupportsSessionLogMasking, PamAccountType } from "./pam-enums";
 import {
   buildPamPolicyRules,
   getApplicablePolicies,
+  outputMaskingGatewayOptions,
+  PAM_OUTPUT_MASKING_PRESET_PATTERNS,
+  PamOutputMaskingPreset,
   PamPolicyType,
   PamSettingType,
   resolveAccessControls,
+  resolveOutputMasking,
   validatePolicyValues
 } from "./pam-policies";
 
@@ -96,6 +101,7 @@ describe("validatePolicyValues", () => {
 describe("resolveAccessControls", () => {
   const DEFAULTS = {
     requiresApproval: false,
+    allowAutoApproval: false,
     allowBreakGlass: false,
     requireReason: false,
     requireMfa: false,
@@ -148,6 +154,16 @@ describe("resolveAccessControls", () => {
         [PamPolicyType.AllowBreakGlass]: "true"
       }).allowBreakGlass
     ).toBe(false);
+  });
+
+  test("auto-approval only resolves alongside the approval it decides", () => {
+    expect(
+      resolveAccessControls({
+        [PamPolicyType.RequiresApproval]: true,
+        [PamPolicyType.AllowAutoApproval]: true
+      }).allowAutoApproval
+    ).toBe(true);
+    expect(resolveAccessControls({ [PamPolicyType.AllowAutoApproval]: true }).allowAutoApproval).toBe(false);
   });
 
   test("treats the boolean gates as strict: only literal true enables them", () => {
@@ -227,5 +243,85 @@ describe("accountTypeSupportsSessionLogMasking", () => {
   test("is true for everything else", () => {
     const rest = Object.values(PamAccountType).filter((type) => !unmaskable.includes(type));
     expect(rest.every(accountTypeSupportsSessionLogMasking)).toBe(true);
+  });
+});
+
+describe("output masking presets", () => {
+  const masks = (preset: keyof typeof PAM_OUTPUT_MASKING_PRESET_PATTERNS, value: string) =>
+    new RE2(PAM_OUTPUT_MASKING_PRESET_PATTERNS[preset]).test(value);
+
+  test.each<[keyof typeof PAM_OUTPUT_MASKING_PRESET_PATTERNS, string]>([
+    [PamOutputMaskingPreset.Email, "jane.doe+billing@corp.example.co.uk"],
+    [PamOutputMaskingPreset.PhoneNumber, "(555) 123-4567"],
+    [PamOutputMaskingPreset.PhoneNumber, "+44 20 7946 0958"],
+    [PamOutputMaskingPreset.PhoneNumber, "+14155552671"],
+    [PamOutputMaskingPreset.Ssn, "123-45-6789"],
+    [PamOutputMaskingPreset.IpAddress, "10.20.30.40"],
+    [PamOutputMaskingPreset.Jwt, "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2ln"],
+    [PamOutputMaskingPreset.ConnectionString, "postgres://app:hunter2@db:5432/app"],
+    [PamOutputMaskingPreset.ConnectionString, "redis://:hunter2@cache:6379"]
+  ])("%s masks %s", (preset, value) => {
+    expect(masks(preset, value)).toBe(true);
+  });
+
+  // A broader pattern would also hit these, blanking ordinary query output.
+  test.each(["2026-11-10", "1731300000000", "ORD-2026-000123", "10.0.1", "12:30:45", "https://example.com:8443/a"])(
+    "no preset masks %s",
+    (value) => {
+      expect(
+        (Object.keys(PAM_OUTPUT_MASKING_PRESET_PATTERNS) as (keyof typeof PAM_OUTPUT_MASKING_PRESET_PATTERNS)[]).some(
+          (preset) => masks(preset, value)
+        )
+      ).toBe(false);
+    }
+  );
+
+  test("connection string matches stay inside one URL's credentials", () => {
+    const matches = (value: string) =>
+      new RE2(PAM_OUTPUT_MASKING_PRESET_PATTERNS[PamOutputMaskingPreset.ConnectionString], "g").match(value);
+    expect(matches(`{"url":"https://example.com:8443/a","email":"jane@corp.com"}`)).toBeNull();
+    expect(matches(`{"a":"https://u:p1@h1/x","b":"https://u:p2@h2/y"}`)).toEqual(["https://u:p1@", "https://u:p2@"]);
+    expect(matches("postgres://app:p@ss@db:5432/app")).toEqual(["postgres://app:p@ss@"]);
+    expect(matches("postgres://app:it's-secret@db/app")).toEqual(["postgres://app:it's-secret@"]);
+  });
+
+  test("dedupes presets and caps the list at the number of presets", () => {
+    expect(
+      validatePolicyValues(PamAccountType.SSH, { [PamPolicyType.OutputMasking]: { presets: ["email", "email"] } })
+    ).toEqual({ ok: true, data: { [PamPolicyType.OutputMasking]: { presets: ["email"], patterns: "" } } });
+    expect(
+      validatePolicyValues(PamAccountType.SSH, { [PamPolicyType.OutputMasking]: { presets: Array(9).fill("email") } })
+        .ok
+    ).toBe(false);
+  });
+});
+
+describe("outputMaskingGatewayOptions", () => {
+  test("only lets a masked account's session use a gateway that enforces masking", () => {
+    const { filter } = outputMaskingGatewayOptions({
+      accountType: PamAccountType.Postgres,
+      templatePolicies: { [PamPolicyType.OutputMasking]: { presets: [PamOutputMaskingPreset.Email], patterns: "" } }
+    });
+    expect(filter?.({ capabilities: { outputMasking: true } })).toBe(true);
+    expect(filter?.({ capabilities: {} })).toBe(false);
+    expect(outputMaskingGatewayOptions({ accountType: PamAccountType.Postgres, templatePolicies: {} })).toEqual({});
+  });
+});
+
+describe("resolveOutputMasking", () => {
+  test("sends the card preset as a flag, since the gateway checks the Luhn checksum", () => {
+    expect(
+      resolveOutputMasking({
+        [PamPolicyType.OutputMasking]: { presets: [PamOutputMaskingPreset.CreditCard], patterns: "" }
+      })
+    ).toEqual({ patterns: [], accountCredentials: false, creditCards: true });
+  });
+
+  test("sends the account credentials preset as a flag for the gateway, not a pattern", () => {
+    expect(
+      resolveOutputMasking({
+        [PamPolicyType.OutputMasking]: { presets: [PamOutputMaskingPreset.AccountCredentials], patterns: "" }
+      })
+    ).toEqual({ patterns: [], accountCredentials: true, creditCards: false });
   });
 });

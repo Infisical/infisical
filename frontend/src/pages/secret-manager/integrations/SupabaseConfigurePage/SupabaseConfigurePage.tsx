@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -89,6 +90,7 @@ export const SupabaseConfigurePage = () => {
 
   return integrationAuth && selectedSourceEnvironment && integrationAuthApps && targetApp ? (
     <div className="flex h-full w-full items-center justify-center">
+      <PageTitle title="Set Up Supabase Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>Supabase Integration</CardTitle>
@@ -175,6 +177,9 @@ export const SupabaseConfigurePage = () => {
       </Card>
     </div>
   ) : (
-    <div />
+    <>
+      <PageTitle title="Set Up Supabase Integration" />
+      <div />
+    </>
   );
 };

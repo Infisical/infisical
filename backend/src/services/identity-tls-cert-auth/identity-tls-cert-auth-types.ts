@@ -13,6 +13,7 @@ export type TAttachTlsCertAuthDTO = {
   allowedCommonNames?: string | null;
   allowedSubjectAltNames?: string[] | null;
   verifyClientCertificateChain?: boolean;
+  bindAccessTokenToCertificate?: boolean;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
@@ -26,6 +27,7 @@ export type TUpdateTlsCertAuthDTO = {
   allowedCommonNames?: string | null;
   allowedSubjectAltNames?: string[] | null;
   verifyClientCertificateChain?: boolean;
+  bindAccessTokenToCertificate?: boolean;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;

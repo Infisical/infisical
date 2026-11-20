@@ -1,7 +1,8 @@
 export const BillingProduct = {
   SecretsManagement: "secrets_manager",
   CertificateManagement: "cert_management",
-  Pam: "pam"
+  Pam: "pam",
+  AgentVault: "agent_vault"
 } as const;
 
 export const BillingPlan = {
@@ -36,12 +37,14 @@ export const UpgradeFeature = {
   CertificateEnterpriseAlerting: "certificate-enterprise-alerting",
   CertificateAuthorities: "certificate-authorities",
   ExternalCertificateAuthorities: "external-certificate-authorities",
+  CrossSignedCertificates: "cross-signed-certificates",
   PostQuantumCertificates: "post-quantum-certificates",
   CertificateIssuanceLimits: "certificate-issuance-limits",
   Pam: "pam",
   PamAccountLimit: "pam-account-limit",
   PamEnterpriseAlerting: "pam-enterprise-alerting",
-  EnterprisePamAccounts: "enterprise-pam-accounts"
+  EnterprisePamAccounts: "enterprise-pam-accounts",
+  AgentVault: "agent-vault"
 } as const;
 
 export type UpgradeIntent = {
@@ -111,16 +114,6 @@ export const HoneyTokensUpgradeIntent = {
   title: "Add Honey Token",
   description:
     "Honey tokens are included with Secrets Management Pro. Review the plan or start a free trial to continue."
-} satisfies UpgradeIntent;
-
-export const SecretsBrokeringUpgradeIntent = {
-  featureKey: UpgradeFeature.SecretsBrokering,
-  productKey: BillingProduct.SecretsManagement,
-  planKey: BillingPlan.Enterprise,
-  upgradeLabel: "Unlock Secrets Brokering",
-  title: "Add Proxied Service",
-  description:
-    "Secrets brokering is included with Secrets Management Enterprise. Review the plan to continue."
 } satisfies UpgradeIntent;
 
 export const PointInTimeRecoveryUpgradeIntent = {
@@ -302,6 +295,16 @@ export const ExternalCertificateAuthoritiesUpgradeIntent = {
     "External certificate authority integrations are included with the Enterprise plan. Review the plan to continue."
 } satisfies UpgradeIntent;
 
+export const CrossSignedCertificatesUpgradeIntent = {
+  featureKey: UpgradeFeature.CrossSignedCertificates,
+  productKey: BillingProduct.CertificateManagement,
+  planKey: BillingPlan.Enterprise,
+  upgradeLabel: "Unlock Cross-Signed Certificates",
+  title: "Import Cross-Signed Certificate",
+  description:
+    "Cross-signed certificates are included with the Enterprise plan. Review the plan to continue."
+} satisfies UpgradeIntent;
+
 export const PostQuantumCertificatesUpgradeIntent = {
   featureKey: UpgradeFeature.PostQuantumCertificates,
   productKey: BillingProduct.CertificateManagement,
@@ -330,6 +333,16 @@ export const PamUpgradeIntent = {
   title: "Open Privileged Access Management",
   description:
     "Privileged Access Management is included with the Pro plan. Review the plans or start a free trial to continue."
+} satisfies UpgradeIntent;
+
+export const AgentVaultUpgradeIntent = {
+  featureKey: UpgradeFeature.AgentVault,
+  productKey: BillingProduct.AgentVault,
+  planKey: BillingPlan.Pro,
+  upgradeLabel: "Unlock Agent Vault",
+  title: "Add Agent Vault to Your Plan",
+  description:
+    "Agent Vault is on the Pro plan. Add a payment method to keep brokering past the free requests."
 } satisfies UpgradeIntent;
 
 export const PamAccountLimitUpgradeIntent = {

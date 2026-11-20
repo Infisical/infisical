@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { AlertDispatchOutcome } from "@app/lib/telemetry/metrics";
 
-import { TAlertPayload } from "./alert-channel-types";
+import { AlertChannelType, TAlertPayload } from "./alert-channel-types";
 import { alertEngineFactory, TAlertEngineDep } from "./alert-engine";
 import { alertProviderRegistryFactory } from "./alert-provider-registry";
 import {
@@ -12,6 +12,7 @@ import {
   IResourceAlertProvider,
   TAlertContext
 } from "./alert-types";
+import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
 
 // logger is `export let logger` assigned by initLogger(), which unit tests don't run, so any
 // channel-failure path (which logs) would otherwise dereference undefined. Mock it per-file.
@@ -194,7 +195,7 @@ const buildEngine = (opts: {
         return new Map([...rowsByChannel.keys()].map((channelId) => [channelId, resolved]));
       }
     },
-    kmsService: kmsServiceMock,
+    kmsDataKeyService: kmsServiceMock,
     smtpService: {
       sendMail: async (opt: { recipients: string[] }) => {
         inFlightSends += 1;
@@ -352,6 +353,22 @@ describe("alert engine", () => {
       { targetId: "t1", channelId: "c-email", channelType: "email", status: AlertRunStatus.FAILED },
       { targetId: "t1", channelId: "c-slack", channelType: "slack", status: AlertRunStatus.SUCCESS }
     ]);
+  });
+
+  test("shows a run as partial without retrying when a channel reached only some of its destinations", async () => {
+    const send = vi
+      .spyOn(ALERT_CHANNEL_REGISTRY[AlertChannelType.SLACK_APP], "send")
+      .mockResolvedValue({ success: true, error: "#security is archived." });
+    const { engine, historyWrites } = buildEngine({
+      targets: [{ id: "t1" }],
+      channels: [{ id: "c-slack-app", channelType: "slack-app", encryptedConfig: encConfig({}), enabled: true }]
+    });
+
+    const outcome = await engine.runAlert(makeAlert());
+    send.mockRestore();
+
+    expect(outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
+    expect(historyWrites[0].status).toBe(AlertRunStatus.PARTIAL);
   });
 
   test("marks a directed channel SUCCESS when at least one recipient delivers, so healthy recipients are not re-spammed", async () => {

@@ -22,7 +22,9 @@ export const SecretScanningFindingsSchema = z.object({
   confidence: z.string().nullable().optional(),
   triagedByUserId: z.string().uuid().nullable().optional(),
   triagedAt: z.date().nullable().optional(),
-  resolvedAt: z.date().nullable().optional()
+  resolvedAt: z.date().nullable().optional(),
+  secretFindingBlindIndex: z.string().nullable().optional(),
+  lastDetectedAt: z.date()
 });
 
 export type TSecretScanningFindings = z.infer<typeof SecretScanningFindingsSchema>;

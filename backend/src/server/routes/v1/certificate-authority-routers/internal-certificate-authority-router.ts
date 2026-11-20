@@ -19,6 +19,7 @@ import { validateCaDateField } from "@app/services/certificate-authority/certifi
 import {
   CreateInternalCertificateAuthoritySchema,
   InternalCertificateAuthoritySchema,
+  UpdateInternalCertificateAuthorityResponseSchema,
   UpdateInternalCertificateAuthoritySchema
 } from "@app/services/certificate-authority/internal/internal-certificate-authority-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -33,11 +34,25 @@ const CaAutoRenewalResponseSchema = z.object({
   lastRenewalAt: z.date().nullable()
 });
 
+const CROSS_SIGNED_CERT_PEM_MAX_LENGTH = 100_000;
+const CROSS_SIGNED_CERT_CHAIN_PEM_MAX_LENGTH = 500_000;
+
+const CaCrossSignedCertResponseSchema = z.object({
+  caId: z.string().uuid().describe(CERTIFICATE_AUTHORITIES.CROSS_SIGNED_CERT.caId),
+  certificate: z.string().describe(CERTIFICATE_AUTHORITIES.CROSS_SIGNED_CERT.certificate),
+  certificateChain: z.string().describe(CERTIFICATE_AUTHORITIES.CROSS_SIGNED_CERT.certificateChain),
+  issuer: z.string().describe(CERTIFICATE_AUTHORITIES.CROSS_SIGNED_CERT.issuer),
+  serialNumber: z.string().describe(CERTIFICATE_AUTHORITIES.CROSS_SIGNED_CERT.serialNumber),
+  notBefore: z.date().describe(CERTIFICATE_AUTHORITIES.CROSS_SIGNED_CERT.notBefore),
+  notAfter: z.date().describe(CERTIFICATE_AUTHORITIES.CROSS_SIGNED_CERT.notAfter)
+});
+
 export const registerInternalCertificateAuthorityRouter = async (server: FastifyZodProvider) => {
   registerCertificateAuthorityEndpoints({
     caType: CaType.INTERNAL,
     server,
     responseSchema: InternalCertificateAuthoritySchema,
+    updateResponseSchema: UpdateInternalCertificateAuthorityResponseSchema,
     createSchema: CreateInternalCertificateAuthoritySchema,
     updateSchema: UpdateInternalCertificateAuthoritySchema
   });
@@ -57,6 +72,15 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CSR.caId)
       }),
+      querystring: z.object({
+        maxPathLength: z.coerce
+          .number()
+          .int()
+          .min(-1)
+          .max(255)
+          .optional()
+          .describe(CERTIFICATE_AUTHORITIES.GET_CSR.maxPathLength)
+      }),
       response: {
         200: z.object({
           csr: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CSR.csr)
@@ -64,8 +88,9 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       }
     },
     handler: async (req) => {
-      const { ca, csr } = await server.services.internalCertificateAuthority.getCaCsr({
+      const { ca, csr, maxPathLength } = await server.services.internalCertificateAuthority.getCaCsr({
         caId: req.params.caId,
+        maxPathLength: req.query.maxPathLength,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -79,7 +104,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
           type: EventType.GET_CA_CSR,
           metadata: {
             caId: ca.id,
-            dn: ca.dn
+            dn: ca.dn,
+            maxPathLength
           }
         }
       });
@@ -517,6 +543,161 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
   });
 
   server.route({
+    method: "PUT",
+    url: "/:caId/cross-signed-certificate",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    schema: {
+      hide: false,
+      operationId: "importCaCrossSignedCertificate",
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description:
+        "Import or replace the cross-signed certificate of an internal CA. Certificates the CA and its internal sub-CAs issue afterwards carry it in their chain. An intermediate CA signed through sign-intermediate gets the CA's own chain without it. Certificates already issued keep their chain.",
+      params: z.object({
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.IMPORT_CROSS_SIGNED_CERT.caId)
+      }),
+      body: z.object({
+        certificate: z
+          .string()
+          .trim()
+          .min(1)
+          .max(CROSS_SIGNED_CERT_PEM_MAX_LENGTH)
+          .describe(CERTIFICATE_AUTHORITIES.IMPORT_CROSS_SIGNED_CERT.certificate),
+        certificateChain: z
+          .string()
+          .trim()
+          .max(CROSS_SIGNED_CERT_CHAIN_PEM_MAX_LENGTH)
+          .describe(CERTIFICATE_AUTHORITIES.IMPORT_CROSS_SIGNED_CERT.certificateChain)
+      }),
+      response: {
+        200: z.object({
+          crossSignedCertificate: CaCrossSignedCertResponseSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const { ca, crossSignedCertificate, replacedSerialNumber } =
+        await server.services.certificateAuthorityCrossSignedCert.importCaCrossSignedCert({
+          caId: req.params.caId,
+          certificate: req.body.certificate,
+          certificateChain: req.body.certificateChain,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.IMPORT_CA_CROSS_SIGNED_CERT,
+          metadata: {
+            caId: ca.id,
+            caName: ca.name,
+            issuer: crossSignedCertificate.issuer,
+            serialNumber: crossSignedCertificate.serialNumber,
+            notAfter: crossSignedCertificate.notAfter.toISOString(),
+            ...(replacedSerialNumber && { replacedSerialNumber })
+          }
+        }
+      });
+
+      return { crossSignedCertificate };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:caId/cross-signed-certificate",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    schema: {
+      hide: false,
+      operationId: "getCaCrossSignedCertificate",
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description:
+        "Get the cross-signed certificate of an internal CA. `crossSignedCertificate` is null when the CA has none.",
+      params: z.object({
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CROSS_SIGNED_CERT.caId)
+      }),
+      response: {
+        200: z.object({
+          crossSignedCertificate: CaCrossSignedCertResponseSchema.nullable()
+        })
+      }
+    },
+    handler: async (req) => {
+      const { crossSignedCertificate } = await server.services.certificateAuthorityCrossSignedCert.getCaCrossSignedCert(
+        {
+          caId: req.params.caId,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        }
+      );
+
+      return { crossSignedCertificate };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:caId/cross-signed-certificate",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    schema: {
+      hide: false,
+      operationId: "deleteCaCrossSignedCertificate",
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description:
+        "Remove the cross-signed certificate of an internal CA. Certificates issued afterwards no longer carry it. Certificates already issued keep their chain.",
+      params: z.object({
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.DELETE_CROSS_SIGNED_CERT.caId)
+      }),
+      response: {
+        200: z.object({
+          crossSignedCertificate: CaCrossSignedCertResponseSchema.omit({ certificate: true, certificateChain: true })
+        })
+      }
+    },
+    handler: async (req) => {
+      const { ca, crossSignedCertificate } =
+        await server.services.certificateAuthorityCrossSignedCert.deleteCaCrossSignedCert({
+          caId: req.params.caId,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.DELETE_CA_CROSS_SIGNED_CERT,
+          metadata: {
+            caId: ca.id,
+            caName: ca.name,
+            issuer: crossSignedCertificate.issuer,
+            serialNumber: crossSignedCertificate.serialNumber,
+            notAfter: crossSignedCertificate.notAfter.toISOString()
+          }
+        }
+      });
+
+      return { crossSignedCertificate };
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/:caId/crls",
     config: {
@@ -535,7 +716,10 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         200: z.array(
           z.object({
             id: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.id),
-            crl: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.crl)
+            crl: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.crl),
+            thisUpdate: z.date().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.thisUpdate),
+            nextUpdate: z.date().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.nextUpdate),
+            crlNumber: z.number().nullable().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.crlNumber)
           })
         )
       }
@@ -562,6 +746,45 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       });
 
       return crls;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:caId/crls/regenerate",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    schema: {
+      hide: false,
+      operationId: "regenerateCaCrl",
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: "Regenerate the CRL of an internal CA and return it",
+      params: z.object({
+        caId: z.string().uuid().describe(CERTIFICATE_AUTHORITIES.REGENERATE_CRL.caId)
+      }),
+      response: {
+        200: z.object({
+          crl: z.object({
+            id: z.string().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.id),
+            crl: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.crl),
+            thisUpdate: z.date().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.thisUpdate),
+            nextUpdate: z.date().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.nextUpdate),
+            crlNumber: z.number().describe(CERTIFICATE_AUTHORITIES.REGENERATE_CRL.crlNumber)
+          })
+        })
+      }
+    },
+    handler: async (req) => {
+      return server.services.certificateAuthorityCrl.regenerateCrl({
+        caId: req.params.caId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo
+      });
     }
   });
 

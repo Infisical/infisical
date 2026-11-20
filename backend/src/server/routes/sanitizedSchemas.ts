@@ -16,6 +16,7 @@ import {
   SecretTagsSchema,
   UsersSchema
 } from "@app/db/schemas";
+import { AwsHoneyTokenRowConfigSchema } from "@app/ee/services/honey-token/honey-token-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import {
   SanitizedProxiedServiceBaseSchema,
@@ -299,6 +300,8 @@ export const SanitizedHoneyTokenSchema = HoneyTokensSchema.pick({
   createdAt: true,
   updatedAt: true
 }).extend({
+  config: AwsHoneyTokenRowConfigSchema,
+  folderId: z.string().uuid(),
   environment: z.object({
     id: z.string(),
     name: z.string(),

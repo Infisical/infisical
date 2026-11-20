@@ -7,8 +7,6 @@ import { logger } from "@app/lib/logger";
 const REQUEST_TIMEOUT_MS = 30 * 60 * 1000;
 const CONNECT_TIMEOUT_MS = 30 * 1000;
 
-export const MAX_RESULT_BYTES = 16 * 1024 * 1024;
-
 const UNREACHABLE_MESSAGE =
   "Could not reach ClickHouse through the gateway. Check that the account's host and port are correct and that the gateway can reach them.";
 

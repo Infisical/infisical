@@ -20,7 +20,7 @@ import {
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { agentVaultKeys, useGetAgentVaultSessionLogCorsProbe } from "@app/hooks/api/agentVault";
 
 const iamPolicyFor = (bucket: string, keyPrefix: string) => {
@@ -98,9 +98,13 @@ export const AwsSetupDialog = ({
   keyPrefix,
   isUnsaved = false
 }: Props) => {
+  const { projectId } = useProject();
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
-  const { data: savedReadCheck } = useGetAgentVaultSessionLogCorsProbe(isOpen && !isUnsaved);
+  const { data: savedReadCheck } = useGetAgentVaultSessionLogCorsProbe(
+    projectId,
+    isOpen && !isUnsaved
+  );
   // The check reads the saved bucket, so it says nothing about a bucket that is only typed in.
   const readCheck = isUnsaved ? null : savedReadCheck;
   const readAccess = readCheck?.status;
@@ -119,7 +123,7 @@ export const AwsSetupDialog = ({
     // Re-checked on close, so the page's warning clears once the rule or policy is attached.
     if (!next) {
       queryClient.invalidateQueries({
-        queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id)
+        queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id, projectId)
       });
     }
     onOpenChange(next);

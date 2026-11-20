@@ -127,7 +127,6 @@ export const RdpReplayView = ({ events, isStreaming = false, totalDurationMs }: 
       }
       lastParsedIndexRef.current = 0;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -158,7 +157,6 @@ export const RdpReplayView = ({ events, isStreaming = false, totalDurationMs }: 
 
   useEffect(() => {
     writeProgress(currentMsRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [totalMs]);
 
   const onPlayPause = () => {

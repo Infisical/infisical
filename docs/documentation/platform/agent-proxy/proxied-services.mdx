@@ -3,11 +3,13 @@ title: "Proxied services"
 description: "Define how the agent proxy applies credentials to traffic bound for an external service."
 ---
 
+import AgentProxyMovedCallout from "/snippets/agent-proxy-moved-callout.mdx";
+
+<AgentProxyMovedCallout />
+
 A proxied service tells the agent proxy how to apply credentials to traffic bound for an external service. It lives in a folder alongside your secrets, defines which hosts it covers, and applies wherever your agent runs: on your own computer, or behind a proxy you deploy.
 
-To create one, open a folder in the secrets dashboard, select **Add New**, and select **Add Proxied Service**.
-
-![The Add New menu with Add Proxied Service](/images/platform/agent-proxy/add-proxied-service-menu.png)
+To edit or delete an existing proxied service, open its folder in the secrets dashboard and select **Edit** or **Delete** on the row for the service.
 
 A service applies each secret through a [header rewrite](#header-rewrites), a [secret substitution](#secret-substitution), or both; each is covered in its own section below.
 
@@ -133,18 +135,11 @@ How the agent proxy handles the lease:
 
 ## Example: API request
 
-Proxied services can also be managed via the [API](/api-reference/endpoints/proxied-services/create). For example, creating the Telegram service described above:
-
 ```bash
-curl -X POST https://app.infisical.com/api/v1/proxied-services \
+curl -X PATCH https://app.infisical.com/api/v1/proxied-services/<service-id> \
   -H "Authorization: Bearer $INFISICAL_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "projectId": "<project-id>",
-    "environment": "dev",
-    "secretPath": "/coding-agent",
-    "name": "telegram-bot-api",
-    "hostPattern": "api.telegram.org",
     "credentials": [
       {
         "secretKey": "TELEGRAM_BOT_TOKEN",

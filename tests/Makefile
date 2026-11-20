@@ -8,24 +8,30 @@ GOFMT := $(shell go env GOROOT)/bin/gofmt
 # are missing and no test can reach them.
 INFISICAL_OPENAPI_URL ?= http://localhost:8080
 
-.PHONY: fmt lint test test-unit test-docker test-suites test-harness test-all up down status generate-client
+.PHONY: fmt lint test test-unit test-docker test-suites test-isolated test-harness test-all up down status generate-client
+
+# The generated client (clients/api) is its own Go module, so ./... leaves it out of vet,
+# staticcheck and test: regenerating fixes it, nothing in it is for a person to correct, and
+# analysing its 400k lines was most of lint's run time. gofmt walks folders rather than
+# modules, so it is given this module's package folders.
+GO_DIRS = $$(go list -f '{{.Dir}}' ./...)
 
 fmt:
-	$(GOFMT) -w .
+	$(GOFMT) -w $(GO_DIRS)
 
 lint:
-	@out="$$($(GOFMT) -l .)"; \
+	@out="$$($(GOFMT) -l $(GO_DIRS))"; \
 	if [ -n "$$out" ]; then echo "gofmt needed:"; echo "$$out"; exit 1; fi
 	go vet ./...
 	go tool staticcheck ./...
 
 # Unit tests only: no Docker, no containers, runs in under a second.
 #
-# Everything except ./suites/..., which needs a stack. Derived rather than listed,
+# Everything except the suites and the harness tests, which need a stack. Derived rather than listed,
 # because a hand-written list silently stops covering a package the day someone adds
 # one -- which is exactly what happened when fixture/, provider/ and stub/ appeared.
 test-unit:
-	go test $$(go list ./... | grep -vE '/(suites|harnesstest)/') -count=1
+	go test $$(go list ./... | grep -vE '/(suites|suitesisolated|harnesstest)/') -count=1
 
 test: lint test-unit
 
@@ -50,12 +56,32 @@ test-docker:
 # Infisical is broken; `test-harness` failing means the harness is. One target running
 # both would report them the same way.
 test-suites:  PKGS = ./suites/...
-test-harness: PKGS = ./harnesstest/...
-test-all:     PKGS = ./suites/... ./harnesstest/...
+test-harness: PKGS = ./harnesstest/shared/...
 
-test-suites test-harness test-all:
+# Extra `go test` flags, such as `-run` or `-skip`.
+TEST_FLAGS ?=
+
+test-suites test-harness:
 	@trap '$(MAKE) --no-print-directory down' EXIT; \
-	go run ./cmd/inf up && go test $(PKGS) -count=1
+	go run ./cmd/inf up && go test $(PKGS) -count=1 $(TEST_FLAGS)
+
+# Packages on harness.Isolated, which each boot their own Postgres, Redis and Infisical.
+# `-p 1` runs one package at a time, and each removes its containers and volumes before
+# the next starts, so at most one isolated stack exists. No `inf up`: these packages do
+# not use the shared stack, and fakenet is started by the first package that needs it.
+# A layout test in ./harness keeps every isolated package under these two roots.
+test-isolated:
+	@trap '$(MAKE) --no-print-directory down' EXIT; \
+	go test -p 1 ./suitesisolated/... ./harnesstest/isolated/... -count=1 $(TEST_FLAGS)
+
+# The shared suites and harness tests, then the isolated ones. The isolated run goes
+# ahead when the shared one fails, so one red run does not hide the other.
+test-all:
+	@status=0; \
+	$(MAKE) --no-print-directory test-suites || status=$$?; \
+	$(MAKE) --no-print-directory test-harness || status=$$?; \
+	$(MAKE) --no-print-directory test-isolated || status=$$?; \
+	exit $$status
 
 up:
 	go run ./cmd/inf up

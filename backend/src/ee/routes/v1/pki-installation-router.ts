@@ -107,6 +107,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
                 notBefore: z.date().nullable().optional(),
                 notAfter: z.date().nullable().optional(),
                 status: z.string().nullable().optional(),
+                deletedAt: z.date().nullable().optional(),
                 friendlyName: z.string().nullable().optional(),
                 fingerprintSha256: z.string().nullable().optional(),
                 subjectOrganization: z.string().nullable().optional(),

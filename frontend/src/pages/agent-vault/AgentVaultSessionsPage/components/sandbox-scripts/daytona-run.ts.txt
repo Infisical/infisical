@@ -1,0 +1,110 @@
+// runAgent.ts
+import type { Daytona, Sandbox } from "@daytona/sdk";
+import { InfisicalSDK } from "@infisical/sdk";
+
+import { SNAPSHOT } from "./sandboxImage.js";
+
+const INFISICAL_URL = "https://app.infisical.com";
+const PROJECT_ID = "<project-id>";
+const ACCESS_BUNDLE = "<access-bundle-name>";
+
+// Prints the proxy's address on the network it shares with the agent's sandbox.
+// The address appears shortly after the agent's sandbox is linked.
+const GET_LINK_ADDRESS =
+  "for i in $(seq 60); do " +
+  "ip -4 -o addr show eth1 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | grep . && exit 0; " +
+  "sleep 0.5; done; exit 1";
+
+const STOP_PROXY =
+  "pid=$(cat /tmp/proxy.pid); kill -TERM $pid; " +
+  "for i in $(seq 30); do kill -0 $pid 2>/dev/null || exit 0; sleep 0.5; done; exit 1";
+
+const AGENT_ENV = {
+  // Claude Code won't start without a key; the proxy replaces this one.
+  ANTHROPIC_API_KEY: "agent-vault",
+  // Makes the fetch built into Node.js send requests through the proxy.
+  NODE_USE_ENV_PROXY: "1",
+  // Skips Claude Code's update checks and telemetry, which fail without internet access.
+  CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
+  DISABLE_AUTOUPDATER: "1",
+};
+
+export async function runAgent(daytona: Daytona, prompt: string): Promise<string> {
+  // The machine identity's credentials stay here and never enter a sandbox.
+  const infisical = new InfisicalSDK({ siteUrl: INFISICAL_URL });
+  await infisical.auth().universalAuth.login({
+    clientId: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID!,
+    clientSecret: process.env.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET!,
+  });
+
+  // One session per run. The ttl outlasts the sandboxes' 15-minute ttl, so the
+  // agent can't lose access mid-run.
+  const session = await infisical.agentVault().sessions.create({
+    projectId: PROJECT_ID,
+    accessBundle: ACCESS_BUNDLE,
+    ttl: "20m",
+  });
+
+  let proxySandbox: Sandbox | undefined;
+  try {
+    // Deleting this sandbox also deletes the agent's sandbox linked to it.
+    proxySandbox = await daytona.create({
+      snapshot: SNAPSHOT,
+      ephemeral: true,
+      ttlMinutes: 15,
+      envVars: {
+        INFISICAL_AGENT_VAULT_PROXY_TOKEN: process.env.INFISICAL_AGENT_VAULT_PROXY_TOKEN!,
+        INFISICAL_DOMAIN: INFISICAL_URL,
+      },
+    });
+    await proxySandbox.process.executeCommand(
+      "nohup infisical agent-vault proxy > /tmp/proxy.log 2>&1 & echo $! > /tmp/proxy.pid",
+    );
+
+    const agentSandbox = await daytona.create({
+      snapshot: SNAPSHOT,
+      linkedSandbox: proxySandbox.id,
+      ephemeral: true,
+      networkBlockAll: true,
+    });
+    const link = await proxySandbox.process.executeCommand(GET_LINK_ADDRESS);
+    if (link.exitCode !== 0) throw new Error("The proxy's sandbox didn't get an address on the linked network.");
+    const proxyIp = link.result.trim();
+    // Blocking all traffic also blocks the proxy, so allow only the proxy's address.
+    await agentSandbox.updateNetworkSettings({ networkAllowList: `${proxyIp}/32` });
+    const proxyAddress = `${proxyIp}:17323`;
+
+    // The proxy serves only after it has loaded its settings from Infisical.
+    const wait = await agentSandbox.process.executeCommand(
+      "for i in $(seq 60); do " +
+        `curl -fs http://${proxyAddress}/_agent-vault/ca > /dev/null && exit 0; ` +
+        "sleep 0.5; done; exit 1",
+    );
+    if (wait.exitCode !== 0) {
+      const log = await proxySandbox.process.executeCommand("cat /tmp/proxy.log");
+      throw new Error(`The Agent Vault proxy didn't start:\n${log.result}`);
+    }
+
+    await agentSandbox.fs.uploadFile(Buffer.from(prompt), "/tmp/prompt.txt");
+    // Claude Code won't skip its permission prompts as root, so the agent
+    // runs as the image's node user.
+    const agent = await agentSandbox.process.executeCommand(
+      "runuser -u node -- sh -c '" +
+        `infisical agent-vault run --telemetry=false --proxy ${proxyAddress} ` +
+        "-- claude -p --permission-mode bypassPermissions < /tmp/prompt.txt'",
+      "/home/node",
+      { ...AGENT_ENV, INFISICAL_AGENT_VAULT_SESSION_TOKEN: session.token },
+      14 * 60,
+    );
+    if (agent.exitCode !== 0) throw new Error(`The agent failed:\n${agent.result}`);
+    return agent.result;
+  } finally {
+    await proxySandbox?.process.executeCommand(STOP_PROXY).catch(() => {});
+    // Revoke first, so the session ends even if deleting fails.
+    try {
+      await infisical.agentVault().sessions.revoke(session.id);
+    } finally {
+      await proxySandbox?.delete();
+    }
+  }
+}

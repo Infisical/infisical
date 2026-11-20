@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 import { Job } from "bullmq";
 import { randomUUID } from "crypto";
 
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -12,8 +13,8 @@ import { logger } from "@app/lib/logger";
 import { highCardinalityMeter } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { hydratePkiSyncCredentials } from "@app/services/pki-sync/pki-sync-credentials-fns";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -25,13 +26,13 @@ import {
   tryAdmitAppConnectionConcurrency
 } from "../app-connection/app-connection-concurrency-fns";
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
-import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
-import { TCertificateDALFactory } from "../certificate/certificate-dal";
-import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enums";
+import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
+import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { buildCertificateMap } from "./pki-sync-certificate-map-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PKI_SYNC_CONNECTION_LOCK_RETRY, PkiSyncFailureKind, PkiSyncStatus } from "./pki-sync-enums";
@@ -75,10 +76,8 @@ export type TPkiSyncQueueFactory = ReturnType<typeof pkiSyncQueueFactory>;
 
 type TPkiSyncQueueFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "createCipherPairWithDataKey" | "decryptWithKmsKey" | "generateKmsKey" | "encryptWithKmsKey"
-  >;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   keyStore: Pick<
     TKeyStoreFactory,
@@ -101,6 +100,7 @@ type TPkiSyncQueueFactoryDep = {
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 type PkiSyncActionJob = Job<
@@ -122,7 +122,8 @@ const getRequeueDelay = (failureCount?: number) => {
 
 export const pkiSyncQueueFactory = ({
   queueService,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   appConnectionDAL,
   keyStore,
   pkiSyncDAL,
@@ -138,7 +139,8 @@ export const pkiSyncQueueFactory = ({
   certificateSyncDAL,
   gatewayV2Service,
   gatewayPoolService,
-  telemetryService
+  telemetryService,
+  oidcIssuerService
 }: TPkiSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -170,8 +172,8 @@ export const pkiSyncQueueFactory = ({
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       certificateSyncDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
   const queuePkiSyncSyncCertificatesById = async (payload: TQueuePkiSyncSyncCertificatesByIdDTO) =>
@@ -268,7 +270,7 @@ export const pkiSyncQueueFactory = ({
         pkiSync,
         appConnectionDAL,
         projectDAL,
-        kmsService
+        kmsDataKeyService
       });
 
       const { certificateMap, certificateMetadata } = await $certificatesForSync(pkiSync);
@@ -286,12 +288,13 @@ export const pkiSyncQueueFactory = ({
 
       const syncResult = await PkiSyncFns.syncCertificates(pkiSyncWithCredentials, certificateMap, {
         appConnectionDAL,
-        kmsService,
+        kmsDataKeyService,
         certificateDAL,
         certificateSyncDAL,
         gatewayV2Service,
         gatewayPoolService,
-        keyStore
+        keyStore,
+        oidcIssuerService
       });
 
       logger.info(
@@ -643,7 +646,7 @@ export const pkiSyncQueueFactory = ({
         pkiSync,
         appConnectionDAL,
         projectDAL,
-        kmsService
+        kmsDataKeyService
       });
 
       const certificateMap: TCertificateMap = certificateIdsToRemove?.length
@@ -657,14 +660,15 @@ export const pkiSyncQueueFactory = ({
 
       await PkiSyncFns.removeCertificates(pkiSyncWithCredentials, Object.keys(certificateMap), {
         appConnectionDAL,
-        kmsService,
+        kmsDataKeyService,
         certificateSyncDAL,
         certificateDAL,
         certificateMap,
         removalOptions,
         gatewayV2Service,
         gatewayPoolService,
-        keyStore
+        keyStore,
+        oidcIssuerService
       });
 
       isSuccess = true;

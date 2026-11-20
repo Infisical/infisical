@@ -420,17 +420,15 @@ export const toCertificateAlertForm = (
   sources: alert.condition?.sources,
   signerIds: alert.condition?.signerIds,
   conditionNames: toConditionNames(alert),
-  channels: alert.channels.map(
-    (channel): TChannelForm => ({
-      ...toChannelForm(channel),
-      recipients: channel.recipients.filter(
-        (recipient) =>
-          !isAvailable ||
-          recipient.principalType !== AlertPrincipalType.User ||
-          emailByUserId.has(recipient.principalId)
-      )
-    })
-  )
+  channels: alert.channels.map((channel): TChannelForm => ({
+    ...toChannelForm(channel),
+    recipients: channel.recipients.filter(
+      (recipient) =>
+        !isAvailable ||
+        recipient.principalType !== AlertPrincipalType.User ||
+        emailByUserId.has(recipient.principalId)
+    )
+  }))
 });
 
 export const toCondition = (scope: TCertificateAlertScope, form: TCertificateAlertForm) => {

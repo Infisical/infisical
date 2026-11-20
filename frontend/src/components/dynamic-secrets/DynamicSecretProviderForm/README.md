@@ -1,6 +1,6 @@
 # Dynamic-secret provider form contract
 
-The shared contract keeps one create/edit form shell while leaving provider validation, defaults, hydration, and request adapters with each provider definition. The foundation is intentionally provider-neutral: legacy providers keep their existing forms until a rollout ticket registers a replacement.
+The shared contract keeps one create/edit form shell while leaving provider validation, defaults, hydration, and request adapters with each provider definition. The foundation is intentionally provider-neutral; each provider registers its definition through a batch module.
 
 ## Ownership boundaries
 
@@ -16,7 +16,7 @@ Create and edit values are deliberately separate. That distinction preserves mas
 
 ## Registering a provider batch
 
-Each rollout ticket owns a batch-local module. It imports the concrete definitions it migrated and exports only the shared registration contract:
+Providers are grouped into batch modules under `providerDefinitions/`. A module imports its concrete definitions and exports only the shared registration contract:
 
 ```ts
 export const identityAccessDynamicSecretProviders = defineDynamicSecretProviderModule({
@@ -25,16 +25,18 @@ export const identityAccessDynamicSecretProviders = defineDynamicSecretProviderM
 });
 ```
 
-The production composition root combines completed batches:
+The production composition root, `productionRegistry.ts`, combines the batches:
 
 ```ts
 export const dynamicSecretProviderRegistry = createDynamicSecretProviderRegistry(
-  identityAccessDynamicSecretProviders,
-  managedStoresDynamicSecretProviders
+  relationalWarehouseDynamicSecretProviders,
+  dataProtocolDynamicSecretProviders,
+  managedStoresDynamicSecretProviders,
+  identityAccessDynamicSecretProviders
 );
 ```
 
-`getDefinition(provider)` returns `undefined` for an unmigrated provider so routers can retain the existing legacy path during incremental rollout. `requireDefinition(provider)` is for code paths that already proved registration. Duplicate module IDs and duplicate providers fail during composition instead of silently overriding a definition.
+`getDefinition(provider)` returns `undefined` for an unregistered provider; the edit form shows an error in place of the form. `requireDefinition(provider)` is for code paths that already proved registration. Duplicate module IDs and duplicate providers fail during composition instead of silently overriding a definition.
 
 ## Field and renderer contract
 
@@ -51,17 +53,3 @@ export const dynamicSecretProviderRegistry = createDynamicSecretProviderRegistry
 - A cleared gateway normalizes to `undefined` on create and `null` on edit.
 - Standard TTL validation retains the existing one-minute minimum, ten-year maximum, and user-facing messages.
 - Single-environment create defaults belong in the provider's `getDefaultValues`; multi-environment create keeps the environment field visible. Edit uses its route environment.
-
-## Checkpoint provenance and departures
-
-This foundation adapts the core contract from checkpoint commit `2eca032d7dc` without merging or cherry-picking the checkpoint.
-
-| Checkpoint area | Disposition |
-| --- | --- |
-| `types.ts`, `schemas.ts`, scalar fields, form items, and shared controls | Adapted to current main |
-| `DynamicSecretProviderForm.tsx` | Rewritten as a sheet-agnostic shell; dynamic-secret sheet, lease, renew, and post-create overlay work remain out of scope |
-| `DynamicSecretProviderGroup.tsx` | Rewritten to compose the existing V3 Accordion rather than the checkpoint-only sheet section |
-| `providerDefinitions/registry.ts` | Rewritten as immutable module composition so rollout batches do not edit core architecture |
-| Number input handling | Rewritten to emit numbers before validation, resolving the unresolved PR #7529 finding |
-| Production provider definitions and provider-family tests | Rejected from this foundation; owned by ENG-5513 through ENG-5516 |
-| Route removal, Overview redesign, sheet/lease work, and unrelated primitive changes | Rejected as outside ENG-5518 |

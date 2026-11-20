@@ -155,5 +155,6 @@ export interface TCertificateProfileCertificate {
   notBefore: Date;
   notAfter: Date;
   revokedAt: Date | null;
+  deletedAt: Date | null;
   createdAt: Date;
 }

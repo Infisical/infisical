@@ -1,0 +1,191 @@
+version: v0.167.5
+releasedAt: 2026-11-02T11:15:32-05:00
+sourceTag: v0.167.5
+previousTag: v0.167.4
+impactLevel: medium
+summary: Agent Vault session logs in default storage need a license, proxied
+  service creation and re-importing deleted certificates are blocked, and AWS
+  IRSA temporary credentials need KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN.
+  The certificates migration can fail on lock timeouts.
+requiresDbMigration: true
+breakingChanges:
+  - title: Agent Vault session logs license
+    description: Session logs in default storage (OBJECT_STORAGE_S3_*) now need a
+      license that includes them, and existing licenses may not. Without one,
+      instances stop recording them there and can't show existing ones, while
+      external storage is unaffected.
+    action: If you store session logs in default storage, confirm before upgrading
+      that your license includes them, and replace offline license keys that
+      don't.
+    confidence: high
+    evidence:
+      - type: pr
+        ref: "#8990"
+        url: https://github.com/Infisical/infisical/pull/8990
+        description: Self-hosted session logs now need a license
+      - type: file
+        ref: backend/src/ee/services/license/license-fns.ts
+        path: backend/src/ee/services/license/license-fns.ts
+        description: agentVaultManagedStorage now defaults to false
+      - type: file
+        ref: docs/self-hosting/guides/session-log-storage.mdx
+        path: docs/self-hosting/guides/session-log-storage.mdx
+        description: Self-hosting guide changed for session log storage
+  - title: Proxied service creation disabled
+    description: Creating a proxied service, including through POST
+      /api/v1/proxied-services, now returns a 400 error as Agent Proxy moves to
+      Agent Vault. Existing proxied services keep working and can still be edited
+      or deleted.
+    action: Move any automation that creates proxied services to Agent Vault before
+      upgrading.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/ee/services/proxied-service/proxied-service-service.ts
+        path: backend/src/ee/services/proxied-service/proxied-service-service.ts
+        description: create now always throws BadRequestError
+      - type: pr
+        ref: "#9070"
+        url: https://github.com/Infisical/infisical/pull/9070
+        description: Disable creation of proxied services
+  - title: AWS IAM dynamic secret IRSA setting
+    description: AWS IAM dynamic secrets that use IRSA with the temporary
+      credentials type now require KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN,
+      as the IAM user type already did. With the default of false, creating,
+      updating and leasing them fails.
+    action: If you use these dynamic secrets, set
+      KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN=true before upgrading, or move
+      them to another authentication method.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/ee/services/dynamic-secret/providers/aws-iam.ts
+        path: backend/src/ee/services/dynamic-secret/providers/aws-iam.ts
+        description: assertIrsaEnabled on every IRSA branch
+      - type: pr
+        ref: "#9056"
+        url: https://github.com/Infisical/infisical/pull/9056
+        description: Apply the IRSA setting to temporary credentials
+  - title: PKI certificate deletion keeps records
+    description: Deleting a certificate, including through Certificate Cleanup, now
+      keeps its record as Deleted, and the same certificate can't be imported
+      again.
+    action: Change automation that deletes and re-imports a certificate so it
+      issues a new one.
+    confidence: medium
+    evidence:
+      - type: file
+        ref: backend/src/services/certificate/certificate-service.ts
+        path: backend/src/services/certificate/certificate-service.ts
+        description: Import refuses deleted certificates
+      - type: file
+        ref: docs/documentation/platform/pki/concepts/certificate-lifecycle.mdx
+        path: docs/documentation/platform/pki/concepts/certificate-lifecycle.mdx
+        description: Retirement section describes deleted certificates
+      - type: pr
+        ref: "#8828"
+        url: https://github.com/Infisical/infisical/pull/8828
+        description: Soft delete certificates
+dbSchemaChanges:
+  - title: Platform startup migrations
+    description: New migrations add tables and columns for insights, Agent Vault,
+      event outbox, delegated approvals, secret scanning, dynamic secrets, and TLS
+      certificate auth, and backfill a result column on secret syncs.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261019120000_event-outbox-event-id.ts
+        path: backend/src/db/migrations/20261019120000_event-outbox-event-id.ts
+      - type: file
+        ref: backend/src/db/migrations/20261026172627_secrets-last-result-columns.ts
+        path: backend/src/db/migrations/20261026172627_secrets-last-result-columns.ts
+      - type: file
+        ref: backend/src/db/migrations/20261027143736_delegated-approvals.ts
+        path: backend/src/db/migrations/20261027143736_delegated-approvals.ts
+      - type: file
+        ref: backend/src/db/migrations/20261029005342_add-bind-access-token-to-certificate-to-identity-tls-cert-auth.ts
+        path: backend/src/db/migrations/20261029005342_add-bind-access-token-to-certificate-to-identity-tls-cert-auth.ts
+  - title: PKI certificate soft-delete migration
+    description: Adds soft-delete columns to certificates under a 10-second lock
+      timeout, then builds indexes concurrently with a 30-second lock timeout. A
+      pg_dump backup or any long-running transaction can make startup fail, and
+      the migration is safe to rerun.
+    action: If startup fails during migration, keep the previous version running
+      and inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261020143827_add-soft-delete-to-certificates.ts
+        path: backend/src/db/migrations/20261020143827_add-soft-delete-to-certificates.ts
+      - type: file
+        ref: backend/src/db/migrations/utils/concurrent-index.ts
+        path: backend/src/db/migrations/utils/concurrent-index.ts
+        description: 30-second lock and one-hour statement timeouts
+configChanges: []
+deploymentNotes:
+  - title: Agent Vault delegation rollout
+    description: During a rolling deploy, older pods ignore onBehalfOf on any
+      session they create or resolve, so it runs as the machine identity itself,
+      with its own access and personal values, and skips the user checks.
+    action: On multi-replica deployments, finish the rollout before setting up
+      Agent Vault delegations.
+    confidence: medium
+    evidence:
+      - type: pr
+        ref: "#8773"
+        url: https://github.com/Infisical/infisical/pull/8773
+        description: Agent Vault sessions on a user's behalf
+      - type: file
+        ref: backend/src/db/migrations/20261019120000_agent-vault-delegations.ts
+        path: backend/src/db/migrations/20261019120000_agent-vault-delegations.ts
+  - title: TLS cert auth token binding rollout
+    description: Older pods ignore token binding, so they accept bound tokens
+      without a certificate and issue unbound ones that every pod accepts.
+      Turning binding on revokes the identity's existing TLS cert auth tokens.
+    action: Before turning on Bind Access Tokens to Client Certificate, finish the
+      rollout and make the proxy set the client certificate header on every API
+      request.
+    confidence: medium
+    evidence:
+      - type: file
+        ref: backend/src/services/identity-access-token/identity-access-token-fns.ts
+        path: backend/src/services/identity-access-token/identity-access-token-fns.ts
+        description: Tokens without a certificate claim skip the binding check
+      - type: file
+        ref: docs/documentation/platform/identities/tls-cert-auth.mdx
+        path: docs/documentation/platform/identities/tls-cert-auth.mdx
+        description: Proxy header requirement and token revocation
+      - type: pr
+        ref: "#9041"
+        url: https://github.com/Infisical/infisical/pull/9041
+        description: Certificate-bound access tokens
+  - title: Platform rollback path
+    description: The previous image boots on the upgraded schema but runs delegated
+      Agent Vault sessions as the identity itself and ignores token binding.
+      Reversing the migrations deletes Agent Vault delegations and skills.
+    action: Take a database snapshot before upgrading. To roll back, restore it
+      and run the previous image, as the upgrade guide describes.
+    confidence: medium
+    evidence:
+      - type: url
+        ref: Upgrading Infisical
+        url: https://infisical.com/docs/self-hosting/guides/upgrading-infisical
+        description: Restore a pre-upgrade snapshot to downgrade
+      - type: file
+        ref: backend/src/db/migrations/20261019120000_agent-vault-delegations.ts
+        path: backend/src/db/migrations/20261019120000_agent-vault-delegations.ts
+        description: down() drops delegations
+      - type: file
+        ref: backend/src/db/migrations/20261028090000_agent-vault-skills.ts
+        path: backend/src/db/migrations/20261028090000_agent-vault-skills.ts
+        description: down() drops skill tables
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-11-02T17:06:10.929Z
+  sourceRange:
+    from: v0.167.4
+    to: v0.167.5

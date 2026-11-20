@@ -30,7 +30,6 @@ interface TeamInviteStepProps {
   projectIds?: string[];
   /** Also grant access to the org's PAM product (org-scoped, no project id). */
   grantPamAccess?: boolean;
-  grantAgentVaultAccess?: boolean;
   onComplete: () => void;
 }
 
@@ -41,7 +40,6 @@ export default function TeamInviteStep({
   productName,
   projectIds,
   grantPamAccess,
-  grantAgentVaultAccess,
   onComplete
 }: TeamInviteStepProps): JSX.Element {
   const { t } = useTranslation();
@@ -54,8 +52,7 @@ export default function TeamInviteStep({
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["setUpEmail"] as const);
 
   const orgId = String(localStorage.getItem("orgData.id"));
-  const grantCount =
-    (projectIds?.length ?? 0) + (grantPamAccess ? 1 : 0) + (grantAgentVaultAccess ? 1 : 0);
+  const grantCount = (projectIds?.length ?? 0) + (grantPamAccess ? 1 : 0);
 
   const inviteUsersAndContinue = async () => {
     if (isSending) return;
@@ -76,8 +73,7 @@ export default function TeamInviteStep({
         organizationId: orgId,
         organizationRoleSlug: "member",
         ...(projectIds?.length ? { projectIds } : {}),
-        ...(grantPamAccess ? { grantPamAccess } : {}),
-        ...(grantAgentVaultAccess ? { grantAgentVaultAccess } : {})
+        ...(grantPamAccess ? { grantPamAccess } : {})
       });
 
       await waitForMinimumDuration(startedAt, 500);

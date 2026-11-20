@@ -11,7 +11,8 @@ COPY package-lock.json package-lock.json
 COPY dev-entrypoint.sh dev-entrypoint.sh
 RUN chmod +x dev-entrypoint.sh
 
-RUN npm install
+# The cache mount keeps npm's download cache (about 400 MB) out of the image.
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 COPY . .
 

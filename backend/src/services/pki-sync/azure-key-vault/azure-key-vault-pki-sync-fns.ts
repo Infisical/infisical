@@ -3,16 +3,17 @@ import { AxiosError } from "axios";
 import * as crypto from "crypto";
 
 import { TCertificateSyncs } from "@app/db/schemas";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-key-vault/azure-key-vault-connection-fns";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { certificateNameSchemaHasFreeTextPlaceholder } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { matchesCertificateNameSchema } from "@app/services/pki-sync/pki-sync-fns";
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
@@ -52,7 +53,7 @@ const isInfisicalManagedCertificate = (certificateName: string, pkiSync: TPkiSyn
 
 type TAzureKeyVaultPkiSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
     | "removeCertificates"
@@ -65,6 +66,7 @@ type TAzureKeyVaultPkiSyncFactoryDeps = {
     | "claimExternalIdentifier"
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 const parseCertificateX509Props = (certPem: string) => {
@@ -208,10 +210,11 @@ const parseCertificateKeyProps = (certPem: string) => {
 };
 
 export const azureKeyVaultPkiSyncFactory = ({
-  kmsService,
+  kmsDataKeyService,
   appConnectionDAL,
   certificateSyncDAL,
-  certificateDAL
+  certificateDAL,
+  oidcIssuerService
 }: TAzureKeyVaultPkiSyncFactoryDeps) => {
   const $getAzureKeyVaultCertificates = async (accessToken: string, vaultBaseUrl: string, syncId = "unknown") => {
     await blockLocalAndPrivateIpAddresses(vaultBaseUrl);
@@ -340,7 +343,12 @@ export const azureKeyVaultPkiSyncFactory = ({
   };
 
   const syncCertificates = async (pkiSync: TPkiSyncWithCredentials, certificateMap: TCertificateMap) => {
-    const { accessToken } = await getAzureConnectionAccessToken(pkiSync.connection.id, appConnectionDAL, kmsService);
+    const { accessToken } = await getAzureConnectionAccessToken(
+      pkiSync.connection.id,
+      appConnectionDAL,
+      kmsDataKeyService,
+      oidcIssuerService
+    );
 
     // Cast destination config to Azure Key Vault config
     const destinationConfig = pkiSync.destinationConfig as TAzureKeyVaultPkiSyncConfig;
@@ -752,7 +760,12 @@ export const azureKeyVaultPkiSyncFactory = ({
     certificateNames: string[],
     deps?: { certificateSyncDAL?: TCertificateSyncDALFactory; certificateMap?: TCertificateMap }
   ) => {
-    const { accessToken } = await getAzureConnectionAccessToken(pkiSync.connection.id, appConnectionDAL, kmsService);
+    const { accessToken } = await getAzureConnectionAccessToken(
+      pkiSync.connection.id,
+      appConnectionDAL,
+      kmsDataKeyService,
+      oidcIssuerService
+    );
 
     // Cast destination config to Azure Key Vault config
     const destinationConfig = pkiSync.destinationConfig as TAzureKeyVaultPkiSyncConfig;

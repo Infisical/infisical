@@ -12,12 +12,16 @@ import {
   CardTitle,
   DocumentationLinkBadge
 } from "@app/components/v3";
-import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
+import {
+  OrgPermissionAuditLogsActions,
+  OrgPermissionSubjects,
+  useSubscription
+} from "@app/context";
 import { withPermission } from "@app/hoc";
 import { usePopUp, useScopeVariant } from "@app/hooks";
 
-import { AuditLogStreamTable } from "./components/AuditLogStreamTable";
 import { AddAuditLogStreamModal, AuditLogStreamAlertAction } from "./components";
+import { AuditLogStreamTable } from "./components/AuditLogStreamTable";
 
 export const AuditLogStreamsTab = withPermission(
   () => {
@@ -42,7 +46,10 @@ export const AuditLogStreamsTab = withPermission(
             </CardDescription>
             <CardAction className="flex items-center gap-2">
               <AuditLogStreamAlertAction />
-              <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Settings}>
+              <OrgPermissionCan
+                I={OrgPermissionAuditLogsActions.Edit}
+                a={OrgPermissionSubjects.AuditLogStreams}
+              >
                 {(isAllowed) => (
                   <Button
                     variant={scopeVariant}
@@ -85,8 +92,8 @@ export const AuditLogStreamsTab = withPermission(
     );
   },
   {
-    action: OrgPermissionActions.Read,
-    subject: OrgPermissionSubjects.Settings,
+    action: OrgPermissionAuditLogsActions.Read,
+    subject: OrgPermissionSubjects.AuditLogStreams,
     accessRestrictedMode: "dialog"
   }
 );

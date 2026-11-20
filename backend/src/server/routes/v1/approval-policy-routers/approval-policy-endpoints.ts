@@ -1,9 +1,11 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { APPROVAL_POLICY_AUTO_APPROVAL } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { auditSafeText } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -19,10 +21,20 @@ import {
   TUpdatePolicyDTO
 } from "@app/services/approval-policy/approval-policy-types";
 import { getApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-request-fns";
+import { getAutoApprovalSummary } from "@app/services/approval-policy/auto-approval/auto-approval-fns";
+import {
+  AutoApprovalCatalogSchema,
+  AutoApprovalSelectedSchema,
+  AutoApprovalSiblingsSchema
+} from "@app/services/approval-policy/auto-approval/auto-approval-schemas";
 import {
   CreateCertRequestPolicySchema,
   UpdateCertRequestPolicySchema
 } from "@app/services/approval-policy/cert-request/cert-request-policy-schemas";
+import {
+  CreateCertRevocationPolicySchema,
+  UpdateCertRevocationPolicySchema
+} from "@app/services/approval-policy/cert-revocation/cert-revocation-policy-schemas";
 import {
   CreateCodeSigningPolicySchema,
   UpdateCodeSigningPolicySchema
@@ -31,17 +43,25 @@ import {
   CreatePamAccessPolicySchema,
   UpdatePamAccessPolicySchema
 } from "@app/services/approval-policy/pam-access/pam-access-policy-schemas";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes, TPostHogEvent } from "@app/services/telemetry/telemetry-types";
 
 type TCreatePolicySchema =
   | typeof CreatePamAccessPolicySchema
   | typeof CreateCertRequestPolicySchema
+  | typeof CreateCertRevocationPolicySchema
   | typeof CreateCodeSigningPolicySchema;
 type TUpdatePolicySchema =
   | typeof UpdatePamAccessPolicySchema
   | typeof UpdateCertRequestPolicySchema
+  | typeof UpdateCertRevocationPolicySchema
   | typeof UpdateCodeSigningPolicySchema;
+
+const PKI_APPROVAL_POLICY_TYPES = new Set<ApprovalPolicyType>([
+  ApprovalPolicyType.CertRequest,
+  ApprovalPolicyType.CertRevocation,
+  ApprovalPolicyType.CertCodeSigning
+]);
 
 export const registerApprovalPolicyEndpoints = ({
   server,
@@ -120,7 +140,7 @@ export const registerApprovalPolicyEndpoints = ({
         }
       });
 
-      if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
+      if (PKI_APPROVAL_POLICY_TYPES.has(policyType)) {
         await sendTelemetry({
           event: PostHogEventTypes.PkiApprovalPolicyCreated,
           distinctId: getTelemetryDistinctId(req),
@@ -264,7 +284,7 @@ export const registerApprovalPolicyEndpoints = ({
         }
       });
 
-      if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
+      if (PKI_APPROVAL_POLICY_TYPES.has(policyType)) {
         await sendTelemetry({
           event: PostHogEventTypes.PkiApprovalPolicyUpdated,
           distinctId: getTelemetryDistinctId(req),
@@ -320,7 +340,7 @@ export const registerApprovalPolicyEndpoints = ({
         }
       });
 
-      if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
+      if (PKI_APPROVAL_POLICY_TYPES.has(policyType)) {
         await sendTelemetry({
           event: PostHogEventTypes.PkiApprovalPolicyDeleted,
           distinctId: getTelemetryDistinctId(req),
@@ -336,6 +356,76 @@ export const registerApprovalPolicyEndpoints = ({
       return { policyId };
     }
   });
+
+  if (allowRequestCreation) {
+    server.route({
+      method: "GET",
+      url: "/auto-approval/catalog",
+      config: {
+        rateLimit: readLimit
+      },
+      schema: {
+        operationId: "getApprovalPolicyAutoApprovalCatalog",
+        description:
+          "List the App Connections auto-approval rules can use for a policy's scope, with what each one can check",
+        querystring: z.object({
+          scope: z.nativeEnum(ApprovalPolicyScope).describe(APPROVAL_POLICY_AUTO_APPROVAL.catalogScope),
+          id: z.string().uuid().describe(APPROVAL_POLICY_AUTO_APPROVAL.catalogScopeId)
+        }),
+        response: {
+          200: AutoApprovalCatalogSchema
+        }
+      },
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+      handler: async (req) => {
+        const { apps, fieldApps, requesterApps, ai, connections } =
+          await server.services.approvalPolicy.getAutoApprovalCatalog(
+            policyType,
+            req.query.scope,
+            req.query.id,
+            req.permission
+          );
+
+        return { apps, fieldApps, requesterApps, ai, connections };
+      }
+    });
+
+    server.route({
+      method: "GET",
+      url: "/auto-approval/options",
+      config: {
+        rateLimit: readLimit
+      },
+      schema: {
+        operationId: "listApprovalPolicyAutoApprovalOptions",
+        description: "List the values a condition can check, read from the connected service",
+        querystring: z.object({
+          scope: z.nativeEnum(ApprovalPolicyScope).describe(APPROVAL_POLICY_AUTO_APPROVAL.catalogScope),
+          id: z.string().uuid().describe(APPROVAL_POLICY_AUTO_APPROVAL.catalogScopeId),
+          connectionId: z.string().uuid().describe(APPROVAL_POLICY_AUTO_APPROVAL.optionsConnectionId),
+          subject: z.string().trim().min(1).max(64).describe(APPROVAL_POLICY_AUTO_APPROVAL.optionsSubject),
+          constraint: z.string().trim().min(1).max(64).describe(APPROVAL_POLICY_AUTO_APPROVAL.optionsConstraint),
+          search: z.string().trim().max(255).optional().describe(APPROVAL_POLICY_AUTO_APPROVAL.optionsSearch),
+          siblings: AutoApprovalSiblingsSchema,
+          selected: AutoApprovalSelectedSchema
+        }),
+        response: {
+          200: z.object({
+            options: z.object({ value: z.string(), label: z.string() }).array()
+          })
+        }
+      },
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+      handler: async (req) => {
+        const { scope, id, ...rest } = req.query;
+        return server.services.approvalPolicy.listAutoApprovalOptions(
+          policyType,
+          { scope, scopeId: id, ...rest },
+          req.permission
+        );
+      }
+    });
+  }
 
   // Requests
   server.route({
@@ -454,7 +544,34 @@ export const registerApprovalPolicyEndpoints = ({
           }
         });
 
-        if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
+        const autoApprovalSummary = request.autoApprovedAt
+          ? getAutoApprovalSummary(request.autoApprovalEvidence)
+          : null;
+        if (autoApprovalSummary) {
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            actor: { type: ActorType.PLATFORM, metadata: {} },
+            orgId: req.permission.orgId,
+            projectId: request.projectId,
+            event: (await server.services.approvalPolicy.buildAuditEvent({
+              action: ApprovalAuditAction.RequestAutoApproved,
+              request,
+              actorId: req.permission.id
+            })) ?? {
+              type: EventType.APPROVAL_REQUEST_AUTO_APPROVE,
+              metadata: {
+                policyType: request.type,
+                approvalRequestId: request.id,
+                requesterName: request.requesterName,
+                requesterEmail: request.requesterEmail,
+                ...autoApprovalSummary,
+                ...getApprovalRequestSubjectMetadata(request)
+              }
+            }
+          });
+        }
+
+        if (PKI_APPROVAL_POLICY_TYPES.has(policyType)) {
           await sendTelemetry({
             event: PostHogEventTypes.PkiApprovalRequestCreated,
             distinctId: getTelemetryDistinctId(req),
@@ -528,7 +645,7 @@ export const registerApprovalPolicyEndpoints = ({
         requestId: z.string().uuid()
       }),
       body: z.object({
-        comment: z.string().optional()
+        comment: auditSafeText(z.string(), { allowMultiline: true }).optional()
       }),
       response: {
         200: z.object({
@@ -592,7 +709,7 @@ export const registerApprovalPolicyEndpoints = ({
         requestId: z.string().uuid()
       }),
       body: z.object({
-        bypassReason: z.string().min(10).max(500)
+        bypassReason: auditSafeText(z.string().min(10).max(500), { allowMultiline: true })
       }),
       response: {
         200: z.object({
@@ -657,7 +774,7 @@ export const registerApprovalPolicyEndpoints = ({
         requestId: z.string().uuid()
       }),
       body: z.object({
-        comment: z.string().optional()
+        comment: auditSafeText(z.string(), { allowMultiline: true }).optional()
       }),
       response: {
         200: z.object({

@@ -17,6 +17,8 @@ import { TCloud66Sync } from "./cloud-66-sync";
 import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
 import { TCloudflareSecretsStoreSync } from "./cloudflare-secrets-store-sync";
 import { TCloudflareWorkersSync } from "./cloudflare-workers-sync";
+import { TConvexSync } from "./convex-sync";
+import { TCoolifySync } from "./coolify-sync";
 import { TDatabricksSync } from "./databricks-sync";
 import { TDaytonaSync } from "./daytona-sync";
 import { TDevinSync } from "./devin-sync";
@@ -30,6 +32,7 @@ import { THasuraCloudSync } from "./hasura-cloud-sync";
 import { THCVaultSync } from "./hc-vault-sync";
 import { THerokuSync } from "./heroku-sync";
 import { THumanitecSync } from "./humanitec-sync";
+import { TJenkinsSync } from "./jenkins-sync";
 import { TKeeperSync } from "./keeper-sync";
 import { TLaravelForgeSync } from "./laravel-forge-sync";
 import { TNetlifySync } from "./netlify-sync";
@@ -89,6 +92,7 @@ export type TSecretSync =
   | TCloudflarePagesSync
   | TCloudflareWorkersSync
   | TCloudflareSecretsStoreSync
+  | TConvexSync
   | TZabbixSync
   | TRailwaySync
   | TChecklySync
@@ -116,7 +120,9 @@ export type TSecretSync =
   | TCloud66Sync
   | TSpaceliftSync
   | TDaytonaSync
-  | TKeeperSync;
+  | TKeeperSync
+  | TJenkinsSync
+  | TCoolifySync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 
@@ -132,7 +138,7 @@ export type TCreateSecretSyncDTO = DiscriminativePick<
   | "syncOptions"
   | "destination"
   | "isAutoSyncEnabled"
-> & { environment: string; secretPath: string; projectId: string };
+> & { environment: string; secretPath: string; includeAllSubFolders?: boolean; projectId: string };
 
 export type TUpdateSecretSyncDTO = Partial<
   Omit<TCreateSecretSyncDTO, "destination" | "projectId">

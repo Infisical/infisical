@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { PenTool } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { PageHeader } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -11,15 +10,12 @@ import { CreateSignerWizard } from "./components/CreateSignerWizard";
 import { SignersTable } from "./components/SignersTable";
 
 export const CodeSigningPage = () => {
-  const { t } = useTranslation();
   const { currentProject } = useProject();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   return (
     <div className="mx-auto flex h-full flex-col justify-between bg-page text-foreground-inverse">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Code Signing" })}</title>
-      </Helmet>
+      <PageTitle title="Code Signing" />
       <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={ProjectType.CertificateManager}

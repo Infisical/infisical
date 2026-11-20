@@ -18,19 +18,35 @@ type Account struct {
 	Login  string            `json:"login"`
 	Stores map[string]*Store `json:"stores"`
 
+	// The user's profile and emails, read by GitHub login.
+	ID     int64   `json:"id,omitempty"`
+	Name   string  `json:"name,omitempty"`
+	Emails []Email `json:"emails,omitempty"`
+
 	mu     sync.Mutex
 	mux    *http.ServeMux
 	events fakenet.Emitter
 }
 
-// Store is a bag of Actions secrets.
+// Dependabot and Codespaces name the secret types GitHub stores apart from Actions
+// secrets, at the same organizations and repositories.
+const (
+	Dependabot = "dependabot"
+	Codespaces = "codespaces"
+)
+
+var secretTypes = []string{Dependabot, Codespaces}
+
+// Store is a bag of secrets.
 //
-// GitHubSyncScope has three values and they differ only in the path they address, so
-// one type covers all of them:
+// GitHubSyncScope has three values and the secret types differ only in the path they
+// address, so one type covers all of them:
 //
-//	orgs/acme                  organization secrets
-//	repos/acme/app             repository secrets
-//	repos/acme/app/envs/prod   repository environment secrets
+//	orgs/acme                    organization Actions secrets
+//	repos/acme/app               repository Actions secrets
+//	repos/acme/app/envs/prod     repository environment Actions secrets
+//	orgs/acme/dependabot         organization Dependabot secrets
+//	repos/acme/app/codespaces    repository Codespaces secrets
 type Store struct {
 	KeyID   string            `json:"keyId"`
 	Secrets map[string]Secret `json:"secrets"`
@@ -43,6 +59,17 @@ type Store struct {
 }
 
 type Secret struct {
-	Value     string    `json:"value"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	Value string `json:"value"`
+	// Organization secrets only: which of the organization's repositories can read it.
+	Visibility            string    `json:"visibility,omitempty"`
+	SelectedRepositoryIDs []int     `json:"selectedRepositoryIds,omitempty"`
+	UpdatedAt             time.Time `json:"updatedAt"`
+}
+
+// Email is one address on the account, as GET /user/emails lists it.
+type Email struct {
+	Email      string  `json:"email"`
+	Primary    bool    `json:"primary"`
+	Verified   bool    `json:"verified"`
+	Visibility *string `json:"visibility"`
 }

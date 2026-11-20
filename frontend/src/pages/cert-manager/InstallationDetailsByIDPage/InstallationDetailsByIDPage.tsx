@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
   ChevronLeftIcon,
@@ -9,6 +8,7 @@ import {
   TriangleAlertIcon
 } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Alert,
@@ -244,10 +244,8 @@ const Page = () => {
 export const InstallationDetailsByIDPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Installation Details</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Installation Details" />
+      <link rel="icon" href="/infisical.ico" />
       <Page />
     </>
   );

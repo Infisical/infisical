@@ -55,6 +55,7 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
           <ShareSecretForm
             isPublic={false}
             value={(popUp.createSharedSecret.data as { value?: string })?.value}
+            secretKey={(popUp.createSharedSecret.data as { name?: string })?.name}
             allowSecretSharingOutsideOrganization={
               currentOrg?.allowSecretSharingOutsideOrganization ?? true
             }

@@ -27,6 +27,8 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 type Props = {
   onSelect: (app: AppConnection) => void;
   projectType?: ProjectType;
+  // Limits the choices, for flows that only work with some apps
+  apps?: AppConnection[];
 };
 
 const ProviderCard = ({ app, onClick }: { app: AppConnection; onClick: () => void }) => {
@@ -59,13 +61,16 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   <p className="mb-3 text-[11px] font-medium tracking-wider text-muted uppercase">{children}</p>
 );
 
-export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
+export const AppConnectionsSelect = ({ onSelect, projectType, apps }: Props) => {
   const { subscription } = useSubscription();
   const { isPending, data: appConnectionOptions } = useAppConnectionOptions(projectType);
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
   const [search, setSearch] = useState("");
 
-  const visibleOptions = useMemo(() => appConnectionOptions ?? [], [appConnectionOptions]);
+  const visibleOptions = useMemo(
+    () => (appConnectionOptions ?? []).filter((option) => !apps || apps.includes(option.app)),
+    [appConnectionOptions, apps]
+  );
 
   const handleSelect = (app: AppConnection) => {
     if (APP_CONNECTION_MAP[app].enterprise && !subscription.enterpriseAppConnections) {

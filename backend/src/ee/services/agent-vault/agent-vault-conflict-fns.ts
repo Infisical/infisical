@@ -3,7 +3,8 @@ import { intersectHostPatterns } from "./agent-vault-host-pattern-fns";
 export type TConflictCandidate = {
   id: string;
   name: string;
-  hostPattern: string;
+  // Null for a database or SSH service, which no HTTP request can match and so never overlaps another.
+  hostPattern?: string | null;
 };
 
 export type TAgentVaultConflict = {
@@ -13,15 +14,15 @@ export type TAgentVaultConflict = {
 
 // Containment is not a conflict: an exact host beats a wildcard deterministically, which is how an override is written.
 export const findHostPatternConflicts = (
-  hostPattern: string,
+  hostPattern: string | null | undefined,
   candidates: TConflictCandidate[]
 ): TAgentVaultConflict[] =>
   candidates
     .map((candidate) => ({
       serviceName: candidate.name,
-      patterns: intersectHostPatterns(hostPattern, candidate.hostPattern)
+      patterns: hostPattern && candidate.hostPattern ? intersectHostPatterns(hostPattern, candidate.hostPattern) : []
     }))
     .filter((conflict) => conflict.patterns.length > 0);
 
-export const describeConflict = (conflict: TAgentVaultConflict): string =>
-  `'${conflict.serviceName}' already covers ${conflict.patterns.join(", ")} in this access bundle.`;
+export const describeConflict = (conflict: TAgentVaultConflict, accessBundleName: string): string =>
+  `'${conflict.serviceName}' already covers ${conflict.patterns.join(", ")} in the access bundle '${accessBundleName}'. A bundle can't hold two services for the same host.`;

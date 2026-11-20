@@ -2,19 +2,23 @@ export enum ApprovalNotificationEvent {
   Requested = "requested",
   Approved = "approved",
   Rejected = "rejected",
-  Bypassed = "bypassed"
+  Bypassed = "bypassed",
+  AutoApproved = "auto-approved",
+  ApprovedActionFailed = "approved-action-failed"
 }
 
 export enum ApprovalAuditAction {
   RequestCreated = "request-created",
   RequestReviewed = "request-reviewed",
   RequestBypassed = "request-bypassed",
+  RequestAutoApproved = "request-auto-approved",
   GrantRevoked = "grant-revoked"
 }
 
 export enum ApprovalPolicyType {
   PamAccess = "pam-access",
   CertRequest = "cert-request",
+  CertRevocation = "cert-revocation",
   CertCodeSigning = "cert-code-signing",
   SecretChange = "secret-change",
   SecretAccess = "secret-access"

@@ -111,7 +111,7 @@ export const NativeIntegrationsTab = () => {
           }
 
           await handleIntegrationDelete(
-            (popUp?.deleteConfirmation.data as TIntegration).id,
+            (popUp.deleteConfirmation.data as TIntegration).id,
             false,
             () => handlePopUpClose("deleteConfirmation")
           );
@@ -141,7 +141,7 @@ export const NativeIntegrationsTab = () => {
         confirmKey="confirm"
         onConfirm={async () => {
           await handleIntegrationDelete(
-            (popUp?.deleteConfirmation.data as TIntegration).id,
+            (popUp.deleteConfirmation.data as TIntegration).id,
             true,
             () => {
               handlePopUpClose("deleteSecretsConfirmation");

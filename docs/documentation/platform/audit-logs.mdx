@@ -59,10 +59,10 @@ To view all events scoped to a single product:
         Open the product from the organization sidebar.
       </Step>
       <Step>
-        For **Secrets Management**, **Certificate Manager**, **KMS**, and **Secret Scanning**, select the project you want to audit.
+        For **Secrets Management**, **Certificate Manager**, **KMS**, **Agent Vault**, and **Secret Scanning**, select the project you want to audit.
         
         <Note>
-        For **Privileged Access Manager** and **Agent Vault**, skip this step.
+        For **Privileged Access Manager**, skip this step.
         </Note>
       </Step>
       <Step>
@@ -86,9 +86,9 @@ To view all events scoped to a single product:
     See the [audit log export API reference](/api-reference/endpoints/audit-logs/export-audit-log) for the full parameter list.
 
     <Note>
-      **Privileged Access Management (PAM)** and **Agent Vault** use a single project that Infisical manages internally. There's no public API for looking up that project's ID.
+      **Privileged Access Management (PAM)** uses a single project that Infisical manages internally. There's no public API for looking up that project's ID.
       
-      Instead, call the organization endpoint (see [For an organization](#for-an-organization)) and filter `eventType` to PAM and Agent Vault [event types](#event-types), (e.g., `eventType=pam-session-start,pam-session-end`).
+      Instead, call the organization endpoint (see [For an organization](#for-an-organization)) and filter `eventType` to PAM [event types](#event-types), (e.g., `eventType=pam-session-start,pam-session-end`).
     </Note>
   </Tab>
 </Tabs>
@@ -452,7 +452,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
     </Tabs>
   </Accordion>
   <Accordion title="Who opened a folder">
-    Find every time someone loaded the secrets in the `/db` folder — for example, by opening it in the web UI, running `infisical sm secrets`, or having an app fetch it at startup. Each event records the folder, the actor, and how many secrets came back.
+    Find every time someone loaded the secrets in the `/db` folder — for example, by opening it in the web UI, running `infisical secrets-manager secrets`, or having an app fetch it at startup. Each event records the folder, the actor, and how many secrets came back.
 
     <Tabs>
       <Tab title="Infisical UI">
@@ -640,8 +640,8 @@ Here are a few common patterns for filtering audit logs, grouped by product.
 
     Infisical counts identical failures the same way it counts [repeated denials](#permission-denials). In each minute, it records the first failure with a given actor, operation, certificate, and error, then writes one summary event when the minute ends.
   </Accordion>
-  <Accordion title="Who revoked a certificate">
-    Find every revocation in a project.
+  <Accordion title="Who revoked a certificate" id="certificate-revocations">
+    Find every revocation in a project, including revocations that needed [approval](/documentation/platform/pki/applications/approvals#revocation).
 
     <Tabs>
       <Tab title="Infisical UI">
@@ -651,21 +651,45 @@ Here are a few common patterns for filtering audit logs, grouped by product.
           </Step>
           <Step>
             Select **Search audit logs** and add:
-            - `event`: `revoke-cert`
+            - `event`: `revoke-cert`, `request-cert-revocation`, `cert-revocation-failed`
           </Step>
         </Steps>
 
-        Read the actor column on each result to see who ran the revocation.
+        Select a result to see its `event.metadata`.
       </Tab>
       <Tab title="API">
         ```bash
         curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
           -H "Authorization: Bearer <your-access-token>" \
           --data-urlencode "projectId=<project-id>" \
-          --data-urlencode "eventType=revoke-cert"
+          --data-urlencode "eventType=revoke-cert,request-cert-revocation,cert-revocation-failed"
         ```
       </Tab>
     </Tabs>
+
+    The actor of a `revoke-cert` event shows how the certificate was revoked:
+
+    - A user or machine identity: that actor revoked the certificate right away
+    - `platform`, with the approval request's ID in `event.metadata.approvalRequestId`: Infisical revoked the certificate once the request was approved
+    - `platform`, with `event.metadata.source` set to `microsoft-intune`: Microsoft Intune asked Infisical to revoke the certificate
+    - `platform`, with neither field: the certificate's DigiCert CA revoked it, and Infisical recorded the revocation
+
+    If an approved revocation fails, Infisical records a `cert-revocation-failed` event instead, with `platform` as the actor and the reason in `event.metadata.error`.
+
+    To find who requested and who reviewed an approved revocation, look for events with the same `approvalRequestId`:
+
+    - `request-cert-revocation`: the actor requested the revocation
+    - `approval-request-approve` and `approval-request-reject`: the actor approved or rejected the request
+
+    Through the API, add `eventMetadata` to return every event for one approval request:
+
+    ```bash
+    curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+      -H "Authorization: Bearer <your-access-token>" \
+      --data-urlencode "projectId=<project-id>" \
+      --data-urlencode "eventType=request-cert-revocation,approval-request-approve,approval-request-reject,revoke-cert,cert-revocation-failed" \
+      --data-urlencode "eventMetadata=approvalRequestId=<approval-request-id>"
+    ```
   </Accordion>
 </AccordionGroup>
 
@@ -860,13 +884,13 @@ Here are a few common patterns for filtering audit logs, grouped by product.
 
 <AccordionGroup>
   <Accordion title="Sessions issued this week">
-    Find every Agent Vault session minted or revoked over the last 7 days.
+    Find every session created or revoked in an Agent Vault project over the last 7 days.
 
     <Tabs>
       <Tab title="Infisical UI">
         <Steps>
           <Step>
-            Go to **Agent Vault > Audit Logs**.
+            In your Agent Vault project, go to **Audit Logs**.
           </Step>
           <Step>
             Set the date range to the last 7 days.
@@ -881,6 +905,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
         ```bash
         curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
           -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "projectId=<project-id>" \
           --data-urlencode "eventType=agent-vault-session-mint,agent-vault-session-revoke" \
           --data-urlencode "startDate=<start-date>"
         ```
@@ -888,13 +913,13 @@ Here are a few common patterns for filtering audit logs, grouped by product.
     </Tabs>
   </Accordion>
   <Accordion title="Proxy lifecycle events">
-    Find every proxy registration, token rotation, and revocation.
+    Find every proxy registration, token rotation, and revocation in an Agent Vault project.
 
     <Tabs>
       <Tab title="Infisical UI">
         <Steps>
           <Step>
-            Go to **Agent Vault > Audit Logs**.
+            In your Agent Vault project, go to **Audit Logs**.
           </Step>
           <Step>
             Select **Search audit logs** and add:
@@ -906,6 +931,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
         ```bash
         curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
           -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "projectId=<project-id>" \
           --data-urlencode "eventType=agent-vault-proxy-register,agent-vault-proxy-token-rotate,agent-vault-proxy-revoke,agent-vault-proxy-delete"
         ```
       </Tab>
@@ -997,6 +1023,7 @@ Infisical emits hundreds of event types. Here are some of the most common ones y
   <Accordion title="Identities and authentication">
     | Event                                                                                 | When it fires                                                        |
     | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+    | `user-login`                                                                          | A user signed in through SAML, OIDC, or LDAP. Infisical doesn't record this event for password, Google, GitHub, or GitLab sign-ins, for failed sign-ins, or for a sign-in where the user still has to finish creating their account or verify their email. For SAML and OIDC, `idpMfa` in the metadata shows whether the identity provider reported MFA, as described in [MFA for SSO logins](/documentation/platform/mfa#mfa-for-sso-logins). |
     | `create-identity`, `update-identity`, `delete-identity`                               | A machine identity was added, edited, or removed.                    |
     | `login-identity-*` (for example, `login-identity-universal-auth`, `login-identity-kubernetes-auth`, `login-identity-oidc-auth`, `login-identity-gcp-auth`, `login-identity-aws-auth`) | A machine identity authenticated. |
     | `login-identity-*-failed`                                                             | A machine identity's authentication attempt failed.                  |
@@ -1009,6 +1036,7 @@ Infisical emits hundreds of event types. Here are some of the most common ones y
     | `create-project`, `update-project`, `delete-project`                                              | A project was created, edited, or deleted.                           |
     | `create-identity-project-membership`, `update-identity-project-membership`, `delete-identity-project-membership` | A machine identity joined, changed role in, or left a project. |
     | `update-user-org-membership`, `delete-user-org-membership`                                        | A user's role or membership in the organization changed.             |
+    | `invite-org-members`                                                                              | Users were invited to the organization, optionally with access to projects. |
   </Accordion>
   <Accordion title="Integrations and secret sync">
     | Event                                                                                 | When it fires                                                              |
@@ -1022,6 +1050,9 @@ Infisical emits hundreds of event types. Here are some of the most common ones y
     | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
     | `approval-request-create`, `approval-request-approve`, `approval-request-reject`, `approval-request-cancel`                             | The lifecycle of an approval request.                     |
     | `access-approval-request-create`, `access-approval-request-review`, `access-approval-request-update`, `access-approval-request-revoke`   | The lifecycle of an access approval request.              |
+    | `access-approval-request-delegated-dispatch-retry`                                                                                       | A user retried an access approval request that never reached its external approval system, such as [ServiceNow](/documentation/platform/workflow-integrations/servicenow-integration). |
+    | `access-approval-request-delegated-decision`                                                                                             | Infisical applied, or failed to apply, a decision that an external approval system such as ServiceNow returned for an access approval request. The event's actor is `platform`. |
+    | `access-approval-request-cancel`                                                                                                         | A user cancelled a pending access approval request that its external approval system was reviewing. |
     | `secret-approval-request`, `secret-approval-request-review`, `secret-approval-merged`, `secret-approval-closed`, `secret-approval-reopened` | The lifecycle of a secret change request.               |
     | `approval-policy-create`, `approval-policy-update`, `approval-policy-delete`                                                             | An admin changed an approval policy.                      |
   </Accordion>

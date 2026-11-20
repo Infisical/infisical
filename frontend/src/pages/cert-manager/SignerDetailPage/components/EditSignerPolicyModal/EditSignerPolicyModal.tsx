@@ -362,8 +362,7 @@ export const EditSignerPolicyModal = ({
                   : // eslint-disable-next-line no-nested-ternary
                     hasOverCommittedStep
                     ? `Step ${firstOverCommittedStepIndex + 1}: required approvals can't exceed the number of approvers. Add a group to allow more.`
-                    : // eslint-disable-next-line no-nested-ternary
-                      steps.length === 0
+                    : steps.length === 0
                       ? "Approval is not configured"
                       : `${steps.length} step${steps.length === 1 ? "" : "s"} · ${totalApprovers} approver${
                           totalApprovers === 1 ? "" : "s"

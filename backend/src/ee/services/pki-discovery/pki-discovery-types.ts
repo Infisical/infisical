@@ -2,11 +2,20 @@ import { z } from "zod";
 
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 
-import type { LinuxServerTargetConfigSchema } from "./pki-discovery-schemas";
+import type { LinuxServerTargetConfigSchema, WindowsServerTargetConfigSchema } from "./pki-discovery-schemas";
 
 export enum PkiDiscoveryType {
   Network = "network",
-  LinuxServer = "linux-server"
+  LinuxServer = "linux-server",
+  WindowsServer = "windows-server"
+}
+
+export enum WindowsCertificateStore {
+  Personal = "My",
+  WebHosting = "WebHosting",
+  RemoteDesktop = "Remote Desktop",
+  IntermediateCertificationAuthorities = "CA",
+  TrustedRootCertificationAuthorities = "Root"
 }
 
 export enum PkiKeystoreStatus {
@@ -41,7 +50,8 @@ export enum HostScanTruncationReason {
   FileList = "fileList",
   MaxFiles = "maxFiles",
   ResponseSize = "responseSize",
-  TimeLimit = "timeLimit"
+  TimeLimit = "timeLimit",
+  Incomplete = "incomplete"
 }
 
 export enum PkiKeystorePasswordChange {
@@ -99,7 +109,9 @@ export type TNetworkTargetConfig = {
 
 export type TLinuxServerTargetConfig = z.infer<typeof LinuxServerTargetConfigSchema>;
 
-export type TPkiDiscoveryTargetConfig = TNetworkTargetConfig | TLinuxServerTargetConfig;
+export type TWindowsServerTargetConfig = z.infer<typeof WindowsServerTargetConfigSchema>;
+
+export type TPkiDiscoveryTargetConfig = TNetworkTargetConfig | TLinuxServerTargetConfig | TWindowsServerTargetConfig;
 
 export type TPkiInstallationLocationDetails = {
   ipAddress?: string;
@@ -112,6 +124,10 @@ export type TPkiInstallationLocationDetails = {
   hostname?: string;
   connectionId?: string;
   format?: PkiCertificateFileFormat;
+  storeLocation?: string;
+  storeName?: WindowsCertificateStore;
+  thumbprint?: string;
+  hasPrivateKey?: boolean;
 };
 
 export type TPkiInstallationMetadata = {

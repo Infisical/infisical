@@ -4,11 +4,44 @@ sidebarTitle: "GitHub"
 description: "Learn how to configure a GitHub Sync for Infisical."
 ---
 
+import GitHubPermissions from "/snippets/app-connections/github/permissions.mdx";
+
 **Prerequisites:**
 
         - Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
         - Create a [GitHub Connection](/integrations/app-connections/github)
         - Ensure your network security policies allow incoming requests from Infisical to this secret sync provider, if network restrictions apply.
+
+## Secret types
+
+A GitHub sync writes to one type of GitHub secret: Actions, Dependabot, or Codespaces. Each type needs its own permissions on the [GitHub Connection](/integrations/app-connections/github), and how you grant them depends on the connection's method:
+
+<Tabs>
+    <Tab title="GitHub App (Recommended)">
+        <GitHubPermissions method="github-app" />
+
+        <Note>
+            If you add a permission to an existing GitHub App, an owner of each installation has to approve the new permission on GitHub before Infisical can use it.
+        </Note>
+    </Tab>
+    <Tab title="OAuth">
+        When you create an OAuth connection, Infisical requests two scopes from GitHub. Together they cover every secret type, so you don't need to set any permissions yourself:
+
+        - `repo`: secrets in repositories and repository environments
+        - `admin:org`: secrets in organizations
+
+        GitHub Enterprise Server doesn't include Codespaces, so you can't sync Codespaces secrets through it.
+    </Tab>
+    <Tab title="Personal Access Token">
+        If you use a classic token, select the `repo` and `admin:org` scopes, which cover every secret type.
+
+        If you use a fine-grained token:
+
+        <GitHubPermissions method="personal-access-token" />
+    </Tab>
+</Tabs>
+
+## Create a GitHub sync
 
 <Tabs>
     <Tab title="Infisical UI">
@@ -28,14 +61,18 @@ description: "Learn how to configure a GitHub Sync for Infisical."
             If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
         </Tip>
 
-        4. Configure the **Destination** to where secrets should be deployed, then click **Next**.
+        4. Configure the **Destination** to where secrets should be deployed, then select **Next**.
         ![Configure Destination](/images/secret-syncs/github/github-destination.png)
 
-            - **GitHub Connection**: The GitHub Connection to authenticate with.
-            - **Scope**: The GitHub secret scope to sync secrets to.
-                - **Organization**: Sync secrets to a specific organization.
-                - **Repository**: Sync secrets to a specific repository.
-                - **Repository Environment**: Sync secrets to a specific repository's environment.
+            - **GitHub Connection**: The GitHub Connection to authenticate with
+            - **Secret Type**: The [type of GitHub secret](#secret-types) to sync to (defaults to **Actions**)
+                - **Actions**: Secrets for GitHub Actions workflows
+                - **Dependabot**: Secrets for Dependabot
+                - **Codespaces**: Secrets for GitHub Codespaces
+            - **Scope**: The GitHub secret scope to sync secrets to
+                - **Organization**: Sync secrets to a specific organization
+                - **Repository**: Sync secrets to a specific repository
+                - **Repository Environment**: Sync secrets to a specific repository's environment (only for the **Actions** secret type)
             <p class="height:1px"  />
             The remaining fields are determined by the selected **Scope**:
             <AccordionGroup>
@@ -87,6 +124,8 @@ description: "Learn how to configure a GitHub Sync for Infisical."
     <Tab title="API">
         To create an **GitHub Sync**, make an API request to the [Create GitHub Sync](/api-reference/endpoints/secret-syncs/github/create) API endpoint.
 
+        Set `secretType` in `destinationConfig` to `actions`, `dependabot`, or `codespaces`. If you leave `secretType` out, Infisical syncs to Actions secrets.
+
         ### Sample request
 
         ```bash Request
@@ -106,6 +145,7 @@ description: "Learn how to configure a GitHub Sync for Infisical."
             },
             "destinationConfig": {
                 "scope": "repository",
+                "secretType": "dependabot",
                 "owner": "my-github",
                 "repo": "my-repository"
             }
@@ -159,6 +199,7 @@ description: "Learn how to configure a GitHub Sync for Infisical."
                 "destination": "github",
                 "destinationConfig": {
                     "scope": "repository",
+                    "secretType": "dependabot",
                     "owner": "my-github",
                     "repo": "my-repository"
                 }

@@ -1,0 +1,38 @@
+services:
+  agent-vault-proxy:
+    image: infisical/cli:<cli-version>
+    command: ["agent-vault", "proxy"]
+    environment:
+      INFISICAL_AGENT_VAULT_PROXY_TOKEN:
+      INFISICAL_DOMAIN:
+    networks: [agent, internet]
+    healthcheck:
+      # The proxy serves its certificate only after it has loaded its settings from Infisical.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:17323/_agent-vault/ca"]
+      interval: 2s
+      timeout: 3s
+      retries: 3
+      start_period: 60s
+
+  agent:
+    image: agent-vault-agent
+    build: .
+    environment:
+      INFISICAL_AGENT_VAULT_PROXY_ADDRESS: agent-vault-proxy:17323
+      INFISICAL_AGENT_VAULT_SESSION_TOKEN:
+      # Claude Code won't start without a key; the proxy replaces this one.
+      ANTHROPIC_API_KEY: agent-vault
+      # Makes the fetch built into Node.js send requests through the proxy.
+      NODE_USE_ENV_PROXY: "1"
+      # Skips Claude Code's update checks and telemetry, which fail without internet access.
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
+      DISABLE_AUTOUPDATER: "1"
+    networks: [agent]
+    depends_on:
+      agent-vault-proxy:
+        condition: service_healthy
+
+networks:
+  agent:
+    internal: true
+  internet: {}

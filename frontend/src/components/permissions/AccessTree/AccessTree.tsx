@@ -37,12 +37,12 @@ import {
 } from "@app/components/v3";
 import { ProjectPermissionSet, ProjectPermissionSub } from "@app/context/ProjectPermissionContext";
 
-import { AccessTreeSecretPathInput } from "./nodes/FolderNode/components/AccessTreeSecretPathInput";
-import { ShowMoreButtonNode } from "./nodes/ShowMoreButtonNode";
 import { AccessTreeErrorBoundary, AccessTreeProvider } from "./components";
 import { BasePermissionEdge } from "./edges";
 import { useAccessTree } from "./hooks";
 import { FolderNode, RoleNode } from "./nodes";
+import { AccessTreeSecretPathInput } from "./nodes/FolderNode/components/AccessTreeSecretPathInput";
+import { ShowMoreButtonNode } from "./nodes/ShowMoreButtonNode";
 import { ViewMode } from "./types";
 
 export type AccessTreeProps = {

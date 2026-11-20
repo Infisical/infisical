@@ -1,5 +1,6 @@
 import RE2 from "re2";
 
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -7,16 +8,15 @@ import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-import { PamProductRole, PamSessionStatus } from "../pam/pam-enums";
-import { checkAccountAccess, TActorContext, verifyProductMembership } from "../pam/pam-permission";
-import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import {
   PamRecordingS3ConfigSchema,
   PamTemplateSettingsSchema
 } from "../pam-account-template/pam-account-template-schemas";
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
+import { PamProductRole, PamSessionStatus } from "../pam/pam-enums";
+import { checkAccountAccess, TActorContext, verifyProductMembership } from "../pam/pam-permission";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { resolveS3RecordingAccess } from "./aws-s3/aws-s3-provider-factory";
 import { TPamSessionEventChunkDALFactory } from "./pam-recording-chunk-dal";
@@ -31,7 +31,7 @@ type TPamSessionChunkServiceFactoryDep = {
   pamSessionEventChunkDAL: TPamSessionEventChunkDALFactory;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails">;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission" | "getProjectPermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
 
@@ -48,7 +48,7 @@ export const pamSessionChunkServiceFactory = ({
   pamSessionEventChunkDAL,
   pamAccountDAL,
   permissionService,
-  kmsService,
+  kmsDataKeyService,
   appConnectionDAL
 }: TPamSessionChunkServiceFactoryDep) => {
   const resolveRecordingConfig = async (accountId: string): Promise<TPamRecordingResolvedConfig | null> => {
@@ -77,7 +77,7 @@ export const pamSessionChunkServiceFactory = ({
         return null;
       }
 
-      const appConnection = await decryptAppConnection(raw, kmsService);
+      const appConnection = await decryptAppConnection(raw, kmsDataKeyService);
 
       return {
         backend: PamRecordingStorageBackend.AwsS3,
@@ -316,7 +316,7 @@ export const pamSessionChunkServiceFactory = ({
       projectId: session.projectId,
       sessionId,
       encryptedSessionKey: session.encryptedSessionKey,
-      kmsService
+      kmsDataKeyService
     });
 
     const chunks = await pamSessionEventChunkDAL.findAllBySessionId(sessionId);

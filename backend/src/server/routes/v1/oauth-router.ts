@@ -424,8 +424,10 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
         scope: req.body.scope,
         userId: req.auth.userId,
         authMethod: req.auth.authMethod,
+        issuingRootOrgId: req.auth.token.issuingRootOrgId,
         isMfaVerified: req.auth.isMfaVerified,
         mfaMethod: req.auth.mfaMethod,
+        idpMfaOrgId: req.auth.idpMfaOrgId,
         ip: req.realIp
       });
 

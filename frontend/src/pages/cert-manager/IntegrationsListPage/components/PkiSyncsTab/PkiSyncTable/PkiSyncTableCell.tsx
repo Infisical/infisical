@@ -25,7 +25,7 @@ export const PkiSyncTableCell = ({
     <TableCell className="max-w-0 min-w-32!">
       <Tooltip>
         <TooltipTrigger asChild>
-          <div>
+          <div className="w-fit max-w-full">
             <p className={twMerge("truncate text-sm", primaryClassName)}>
               {primaryText}
               {infoBadge === "primary" && (

@@ -404,7 +404,7 @@ const ViewMembersModal = ({
         onOpenAutoFocus={(event) => {
           event.preventDefault();
         }}
-        className="flex max-h-[calc(100vh-2rem)] flex-col overflow-hidden sm:max-w-4xl"
+        className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden sm:max-w-4xl"
       >
         <DialogHeader>
           <DialogTitle>Organization Members</DialogTitle>
@@ -669,7 +669,7 @@ export const OrganizationsTable = () => {
   const { mutateAsync: deleteUser } = useAdminDeleteUser();
 
   const handleDeleteOrganization = async () => {
-    const { orgId } = popUp?.deleteOrganization?.data as { orgId: string };
+    const { orgId } = popUp.deleteOrganization.data as { orgId: string };
 
     await deleteOrganization(orgId);
     createNotification({
@@ -681,7 +681,7 @@ export const OrganizationsTable = () => {
   };
 
   const handleDeleteOrganizationMembership = async () => {
-    const { orgId, membershipId } = popUp?.deleteOrganizationMembership?.data as {
+    const { orgId, membershipId } = popUp.deleteOrganizationMembership.data as {
       orgId: string;
       membershipId: string;
     };
@@ -701,7 +701,7 @@ export const OrganizationsTable = () => {
   };
 
   const handleDeleteUser = async () => {
-    const { userId } = popUp?.deleteUser?.data as { userId: string };
+    const { userId } = popUp.deleteUser.data as { userId: string };
 
     if (!userId) {
       return;

@@ -9,6 +9,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandItemLink,
   CommandList,
   ResourceIcon
 } from "@app/components/v3";
@@ -20,23 +21,6 @@ import {
   NavbarSwitcherContent,
   NavbarSwitcherTrigger
 } from "@app/layouts/NavbarSwitcher";
-
-// Modified and middle clicks belong to the browser: it opens the row's href in a new tab
-// or window, so we neither preventDefault nor navigate programmatically on those paths.
-const isBrowserHandledClick = (event: React.MouseEvent) =>
-  event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0;
-
-// The row's anchor exists for its href (new-tab, copy link, status bar preview) while cmdk
-// owns activation via onSelect. A plain primary click therefore suppresses the anchor's own
-// navigation and bubbles up to cmdk; a browser-handled click is kept away from cmdk instead,
-// so the current tab stays put while the new one opens.
-const handleRowAnchorClick = (event: React.MouseEvent) => {
-  if (isBrowserHandledClick(event)) {
-    event.stopPropagation();
-    return;
-  }
-  event.preventDefault();
-};
 
 const ApplicationSelectInner = ({
   applicationName,
@@ -114,16 +98,14 @@ const ApplicationSelectInner = ({
                           row it has marked aria-selected, never against the focused element, so
                           without this onFocus a tabbed-to row would activate whichever row the
                           arrow keys last selected and switch the user to the wrong application. */}
-                      <Link
+                      <CommandItemLink
                         to={
                           `/organizations/${orgId}/cert-manager/applications/${app.name}` as never
                         }
-                        className="truncate rounded-sm text-sm outline-0 after:absolute after:inset-0 after:rounded-sm after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
                         onFocus={() => setSelectedValue(app.name)}
-                        onClick={handleRowAnchorClick}
                       >
                         {app.name}
-                      </Link>
+                      </CommandItemLink>
                       <span className="truncate text-[11px] text-muted">
                         {app.description || "No description"}
                       </span>

@@ -1,4 +1,3 @@
-/* eslint-disable no-param-reassign */
 import { z } from "zod";
 
 import { OrgPermissionSubjects } from "@app/context";
@@ -256,6 +255,7 @@ export const formSchema = z.object({
     .object({
       project: projectPermissionSchema,
       "audit-logs": auditLogsPermissionSchema,
+      "audit-log-streams": auditLogsPermissionSchema,
       member: memberPermissionSchema,
       groups: groupPermissionSchema,
       role: generalPermissionSchema,
@@ -311,7 +311,6 @@ export type TFormSchema = z.infer<typeof formSchema>;
 export type TPermissionsKey = keyof NonNullable<TFormSchema["permissions"]>;
 
 export const rolePermission2Form = (permissions: TPermission[] = []) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const formVal: Record<string, any> = {};
   permissions.forEach((permission) => {
     const actions = Array.isArray(permission.action) ? permission.action : [permission.action];
@@ -634,6 +633,22 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         value: OrgPermissionAuditLogsActions.Edit,
         label: "Edit",
         description: "Choose which audit log event classes the organization records"
+      }
+    ]
+  },
+  [OrgPermissionSubjects.AuditLogStreams]: {
+    title: "Audit Log Streams",
+    description: "Manage external destinations that receive the organization's audit logs",
+    actions: [
+      {
+        value: OrgPermissionAuditLogsActions.Read,
+        label: "Read",
+        description: "Read audit log streams and their alerts"
+      },
+      {
+        value: OrgPermissionAuditLogsActions.Edit,
+        label: "Edit",
+        description: "Create, update and delete audit log streams, and manage their alerts"
       }
     ]
   },

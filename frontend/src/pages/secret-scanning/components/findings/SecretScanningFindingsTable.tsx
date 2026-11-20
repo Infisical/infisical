@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { formatDistanceToNowStrict } from "date-fns";
-import { ChevronDownIcon, FilterIcon, ShieldCheckIcon } from "lucide-react";
+import { ChevronDownIcon, FilterIcon, ShieldCheckIcon, XIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -72,7 +72,7 @@ export type FindingsStatusFilter = SecretScanningFindingStatus | "all";
 type TSort = { orderBy: SecretScanningFindingOrderBy; orderDirection: OrderByDirection };
 
 const DEFAULT_SORT: TSort = {
-  orderBy: SecretScanningFindingOrderBy.CreatedAt,
+  orderBy: SecretScanningFindingOrderBy.LastDetectedAt,
   orderDirection: OrderByDirection.DESC
 };
 
@@ -85,20 +85,26 @@ type ResourceFilterProps = {
 };
 
 const ResourceFilter = ({ dataSource, value, onChange }: ResourceFilterProps) => {
-  const { data: resources = [], refetch } = useListSecretScanningBasicResources({
+  const {
+    data: resources = [],
+    isFetching,
+    refetch
+  } = useListSecretScanningBasicResources({
     dataSourceId: dataSource.id,
     type: dataSource.type
   });
 
   const { singularTitle, pluralTitle } = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
   const selectedName = resources.find((r) => r.id === value)?.name;
+  // a link can name a resource that was removed or belongs to another data source
+  const unmatchedLabel = isFetching ? "…" : "Unknown";
 
   return (
     // scans add resources after the fact, so refresh the options whenever the menu opens
     <DropdownMenu onOpenChange={(open) => open && refetch()}>
       <DropdownMenuTrigger asChild>
         <Button variant="outline">
-          {singularTitle}: {selectedName ?? "All"}
+          {singularTitle}: {value ? (selectedName ?? unmatchedLabel) : "All"}
           <ChevronDownIcon />
         </Button>
       </DropdownMenuTrigger>
@@ -125,6 +131,9 @@ type Props = {
   initialStatus?: FindingsStatusFilter;
   initialDataSourceId?: string;
   initialResourceId?: string;
+  initialScanId?: string;
+  resourceId?: string | null;
+  onResourceIdChange?: (resourceId: string | null) => void;
   description: string;
 };
 
@@ -133,6 +142,9 @@ export const SecretScanningFindingsTable = ({
   initialStatus = SecretScanningFindingStatus.Unresolved,
   initialDataSourceId,
   initialResourceId,
+  initialScanId,
+  resourceId,
+  onResourceIdChange,
   description
 }: Props) => {
   const { currentProject } = useProject();
@@ -142,7 +154,13 @@ export const SecretScanningFindingsTable = ({
   const [dataSourceFilter, setDataSourceFilter] = useState<string | null>(
     dataSource?.id ?? initialDataSourceId ?? null
   );
-  const [resourceFilter, setResourceFilter] = useState<string | null>(initialResourceId ?? null);
+  const [localResourceFilter, setLocalResourceFilter] = useState<string | null>(
+    initialResourceId ?? null
+  );
+  const resourceFilter = onResourceIdChange ? (resourceId ?? null) : localResourceFilter;
+  const setResourceFilter = onResourceIdChange ?? setLocalResourceFilter;
+  // set from a scan's notification, so it has no control of its own besides clearing it
+  const [scanFilter, setScanFilter] = useState<string | null>(initialScanId ?? null);
   const [sort, setSort] = useState<TSort>(DEFAULT_SORT);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
@@ -160,6 +178,7 @@ export const SecretScanningFindingsTable = ({
       status: statusFilter === "all" ? undefined : statusFilter,
       dataSourceId: dataSourceFilter ?? undefined,
       resourceId: resourceFilter ?? undefined,
+      scanId: scanFilter ?? undefined,
       ...sort,
       offset: (page - 1) * perPage,
       limit: perPage
@@ -198,7 +217,10 @@ export const SecretScanningFindingsTable = ({
     ? RESOURCE_DESCRIPTION_HELPER[selectedDataSource.type].singularTitle
     : "Resource";
   const isFiltered =
-    statusFilter !== "all" || Boolean(resourceFilter) || (!isScoped && Boolean(dataSourceFilter));
+    statusFilter !== "all" ||
+    Boolean(resourceFilter) ||
+    Boolean(scanFilter) ||
+    (!isScoped && Boolean(dataSourceFilter));
 
   const resetSelection = () => setSelectedIds([]);
 
@@ -225,7 +247,7 @@ export const SecretScanningFindingsTable = ({
         return {
           orderBy,
           orderDirection:
-            orderBy === SecretScanningFindingOrderBy.CreatedAt
+            orderBy === SecretScanningFindingOrderBy.LastDetectedAt
               ? OrderByDirection.DESC
               : OrderByDirection.ASC
         };
@@ -358,6 +380,15 @@ export const SecretScanningFindingsTable = ({
           </CardTitle>
           <CardDescription>{description}</CardDescription>
           <CardAction className="flex flex-wrap items-center justify-end gap-2">
+            {scanFilter && (
+              <Button
+                variant="outline"
+                onClick={() => applyFilterChange(() => setScanFilter(null))}
+              >
+                From Scan {scanFilter.slice(0, 8)}
+                <XIcon />
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
@@ -452,8 +483,11 @@ export const SecretScanningFindingsTable = ({
                   </TableHead>
                   {renderSortableHead(SecretScanningFindingOrderBy.ResourceName, resourceLabel)}
                   {renderSortableHead(SecretScanningFindingOrderBy.Rule, "Rule")}
-                  {renderSortableHead(SecretScanningFindingOrderBy.Author, "Author")}
-                  {renderSortableHead(SecretScanningFindingOrderBy.CreatedAt, "Detected", "w-36")}
+                  {renderSortableHead(
+                    SecretScanningFindingOrderBy.LastDetectedAt,
+                    "Last Detected",
+                    "w-36"
+                  )}
                   {renderSortableHead(SecretScanningFindingOrderBy.Status, "Status", "w-36")}
                 </TableRow>
               </TableHeader>
@@ -464,7 +498,7 @@ export const SecretScanningFindingsTable = ({
                       <TableCell>
                         <Skeleton className="size-4" />
                       </TableCell>
-                      {Array.from({ length: 5 }).map((__, j) => (
+                      {Array.from({ length: 4 }).map((__, j) => (
                         <TableCell key={`finding-skeleton-cell-${j + 1}`}>
                           <Skeleton className="h-4 w-full" />
                         </TableCell>
@@ -509,13 +543,14 @@ export const SecretScanningFindingsTable = ({
                             {finding.resourceName}
                           </p>
                           <p className="truncate text-xs text-muted">
-                            {finding.details.file}:{finding.details.startLine}
+                            {finding.locationCount === 1
+                              ? "1 location"
+                              : `${finding.locationCount} locations`}
                           </p>
                         </TableCell>
                         <TableCell isTruncatable>{finding.rule}</TableCell>
-                        <TableCell isTruncatable>{finding.details.author}</TableCell>
                         <TableCell>
-                          {formatDistanceToNowStrict(new Date(finding.createdAt), {
+                          {formatDistanceToNowStrict(new Date(finding.lastDetectedAt), {
                             addSuffix: true
                           })}
                         </TableCell>

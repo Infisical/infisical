@@ -1,6 +1,6 @@
-import { Helmet } from "react-helmet";
 import { useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { PageHeader } from "@app/components/v3";
 import { useProject } from "@app/context";
 
@@ -17,9 +17,8 @@ export const ApprovalsPage = () => {
 
   return (
     <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
-      <Helmet>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Certificate Approvals" />
+      <link rel="icon" href="/infisical.ico" />
       <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={currentProject.type}

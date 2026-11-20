@@ -9,6 +9,7 @@ import { ms } from "@app/lib/ms";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 
+import { ActorType } from "../auth/auth-type";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -25,7 +26,6 @@ import {
 } from "./additional-privilege-types";
 import { newOrgAdditionalPrivilegesFactory } from "./org/org-additional-privilege-factory";
 import { newProjectAdditionalPrivilegesFactory } from "./project/project-additional-privilege-factory";
-import { ActorType } from "../auth/auth-type";
 
 type TAdditionalPrivilegeServiceFactoryDep = {
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;

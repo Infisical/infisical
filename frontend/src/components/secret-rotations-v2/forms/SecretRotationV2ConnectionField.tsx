@@ -87,7 +87,7 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
       localStorage.setItem(
         "secretRotationFormData",
         JSON.stringify(watch(), (key, serializedValue) =>
-          key === "temporaryParameters" ? undefined : serializedValue
+          key === "temporaryParameters" || key === "channels" ? undefined : serializedValue
         )
       ),
     onClose: () => localStorage.removeItem("secretRotationFormData")

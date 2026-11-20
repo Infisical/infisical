@@ -16,6 +16,8 @@ import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionAgentVaultSkillActions,
+  ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionCertificatePolicyActions,
@@ -146,7 +148,8 @@ const CmekPolicyActionSchema = z.object({
   [ProjectPermissionCmekActions.GenerateMac]: z.boolean().optional(),
   [ProjectPermissionCmekActions.VerifyMac]: z.boolean().optional(),
   [ProjectPermissionCmekActions.Rotate]: z.boolean().optional(),
-  [ProjectPermissionCmekActions.ExportPrivateKey]: z.boolean().optional()
+  [ProjectPermissionCmekActions.ExportPrivateKey]: z.boolean().optional(),
+  [ProjectPermissionCmekActions.PublishPublicKey]: z.boolean().optional()
 });
 
 const DynamicSecretPolicyActionSchema = z.object({
@@ -301,7 +304,13 @@ const AgentVaultAccessBundlePolicyActionSchema = z.object({
 const AgentVaultSessionPolicyActionSchema = z.object({
   [ProjectPermissionAgentVaultSessionActions.Read]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.Create]: z.boolean().optional(),
-  [ProjectPermissionAgentVaultSessionActions.Revoke]: z.boolean().optional()
+  [ProjectPermissionAgentVaultSessionActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSessionActions.Revoke]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSessionActions.ReadAny]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSessionActions.EditAny]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSessionActions.RevokeAny]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills]: z.boolean().optional()
 });
 
 const AgentVaultProxyPolicyActionSchema = z.object({
@@ -311,6 +320,21 @@ const AgentVaultProxyPolicyActionSchema = z.object({
   [ProjectPermissionAgentVaultProxyActions.Delete]: z.boolean().optional(),
   [ProjectPermissionAgentVaultProxyActions.IssueToken]: z.boolean().optional(),
   [ProjectPermissionAgentVaultProxyActions.Revoke]: z.boolean().optional()
+});
+
+const AgentVaultSkillPolicyActionSchema = z.object({
+  [ProjectPermissionAgentVaultSkillActions.Read]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSkillActions.Create]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSkillActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSkillActions.Delete]: z.boolean().optional()
+});
+
+const AgentVaultVariablePolicyActionSchema = z.object({
+  [ProjectPermissionAgentVaultVariableActions.Read]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultVariableActions.Create]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultVariableActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultVariableActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultVariableActions.ReadValue]: z.boolean().optional()
 });
 
 const ProjectFolderGrantPolicyActionSchema = z.object({
@@ -858,6 +882,11 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.AgentVaultProxies]: AgentVaultProxyPolicyActionSchema.array().default(
         []
       ),
+      [ProjectPermissionSub.AgentVaultSkills]: AgentVaultSkillPolicyActionSchema.array().default(
+        []
+      ),
+      [ProjectPermissionSub.AgentVaultVariables]:
+        AgentVaultVariablePolicyActionSchema.array().default([]),
       [ProjectPermissionSub.ProjectFolderGrant]: ProjectFolderGrantPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
@@ -1708,6 +1737,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canVerifyMac = action.includes(ProjectPermissionCmekActions.VerifyMac);
       const canRotate = action.includes(ProjectPermissionCmekActions.Rotate);
       const canExportPrivateKey = action.includes(ProjectPermissionCmekActions.ExportPrivateKey);
+      const canPublishPublicKey = action.includes(ProjectPermissionCmekActions.PublishPublicKey);
 
       if (!formVal[subject]) formVal[subject] = [{}];
 
@@ -1725,6 +1755,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canRotate) formVal[subject]![0][ProjectPermissionCmekActions.Rotate] = true;
       if (canExportPrivateKey)
         formVal[subject]![0][ProjectPermissionCmekActions.ExportPrivateKey] = true;
+      if (canPublishPublicKey)
+        formVal[subject]![0][ProjectPermissionCmekActions.PublishPublicKey] = true;
       return;
     }
 
@@ -2227,6 +2259,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Export Private Key",
         value: ProjectPermissionCmekActions.ExportPrivateKey,
         description: "Export the private key from KMS (sensitive operation)"
+      },
+      {
+        label: "Publish Public Key",
+        value: ProjectPermissionCmekActions.PublishPublicKey,
+        description: "Publish a sign-verify key's public key at an unauthenticated JWKS URL"
       }
     ]
   },
@@ -2538,7 +2575,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Read",
         value: ProjectPermissionAgentVaultSessionActions.Read,
-        description: "View sessions"
+        description: "View your own sessions"
       },
       {
         label: "Create",
@@ -2546,9 +2583,39 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         description: "Mint a session over access bundles you can reach"
       },
       {
+        label: "Edit",
+        value: ProjectPermissionAgentVaultSessionActions.Edit,
+        description: "Change the label of your own sessions"
+      },
+      {
         label: "Revoke",
         value: ProjectPermissionAgentVaultSessionActions.Revoke,
-        description: "Revoke a session"
+        description: "Revoke your own sessions"
+      },
+      {
+        label: "Read Any",
+        value: ProjectPermissionAgentVaultSessionActions.ReadAny,
+        description: "View everyone's sessions and their session logs"
+      },
+      {
+        label: "Edit Any",
+        value: ProjectPermissionAgentVaultSessionActions.EditAny,
+        description: "Change the label of anyone's session"
+      },
+      {
+        label: "Revoke Any",
+        value: ProjectPermissionAgentVaultSessionActions.RevokeAny,
+        description: "Revoke anyone's session"
+      },
+      {
+        label: "Create With Inline Services",
+        value: ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
+        description: "Send services that last only as long as the session"
+      },
+      {
+        label: "Create With Inline Skills",
+        value: ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills,
+        description: "Send skills that last only as long as the session"
       }
     ]
   },
@@ -2585,6 +2652,63 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Revoke",
         value: ProjectPermissionAgentVaultProxyActions.Revoke,
         description: "Revoke a proxy's access token"
+      }
+    ]
+  },
+  [ProjectPermissionSub.AgentVaultSkills]: {
+    title: "Skills",
+    description: "Manage the skills access bundles deliver to agents",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionAgentVaultSkillActions.Read,
+        description: "View skills, their versions and files"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionAgentVaultSkillActions.Create,
+        description: "Add skills"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionAgentVaultSkillActions.Edit,
+        description: "Publish and restore skill versions"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionAgentVaultSkillActions.Delete,
+        description: "Delete skills"
+      }
+    ]
+  },
+  [ProjectPermissionSub.AgentVaultVariables]: {
+    title: "Variables",
+    description: "Manage the global variables services can use",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionAgentVaultVariableActions.Read,
+        description: "View global variables and the services that use them"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionAgentVaultVariableActions.Create,
+        description: "Add global variables"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionAgentVaultVariableActions.Edit,
+        description: "Change a global variable's key or value"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionAgentVaultVariableActions.Delete,
+        description: "Delete global variables"
+      },
+      {
+        label: "Read Value",
+        value: ProjectPermissionAgentVaultVariableActions.ReadValue,
+        description: "Reveal a global variable's value"
       }
     ]
   },
@@ -3512,7 +3636,9 @@ const SecretScanningSubject = (enabled = false) => ({
 const AgentVaultPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.AgentVaultAccessBundles]: enabled,
   [ProjectPermissionSub.AgentVaultSessions]: enabled,
-  [ProjectPermissionSub.AgentVaultProxies]: enabled
+  [ProjectPermissionSub.AgentVaultProxies]: enabled,
+  [ProjectPermissionSub.AgentVaultSkills]: enabled,
+  [ProjectPermissionSub.AgentVaultVariables]: enabled
 });
 
 // scott: this structure ensures we don't forget to add project permissions to their relevant project type

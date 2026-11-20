@@ -24,11 +24,29 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode, MfaMethod, SsoMfaTrust } from "@app/services/auth/auth-type";
 import { OrgWithSubOrgsSchema, sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { integrationAuthPubSchema, SanitizedUserSchema } from "../sanitizedSchemas";
+
+const OrgMemberUserSchema = SanitizedUserSchema.pick({
+  username: true,
+  email: true,
+  firstName: true,
+  lastName: true,
+  id: true
+}).merge(z.object({ publicKey: z.string().nullable().optional(), superAdmin: z.boolean().nullish() }));
+
+const OrgUserAccessGroupSchema = GroupsSchema.pick({ id: true, name: true, slug: true }).extend({
+  roles: z
+    .object({
+      role: z.string().describe(ORGANIZATIONS.LIST_USER_ACCESS.groupRole),
+      roleId: z.string().uuid().nullable().describe(ORGANIZATIONS.LIST_USER_ACCESS.groupRoleId)
+    })
+    .array()
+    .describe(ORGANIZATIONS.LIST_USER_ACCESS.groupRoles)
+});
 
 const commaSeparatedEnumList = <T extends z.EnumLike>(enumObj: T) => {
   const values = Object.values(enumObj);
@@ -110,8 +128,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           organization: sanitizedOrganizationSchema.extend({
-            pamProjectId: z.string().nullable(),
-            agentVaultProjectId: z.string().nullable()
+            pamProjectId: z.string().nullable()
           })
         })
       }
@@ -425,13 +442,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           users: OrgMembershipsSchema.merge(
             z.object({
-              user: SanitizedUserSchema.pick({
-                username: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                id: true
-              }).merge(z.object({ publicKey: z.string().nullable().optional(), superAdmin: z.boolean().nullish() }))
+              user: OrgMemberUserSchema
             })
           )
             .omit({ createdAt: true, updatedAt: true })
@@ -453,6 +464,55 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/:organizationId/user-access",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listOrganizationUserAccess",
+      description:
+        "List every user with access to the organization, through a direct membership, through groups, or both",
+      params: z.object({
+        organizationId: z.string().trim().uuid().describe(ORGANIZATIONS.LIST_USER_ACCESS.organizationId)
+      }),
+      response: {
+        200: z.object({
+          users: z
+            .object({
+              user: OrgMemberUserSchema.describe(ORGANIZATIONS.LIST_USER_ACCESS.user),
+              membership: OrgMembershipsSchema.pick({
+                id: true,
+                role: true,
+                roleId: true,
+                status: true,
+                inviteEmail: true,
+                isActive: true,
+                lastLoginAuthMethod: true,
+                lastLoginTime: true
+              })
+                .nullable()
+                .describe(ORGANIZATIONS.LIST_USER_ACCESS.membership),
+              groups: OrgUserAccessGroupSchema.array().describe(ORGANIZATIONS.LIST_USER_ACCESS.groups)
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const users = await server.services.org.listOrgUserAccess({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.params.organizationId,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return { users };
+    }
+  });
+
+  server.route({
     method: "PATCH",
     url: "/:organizationId",
     config: {
@@ -469,7 +529,19 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         scimEnabled: z.boolean().optional(),
         defaultMembershipRoleSlug: slugSchema({ max: 64, field: "Default Membership Role" }).optional(),
         enforceMfa: z.boolean().optional(),
-        selectedMfaMethod: z.nativeEnum(MfaMethod).optional(),
+        allowedMfaMethods: z
+          .nativeEnum(MfaMethod)
+          .array()
+          .min(1, "Select at least one MFA method")
+          .max(3)
+          .refine((methods) => new Set(methods).size === methods.length, "MFA methods must not repeat")
+          .optional()
+          .describe("Methods members may use to satisfy MFA while it is enforced"),
+        selectedMfaMethod: z
+          .nativeEnum(MfaMethod)
+          .optional()
+          .describe("Deprecated: use allowedMfaMethods. Sets the allowed MFA methods to this one method."),
+        ssoMfaTrust: z.nativeEnum(SsoMfaTrust).optional(),
         allowSecretSharingOutsideOrganization: z.boolean().optional(),
         bypassOrgAuthEnabled: z.boolean().optional(),
         userTokenExpiration: z
@@ -799,9 +871,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
             foldersCount: z.number()
           }),
           agentVault: z.object({
-            accessBundlesCount: z.number(),
             servicesCount: z.number(),
-            proxiesCount: z.number()
+            skillsCount: z.number(),
+            projectsCount: z.number()
           })
         })
       }

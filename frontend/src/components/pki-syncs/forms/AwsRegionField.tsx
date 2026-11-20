@@ -18,8 +18,8 @@ import {
 import { AWS_REGIONS } from "@app/helpers/appConnections";
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
-import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { PkiSyncConnectionField } from "./PkiSyncConnectionField";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 type Props = {
   tooltip: ReactNode;

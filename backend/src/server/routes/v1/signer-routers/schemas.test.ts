@@ -1,8 +1,8 @@
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
 
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 import { assertExternalConfigurationMatchesCaType } from "@app/services/signer/signer-service";
 

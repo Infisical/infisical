@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import type { LinkOptions } from "@tanstack/react-router";
 import { InfoIcon, Search, Trash2 } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -10,6 +11,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -30,7 +32,7 @@ import { DeleteProjectTemplateModal } from "./DeleteProjectTemplateModal";
 
 type Props = {
   projectType: ProjectType;
-  onEdit: (projectTemplate: TProjectTemplate) => void;
+  getTemplateLink: (projectTemplate: TProjectTemplate) => LinkOptions;
 };
 
 const skeletonRowIds = [
@@ -43,7 +45,7 @@ const skeletonRowIds = [
 
 const tableColumnKeys = ["name", "roles", "users", "groups", "identities", "actions"];
 
-export const ProjectTemplatesTable = ({ projectType, onEdit }: Props) => {
+export const ProjectTemplatesTable = ({ projectType, getTemplateLink }: Props) => {
   const { subscription } = useSubscription();
 
   const { isPending, data: projectTemplates = [] } = useListProjectTemplates({
@@ -127,17 +129,19 @@ export const ProjectTemplatesTable = ({ projectType, onEdit }: Props) => {
                 (identities?.length || 0) + (projectManagedIdentities?.length || 0);
 
               return (
-                <TableRow onClick={() => onEdit(template)} key={id}>
+                <TableRow linked key={id}>
                   <TableCell>
-                    {name}
-                    {description && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <InfoIcon className="mb-0.5 ml-2 inline-block size-3.5! text-muted" />
-                        </TooltipTrigger>
-                        <TooltipContent>{description}</TooltipContent>
-                      </Tooltip>
-                    )}
+                    <div className="flex items-center">
+                      <RowLink {...getTemplateLink(template)}>{name}</RowLink>
+                      {description && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <InfoIcon className="mb-0.5 ml-2 inline-block size-3.5! shrink-0 text-muted" />
+                          </TooltipTrigger>
+                          <TooltipContent>{description}</TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {roles.length}

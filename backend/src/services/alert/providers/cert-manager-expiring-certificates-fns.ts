@@ -23,6 +23,7 @@ export const scanExpiringCertificates = async <T>(
   const selectDue = () =>
     selectCertificates()
       .whereNot(`${TableName.Certificate}.status`, CertStatus.REVOKED)
+      .whereNull(`${TableName.Certificate}.deletedAt`)
       .whereRaw(`"${TableName.Certificate}"."notAfter" > ?::timestamptz`, [asOf])
       .whereRaw(`"${TableName.Certificate}"."notAfter" <= ?::timestamptz + ?::interval + ?::interval`, [
         asOf,

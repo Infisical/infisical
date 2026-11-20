@@ -23,7 +23,6 @@ import {
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { ActorType } from "../../auth/auth-type";
 import { TMembershipIdentityDALFactory } from "../membership-identity-dal";
 import { TMembershipIdentityScopeFactory } from "../membership-identity-types";
 
@@ -31,8 +30,8 @@ type TProjectMembershipIdentityScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
 
   identityDAL: Pick<TIdentityDALFactory, "findById">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "getIdentityById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "getIdentityById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
@@ -59,25 +58,15 @@ export const newProjectMembershipIdentityFactory = ({
 
   const isCustomRole: TMembershipIdentityScopeFactory["isCustomRole"] = (role) => isCustomProjectRole(role);
 
-  const assertDirectOrgMembership = async (identityId: string, orgId: string) => {
-    const directOrgMembership = await membershipIdentityDAL.findOne({
-      scope: AccessScope.Organization,
-      scopeOrgId: orgId,
-      actorIdentityId: identityId
-    });
-    if (directOrgMembership) return;
-
-    const groupOrgMembership = await orgDAL.findEffectiveOrgMembership({
-      actorType: ActorType.IDENTITY,
-      actorId: identityId,
-      orgId
-    });
-    if (groupOrgMembership)
+  // Same add rule as everywhere else (findActorsWithActiveOrgAccess). Reconcile revokes the row if the group
+  // path goes.
+  const assertOrgAccess = async (identityId: string, orgId: string) => {
+    const withOrgAccess = await orgDAL.findActorsWithActiveOrgAccess({ orgId, userIds: [], identityIds: [identityId] });
+    if (!withOrgAccess.identityIds.has(identityId)) {
       throw new BadRequestError({
-        message: `Machine identity '${identityId}' belongs to this organization only through a group, so it can't be assigned to the project individually. Assign the group to the project instead.`
+        message: `Machine identity '${identityId}' is not an active member of this organization`
       });
-
-    throw new BadRequestError({ message: `Identity ${identityId} is missing organization membership` });
+    }
   };
 
   const onCreateMembershipIdentityGuard: TMembershipIdentityScopeFactory["onCreateMembershipIdentityGuard"] = async (
@@ -118,7 +107,7 @@ export const newProjectMembershipIdentityFactory = ({
       }
     }
 
-    await assertDirectOrgMembership(dto.data.identityId, dto.permission.orgId);
+    await assertOrgAccess(dto.data.identityId, dto.permission.orgId);
 
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.data.identityId), () =>
       identityDAL.findById(dto.data.identityId)
@@ -206,7 +195,7 @@ export const newProjectMembershipIdentityFactory = ({
       throw new BadRequestError({ message: "Failed to update project membership for a project scoped identity" });
     }
     if (!identityDetails.projectId) {
-      await assertDirectOrgMembership(dto.selector.identityId, dto.permission.orgId);
+      await assertOrgAccess(dto.selector.identityId, dto.permission.orgId);
     }
 
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(

@@ -17,6 +17,7 @@ function Select({
   open: controlledOpen,
   defaultOpen = false,
   onOpenChange,
+  onValueChange,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Root>) {
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen);
@@ -29,6 +30,13 @@ function Select({
     },
     [controlledOpen, onOpenChange]
   );
+  const handleValueChange = React.useCallback(
+    (nextValue: string) => {
+      if (nextValue === "") return;
+      onValueChange?.(nextValue);
+    },
+    [onValueChange]
+  );
   const contextValue = React.useMemo(
     () => ({ open, onOpenChange: handleOpenChange, escapeEvents: escapeEvents.current }),
     [open, handleOpenChange]
@@ -39,6 +47,7 @@ function Select({
       <SelectPrimitive.Root
         data-slot="select"
         {...props}
+        onValueChange={handleValueChange}
         open={open}
         onOpenChange={handleOpenChange}
       />

@@ -19,6 +19,8 @@ import { Cloud66SyncFields } from "./Cloud66SyncFields";
 import { CloudflarePagesSyncFields } from "./CloudflarePagesSyncFields";
 import { CloudflareSecretsStoreSyncFields } from "./CloudflareSecretsStoreSyncFields";
 import { CloudflareWorkersSyncFields } from "./CloudflareWorkersSyncFields";
+import { ConvexSyncFields } from "./ConvexSyncFields";
+import { CoolifySyncFields } from "./CoolifySyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { DaytonaSyncFields } from "./DaytonaSyncFields";
 import { DevinSyncFields } from "./DevinSyncFields";
@@ -32,6 +34,7 @@ import { HasuraCloudSyncFields } from "./HasuraCloudSyncFields";
 import { HCVaultSyncFields } from "./HCVaultSyncFields";
 import { HerokuSyncFields } from "./HerokuSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
+import { JenkinsSyncFields } from "./JenkinsSyncFields";
 import { KeeperSyncFields } from "./KeeperSyncFields";
 import { LaravelForgeSyncFields } from "./LaravelForgeSyncFields";
 import { NetlifySyncFields } from "./NetlifySyncFields";
@@ -110,6 +113,8 @@ export const SecretSyncDestinationFields = () => {
       return <CloudflareWorkersSyncFields />;
     case SecretSync.CloudflareSecretsStore:
       return <CloudflareSecretsStoreSyncFields />;
+    case SecretSync.Convex:
+      return <ConvexSyncFields />;
     case SecretSync.Zabbix:
       return <ZabbixSyncFields />;
     case SecretSync.Railway:
@@ -166,6 +171,10 @@ export const SecretSyncDestinationFields = () => {
       return <KeeperSyncFields />;
     case SecretSync.Spacelift:
       return <SpaceliftSyncFields />;
+    case SecretSync.Jenkins:
+      return <JenkinsSyncFields />;
+    case SecretSync.Coolify:
+      return <CoolifySyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

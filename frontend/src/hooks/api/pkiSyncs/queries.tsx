@@ -6,6 +6,7 @@ import { PkiSync, TPkiSyncOption } from "@app/hooks/api/pkiSyncs";
 import {
   TAwsListener,
   TAwsLoadBalancer,
+  TImpervaSite,
   TKempVirtualService,
   TListPkiSyncOptions,
   TListPkiSyncs,
@@ -25,8 +26,18 @@ export const pkiSyncKeys = {
     applicationId
       ? ([...pkiSyncKeys.all, "list", projectId, "application", applicationId] as const)
       : ([...pkiSyncKeys.all, "list", projectId] as const),
-  listWithCertificate: (projectId: string, certificateId: string) =>
-    [...pkiSyncKeys.all, "list", projectId, "with-certificate", certificateId] as const,
+  listWithCertificate: (projectId: string, certificateId: string, applicationId?: string) =>
+    applicationId
+      ? ([
+          ...pkiSyncKeys.all,
+          "list",
+          projectId,
+          "with-certificate",
+          certificateId,
+          "application",
+          applicationId
+        ] as const)
+      : ([...pkiSyncKeys.all, "list", projectId, "with-certificate", certificateId] as const),
   byId: (syncId: string, projectId: string) =>
     [...pkiSyncKeys.all, "by-id", syncId, projectId] as const,
   certificates: (syncId: string, pagination?: { offset: number; limit: number }) =>
@@ -39,6 +50,8 @@ export const pkiSyncKeys = {
     [...pkiSyncKeys.all, "aws-listeners", connectionId, region, loadBalancerArn] as const,
   kempVirtualServices: (connectionId: string) =>
     [...pkiSyncKeys.all, "kemp-virtual-services", connectionId] as const,
+  impervaSites: (connectionId: string) =>
+    [...pkiSyncKeys.all, "imperva-sites", connectionId] as const,
   certificateOrders: (scopeId: string, certificateOrderIds: string[]) =>
     [...pkiSyncKeys.all, "certificate-orders", scopeId, certificateOrderIds] as const,
   matchingCertificateIds: (
@@ -230,11 +243,12 @@ export const useListPkiSyncsWithCertificate = (
       ReturnType<typeof pkiSyncKeys.listWithCertificate>
     >,
     "queryKey" | "queryFn"
-  >
+  >,
+  applicationId?: string
 ) => {
   return useQuery({
-    queryKey: pkiSyncKeys.listWithCertificate(projectId, certificateId),
-    queryFn: () => fetchPkiSyncsByProjectId(projectId, certificateId),
+    queryKey: pkiSyncKeys.listWithCertificate(projectId, certificateId, applicationId),
+    queryFn: () => fetchPkiSyncsByProjectId(projectId, certificateId, applicationId),
     enabled: !!projectId && !!certificateId,
     ...options
   });
@@ -373,6 +387,34 @@ export const useListKempVirtualServices = (
         }
       );
       return data.virtualServices;
+    },
+    enabled: !!connectionId,
+    ...options
+  });
+};
+
+export const useListImpervaSites = (
+  { connectionId }: { connectionId: string },
+  options?: Omit<
+    UseQueryOptions<
+      TImpervaSite[],
+      unknown,
+      TImpervaSite[],
+      ReturnType<typeof pkiSyncKeys.impervaSites>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: pkiSyncKeys.impervaSites(connectionId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ sites: TImpervaSite[] }>(
+        "/api/v1/cert-manager/syncs/imperva/sites",
+        {
+          params: { connectionId }
+        }
+      );
+      return data.sites;
     },
     enabled: !!connectionId,
     ...options

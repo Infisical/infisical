@@ -4,10 +4,11 @@ import { Certificate, CertificateList } from "@peculiar/asn1-x509";
 import * as x509 from "@peculiar/x509";
 
 import { crypto } from "@app/lib/crypto/cryptography";
+import { getPqcCrypto } from "@app/lib/crypto/pqc";
 import { bufferToArrayBuffer, ecdsaRawRsToDer } from "@app/lib/csr/pkcs11-algorithm-map";
 import { BadRequestError } from "@app/lib/errors";
+import { asNonSharedBuffer } from "@app/lib/fn";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
-import { HsmKeyAlgorithm } from "@app/services/signer/signer-enums";
 
 // @peculiar/x509's generators require a local CryptoKey, so for CAs whose key lives outside
 // Infisical (HSM, AWS KMS) we build the structure with a throwaway key of the matching algorithm,
@@ -34,7 +35,6 @@ export type TCaSigner = {
 export type TCaExternalSignFn = (tbs: Buffer, mechanism: string, isDigest: boolean) => Promise<Buffer>;
 
 type TCaHsmShape = {
-  hsmKeyAlgorithm: HsmKeyAlgorithm;
   mechanism: string;
   isEcdsa: boolean;
   signingAlgorithm: Algorithm;
@@ -48,7 +48,6 @@ export const caKeyAlgorithmToHsmShape = (keyAlgorithm: CertKeyAlgorithm | string
   switch (keyAlgorithm) {
     case CertKeyAlgorithm.RSA_2048:
       return {
-        hsmKeyAlgorithm: HsmKeyAlgorithm.RSA_2048,
         mechanism: "CKM_SHA256_RSA_PKCS",
         isEcdsa: false,
         signingAlgorithm: { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" } as Algorithm,
@@ -63,7 +62,6 @@ export const caKeyAlgorithmToHsmShape = (keyAlgorithm: CertKeyAlgorithm | string
     case CertKeyAlgorithm.RSA_4096:
       // SHA-256 (not SHA-384) to match keyAlgorithmToAlgCfg, so RSA_4096 signs identically to local CAs.
       return {
-        hsmKeyAlgorithm: HsmKeyAlgorithm.RSA_4096,
         mechanism: "CKM_SHA256_RSA_PKCS",
         isEcdsa: false,
         signingAlgorithm: { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" } as Algorithm,
@@ -77,7 +75,6 @@ export const caKeyAlgorithmToHsmShape = (keyAlgorithm: CertKeyAlgorithm | string
       };
     case CertKeyAlgorithm.ECDSA_P256:
       return {
-        hsmKeyAlgorithm: HsmKeyAlgorithm.ECC_P256,
         mechanism: "CKM_ECDSA_SHA256",
         isEcdsa: true,
         signingAlgorithm: { name: "ECDSA", hash: "SHA-256" } as Algorithm,
@@ -86,7 +83,6 @@ export const caKeyAlgorithmToHsmShape = (keyAlgorithm: CertKeyAlgorithm | string
       };
     case CertKeyAlgorithm.ECDSA_P384:
       return {
-        hsmKeyAlgorithm: HsmKeyAlgorithm.ECC_P384,
         mechanism: "CKM_ECDSA_SHA384",
         isEcdsa: true,
         signingAlgorithm: { name: "ECDSA", hash: "SHA-384" } as Algorithm,
@@ -214,6 +210,32 @@ export const buildExternalCaSigner = ({
   },
   signTbs
 });
+
+export const buildPqcExternalCaSigner = async ({
+  keyAlgCfg,
+  publicKeySpki,
+  ephemeralKeys,
+  signTbs
+}: {
+  keyAlgCfg: Algorithm;
+  publicKeySpki: Buffer;
+  ephemeralKeys: TEphemeralKeyCache;
+  signTbs: (tbs: Buffer) => Promise<ArrayBuffer>;
+}): Promise<TCaSigner> => {
+  const pqcCrypto = getPqcCrypto();
+  const caPublicKey = await pqcCrypto.subtle.importKey("spki", asNonSharedBuffer(publicKeySpki), keyAlgCfg, true, [
+    "verify"
+  ]);
+  return buildExternalCaSigner({
+    caPublicKey,
+    signingAlgorithm: keyAlgCfg,
+    generateEphemeralKey: () =>
+      ephemeralKeys(keyAlgCfg, () =>
+        pqcCrypto.subtle.generateKey(keyAlgCfg as RsaHashedKeyGenParams, true, ["sign", "verify"])
+      ),
+    signTbs
+  });
+};
 
 export const buildHsmCaSigner = ({
   caPublicKey,

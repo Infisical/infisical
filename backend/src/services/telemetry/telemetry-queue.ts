@@ -1,11 +1,11 @@
 import { PostHog } from "posthog-node";
 
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 
-import { TUsageCounterDALFactory } from "../license-client/usage";
 import { getServerCfg } from "../super-admin/super-admin-service";
 import { TTelemetryDALFactory } from "./telemetry-dal";
 import {
@@ -22,7 +22,7 @@ type TTelemetryQueueServiceFactoryDep = {
   cronJob: TCronJobFactory;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "deleteItem">;
   telemetryDAL: TTelemetryDALFactory;
-  usageCounterDAL: Pick<TUsageCounterDALFactory, "getPkiUsageByRootOrg">;
+  certManagerService: TCertManagerService;
   telemetryService: Pick<TTelemetryServiceFactory, "processAggregatedEvents" | "setOrgGroupProperties">;
 };
 
@@ -32,7 +32,7 @@ export const telemetryQueueServiceFactory = ({
   cronJob,
   keyStore,
   telemetryDAL,
-  usageCounterDAL,
+  certManagerService,
   telemetryService
 }: TTelemetryQueueServiceFactoryDep) => {
   const appCfg = getConfig();
@@ -101,7 +101,7 @@ export const telemetryQueueServiceFactory = ({
       handlerTimeoutMs: PKI_ORG_USAGE_HANDLER_TIMEOUT_MS,
       leaseDurationMs: PKI_ORG_USAGE_HANDLER_TIMEOUT_MS,
       handler: async () => {
-        const usage = await usageCounterDAL.getPkiUsageByRootOrg();
+        const usage = await certManagerService.getPkiUsageByRootOrg();
         const countedAt = new Date().toISOString();
 
         await telemetryService.setOrgGroupProperties(

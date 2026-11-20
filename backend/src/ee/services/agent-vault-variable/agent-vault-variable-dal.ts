@@ -6,6 +6,12 @@ import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
 
+import {
+  addOauthRequiredScopes,
+  compareAndSwapOauthTokens,
+  TOauthTokenColumns
+} from "../agent-vault-oauth/agent-vault-oauth-token-dal-fns";
+import { AgentVaultServiceType, AgentVaultVariableType } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultOwner, whereOwner } from "../agent-vault/agent-vault-owner-fns";
 
 export type TAgentVaultVariableDALFactory = ReturnType<typeof agentVaultVariableDALFactory>;
@@ -24,6 +30,7 @@ export type TAgentVaultVariableOwnerScope = { projectId: string; owner: TAgentVa
 export type TFindAgentVaultVariablesDTO = { projectId: string; owners: (TAgentVaultOwner | null)[] } & {
   search?: string;
   keys?: string[];
+  type?: AgentVaultVariableType;
   // Counts only the services in these bundles toward serviceCount. Omit to count every one.
   accessBundleIds?: string[];
   orderBy: TAgentVaultVariableOrderBy;
@@ -32,15 +39,28 @@ export type TFindAgentVaultVariablesDTO = { projectId: string; owners: (TAgentVa
   offset: number;
 };
 
-export type TAgentVaultVariableValueRow = Pick<TAgentVaultVariables, "id" | "encryptedValue">;
+// Only text variables expand into text, so a value row always has a value.
+export type TAgentVaultVariableValueRow = { id: string; encryptedValue: Buffer };
+
+// An OAuth variable as the paths that send its token read it. `encryptedValue` and `oauthConfig.connection` are null
+// while it is not connected.
+export type TAgentVaultOauthVariableRow = Pick<TAgentVaultVariables, "id" | "key" | "encryptedValue" | "oauthConfig">;
+
+const OAUTH_TOKEN_COLUMNS: TOauthTokenColumns = {
+  table: TableName.AgentVaultVariable,
+  secretColumn: "encryptedValue",
+  configColumn: "oauthConfig",
+  configKey: "connection"
+};
 
 export type TAgentVaultServiceUsingVariable = {
   variableId: string;
   serviceId: string;
   serviceName: string;
-  hostPattern: string;
-  accessBundleId: string;
-  accessBundleName: string;
+  serviceType: AgentVaultServiceType;
+  hostPattern: string | null;
+  // Every bundle the service is in, by name. Empty for a service no bundle holds yet.
+  accessBundles: { id: string; name: string }[];
 };
 
 const VARIABLE_COLUMNS = [
@@ -50,6 +70,8 @@ const VARIABLE_COLUMNS = [
   "identityId",
   "key",
   "encryptedValue",
+  "type",
+  "oauthConfig",
   "createdAt",
   "updatedAt"
 ] as const;
@@ -97,6 +119,7 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
       owners,
       search,
       keys,
+      type,
       accessBundleIds,
       orderBy,
       orderDirection,
@@ -124,6 +147,7 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
           void query.whereILike(`${TableName.AgentVaultVariable}.key`, `%${sanitizeSqlLikeString(search)}%`);
         }
         if (keys) void query.whereIn(`${TableName.AgentVaultVariable}.key`, keys);
+        if (type) void query.where(`${TableName.AgentVaultVariable}.type`, type);
         return query;
       };
 
@@ -142,9 +166,10 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
           .countDistinct("refs.serviceId as count")
           .groupBy("refs.variableId");
         if (accessBundleIds) {
-          void usageCounts
-            .join(TableName.AgentVaultService, "refs.serviceId", `${TableName.AgentVaultService}.id`)
-            .whereIn(`${TableName.AgentVaultService}.accessBundleId`, accessBundleIds);
+          void usageCounts.whereIn(
+            "refs.serviceId",
+            conn(TableName.AgentVaultAccessBundleService).whereIn("accessBundleId", accessBundleIds).select("serviceId")
+          );
         }
 
         void pageQuery.leftJoin(usageCounts.as("uc"), function joinUsageCount() {
@@ -168,12 +193,13 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
   const findKeys = async (
     scope: TAgentVaultVariableOwnerScope,
     tx?: Knex
-  ): Promise<Pick<TAgentVaultVariables, "id" | "key">[]> => {
+  ): Promise<Pick<TAgentVaultVariables, "id" | "key" | "type">[]> => {
     try {
       return (await scoped(tx || db, scope).select(
         `${TableName.AgentVaultVariable}.id`,
-        `${TableName.AgentVaultVariable}.key`
-      )) as Pick<TAgentVaultVariables, "id" | "key">[];
+        `${TableName.AgentVaultVariable}.key`,
+        `${TableName.AgentVaultVariable}.type`
+      )) as Pick<TAgentVaultVariables, "id" | "key" | "type">[];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault variable keys" });
     }
@@ -246,26 +272,45 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
     if (!variableIds.length) return [];
     const conn = tx || db;
     try {
-      return (await conn
+      const services = (await conn
         .from(referencingServices(conn, variableIds).as("refs"))
         .join(TableName.AgentVaultService, "refs.serviceId", `${TableName.AgentVaultService}.id`)
-        .join(
-          TableName.AgentVaultAccessBundle,
-          `${TableName.AgentVaultService}.accessBundleId`,
-          `${TableName.AgentVaultAccessBundle}.id`
-        )
         .distinct(
           db.ref("variableId").withSchema("refs"),
           db.ref("id").withSchema(TableName.AgentVaultService).as("serviceId"),
           db.ref("name").withSchema(TableName.AgentVaultService).as("serviceName"),
-          db.ref("hostPattern").withSchema(TableName.AgentVaultService),
-          db.ref("id").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleId"),
-          db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleName")
+          db.ref("type").withSchema(TableName.AgentVaultService).as("serviceType"),
+          db.ref("hostPattern").withSchema(TableName.AgentVaultService)
         )
-        .orderBy([
-          { column: "accessBundleName", order: "asc" },
-          { column: "serviceName", order: "asc" }
-        ])) as TAgentVaultServiceUsingVariable[];
+        .orderBy("serviceName", "asc")) as Omit<TAgentVaultServiceUsingVariable, "accessBundles">[];
+      if (!services.length) return [];
+
+      const links = (await conn(TableName.AgentVaultAccessBundleService)
+        .join(
+          TableName.AgentVaultAccessBundle,
+          `${TableName.AgentVaultAccessBundleService}.accessBundleId`,
+          `${TableName.AgentVaultAccessBundle}.id`
+        )
+        .whereIn(
+          `${TableName.AgentVaultAccessBundleService}.serviceId`,
+          services.map((service) => service.serviceId)
+        )
+        .select(
+          db.ref("serviceId").withSchema(TableName.AgentVaultAccessBundleService),
+          db.ref("id").withSchema(TableName.AgentVaultAccessBundle),
+          db.ref("name").withSchema(TableName.AgentVaultAccessBundle)
+        )
+        .orderBy(`${TableName.AgentVaultAccessBundle}.name`, "asc")) as {
+        serviceId: string;
+        id: string;
+        name: string;
+      }[];
+      return services.map((service) => ({
+        ...service,
+        accessBundles: links
+          .filter((link) => link.serviceId === service.serviceId)
+          .map(({ id, name }) => ({ id, name }))
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find services using agent vault variables" });
     }
@@ -274,6 +319,7 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
   // Resolve is the hot path, so it reads a replica. A variable is always saved before anything that uses it, but each
   // query picks its own replica, and the one serving this read can trail the one that served the service. So an id
   // the replica does not have is asked of the primary before resolve gives up on it.
+  // Text variables only: an OAuth variable's tokens are never pasted into text, so an id naming one stays unresolved.
   const findValuesForResolve = async ({
     variableIds,
     ...scope
@@ -282,6 +328,7 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
     const read = async (conn: Knex, ids: string[]) =>
       (await scoped(conn, scope)
         .whereIn(`${TableName.AgentVaultVariable}.id`, ids)
+        .where(`${TableName.AgentVaultVariable}.type`, AgentVaultVariableType.Text)
         .select(
           `${TableName.AgentVaultVariable}.id`,
           `${TableName.AgentVaultVariable}.encryptedValue`
@@ -296,6 +343,117 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
     }
   };
 
+  // The project's global OAuth variables among these ids, read like findValuesForResolve: a replica first, then the
+  // primary for any id it lacks.
+  const findOauthForResolve = async ({
+    variableIds,
+    projectId
+  }: {
+    variableIds: string[];
+    projectId: string;
+  }): Promise<TAgentVaultOauthVariableRow[]> => {
+    if (!variableIds.length) return [];
+    const read = async (conn: Knex, ids: string[]) =>
+      (await scoped(conn, { projectId, owner: null })
+        .whereIn(`${TableName.AgentVaultVariable}.id`, ids)
+        .where(`${TableName.AgentVaultVariable}.type`, AgentVaultVariableType.OAuth)
+        .select(
+          `${TableName.AgentVaultVariable}.id`,
+          `${TableName.AgentVaultVariable}.key`,
+          `${TableName.AgentVaultVariable}.encryptedValue`,
+          `${TableName.AgentVaultVariable}.oauthConfig`
+        )) as TAgentVaultOauthVariableRow[];
+    try {
+      const rows = await read(db.replicaNode(), variableIds);
+      const found = new Set(rows.map((row) => row.id));
+      const missing = variableIds.filter((id) => !found.has(id));
+      return missing.length ? [...rows, ...(await read(db, missing))] : rows;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault OAuth variables" });
+    }
+  };
+
+  // A refresh or scope report reads the primary, so it never refreshes tokens a sign-in has already replaced.
+  const findOauthByIdPrimary = async (
+    id: string
+  ): Promise<(TAgentVaultOauthVariableRow & { projectId: string }) | undefined> => {
+    try {
+      return (await db(TableName.AgentVaultVariable)
+        .where({ id, type: AgentVaultVariableType.OAuth })
+        .whereNull("userId")
+        .whereNull("identityId")
+        .first("id", "projectId", "key", "encryptedValue", "oauthConfig")) as
+        | (TAgentVaultOauthVariableRow & { projectId: string })
+        | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault OAuth variable" });
+    }
+  };
+
+  // See compareAndSwapOauthTokens. Merges into `oauthConfig.connection` only, so an edit of the settings stands. A
+  // disconnect or a new sign-in replaces `encryptedValue`, so a refresh racing either writes nothing.
+  const compareAndSwapOauthConnection = async (
+    {
+      id,
+      expectedEncryptedValue,
+      encryptedValue,
+      connectionPatch,
+      keepAdditionalScopesStatus
+    }: {
+      id: string;
+      expectedEncryptedValue: Buffer;
+      encryptedValue?: Buffer;
+      connectionPatch: Record<string, unknown>;
+      keepAdditionalScopesStatus?: boolean;
+    },
+    tx?: Knex
+  ) => {
+    try {
+      return await compareAndSwapOauthTokens<Pick<TAgentVaultVariables, "id" | "key" | "oauthConfig">>(
+        db,
+        OAUTH_TOKEN_COLUMNS,
+        {
+          where: { id, type: AgentVaultVariableType.OAuth },
+          expectedSecret: expectedEncryptedValue,
+          secret: encryptedValue,
+          configPatch: connectionPatch,
+          keepAdditionalScopesStatus,
+          returning: ["id", "key", "oauthConfig"]
+        },
+        tx
+      );
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Update agent vault OAuth variable connection" });
+    }
+  };
+
+  const addOauthRequiredScopesToConnection = async (
+    {
+      id,
+      expectedEncryptedValue,
+      rejectedTokenHash,
+      requiredScopes
+    }: { id: string; expectedEncryptedValue: Buffer; rejectedTokenHash: string; requiredScopes: string[] },
+    tx?: Knex
+  ) => {
+    try {
+      return await addOauthRequiredScopes<Pick<TAgentVaultVariables, "id" | "oauthConfig">>(
+        db,
+        OAUTH_TOKEN_COLUMNS,
+        {
+          where: { id, type: AgentVaultVariableType.OAuth },
+          expectedSecret: expectedEncryptedValue,
+          rejectedTokenHash,
+          requiredScopes,
+          returning: ["id", "oauthConfig"]
+        },
+        tx
+      );
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Add required scopes to agent vault OAuth variable" });
+    }
+  };
+
   return {
     ...orm,
     findForList,
@@ -305,6 +463,10 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
     lockByIdInProject,
     lockForReference,
     findServicesUsing,
-    findValuesForResolve
+    findValuesForResolve,
+    findOauthForResolve,
+    findOauthByIdPrimary,
+    compareAndSwapOauthConnection,
+    addOauthRequiredScopesToConnection
   };
 };

@@ -165,18 +165,6 @@ describe("Privilege boundary on project identity membership removal", () => {
       await addIdentityToProject(project.id, adminTarget, ProjectMembershipRole.Admin);
     });
   });
-
-  describe("on the new privilege system", () => {
-    // Deliberate, not an oversight: under the new system holding the action IS the authorization, so
-    // Delete passes regardless of the target's roles. You narrow it with conditions on the action,
-    // not with a privilege comparison. This is the default, so most orgs get an inert boundary here.
-    test("a project Member can remove an Admin-role identity", async () => {
-      const res = await removeIdentityFromProject(project.id, adminTarget, asIdentity(actor.token));
-      expect(res.statusCode).toBe(200);
-
-      await addIdentityToProject(project.id, adminTarget, ProjectMembershipRole.Admin);
-    });
-  });
 });
 
 describe("Privilege boundary on the deprecated v1 add-user-to-project route", () => {

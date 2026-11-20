@@ -8,6 +8,7 @@ import {
 import {
   PkiCertificateFileFormat,
   PkiDiscoveryScanStatus,
+  PkiDiscoveryType,
   PkiInstallationLocationType,
   PkiKeystoreStatus,
   TPkiInstallation
@@ -22,8 +23,27 @@ export const isHostFileInstallation = (installation: TPkiInstallation) =>
   installation.locationType === PkiInstallationLocationType.Filesystem ||
   installation.locationType === PkiInstallationLocationType.Keystore;
 
+export const isStoreInstallation = (installation: TPkiInstallation) =>
+  installation.locationType === PkiInstallationLocationType.OsStore;
+
+export const getInstallationDiscoveryType = (installation: TPkiInstallation) => {
+  if (isHostFileInstallation(installation)) return PkiDiscoveryType.LinuxServer;
+  if (isStoreInstallation(installation)) return PkiDiscoveryType.WindowsServer;
+  return PkiDiscoveryType.Network;
+};
+
+export const getStorePath = (installation: TPkiInstallation) => {
+  const { storeLocation, storeName, thumbprint } = installation.locationDetails;
+  return `Cert:\\${storeLocation ?? "LocalMachine"}\\${storeName}\\${thumbprint}`;
+};
+
 export const getEndpoint = (installation: TPkiInstallation): string => {
   const { ipAddress, fqdn, port, hostIdentifier, filePath } = installation.locationDetails;
+  if (isStoreInstallation(installation)) {
+    return hostIdentifier
+      ? `${hostIdentifier}:${getStorePath(installation)}`
+      : getStorePath(installation);
+  }
   if (isHostFileInstallation(installation) && filePath) {
     return hostIdentifier ? `${hostIdentifier}:${filePath}` : filePath;
   }

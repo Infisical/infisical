@@ -1,7 +1,6 @@
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tabs, TabsContent } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
@@ -15,7 +14,6 @@ import { AppConnectionsTab, PkiSyncsTab } from "./components";
 export const IntegrationsListPage = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
-  const { t } = useTranslation();
 
   const { selectedTab } = useSearch({
     from: ROUTE_PATHS.CertManager.IntegrationsListPage.id
@@ -37,12 +35,10 @@ export const IntegrationsListPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: "Integrations" })}</title>
-        <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content="Manage your certificates in seconds" />
-        <meta name="og:description" content="Sync and manage PKI certificates across services" />
-      </Helmet>
+      <PageTitle title="Integrations" />
+      <meta property="og:image" content="/images/message.png" />
+      <meta property="og:title" content="Manage your certificates in seconds" />
+      <meta name="og:description" content="Sync and manage PKI certificates across services" />
       <div className="relative mx-auto max-w-8xl pb-12 text-foreground-inverse">
         <div className="mb-8 flex flex-col">
           <PageHeader

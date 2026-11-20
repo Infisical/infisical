@@ -53,14 +53,14 @@ type Props = {
   onMutationPendingChange: (isPending: boolean) => void;
 };
 
-const getActorLabel = (actor: ProjectDeletedEnvActor | null): string => {
+export const getActorLabel = (actor: ProjectDeletedEnvActor | null): string => {
   if (!actor) return "Someone";
   if (actor.type === "identity") return actor.name || "An identity";
 
   return actor.firstName || actor.username || actor.email || "A user";
 };
 
-const formatRemainingDuration = (target: Date): string | null => {
+export const formatRemainingDuration = (target: Date): string | null => {
   const now = new Date();
   if (target.getTime() <= now.getTime()) return null;
 

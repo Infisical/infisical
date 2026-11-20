@@ -4,8 +4,8 @@ import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/servic
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TPkiApplicationDALFactory } from "../pki-application/pki-application-dal";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PkiSync } from "./pki-sync-enums";
@@ -98,23 +98,6 @@ export const queueCertificateFilterReconcile = async (
       error,
       `Failed to queue a filter reconcile [certificateId=${certificateId}] [applicationId=${applicationId}]`
     );
-  }
-};
-
-export const findPkiSyncIdsHoldingCertificate = async (
-  certificateId: string,
-  dependencies: {
-    certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findPkiSyncIdsByCertificateId" | "primaryNode">;
-  }
-) => {
-  try {
-    return await dependencies.certificateSyncDAL.findPkiSyncIdsByCertificateId(
-      certificateId,
-      dependencies.certificateSyncDAL.primaryNode()
-    );
-  } catch (error) {
-    logger.error(error, `Failed to read PKI sync links for certificate ${certificateId}`);
-    return [];
   }
 };
 

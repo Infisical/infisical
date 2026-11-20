@@ -58,7 +58,9 @@ const RoleBadge = ({ role, className }: { role: TIdentityRoleBadge; className?: 
 
   return (
     <Tooltip>
-      <TooltipTrigger asChild>{badge}</TooltipTrigger>
+      <TooltipTrigger asChild data-row-interactive>
+        {badge}
+      </TooltipTrigger>
       <TooltipContent className="flex flex-col gap-0.5">
         <span className="capitalize">{label}</span>
         {role.isTemporary && (

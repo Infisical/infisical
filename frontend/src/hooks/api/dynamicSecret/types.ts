@@ -47,7 +47,14 @@ export enum DynamicSecretProviders {
   IbmApiConnect = "ibm-api-connect",
   Tailscale = "tailscale",
   OAuth2 = "oauth2",
-  Kafka = "kafka"
+  Kafka = "kafka",
+  OpenRouter = "openrouter"
+}
+
+export enum OpenRouterLimitReset {
+  Daily = "daily",
+  Weekly = "weekly",
+  Monthly = "monthly"
 }
 
 export enum KafkaSaslMechanism {
@@ -623,6 +630,16 @@ export type TDynamicSecretProvider =
             subject: string;
             audience?: string;
           };
+    }
+  | {
+      type: DynamicSecretProviders.OpenRouter;
+      inputs: {
+        managementKey?: string;
+        workspaceId?: string | null;
+        limit?: string | null;
+        limitReset?: OpenRouterLimitReset | null;
+        includeByokInLimit?: boolean;
+      };
     }
   | {
       type: DynamicSecretProviders.OAuth2;

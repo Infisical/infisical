@@ -1,9 +1,9 @@
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -72,9 +72,7 @@ export const HashicorpVaultAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Authorize Vault Integration</title>
-      </Helmet>
+      <PageTitle title="Authorize Vault Integration" />
       <form onSubmit={handleSubmit(handleFormSubmit)} noValidate className="w-full max-w-lg">
         <Card>
           <CardHeader>

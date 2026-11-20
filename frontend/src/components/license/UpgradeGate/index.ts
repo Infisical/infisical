@@ -30,6 +30,7 @@ export {
 export { hasEnvironmentCapacity } from "./environment-limit";
 export type { UpgradeIntent } from "./upgrade-intents";
 export {
+  AgentVaultUpgradeIntent,
   BillingPlan,
   BillingProduct,
   buildUpgradeReturnPath,
@@ -48,6 +49,7 @@ export {
   EnterprisePamAccountsUpgradeIntent,
   EnterpriseSecretSyncsUpgradeIntent,
   EnvironmentLimitUpgradeIntent,
+  CrossSignedCertificatesUpgradeIntent,
   ExternalCertificateAuthoritiesUpgradeIntent,
   FolderAccessControlsUpgradeIntent,
   getSafeUpgradeReturnPath,
@@ -62,7 +64,6 @@ export {
   SecretApprovalPoliciesUpgradeIntent,
   SecretImportReplicationUpgradeIntent,
   SecretRotationsUpgradeIntent,
-  SecretsBrokeringUpgradeIntent,
   SecretScanningUpgradeIntent,
   SecretsManagementUpgradeIntent,
   UpgradeFeature

@@ -119,6 +119,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "loginWithLdapSso",
       body: z.object({
         organizationSlug: z.string().trim(),
         callbackPort: z.coerce.number().optional()
@@ -166,6 +167,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      operationId: "getLdapConfig",
       hide: false,
       tags: [ApiDocsTags.LdapSso],
       description: "Get LDAP config",
@@ -216,6 +218,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      operationId: "createLdapConfig",
       hide: false,
       tags: [ApiDocsTags.LdapSso],
       description: "Create LDAP config",
@@ -282,6 +285,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      operationId: "updateLdapConfig",
       hide: false,
       tags: [ApiDocsTags.LdapSso],
       description: "Update LDAP config",
@@ -346,6 +350,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
+      operationId: "listLdapGroupMaps",
       params: z.object({
         configId: z.string().trim()
       }),
@@ -385,6 +390,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "createLdapGroupMap",
       params: z.object({
         configId: z.string().trim()
       }),
@@ -418,6 +424,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "deleteLdapGroupMap",
       params: z.object({
         configId: z.string().trim(),
         groupMapId: z.string().trim()
@@ -448,6 +455,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
+      operationId: "testLdapConnection",
       body: z.object({
         url: z.string().trim(),
         bindDN: z.string().trim(),

@@ -4,7 +4,13 @@ import type { Agent as HttpsAgent } from "node:https";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { buildSsrfSafeAgent, getSharedHttpsAgent, safeRequest, validateAndPinUrl } from "./safe-request";
+import {
+  buildSsrfSafeAgent,
+  buildUncachedSsrfSafeAgent,
+  getSharedHttpsAgent,
+  safeRequest,
+  validateAndPinUrl
+} from "./safe-request";
 
 type MockedRequestFn = (config: unknown) => Promise<{
   data: unknown;
@@ -344,6 +350,30 @@ describe("safe-request SSRF helpers", () => {
         expect(result.err.code).toBe("ENOTFOUND");
         expect(result.err.hostname).toBe("example.com");
       });
+    });
+  });
+
+  describe("buildUncachedSsrfSafeAgent", () => {
+    it("builds a new pinned agent on every call instead of reusing the cached one", async () => {
+      const first = await buildUncachedSsrfSafeAgent("https://example.com");
+      const second = await buildUncachedSsrfSafeAgent("https://example.com");
+
+      expect(first).not.toBe(second);
+      expect(first).not.toBe(await buildSsrfSafeAgent("https://example.com"));
+      expect(typeof (first as HttpsAgent).options.lookup).toBe("function");
+    });
+
+    it("returns an agent without a pinned lookup when there is nothing to pin", async () => {
+      configState.isDevelopmentMode = true;
+      const agent = await buildUncachedSsrfSafeAgent("http://example.com");
+
+      expect(agent).toBeDefined();
+      expect((agent as unknown as { options: HttpAgentOptions }).options.lookup).toBeUndefined();
+    });
+
+    it("rejects private IPs like the cached agent does", async () => {
+      setLookup([{ address: PRIVATE_IP_V4, family: 4 }]);
+      await expect(buildUncachedSsrfSafeAgent("https://example.com")).rejects.toThrow(/Local IPs not allowed/i);
     });
   });
 

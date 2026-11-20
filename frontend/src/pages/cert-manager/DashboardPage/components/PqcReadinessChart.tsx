@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 
 import {
@@ -14,16 +15,18 @@ import type { TDashboardStats } from "@app/hooks/api/certificates";
 import { isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
 
 import { CHART_COLORS_HEX, formatShare } from "./chart-theme";
+import type { InventoryFilters, InventoryLink } from "./inventory-link";
 
 type Props = {
   stats: TDashboardStats;
-  onNavigate: (filters: Record<string, string | undefined>) => void;
+  getLink: (filters: InventoryFilters) => InventoryLink;
+  onNavigate: (filters: InventoryFilters) => void;
 };
 
 const PQC_LABEL = "PQC-ready";
 const CLASSICAL_LABEL = "Classical";
 
-export const PqcReadinessChart = ({ stats, onNavigate }: Props) => {
+export const PqcReadinessChart = ({ stats, getLink, onNavigate }: Props) => {
   const pqcCount = stats.distributions.byAlgorithm
     .filter((d) => isPqcAlgorithm(d.label))
     .reduce((s, d) => s + d.count, 0);
@@ -38,9 +41,9 @@ export const PqcReadinessChart = ({ stats, onNavigate }: Props) => {
   const nonZeroData = data.filter((d) => d.count > 0);
   const total = pqcCount + nonPqcCount;
 
-  const handleSegmentClick = (label: string) => {
-    onNavigate({ viewId: label === PQC_LABEL ? "system-pqc" : "system-non-pqc" });
-  };
+  const getSegmentFilters = (label: string) => ({
+    viewId: label === PQC_LABEL ? "system-pqc" : "system-non-pqc"
+  });
 
   return (
     <Card className="flex h-auto w-full min-w-[280px] shrink-0 flex-col md:w-[320px]">
@@ -91,7 +94,7 @@ export const PqcReadinessChart = ({ stats, onNavigate }: Props) => {
                     paddingAngle={2}
                     cursor="pointer"
                     stroke="none"
-                    onClick={(_entry, idx) => handleSegmentClick(nonZeroData[idx].label)}
+                    onClick={(_entry, idx) => onNavigate(getSegmentFilters(nonZeroData[idx].label))}
                   >
                     {nonZeroData.map((entry, idx) => (
                       <Cell key={entry.label} fill={`url(#grad-pqc-readiness-${idx})`} />
@@ -113,11 +116,10 @@ export const PqcReadinessChart = ({ stats, onNavigate }: Props) => {
                 {nonZeroData.map((entry, idx) => {
                   const pct = formatShare(entry.count, total);
                   return (
-                    <button
+                    <Link
                       key={entry.label}
-                      type="button"
+                      {...getLink(getSegmentFilters(entry.label))}
                       className="flex w-full cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs transition-colors hover:bg-foreground/5"
-                      onClick={() => handleSegmentClick(entry.label)}
                     >
                       <span
                         className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -130,7 +132,7 @@ export const PqcReadinessChart = ({ stats, onNavigate }: Props) => {
                       <span className="shrink-0 text-right font-medium text-foreground">
                         {entry.count}
                       </span>
-                    </button>
+                    </Link>
                   );
                 })}
               </div>

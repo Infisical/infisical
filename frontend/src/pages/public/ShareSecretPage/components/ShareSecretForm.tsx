@@ -142,6 +142,7 @@ const formatExpiry = (expiresIn: string) => {
 type Props = {
   isPublic: boolean; // whether or not this is a public (non-authenticated) secret sharing form
   value?: string;
+  secretKey?: string;
   allowSecretSharingOutsideOrganization?: boolean;
   maxSharedSecretLifetime?: number;
   maxSharedSecretViewLimit?: number | null;
@@ -152,6 +153,7 @@ type Props = {
 export const ShareSecretForm = ({
   isPublic,
   value,
+  secretKey,
   allowSecretSharingOutsideOrganization = true,
   maxSharedSecretLifetime,
   maxSharedSecretViewLimit,
@@ -159,6 +161,7 @@ export const ShareSecretForm = ({
   onDirtyChange
 }: Props) => {
   const [result, setResult] = useState<ShareResult | null>(null);
+  const [isSharingKeyValue, setIsSharingKeyValue] = useState(true);
   const [isPasswordVisible, setIsPasswordVisible] = useToggle(false);
   const subOrganization = useSearch({
     strict: false,
@@ -177,6 +180,9 @@ export const ShareSecretForm = ({
   const isLifetimeCapped = expiresInOptions.length !== filteredExpiresInOptions.length;
   const isViewLimitEnforced = Boolean(maxSharedSecretViewLimit);
 
+  const formatSharedValue = (includeKey: boolean) =>
+    secretKey && includeKey ? `${secretKey}=${value ?? ""}` : (value ?? "");
+
   const schema = useMemo(() => buildSchema(maxSharedSecretViewLimit), [maxSharedSecretViewLimit]);
 
   const {
@@ -189,7 +195,7 @@ export const ShareSecretForm = ({
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      secret: value || "",
+      secret: formatSharedValue(true),
       viewLimit: maxSharedSecretViewLimit?.toString() ?? "1",
       shouldLimitView: isViewLimitEnforced,
       accessType: isPublic ? undefined : SecretSharingAccessType.Organization,
@@ -284,6 +290,7 @@ export const ShareSecretForm = ({
     }
 
     reset();
+    setIsSharingKeyValue(true);
   };
 
   const renderLayout = (body: ReactNode, actions: ReactNode) =>
@@ -405,10 +412,28 @@ export const ShareSecretForm = ({
                     isError={Boolean(error)}
                   />
                   {isValueLocked && (
-                    <FieldDescription>
-                      Locked to the stored value, so the link shares exactly what is saved in
-                      Infisical.
-                    </FieldDescription>
+                    <div className="flex items-center justify-between gap-4">
+                      <FieldDescription>
+                        {secretKey
+                          ? "Locked to the stored value. Turn off Include Key to share the value alone."
+                          : "Locked so the link shares the saved contents without edits."}
+                      </FieldDescription>
+                      {secretKey && (
+                        <div className="flex shrink-0 items-center gap-2">
+                          <Toggle
+                            size="sm"
+                            variant="project"
+                            id="share-secret-include-key"
+                            checked={isSharingKeyValue}
+                            onCheckedChange={(isChecked) => {
+                              setIsSharingKeyValue(isChecked);
+                              setValue("secret", formatSharedValue(isChecked));
+                            }}
+                          />
+                          <FieldLabel htmlFor="share-secret-include-key">Include Key</FieldLabel>
+                        </div>
+                      )}
+                    </div>
                   )}
                   {error && <FieldError>{error.message}</FieldError>}
                 </Field>

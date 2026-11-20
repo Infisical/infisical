@@ -3,6 +3,7 @@ import { useFormContext } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
+import { getGitHubSyncSecretTypeName } from "@app/helpers/secretSyncs";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { GitHubSyncScope, TGitHubSync } from "@app/hooks/api/secretSyncs/types/github-sync";
 
@@ -63,6 +64,10 @@ export const GitHubSyncReviewFields = () => {
 
   return (
     <>
+      <Detail>
+        <DetailLabel>Secret Type</DetailLabel>
+        <DetailValue>{getGitHubSyncSecretTypeName(config.secretType)}</DetailValue>
+      </Detail>
       <Detail>
         <DetailLabel>Scope</DetailLabel>
         <DetailValue className="capitalize">{config.scope.replace("-", " ")}</DetailValue>

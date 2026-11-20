@@ -88,6 +88,7 @@ export const AssignCertificateToApplicationModal = ({ isOpen, onClose, certifica
                 <Button
                   type="button"
                   variant="outline"
+                  // oxlint-disable-next-line jsx-a11y/role-has-required-aria-props -- PopoverTrigger sets aria-controls and aria-expanded
                   role="combobox"
                   className="w-full justify-between font-normal"
                 >

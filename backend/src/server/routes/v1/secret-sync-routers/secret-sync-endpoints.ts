@@ -27,6 +27,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     name: string;
     environment: string;
     secretPath: string;
+    includeAllSubFolders?: boolean;
     projectId: string;
     connectionId: string;
     destinationConfig: I["destinationConfig"];
@@ -39,6 +40,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     name?: string;
     environment?: string;
     secretPath?: string;
+    includeAllSubFolders?: boolean;
     destinationConfig?: I["destinationConfig"];
     syncOptions?: I["syncOptions"];
     description?: string | null;

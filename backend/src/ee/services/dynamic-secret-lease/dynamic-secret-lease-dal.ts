@@ -8,6 +8,10 @@ import { ormify, selectAllTableCols, TOrmify } from "@app/lib/knex";
 export interface TDynamicSecretLeaseDALFactory extends Omit<TOrmify<TableName.DynamicSecretLease>, "findById"> {
   countLeasesForDynamicSecret: (dynamicSecretId: string, tx?: Knex) => Promise<number>;
   countLeasesForOrg: (orgId: string, tx?: Knex) => Promise<number>;
+  findExpiredByProjectId: (
+    projectId: string,
+    tx?: Knex
+  ) => Promise<{ id: string; dynamicSecretId: string; expireAt: Date }[]>;
   findById: (
     id: string,
     tx?: Knex
@@ -24,6 +28,7 @@ export interface TDynamicSecretLeaseDALFactory extends Omit<TOrmify<TableName.Dy
           folderId: string;
           status: string | null | undefined;
           statusDetails: string | null | undefined;
+          revocationFailing: boolean;
           createdAt: Date;
           updatedAt: Date;
         };
@@ -85,6 +90,29 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findExpiredByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.DynamicSecretLease)
+        .join(
+          TableName.DynamicSecret,
+          `${TableName.DynamicSecretLease}.dynamicSecretId`,
+          `${TableName.DynamicSecret}.id`
+        )
+        .join(TableName.SecretFolder, `${TableName.DynamicSecret}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .where(`${TableName.DynamicSecretLease}.expireAt`, "<=", new Date())
+        .select(
+          db.ref("id").withSchema(TableName.DynamicSecretLease),
+          db.ref("dynamicSecretId").withSchema(TableName.DynamicSecretLease),
+          db.ref("expireAt").withSchema(TableName.DynamicSecretLease)
+        );
+      return docs as { id: string; dynamicSecretId: string; expireAt: Date }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "DynamicSecretLeaseFindExpiredByProjectId" });
+    }
+  };
+
   const findById = async (id: string, tx?: Knex) => {
     try {
       const doc = await (tx || db.replicaNode())(TableName.DynamicSecretLease)
@@ -107,6 +135,7 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
           db.ref("folderId").withSchema(TableName.DynamicSecret).as("dynFolderId"),
           db.ref("status").withSchema(TableName.DynamicSecret).as("dynStatus"),
           db.ref("statusDetails").withSchema(TableName.DynamicSecret).as("dynStatusDetails"),
+          db.ref("revocationFailing").withSchema(TableName.DynamicSecret).as("dynRevocationFailing"),
           db.ref("createdAt").withSchema(TableName.DynamicSecret).as("dynCreatedAt"),
           db.ref("updatedAt").withSchema(TableName.DynamicSecret).as("dynUpdatedAt")
         );
@@ -125,6 +154,7 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
           folderId: doc.dynFolderId,
           status: doc.dynStatus,
           statusDetails: doc.dynStatusDetails,
+          revocationFailing: doc.dynRevocationFailing as boolean,
           createdAt: doc.dynCreatedAt,
           updatedAt: doc.dynUpdatedAt
         }
@@ -134,5 +164,5 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findById, countLeasesForDynamicSecret, countLeasesForOrg };
+  return { ...orm, findById, countLeasesForDynamicSecret, countLeasesForOrg, findExpiredByProjectId };
 };

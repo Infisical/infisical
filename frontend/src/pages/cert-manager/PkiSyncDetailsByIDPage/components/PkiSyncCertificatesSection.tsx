@@ -260,9 +260,9 @@ export const PkiSyncCertificatesSection = ({ pkiSync, onEditCertificates }: Prop
 
                   const hasAutoRenewal = Boolean(
                     syncCert.certificateRenewBeforeDays &&
-                      syncCert.certificateRenewBeforeDays > 0 &&
-                      !syncCert.certificateRenewalError &&
-                      syncCert.certificateNotAfter
+                    syncCert.certificateRenewBeforeDays > 0 &&
+                    !syncCert.certificateRenewalError &&
+                    syncCert.certificateNotAfter
                   );
 
                   const daysUntilRenewal =

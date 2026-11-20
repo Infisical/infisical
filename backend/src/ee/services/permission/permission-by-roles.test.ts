@@ -42,7 +42,8 @@ const createService = () => {
     identityDAL: {} as never,
     additionalPrivilegeDAL: {} as never,
     groupDAL: {} as never,
-    secretFolderDAL: {} as never
+    secretFolderDAL: {} as never,
+    orgDAL: {} as never
   } as never);
 
   return { service, roleDAL };

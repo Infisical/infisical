@@ -5,7 +5,7 @@ import { cn } from "../../utils";
 import { Kbd } from "../Kbd";
 
 const inputVariants = cva(
-  "h-9 w-full min-w-0 rounded-md border border-border bg-transparent px-2.5 text-sm text-foreground shadow-xs file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted [&[readonly]]:border-border/50 disabled:pointer-events-none disabled:border-border/50 disabled:text-foreground/50 disabled:placeholder:text-muted/50 selection:bg-foreground selection:text-background",
+  "w-full min-w-0 rounded-md border border-border bg-transparent text-foreground shadow-xs file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted [&[readonly]]:border-border/50 disabled:pointer-events-none disabled:border-border/50 disabled:text-foreground/50 disabled:placeholder:text-muted/50 selection:bg-foreground selection:text-background",
   {
     variants: {
       variant: {
@@ -13,15 +13,20 @@ const inputVariants = cva(
           "outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-danger aria-invalid:ring-danger/40",
         outlined:
           "outline-1 outline-offset-4 outline-transparent transition-colors outline-solid [&:not([readonly]):not(:disabled):hover]:border-foreground/20 focus-visible:border-accent focus-visible:outline-accent/60 aria-invalid:border-danger aria-invalid:focus-visible:outline-danger/60"
+      },
+      size: {
+        default: "h-9 px-2.5 text-sm",
+        sm: "h-6 px-1.5 text-xs"
       }
     },
     defaultVariants: {
-      variant: "default"
+      variant: "default",
+      size: "default"
     }
   }
 );
 
-type InputProps = React.ComponentProps<"input"> &
+type InputProps = Omit<React.ComponentProps<"input">, "size"> &
   VariantProps<typeof inputVariants> & {
     isError?: boolean;
     "data-1p-ignore"?: boolean;
@@ -34,6 +39,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       className,
       type,
       variant = "default",
+      size = "default",
       isError,
       autoComplete,
       "data-1p-ignore": ignorePasswordManager = !/email|password|username/i.test(
@@ -67,9 +73,10 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         type={type}
         data-slot="input"
         data-variant={variant}
+        data-size={size}
         autoComplete={autoComplete}
         data-1p-ignore={ignorePasswordManager || undefined}
-        className={cn(inputVariants({ variant, className }), suggestedValue && "peer pr-14")}
+        className={cn(inputVariants({ variant, size, className }), suggestedValue && "peer pr-14")}
         aria-invalid={isError}
         placeholder={suggestedValue || placeholder}
         aria-describedby={

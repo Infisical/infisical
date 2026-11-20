@@ -78,7 +78,8 @@ name: z.string(),
 // Good: reuse the shared helpers in src/server/lib/schemas.ts
 name: GenericResourceNameSchema,
 slug: slugSchema({ max: 32, field: "Environment slug" }),
-projectId: z.string().uuid(),
+orgId: z.string().uuid(),
+projectId: z.string().trim().min(1).max(36),
 description: z.string().trim().max(500).optional(),
 port: z.number().int().min(1).max(65535),
 ```
@@ -90,6 +91,11 @@ port: z.number().int().min(1).max(65535),
 - **`.trim()` anything used as an identifier**, so `"prod "` and `"prod"` are not two rows.
 - **IDs are `.uuid()`; enums are `z.nativeEnum(...)` or `z.enum([...])`**, so the accepted
   values appear in the generated docs.
+- **Except `projectId`.** `projects.id` is `varchar(36)`, not `uuid`, and projects carried
+  over from MongoDB kept their 24-character ObjectId as their ID. Customers hardcode that ID
+  in `.infisical.json`, CI, and operator manifests, so it cannot be rewritten. `.uuid()`
+  rejects those projects, and no project created since the Postgres move will show it. Check the column in `src/db/schemas/`
+  before adding `.uuid()` to any other ID declared as `t.string("id", 36)`.
 - **`z.coerce.number().int()`** for querystring numbers, since everything arrives as a string.
 - **Never `.default(x).optional()`.** The `.optional()` wraps the default, so `undefined`
   stays `undefined` and the default never applies.
@@ -326,7 +332,7 @@ hand them a different set of permissions than they had the day before.
 What the downgrade takes away is the ability to change the set. Creating a new custom role
 and editing an existing one both fail with a message naming the plan, and the UI opens the
 upgrade modal on those same two actions. `role-service.ts` is the model to copy: `createRole`
-and `updateRole` check `plan.rbac`, while `listRoles`, `getRoleBySlug`, and `deleteRole`
+and `updateRole` check `plan.has(PlanFeature.Rbac)`, while `listRoles`, `getRoleBySlug`, and `deleteRole`
 check nothing.
 
 One rule produces both outcomes. Entitlement decides what a customer can build. It never
@@ -361,3 +367,13 @@ decides what an already-built thing does.
   how to get it. A hidden feature teaches a customer nothing and looks like it does not
   exist. The modal is the frontend half of the same rule the backend follows: the block
   lands on the attempt to create or edit, never on viewing what is already there.
+
+### The exception: Agent Vault brokering
+
+On Infisical Cloud, Agent Vault refuses to broker credentials for an org without Agent Vault on its plan once
+the org has used its free requests for the month, on purpose. Each request a proxy brokers is the usage
+Infisical bills for, and "existing objects keep working" would mean an org's proxies broker past the free limit
+indefinitely, since a session can be minted with no expiry. Nothing is deleted or hidden: bundles, services,
+sessions, proxies and session logs stay readable and editable, and brokering resumes on its own once the org
+adds a payment method or the month resets. Which calls are gated is in
+`src/domains/agent-vault/agent-vault/AGENTS.md`. Do not copy this to another feature.

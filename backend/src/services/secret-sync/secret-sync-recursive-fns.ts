@@ -1,5 +1,5 @@
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { groupBy } from "@app/lib/fn";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
@@ -25,7 +25,7 @@ export type TFnSecretsV2FromImportsDeps = {
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   actorOrgId: string;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 export const getAncestorPaths = (path: string): string[] => {
@@ -111,6 +111,7 @@ export const buildSyncPayload = async (
     sourcePath: string;
     sourceFolderId: string;
     syncOptions: Pick<TSecretSync["syncOptions"], "includeAllSubFolders" | "keySchema"> | undefined;
+    includeAllSubFolders: boolean;
     includeImports: boolean;
   },
   deps: {
@@ -125,8 +126,9 @@ export const buildSyncPayload = async (
 ): Promise<TSecretSyncPayload> => {
   const { folderDAL, projectEnvDAL, secretV2BridgeDAL, secretImportDAL, expandSecretReferences, decryptSecretValue } =
     deps;
-  const { projectId, environment, sourcePath, sourceFolderId, syncOptions, includeImports } = args;
-  const { includeAllSubFolders, keySchema } = syncOptions ?? {};
+  const { projectId, environment, sourcePath, sourceFolderId, syncOptions, includeAllSubFolders, includeImports } =
+    args;
+  const { keySchema } = syncOptions ?? {};
 
   const folders = await getSyncedFolders({
     folderDAL,
@@ -135,7 +137,7 @@ export const buildSyncPayload = async (
     environment,
     sourcePath,
     sourceFolderId,
-    includeAllSubFolders: Boolean(includeAllSubFolders)
+    includeAllSubFolders
   });
 
   const pathByFolderId = new Map(folders.map(({ folderId, path }) => [folderId, path]));

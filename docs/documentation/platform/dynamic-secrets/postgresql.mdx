@@ -1,12 +1,14 @@
 ---
 title: "PostgreSQL dynamic secrets"
 sidebarTitle: "PostgreSQL"
-description: "Learn how to dynamically generate PostgreSQL database users."
+description: "Learn how to dynamically generate PostgreSQL and CockroachDB database users."
 ---
 
 import DynamicSecretUsernameTemplateParamField from "/snippets/documentation/platform/dynamic-secrets/dynamic-secret-username-template-field.mdx";
 
 The Infisical PostgreSQL dynamic secret allows you to generate PostgreSQL database credentials on demand based on configured role.
+
+You can also use this dynamic secret with CockroachDB, as described in [Use with CockroachDB](#use-with-cockroachdb).
 
 ## Prerequisite
 
@@ -66,7 +68,7 @@ Create a user with the required permission in your SQL instance. This user will 
 		Name of the database for which you want to create dynamic secrets
 	</ParamField>
 
-	<ParamField path="CA(SSL)" type="string">
+	<ParamField path="CA (SSL)" type="string">
 		A CA may be required if your DB requires it for incoming connections. AWS RDS instances with default settings will requires a CA which can be downloaded [here](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html#UsingWithRDS.SSL.CertificatesAllRegions).
 	</ParamField>
 
@@ -115,6 +117,42 @@ Create a user with the required permission in your SQL instance. This user will 
 	![Provision Lease](/images/platform/dynamic-secrets/lease-values.png)
   </Step>
 </Steps>
+
+## Use with CockroachDB
+
+CockroachDB accepts PostgreSQL connections, so you can follow the [PostgreSQL setup steps](#set-up-dynamic-secrets-with-postgresql) with these settings:
+
+- **Service**: select **PostgreSQL**
+- **Port**: your cluster's SQL port (`26257` by default)
+- **CA (SSL)**: your cluster's CA certificate, such as `ca.crt` from the cluster's certificates directory (required, because CockroachDB refuses unencrypted connections)
+
+### Admin user privileges
+
+Infisical uses the user you enter in **User** to create a database user for each lease and grant it access to your tables. To give that user the privileges it needs, connect to the database in **Database Name** as a CockroachDB admin and run:
+
+```sql
+ALTER USER <admin-user> WITH CREATEROLE CREATELOGIN;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO <admin-user> WITH GRANT OPTION;
+ALTER DEFAULT PRIVILEGES FOR ROLE <table-owner> IN SCHEMA public GRANT ALL ON TABLES TO <admin-user> WITH GRANT OPTION;
+```
+
+Replace `<table-owner>` with the user that creates tables in this database, such as the user your migrations run as. The `GRANT` statement only covers tables that already exist, so without the last line, every lease creation fails after a new table is added.
+
+If your creation statement grants fewer privileges, such as only `SELECT`, replace `ALL` with those privileges in the last two statements.
+
+### SQL statements
+
+Add `SET autocommit_before_ddl = false;` as the first line of **Creation Statement**:
+
+```sql
+SET autocommit_before_ddl = false;
+CREATE USER "{{username}}" WITH ENCRYPTED PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO "{{username}}";
+```
+
+Without that line, CockroachDB can commit `CREATE USER` before it runs `GRANT`, so if `GRANT` fails, the new user stays in your cluster with no lease you can revoke.
+
+**Renew Statement** and **Revocation Statement** work on CockroachDB without changes.
 
 ## Audit or revoke leases
 Once you have created one or more leases, you'll be able to access them by selecting the respective dynamic secret item on the dashboard.

@@ -1,0 +1,13 @@
+# controller/Dockerfile
+FROM ubuntu:24.04
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates curl jq \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSLo /usr/local/bin/kubectl \
+    "https://dl.k8s.io/release/<kubectl-version>/bin/linux/amd64/kubectl" \
+  && chmod +x /usr/local/bin/kubectl
+
+RUN curl https://cursor.com/install -fsS | bash
+ENV PATH="/root/.local/bin:${PATH}"

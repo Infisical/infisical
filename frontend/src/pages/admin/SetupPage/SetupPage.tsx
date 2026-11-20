@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { Controller, type Resolver, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useRouter } from "@tanstack/react-router";
@@ -8,6 +7,7 @@ import { z } from "zod";
 
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { OnboardingPageLayout } from "@app/components/auth/OnboardingPageLayout";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   AnimatedCollapse,
   Button,
@@ -585,10 +585,8 @@ export const SetupPage = () => {
         </div>
       }
     >
-      <Helmet>
-        <title>Configure your instance | Infisical</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Configure Your Instance" />
+      <link rel="icon" href="/infisical.ico" />
       <AuthPagePanel>
         <form id={setupFormId} onSubmit={onSubmit}>
           <CardHeader className="mb-8 gap-2">

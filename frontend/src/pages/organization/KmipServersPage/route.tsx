@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { ProjectType } from "@app/hooks/api/projects/types";
+
 import { KmipServersPage } from "./KmipServersPage";
 
 export const Route = createFileRoute(
@@ -7,6 +9,7 @@ export const Route = createFileRoute(
 )({
   component: KmipServersPage,
   context: () => ({
+    productType: ProjectType.KMS,
     breadcrumbs: [
       {
         label: "KMIP Servers"

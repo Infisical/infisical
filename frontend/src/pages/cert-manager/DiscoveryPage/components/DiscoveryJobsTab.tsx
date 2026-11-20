@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { MoreHorizontalIcon, PlusIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
 
@@ -30,6 +29,7 @@ import {
   InputGroupInput,
   OverflowBadgeList,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -41,10 +41,11 @@ import {
 import {
   ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionSub,
-  useOrganization,
+  useProject,
   useSubscription
 } from "@app/context";
 import { PKI_DISCOVERY_TYPE_MAP } from "@app/helpers/pkiDiscovery";
+import { getInstancePinningLink } from "@app/helpers/project";
 import {
   PkiDiscoveryScanStatus,
   PkiDiscoveryType,
@@ -53,6 +54,7 @@ import {
   useListPkiDiscoveries,
   useTriggerPkiDiscoveryScan
 } from "@app/hooks/api";
+import { WindowsCertificateStoreLabels } from "@app/hooks/api/pkiDiscovery/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { usePopUp } from "@app/hooks/usePopUp";
 import {
@@ -61,9 +63,9 @@ import {
   parsePorts
 } from "@app/pages/cert-manager/pki-discovery-utils";
 
-import { DiscoveryTypeIcon } from "./DiscoveryJobSheet/DiscoveryTypeIcon";
 import { DeleteDiscoveryModal } from "./DeleteDiscoveryModal";
 import { DiscoveryJobSheet } from "./DiscoveryJobSheet";
+import { DiscoveryTypeIcon } from "./DiscoveryJobSheet/DiscoveryTypeIcon";
 
 type Props = {
   projectId: string;
@@ -72,6 +74,11 @@ type Props = {
 const PAGE_SIZE = 25;
 
 const getScopeItems = (discovery: TPkiDiscovery) => {
+  if (discovery.discoveryType === PkiDiscoveryType.WindowsServer) {
+    return (discovery.targetConfig.certificateStores ?? []).map(
+      (store) => WindowsCertificateStoreLabels[store] ?? store
+    );
+  }
   if (discovery.discoveryType === PkiDiscoveryType.LinuxServer) {
     return discovery.targetConfig.searchFolderPaths ?? [];
   }
@@ -80,15 +87,17 @@ const getScopeItems = (discovery: TPkiDiscovery) => {
 };
 
 const getTargetItems = (discovery: TPkiDiscovery) => {
-  if (discovery.discoveryType === PkiDiscoveryType.LinuxServer) {
+  if (
+    discovery.discoveryType === PkiDiscoveryType.LinuxServer ||
+    discovery.discoveryType === PkiDiscoveryType.WindowsServer
+  ) {
     return (discovery.connections ?? []).map((connection) => connection.name);
   }
   return [...(discovery.targetConfig.domains ?? []), ...(discovery.targetConfig.ipRanges ?? [])];
 };
 
 export const DiscoveryJobsTab = ({ projectId }: Props) => {
-  const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const [page, setPage] = useState(1);
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter, 300);
@@ -149,8 +158,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
       <CardHeader>
         <CardTitle>Discovery Jobs</CardTitle>
         <CardDescription>
-          Configure scans to find certificates served on your network or stored in files on your
-          servers.
+          Configure scans to find certificates served on your network or stored on your servers.
         </CardDescription>
         <CardAction>
           <ProjectPermissionCan
@@ -205,7 +213,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
                   <TableHead>Name</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Target</TableHead>
-                  <TableHead>Ports / Folders</TableHead>
+                  <TableHead>Scope</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Last Scan</TableHead>
                   <TableHead className="w-5" />
@@ -213,20 +221,18 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
               </TableHeader>
               <TableBody>
                 {discoveries.map((discovery) => (
-                  <TableRow
-                    key={discovery.id}
-                    className="cursor-pointer"
-                    onClick={() =>
-                      navigate({
-                        to: "/organizations/$orgId/cert-manager/discovery/$discoveryId",
-                        params: {
-                          orgId: currentOrg.id,
-                          discoveryId: discovery.id
-                        }
-                      })
-                    }
-                  >
-                    <TableCell>{discovery.name}</TableCell>
+                  <TableRow key={discovery.id} linked>
+                    <TableCell>
+                      <RowLink
+                        {...getInstancePinningLink(
+                          currentProject.orgId,
+                          currentProject,
+                          `discovery/${discovery.id}`
+                        )!}
+                      >
+                        {discovery.name}
+                      </RowLink>
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <DiscoveryTypeIcon type={discovery.discoveryType} className="size-4" />
@@ -259,7 +265,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
                         ? format(new Date(discovery.lastScannedAt), "MMM dd, yyyy HH:mm")
                         : "Never"}
                     </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableCell data-row-interactive>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton variant="ghost" size="xs">

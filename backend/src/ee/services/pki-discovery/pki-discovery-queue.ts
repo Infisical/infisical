@@ -1,3 +1,4 @@
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -8,19 +9,19 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue/queue-ser
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 
 import { TPkiCertificateInstallationCertDALFactory } from "./pki-certificate-installation-cert-dal";
 import { TPkiCertificateInstallationDALFactory } from "./pki-certificate-installation-dal";
 import { TPkiDiscoveryConfigDALFactory } from "./pki-discovery-config-dal";
-import { executeLinuxServerScan } from "./pki-discovery-host-scan-fns";
+import { executeHostScan, LINUX_SERVER_SCAN } from "./pki-discovery-host-scan-fns";
 import { TPkiDiscoveryInstallationDALFactory } from "./pki-discovery-installation-dal";
 import { rescanInstallation } from "./pki-discovery-rescan-fns";
 import { executeScan } from "./pki-discovery-scan-fns";
 import { TPkiDiscoveryScanHistoryDALFactory } from "./pki-discovery-scan-history-dal";
 import { PkiDiscoveryType } from "./pki-discovery-types";
+import { WINDOWS_SERVER_SCAN } from "./pki-discovery-windows-scan-fns";
 
 type TPkiDiscoveryQueueFactoryDep = {
   pkiDiscoveryConfigDAL: TPkiDiscoveryConfigDALFactory;
@@ -30,8 +31,9 @@ type TPkiDiscoveryQueueFactoryDep = {
   pkiCertificateInstallationCertDAL: TPkiCertificateInstallationCertDALFactory;
   certificateDAL: TCertificateDALFactory;
   certificateBodyDAL: TCertificateBodyDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "findById" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "findById">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "find">;
   queueService: TQueueServiceFactory;
   cronJob: TCronJobFactory;
@@ -56,7 +58,8 @@ export const pkiDiscoveryQueueFactory = ({
   certificateDAL,
   certificateBodyDAL,
   projectDAL,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   appConnectionDAL,
   queueService,
   cronJob,
@@ -76,7 +79,8 @@ export const pkiDiscoveryQueueFactory = ({
     certificateDAL,
     certificateBodyDAL,
     projectDAL,
-    kmsService,
+    kmsDataKeyService,
+    kmsKeyService,
     gatewayV2Service,
     gatewayV2DAL,
     gatewayPoolService,
@@ -105,7 +109,10 @@ export const pkiDiscoveryQueueFactory = ({
                 await executeScan(discoveryId, scanDeps);
                 break;
               case PkiDiscoveryType.LinuxServer:
-                await executeLinuxServerScan(discoveryId, scanDeps);
+                await executeHostScan(discoveryId, LINUX_SERVER_SCAN, scanDeps);
+                break;
+              case PkiDiscoveryType.WindowsServer:
+                await executeHostScan(discoveryId, WINDOWS_SERVER_SCAN, scanDeps);
                 break;
               default:
                 throw new Error(`Unsupported discovery type: ${discoveryType as string}`);

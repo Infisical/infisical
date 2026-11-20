@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TApprovalPolicies, TApprovalRequestGrants, TApprovalRequests } from "@app/db/schemas";
 import { Event } from "@app/ee/services/audit-log/audit-log-types";
 import { ResourcePermissionApprovalPolicyActions } from "@app/ee/services/permission/resource-permission";
-import { TSecretChangeRequestData } from "@app/ee/services/secret-change-global-request-bridge/secret-change-global-request-bridge-types";
+import { TSecretChangeRequestData } from "@app/ee/services/secret-change-request/secret-change-request-types";
 import { OrgServiceActor } from "@app/lib/types";
 import { TNotification } from "@app/lib/workflow-integrations/types";
 import { TEventInput } from "@app/services/event-outbox/event-outbox-types";
@@ -21,6 +21,13 @@ import {
   EnforcementLevel
 } from "./approval-policy-enums";
 import {
+  TAutoApprovalConfig,
+  TAutoApprovalEvidence,
+  TAutoApprovalInputValue,
+  TAutoApprovalOutcome,
+  TAutoApprovalPolicyResponse
+} from "./auto-approval/auto-approval-types";
+import {
   TCertRequestPolicy,
   TCertRequestPolicyConditions,
   TCertRequestPolicyConstraints,
@@ -28,6 +35,14 @@ import {
   TCertRequestRequest,
   TCertRequestRequestData
 } from "./cert-request/cert-request-policy-types";
+import {
+  TCertRevocationPolicy,
+  TCertRevocationPolicyConditions,
+  TCertRevocationPolicyConstraints,
+  TCertRevocationPolicyInputs,
+  TCertRevocationRequest,
+  TCertRevocationRequestData
+} from "./cert-revocation/cert-revocation-policy-types";
 import {
   TCodeSigningPolicy,
   TCodeSigningPolicyConditions,
@@ -57,27 +72,41 @@ export type TApprovalActor = Pick<OrgServiceActor, "id" | "type" | "authMethod" 
 
 export type TApprovalSubjectActor = Pick<TApprovalActor, "id" | "type">;
 
-export type TApprovalPolicy = TPamAccessPolicy | TCertRequestPolicy | TCodeSigningPolicy | TSecretAccessPolicy;
+export type TApprovalPolicy =
+  | TPamAccessPolicy
+  | TCertRequestPolicy
+  | TCertRevocationPolicy
+  | TCodeSigningPolicy
+  | TSecretAccessPolicy;
 export type TApprovalPolicyInputs =
   | TPamAccessPolicyInputs
   | TCertRequestPolicyInputs
+  | TCertRevocationPolicyInputs
   | TCodeSigningPolicyInputs
   | TSecretAccessPolicyInputs;
 export type TApprovalPolicyConditions =
   | TPamAccessPolicyConditions
   | TCertRequestPolicyConditions
+  | TCertRevocationPolicyConditions
   | TCodeSigningPolicyConditions
   | TSecretAccessPolicyConditions;
 export type TApprovalPolicyConstraints =
   | TPamAccessPolicyConstraints
   | TCertRequestPolicyConstraints
+  | TCertRevocationPolicyConstraints
   | TCodeSigningPolicyConstraints
   | TSecretAccessPolicyConstraints;
 
-export type TApprovalRequest = TPamAccessRequest | TCertRequestRequest | TCodeSigningRequest | TSecretAccessRequest;
+export type TApprovalRequest =
+  | TPamAccessRequest
+  | TCertRequestRequest
+  | TCertRevocationRequest
+  | TCodeSigningRequest
+  | TSecretAccessRequest;
 export type TApprovalRequestData =
   | TPamAccessRequestData
   | TCertRequestRequestData
+  | TCertRevocationRequestData
   | TCodeSigningRequestData
   | TSecretChangeRequestData
   | TSecretAccessRequestData;
@@ -87,6 +116,10 @@ export type TBypassAffordances = {
   canBreakGlass: boolean;
   isBreakGlass: boolean;
   bypassReason: string | null;
+};
+
+export type TAutoApprovalAffordance = {
+  autoApproval: TAutoApprovalOutcome | null;
 };
 
 export type BreakGlassBypassMetadata = {
@@ -129,6 +162,7 @@ export interface TCreatePolicyDTO {
   bypassForMachineIdentities?: boolean;
   enforcementLevel?: EnforcementLevel;
   bypassers?: PolicyBypasser[];
+  autoApproval?: TAutoApprovalConfig;
 }
 
 export interface TUpdatePolicyDTO {
@@ -140,6 +174,7 @@ export interface TUpdatePolicyDTO {
   bypassForMachineIdentities?: boolean;
   enforcementLevel?: EnforcementLevel;
   bypassers?: PolicyBypasser[];
+  autoApproval?: TAutoApprovalConfig;
 }
 
 // Request DTOs
@@ -153,6 +188,9 @@ export interface TCreateRequestDTO {
   // Set by a caller that decides the request in the same breath (break-glass), so approvers are not
   // asked to act on something that is already resolved
   skipApproverNotification?: boolean;
+  autoApprovalInputs?: TAutoApprovalInputValue[];
+  // Break-glass approves the request itself, so its rules are not evaluated
+  skipAutoApproval?: boolean;
 }
 
 export interface TCreateRequestFromPolicyDTO {
@@ -167,6 +205,8 @@ export interface TCreateRequestFromPolicyDTO {
   requesterName: string;
   requesterEmail: string;
   skipApproverNotification?: boolean;
+  deferApproverNotification?: boolean;
+  autoApprovalEvidence?: TAutoApprovalEvidence | null;
   tx?: Knex;
 }
 
@@ -188,13 +228,23 @@ export type TApprovalResource<
   validateConstraints: (policy: P, requestData: R) => { valid: boolean; errors?: string[] };
 
   // Whatever the approval entitles the requester to goes in the Tx variant, which commits with the
-  // approval; anything reaching outside the database goes in postApprovalRoutine, after the commit.
+  // approval; anything reaching outside the database goes in postApprovalRoutine, after the commit. Each
+  // runs at most once, for the approval that completes the request.
   postApprovalTxRoutine?: (
     request: TApprovalRequest,
     tx: Knex,
     breakGlass?: { bypassReason: string }
   ) => Promise<{ grantId: string } | void>;
   postApprovalRoutine?: (request: TApprovalRequest, actor?: TApprovalActor) => Promise<void>;
+
+  // Policies of this type can hold auto-approval rules
+  supportsAutoApproval?: boolean;
+  // Whether the policy's auto-approval rules may decide this request
+  allowsAutoApproval?: (args: {
+    projectId: string;
+    requestData: TApprovalRequestData | TApprovalPolicyInputs;
+    tx?: Knex;
+  }) => Promise<boolean>;
   postRejectionRoutine?: (request: TApprovalRequest) => Promise<void>;
 
   // Whether a stored grant's attributes or a request's payload is for the thing these inputs name.
@@ -219,6 +269,22 @@ export type TApprovalResource<
     userGroupIds: Set<string>;
   }) => Promise<boolean>;
 
+  // Which of these pending requests too few of their saved approvers can still approve for them ever to pass, for a
+  // type where that snapshot can outlive the membership behind it. Takes them as a batch so a list costs the same reads
+  // as one request per scope. Reads go through tx.
+  findUndecidableRequestIds?: (args: {
+    requests: {
+      request: TApprovalRequests;
+      steps: {
+        stepNumber: number;
+        requiredApprovals: number;
+        approvers: { type: ApproverType; id: string }[];
+        approvals: { approverUserId: string }[];
+      }[];
+    }[];
+    tx: Knex;
+  }) => Promise<Set<string>>;
+
   // The audit event a lifecycle action owes. A type whose auditors filter on resource ids contributes
   // its own event here; returning nothing leaves the generic approval event in place.
   buildAuditEvent?: (args: {
@@ -236,6 +302,7 @@ export type TApprovalResource<
     request: TApprovalRequests;
     comment?: string;
     bypassReason?: string;
+    failureReason?: string;
   }) => Promise<TApprovalNotification | null>;
   // The domain event a lifecycle event owes; called inside the transaction, so it must not touch the database.
   buildEvent?: (args: { event: ApprovalNotificationEvent; request: TApprovalRequests }) => TEventInput | null;
@@ -280,13 +347,21 @@ export type TApprovalResource<
     policy: TApprovalPolicy;
     requestData: TApprovalRequestData;
     actor: TApprovalActor;
+    hasAutoApprovalRules: boolean;
+    skipsAutoApproval: boolean;
   }) => Promise<void>;
+  // stepApprovers are the saved approver entries of the step being decided. tx is set when the check runs under the
+  // request's lock, which happens only for a type that sets assertCanReviewReadsThroughTx: its reads must all go
+  // through tx, since a read on the pool there takes a second connection while the transaction holds one.
   assertCanReview?: (args: {
     request: TApprovalRequests;
     decision: ApprovalRequestApprovalDecision;
     actor: TApprovalActor;
     userGroupIds: Set<string>;
+    stepApprovers: { type: ApproverType; id: string }[];
+    tx?: Knex;
   }) => Promise<void>;
+  assertCanReviewReadsThroughTx?: boolean;
   // The default treats an empty bypasser list as everybody; a type reading it the other way says so here.
   isBreakGlassEligible?: (args: {
     request: TApprovalRequests;
@@ -320,12 +395,14 @@ export type TApprovalAccessStatus = {
 export type TApprovalScopeConfiguration = {
   steps: { requiredApprovals: number; approvers: PolicyBypasser[] }[];
   bypassers: PolicyBypasser[];
+  autoApproval: TAutoApprovalPolicyResponse;
 };
 
 export type TApprovalResourceRegistry = Partial<Record<ApprovalPolicyType, TApprovalResource>>;
 
 export type TApprovalRequestSubjectMetadata = {
   certificateRequestId?: string;
+  certificateId?: string;
   commonName?: string;
   profileName?: string;
   signerId?: string;

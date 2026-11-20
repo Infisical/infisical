@@ -1,5 +1,4 @@
 import { ReactNode, useMemo, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -28,6 +27,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -99,7 +99,6 @@ export const InsightsCard = ({
   onLoadMore: () => void;
   isLoadingMore: boolean;
 }) => {
-  const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
@@ -221,16 +220,15 @@ export const InsightsCard = ({
             </TableHeader>
             <TableBody>
               {visible.map((project) => (
-                <TableRow
-                  key={project.projectId}
-                  onClick={() =>
-                    navigate({
-                      to: projectInsightsRoute,
-                      params: { orgId: currentOrg.id, projectId: project.projectId }
-                    })
-                  }
-                >
-                  <TableCell className="font-medium">{project.projectName}</TableCell>
+                <TableRow key={project.projectId} linked>
+                  <TableCell className="font-medium">
+                    <RowLink
+                      to={projectInsightsRoute}
+                      params={{ orgId: currentOrg.id, projectId: project.projectId }}
+                    >
+                      {project.projectName}
+                    </RowLink>
+                  </TableCell>
                   <TableCell>
                     <WarningBadges warnings={project.warnings} />
                   </TableCell>
@@ -244,7 +242,7 @@ export const InsightsCard = ({
                   <TableCell className="text-right">
                     {project.totalSecrets.toLocaleString()}
                   </TableCell>
-                  <TableCell variant="action">
+                  <TableCell className="min-w-12 pr-1.5 text-end">
                     <ChevronRightIcon className="size-3.5 text-muted" />
                   </TableCell>
                 </TableRow>

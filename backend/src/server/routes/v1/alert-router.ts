@@ -1,7 +1,7 @@
 import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import { ALERTING } from "@app/lib/api-docs";
+import { ALERTING, ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -72,7 +72,9 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     url: "/",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "createAlert",
+      tags: [ApiDocsTags.Alerting],
       description: "Create an alert that notifies its channels when an event happens to a resource.",
       body: z.object({
         name: z.string().min(1).max(255).describe(ALERTING.CREATE.name),
@@ -175,7 +177,9 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     url: "/",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "listAlerts",
+      tags: [ApiDocsTags.Alerting],
       description: "List the alerts on a resource type.",
       querystring: z.object({
         resourceType: z.string().trim().min(1).max(255).describe(ALERTING.LIST.resourceType),
@@ -207,7 +211,9 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     url: "/:alertId",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "getAlertById",
+      tags: [ApiDocsTags.Alerting],
       description: "Get an alert by ID.",
       params: z.object({ alertId: z.string().uuid().describe(ALERTING.GET.alertId) }),
       response: { 200: z.object({ alert: AlertResponseSchema }) }
@@ -230,7 +236,9 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     url: "/:alertId",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "updateAlert",
+      tags: [ApiDocsTags.Alerting],
       description: "Update an alert.",
       params: z.object({ alertId: z.string().uuid().describe(ALERTING.UPDATE.alertId) }),
       body: z.object({
@@ -275,7 +283,9 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     url: "/:alertId",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "deleteAlert",
+      tags: [ApiDocsTags.Alerting],
       description: "Delete an alert and its channels.",
       params: z.object({ alertId: z.string().uuid().describe(ALERTING.DELETE.alertId) }),
       response: { 200: z.object({ alert: z.object({ id: z.string().uuid() }) }) }

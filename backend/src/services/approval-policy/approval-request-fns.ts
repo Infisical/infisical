@@ -2,6 +2,8 @@ import { Knex } from "knex";
 
 import { TApprovalRequestApprovals, TApprovalRequests } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
 import {
   ApprovalPolicyType,
@@ -17,7 +19,9 @@ import {
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
 } from "./approval-request-dal";
+import { TAutoApprovalEvidence } from "./auto-approval/auto-approval-types";
 import { TCertRequestRequestData } from "./cert-request/cert-request-policy-types";
+import { TCertRevocationRequestData } from "./cert-revocation/cert-revocation-policy-types";
 import { TCodeSigningRequestData } from "./code-signing/code-signing-policy-types";
 
 export interface TCreateApprovalRequestWithStepsParams {
@@ -36,6 +40,9 @@ export interface TCreateApprovalRequestWithStepsParams {
   requesterEmail: string;
   scopeType?: string | null;
   scopeId?: string | null;
+  autoApprovalEvidence?: TAutoApprovalEvidence | null;
+  // Set when a rule approved the request on creation, which completes every step
+  autoApprovedAt?: Date | null;
 }
 
 export type TApprovalRequestWithSteps = TApprovalRequests & {
@@ -62,22 +69,28 @@ type TInsertApprovalRequestStepsDeps = {
 };
 
 export const insertApprovalRequestSteps = async (
-  { requestId, policySteps }: { requestId: string; policySteps: ApprovalPolicyStep[] },
+  {
+    requestId,
+    policySteps,
+    completedAt
+  }: { requestId: string; policySteps: ApprovalPolicyStep[]; completedAt?: Date | null },
   { approvalRequestStepsDAL, approvalRequestStepEligibleApproversDAL }: TInsertApprovalRequestStepsDeps,
   tx: Knex
 ) =>
   Promise.all(
     policySteps.map(async (step, i) => {
       const stepNum = i + 1;
+      const pendingStatus = stepNum === 1 ? ApprovalRequestStepStatus.InProgress : ApprovalRequestStepStatus.Pending;
       const newStep = await approvalRequestStepsDAL.create(
         {
           requestId,
           stepNumber: stepNum,
           name: step.name ?? null,
-          status: stepNum === 1 ? ApprovalRequestStepStatus.InProgress : ApprovalRequestStepStatus.Pending,
+          status: completedAt ? ApprovalRequestStepStatus.Completed : pendingStatus,
           requiredApprovals: step.requiredApprovals,
           notifyApprovers: step.notifyApprovers ?? false,
-          startedAt: stepNum === 1 ? new Date() : null
+          startedAt: completedAt ?? (stepNum === 1 ? new Date() : null),
+          completedAt: completedAt ?? null
         },
         tx
       );
@@ -119,7 +132,9 @@ export const createApprovalRequestWithSteps = async (
     requesterName,
     requesterEmail,
     scopeType,
-    scopeId
+    scopeId,
+    autoApprovalEvidence,
+    autoApprovedAt
   }: TCreateApprovalRequestWithStepsParams,
   dependencies: {
     approvalRequestDAL: Pick<TApprovalRequestDALFactory, "create" | "transaction">;
@@ -146,13 +161,15 @@ export const createApprovalRequestWithSteps = async (
         requestData: { version: 1, requestData },
         expiresAt,
         scopeType: scopeType ?? null,
-        scopeId: scopeId ?? null
+        scopeId: scopeId ?? null,
+        ...(autoApprovalEvidence && { autoApprovalEvidence }),
+        ...(autoApprovedAt && { autoApprovedAt })
       },
       tx
     );
 
     const newSteps = await insertApprovalRequestSteps(
-      { requestId: newRequest.id, policySteps },
+      { requestId: newRequest.id, policySteps, completedAt: autoApprovedAt },
       { approvalRequestStepsDAL, approvalRequestStepEligibleApproversDAL },
       tx
     );
@@ -210,7 +227,9 @@ export const resolveStepApproverUserIds = async (
     if (approver.type === ApproverType.User) {
       userIds.add(approver.id);
     } else if (approver.type === ApproverType.Group) {
-      const members = await userGroupMembershipDAL.find({ groupId: approver.id });
+      const members = await requestMemoize(requestMemoKeys.groupMembers(approver.id), () =>
+        userGroupMembershipDAL.find({ groupId: approver.id })
+      );
       members.forEach((member) => userIds.add(member.userId));
     }
   }
@@ -227,6 +246,11 @@ export const getApprovalRequestSubjectMetadata = (
   if (request.type === ApprovalPolicyType.CertRequest) {
     const { certificateRequestId, certificateRequest, profileName } = requestData as TCertRequestRequestData;
     return { certificateRequestId, commonName: certificateRequest?.commonName, profileName };
+  }
+
+  if (request.type === ApprovalPolicyType.CertRevocation) {
+    const { certificateId, commonName, profileName } = requestData as TCertRevocationRequestData;
+    return { certificateId, commonName, profileName };
   }
 
   if (request.type === ApprovalPolicyType.CertCodeSigning) {

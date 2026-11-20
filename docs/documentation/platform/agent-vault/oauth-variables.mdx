@@ -1,0 +1,268 @@
+---
+title: "OAuth variables"
+description: "Sign in to an OAuth provider once and use the sign-in as the credential of any HTTP or MCP service in an Agent Vault project."
+---
+
+An OAuth variable is a [global variable](/documentation/platform/agent-vault/variables) that holds an OAuth sign-in instead of a value. You sign in once to a provider, such as Google or the provider behind an MCP server, and any [HTTP API](/documentation/platform/agent-vault/http-apis) or [MCP server](/documentation/platform/agent-vault/mcp-servers) service in the project can use the sign-in as its credential.
+
+Infisical stores the tokens the provider returns and renews the access token before it expires. The [proxy](/documentation/platform/agent-vault/proxies) sends the access token to the service's hosts as `Authorization: Bearer <access-token>`, and the agent never receives any token.
+
+Use an OAuth variable when several services need the same sign-in, or when an HTTP API needs OAuth. You can create OAuth variables in the Infisical dashboard or [through the API](#manage-oauth-variables-through-the-api).
+
+<Info>
+  Only [admins of the project](/documentation/platform/agent-vault/access-control#product-membership) can view and update OAuth variables.
+</Info>
+
+## Create an OAuth variable
+
+<Steps>
+  <Step>
+    In your Agent Vault project, go to **Variables**, select the **Global Variables** tab, and select **Add Global Variable**.
+  </Step>
+  <Step>
+    Set **Type** to **OAuth**, then enter a **Key**, such as `GOOGLE_DRIVE`.
+  </Step>
+  <Step>
+    Enter the **Server URL**: an MCP server's URL, such as `https://mcp.linear.app/mcp`, or the provider's sign-in URL, such as `https://accounts.google.com`. Infisical looks up the provider's OAuth endpoints from this URL.
+
+    If Infisical can't find the endpoints, the form asks you to enter the **Authorization URL**, the **Token URL**, and at least one scope yourself. Infisical fills in any endpoints it found, so check them against the provider's OAuth documentation.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/oauth-variable-create.png" alt="The Add Global Variable sheet with Type set to OAuth, NOTION as the key, https://mcp.notion.com/mcp as the Server URL, Automatic Setup as the OAuth App, and Authorize in the footer" />
+    </Frame>
+  </Step>
+  <Step>
+    If the provider doesn't let Infisical register itself as an OAuth client, or you entered the endpoints yourself, use an OAuth app of your own:
+
+    1. Under **OAuth App**, select **Custom** to show the **Redirect URI**, **Client ID**, and **Client Secret** fields
+    2. Create an OAuth app with the provider, and set its redirect URI to the **Redirect URI** that Infisical shows
+    3. Enter the app's **Client ID** and **Client Secret** (leave **Client Secret** empty if the app has no secret)
+
+    <Frame>
+      <img src="/images/platform/agent-vault/oauth-variable-custom-app.png" alt="The Add Global Variable sheet for GDRIVE_SUPPORT with https://accounts.google.com as the Server URL, a Google Drive scope, Custom as the OAuth App, and the Redirect URI, Client ID, and hidden Client Secret fields" />
+    </Frame>
+  </Step>
+  <Step>
+    Under **Scopes**, add the scopes your agents need. Leave **Scopes** empty to use the server's or provider's default scopes.
+  </Step>
+  <Step>
+    Select **Authorize**, then sign in to the provider in the pop-up window and approve access. When you approve, the variable shows **Authorized**.
+  </Step>
+</Steps>
+
+<Warning>
+  Every session that uses the variable calls the provider as the account you signed in with. Sign in with an account that has only the access your agents need.
+</Warning>
+
+## Use an OAuth variable in a service
+
+To make a service send the variable's access token:
+
+<Steps>
+  <Step>
+    [Add a service](/documentation/platform/agent-vault/services), or open an existing service's actions menu and select **Edit**. Then go to the **Credential** step.
+  </Step>
+  <Step>
+    Under **Credential Type**, select **OAuth**. For an MCP server, also select **Use an OAuth Variable**.
+  </Step>
+  <Step>
+    Pick the variable from the list. To create one without leaving the service, select **Create OAuth Variable** at the end of the list.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/oauth-variable-picker.png" alt="The Credential step of a github service with the OAuth Variable list open, showing GDRIVE_TEAM, GITHUB_TEAM and LINEAR (the last two marked Not Connected), and Create OAuth Variable at the end" />
+    </Frame>
+
+    If the variable isn't authorized yet, the step says that agents can't use the service until you authorize the variable on the **Variables** page.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/oauth-variable-service.png" alt="The Credential step of a github service with GITHUB_TEAM as the OAuth Variable, the note that agents can't use the service until GITHUB_TEAM is authorized on the Variables page, and the Sends preview showing Authorization: Bearer with the GITHUB_TEAM access token" />
+    </Frame>
+
+    **Create OAuth Variable** opens the same form as the **Variables** page, on top of the service. When you create the variable and close the form, the service selects the variable.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/oauth-variable-create-from-service.png" alt="The Create OAuth Variable sheet open on top of the github service's Credential step, with GITHUB_ORG as the key and https://api.githubcopilot.com/mcp/ as the Server URL" />
+    </Frame>
+  </Step>
+  <Step>
+    Continue to the **Review** step, and select **Add Service**, or **Save** if you're editing the service.
+  </Step>
+</Steps>
+
+Every service that uses the same variable sends the same access token. If the provider stops accepting the sign-in, every one of those services stops working until you [reauthorize the variable](#reauthorize-a-variable).
+
+You can't use an OAuth variable in a field that takes a [variable reference](/documentation/platform/agent-vault/text-variables#use-a-variable-in-a-service), such as `{{GOOGLE_DRIVE}}` in a Bearer token.
+
+## Check a variable's status
+
+The **Value** column on the **Variables** page shows the status of each OAuth variable:
+
+- **Not Connected:** Nobody has signed in yet, or an [edit disconnected](#edits-that-disconnect-a-variable) the variable
+- **Authorized:** Services can use the sign-in
+- **Needs Reauthorization:** The provider no longer accepts the sign-in
+- **Missing Scopes:** A service needs scopes that the sign-in didn't grant
+
+<Frame>
+  <img src="/images/platform/agent-vault/variables-oauth.png" alt="The Global Variables tab listing the OAuth variables GDRIVE_TEAM as Authorized and GITHUB_TEAM and LINEAR as Not Connected, the text variables SLACK_BOT_TOKEN and STRIPE_API_KEY with hidden values, and the service that uses each one" />
+</Frame>
+
+Infisical never shows an OAuth variable's tokens, and you can't copy them.
+
+## Reauthorize a variable
+
+If a variable shows **Needs Reauthorization** or **Missing Scopes**, sign in again:
+
+<Steps>
+  <Step>
+    In your Agent Vault project, go to **Variables**.
+  </Step>
+  <Step>
+    Open the variable's actions menu and select **Reauthorize**.
+  </Step>
+  <Step>
+    Sign in to the provider in the pop-up window and approve access.
+  </Step>
+</Steps>
+
+The services that use the variable get the new token within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default).
+
+If the variable has a redirect URI of your own app, the actions menu doesn't show **Reauthorize**. [Start a new sign-in through the API](#reconnect-a-variable) instead.
+
+## Edits that disconnect a variable
+
+The tokens belong to the provider and OAuth app the variable signed in with. If you change any of these settings, Infisical deletes the tokens and the client secret, and the variable shows **Not Connected** until you authorize it again with the client secret:
+
+- **Server URL**
+- **Authorization URL** or **Token URL**
+- **Issuer**
+- **Token Auth Method**
+- **Client ID**
+
+Changing the scopes keeps the current sign-in until you select **Save and Reauthorize**, which asks for the new scopes.
+
+## Manage OAuth variables through the API
+
+Your backend can create OAuth variables and send people through the provider's sign-in, for example one variable for each user of your app. The person signs in on your OAuth app's consent screen and comes back to a page in your app.
+
+You need:
+
+- A machine identity with the **Admin** role in the Agent Vault project, and an access token for it (set it up and log in as the **API** tab of [Create a session](/documentation/platform/agent-vault/create-a-session#create-a-session-with-the-api) describes, but choose **Admin** in **Role**)
+- An OAuth app with the provider, whose redirect URI points at a page of your app, such as `https://app.example.com/oauth/google/callback`
+
+<Warning>
+  Anyone with the **Admin** role in the project can make a service send a variable's access token to any host. Give the **Admin** role only to the people and machine identities you trust with every account that a variable signs in to.
+</Warning>
+
+### Create a variable and start the sign-in
+
+Call the [Create variable](/api-reference/endpoints/agent-vault-variables/create) endpoint with the provider's settings and `signIn`:
+
+```bash
+curl -X POST https://app.infisical.com/api/v1/agent-vault/variables \
+  -H "Authorization: Bearer <access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "projectId": "<project-id>",
+    "scope": "global",
+    "key": "GDRIVE_TEAM",
+    "type": "oauth",
+    "oauth": {
+      "authorizationEndpoint": "https://accounts.google.com/o/oauth2/v2/auth",
+      "tokenEndpoint": "https://oauth2.googleapis.com/token",
+      "clientId": "<client-id>",
+      "scopes": ["https://www.googleapis.com/auth/drive.readonly"],
+      "redirectUri": "https://app.example.com/oauth/google/callback"
+    },
+    "signIn": {"clientSecret": "<client-secret>"}
+  }'
+```
+
+- `redirectUri` is the page in your app where the provider sends the person back (a machine identity must set it)
+- `signIn.clientSecret` is your OAuth app's client secret, which Infisical never returns
+
+Save the variable's ID from `variable.id` in your own records, then redirect the person's browser to `signIn.authorization.authorizeUrl`. The link works for 10 minutes, so create it when the person asks to connect.
+
+If the provider lets apps register themselves as OAuth clients, as many MCP servers do, you can send `serverUrl` set to the provider's URL instead of the endpoints and `clientId`. Infisical then finds the endpoints and registers a client for each sign-in. If `signIn.authorization` in the response is `null`, Infisical couldn't start the sign-in:
+
+- `registrationRequired` is `true` if the provider doesn't let apps register (set your own OAuth app's `clientId`)
+- `manualSetupRequired` is `true` if Infisical couldn't find endpoints it can trust (check the endpoints in `prefill`, and set them yourself)
+
+### Complete the sign-in from your callback
+
+After the person approves access, the provider redirects them to your `redirectUri` with `code`, `state`, and sometimes `iss` in the query string. Your callback must:
+
+1. Require the person to be logged in to your app
+2. Take the variable ID from your own records for that person, never from the request
+3. Send the query string's values to the [Complete OAuth sign-in](/api-reference/endpoints/agent-vault-variables/complete-oauth-sign-in) endpoint, with the same machine identity that started the sign-in
+
+```bash
+curl -X POST https://app.infisical.com/api/v1/agent-vault/variables/<variable-id>/authorizations/complete \
+  -H "Authorization: Bearer <access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"state": "<state>", "code": "<code>", "iss": "<iss>"}'
+```
+
+Forward `iss` exactly as the provider sent it, and leave it out if the redirect had none. If the redirect carried `error` and `error_description` instead, send `{"state": "<state>", "error": "<error>", "errorDescription": "<error_description>"}`.
+
+The response has the variable with `oauth.status` set to `connected`. If the endpoint returns a `400` or `404` response, the sign-in failed or expired, so start a new one.
+
+### Use the variable in a session
+
+Call the [Create session](/api-reference/endpoints/agent-vault-sessions/create) endpoint, and add an [inline service](/documentation/platform/agent-vault/inline-services#use-oauth-in-an-inline-service) to `services` whose credential names the variable:
+
+```json
+{
+  "type": "http",
+  "name": "gdrive",
+  "hostPattern": "www.googleapis.com",
+  "credential": {"type": "oauth", "variable": "GDRIVE_TEAM"}
+}
+```
+
+### Reconnect a variable
+
+To check a variable's status, call the [List variables](/api-reference/endpoints/agent-vault-variables/list) endpoint with the variable's key in `keys` and `scope` set to `global`. If `oauth.status` is `needs-reauthorization` or `needs-additional-scopes`, send the person through the sign-in again:
+
+1. Call the [Start OAuth sign-in](/api-reference/endpoints/agent-vault-variables/start-oauth-sign-in) endpoint
+2. Redirect the person to `authorization.authorizeUrl` from the response
+3. [Complete the sign-in from your callback](#complete-the-sign-in-from-your-callback)
+
+```bash
+curl -X POST https://app.infisical.com/api/v1/agent-vault/variables/<variable-id>/authorizations \
+  -H "Authorization: Bearer <access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"clientSecret": "<client-secret>"}'
+```
+
+### Import tokens you already have
+
+If your app already holds tokens for an account, store them instead of sending the person through the sign-in. Send `tokens` instead of `signIn` to the [Create variable](/api-reference/endpoints/agent-vault-variables/create) endpoint, or send `tokens` to the [Update variable](/api-reference/endpoints/agent-vault-variables/update) endpoint to replace an existing variable's tokens:
+
+```json
+"tokens": {
+  "accessToken": "<access-token>",
+  "refreshToken": "<refresh-token>",
+  "expiresAt": "2026-11-18T11:00:00Z",
+  "clientSecret": "<client-secret>"
+}
+```
+
+The variable needs `authorizationEndpoint`, `tokenEndpoint`, and `clientId` set, as in the [Create variable example](#create-a-variable-and-start-the-sign-in). Without a `refreshToken`, the variable stops working when the access token expires.
+
+## Limits
+
+- An OAuth variable counts toward the project's limit of 500 global variables
+- OAuth variables are always global, so [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) can't use them
+- You can't change a variable's type after you create it
+- If the provider is on a private network and you self-host Infisical on that network, set [`ALLOW_INTERNAL_IP_CONNECTIONS`](/self-hosting/configuration/envars#param-allow-internal-ip-connections) to `true`, since Infisical connects to the provider to sign in and to renew tokens
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Create a session" icon="code" href="/documentation/platform/agent-vault/create-a-session">
+    Create a session for each agent run from your own code.
+  </Card>
+  <Card title="Inline services" icon="plug" href="/documentation/platform/agent-vault/inline-services">
+    Send a service that uses an OAuth variable with a session.
+  </Card>
+</CardGroup>

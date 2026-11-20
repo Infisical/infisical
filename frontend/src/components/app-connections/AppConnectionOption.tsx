@@ -1,5 +1,4 @@
 import { ReactNode } from "react";
-import { components, OptionProps } from "react-select";
 import { CheckIcon, PlusIcon } from "lucide-react";
 
 import {
@@ -70,25 +69,5 @@ export const AppConnectionOptionContent = ({
         </>
       )}
     </div>
-  );
-};
-
-export const AppConnectionOption = ({
-  isSelected,
-  ...props
-}: OptionProps<TAvailableAppConnection>) => {
-  const isCreateOption = props.data.id === "_create" || props.data.id.startsWith("_create:");
-  const isPerAppCreateOption = isCreateOption && props.data.id !== "_create";
-  const isOnlyOption = isCreateOption && props.selectProps.options.length === 1;
-
-  return (
-    <components.Option isSelected={isSelected} {...props}>
-      <AppConnectionOptionContent
-        data={props.data}
-        createLabel={isPerAppCreateOption ? props.children : undefined}
-        isOnlyOption={isOnlyOption}
-        isSelected={isSelected}
-      />
-    </components.Option>
   );
 };

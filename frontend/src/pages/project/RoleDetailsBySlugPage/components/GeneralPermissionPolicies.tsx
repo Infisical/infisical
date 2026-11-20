@@ -71,7 +71,6 @@ type ActionsMultiSelectProps = {
   rootIndex: number;
   actions: readonly TPermissionAction[];
   isDisabled?: boolean;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   control: Control<any>;
   menuPortalContainerRef?: RefObject<HTMLElement | null>;
   subjectScope: PermissionScope;
@@ -234,16 +233,13 @@ export const GeneralPermissionPolicies = <T extends AnyPermissionSubject>({
   menuPortalContainerRef,
   subjectScope
 }: Props<T>) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { control, watch } = useFormContext<any>();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { fields, remove, insert } = useFieldArray<any>({
     control,
     name: `permissions.${subject}`
   });
 
   // scott: this is a hacky work-around to resolve bug of fields not updating UI when removed
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const watchFields = useWatch({ control, name: `permissions.${subject}` as any }) as unknown[];
   const wasPresentRef = useRef(false);
   const onPolicyAddedRef = useRef(onPolicyAdded);

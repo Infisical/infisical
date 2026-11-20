@@ -2,8 +2,6 @@ import { Camelize, GitbeakerRequestError, GroupHookSchema, ProjectHookSchema } f
 import pLimit from "p-limit";
 import { join } from "path";
 
-import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
-import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import { SecretScanningFindingSeverity } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import {
   assertProviderRepositorySizeWithinLimit,
@@ -26,6 +24,8 @@ import {
   TSecretScanningFactoryUpdateWebhook,
   TSecretScanningFactoryValidateConfigUpdate
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
+import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
+import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -49,7 +49,7 @@ const PROJECT_HOOK_CONCURRENCY = 5;
 
 type TGitLabProjectHook = { projectId: number; projectName: string; hookId: number };
 
-export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TSecretScanningFactoryParams) => {
+export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsDataKeyService }: TSecretScanningFactoryParams) => {
   type TGitLabClient = Awaited<ReturnType<typeof getGitLabConnectionClient>>;
   type THookableConfig = Exclude<TGitLabDataSourceInput["config"], { scope: GitLabDataSourceScope.Account }>;
 
@@ -211,7 +211,7 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
     // An account data source starts with no projects; each one gets its hook as it is added.
     if (config.scope === GitLabDataSourceScope.Account) return callback({});
 
-    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
+    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsDataKeyService);
     const token = alphaNumericNanoId(64);
     const hookId = await createHook(client, config, token, name);
 
@@ -230,7 +230,7 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
   > = async ({ connection, dataSourceId, credentials, payload: { config } }) => {
     if (!credentials || !("hookId" in credentials) || config.scope === GitLabDataSourceScope.Account) return;
 
-    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
+    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsDataKeyService);
     await bindHookToDataSource(client, config, credentials.hookId, dataSourceId);
   };
 
@@ -241,14 +241,14 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
     if (config.scope === GitLabDataSourceScope.Account) {
       if (!resourceNames.length) return undefined;
 
-      const accountClient = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
+      const accountClient = await getGitLabConnectionClient(connection, appConnectionDAL, kmsDataKeyService);
       const accountToken = alphaNumericNanoId(64);
       const projectHooks = await addProjectHooks(accountClient, resourceNames, accountToken, id);
 
       return { token: accountToken, projectHooks };
     }
 
-    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
+    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsDataKeyService);
     const token = alphaNumericNanoId(64);
     const hookId = await createHook(client, config, token, name);
     await bindHookToDataSource(client, config, hookId, id);
@@ -268,7 +268,7 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
 
     if (!stale.length && !missing.length) return undefined;
 
-    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
+    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsDataKeyService);
     const added = await addProjectHooks(client, missing, credentials.token, id);
 
     return {
@@ -283,7 +283,7 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
   ) => {
     const { connection, config } = dataSource;
 
-    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
+    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsDataKeyService);
 
     if (config.scope === GitLabDataSourceScope.Project) {
       const { projectId } = config;
@@ -323,7 +323,7 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
 
     const instanceUrl = await getGitLabInstanceUrl(connection.credentials.instanceUrl);
 
-    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
+    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsDataKeyService);
 
     const user = await client.Users.showCurrentUser();
 
@@ -357,7 +357,7 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
   > = async ({ dataSource: { connection, config }, credentials }) => {
     if (!credentials) return;
 
-    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
+    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsDataKeyService);
 
     if ("projectHooks" in credentials) {
       await removeProjectHooks(client, credentials.projectHooks);
@@ -384,7 +384,7 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
   > = async ({ dataSource, payload, resourceName, configPath }) => {
     const { connection } = dataSource;
 
-    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
+    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsDataKeyService);
 
     const { commits, project } = payload;
 
@@ -399,10 +399,7 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
         if (commitDiff.deletedFile) continue;
 
         // eslint-disable-next-line no-await-in-loop
-        const findings = await scanContentAndGetFindings(
-          replaceNonChangesWithNewlines(`\n${commitDiff.diff}`),
-          configPath
-        );
+        const findings = await scanContentAndGetFindings(replaceNonChangesWithNewlines(commitDiff.diff), configPath);
 
         const adjustedFindings = findings.map((finding) => {
           const startLine = convertPatchLineToFileLineNumber(commitDiff.diff, finding.StartLine);
@@ -410,8 +407,6 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
             finding.StartLine === finding.EndLine
               ? startLine
               : convertPatchLineToFileLineNumber(commitDiff.diff, finding.EndLine);
-          const startColumn = finding.StartColumn - 1; // subtract 1 for +
-          const endColumn = finding.EndColumn - 1; // subtract 1 for +
           const authorName = commit.author.name;
           const authorEmail = commit.author.email;
 
@@ -419,14 +414,12 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
             ...finding,
             StartLine: startLine,
             EndLine: endLine,
-            StartColumn: startColumn,
-            EndColumn: endColumn,
             File: commitDiff.newPath,
             Commit: commit.id,
             Author: authorName,
             Email: authorEmail,
             Message: commit.message,
-            Fingerprint: `${commit.id}:${commitDiff.newPath}:${finding.RuleID}:${startLine}:${startColumn}`,
+            Fingerprint: `${commit.id}:${commitDiff.newPath}:${finding.RuleID}:${startLine}:${finding.StartColumn}`,
             Date: commit.timestamp,
             Attributes: {
               ...finding.Attributes,
@@ -439,12 +432,15 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
       }
     }
 
-    return allFindings.map((finding) => ({
-      details: toFindingDetails(finding),
-      fingerprint: finding.Fingerprint,
-      severity: SecretScanningFindingSeverity.High,
-      rule: finding.RuleID
-    }));
+    return {
+      findings: allFindings.map((finding) => ({
+        details: toFindingDetails(finding),
+        fingerprint: finding.Fingerprint,
+        severity: SecretScanningFindingSeverity.High,
+        rule: finding.RuleID,
+        secretValue: finding.Secret
+      }))
+    };
   };
 
   const validateConfigUpdate: TSecretScanningFactoryValidateConfigUpdate<

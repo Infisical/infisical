@@ -19,8 +19,8 @@ import {
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import { TPkiSyncFilters } from "@app/hooks/api/pkiSyncs/types";
 
-import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { FILTER_LABELS, presentFilterKinds, TFilterKind } from "./pki-sync-filter-fns";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 type TProfileOption = { label: string; value: string };
 

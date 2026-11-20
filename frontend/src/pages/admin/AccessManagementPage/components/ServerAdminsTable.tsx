@@ -302,7 +302,7 @@ export const ServerAdminsTable = () => {
   const { users = [], totalCount = 0 } = data ?? {};
 
   const handleRemoveUser = async () => {
-    const { id } = popUp?.removeUser?.data as { id: string; username: string };
+    const { id } = popUp.removeUser.data as { id: string; username: string };
 
     await deleteUser(id);
     createNotification({
@@ -314,7 +314,7 @@ export const ServerAdminsTable = () => {
   };
 
   const handleRemoveServerAdminAccess = async () => {
-    const { id } = popUp?.removeServerAdmin?.data as {
+    const { id } = popUp.removeServerAdmin.data as {
       id: string;
       username: string;
     };

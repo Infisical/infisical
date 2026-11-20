@@ -362,6 +362,7 @@ const pamRoutes = route("/organizations/$orgId/pam", [
     route("/access", [index("redirects/pam-org-access-redirect.tsx")]),
     route("/accounts", [
       index("pam/PamAccountsPage/route.tsx"),
+      route("/my-accounts", "pam/PamAccountsPage/PamMyAccountsPage/route.tsx"),
       route("/$folderId", "pam/PamAccountsPage/PamFolderPage/route.tsx")
     ]),
     route("/templates", "pam/PamTemplatesPage/route.tsx"),
@@ -378,7 +379,7 @@ const pamRoutes = route("/organizations/$orgId/pam", [
   ])
 ]);
 
-const agentVaultRoutes = route("/organizations/$orgId/agent-vault", [
+const agentVaultRoutes = route("/organizations/$orgId/projects/agent-vault/$projectId", [
   layout("agent-vault-layout", "agent-vault/layout.tsx", [
     index("redirects/agent-vault-index-redirect.tsx"),
     route("/sessions", "agent-vault/AgentVaultSessionsPage/route.tsx"),
@@ -386,7 +387,9 @@ const agentVaultRoutes = route("/organizations/$orgId/agent-vault", [
       index("agent-vault/AgentVaultAccessBundlesPage/route.tsx"),
       route("/$accessBundleId", "agent-vault/AgentVaultAccessBundleDetailPage/route.tsx")
     ]),
+    route("/services", "agent-vault/AgentVaultServicesPage/route.tsx"),
     route("/variables", "agent-vault/AgentVaultVariablesPage/route.tsx"),
+    route("/skills", "agent-vault/AgentVaultSkillsPage/route.tsx"),
     route("/proxies", "agent-vault/AgentVaultProxiesPage/route.tsx"),
     route("/settings", "agent-vault/AgentVaultSettingsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-agent-vault.tsx"),
@@ -493,6 +496,7 @@ export const routes = rootRoute("root.tsx", [
   middleware("authenticate.tsx", [
     route("/password-setup", "auth/PasswordSetupPage/route.tsx"),
     route("/mfa-session/$mfaSessionId", "MfaSessionPage/route.tsx"),
+    route("/agent-vault/oauth/callback", "agent-vault/AgentVaultOAuthCallbackPage/route.tsx"),
     route("/personal-settings", [
       layout("user/layout.tsx", [index("user/PersonalSettingsPage/route.tsx")])
     ]),

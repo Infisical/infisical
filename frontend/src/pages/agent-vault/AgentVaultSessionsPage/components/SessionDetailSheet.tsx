@@ -1,9 +1,18 @@
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { BanIcon, BotIcon, PackageIcon, UserIcon } from "lucide-react";
+import {
+  BanIcon,
+  BookOpenTextIcon,
+  BotIcon,
+  PackageIcon,
+  PencilIcon,
+  UserIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
+import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
+import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import {
   Button,
   Detail,
@@ -13,37 +22,133 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  IconButton,
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  Spinner
+  Spinner,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useOrganization, useProject, useProjectPermission, useUser } from "@app/context";
+import { canActOnAgentVaultSession } from "@app/helpers/agentVaultPermissions";
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
-import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultSession, TAgentVaultSessionSkill } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
+import {
+  inlineServiceTarget,
+  sessionInlineServices,
+  sessionInlineSkills,
+  sessionListedServices,
+  sessionListedSkills
+} from "./sessionAccess";
+import {
+  InlineServicesList,
+  ServicesList,
+  SessionAccessHoverCard,
+  SessionSkillsList
+} from "./SessionAccessHoverCard";
 import { SessionExpiry } from "./SessionExpiry";
 import { SessionLogsPanel } from "./SessionLogsPanel";
+import { SessionRequestCount } from "./SessionRequestCount";
 import { SessionStatusBadge } from "./SessionStatusBadge";
+
+const SHOWN_INLINE_SERVICES = 1;
+const SHOWN_SERVICES = 2;
+const SHOWN_SKILLS = 2;
+
+// An element rather than a component, so the hover card's trigger hands its ref and handlers to the button itself.
+// One text node: a dotted underline restarts its dots at each node, leaving a dash at the seam.
+const moreButton = (count: number) => (
+  <button
+    type="button"
+    className="shrink-0 rounded-sm text-muted outline-hidden hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+  >
+    <span className="underline decoration-dotted underline-offset-2">{`+${count} more`}</span>
+  </button>
+);
+
+// A session's skills, listed by name or inline: the first few by name, with the rest behind a hover card.
+const SkillsDetail = ({
+  label,
+  skills,
+  isInline
+}: {
+  label: string;
+  skills: TAgentVaultSessionSkill[];
+  isInline: boolean;
+}) => {
+  const more = skills.slice(SHOWN_SKILLS);
+  return (
+    <Detail className="min-w-0">
+      <DetailLabel>{label}</DetailLabel>
+      <DetailValue className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        {skills.slice(0, SHOWN_SKILLS).map((skill) => (
+          <Tooltip key={skill.id}>
+            <TooltipTrigger asChild>
+              <span className="flex min-w-0 items-center gap-2">
+                <BookOpenTextIcon className="size-4 shrink-0 text-muted" />
+                <span className="truncate">{skill.name}</span>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-sm">
+              {isInline
+                ? "Sent with this session when it was created"
+                : "A project skill picked when this session was created"}
+              <span className="block">{skill.description}</span>
+            </TooltipContent>
+          </Tooltip>
+        ))}
+        {more.length > 0 && (
+          <SessionAccessHoverCard content={<SessionSkillsList skills={more} isInline={isInline} />}>
+            {moreButton(more.length)}
+          </SessionAccessHoverCard>
+        )}
+      </DetailValue>
+    </Detail>
+  );
+};
 
 type Props = {
   session: TAgentVaultSession | undefined;
   isPending?: boolean;
   onRevoke: (session: TAgentVaultSession) => void;
+  onEdit: (session: TAgentVaultSession) => void;
 };
 
-export const SessionDetailSheet = ({ session, isPending = false, onRevoke }: Props) => {
+export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdit }: Props) => {
+  const { projectId } = useProject();
   const { isOpen, closeSheet } = useAgentVaultSheetState();
   const { currentOrg } = useOrganization();
+  const { permission } = useProjectPermission();
+  const { user } = useUser();
 
   const isOwnerDeleted = session?.actor.id === null;
+  // The API refuses edits once the owner, or the user it acts on behalf of, is deleted.
+  const canEdit =
+    !isOwnerDeleted &&
+    session?.onBehalfOf?.id !== null &&
+    Boolean(session && canActOnAgentVaultSession(permission, user.id, session, "edit"));
+  const canRevoke = Boolean(
+    session && canActOnAgentVaultSession(permission, user.id, session, "revoke")
+  );
   const isMachineIdentity = session?.actor.type === AgentVaultMemberType.MachineIdentity;
   const hasExpired = Boolean(
     session?.expiresAt && new Date(session.expiresAt).getTime() <= Date.now()
   );
+  const metadataEntries = Object.entries(session?.metadata ?? {});
+  const inlineServices = session ? sessionInlineServices(session) : [];
+  const shownInlineServices = inlineServices.slice(0, SHOWN_INLINE_SERVICES);
+  const moreInlineServices = inlineServices.slice(SHOWN_INLINE_SERVICES);
+  const listedServices = session ? sessionListedServices(session) : [];
+  const shownServices = listedServices.slice(0, SHOWN_SERVICES);
+  const moreServices = listedServices.slice(SHOWN_SERVICES);
+  const listedSkills = session ? sessionListedSkills(session) : [];
+  const inlineSkills = session ? sessionInlineSkills(session) : [];
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && closeSheet()}>
@@ -55,7 +160,7 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke }: Pro
         {!session && isPending && (
           <Empty className="m-4 border">
             <EmptyHeader>
-              <Spinner size="sm" />
+              <Spinner size="sm" variant="av" />
             </EmptyHeader>
           </Empty>
         )}
@@ -77,96 +182,249 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke }: Pro
             </SheetHeader>
 
             <div className="flex min-h-0 flex-1 flex-col gap-4 p-4">
-              <div className="flex shrink-0 items-center gap-4 overflow-hidden rounded-md border border-border bg-container py-3 pr-4">
-                {/* -ml-px pushes each row's leading divider past the clipped edge, so a wrapped row doesn't start with one */}
-                <div className="-ml-px flex min-w-0 flex-1 flex-wrap gap-y-3 *:border-l *:border-border *:px-4">
-                  <Detail className="min-w-0">
-                    <DetailLabel>{isMachineIdentity ? "Machine Identity" : "User"}</DetailLabel>
-                    <DetailValue
-                      className={twMerge("flex items-center gap-2", isOwnerDeleted && "text-muted")}
-                    >
-                      {isMachineIdentity ? (
-                        <BotIcon className="size-4 shrink-0 text-muted" />
-                      ) : (
-                        <UserIcon className="size-4 shrink-0 text-muted" />
-                      )}
-                      <span className="truncate">
-                        {memberDisplayName(session.actor)}
-                        {isOwnerDeleted && " (deleted)"}
-                      </span>
-                      {!isMachineIdentity && (
-                        <span className="truncate text-muted">{memberSubtitle(session.actor)}</span>
-                      )}
-                    </DetailValue>
-                  </Detail>
-                  <Detail className="min-w-0">
-                    <DetailLabel>
-                      {session.accessBundles.length === 1 ? "Access Bundle" : "Access Bundles"}
-                    </DetailLabel>
-                    <DetailValue className="flex flex-wrap gap-x-4 gap-y-1">
-                      {session.accessBundles.map((bundle) =>
-                        bundle.id ? (
-                          <Link
-                            key={bundle.id}
-                            to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
-                            params={{ orgId: currentOrg.id, accessBundleId: bundle.id }}
-                            className="group flex min-w-0 items-center gap-2"
-                          >
-                            <PackageIcon className="size-4 shrink-0 text-muted" />
-                            <span className="truncate group-hover:underline group-hover:underline-offset-2">
-                              {bundle.name}
-                            </span>
-                          </Link>
+              <div className="shrink-0 overflow-hidden rounded-md border border-border bg-container">
+                <div className="flex items-center gap-4 py-3 pr-4">
+                  {/* -ml-px pushes each row's leading divider past the clipped edge, so a wrapped row doesn't start with one */}
+                  <div className="-ml-px flex min-w-0 flex-1 flex-wrap gap-y-3 *:border-l *:border-border *:px-4">
+                    <Detail className="min-w-0">
+                      <DetailLabel>{isMachineIdentity ? "Machine Identity" : "User"}</DetailLabel>
+                      <DetailValue
+                        className={twMerge(
+                          "flex items-center gap-2",
+                          isOwnerDeleted && "text-muted"
+                        )}
+                      >
+                        {isMachineIdentity ? (
+                          <BotIcon className="size-4 shrink-0 text-muted" />
                         ) : (
-                          <span
-                            key={bundle.name}
-                            className="flex min-w-0 items-center gap-2 text-muted"
-                          >
-                            <PackageIcon className="size-4 shrink-0" />
-                            <span className="truncate">{bundle.name} (deleted)</span>
+                          <UserIcon className="size-4 shrink-0 text-muted" />
+                        )}
+                        <span className="truncate">
+                          {memberDisplayName(session.actor)}
+                          {isOwnerDeleted && " (deleted)"}
+                        </span>
+                        {!isMachineIdentity && (
+                          <span className="truncate text-muted">
+                            {memberSubtitle(session.actor)}
                           </span>
-                        )
-                      )}
-                    </DetailValue>
-                  </Detail>
-                  <Detail>
-                    <DetailLabel>Created</DetailLabel>
-                    <DetailValue>
-                      {format(new Date(session.createdAt), "MMM d, yyyy h:mm a")}
-                    </DetailValue>
-                  </Detail>
-                  {session.revokedAt && (
-                    <Detail>
-                      <DetailLabel>Revoked</DetailLabel>
-                      <DetailValue>
-                        {format(new Date(session.revokedAt), "MMM d, yyyy h:mm a")}
+                        )}
                       </DetailValue>
                     </Detail>
-                  )}
-                  {session.status !== AgentVaultSessionStatus.Revoked && (
+                    {session.onBehalfOf && (
+                      <Detail className="min-w-0">
+                        <DetailLabel>On Behalf Of</DetailLabel>
+                        <DetailValue
+                          className={twMerge(
+                            "flex items-center gap-2",
+                            !session.onBehalfOf.id && "text-muted"
+                          )}
+                        >
+                          <UserIcon className="size-4 shrink-0 text-muted" />
+                          <span className="truncate">
+                            {memberDisplayName(session.onBehalfOf)}
+                            {!session.onBehalfOf.id && " (deleted)"}
+                          </span>
+                          {session.onBehalfOf.id && (
+                            <span className="truncate text-muted">
+                              {memberSubtitle(session.onBehalfOf)}
+                            </span>
+                          )}
+                        </DetailValue>
+                      </Detail>
+                    )}
+                    {session.accessBundle && (
+                      <Detail className="min-w-0">
+                        <DetailLabel>Access Bundle</DetailLabel>
+                        <DetailValue className="flex min-w-0">
+                          {session.accessBundle.id ? (
+                            <Link
+                              to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
+                              params={{
+                                orgId: currentOrg.id,
+                                projectId,
+                                accessBundleId: session.accessBundle.id
+                              }}
+                              className="group flex min-w-0 items-center gap-2"
+                            >
+                              <PackageIcon className="size-4 shrink-0 text-muted" />
+                              <span className="truncate group-hover:underline group-hover:underline-offset-2">
+                                {session.accessBundle.name}
+                              </span>
+                            </Link>
+                          ) : (
+                            <span className="flex min-w-0 items-center gap-2 text-muted">
+                              <PackageIcon className="size-4 shrink-0" />
+                              <span className="truncate">
+                                {session.accessBundle.name} (deleted)
+                              </span>
+                            </span>
+                          )}
+                        </DetailValue>
+                      </Detail>
+                    )}
+                    {listedServices.length > 0 && (
+                      <Detail className="min-w-0">
+                        <DetailLabel>Services</DetailLabel>
+                        <DetailValue className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                          {shownServices.map((service) => (
+                            <Tooltip key={service.id}>
+                              <TooltipTrigger asChild>
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <ServiceIcon
+                                    hostPattern={service.hostPattern}
+                                    serviceType={service.type}
+                                    className="size-5"
+                                  />
+                                  <span className="truncate">{service.name}</span>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-sm">
+                                A project service picked when this session was created
+                                {service.description && (
+                                  <span className="block">{service.description}</span>
+                                )}
+                              </TooltipContent>
+                            </Tooltip>
+                          ))}
+                          {moreServices.length > 0 && (
+                            <SessionAccessHoverCard
+                              content={<ServicesList services={moreServices} />}
+                            >
+                              {moreButton(moreServices.length)}
+                            </SessionAccessHoverCard>
+                          )}
+                        </DetailValue>
+                      </Detail>
+                    )}
+                    {inlineServices.length > 0 && (
+                      <Detail className="min-w-0">
+                        <DetailLabel>Inline Services</DetailLabel>
+                        <DetailValue className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                          {shownInlineServices.map((service) => (
+                            <Tooltip key={service.id}>
+                              <TooltipTrigger asChild>
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <ServiceIcon
+                                    hostPattern={hostPatternOf(service)}
+                                    serviceType={service.type}
+                                    className="size-5"
+                                  />
+                                  <span className="truncate">{service.name}</span>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-sm">
+                                Sent with this session when it was created, for{" "}
+                                {inlineServiceTarget(service)}
+                                {service.hook && (
+                                  <span className="block break-all">
+                                    Calls the hook at {service.hook.url} first.
+                                  </span>
+                                )}
+                              </TooltipContent>
+                            </Tooltip>
+                          ))}
+                          {moreInlineServices.length > 0 && (
+                            <SessionAccessHoverCard
+                              content={<InlineServicesList services={moreInlineServices} />}
+                            >
+                              {moreButton(moreInlineServices.length)}
+                            </SessionAccessHoverCard>
+                          )}
+                        </DetailValue>
+                      </Detail>
+                    )}
+                    {listedSkills.length > 0 && (
+                      <SkillsDetail label="Skills" skills={listedSkills} isInline={false} />
+                    )}
+                    {inlineSkills.length > 0 && (
+                      <SkillsDetail label="Inline Skills" skills={inlineSkills} isInline />
+                    )}
                     <Detail>
-                      <DetailLabel>{hasExpired ? "Expired" : "Expires"}</DetailLabel>
+                      <DetailLabel>Created</DetailLabel>
                       <DetailValue>
-                        <SessionExpiry expiresAt={session.expiresAt} />
+                        {format(new Date(session.createdAt), "MMM d, yyyy h:mm a")}
                       </DetailValue>
                     </Detail>
+                    {session.revokedAt && (
+                      <Detail>
+                        <DetailLabel>Revoked</DetailLabel>
+                        <DetailValue>
+                          {format(new Date(session.revokedAt), "MMM d, yyyy h:mm a")}
+                        </DetailValue>
+                      </Detail>
+                    )}
+                    {session.status !== AgentVaultSessionStatus.Revoked && (
+                      <Detail>
+                        <DetailLabel>{hasExpired ? "Expired" : "Expires"}</DetailLabel>
+                        <DetailValue>
+                          <SessionExpiry expiresAt={session.expiresAt} />
+                        </DetailValue>
+                      </Detail>
+                    )}
+                    {session.stats && (
+                      <Detail>
+                        <DetailLabel>Requests</DetailLabel>
+                        <DetailValue>
+                          <SessionRequestCount stats={session.stats} />
+                        </DetailValue>
+                      </Detail>
+                    )}
+                    <Detail className="items-start">
+                      <DetailLabel>Status</DetailLabel>
+                      <SessionStatusBadge status={session.status} />
+                    </Detail>
+                  </div>
+                  {session.status === AgentVaultSessionStatus.Active && canRevoke && (
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => onRevoke(session)}
+                    >
+                      <BanIcon />
+                      Revoke Session
+                    </Button>
                   )}
-                  <Detail className="items-start">
-                    <DetailLabel>Status</DetailLabel>
-                    <SessionStatusBadge status={session.status} />
-                  </Detail>
                 </div>
-                {session.status === AgentVaultSessionStatus.Active && (
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    className="shrink-0"
-                    onClick={() => onRevoke(session)}
-                  >
-                    <BanIcon />
-                    Revoke Session
-                  </Button>
-                )}
+                <div className="flex items-start gap-2 border-t border-border px-4 py-3">
+                  <div className="flex min-w-0 flex-1 flex-col gap-3">
+                    <Detail>
+                      <DetailLabel>Label</DetailLabel>
+                      <DetailValue
+                        className={twMerge("min-w-0 break-words", !session.label && "text-muted")}
+                      >
+                        {session.label ?? "No label"}
+                      </DetailValue>
+                    </Detail>
+                    <Detail>
+                      <DetailLabel>Metadata</DetailLabel>
+                      <DetailValue className="min-w-0">
+                        {metadataEntries.length > 0 ? (
+                          <dl className="flex max-h-48 flex-col gap-1 overflow-y-auto">
+                            {metadataEntries.map(([key, value]) => (
+                              <div key={key} className="flex min-w-0 gap-2">
+                                <dt className="max-w-1/2 shrink-0 text-muted">{key}</dt>
+                                <dd className="min-w-0 break-words">{value}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        ) : (
+                          <span className="text-muted">No metadata</span>
+                        )}
+                      </DetailValue>
+                    </Detail>
+                  </div>
+                  {canEdit && (
+                    <IconButton
+                      variant="ghost"
+                      size="xs"
+                      aria-label="Edit session"
+                      onClick={() => onEdit(session)}
+                    >
+                      <PencilIcon />
+                    </IconButton>
+                  )}
+                </div>
               </div>
 
               <div className="flex min-h-0 flex-1 flex-col">

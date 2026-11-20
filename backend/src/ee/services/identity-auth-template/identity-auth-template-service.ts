@@ -2,11 +2,12 @@ import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope, TIdentityKubernetesAuthsUpdate, TIdentityOidcAuthsUpdate } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionGatewayActions,
   OrgPermissionGatewayPoolActions,
@@ -15,23 +16,22 @@ import {
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { sanitizeUrlForLog } from "@app/lib/logger";
 import { TOrgPermission } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { ActorType } from "@app/services/auth/auth-type";
-import { assertIdentityAuthAccessAllowed } from "@app/services/identity/identity-auth-permission-fns";
 import { TIdentityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
 import { withKubernetesHostScheme } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-fns";
 import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 import { validateKubernetesConnectionFields } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-validators";
 import { TIdentityLdapAuthDALFactory } from "@app/services/identity-ldap-auth/identity-ldap-auth-dal";
 import { TIdentityOidcAuthDALFactory } from "@app/services/identity-oidc-auth/identity-oidc-auth-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
+import { assertIdentityAuthAccessAllowed } from "@app/services/identity/identity-auth-permission-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { TIdentityAuthTemplateDALFactory } from "./identity-auth-template-dal";
 import { IdentityAuthTemplateMethod, TEMPLATE_SECRET_FIELDS_BY_METHOD } from "./identity-auth-template-enums";
@@ -61,8 +61,8 @@ type TIdentityAuthTemplateServiceFactoryDep = {
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithInputKey" | "decryptWithInputKey">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  kmsDataKeyService: TKmsDataKeyService;
+  licenseService: TLicenseService;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
@@ -79,14 +79,14 @@ export const identityAuthTemplateServiceFactory = ({
   gatewayPoolDAL,
   orgDAL,
   permissionService,
-  kmsService,
+  kmsDataKeyService,
   licenseService,
   auditLogService
 }: TIdentityAuthTemplateServiceFactoryDep) => {
   // Plan check
   const $checkPlan = async (orgId: string) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.machineIdentityAuthTemplates)
+    if (!plan.has(PlanFeature.MachineIdentityAuthTemplates))
       throw new BadRequestError({
         message:
           "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
@@ -187,11 +187,11 @@ export const identityAuthTemplateServiceFactory = ({
   }: {
     gatewayId?: string | null;
     gatewayPoolId?: string | null;
-    plan: Awaited<ReturnType<TLicenseServiceFactory["getPlan"]>>;
+    plan: Awaited<ReturnType<TLicenseService["getPlan"]>>;
     permission: Awaited<ReturnType<TPermissionServiceFactory["getOrgPermission"]>>["permission"];
   }) => {
     if (gatewayId) {
-      if (!plan.gateway) {
+      if (!plan.has(PlanFeature.Gateway)) {
         throw new BadRequestError({
           message:
             "Your current plan does not support gateway usage with identity k8s auth. Please upgrade your plan or contact Infisical Sales for assistance."
@@ -203,7 +203,7 @@ export const identityAuthTemplateServiceFactory = ({
       );
     }
     if (gatewayPoolId) {
-      if (!plan.gatewayPool) {
+      if (!plan.has(PlanFeature.GatewayPool)) {
         throw new BadRequestError({
           message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
         });
@@ -365,7 +365,7 @@ export const identityAuthTemplateServiceFactory = ({
       await $validateTemplateHost((templateFields as TLdapTemplateFields).url, "LDAP URL");
     }
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
     });
@@ -389,12 +389,14 @@ export const identityAuthTemplateServiceFactory = ({
     actorAuthMethod,
     actor,
     actorOrgId,
-    auditLogInfo
+    auditLogInfo,
+    isActorSuperAdmin
   }: {
     templateId: string;
     name?: string;
     templateFields?: Record<string, unknown>;
     auditLogInfo?: AuditLogInfo;
+    isActorSuperAdmin?: boolean;
   } & Omit<TOrgPermission, "orgId">) => {
     const plan = await $checkPlan(actorOrgId);
     const template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, actorOrgId);
@@ -415,7 +417,7 @@ export const identityAuthTemplateServiceFactory = ({
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     );
 
-    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: template.orgId
     });
@@ -448,6 +450,16 @@ export const identityAuthTemplateServiceFactory = ({
         }[])
       : [];
     const checkedIdentityIds = linkedIdentities.map(({ identityId }) => identityId);
+
+    if (linkedIdentities.length > 0 && !isActorSuperAdmin) {
+      const { adminIdentityIds } = await getServerCfg();
+      const adminIdentity = linkedIdentities.find(({ identityId }) => adminIdentityIds?.includes(identityId));
+      if (adminIdentity) {
+        throw new ForbiddenRequestError({
+          message: `Auth template '${template.name}' is linked to server admin identity '${adminIdentity.identityName}'. Ask a server admin to update it, or unlink the identity from the template first.`
+        });
+      }
+    }
 
     // a field patch rewrites every linked identity's auth, so the editor needs edit-auth on each.
     // otherwise EditTemplates alone lets you point them at an LDAP server or OIDC issuer you control
@@ -820,7 +832,7 @@ export const identityAuthTemplateServiceFactory = ({
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     );
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: template.orgId
     });
@@ -855,7 +867,7 @@ export const identityAuthTemplateServiceFactory = ({
 
     const { docs, totalCount } = await identityAuthTemplateDAL.findByOrgId(actorOrgId, { limit, offset, search });
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
     });
@@ -894,7 +906,7 @@ export const identityAuthTemplateServiceFactory = ({
 
     const docs = await identityAuthTemplateDAL.findByAuthMethod(authMethod, actorOrgId);
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
     });

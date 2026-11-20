@@ -1,8 +1,19 @@
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TApprovalPolicy, TGetApprovalPolicyByIdDTO, TListApprovalPoliciesDTO } from "./types";
+import {
+  ApprovalPolicyScope,
+  ApprovalPolicyType,
+  CertRequestPolicyConditions,
+  TApprovalPolicy,
+  TAutoApprovalCatalog,
+  TAutoApprovalOption,
+  TGetApprovalPolicyByIdDTO,
+  TGetAutoApprovalCatalogDTO,
+  TListApprovalPoliciesDTO,
+  TListAutoApprovalOptionsDTO
+} from "./types";
 
 export const approvalPolicyQuery = {
   allKey: () => ["approval-policies"] as const,
@@ -10,6 +21,46 @@ export const approvalPolicyQuery = {
     [...approvalPolicyQuery.allKey(), "by-id", params] as const,
   listKey: (params: TListApprovalPoliciesDTO) =>
     [...approvalPolicyQuery.allKey(), "list", params] as const,
+  autoApprovalCatalogKey: (params: TGetAutoApprovalCatalogDTO) =>
+    [...approvalPolicyQuery.allKey(), "auto-approval-catalog", params] as const,
+  autoApprovalOptionsKey: (params: TListAutoApprovalOptionsDTO) =>
+    [...approvalPolicyQuery.allKey(), "auto-approval-options", params] as const,
+  autoApprovalCatalog: (params: TGetAutoApprovalCatalogDTO) =>
+    queryOptions({
+      queryKey: approvalPolicyQuery.autoApprovalCatalogKey(params),
+      queryFn: async () => {
+        const { data } = await apiRequest.get<TAutoApprovalCatalog>(
+          `/api/v1/approval-policies/${params.policyType}/auto-approval/catalog`,
+          { params: { scope: params.scope, id: params.scopeId } }
+        );
+        return data;
+      }
+    }),
+  autoApprovalOptions: (params: TListAutoApprovalOptionsDTO) =>
+    queryOptions({
+      queryKey: approvalPolicyQuery.autoApprovalOptionsKey(params),
+      queryFn: async () => {
+        const { data } = await apiRequest.get<{ options: TAutoApprovalOption[] }>(
+          `/api/v1/approval-policies/${params.policyType}/auto-approval/options`,
+          {
+            params: {
+              scope: params.scope,
+              id: params.scopeId,
+              connectionId: params.connectionId,
+              subject: params.subject,
+              constraint: params.constraint,
+              search: params.search || undefined,
+              siblings:
+                params.siblings && Object.keys(params.siblings).length
+                  ? JSON.stringify(params.siblings)
+                  : undefined,
+              selected: params.selected?.length ? JSON.stringify(params.selected) : undefined
+            }
+          }
+        );
+        return data.options;
+      }
+    }),
   getById: (params: TGetApprovalPolicyByIdDTO) =>
     queryOptions({
       queryKey: approvalPolicyQuery.getByIdKey(params),
@@ -36,3 +87,24 @@ export const approvalPolicyQuery = {
       }
     })
 };
+
+// Mirrors the backend's revocation policy match: only active policies count, by profile slug.
+export const useRevocationPolicyProfileNames = (applicationId?: string | null) =>
+  useQuery({
+    ...approvalPolicyQuery.list({
+      policyType: ApprovalPolicyType.CertRevocation,
+      scope: ApprovalPolicyScope.PkiApplication,
+      scopeId: applicationId ?? ""
+    }),
+    enabled: Boolean(applicationId),
+    select: (policies) =>
+      new Set(
+        policies
+          .filter((policy) => policy.isActive)
+          .flatMap((policy) =>
+            (policy.conditions.conditions as CertRequestPolicyConditions).flatMap(
+              (condition) => condition.profileNames
+            )
+          )
+      )
+  });

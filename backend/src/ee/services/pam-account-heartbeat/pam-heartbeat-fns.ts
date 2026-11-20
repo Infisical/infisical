@@ -2,9 +2,9 @@ import RE2 from "re2";
 
 import { GatewayFailureKind } from "@app/lib/gateway-v2/test-connection-rpc";
 
-import { PamHeartbeatStatus } from "../pam/pam-enums";
-import { ORACLE_MIN_GATEWAY_VERSION } from "../pam-account/pam-account-schemas";
 import { TPamHeartbeatConfig } from "../pam-account-template/pam-account-template-schemas";
+import { ORACLE_MIN_GATEWAY_VERSION } from "../pam-account/pam-account-schemas";
+import { PamHeartbeatStatus } from "../pam/pam-enums";
 
 export const HEARTBEAT_TIMEOUT_MS = 15_000;
 

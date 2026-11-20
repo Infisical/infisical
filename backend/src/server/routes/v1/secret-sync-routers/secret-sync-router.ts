@@ -43,6 +43,8 @@ import {
   CloudflareWorkersSyncListItemSchema,
   CloudflareWorkersSyncSchema
 } from "@app/services/secret-sync/cloudflare-workers/cloudflare-workers-schemas";
+import { ConvexSyncListItemSchema, ConvexSyncSchema } from "@app/services/secret-sync/convex";
+import { CoolifySyncListItemSchema, CoolifySyncSchema } from "@app/services/secret-sync/coolify";
 import { DatabricksSyncListItemSchema, DatabricksSyncSchema } from "@app/services/secret-sync/databricks";
 import { DaytonaSyncListItemSchema, DaytonaSyncSchema } from "@app/services/secret-sync/daytona";
 import { DevinSyncListItemSchema, DevinSyncSchema } from "@app/services/secret-sync/devin";
@@ -65,6 +67,7 @@ import {
 import { HCVaultSyncListItemSchema, HCVaultSyncSchema } from "@app/services/secret-sync/hc-vault";
 import { HerokuSyncListItemSchema, HerokuSyncSchema } from "@app/services/secret-sync/heroku";
 import { HumanitecSyncListItemSchema, HumanitecSyncSchema } from "@app/services/secret-sync/humanitec";
+import { JenkinsSyncListItemSchema, JenkinsSyncSchema } from "@app/services/secret-sync/jenkins";
 import { KeeperSyncListItemSchema, KeeperSyncSchema } from "@app/services/secret-sync/keeper";
 import { LaravelForgeSyncListItemSchema, LaravelForgeSyncSchema } from "@app/services/secret-sync/laravel-forge";
 import { NetlifySyncListItemSchema, NetlifySyncSchema } from "@app/services/secret-sync/netlify";
@@ -114,9 +117,12 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   CloudflarePagesSyncSchema,
   CloudflareWorkersSyncSchema,
   CloudflareSecretsStoreSyncSchema,
+  ConvexSyncSchema,
   SupabaseSyncSchema,
   RundeckSyncSchema,
   PortainerSyncSchema,
+  JenkinsSyncSchema,
+  CoolifySyncSchema,
   ZabbixSyncSchema,
   RailwaySyncSchema,
   ChecklySyncSchema,
@@ -169,6 +175,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   CloudflarePagesSyncListItemSchema,
   CloudflareWorkersSyncListItemSchema,
   CloudflareSecretsStoreSyncListItemSchema,
+  ConvexSyncListItemSchema,
   DigitalOceanAppPlatformSyncListItemSchema,
   ZabbixSyncListItemSchema,
   RailwaySyncListItemSchema,
@@ -176,6 +183,8 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   SupabaseSyncListItemSchema,
   RundeckSyncListItemSchema,
   PortainerSyncListItemSchema,
+  JenkinsSyncListItemSchema,
+  CoolifySyncListItemSchema,
   NetlifySyncListItemSchema,
   NorthflankSyncListItemSchema,
   BitbucketSyncListItemSchema,

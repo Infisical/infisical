@@ -3,6 +3,13 @@ import { createMongoAbility } from "@casl/ability";
 import { v7 as uuidv7 } from "uuid";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { TPlanFeatures as TLicensePlan } from "@app/domains/platform/license/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
+import {
+  agentVaultProjectAdminPermissions,
+  agentVaultProjectMemberPermissions
+} from "@app/ee/services/permission/default-roles";
 import { BadRequestError, DailyQuotaExceededError, InternalServerError } from "@app/lib/errors";
 import { ObjectStorageError, toObjectStorageError } from "@app/services/object-storage/object-storage-errors";
 import { ObjectStorageErrorReason, ObjectStorageType } from "@app/services/object-storage/object-storage-types";
@@ -124,7 +131,7 @@ const objectFor = (lastRecordAtMs: number, proxyId = PROXY_ID) => {
 };
 
 type TFeedEntry = [string, string[]];
-type TPlan = { hasExternal?: boolean; hasDefault?: boolean; retentionDays?: number | null };
+type TPlanFeatures = { hasExternal?: boolean; hasDefault?: boolean; retentionDays?: number | null };
 
 type TOverrides = {
   proxy?: unknown;
@@ -134,16 +141,19 @@ type TOverrides = {
   feedAddFails?: boolean;
   feedAddHangs?: boolean;
   isAdmin?: boolean;
-  plan?: TPlan;
+  plan?: TPlanFeatures;
   planFallback?: boolean;
-  lastKnownPlan?: { plan: TPlan; ageMs: number } | null;
+  lastKnownPlan?: { plan: TPlanFeatures; ageMs: number } | null;
+  statsFail?: boolean;
 };
 
-const toPlan = ({ hasExternal = true, hasDefault = true, retentionDays = null }: TPlan = {}) => ({
-  agentVaultByoS3: hasExternal,
-  agentVaultManagedStorage: hasDefault,
-  agentVaultSessionLogRetentionDays: retentionDays
-});
+const toPlan = ({ hasExternal = true, hasDefault = true, retentionDays = null }: TPlanFeatures = {}) =>
+  ({
+    ...testFeatures(),
+    agentVaultByoS3: hasExternal,
+    agentVaultManagedStorage: hasDefault,
+    agentVaultSessionLogRetentionDays: retentionDays
+  }) as TLicensePlan;
 
 const build = (overrides: TOverrides = {}) => {
   const validateConnection = vi.fn(async () => ({ name: "prod-logs" }));
@@ -155,6 +165,17 @@ const build = (overrides: TOverrides = {}) => {
   });
   const findSession = vi.fn(async () => ("session" in overrides ? overrides.session : liveSession()));
   const streamRange = vi.fn(async () => overrides.feed ?? []);
+  const licenseService = new FakeLicenseService().setPlan("org-1", toPlan(overrides.plan));
+  if (overrides.planFallback) licenseService.fallbackOrgs.add("org-1");
+  if (overrides.lastKnownPlan) {
+    licenseService.lastKnown.set("org-1", {
+      plan: toPlan(overrides.lastKnownPlan.plan),
+      fetchedAt: Date.now() - overrides.lastKnownPlan.ageMs
+    });
+  }
+  const addChunkCounts = vi.fn(async () => {
+    if (overrides.statsFail) throw new Error("db is down");
+  });
 
   const service = agentVaultSessionLogServiceFactory({
     agentVaultSessionLogConfigDAL: {
@@ -163,6 +184,7 @@ const build = (overrides: TOverrides = {}) => {
       upsert: upsertConfig
     } as never,
     agentVaultSessionDAL: { findOne: findSession } as never,
+    agentVaultSessionStatsDAL: { addChunkCounts } as never,
     agentVaultProxyDAL: {
       findByIdWithOrg: vi.fn(async () => ("proxy" in overrides ? overrides.proxy : PROXY))
     } as never,
@@ -170,25 +192,19 @@ const build = (overrides: TOverrides = {}) => {
     appConnectionService: { validateAppConnectionUsageById: validateConnection } as never,
     permissionService: {
       getProjectPermission: vi.fn(async () => ({
-        permission: createMongoAbility([{ action: "read", subject: "agent-vault-sessions" }]),
+        permission: createMongoAbility(
+          (overrides.isAdmin ?? true) ? agentVaultProjectAdminPermissions : agentVaultProjectMemberPermissions
+        ),
         hasRole: () => overrides.isAdmin ?? true
       }))
     } as never,
-    kmsService: {} as never,
-    licenseService: {
-      getPlan: vi.fn(async () => toPlan(overrides.plan)),
-      isServingFallbackPlan: vi.fn(async () => overrides.planFallback ?? false),
-      getLastKnownPlan: vi.fn(async () =>
-        overrides.lastKnownPlan
-          ? { plan: toPlan(overrides.lastKnownPlan.plan), fetchedAt: Date.now() - overrides.lastKnownPlan.ageMs }
-          : null
-      )
-    } as never,
+    kmsDataKeyService: {} as never,
+    licenseService,
     keyStore: { streamAdd, streamRange } as never,
     objectStorage: { at } as never
   });
 
-  return { service, validateConnection, upsertConfig, streamAdd, streamRange, findSession };
+  return { service, validateConnection, upsertConfig, streamAdd, streamRange, findSession, addChunkCounts };
 };
 
 const record = (
@@ -423,6 +439,51 @@ describe("createChunkUploadUrl: the live feed", () => {
   test("an upload never waits on Redis, even when it doesn't answer", async () => {
     const { service } = build({ feedAddHangs: true });
     await expect(record(service)).resolves.toMatchObject({ uploadUrl: "https://bucket.s3.amazonaws.com/signed-put" });
+  });
+});
+
+describe("createChunkUploadUrl: the session's request counts", () => {
+  const counted = (decisionCounts?: { brokered: number; passthrough: number; blocked: number; error: number }) => ({
+    ...validChunk(),
+    recordCount: 10,
+    ...(decisionCounts && { decisionCounts })
+  });
+
+  test("adds the chunk's total and brokered count to the session", async () => {
+    const { service, addChunkCounts } = build();
+    await record(service, counted({ brokered: 7, passthrough: 2, blocked: 1, error: 0 }));
+    expect(addChunkCounts).toHaveBeenCalledWith(SESSION_ID, { requests: 10, brokered: 7 });
+  });
+
+  test("a chunk without the split counts its total and leaves brokered unknown", async () => {
+    const { service, addChunkCounts } = build();
+    await record(service, counted());
+    expect(addChunkCounts).toHaveBeenCalledWith(SESSION_ID, { requests: 10, brokered: null });
+  });
+
+  test("a split that doesn't add up to the total leaves brokered unknown", async () => {
+    const { service, addChunkCounts } = build();
+    await record(service, counted({ brokered: 7, passthrough: 0, blocked: 0, error: 0 }));
+    expect(addChunkCounts).toHaveBeenCalledWith(SESSION_ID, { requests: 10, brokered: null });
+  });
+
+  test("a chunk without a total counts nothing", async () => {
+    const { service, addChunkCounts } = build();
+    await record(service);
+    expect(addChunkCounts).not.toHaveBeenCalled();
+  });
+
+  test("a chunk that is refused counts nothing", async () => {
+    const { service, addChunkCounts } = build({ plan: { hasExternal: false } });
+    await expect(record(service, counted())).rejects.toThrow();
+    expect(addChunkCounts).not.toHaveBeenCalled();
+  });
+
+  test("counts that can't be saved still hand out the upload url", async () => {
+    const { service } = build({ statsFail: true });
+    await expect(record(service, counted())).resolves.toMatchObject({
+      uploadUrl: "https://bucket.s3.amazonaws.com/signed-put"
+    });
   });
 });
 

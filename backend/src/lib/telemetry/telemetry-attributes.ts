@@ -25,6 +25,8 @@ export const INFISICAL_CORE_METER_ATTRIBUTES = [
   "audit_log_stream.id",
   "event_outbox.consumer",
   "event_outbox.status",
+  "event_outbox.event_type",
+  "event_outbox.reject_reason",
   "scim.operation",
   "sso.provider",
   "sso.action",
@@ -49,6 +51,9 @@ export const INFISICAL_CORE_METER_ATTRIBUTES = [
   "destination",
   "type",
   "operation",
+  // Closed enums on the secrets status_change and revocation outcome counters.
+  "new_status",
+  "trigger",
   // Build info gauge labels — single-value per deploy, no cardinality concern
   "service.version",
   "git.commit.sha",

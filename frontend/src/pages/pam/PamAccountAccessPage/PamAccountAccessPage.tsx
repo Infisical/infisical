@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useParams, useSearch } from "@tanstack/react-router";
 import { TriangleAlert } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { PamAccountType, TPamAccount, useGetPamAccountById } from "@app/hooks/api/pam";
 import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataExplorerPage";
 
@@ -53,7 +53,7 @@ const TerminalContent = ({
   }
 
   return (
-    <div className="flex h-screen w-screen flex-col bg-background">
+    <div className="flex h-dvh w-screen flex-col bg-background">
       <div
         className="relative thin-scrollbar flex-1 overflow-x-auto overflow-y-hidden p-2 [&_.xterm-viewport]:thin-scrollbar"
         style={{ minHeight: 0 }}
@@ -102,7 +102,7 @@ const PageContent = () => {
 
   if (isPending) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background text-muted">
+      <div className="flex h-dvh w-screen items-center justify-center bg-background text-muted">
         Loading...
       </div>
     );
@@ -132,6 +132,7 @@ const PageContent = () => {
       {({ reason, mfaSessionId }) => {
         if (
           account.accountType === PamAccountType.Postgres ||
+          account.accountType === PamAccountType.CockroachDB ||
           account.accountType === PamAccountType.MySQL ||
           account.accountType === PamAccountType.Snowflake ||
           account.accountType === PamAccountType.ClickHouse
@@ -160,10 +161,8 @@ const PageContent = () => {
 export const PamAccountAccessPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Web Access | Infisical</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Web Access" />
+      <link rel="icon" href="/infisical.ico" />
       <PageContent />
     </>
   );

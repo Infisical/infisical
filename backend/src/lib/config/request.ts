@@ -1,5 +1,6 @@
-import axios, { AxiosError, AxiosInstance, AxiosResponse, CreateAxiosDefaults } from "axios";
+import axios, { AxiosError, AxiosInstance, AxiosResponse, CreateAxiosDefaults, isAxiosError } from "axios";
 import axiosRetry, { IAxiosRetryConfig } from "axios-retry";
+import RE2 from "re2";
 
 import { CustomLogger, logger } from "../logger/logger";
 import { sanitizeUrlForLog } from "../logger/sanitize-url";
@@ -28,6 +29,18 @@ export function axiosResponseInterceptor(response: AxiosResponse, customLogger: 
   return response;
 }
 
+// Axios quotes the requested URL, path included, in its "missing //" error message, and a
+// path can carry a token (webhook URLs). Drop the quoted URL from the message; config still has it.
+const QUOTED_INVALID_URL = new RE2('^Invalid URL "(?:[^"\\\\]|\\\\.)*"');
+
+const withoutUrlInMessage = (err: unknown): unknown => {
+  if (isAxiosError(err) && err.code === AxiosError.ERR_INVALID_URL && QUOTED_INVALID_URL.test(err.message)) {
+    const message = err.message.replace(QUOTED_INVALID_URL, "Invalid URL");
+    return new AxiosError(message, err.code, err.config, err.request, err.response);
+  }
+  return err;
+};
+
 export const isRetryableRequestError = (error: AxiosError): boolean =>
   error.response?.status === 429 || axiosRetry.isNetworkError(error) || axiosRetry.isRetryableError(error);
 
@@ -46,6 +59,10 @@ export function createRequestClient(defaults: CreateAxiosDefaults = {}, retry: I
     ...REQUEST_RETRY_CONFIG,
     retryCondition: isRetryableRequestError,
     ...retry
+  });
+
+  client.interceptors.response.use(undefined, (err: unknown) => {
+    throw withoutUrlInMessage(err);
   });
 
   return client;

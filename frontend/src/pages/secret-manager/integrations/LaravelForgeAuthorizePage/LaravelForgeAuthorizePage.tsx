@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -65,6 +66,7 @@ export const LaravelForgeAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
+      <PageTitle title="Authorize Laravel Forge Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>Laravel Forge Integration</CardTitle>

@@ -126,13 +126,13 @@ describe("processNewCommitRaw", () => {
   const build = ({ withPolicy = true } = {}) => {
     const policy = withPolicy ? { id: "policy-1", bypassForMachineIdentities: false } : undefined;
     const deps = {
-      secretApprovalPolicyService: { getSecretApprovalPolicy: vi.fn().mockResolvedValue(policy) },
+      secretChangePolicyService: { getSecretApprovalPolicy: vi.fn().mockResolvedValue(policy) },
       projectDAL: {
         findById: vi.fn().mockResolvedValue({ id: "project-1", secretDetectionIgnoreValues: ["ignored"] })
       },
       folderCommitDAL: { transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) => fn(TRX)) },
       folderDAL: { findBySecretPath: vi.fn().mockResolvedValue({ id: "folder-1", environment: { name: "dev" } }) },
-      secretApprovalRequestService: {
+      secretChangeRequestService: {
         generateSecretApprovalRequestV2Bridge: vi.fn().mockResolvedValue(approval),
         createSecretApprovalSideEffects: vi.fn().mockResolvedValue(undefined)
       },
@@ -179,7 +179,7 @@ describe("processNewCommitRaw", () => {
       ["ignored"]
     );
     expect(deps.folderCommitDAL.transaction).not.toHaveBeenCalled();
-    expect(deps.secretApprovalRequestService.generateSecretApprovalRequestV2Bridge).not.toHaveBeenCalled();
+    expect(deps.secretChangeRequestService.generateSecretApprovalRequestV2Bridge).not.toHaveBeenCalled();
   });
 
   test("leaves direct updates to updateManySecret's own scan when no policy applies", async () => {
@@ -198,14 +198,14 @@ describe("processNewCommitRaw", () => {
 
     const result = await run({ update: [{ secretKey: "OTHER", secretValue: "v" }] });
 
-    expect(deps.secretApprovalRequestService.generateSecretApprovalRequestV2Bridge).toHaveBeenCalledWith(
+    expect(deps.secretChangeRequestService.generateSecretApprovalRequestV2Bridge).toHaveBeenCalledWith(
       expect.objectContaining({ trx: TRX, skipPostProcessing: true })
     );
-    expect(deps.secretApprovalRequestService.createSecretApprovalSideEffects).toHaveBeenCalledWith(
+    expect(deps.secretChangeRequestService.createSecretApprovalSideEffects).toHaveBeenCalledWith(
       expect.objectContaining({ secretApprovalRequest: approval, secretKeys: ["OTHER"] })
     );
     const sideEffectsOrder =
-      deps.secretApprovalRequestService.createSecretApprovalSideEffects.mock.invocationCallOrder[0];
+      deps.secretChangeRequestService.createSecretApprovalSideEffects.mock.invocationCallOrder[0];
     const transactionOrder = deps.folderCommitDAL.transaction.mock.invocationCallOrder[0];
     expect(sideEffectsOrder).toBeGreaterThan(transactionOrder);
     expect(result).toMatchObject({ approval: { id: "request-1" } });
@@ -214,7 +214,7 @@ describe("processNewCommitRaw", () => {
   test("a failed notification does not fail the save", async () => {
     const { deps, run } = build();
     vi.mocked(scanSecretPolicyViolations).mockReset();
-    deps.secretApprovalRequestService.createSecretApprovalSideEffects.mockRejectedValueOnce(new Error("smtp down"));
+    deps.secretChangeRequestService.createSecretApprovalSideEffects.mockRejectedValueOnce(new Error("smtp down"));
 
     await expect(run({ update: [{ secretKey: "OTHER", secretValue: "v" }] })).resolves.toMatchObject({
       approval: { id: "request-1" }
