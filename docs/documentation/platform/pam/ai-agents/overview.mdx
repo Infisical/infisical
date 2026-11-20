@@ -6,7 +6,7 @@ description: "Let an AI agent reach your databases, servers, and clusters throug
 
 AI agents often need privileged access: a coding agent that reads production data to trace a bug, or an agent you built that runs a nightly task against a database. If you put a connection string in the agent's environment, the agent holds a long-lived credential while it reads untrusted input.
 
-With PAM, an agent runs the same [Infisical CLI](/cli/reference#pam) commands a person does. The [Gateway](/documentation/platform/gateways/overview) adds each account's credential to the connection. The credential never reaches the agent's machine. Infisical records every session.
+With PAM, an agent runs the same [Infisical CLI](/cli/reference#pam) commands a person does. The [Gateway](/documentation/platform/gateways/overview) adds each account's credential to the connection, so the credential never reaches the agent's machine. The one exception is an AWS IAM account without a Gateway. Infisical records every session.
 
 ```bash
 infisical pam accounts get
@@ -46,9 +46,15 @@ An agent has no access of its own. It has the roles of the user or machine ident
 | You | Run [`infisical login`](/cli/reference#login) before you start the agent | A coding agent that you work with in your terminal | Every account you can reach |
 | A machine identity | Set the identity's credentials in the agent's environment | An agent that runs on a schedule or on a server, or an agent you don't fully trust | The accounts that the identity's roles give it |
 
-If your login expires, the CLI exits with an error instead of starting a login. An agent can't log in for you. Run `infisical login` yourself, then have the agent run its command again.
+If your login expires, the CLI exits with an error instead of starting a login. An agent can't log in for you. Run [`infisical login`](/cli/reference#login) yourself, then have the agent run its command again.
 
 ### Run an agent as a machine identity
+
+You need:
+
+- The [Infisical CLI](/cli/install) on the machine that runs the agent
+- The Product Admin [role](/documentation/platform/pam/concepts/access-control#product-membership) in PAM, to add the machine identity
+- The Admin role on the folders or accounts the agent needs, to give the identity a role on them
 
 <Steps>
   <Step>
