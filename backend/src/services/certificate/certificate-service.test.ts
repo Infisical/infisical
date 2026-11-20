@@ -246,6 +246,9 @@ describe("certificate deletion behind an approval policy", () => {
     const pkiApplicationDAL = { findById: vi.fn().mockResolvedValue({ id: "app-1", name: "web" }) };
     const usageMeteringService = { emit: vi.fn() };
     const telemetryService = { sendPostHogEvents: vi.fn().mockResolvedValue(undefined) };
+    const certificateSyncDAL = { find: vi.fn().mockResolvedValue([]) };
+    const pkiSyncDAL = { find: vi.fn().mockResolvedValue([]) };
+    const pkiSyncQueue = { queuePkiSyncSyncCertificatesById: vi.fn().mockResolvedValue(undefined) };
 
     const deps = {
       certificateDAL,
@@ -253,15 +256,15 @@ describe("certificate deletion behind an approval policy", () => {
       certificateSecretDAL: { delete: vi.fn().mockResolvedValue([]) },
       certificateRequestDAL: { update: vi.fn().mockResolvedValue([]) },
       pkiCollectionItemDAL: { delete: vi.fn().mockResolvedValue([]) },
-      certificateSyncDAL: { find: vi.fn().mockResolvedValue([]) },
+      certificateSyncDAL,
       certificateProfileDAL,
       auditLogService,
       approvalPolicyService,
       approvalRequestDAL,
       signerDAL,
       pkiApplicationDAL,
-      pkiSyncDAL: { find: vi.fn().mockResolvedValue([]) },
-      pkiSyncQueue: {},
+      pkiSyncDAL,
+      pkiSyncQueue,
       resourceMetadataDAL: { find: vi.fn().mockResolvedValue([]) },
       userDAL: {
         findById: vi.fn().mockResolvedValue({ firstName: "Ada", lastName: "Lovelace", email: "ada@example.com" })
@@ -285,6 +288,9 @@ describe("certificate deletion behind an approval policy", () => {
       usageMeteringService,
       telemetryService,
       notifyApprovers,
+      certificateSyncDAL,
+      pkiSyncDAL,
+      pkiSyncQueue,
       storedCertificate: () => stored,
       auditEvents: () => auditLogService.createAuditLog.mock.calls.map(([log]) => (log as TAuditLog).event)
     };
@@ -366,7 +372,19 @@ describe("certificate deletion behind an approval policy", () => {
       ctx.certificateDAL.findById.mockResolvedValue({ ...applicationCertificate, profileId: null });
 
       await expect(ctx.service.deleteCert(deleteRequest)).rejects.toThrow(
-        "was assigned to an Application while it was being deleted"
+        "The Application or profile of certificate 'web' changed while it was being deleted"
+      );
+
+      expect(ctx.storedCertificate().deletedAt).toBeNull();
+    });
+
+    it("refuses to delete directly when the certificate's Application was deleted before the lock", async () => {
+      const ctx = buildDeletionService();
+      ctx.approvalPolicyService.matchPolicy.mockResolvedValue(null);
+      ctx.certificateDAL.findByIdForUpdate.mockResolvedValue({ ...applicationCertificate, applicationId: null });
+
+      await expect(ctx.service.deleteCert(deleteRequest)).rejects.toThrow(
+        "The Application or profile of certificate 'web' changed while it was being deleted"
       );
 
       expect(ctx.storedCertificate().deletedAt).toBeNull();
@@ -561,6 +579,24 @@ describe("certificate deletion behind an approval policy", () => {
   });
 
   describe("deleteApprovedCertificate", () => {
+    it("removes the deleted certificate from the PKI syncs that held it", async () => {
+      const ctx = buildDeletionService();
+      ctx.certificateSyncDAL.find.mockResolvedValue([{ pkiSyncId: "sync-1" }]);
+      ctx.pkiSyncDAL.find.mockResolvedValue([
+        { id: "sync-1", name: "edge-proxies", isAutoSyncEnabled: true, syncOptions: { canRemoveCertificates: true } }
+      ]);
+
+      await ctx.service.deleteApprovedCertificate(approvedDeletion);
+
+      expect(ctx.pkiSyncQueue.queuePkiSyncSyncCertificatesById).toHaveBeenCalledWith({ syncId: "sync-1" });
+      expect(ctx.auditEvents()).toContainEqual(
+        expect.objectContaining({
+          type: EventType.PKI_SYNC_UNLINK_CERTIFICATES,
+          metadata: expect.objectContaining({ pkiSyncId: "sync-1", removedFromDestination: true }) as unknown
+        })
+      );
+    });
+
     it("deletes the certificate as the requester and records the approval that allowed it", async () => {
       const ctx = buildDeletionService();
 
