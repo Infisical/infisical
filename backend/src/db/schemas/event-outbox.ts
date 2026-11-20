@@ -21,7 +21,7 @@ export const EventOutboxSchema = z.object({
   lastError: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  eventId: z.string().uuid()
+  eventId: z.string().uuid().default("00000000-0000-0000-0000-000000000000")
 });
 
 export type TEventOutbox = z.infer<typeof EventOutboxSchema>;
