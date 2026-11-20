@@ -44,7 +44,7 @@ vi.mock("@aws-sdk/client-elasticache", async (importOriginal) => ({
 
 const LEGACY_SHARED_USER_GROUP_ID = "infisical-managed-group-elasticache";
 const DISABLED_DEFAULT_USER_ID = "infisical-disabled-default";
-const SETTING_UP_MESSAGE = "ElastiCache is still setting up the user group for this cluster";
+const BUSY_MESSAGE = "ElastiCache is still updating the user group for this cluster";
 
 // Enforces the AWS rules the provider has to work around, as observed on live clusters: a cluster holds one user
 // group, a new group is "creating" and can't be attached or modified, and a group whose users just changed is
@@ -164,12 +164,23 @@ describe("AwsElastiCacheDatabaseProvider user groups", () => {
   test("refuses a lease without creating a user while the cluster's user group is still being created", async () => {
     const account = fakeAccount({ "cluster-a": [] }, {});
 
-    await expect(createLease("cluster-a")).rejects.toThrow(SETTING_UP_MESSAGE);
+    await expect(createLease("cluster-a")).rejects.toThrow(BUSY_MESSAGE);
     expect(Object.keys(account.users)).toEqual([DISABLED_DEFAULT_USER_ID]);
 
     account.activateUserGroups();
     const lease = await createLease("cluster-a");
     expect(Object.keys(account.users)).toEqual([DISABLED_DEFAULT_USER_ID, lease.entityId]);
+  });
+
+  test("asks a lease to retry, without leaving its user behind, while the previous lease is still being applied", async () => {
+    const account = fakeAccount({ "cluster-a": [] }, {});
+
+    await saveDynamicSecret("cluster-a");
+    account.activateUserGroups();
+    const firstLease = await createLease("cluster-a");
+
+    await expect(createLease("cluster-a")).rejects.toThrow(BUSY_MESSAGE);
+    expect(Object.keys(account.users)).toEqual([DISABLED_DEFAULT_USER_ID, firstLease.entityId]);
   });
 
   test("accepts dynamic secrets for the same cluster saved at the same time", async () => {
@@ -201,7 +212,7 @@ describe("AwsElastiCacheDatabaseProvider user groups", () => {
       { [LEGACY_SHARED_USER_GROUP_ID]: ["default", "inf-existing-lease"] }
     );
 
-    await expect(createLease("cluster-a")).rejects.toThrow(SETTING_UP_MESSAGE);
+    await expect(createLease("cluster-a")).rejects.toThrow(BUSY_MESSAGE);
     // A server still running the previous version adds a lease to the legacy group mid-upgrade
     account.userGroups[LEGACY_SHARED_USER_GROUP_ID].push("inf-lease-from-previous-version");
     account.activateUserGroups();

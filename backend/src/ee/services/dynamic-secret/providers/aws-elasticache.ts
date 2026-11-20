@@ -5,6 +5,8 @@ import {
   DescribeReplicationGroupsCommand,
   DescribeUserGroupsCommand,
   ElastiCache,
+  InvalidReplicationGroupStateFault,
+  InvalidUserGroupStateFault,
   ModifyReplicationGroupCommand,
   ModifyUserGroupCommand,
   UserAlreadyExistsFault,
@@ -50,6 +52,10 @@ const LEGACY_SHARED_USER_GROUP_ID = "infisical-managed-group-elasticache";
 // Every user group needs a user named "default", which serves clients that connect without a password. AWS's own has
 // full access, so groups get this disabled one instead.
 const DISABLED_DEFAULT_USER_ID = "infisical-disabled-default";
+
+// A new user group takes up to a minute to become active, and adding users keeps it busy for about as long.
+const USER_GROUP_BUSY_MESSAGE =
+  "ElastiCache is still updating the user group for this cluster. Try creating the lease again in a minute.";
 
 // User group IDs are capped at 40 characters, the same as cluster names, so the ID holds a hash of the name.
 const getClusterUserGroupId = (clusterName: string) =>
@@ -123,10 +129,7 @@ const ElastiCacheUserManager = (credentials: TBasicAWSCredentials, region: strin
     const userGroup = isAttached ? undefined : await $getUserGroup(userGroupId);
     // AWS refuses to modify a user group until it is active.
     if (!isAttached && userGroup?.Status !== "active") {
-      throw new BadRequestError({
-        message:
-          "ElastiCache is still setting up the user group for this cluster. Try creating the lease again in a minute."
-      });
+      throw new BadRequestError({ message: USER_GROUP_BUSY_MESSAGE });
     }
 
     // A cluster holds a single user group, so the legacy group's users are copied in right before it is swapped out,
@@ -167,6 +170,10 @@ const ElastiCacheUserManager = (credentials: TBasicAWSCredentials, region: strin
         .catch((cleanupErr) =>
           logger.error(cleanupErr, `Failed to clean up ElastiCache user [userId=${creationInput.UserId}]`)
         );
+      // The group or cluster is still applying an earlier change, such as the previous lease
+      if (err instanceof InvalidUserGroupStateFault || err instanceof InvalidReplicationGroupStateFault) {
+        throw new BadRequestError({ message: USER_GROUP_BUSY_MESSAGE });
+      }
       throw err;
     }
 
