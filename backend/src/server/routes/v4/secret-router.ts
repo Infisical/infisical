@@ -16,7 +16,11 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { fastJsonSerializerCompiler } from "@app/server/plugins/fastify-zod";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
-import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import {
+  getBatchSecretLimitMessage,
+  getMaxSecretsPerBatchRequest,
+  SecretUpdateMode
+} from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import {
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
@@ -1131,6 +1135,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           })
           .array()
           .min(1)
+          .max(getMaxSecretsPerBatchRequest(), getBatchSecretLimitMessage())
+          .describe(`At most ${getMaxSecretsPerBatchRequest()} secrets per request.`)
       }),
       response: {
         200: z.union([
@@ -1286,6 +1292,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           })
           .array()
           .min(1)
+          .max(getMaxSecretsPerBatchRequest(), getBatchSecretLimitMessage())
+          .describe(`At most ${getMaxSecretsPerBatchRequest()} secrets per request.`)
       }),
       response: {
         200: z.union([

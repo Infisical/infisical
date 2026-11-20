@@ -1076,10 +1076,13 @@ throws and must not slow the read), and the table is pruned by dropping partitio
 
 ### Secret Read Concurrency Limit
 
-A route that lists secrets sets `config.limitSecretReadConcurrency: true`, so
-`server/plugins/secret-read-concurrency-limit.ts` caps how many run at once per root organization and per instance
-when `SECRET_READ_CONCURRENCY_LIMIT_ENABLED` is on. A per-minute rate limit lets a burst through in its first second,
-and a few large lists in flight hold the event loop for every other organization on the instance.
+A route that lists secrets must run its secret load inside `server.secretReadSlot(req, reply)`, which
+`server/plugins/secret-read-concurrency-limit.ts` decorates, so at most a fixed number run at once per root organization and
+per instance when `SECRET_READ_CONCURRENCY_LIMIT_ENABLED` is on (off, the slot runs the work unlimited). A per-minute rate
+limit lets a burst through in its first second, and a few large lists in flight hold the event loop for every other
+organization on the instance. Prefer passing the slot to the service as `secretReadSlot` (`TConcurrencySlot`), which wraps
+only the database load, so permission checks and cache hits never queue; wrap the whole service call in it
+(`readSlot(() => ...)`) only when the service takes no slot. A route that does neither is outside both caps.
 
 ### Free Text in Audit Events
 
@@ -1187,7 +1190,7 @@ Key plugins in `src/server/plugins/`:
 - `api-metrics.ts` — OpenTelemetry metrics collection
 - `inject-rate-limits.ts` — per-route rate limiting
 - `secrets-rate-limit.ts`: per-actor, then per-org limit on every route whose `config.rateLimit` is `secretsLimit`, on top of its per-IP limit, and only when `SECRETS_RATE_LIMIT_ENABLED` is on. The actor (`secretsActorLimit` from the plan, else `secretsLimit` plus `SECRETS_ACTOR_RATE_LIMIT_OFFSET`) is checked before the org (`secretsOrgLimit` from the plan, else `secretsLimit` plus `SECRETS_ORG_RATE_LIMIT_OFFSET`) because a check counts the request even when it refuses it, so the other order lets one actor's refused requests use up the org's limit
-- `secret-read-concurrency-limit.ts`: wraps the handler of every route with `config.limitSecretReadConcurrency` in a keyed concurrency limiter (per root org, then per instance), so the slot is held until the handler finishes even if the client disconnects; see Secret Read Concurrency Limit
+- `secret-read-concurrency-limit.ts`: decorates `server.secretReadSlot(req, reply)`, which returns a slot in a keyed concurrency limiter (per root org, then per instance) held until the wrapped work finishes even if the client disconnects, and refuses with a 429 and `Retry-After: 1`; see Secret Read Concurrency Limit
 - `secret-scanner.ts` / `secret-scanner-v2.ts` — secret scanning webhooks
 - `serve-ui.ts` — frontend asset serving
 - `swagger.ts` — Swagger/OpenAPI UI

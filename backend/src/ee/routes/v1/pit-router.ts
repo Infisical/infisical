@@ -13,6 +13,10 @@ import { booleanSchema, secretRawSchema } from "@app/server/routes/sanitizedSche
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { commitChangesResponseSchema, resourceChangeSchema } from "@app/services/folder-commit/folder-commit-schemas";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import {
+  getBatchSecretLimitMessage,
+  getMaxSecretsPerBatchRequest
+} from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const commitChangeSummarySchema = z.object({
@@ -601,6 +605,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
                   tagIds: z.string().array().optional()
                 })
               )
+              .max(getMaxSecretsPerBatchRequest(), getBatchSecretLimitMessage())
               .optional(),
             update: z
               .array(
