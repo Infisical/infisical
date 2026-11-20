@@ -228,9 +228,6 @@ export const getCertificateActionMenuState = ({
   };
 };
 
-export const DELETION_APPROVAL_REQUIRED_NOTICE =
-  "Confirming creates an approval request. The certificate isn't deleted until it's approved.";
-
 export const getCertificateDeletionToast = ({ status }: TDeleteCertResponse) =>
   status === CertificateDeletionStatus.PendingApproval
     ? "Deletion requested. The certificate isn't deleted until the request is approved."
@@ -330,14 +327,19 @@ const getCertificateTrustWarning = (
 export const getCertificateDeletionWarning = (
   certificate?: TCertificateDeletionSource,
   canRevoke = false,
-  isRevocableAfterDeletion = true
+  isRevocableAfterDeletion = true,
+  isApprovalRequired = false
 ) => {
   const removed =
     certificate?.hasPrivateKey === false
-      ? "This removes the certificate."
-      : "This removes the certificate and its private key.";
+      ? "this removes the certificate"
+      : "this removes the certificate and its private key";
+  const trustWarning = getCertificateTrustWarning(certificate, canRevoke, isRevocableAfterDeletion);
 
-  return `${removed}${getCertificateTrustWarning(certificate, canRevoke, isRevocableAfterDeletion)} This cannot be undone.`;
+  if (isApprovalRequired) {
+    return `Confirming creates an approval request. Once it's approved, ${removed}, which can't be undone.${trustWarning}`;
+  }
+  return `${removed.charAt(0).toUpperCase()}${removed.slice(1)}.${trustWarning} This cannot be undone.`;
 };
 
 // Without the private key, Infisical renews on the existing key pair only from a CSR it holds for it, and

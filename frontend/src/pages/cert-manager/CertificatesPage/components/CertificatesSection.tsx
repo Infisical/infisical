@@ -37,7 +37,6 @@ import { CertificateRenewalModal } from "./CertificateRenewalModal";
 import { CertificateRevocationModal } from "./CertificateRevocationModal";
 import { CertificatesTable } from "./CertificatesTable";
 import {
-  DELETION_APPROVAL_REQUIRED_NOTICE,
   getCertificateDeletionToast,
   getCertificateDeletionWarning
 } from "./CertificatesTable.utils";
@@ -245,12 +244,11 @@ export const CertificatesSection = ({
           }?`}
           description={
             <>
-              {deleteCertificateData?.isDeletionApprovalRequired &&
-                `${DELETION_APPROVAL_REQUIRED_NOTICE} `}
               {getCertificateDeletionWarning(
                 deleteCertificateData,
                 deleteCertificateData?.canRevoke,
-                deleteCertificateData?.isRevocableAfterDeletion
+                deleteCertificateData?.isRevocableAfterDeletion,
+                deleteCertificateData?.isDeletionApprovalRequired
               )}
               <CertificateDeletionSyncImpact holdingSyncs={holdingSyncs} />
             </>

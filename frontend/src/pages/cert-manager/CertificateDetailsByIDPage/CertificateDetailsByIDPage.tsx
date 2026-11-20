@@ -77,7 +77,6 @@ import {
   canRevokeAfterDeletion,
   CERTIFICATE_ACTION_APPROVALS,
   DELETED_CERTIFICATE_NO_ACTIONS,
-  DELETION_APPROVAL_REQUIRED_NOTICE,
   getApplicationCertificateAccess,
   getCertificateActionApproval,
   getCertificateActionMenuState,
@@ -687,11 +686,11 @@ const Page = () => {
         title={`Delete Certificate ${displayName}?`}
         description={
           <>
-            {deletion.isApprovalRequired && `${DELETION_APPROVAL_REQUIRED_NOTICE} `}
             {getCertificateDeletionWarning(
               certificate,
               supportsRevocation,
-              isRevocableAfterDeletion
+              isRevocableAfterDeletion,
+              deletion.isApprovalRequired
             )}
             <CertificateDeletionSyncImpact holdingSyncs={holdingSyncs} />
           </>
