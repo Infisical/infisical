@@ -1,3 +1,4 @@
+import type { ComponentPropsWithRef } from "react";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
@@ -25,19 +26,42 @@ export const isGatewayRegistered = (gateway: GatewayProbe) =>
 export const lastSeenLabel = (date: string | null | undefined) =>
   date ? `Last seen ${format(new Date(date), "PPp")}` : "No data available";
 
-export const GatewayHealth = ({ gateway }: { gateway: GatewayProbe }) => {
+type HealthSize = "md" | "control-sm";
+
+const HealthLabel = ({
+  tone,
+  icon,
+  size,
+  ...props
+}: ComponentPropsWithRef<"span"> & {
+  tone: "ok" | "bad" | "warn";
+  icon: "alert-c" | "check-c" | "x";
+  size?: HealthSize;
+}) =>
+  size ? (
+    <Badge {...props} tone={tone} icon={icon} size={size} collapse={size === "control-sm"} />
+  ) : (
+    <StatusText {...props} tone={tone} icon={icon} />
+  );
+
+export const GatewayHealth = ({ gateway, size }: { gateway: GatewayProbe; size?: HealthSize }) => {
   if (!isGatewayRegistered(gateway))
     return (
-      <StatusText tone="warn" icon="alert-c">
+      <HealthLabel tone="warn" icon="alert-c" size={size}>
         Unregistered
-      </StatusText>
+      </HealthLabel>
     );
   const healthy = isGatewayHealthy({ ...gateway, relayId: gateway.relayId ?? null });
   return (
     <Tooltip content={lastSeenLabel(getLastSeenHeartbeat(gateway))}>
-      <StatusText tone={healthy ? "ok" : "bad"} icon={healthy ? "check-c" : "x"} tabIndex={0}>
+      <HealthLabel
+        tone={healthy ? "ok" : "bad"}
+        icon={healthy ? "check-c" : "x"}
+        size={size}
+        tabIndex={0}
+      >
         {healthy ? "Healthy" : "Unreachable"}
-      </StatusText>
+      </HealthLabel>
     </Tooltip>
   );
 };
@@ -45,19 +69,30 @@ export const GatewayHealth = ({ gateway }: { gateway: GatewayProbe }) => {
 export const isRelayHealthy = (heartbeat?: string | null) =>
   Boolean(heartbeat) && new Date(heartbeat as string).getTime() > Date.now() - 3_600_000;
 
-export const RelayHealth = ({ heartbeat }: { heartbeat?: string | null }) => {
+export const RelayHealth = ({
+  heartbeat,
+  size
+}: {
+  heartbeat?: string | null;
+  size?: HealthSize;
+}) => {
   if (!heartbeat)
     return (
-      <StatusText tone="warn" icon="alert-c">
+      <HealthLabel tone="warn" icon="alert-c" size={size}>
         Unregistered
-      </StatusText>
+      </HealthLabel>
     );
   const healthy = isRelayHealthy(heartbeat);
   return (
     <Tooltip content={lastSeenLabel(heartbeat)}>
-      <StatusText tone={healthy ? "ok" : "bad"} icon={healthy ? "check-c" : "x"} tabIndex={0}>
+      <HealthLabel
+        tone={healthy ? "ok" : "bad"}
+        icon={healthy ? "check-c" : "x"}
+        size={size}
+        tabIndex={0}
+      >
         {healthy ? "Healthy" : "Unreachable"}
-      </StatusText>
+      </HealthLabel>
     </Tooltip>
   );
 };

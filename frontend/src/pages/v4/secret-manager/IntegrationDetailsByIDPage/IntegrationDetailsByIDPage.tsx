@@ -33,7 +33,7 @@ import { OctopusDeployScope } from "@app/hooks/api/integrationAuth/types";
 import type { TIntegrationWithEnv } from "@app/hooks/api/integrations/types";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
-import { CopyButton, Dash } from "../../access/org/detail-parts";
+import { Dash } from "../../access/org/detail-parts";
 import { useProjectPermission } from "../../access/permissions";
 import { useProjectScope } from "../../access/project/scope";
 import { formatDateTime } from "../../access/roles";
@@ -43,6 +43,7 @@ import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, useGo, v4Path } from "../../links";
+import { TruncatedValue } from "../../networking/truncated-value";
 import {
   destinationFacts,
   failureMessageOf,
@@ -247,12 +248,7 @@ const LogsCard = ({
   const rows = logs.error ? [] : (logs.data?.pages ?? []).flat();
   const lastPage = logs.data?.pages.at(-1);
   return (
-    <Card
-      variant="framed"
-      title="Integration logs"
-      footer={`Last ${days} days`}
-      footerPlacement="frame"
-    >
+    <Card variant="framed" title="Integration logs" footer={`Last ${days} days`}>
       <DataTable
         label="Integration logs"
         rows={rows}
@@ -319,10 +315,11 @@ const IntegrationDetails = ({
   const details: DataListItem[] = [
     [
       "ID",
-      <Inline key="id" gap={4} align="center" wrap={false}>
-        <MiddleTruncate mono keepEnd={6} text={integration.id} />
-        <CopyButton value={integration.id} label="Copy integration ID" />
-      </Inline>
+      <TruncatedValue
+        key="id"
+        value={integration.id}
+        copyLabel="Copy integration ID to clipboard"
+      />
     ],
     [
       "Platform",
@@ -331,7 +328,7 @@ const IntegrationDetails = ({
         {name}
       </Inline>
     ],
-    ["Status", <SyncStatus key="status" integration={integration} />],
+    ["Status", <SyncStatus key="status" integration={integration} size="md" />],
     [
       "Latest successful sync",
       integration.lastUsed ? formatDateTime(integration.lastUsed) : <Dash key="last" />
@@ -355,7 +352,7 @@ const IntegrationDetails = ({
         <PageHeader
           breadcrumb={[{ label: "Native integrations", href: listHref }]}
           title={`${name} integration`}
-          badges={<SyncStatus integration={integration} />}
+          badges={<SyncStatus integration={integration} size="control-sm" />}
           actions={
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -394,25 +391,23 @@ const IntegrationDetails = ({
         <DetailLayout
           asideLabel="Integration details"
           aside={
-            <Stack gap={24}>
-              <Card variant="framed" title="Details">
-                <DataList variant="props" density="compact" items={details} />
-              </Card>
-              <Card variant="framed" title="Connection">
-                <DataList
-                  variant="props"
-                  density="compact"
-                  items={[
-                    ["Source environment", integration.environment.name],
-                    ["Source path", <code key="path">{integration.secretPath}</code>],
-                    ["Destination platform", name],
-                    ...destinationFacts(integration)
-                  ]}
-                />
-              </Card>
-            </Stack>
+            <Card variant="framed" title="Details">
+              <DataList variant="props" density="compact" items={details} />
+            </Card>
           }
         >
+          <Card variant="framed" title="Connection">
+            <DataList
+              variant="props"
+              density="compact"
+              items={[
+                ["Source environment", integration.environment.name],
+                ["Source path", <code key="path">{integration.secretPath}</code>],
+                ["Destination platform", name],
+                ...destinationFacts(integration)
+              ]}
+            />
+          </Card>
           <SettingsCard integration={integration} />
           <LogsCard integration={integration} projectId={projectId} />
         </DetailLayout>

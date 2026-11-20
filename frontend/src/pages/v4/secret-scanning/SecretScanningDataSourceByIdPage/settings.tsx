@@ -180,7 +180,7 @@ const Scanning = ({
   return (
     <Card variant="framed" title="Scanning">
       <Stack gap={16}>
-        {items.length > 0 && <DataList variant="props" items={items} />}
+        {items.length > 0 && <DataList variant="props" density="compact" items={items} />}
         {toggles.map(({ name, label, description, blocked }) => (
           <Switch
             key={name}

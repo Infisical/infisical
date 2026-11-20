@@ -97,27 +97,18 @@ export const ConnectedResourcesCard = ({ gatewayId }: { gatewayId: string }) => 
     { id: "location", header: "Location", render: (row) => row.location }
   ];
 
-  const empty = !isPending && rows.length === 0;
-
   return (
-    <Card variant="framed" title="Connected resources" flush={!empty}>
-      {empty ? (
-        <EmptyState
-          size="sm"
-          icon="link"
-          title="No connected resources"
-          description="Resources that route through this gateway will show up here."
-        />
-      ) : (
-        <DataTable
-          label="Connected resources"
-          rows={rows}
-          columns={columns}
-          loading={isPending}
-          getRowId={(row) => row.id}
-          rowLabel={(row) => row.name}
-        />
-      )}
+    <Card variant="framed" title="Connected resources" flush>
+      <DataTable
+        label="Connected resources"
+        rows={rows}
+        columns={columns}
+        loading={isPending}
+        getRowId={(row) => row.id}
+        rowLabel={(row) => row.name}
+        filtered={false}
+        empty={<EmptyState size="sm" media="bare" icon="link" title="No connected resources" />}
+      />
     </Card>
   );
 };

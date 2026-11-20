@@ -9,6 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from "@infisical/cipher/ui/alert-dialog";
+import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Checkbox } from "@infisical/cipher/ui/checkbox";
 import {
@@ -43,15 +44,31 @@ import {
 } from "./native-model";
 
 const STATUS = {
-  pending: { tone: "neutral", icon: "clock" },
-  synced: { tone: "ok", icon: "check-c" },
-  failed: { tone: "bad", icon: "alert" }
+  pending: { tone: "neutral", badgeTone: "outline", icon: "clock" },
+  synced: { tone: "ok", badgeTone: "ok", icon: "check-c" },
+  failed: { tone: "bad", badgeTone: "bad", icon: "alert" }
 } as const;
 
-export const SyncStatus = ({ integration }: { integration: TIntegration }) => {
+export const SyncStatus = ({
+  integration,
+  size
+}: {
+  integration: TIntegration;
+  size?: "md" | "control-sm";
+}) => {
   const state = syncStateOf(integration);
   const failure = failureMessageOf(integration);
-  const status = (
+  const status = size ? (
+    <Badge
+      tone={STATUS[state].badgeTone}
+      icon={STATUS[state].icon}
+      size={size}
+      collapse={size === "control-sm"}
+      tabIndex={0}
+    >
+      {SYNC_STATE_LABEL[state]}
+    </Badge>
+  ) : (
     <StatusText tone={STATUS[state].tone} icon={STATUS[state].icon} tabIndex={0}>
       {SYNC_STATE_LABEL[state]}
     </StatusText>

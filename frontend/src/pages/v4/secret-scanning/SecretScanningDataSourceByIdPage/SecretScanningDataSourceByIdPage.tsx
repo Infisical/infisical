@@ -76,7 +76,6 @@ const DataSource = ({ dataSource }: { dataSource: TSecretScanningDataSource }) =
     { enabled: canReadFindings, refetchInterval: 30000 }
   );
   const triggerScan = scanning.useTriggerScan();
-  const platform = SECRET_SCANNING_DATA_SOURCE_MAP[dataSource.type];
   const resource = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
   const unresolvedCount = unresolved?.totalCount ?? 0;
 
@@ -118,12 +117,7 @@ const DataSource = ({ dataSource }: { dataSource: TSecretScanningDataSource }) =
             { label: "Data sources", href: orgHref(orgId, "/secret-scanning/data-sources") }
           ]}
           title={dataSource.name}
-          badges={<DataSourceStatus dataSource={dataSource} />}
-          description={
-            dataSource.connection
-              ? `Connected via the ${dataSource.connection.name} app connection`
-              : `${platform.name} data source`
-          }
+          badges={<DataSourceStatus dataSource={dataSource} size="control-sm" />}
           actions={
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

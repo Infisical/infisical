@@ -268,14 +268,12 @@ helm install infisical-gateway infisical/infisical-gateway \\
   return (
     <Card
       variant="framed"
-      title={
-        <Inline gap={8} wrap={false}>
-          Deployment
-          <DocumentationLink
-            href="https://infisical.com/docs/documentation/platform/gateways/gateway-deployment"
-            subject="gateway deployment"
-          />
-        </Inline>
+      title="Deployment"
+      badges={
+        <DocumentationLink
+          href="https://infisical.com/docs/documentation/platform/gateways/gateway-deployment"
+          subject="gateway deployment"
+        />
       }
       action={
         canEdit && showDeploymentControls ? (
