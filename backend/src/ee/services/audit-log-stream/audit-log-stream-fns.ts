@@ -75,6 +75,16 @@ export const decryptLogStreamCredentials = async ({
   return JSON.parse(decryptedPlainTextBlob.toString()) as TAuditLogStreamCredentials;
 };
 
+// Labels a stream in audit events by host only, since a full URL (Sumo Logic's) can carry a token.
+export const getLogStreamDestinationHost = (credentials: TAuditLogStreamCredentials): string => {
+  if ("hostname" in credentials) return credentials.hostname;
+  try {
+    return new URL("dceUrl" in credentials ? credentials.dceUrl : credentials.url).hostname;
+  } catch {
+    return "";
+  }
+};
+
 export const streamHasProductFilter = (stream: Pick<TAuditLogStreams, "filters">): boolean =>
   ((stream.filters as TAuditLogStreamFilters | null)?.products?.length ?? 0) > 0;
 

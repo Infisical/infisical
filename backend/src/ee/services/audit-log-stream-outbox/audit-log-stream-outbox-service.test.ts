@@ -111,6 +111,7 @@ const createService = () => {
         orgId: string;
         encryptedCredentials: Buffer;
         streamMode: StreamMode;
+        filters?: unknown;
       }> => ({
         id: STREAM_ID,
         provider: PROVIDER,
@@ -189,6 +190,42 @@ describe("audit-log-stream-outbox-service drainStream failure handling", () => {
     expect(call.successIds).toEqual([]);
     expect(call.retriable).toBeNull();
     expect(call.exhaustedIds).toEqual([1]);
+  });
+
+  test("never delivers queued session activity once the stream stops receiving it", async () => {
+    const { service, auditLogStreamOutboxDAL } = createService();
+    const auditLog = buildRow({ id: 1, payload: { id: "log-1", eventType: "create-secret" } as never });
+    const activity = buildRow({ id: 2, payload: { id: "act-1", eventType: "pam-session-activity-command" } as never });
+
+    auditLogStreamOutboxDAL.claimBatchForStream.mockResolvedValueOnce([auditLog, activity]).mockResolvedValueOnce([]);
+    batchStreamLog.mockResolvedValueOnce(undefined);
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+
+    expect(batchStreamLog).toHaveBeenCalledTimes(1);
+    expect(batchStreamLog).toHaveBeenCalledWith(expect.objectContaining({ auditLogs: [auditLog.payload] }));
+    const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as { successIds: number[] };
+    expect(call.successIds).toEqual([2, 1]);
+  });
+
+  test("delivers queued session activity while the stream still receives it", async () => {
+    const { service, auditLogStreamOutboxDAL, auditLogStreamDAL } = createService();
+    const activity = buildRow({ id: 2, payload: { id: "act-1", eventType: "pam-session-activity-command" } as never });
+
+    auditLogStreamDAL.findById.mockResolvedValueOnce({
+      id: STREAM_ID,
+      provider: PROVIDER,
+      orgId: ORG_ID,
+      encryptedCredentials: Buffer.from("x"),
+      streamMode: StreamMode.Batch,
+      filters: { pamSessionActivity: { includeOutput: false } }
+    });
+    auditLogStreamOutboxDAL.claimBatchForStream.mockResolvedValueOnce([activity]).mockResolvedValueOnce([]);
+    batchStreamLog.mockResolvedValueOnce(undefined);
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+
+    expect(batchStreamLog).toHaveBeenCalledWith(expect.objectContaining({ auditLogs: [activity.payload] }));
   });
 
   test("commits delivered rows on the success path", async () => {

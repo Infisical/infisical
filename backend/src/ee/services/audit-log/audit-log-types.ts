@@ -8819,6 +8819,7 @@ interface DeleteAlertEvent {
 type TAuditLogStreamEventMetadata = {
   logStreamId: string;
   provider: string;
+  destinationHost: string;
   filters: { products?: string[]; pamSessionActivity?: { includeOutput: boolean } | null } | null;
 };
 
@@ -8834,7 +8835,7 @@ interface UpdateAuditLogStreamEvent {
 
 interface DeleteAuditLogStreamEvent {
   type: EventType.DELETE_AUDIT_LOG_STREAM;
-  metadata: { logStreamId: string; provider: string };
+  metadata: { logStreamId: string; provider: string; destinationHost: string };
 }
 
 interface TestAlertChannelEvent {

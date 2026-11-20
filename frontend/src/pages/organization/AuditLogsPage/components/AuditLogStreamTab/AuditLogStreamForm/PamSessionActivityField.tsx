@@ -18,7 +18,7 @@ export const PamSessionActivityField = () => {
     <div className="mt-8 flex flex-col gap-4">
       <Field orientation="horizontal">
         <FieldContent>
-          <FieldTitle>Include PAM Session Activity</FieldTitle>
+          <FieldTitle id="pam-session-activity-title">Include PAM Session Activity</FieldTitle>
           <FieldDescription>
             Also send each command, query and request run in a PAM session (Windows sessions
             aren&apos;t included).
@@ -26,6 +26,7 @@ export const PamSessionActivityField = () => {
         </FieldContent>
         <Toggle
           id="pam-session-activity"
+          aria-labelledby="pam-session-activity-title"
           variant={scopeVariant}
           checked={Boolean(field.value)}
           onCheckedChange={(checked) => field.onChange(checked ? { includeOutput: false } : null)}
@@ -34,7 +35,7 @@ export const PamSessionActivityField = () => {
       {field.value && (
         <Field orientation="horizontal" className="border-l border-border pl-4">
           <FieldContent>
-            <FieldTitle>Include Output</FieldTitle>
+            <FieldTitle id="pam-session-output-title">Include Output</FieldTitle>
             <FieldDescription>
               Also send command output, query results and request and response bodies, which can
               contain sensitive data.
@@ -42,6 +43,7 @@ export const PamSessionActivityField = () => {
           </FieldContent>
           <Toggle
             id="pam-session-output"
+            aria-labelledby="pam-session-output-title"
             variant={scopeVariant}
             checked={field.value.includeOutput}
             onCheckedChange={(includeOutput) => field.onChange({ includeOutput })}

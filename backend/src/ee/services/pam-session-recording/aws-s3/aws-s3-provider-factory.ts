@@ -63,6 +63,18 @@ export const resolveS3RecordingAccess = async (
   return { region, awsCredentials: awsConfig.credentials };
 };
 
+// Some S3-compatible endpoints ignore the requested range, so the body is cut off here as well.
+export const readUpTo = async (body: AsyncIterable<Uint8Array>, maxBytes: number) => {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of body) {
+    chunks.push(Buffer.from(chunk));
+    total += chunk.length;
+    if (total >= maxBytes) break;
+  }
+  return Buffer.concat(chunks).subarray(0, maxBytes);
+};
+
 const buildClient = (config: TPamRecordingResolvedConfig, httpsAgent?: Agent) => {
   if (!config.region || !config.awsCredentials) {
     throw new BadRequestError({ message: "S3 storage backend requires region and credentials" });
@@ -171,7 +183,7 @@ export const AwsS3RecordingStorageProvider: TPamRecordingStorageProvider = () =>
       { abortSignal: AbortSignal.timeout(PAM_RECORDING_SERVER_READ_TIMEOUT_MS) }
     );
     if (!object.Body) throw new BadRequestError({ message: `Recording object '${objectKey}' has no content` });
-    return Buffer.from(await object.Body.transformToByteArray());
+    return readUpTo(object.Body as AsyncIterable<Uint8Array>, maxBytes);
   },
 
   deleteSession: async ({ config, projectId, sessionId }) => {

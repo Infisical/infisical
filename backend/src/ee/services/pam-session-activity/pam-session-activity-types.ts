@@ -1,6 +1,8 @@
 import { ActorType } from "@app/services/auth/auth-type";
 
 // A shared prefix separates these from PAM audit events like pam-session-start.
+export const PAM_SESSION_ACTIVITY_EVENT_TYPE_PREFIX = "pam-session-activity-";
+
 export enum PamSessionActivityEventType {
   Command = "pam-session-activity-command",
   Query = "pam-session-activity-query",

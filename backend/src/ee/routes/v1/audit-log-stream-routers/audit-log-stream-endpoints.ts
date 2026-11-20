@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { LogProvider, StreamMode } from "@app/ee/services/audit-log-stream/audit-log-stream-enums";
+import { getLogStreamDestinationHost } from "@app/ee/services/audit-log-stream/audit-log-stream-fns";
 import { AuditLogStreamFiltersSchema } from "@app/ee/services/audit-log-stream/audit-log-stream-schemas";
 import { TAuditLogStream } from "@app/ee/services/audit-log-stream/audit-log-stream-types";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -99,7 +100,12 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
         orgId: req.permission.orgId,
         event: {
           type: EventType.CREATE_AUDIT_LOG_STREAM,
-          metadata: { logStreamId: auditLogStream.id, provider, filters: auditLogStream.filters ?? null }
+          metadata: {
+            logStreamId: auditLogStream.id,
+            provider,
+            destinationHost: getLogStreamDestinationHost(auditLogStream.credentials),
+            filters: auditLogStream.filters ?? null
+          }
         }
       });
 
@@ -155,7 +161,12 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
         orgId: req.permission.orgId,
         event: {
           type: EventType.UPDATE_AUDIT_LOG_STREAM,
-          metadata: { logStreamId: auditLogStream.id, provider, filters: auditLogStream.filters ?? null }
+          metadata: {
+            logStreamId: auditLogStream.id,
+            provider,
+            destinationHost: getLogStreamDestinationHost(auditLogStream.credentials),
+            filters: auditLogStream.filters ?? null
+          }
         }
       });
 
@@ -200,7 +211,11 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
         orgId: req.permission.orgId,
         event: {
           type: EventType.DELETE_AUDIT_LOG_STREAM,
-          metadata: { logStreamId: auditLogStream.id, provider }
+          metadata: {
+            logStreamId: auditLogStream.id,
+            provider,
+            destinationHost: getLogStreamDestinationHost(auditLogStream.credentials)
+          }
         }
       });
 

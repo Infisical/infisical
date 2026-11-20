@@ -26,6 +26,7 @@ import {
 } from "../audit-log-stream/audit-log-stream-fns";
 import { TAuditLogStreamFilters } from "../audit-log-stream/audit-log-stream-schemas";
 import { TAuditLogStreamCredentials, TAuditLogStreamEvent } from "../audit-log-stream/audit-log-stream-types";
+import { PAM_SESSION_ACTIVITY_EVENT_TYPE_PREFIX } from "../pam-session-activity/pam-session-activity-types";
 import { FLUSH_DEBOUNCE_MS, MAX_ATTEMPTS } from "./audit-log-stream-outbox-constants";
 import { TAuditLogStreamOutboxDALFactory } from "./audit-log-stream-outbox-dal";
 import {
@@ -65,6 +66,9 @@ const STREAM_CREDENTIALS_DECRYPT_MESSAGE =
 // hard dedup guarantee, this is just the belt-and-suspenders margin. Kept short
 // so the 'delivered' rows (the table's hottest section) don't pile up.
 export const DELIVERED_RETENTION_MS = 15 * 60_000;
+
+const isPamSessionActivityRow = (row: TAuditLogStreamOutboxRow) =>
+  typeof row.payload.eventType === "string" && row.payload.eventType.startsWith(PAM_SESSION_ACTIVITY_EVENT_TYPE_PREFIX);
 
 const computeBackoffMs = (attemptsAfterIncrement: number): number => {
   const exponent = Math.min(attemptsAfterIncrement - 1, 10);
@@ -309,14 +313,21 @@ export const auditLogStreamOutboxServiceFactory = ({
     // else gets a JSON array per request. Single mode treats each row as its own chunk.
     const isSingleMode = stream.streamMode === StreamMode.Single;
 
+    // Once a PAM product admin turns session activity off, anyone with stream access can repoint the
+    // stream, so activity still queued for it is never delivered.
+    const withholdsSessionActivity = !(stream.filters as TAuditLogStreamFilters | null)?.pamSessionActivity;
+
     for (let batchIdx = 0; batchIdx < MAX_BATCHES_PER_JOB; batchIdx += 1) {
       // eslint-disable-next-line no-await-in-loop
       const claimed = await auditLogStreamOutboxDAL.claimBatchForStream(streamId, BATCH_SIZE);
       if (claimed.length === 0) return;
 
+      const withheld = withholdsSessionActivity ? claimed.filter(isPamSessionActivityRow) : [];
+      const deliverable = withheld.length > 0 ? claimed.filter((row) => !isPamSessionActivityRow(row)) : claimed;
+
       const chunks = isSingleMode
-        ? claimed.map((row) => [row])
-        : chunkAuditLogsByBatchLimit(claimed, providerImpl.getProviderBatchLimit());
+        ? deliverable.map((row) => [row])
+        : chunkAuditLogsByBatchLimit(deliverable, providerImpl.getProviderBatchLimit());
       const streamSuccess: TAuditLogStreamOutboxRow[] = [];
       const streamFail: TFailedStreamRow[] = [];
 
@@ -424,7 +435,7 @@ export const auditLogStreamOutboxServiceFactory = ({
       await auditLogStreamOutboxDAL.transaction(async (tx) => {
         await auditLogStreamOutboxDAL.commitDeliveryResult(
           {
-            successIds: streamSuccess.map((row) => row.id),
+            successIds: [...withheld, ...streamSuccess].map((row) => row.id),
             retriable: retriableInput,
             exhaustedIds: exhausted.map((failed) => failed.row.id)
           },
