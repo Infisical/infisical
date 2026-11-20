@@ -39,7 +39,7 @@ export const CustomHeaderFields = ({
     );
 
   return (
-    <Stack gap={8}>
+    <Stack gap={8} className={css.headerFields}>
       <Stack gap={2}>
         <Text>Custom headers</Text>
         <SmallText muted>
@@ -53,8 +53,10 @@ export const CustomHeaderFields = ({
         const valueError = err(`${path}.value`);
         return (
           <div key={row.id ?? `new-${index}`} className={css.fieldRow}>
-            <div className={css.grow}>
-              {index === 0 && <span className={css.miniLabel}>Name</span>}
+            <div className={css.nameCell}>
+              <span className={css.miniLabel} data-repeat={index > 0 || undefined}>
+                Name
+              </span>
               <Field error={nameError}>
                 <Input
                   mono
@@ -67,7 +69,9 @@ export const CustomHeaderFields = ({
               </Field>
             </div>
             <div className={css.prefixCell}>
-              {index === 0 && <span className={css.miniLabel}>Prefix</span>}
+              <span className={css.miniLabel} data-repeat={index > 0 || undefined}>
+                Prefix
+              </span>
               <Field error={prefixError}>
                 <Input
                   mono
@@ -79,8 +83,10 @@ export const CustomHeaderFields = ({
                 />
               </Field>
             </div>
-            <div className={css.grow}>
-              {index === 0 && <span className={css.miniLabel}>Value</span>}
+            <div className={css.valueCell}>
+              <span className={css.miniLabel} data-repeat={index > 0 || undefined}>
+                Value
+              </span>
               <Field error={valueError}>
                 <VariableSecretInput
                   projectId={projectId}
