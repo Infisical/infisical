@@ -946,6 +946,7 @@ export const secretRotationV2ServiceFactory = ({
           type: EventType.UPDATE_SECRET_ROTATION,
           metadata: {
             rotationId,
+            rotationName: updatedSecretRotation.name,
             type,
             ...payload
           }

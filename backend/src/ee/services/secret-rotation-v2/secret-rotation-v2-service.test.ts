@@ -581,7 +581,7 @@ describe.each([SecretRotation.GitLabServiceAccountToken, SecretRotation.GitLabGr
           actor: EDITOR_AUDIT_LOG_INFO.actor,
           event: {
             type: EventType.UPDATE_SECRET_ROTATION,
-            metadata: { rotationId: "rotation-1", type, rotationInterval: 30 }
+            metadata: { rotationId: "rotation-1", rotationName: "rotation", type, rotationInterval: 30 }
           }
         })
       );
