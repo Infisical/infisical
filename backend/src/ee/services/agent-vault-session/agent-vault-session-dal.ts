@@ -8,13 +8,8 @@ import { ormify } from "@app/lib/knex";
 import { ActorType } from "@app/services/auth/auth-type";
 import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
-import { findHookRuleServiceNames } from "../agent-vault-hook/agent-vault-hook-dal";
-import {
-  collectHookRuleServiceIds,
-  TAgentVaultHookRuleView,
-  toHookRuleViews,
-  toStoredHookRules
-} from "../agent-vault-hook/agent-vault-hook-fns";
+import { findHookServiceLinks } from "../agent-vault-hook/agent-vault-hook-dal";
+import { groupHookRuleViews, TAgentVaultHookRuleView } from "../agent-vault-hook/agent-vault-hook-fns";
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
 import { isOrphanedSession } from "./agent-vault-session-fns";
 import {
@@ -48,6 +43,7 @@ export type TAgentVaultSessionListRow = {
     isInline: boolean;
     url: string;
     rules: TAgentVaultHookRuleView[];
+    appliesToAllServices: boolean;
   } | null;
 };
 
@@ -370,7 +366,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.AgentVaultHook).as("hookName"),
           db.ref("sessionId").withSchema(TableName.AgentVaultHook).as("hookSessionId"),
           db.ref("url").withSchema(TableName.AgentVaultHook).as("hookUrl"),
-          db.ref("rules").withSchema(TableName.AgentVaultHook).as("hookRules")
+          db.ref("appliesToAllServices").withSchema(TableName.AgentVaultHook).as("hookAppliesToAllServices")
         )
         .orderBy(`${TableName.AgentVaultSession}.createdAt`, "desc")) as {
         id: string;
@@ -405,14 +401,12 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         hookName: string | null;
         hookSessionId: string | null;
         hookUrl: string | null;
-        hookRules: unknown;
+        hookAppliesToAllServices: boolean | null;
       }[];
 
-      const storedRulesBySession = new Map(rows.map((row) => [row.id, toStoredHookRules(row.hookRules)]));
-      const hookRuleServiceNames = await findHookRuleServiceNames(conn, {
-        projectId,
-        ids: [...new Set([...storedRulesBySession.values()].flatMap(collectHookRuleServiceIds))]
-      });
+      const hookRules = groupHookRuleViews(
+        await findHookServiceLinks(conn, [...new Set(rows.flatMap((row) => (row.hookId === null ? [] : [row.hookId])))])
+      );
 
       const sessions: TAgentVaultSessionListRow[] = rows.map((row) => {
         return {
@@ -458,7 +452,8 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
                   name: row.hookName,
                   isInline: row.hookSessionId !== null,
                   url: row.hookUrl!,
-                  rules: toHookRuleViews(storedRulesBySession.get(row.id)!, hookRuleServiceNames)
+                  rules: hookRules.get(row.hookId) ?? [],
+                  appliesToAllServices: Boolean(row.hookAppliesToAllServices)
                 }
         };
       });

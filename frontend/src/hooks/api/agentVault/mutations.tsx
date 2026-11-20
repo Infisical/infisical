@@ -42,6 +42,8 @@ import {
   TCreateAgentVaultProxyDTO,
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
+  TAddAgentVaultHookServiceDTO,
+  TAgentVaultHookServiceLink,
   TCreateAgentVaultHookDTO,
   TCreateAgentVaultSkillDTO,
   TAgentVaultOauthVariableSignInStart,
@@ -57,6 +59,7 @@ import {
   TUpdateAgentVaultSessionDTO,
   TUpdateAgentVaultSessionLogSettingsDTO,
   TUpdateAgentVaultHookDTO,
+  TUpdateAgentVaultHookServiceDTO,
   TUpdateAgentVaultSkillDTO,
   TStartAgentVaultOauthVariableSignInDTO,
   TUpdateAgentVaultVariableDTO
@@ -1048,6 +1051,65 @@ export const useUpdateAgentVaultHook = (projectId: string) => {
       return data.hook;
     },
     onSuccess: () => invalidateHookChange(queryClient, currentOrg.id, projectId)
+  });
+};
+
+// The service's own read lists its hooks, so it is refetched with them.
+const invalidateHookServiceChange = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string,
+  projectId: string,
+  serviceId: string
+) =>
+  Promise.all([
+    invalidateHookChange(queryClient, orgId, projectId),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.service(orgId, projectId, serviceId) })
+  ]);
+
+export const useAddAgentVaultHookService = (projectId: string) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ hookId, ...rule }: TAddAgentVaultHookServiceDTO) => {
+      const { data } = await apiRequest.post<{ link: TAgentVaultHookServiceLink }>(
+        `/api/v1/agent-vault/hooks/${hookId}/services`,
+        rule
+      );
+      return data.link;
+    },
+    onSuccess: (link) =>
+      invalidateHookServiceChange(queryClient, currentOrg.id, projectId, link.serviceId)
+  });
+};
+
+export const useUpdateAgentVaultHookService = (projectId: string) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ hookId, serviceId, ...narrowing }: TUpdateAgentVaultHookServiceDTO) => {
+      const { data } = await apiRequest.patch<{ link: TAgentVaultHookServiceLink }>(
+        `/api/v1/agent-vault/hooks/${hookId}/services/${serviceId}`,
+        narrowing
+      );
+      return data.link;
+    },
+    onSuccess: (link) =>
+      invalidateHookServiceChange(queryClient, currentOrg.id, projectId, link.serviceId)
+  });
+};
+
+export const useRemoveAgentVaultHookService = (projectId: string) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ hookId, serviceId }: { hookId: string; serviceId: string }) => {
+      const { data } = await apiRequest.delete<{ link: TAgentVaultHookServiceLink }>(
+        `/api/v1/agent-vault/hooks/${hookId}/services/${serviceId}`
+      );
+      return data.link;
+    },
+    onSuccess: (link) =>
+      invalidateHookServiceChange(queryClient, currentOrg.id, projectId, link.serviceId)
   });
 };
 

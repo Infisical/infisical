@@ -68,6 +68,7 @@ const mcpForm = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   pathPrefixes: [],
   customHeaders: [],
   substitutions: [],
+  hooks: [],
   ...overrides
 });
 

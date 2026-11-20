@@ -56,6 +56,7 @@ const form = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   pathPrefixes: [],
   customHeaders: [],
   substitutions: [],
+  hooks: [],
   ...overrides
 });
 

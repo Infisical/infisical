@@ -70,13 +70,13 @@ const HookFormBody = ({
   const updateHook = useUpdateAgentVaultHook(projectId);
   const isUpdate = Boolean(hook);
   const [isSecretVisible, setIsSecretVisible] = useState(false);
-  const schema = useMemo(() => hookFormSchema(hook?.rules), [hook]);
+  const schema = useMemo(() => hookFormSchema(), []);
 
   const formMethods = useForm<THookForm>({
     resolver: zodResolver(schema),
     defaultValues: hookFormOf(
       hook,
-      new Map(services.map((service) => [service.id, service.type])),
+      new Map(services.map((service) => [service.name, service.type])),
       initialName
     )
   });
@@ -253,7 +253,13 @@ const HookFormBody = ({
               )}
             />
           )}
-          <HookRulesField services={services} isDisabled={isReadOnly} />
+          <HookRulesField
+            services={services}
+            isDisabled={isReadOnly}
+            isLeftWithoutServices={Boolean(
+              hook && !hook.appliesToAllServices && !hook.rules.length
+            )}
+          />
         </div>
 
         <SheetFooter className="justify-end border-t">
@@ -285,8 +291,7 @@ const HookFormBody = ({
 /** Header, body and footer of the hook sheet, to go inside a `SheetContent`. */
 export const HookForm = (props: Props) => {
   const { projectId } = useProject();
-  // Rules name services, so the picker lists the project's and a saved rule takes its service's type from it. A rule
-  // can also name one that isn't listed, such as an inline service.
+  // Rules name the project's services, so the picker lists them and a saved rule takes its service's type from it.
   const { data: servicePage, isPending } = useListAgentVaultServices(projectId, {
     orderBy: "name",
     orderDirection: "asc",

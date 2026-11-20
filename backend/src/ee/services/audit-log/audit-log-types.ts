@@ -7065,6 +7065,16 @@ interface AgentVaultHookUpdateEvent {
     url?: string;
     // Set when the update replaced the rules, with the new count.
     ruleCount?: number;
+    // Set when one service was added to, removed from or re-narrowed in the hook, as from a service's settings. The
+    // narrowing is what the hook checks of that service afterwards; none means every request to it.
+    serviceChange?: {
+      change: "added" | "removed" | "narrowed";
+      serviceId: string;
+      serviceName: string;
+      methods?: string[];
+      paths?: string[];
+      tools?: string[];
+    };
     // Whether a new secret was saved. The secret itself is never recorded.
     secretReplaced: boolean;
   };

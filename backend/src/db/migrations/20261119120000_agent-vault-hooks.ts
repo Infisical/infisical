@@ -4,6 +4,7 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 const HOOK = TableName.AgentVaultHook;
+const HOOK_SERVICE = TableName.AgentVaultHookService;
 const SESSION = TableName.AgentVaultSession;
 
 const PROJECT_NAME_UNIQUE = "agent_vault_hooks_project_name_unique";
@@ -32,7 +33,9 @@ export async function up(knex: Knex): Promise<void> {
       // Text rather than a varchar: the API holds the 2048 limit.
       t.text("url").notNullable();
       t.binary("encryptedSecret").nullable();
-      t.jsonb("rules").notNullable();
+      // A hook with no services checks every request only when it was saved that way. One left without services
+      // because they were deleted checks nothing, rather than suddenly checking everything.
+      t.boolean("appliesToAllServices").notNullable();
       t.timestamp("secretsDeletedAt", { useTz: true }).nullable();
 
       t.timestamps(true, true, true);
@@ -59,6 +62,30 @@ export async function up(knex: Knex): Promise<void> {
     );
   }
 
+  // A hook's rules: the project services it checks, each optionally narrowed. Deleting a service removes it from
+  // every hook.
+  if (!(await knex.schema.hasTable(HOOK_SERVICE))) {
+    await knex.schema.createTable(HOOK_SERVICE, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+
+      t.uuid("hookId").notNullable();
+      t.foreign("hookId").references("id").inTable(HOOK).onDelete("CASCADE");
+
+      t.uuid("serviceId").notNullable();
+      t.foreign("serviceId").references("id").inTable(TableName.AgentVaultService).onDelete("CASCADE");
+      t.index("serviceId");
+
+      t.integer("position").notNullable();
+      t.jsonb("methods").nullable();
+      t.jsonb("paths").nullable();
+      t.jsonb("tools").nullable();
+
+      t.timestamps(true, true, true);
+      t.unique(["hookId", "serviceId"]);
+    });
+    await createOnUpdateTrigger(knex, HOOK_SERVICE);
+  }
+
   if (!(await knex.schema.hasColumn(SESSION, "hookId"))) {
     await knex.schema.alterTable(SESSION, (t) => {
       t.uuid("hookId").nullable();
@@ -76,6 +103,8 @@ export async function down(knex: Knex): Promise<void> {
       t.dropColumn("hookId");
     });
   }
+  await knex.schema.dropTableIfExists(HOOK_SERVICE);
+  await dropOnUpdateTrigger(knex, HOOK_SERVICE);
   await knex.schema.dropTableIfExists(HOOK);
   await dropOnUpdateTrigger(knex, HOOK);
 }

@@ -17,7 +17,7 @@ export const AgentVaultHooksSchema = z.object({
   description: z.string().nullable().optional(),
   url: z.string(),
   encryptedSecret: zodBuffer.nullable().optional(),
-  rules: z.unknown(),
+  appliesToAllServices: z.boolean(),
   secretsDeletedAt: z.date().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()

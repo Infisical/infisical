@@ -904,11 +904,10 @@ describe("hooks on resolve", () => {
     url: "https://hooks.example.com/agent-vault",
     // The test's decryptor hands the sealed bytes back as they are.
     encryptedSecret: Buffer.from(JSON.stringify({ value: "s".repeat(32) })),
-    rules: [
-      { service: "stripe", methods: ["POST"], paths: ["/v1/refunds"] },
-      { service: "linear", tools: ["x"] }
-    ]
+    appliesToAllServices: false,
+    links: [{ serviceId: SERVICE_ID, methods: ["POST"], paths: ["/v1/refunds"], tools: null }]
   };
+  const DELETED_ID = "22222222-2222-4222-8222-222222222222";
 
   test("sends the session's hook at the top level with its secret and rules, and none per service", async () => {
     const { service, createCipherPairWithDataKey, findSessionHook } = setup(noRefresh, [hookedRow], [], {
@@ -924,7 +923,7 @@ describe("hooks on resolve", () => {
       name: "approvals",
       url: "https://hooks.example.com/agent-vault",
       secret: "s".repeat(32),
-      rules: savedHook.rules
+      rules: [{ service: "stripe", methods: ["POST"], paths: ["/v1/refunds"] }]
     });
     expect(resolved.services[0]).not.toHaveProperty("hook");
     // Pass-through services and a hook: the hook's secret is still sealed.
@@ -934,7 +933,7 @@ describe("hooks on resolve", () => {
   test("an inline hook goes out with a null name", async () => {
     const { service } = setup(noRefresh, [hookedRow], [], {
       session: { hookId: savedHook.id },
-      hookRow: { ...savedHook, name: null, rules: [] }
+      hookRow: { ...savedHook, name: null, links: [], appliesToAllServices: true }
     });
     expect((await resolve(service)).hook).toMatchObject({ name: null, rules: [] });
   });
@@ -979,32 +978,34 @@ describe("hooks on resolve", () => {
     expect((await resolve(service)).hook).toMatchObject({ id: savedHook.id });
   });
 
-  test("a rule goes out under the name of the service row sent with it, and one whose service isn't sent is dropped", async () => {
-    const stripeId = "11111111-1111-4111-8111-111111111111";
-    const deletedId = "22222222-2222-4222-8222-222222222222";
-    const { service } = setup(noRefresh, [{ ...hookedRow, id: stripeId, name: "stripe-payments" }], [], {
+  test("a rule goes out under the name of the service row sent with it, and one whose service isn't sent is left out", async () => {
+    const { service } = setup(noRefresh, [{ ...hookedRow, name: "stripe-payments" }], [], {
       session: { hookId: savedHook.id },
       hookRow: {
         ...savedHook,
-        rules: [
-          { serviceId: stripeId, methods: ["POST"] },
-          { serviceId: deletedId, tools: ["x"] },
-          { service: "inline-api" }
+        links: [
+          { serviceId: SERVICE_ID, methods: ["POST"], paths: null, tools: null },
+          { serviceId: DELETED_ID, methods: null, paths: null, tools: ["x"] }
         ]
       }
     });
     const resolved = await resolve(service);
     expect(resolved.services.map((s) => s.name)).toContain("stripe-payments");
-    expect(resolved.hook?.rules).toEqual([
-      { service: "stripe-payments", methods: ["POST"] },
-      { service: "inline-api" }
-    ]);
+    expect(resolved.hook?.rules).toEqual([{ service: "stripe-payments", methods: ["POST"] }]);
   });
 
-  test("a hook whose rules all named deleted services goes out as no hook, not as one checking everything", async () => {
+  test("a hook none of whose services is in the session goes out as no hook, not as one checking everything", async () => {
     const { service } = setup(noRefresh, [hookedRow], [], {
       session: { hookId: savedHook.id },
-      hookRow: { ...savedHook, rules: [{ serviceId: "22222222-2222-4222-8222-222222222222", methods: ["POST"] }] }
+      hookRow: { ...savedHook, links: [{ serviceId: DELETED_ID, methods: ["POST"], paths: null, tools: null }] }
+    });
+    expect((await resolve(service)).hook).toBeNull();
+  });
+
+  test("a hook left without services goes out as no hook", async () => {
+    const { service } = setup(noRefresh, [hookedRow], [], {
+      session: { hookId: savedHook.id },
+      hookRow: { ...savedHook, links: [] }
     });
     expect((await resolve(service)).hook).toBeNull();
   });
@@ -1012,7 +1013,7 @@ describe("hooks on resolve", () => {
   test("a hook saved with no rules still checks everything", async () => {
     const { service } = setup(noRefresh, [hookedRow], [], {
       session: { hookId: savedHook.id },
-      hookRow: { ...savedHook, rules: [] }
+      hookRow: { ...savedHook, links: [], appliesToAllServices: true }
     });
     expect((await resolve(service)).hook).toMatchObject({ id: savedHook.id, rules: [] });
   });

@@ -17,6 +17,7 @@ import {
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 
+import { buildHookNarrowing, describeHookNarrowing } from "../hooks/hookSchema";
 import { ExpandableValueList } from "./ExpandableValueList";
 import {
   credentialLabel,
@@ -64,6 +65,8 @@ const alignColumns = (rows: string[][]) => {
 };
 
 type Props = {
+  /** Off for a caller who can't read hooks, who never sees the Hooks step either. */
+  showHooks?: boolean;
   isUpdate: boolean;
   service?: TAgentVaultService | null;
   storedType?: AgentVaultCredentialType;
@@ -71,7 +74,13 @@ type Props = {
   storedMemberFields?: TAgentVaultMemberProvidedField[];
 };
 
-export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields = [] }: Props) => {
+export const ReviewFields = ({
+  showHooks = false,
+  isUpdate,
+  service,
+  storedType,
+  storedMemberFields = []
+}: Props) => {
   const { watch } = useFormContext<TServiceForm>();
   const form = watch();
 
@@ -318,6 +327,27 @@ export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields
               {isAllTools ? "All" : <ExpandableValueList values={form.allowedTools} />}
             </DetailValue>
           </Detail>
+        </DetailGroup>
+      )}
+
+      {showHooks && (
+        <DetailGroup>
+          <DetailGroupHeader className="border-b border-border pb-2">Hooks</DetailGroupHeader>
+          {form.hooks.length ? (
+            <div className="flex flex-wrap gap-x-8 gap-y-4">
+              {form.hooks.map((hook) => (
+                <Detail key={hook.hookId}>
+                  <DetailLabel>{hook.hookName}</DetailLabel>
+                  <DetailValue className="break-all">
+                    {describeHookNarrowing(buildHookNarrowing(hook, form.serviceType)) ??
+                      (isNative ? "Every connection" : "Every request")}
+                  </DetailValue>
+                </Detail>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted">Not in any hook</p>
+          )}
         </DetailGroup>
       )}
     </div>

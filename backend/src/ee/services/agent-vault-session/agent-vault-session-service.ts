@@ -28,10 +28,8 @@ import { findCallerDelegation, resolveOnBehalfOfUser } from "../agent-vault-dele
 import { TAgentVaultHookDALFactory, TAgentVaultHookRow } from "../agent-vault-hook/agent-vault-hook-dal";
 import {
   assertAgentVaultHooksOnPlan,
-  collectHookRuleServiceIds,
-  toHookRuleViews,
-  toStoredHookRules,
-  toStoredHookRulesForSave
+  groupHookRuleViews,
+  toHookServiceLinks
 } from "../agent-vault-hook/agent-vault-hook-fns";
 import { TAgentVaultSessionHookSummary } from "../agent-vault-hook/agent-vault-hook-types";
 import { TAgentVaultResolveDALFactory } from "../agent-vault-proxy/agent-vault-resolve-dal";
@@ -68,7 +66,6 @@ import {
   assertNoOverrideConflicts,
   bindInlineOauthVariables,
   inlineOauthVariableIdsOf,
-  inlineServiceDisplayName,
   prepareInlineServices,
   TInlineOauthVariableKeys,
   toInlineServiceSummary
@@ -103,7 +100,7 @@ type TAgentVaultSessionServiceFactoryDep = {
   agentVaultSessionDAL: TAgentVaultSessionDALFactory;
   agentVaultHookDAL: Pick<
     TAgentVaultHookDALFactory,
-    "findSavedForMint" | "insertInlineForSession" | "findProjectServicesForHookRules" | "findHookRuleServiceNames"
+    "findSavedForMint" | "insertInlineForSession" | "lockProjectServicesForHook" | "findHookServiceLinks"
   >;
   agentVaultSessionAccessBundleDAL: TAgentVaultSessionAccessBundleDALFactory;
   agentVaultSessionInlineServiceDAL: Pick<
@@ -180,7 +177,7 @@ export const agentVaultSessionServiceFactory = ({
     if (permission.cannot(ProjectPermissionAgentVaultHookActions.Read, ProjectPermissionSub.AgentVaultHooks)) {
       return summary;
     }
-    return { ...summary, url: hook.url, rules: hook.rules };
+    return { ...summary, url: hook.url, rules: hook.rules, appliesToAllServices: hook.appliesToAllServices };
   };
 
   const toSessionView = (
@@ -358,10 +355,10 @@ export const agentVaultSessionServiceFactory = ({
     return withServices.map((session) => ({ ...session, metadata: metadataBySession.get(session.id) ?? {} }));
   };
 
-  const describeHookForAudit = (hook: TAgentVaultHookRow | undefined) => {
+  const describeHookForAudit = (hook: TAgentVaultHookRow | undefined, ruleCount: number) => {
     if (!hook) return {};
     if (hook.sessionId) {
-      return { inlineHook: { hookId: hook.id, url: hook.url, ruleCount: toStoredHookRules(hook.rules).length } };
+      return { inlineHook: { hookId: hook.id, url: hook.url, ruleCount } };
     }
     return { hookId: hook.id, hookName: hook.name ?? undefined };
   };
@@ -785,23 +782,6 @@ export const agentVaultSessionServiceFactory = ({
     }));
 
     const encryptedInlineHookSecret = inlineHook ? seal({ value: inlineHook.secret }) : null;
-    // A name becomes the ID of the project service it names, so the rule follows a rename, unless one of this session's
-    // inline services has that name: the session reaches that one, so the rule has to stay a name to match it.
-    const $inlineHookRules = async () => {
-      if (!inlineHook?.rules?.length) return [];
-      const projectServices = await agentVaultHookDAL.findProjectServicesForHookRules({
-        projectId,
-        ids: inlineHook.rules.flatMap((rule) => (rule.serviceId ? [rule.serviceId] : [])),
-        names: inlineHook.rules.flatMap((rule) => (rule.service ? [rule.service] : []))
-      });
-      const inlineNames = new Set(preparedInlineServices.map(inlineServiceDisplayName));
-      return toStoredHookRulesForSave(
-        inlineHook.rules,
-        projectServices,
-        projectServices.filter((service) => !inlineNames.has(service.name))
-      ).rules;
-    };
-    const inlineHookRules = await $inlineHookRules();
 
     const ttlMs = ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : ms(ttl);
     const expiresAt = ttlMs === null ? null : new Date(Date.now() + ttlMs);
@@ -924,13 +904,19 @@ export const agentVaultSessionServiceFactory = ({
         // The session row comes first, since the inline hook points at its session and the session at its hook.
         let attachedHook = savedHook;
         if (inlineHook) {
+          // Rules name project services only, read in this transaction so one deleted meanwhile is a 404.
+          const inlineHookRules = inlineHook.rules ?? [];
+          const ruleServices = await agentVaultHookDAL.lockProjectServicesForHook(
+            { projectId, names: inlineHookRules.map((rule) => rule.service) },
+            tx
+          );
           attachedHook = await agentVaultHookDAL.insertInlineForSession(
             {
               projectId,
               sessionId: created.id,
               url: inlineHook.url,
               encryptedSecret: encryptedInlineHookSecret!,
-              rules: inlineHookRules
+              links: toHookServiceLinks(inlineHookRules, ruleServices)
             },
             tx
           );
@@ -945,11 +931,9 @@ export const agentVaultSessionServiceFactory = ({
         };
       });
     const oauthVariables = await findInlineOauthVariableKeys(insertedInlineServices);
-    const sessionHookRules = sessionHook ? toStoredHookRules(sessionHook.rules) : [];
-    const sessionHookServiceIds = collectHookRuleServiceIds(sessionHookRules);
-    const sessionHookServiceNames = sessionHookServiceIds.length
-      ? await agentVaultHookDAL.findHookRuleServiceNames({ projectId, ids: sessionHookServiceIds })
-      : new Map<string, string>();
+    const sessionHookRules = sessionHook
+      ? (groupHookRuleViews(await agentVaultHookDAL.findHookServiceLinks([sessionHook.id])).get(sessionHook.id) ?? [])
+      : [];
 
     return {
       session: {
@@ -966,7 +950,8 @@ export const agentVaultSessionServiceFactory = ({
                 name: sessionHook.name ?? null,
                 isInline: Boolean(sessionHook.sessionId),
                 url: sessionHook.url,
-                rules: toHookRuleViews(sessionHookRules, sessionHookServiceNames)
+                rules: sessionHookRules,
+                appliesToAllServices: sessionHook.appliesToAllServices
               }
             : null,
           permission
@@ -1002,7 +987,7 @@ export const agentVaultSessionServiceFactory = ({
       },
       token,
       ttlSeconds: ttlMs === null ? null : Math.floor(ttlMs / 1000),
-      hookAudit: describeHookForAudit(sessionHook),
+      hookAudit: describeHookForAudit(sessionHook, sessionHookRules.length),
       onBehalfOf: onBehalfOfUser
         ? { userId: onBehalfOfUser.user.id, username: onBehalfOfUser.user.username, email: onBehalfOfUser.user.email }
         : null

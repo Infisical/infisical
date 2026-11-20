@@ -299,6 +299,7 @@ export enum TableName {
   AgentVaultAccessBundleSkill = "agent_vault_access_bundle_skills",
   AgentVaultAccessBundleService = "agent_vault_access_bundle_services",
   AgentVaultHook = "agent_vault_hooks",
+  AgentVaultHookService = "agent_vault_hook_services",
   // Dropped; kept only for the migrations that create and drop it.
   AgentVaultSessionLogChunk = "agent_vault_session_log_chunks",
 

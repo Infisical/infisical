@@ -2226,20 +2226,49 @@ export const AgentVaultProjectIdSchema = z
   .optional()
   .describe(AGENT_VAULT.projectId);
 
-const hookRuleResponseSchema = z.object({
-  serviceId: z.string().uuid().nullable().describe(AGENT_VAULT.HOOK.ruleServiceIdRead),
-  service: z.string().nullable().describe(AGENT_VAULT.HOOK.ruleServiceRead),
+const hookRuleNarrowingResponseShape = {
   methods: z.nativeEnum(AgentVaultHttpMethod).array().optional().describe(AGENT_VAULT.HOOK.ruleMethods),
   paths: z.string().array().optional().describe(AGENT_VAULT.HOOK.rulePaths),
   tools: z.string().array().optional().describe(AGENT_VAULT.HOOK.ruleTools)
+};
+
+const hookRuleResponseSchema = z.object({
+  service: z.string().describe(AGENT_VAULT.HOOK.ruleServiceRead),
+  ...hookRuleNarrowingResponseShape
 });
+
+/** One service's place in a hook, as the hook service routes return it. */
+export const AgentVaultHookServiceLinkSchema = z.object({
+  hookId: z.string().uuid().describe(AGENT_VAULT.HOOK.hookId),
+  hookName: z.string().describe(AGENT_VAULT.HOOK.name),
+  serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId),
+  service: z.string().describe(AGENT_VAULT.HOOK.ruleServiceRead),
+  ...hookRuleNarrowingResponseShape
+});
+
+/** A saved hook a service is in, as service reads return it. */
+const AgentVaultServiceHookSchema = z.object({
+  id: z.string().uuid().describe(AGENT_VAULT.HOOK.hookId),
+  name: z.string().describe(AGENT_VAULT.HOOK.name),
+  ...hookRuleNarrowingResponseShape
+});
+
+export const AgentVaultProjectServiceWithHooksSchema = agentVaultServiceResponseSchema(
+  {
+    accessBundles: projectServiceAccessBundlesSchema,
+    personalValues: AgentVaultPersonalValuesSchema.nullable().optional(),
+    hooks: AgentVaultServiceHookSchema.array().optional().describe(AGENT_VAULT.HOOK.serviceHooks)
+  },
+  { optionalVariableReferences: true }
+);
 
 export const AgentVaultHookSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.HOOK.hookId),
   name: z.string().describe(AGENT_VAULT.HOOK.name),
   description: z.string().nullable().describe(AGENT_VAULT.HOOK.descriptionRead),
   url: z.string().describe(AGENT_VAULT.HOOK.url),
-  rules: hookRuleResponseSchema.array().describe(AGENT_VAULT.HOOK.rules),
+  rules: hookRuleResponseSchema.array().describe(AGENT_VAULT.HOOK.rulesRead),
+  appliesToAllServices: z.boolean().describe(AGENT_VAULT.HOOK.appliesToAllServices),
   createdAt: z.date().describe(AGENT_VAULT.HOOK.createdAt),
   updatedAt: z.date().describe(AGENT_VAULT.HOOK.updatedAt)
 });
@@ -2278,7 +2307,8 @@ export const AgentVaultSessionHookSchema = z
     name: z.string().nullable().describe(AGENT_VAULT.SESSION.hookNameRead),
     isInline: z.boolean().describe(AGENT_VAULT.SESSION.hookIsInline),
     url: z.string().optional().describe(AGENT_VAULT.HOOK.url),
-    rules: hookRuleResponseSchema.array().optional().describe(AGENT_VAULT.HOOK.rules)
+    rules: hookRuleResponseSchema.array().optional().describe(AGENT_VAULT.HOOK.rulesRead),
+    appliesToAllServices: z.boolean().optional().describe(AGENT_VAULT.HOOK.appliesToAllServices)
   })
   .nullable()
   .describe(AGENT_VAULT.SESSION.hookRead);

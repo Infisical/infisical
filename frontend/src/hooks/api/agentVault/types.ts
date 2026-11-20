@@ -250,6 +250,8 @@ export type TAgentVaultSkippedBundleItem = { id: string; name: string };
 // A service read from the project, with the access bundles it is in. A member gets only the ones they reach.
 export type TAgentVaultProjectService = TAgentVaultService & {
   accessBundles: TAgentVaultBundleRef[];
+  /** Only on a single service read, and only for callers who can read hooks. */
+  hooks?: TAgentVaultServiceHook[];
 };
 
 export type TAgentVaultActor =
@@ -1171,26 +1173,47 @@ export type TAgentVaultAccess = {
   warn: boolean;
 };
 
-type TAgentVaultHookRuleNarrowing = {
+export type TAgentVaultHookRuleNarrowing = {
   methods?: AgentVaultHttpMethod[];
   paths?: string[];
   tools?: string[];
 };
 
 /**
- * Picks the requests of one service that go to the hook. Methods and paths narrow an HTTP service, tools an MCP
- * service. A project service is referenced by ID and shown by its current name; any other service by name.
+ * Picks the requests of one of the project's services that go to the hook. Methods and paths narrow an HTTP service,
+ * tools an MCP service. Reads name the service by its current name; deleting the service removes its rule.
  */
 export type TAgentVaultHookRule = TAgentVaultHookRuleNarrowing & {
-  /** Null for a rule that names a service, such as one sent inline with a session. */
-  serviceId: string | null;
-  /** The project service's current name, or the name the rule was saved with. Null once the service was deleted. */
-  service: string | null;
+  service: string;
 };
 
-/** A rule as sent: a project service by `serviceId`, any other service by `service`, never both. */
-export type TAgentVaultHookRuleInput = TAgentVaultHookRuleNarrowing &
-  ({ serviceId: string; service?: never } | { service: string; serviceId?: never });
+/** A rule as sent: the project service by name. */
+export type TAgentVaultHookRuleInput = TAgentVaultHookRule;
+
+/** A saved hook a service is in, with what the hook checks of that service. */
+export type TAgentVaultServiceHook = TAgentVaultHookRuleNarrowing & {
+  id: string;
+  name: string;
+};
+
+/** One service's place in a hook, as the hook service endpoints return it. */
+export type TAgentVaultHookServiceLink = TAgentVaultHookRuleNarrowing & {
+  hookId: string;
+  hookName: string;
+  serviceId: string;
+  service: string;
+};
+
+export type TAddAgentVaultHookServiceDTO = TAgentVaultHookRuleInput & { hookId: string };
+
+/** Fields left out keep their values; null makes the hook match every method, path or tool. */
+export type TUpdateAgentVaultHookServiceDTO = {
+  hookId: string;
+  serviceId: string;
+  methods?: AgentVaultHttpMethod[] | null;
+  paths?: string[] | null;
+  tools?: string[] | null;
+};
 
 /** A saved hook. Its secret is write-only and never returned. */
 export type TAgentVaultHook = {
@@ -1198,8 +1221,9 @@ export type TAgentVaultHook = {
   name: string;
   description: string | null;
   url: string;
-  /** Empty sends every request of the session to the hook. */
   rules: TAgentVaultHookRule[];
+  /** With no rules, true sends every request of the session to the hook and false sends none. */
+  appliesToAllServices: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -1212,6 +1236,7 @@ export type TAgentVaultSessionHook = {
   isInline: boolean;
   url?: string;
   rules?: TAgentVaultHookRule[];
+  appliesToAllServices?: boolean;
 };
 
 export type TListAgentVaultHooksDTO = {

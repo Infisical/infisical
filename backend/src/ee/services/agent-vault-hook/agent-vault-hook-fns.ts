@@ -10,7 +10,7 @@ import {
   AGENT_VAULT_NO_CONTROL_CHARS_RE,
   hasLoneSurrogate
 } from "../agent-vault/agent-vault-credential-schemas";
-import { AgentVaultHttpMethod } from "../agent-vault/agent-vault-enums";
+import { AgentVaultHttpMethod, AgentVaultServiceType } from "../agent-vault/agent-vault-enums";
 import { refineNoDuplicates } from "../agent-vault/agent-vault-list-schema-fns";
 import { pathPrefixSchema } from "../agent-vault/agent-vault-path-prefix-schemas";
 import { toolNameSchema } from "../agent-vault/agent-vault-tool-name-schemas";
@@ -20,8 +20,7 @@ export const AGENT_VAULT_MIN_HOOK_SECRET_LENGTH = 32;
 export const AGENT_VAULT_MAX_HOOK_SECRET_LENGTH = 512;
 export const AGENT_VAULT_MAX_HOOK_RULES = 50;
 export const AGENT_VAULT_MAX_HOOK_RULE_ENTRIES = 100;
-// A rule names an unnamed inline service by its first host, so the bound is a host's, not a service name's.
-export const AGENT_VAULT_MAX_HOOK_RULE_SERVICE_LENGTH = 255;
+export const AGENT_VAULT_MAX_HOOK_RULE_SERVICE_LENGTH = 64;
 
 export const AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE =
   "Hooks aren't included in your plan, so they can't be added or changed. Existing hooks keep working. Upgrade to add one.";
@@ -97,21 +96,34 @@ export const AgentVaultHookSecretSchema = z.string().superRefine((value, ctx) =>
 
 const ruleListLimitMessage = (what: string) => `A rule can list at most ${AGENT_VAULT_MAX_HOOK_RULE_ENTRIES} ${what}.`;
 
+const hookRuleMethodsSchema = z
+  .array(z.nativeEnum(AgentVaultHttpMethod))
+  .min(1, "List at least one method, or leave 'methods' out to match every method.")
+  .max(Object.keys(AgentVaultHttpMethod).length)
+  .transform((methods) => [...new Set(methods)]);
+
+const hookRulePathsSchema = z
+  .array(pathPrefixSchema)
+  .min(1, "List at least one path prefix, or leave 'paths' out to match every path.")
+  .max(AGENT_VAULT_MAX_HOOK_RULE_ENTRIES, ruleListLimitMessage("path prefixes"))
+  .superRefine(refineNoDuplicates);
+
+const hookRuleToolsSchema = z
+  .array(toolNameSchema)
+  .min(1, "List at least one tool, or leave 'tools' out to match every tool.")
+  .max(AGENT_VAULT_MAX_HOOK_RULE_ENTRIES, ruleListLimitMessage("tools"))
+  .superRefine(refineNoDuplicates);
+
+const NARROWING_MIX_MESSAGE =
+  "A rule narrows an HTTP service by 'methods' and 'paths' or an MCP service by 'tools', not both.";
+
 /**
- * A rule picks the requests of one service that go to the hook, optionally narrowed to some HTTP methods and path
- * prefixes, or to some MCP tools. A project service is referenced by `serviceId`, so a rename carries over; any other
- * service (one sent inline, which differs per session) by `service`, its name. The service's type isn't known when a
- * rule is saved, so a narrowing that doesn't fit the matched service (methods on an MCP service, anything on a
- * database or SSH service) is ignored by the proxy and the rule matches the whole service. That fails closed: more
- * traffic goes to the hook, never less.
+ * A rule picks the requests of one of the project's services that go to the hook, optionally narrowed to some HTTP
+ * methods and path prefixes, or to some MCP tools. The API names the service; it is saved as a link to that service,
+ * so a rename carries over and deleting the service removes it from the hook.
  */
 export const AgentVaultHookRuleSchema = z
   .object({
-    serviceId: z
-      .string()
-      .uuid("Enter the ID of one of the project's services, or send its name as 'service'.")
-      .optional()
-      .describe(AGENT_VAULT.HOOK.ruleServiceId),
     service: z
       .string()
       .trim()
@@ -121,137 +133,186 @@ export const AgentVaultHookRuleSchema = z
         AGENT_VAULT_MAX_HOOK_RULE_SERVICE_LENGTH,
         `A service name in a rule can be at most ${AGENT_VAULT_MAX_HOOK_RULE_SERVICE_LENGTH} characters.`
       )
-      .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-      .optional()
       .describe(AGENT_VAULT.HOOK.ruleService),
-    methods: z
-      .array(z.nativeEnum(AgentVaultHttpMethod))
-      .min(1, "List at least one method, or leave 'methods' out to match every method.")
-      .max(Object.keys(AgentVaultHttpMethod).length)
-      .transform((methods) => [...new Set(methods)])
-      .optional()
-      .describe(AGENT_VAULT.HOOK.ruleMethods),
-    paths: z
-      .array(pathPrefixSchema)
-      .min(1, "List at least one path prefix, or leave 'paths' out to match every path.")
-      .max(AGENT_VAULT_MAX_HOOK_RULE_ENTRIES, ruleListLimitMessage("path prefixes"))
-      .superRefine(refineNoDuplicates)
-      .optional()
-      .describe(AGENT_VAULT.HOOK.rulePaths),
-    tools: z
-      .array(toolNameSchema)
-      .min(1, "List at least one tool, or leave 'tools' out to match every tool.")
-      .max(AGENT_VAULT_MAX_HOOK_RULE_ENTRIES, ruleListLimitMessage("tools"))
-      .superRefine(refineNoDuplicates)
-      .optional()
-      .describe(AGENT_VAULT.HOOK.ruleTools)
+    methods: hookRuleMethodsSchema.optional().describe(AGENT_VAULT.HOOK.ruleMethods),
+    paths: hookRulePathsSchema.optional().describe(AGENT_VAULT.HOOK.rulePaths),
+    tools: hookRuleToolsSchema.optional().describe(AGENT_VAULT.HOOK.ruleTools)
   })
   .superRefine((rule, ctx) => {
-    if (rule.serviceId === undefined && rule.service === undefined) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message:
-          "Choose the service this rule applies to: send 'serviceId' for a project service, or 'service' with its name."
-      });
-    } else if (rule.serviceId !== undefined && rule.service !== undefined) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Send 'serviceId' or 'service' in a rule, not both."
-      });
-    }
     if (rule.tools && (rule.methods || rule.paths)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message:
-          "A rule narrows an HTTP service by 'methods' and 'paths' or an MCP service by 'tools', not both. Split it into two rules."
-      });
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: NARROWING_MIX_MESSAGE });
     }
   });
 
-export const AgentVaultHookRulesSchema = AgentVaultHookRuleSchema.array().max(
-  AGENT_VAULT_MAX_HOOK_RULES,
-  `A hook can have at most ${AGENT_VAULT_MAX_HOOK_RULES} rules.`
-);
-
-export type TAgentVaultHookRuleInput = z.infer<typeof AgentVaultHookRuleSchema>;
-
-type THookRuleNarrowing = { methods?: AgentVaultHttpMethod[]; paths?: string[]; tools?: string[] };
-
-/** A rule as stored: a project service by ID, any other service by name. */
-export type TStoredHookRule = ({ serviceId: string; service?: never } | { service: string; serviceId?: never }) &
-  THookRuleNarrowing;
-
-/** A rule as reads return it. `service` is the service's current name, or null when the service was deleted. */
-export type TAgentVaultHookRuleView = { serviceId: string | null; service: string | null } & THookRuleNarrowing;
-
-/** A rule as resolve sends it to the proxy, which matches by name. */
-export type TResolvedHookRule = { service: string } & THookRuleNarrowing;
-
-const pickNarrowing = (rule: THookRuleNarrowing): THookRuleNarrowing => ({
-  ...(rule.methods ? { methods: rule.methods } : {}),
-  ...(rule.paths ? { paths: rule.paths } : {}),
-  ...(rule.tools ? { tools: rule.tools } : {})
-});
-
-// Reads the stored rules back, dropping any key a later version might add.
-export const toStoredHookRules = (stored: unknown): TStoredHookRule[] =>
-  (Array.isArray(stored) ? (stored as TStoredHookRule[]) : []).map((rule) =>
-    rule.serviceId
-      ? { serviceId: rule.serviceId, ...pickNarrowing(rule) }
-      : { service: rule.service as string, ...pickNarrowing(rule) }
-  );
-
-export const collectHookRuleServiceIds = (rules: TStoredHookRule[]): string[] => [
-  ...new Set(rules.flatMap((rule) => (rule.serviceId ? [rule.serviceId] : [])))
-];
-
-export const toHookRuleViews = (
-  rules: TStoredHookRule[],
-  serviceNamesById: ReadonlyMap<string, string>
-): TAgentVaultHookRuleView[] =>
-  rules.map((rule) =>
-    rule.serviceId
-      ? { serviceId: rule.serviceId, service: serviceNamesById.get(rule.serviceId) ?? null, ...pickNarrowing(rule) }
-      : { serviceId: null, service: rule.service as string, ...pickNarrowing(rule) }
-  );
-
-// A rule whose service was deleted is dropped: no service of the session can carry that ID any more.
-export const toResolvedHookRules = (
-  rules: TStoredHookRule[],
-  serviceNamesById: ReadonlyMap<string, string>
-): TResolvedHookRule[] =>
-  rules.flatMap((rule) => {
-    const service = rule.serviceId ? serviceNamesById.get(rule.serviceId) : rule.service;
-    return service ? [{ service, ...pickNarrowing(rule) }] : [];
-  });
-
-/**
- * Turns rules sent by the API into stored ones. A name that is one of the project's services is stored as that
- * service's ID, so the rule follows a rename; other names stay names, for services sent inline with a session.
- * `projectServices` are the project's services (never inline ones) whose ID or name the rules mention.
- */
-export const toStoredHookRulesForSave = (
-  rules: TAgentVaultHookRuleInput[],
-  projectServices: { id: string; name: string }[],
-  // The services a name may become the ID of; all of `projectServices` unless the caller narrows it.
-  nameTargets: { id: string; name: string }[] = projectServices
-): { rules: TStoredHookRule[]; serviceNamesById: Map<string, string> } => {
-  const serviceNamesById = new Map(projectServices.map((service) => [service.id, service.name]));
-  const serviceIdsByName = new Map(nameTargets.map((service) => [service.name, service.id]));
-  const stored = rules.map((rule, index): TStoredHookRule => {
-    if (rule.serviceId) {
-      if (!serviceNamesById.has(rule.serviceId)) {
-        throw new NotFoundError({
-          message: `Rule ${index + 1} names a service with ID '${rule.serviceId}' that isn't in this project.`
+export const AgentVaultHookRulesSchema = AgentVaultHookRuleSchema.array()
+  .max(AGENT_VAULT_MAX_HOOK_RULES, `A hook can have at most ${AGENT_VAULT_MAX_HOOK_RULES} rules.`)
+  .superRefine((rules, ctx) => {
+    const seen = new Set<string>();
+    rules.forEach((rule, index) => {
+      if (seen.has(rule.service)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [index, "service"],
+          message: `'${rule.service}' is in more than one rule. List each service once, with all its methods, paths or tools in that rule.`
         });
       }
-      return { serviceId: rule.serviceId, ...pickNarrowing(rule) };
-    }
-    const name = rule.service as string;
-    const serviceId = serviceIdsByName.get(name);
-    return serviceId ? { serviceId, ...pickNarrowing(rule) } : { service: name, ...pickNarrowing(rule) };
+      seen.add(rule.service);
+    });
   });
-  return { rules: stored, serviceNamesById };
+
+/** A PATCH of one service's narrowing in a hook: a field left out keeps its value, null removes it. */
+export const AgentVaultHookServiceNarrowingUpdateSchema = z
+  .object({
+    methods: hookRuleMethodsSchema.nullable().optional().describe(AGENT_VAULT.HOOK.updateRuleMethods),
+    paths: hookRulePathsSchema.nullable().optional().describe(AGENT_VAULT.HOOK.updateRulePaths),
+    tools: hookRuleToolsSchema.nullable().optional().describe(AGENT_VAULT.HOOK.updateRuleTools)
+  })
+  .refine((fields) => Object.values(fields).some((value) => value !== undefined), {
+    message: "Provide at least one of 'methods', 'paths' or 'tools'."
+  });
+
+export type TAgentVaultHookRuleInput = z.infer<typeof AgentVaultHookRuleSchema>;
+export type TAgentVaultHookServiceNarrowingUpdate = z.infer<typeof AgentVaultHookServiceNarrowingUpdateSchema>;
+
+export type THookRuleNarrowing = { methods?: AgentVaultHttpMethod[]; paths?: string[]; tools?: string[] };
+
+/** A rule as reads return it and resolve sends it: the service's current name and its narrowing. */
+export type TAgentVaultHookRuleView = { service: string } & THookRuleNarrowing;
+
+/** A rule as resolve sends it to the proxy, which matches by name. */
+export type TResolvedHookRule = TAgentVaultHookRuleView;
+
+/** A hook's link to one of its services, as the link DAL reads it. */
+export type THookServiceLink = {
+  hookId: string;
+  serviceId: string;
+  serviceName: string;
+  serviceType: AgentVaultServiceType;
+  position: number;
+  methods: unknown;
+  paths: unknown;
+  tools: unknown;
+};
+
+/** A link as written: the service by ID, and the narrowing, null where it matches everything. */
+export type THookServiceLinkInsert = {
+  serviceId: string;
+  position: number;
+  methods: AgentVaultHttpMethod[] | null;
+  paths: string[] | null;
+  tools: string[] | null;
+};
+
+const asStringList = (value: unknown) => (Array.isArray(value) ? (value as string[]) : undefined);
+
+export const pickHookRuleNarrowing = (link: { methods?: unknown; paths?: unknown; tools?: unknown }) => {
+  const methods = asStringList(link.methods) as AgentVaultHttpMethod[] | undefined;
+  const paths = asStringList(link.paths);
+  const tools = asStringList(link.tools);
+  return {
+    ...(methods ? { methods } : {}),
+    ...(paths ? { paths } : {}),
+    ...(tools ? { tools } : {})
+  } satisfies THookRuleNarrowing;
+};
+
+export const toHookRuleView = (link: THookServiceLink): TAgentVaultHookRuleView => ({
+  service: link.serviceName,
+  ...pickHookRuleNarrowing(link)
+});
+
+/** Groups links by hook, each hook's in rule order. */
+export const groupHookRuleViews = (links: THookServiceLink[]): Map<string, TAgentVaultHookRuleView[]> => {
+  const byHook = new Map<string, TAgentVaultHookRuleView[]>();
+  [...links]
+    .sort((left, right) => left.position - right.position)
+    .forEach((link) => {
+      const rules = byHook.get(link.hookId) ?? [];
+      rules.push(toHookRuleView(link));
+      byHook.set(link.hookId, rules);
+    });
+  return byHook;
+};
+
+/**
+ * The rules resolve sends for a hook, by the names of the service rows sent in the same response. A link to a service
+ * outside the session is left out, since the proxy could never match it. Undefined means the hook goes out as no hook:
+ * it has services and none is in this session, or it was left without services after they were deleted. Either way
+ * it would otherwise suddenly check every request.
+ */
+export const toResolvedHookRules = (
+  {
+    links,
+    appliesToAllServices
+  }: {
+    links: { serviceId: string; methods: unknown; paths: unknown; tools: unknown }[];
+    appliesToAllServices: boolean;
+  },
+  serviceNamesById: ReadonlyMap<string, string>
+): TResolvedHookRule[] | undefined => {
+  if (!links.length) return appliesToAllServices ? [] : undefined;
+  const rules = links.flatMap((link) => {
+    const service = serviceNamesById.get(link.serviceId);
+    return service ? [{ service, ...pickHookRuleNarrowing(link) }] : [];
+  });
+  return rules.length ? rules : undefined;
+};
+
+const SERVICE_TYPE_NAMES: Record<AgentVaultServiceType, string> = {
+  [AgentVaultServiceType.Http]: "an HTTP",
+  [AgentVaultServiceType.Mcp]: "an MCP",
+  [AgentVaultServiceType.Postgres]: "a PostgreSQL",
+  [AgentVaultServiceType.Mysql]: "a MySQL",
+  [AgentVaultServiceType.Ssh]: "an SSH"
+};
+
+/** Refuses a narrowing the service's type can't use, since the proxy would ignore it and check the whole service. */
+export const assertHookNarrowingFitsService = (
+  narrowing: THookRuleNarrowing,
+  service: { name: string; type: AgentVaultServiceType }
+) => {
+  const kind = SERVICE_TYPE_NAMES[service.type];
+  if (narrowing.tools && (narrowing.methods || narrowing.paths)) {
+    throw new BadRequestError({ message: NARROWING_MIX_MESSAGE });
+  }
+  if ((narrowing.methods || narrowing.paths) && service.type !== AgentVaultServiceType.Http) {
+    throw new BadRequestError({
+      message: `'${service.name}' is ${kind} service, and only an HTTP service can be narrowed by methods or paths. Leave them out to check every request to it.`
+    });
+  }
+  if (narrowing.tools && service.type !== AgentVaultServiceType.Mcp) {
+    throw new BadRequestError({
+      message: `'${service.name}' is ${kind} service, and only an MCP service can be narrowed by tools. Leave them out to check every request to it.`
+    });
+  }
+};
+
+/**
+ * Turns rules sent by the API into links. Every rule must name one of the project's services (never a session's
+ * inline one), and its narrowing must fit that service's type. `projectServices` are the project's services the rules
+ * name, read in the caller's transaction.
+ */
+export const toHookServiceLinks = (
+  rules: TAgentVaultHookRuleInput[],
+  projectServices: { id: string; name: string; type: string }[]
+): THookServiceLinkInsert[] => {
+  const servicesByName = new Map(projectServices.map((service) => [service.name, service]));
+  return rules.map((rule, position) => {
+    const service = servicesByName.get(rule.service);
+    if (!service) {
+      throw new NotFoundError({
+        message: `There's no service called '${rule.service}' in this project. A hook rule can only name one of the project's services.`
+      });
+    }
+    assertHookNarrowingFitsService(rule, { name: service.name, type: service.type as AgentVaultServiceType });
+    return {
+      serviceId: service.id,
+      position,
+      methods: rule.methods ?? null,
+      paths: rule.paths ?? null,
+      tools: rule.tools ?? null
+    };
+  });
 };
 
 export const assertAgentVaultHooksOnPlan = async (licenseService: Pick<TLicenseService, "getPlan">, orgId: string) => {

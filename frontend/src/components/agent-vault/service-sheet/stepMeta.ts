@@ -34,6 +34,29 @@ const REVIEW_STEP: StepMeta = {
   rightDescription: "Review your settings before saving."
 };
 
+type THookStepKind = "http" | "mcp" | "connection";
+
+const HOOK_STEP_RIGHT: Record<THookStepKind, string> = {
+  http: "A session started with one of these hooks sends the hook each request to this service that matches, before the proxy adds the credential. Your server allows or refuses it. Leave methods and paths open to check every request.",
+  mcp: "A session started with one of these hooks sends the hook each call to this MCP server that matches, before the proxy adds the credential. Your server allows or refuses it. Leave tools empty to check every call.",
+  connection:
+    "A session started with one of these hooks asks the hook once when the agent connects to this service, not before each query or command. Your server allows or refuses the connection."
+};
+
+const hooksStep = (kind: THookStepKind): StepMeta => ({
+  step: ServiceStep.Hooks,
+  name: "Hooks",
+  shortDescription: "Your server checks requests",
+  title: "Hooks",
+  subtitle:
+    "The saved hooks that check this service's requests, and which requests each one checks.",
+  rightLabel: "HOOKS",
+  rightDescription: HOOK_STEP_RIGHT[kind],
+  rightTip:
+    "A hook only checks a session that was started with it. Add or remove services for a hook here or on the Hooks page.",
+  docsUrl: AgentVaultDocsUrls.hooks
+});
+
 export const SERVICE_STEPS: StepMeta[] = [
   TEMPLATE_STEP,
   {
@@ -57,6 +80,7 @@ export const SERVICE_STEPS: StepMeta[] = [
       "Agents reach this service without ever holding the credential themselves. Custom headers go out on top of it, and a substitution swaps a placeholder your agent already sends for the real value.",
     rightTip: VARIABLE_TIP
   },
+  hooksStep("http"),
   REVIEW_STEP
 ];
 
@@ -95,6 +119,7 @@ export const MCP_SERVICE_STEPS: StepMeta[] = [
     rightTip:
       "Turning off All Tools asks the server for its list with the credential from the previous step. If members provide their own credential, enter a token or sign in with your own account to load the list. Infisical doesn't save it. To allow a tool the server doesn't list, type its exact name in Allowed Tools."
   },
+  hooksStep("mcp"),
   REVIEW_STEP
 ];
 
@@ -150,6 +175,7 @@ export const nativeServiceSteps = (serviceType: TAgentVaultNativeServiceType): S
       rightLabel: "CREDENTIAL",
       rightDescription: copy.credentialRight
     },
+    hooksStep("connection"),
     REVIEW_STEP
   ];
 };

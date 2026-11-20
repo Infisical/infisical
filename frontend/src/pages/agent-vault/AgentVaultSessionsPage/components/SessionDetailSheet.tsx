@@ -95,15 +95,13 @@ const SessionHookValue = ({ hook }: { hook: TAgentVaultSessionHook }) => {
         {hook.rules && (
           <ul className="mt-1 flex flex-col gap-0.5 text-muted">
             {hook.rules.length ? (
-              hook.rules.map((rule, index) => (
-                // Two rules can read the same, such as two whose services were deleted.
-                // eslint-disable-next-line react/no-array-index-key
-                <li key={`${index}-${describeHookRule(rule)}`} className="break-all">
+              hook.rules.map((rule) => (
+                <li key={rule.service} className="break-all">
                   {describeHookRule(rule)}
                 </li>
               ))
             ) : (
-              <li>All traffic</li>
+              <li>{hook.appliesToAllServices === false ? "No services" : "All traffic"}</li>
             )}
           </ul>
         )}

@@ -61,7 +61,13 @@ import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 
 const RulesSummary = ({ hook }: { hook: TAgentVaultHook }) => {
-  if (!hook.rules.length) return <span className="text-muted">All traffic</span>;
+  if (!hook.rules.length) {
+    return (
+      <span className="text-muted">
+        {hook.appliesToAllServices ? "All traffic" : "No services"}
+      </span>
+    );
+  }
   const lines = hook.rules.map(describeHookRule);
   if (lines.length === 1) return <span className="truncate">{lines[0]}</span>;
   return (
@@ -73,10 +79,8 @@ const RulesSummary = ({ hook }: { hook: TAgentVaultHook }) => {
       </TooltipTrigger>
       <TooltipContent className="max-w-sm">
         <ul className="flex flex-col gap-0.5">
-          {lines.map((line, index) => (
-            // Two rules can read the same, such as two whose services were deleted.
-            // eslint-disable-next-line react/no-array-index-key
-            <li key={`${index}-${line}`} className="break-all">
+          {lines.map((line) => (
+            <li key={line} className="break-all">
               {line}
             </li>
           ))}

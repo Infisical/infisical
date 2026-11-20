@@ -5244,22 +5244,30 @@ export const AGENT_VAULT = {
     updateSecret:
       "A new key for the proxy to sign each check with. 32 to 512 printable ASCII characters with no spaces, used exactly as given. Leave it out to keep the saved one. Never returned once saved.",
     rules:
-      "Which of a session's requests the proxy asks the hook about. Leave it empty to ask about every request. A request is asked about when any rule matches it.",
+      "Which of a session's requests the proxy asks the hook about: one rule per project service, each listed once. Leave it empty to ask about every request. A request is asked about when any rule matches it.",
     updateRules:
       "Which of a session's requests the proxy asks the hook about. Replaces every rule. Send an empty list to ask about every request.",
-    ruleServiceId:
-      "The ID of the project service the rule applies to. The rule follows the service when it is renamed. Send this or `service`, not both.",
+    rulesRead:
+      "Which of a session's requests the proxy asks the hook about, one rule per project service. Deleting a service removes its rule.",
+    appliesToAllServices:
+      "Whether the hook is asked about every request. True only for a hook saved with no rules. A hook whose services were all deleted or removed has no rules and is not asked at all.",
     ruleService:
-      "The name of the service the rule applies to, for a service sent with the session (by its name, or its first host when it was sent without one). A name that matches one of the project's services is saved as that service's ID. A name that isn't in the session matches nothing. Send this or `serviceId`, not both.",
-    ruleServiceIdRead: "The ID of the project service the rule applies to, or null for a rule that names a service.",
-    ruleServiceRead:
-      "The name of the service the rule applies to: the project service's current name, or the name the rule was saved with. Null when the project service was deleted. Such a rule is skipped, and a hook left with no other rules is not asked at all.",
+      "The name of the project service the rule applies to. It must be one of the project's services, not one sent with a session. The rule follows the service when it is renamed, and goes when it is deleted.",
+    ruleServiceRead: "The current name of the project service the rule applies to.",
+    updateRuleMethods:
+      "HTTP services only: match only these methods. Send null to match every method. Leave it out to keep the current ones.",
+    updateRulePaths:
+      "HTTP services only: match only paths that start with one of these prefixes. Send null to match every path. Leave it out to keep the current ones.",
+    updateRuleTools:
+      "MCP services only: match only calls to these tools. Send null to match every tool. Leave it out to keep the current ones.",
+    serviceHooks:
+      "The saved hooks this service is in, by name, with what each checks of it. Returned only to callers who can read hooks.",
     ruleMethods:
-      "HTTP services only: match only these methods. With `paths`, a request must match both. A service of another type ignores it and the rule matches every request to it.",
+      "HTTP services only: match only these methods. With `paths`, a request must match both. Leave it out to match every method.",
     rulePaths:
-      "HTTP services only: match only paths that start with one of these prefixes, compared by whole segment like a service's allowed path prefixes. A service of another type ignores it and the rule matches every request to it.",
+      "HTTP services only: match only paths that start with one of these prefixes, compared by whole segment like a service's allowed path prefixes. Leave it out to match every path.",
     ruleTools:
-      "MCP services only: match only calls to these tools. Can't be sent with `methods` or `paths`. A service of another type ignores it and the rule matches every request to it.",
+      "MCP services only: match only calls to these tools. Can't be sent with `methods` or `paths`. Leave it out to match every tool.",
     createdAt: "When the hook was created.",
     updatedAt: "When the hook was last changed.",
     search: "Match hooks whose name or URL contains this text.",

@@ -1,5 +1,11 @@
+import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
+import {
+  AgentVaultHookRuleSchema,
+  AgentVaultHookServiceNarrowingUpdateSchema,
+  THookRuleNarrowing
+} from "@app/ee/services/agent-vault-hook/agent-vault-hook-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
@@ -12,12 +18,30 @@ import {
   AgentVaultCreateHookBodySchema,
   agentVaultListQuery,
   AgentVaultHookSchema,
+  AgentVaultHookServiceLinkSchema,
   AgentVaultProjectIdSchema,
   AgentVaultUpdateHookBodySchema
 } from "./agent-vault-schemas";
 
 const HookIdParamsSchema = z.object({
   hookId: z.string().uuid().describe(AGENT_VAULT.HOOK.hookId)
+});
+
+const HookServiceParamsSchema = HookIdParamsSchema.extend({
+  serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId)
+});
+
+type THookServiceEdit = {
+  hook: { id: string; name: string };
+  service: { id: string; name: string };
+} & THookRuleNarrowing;
+
+const toHookServiceLink = ({ hook, service, ...narrowing }: THookServiceEdit) => ({
+  hookId: hook.id,
+  hookName: hook.name,
+  serviceId: service.id,
+  service: service.name,
+  ...narrowing
 });
 
 export const registerAgentVaultHookRouter = async (server: FastifyZodProvider) => {
@@ -200,6 +224,120 @@ export const registerAgentVaultHookRouter = async (server: FastifyZodProvider) =
       });
 
       return { hook };
+    }
+  });
+
+  const auditHookServiceChange = async (
+    req: FastifyRequest,
+    projectId: string,
+    change: "added" | "removed" | "narrowed",
+    { hook, service, ...narrowing }: THookServiceEdit
+  ) =>
+    server.services.auditLog.createAuditLog({
+      ...req.auditLogInfo,
+      orgId: req.permission.orgId,
+      projectId,
+      event: {
+        type: EventType.AGENT_VAULT_HOOK_UPDATE,
+        metadata: {
+          hookId: hook.id,
+          hookName: hook.name,
+          serviceChange: { change, serviceId: service.id, serviceName: service.name, ...narrowing },
+          secretReplaced: false
+        }
+      }
+    });
+
+  server.route({
+    method: "POST",
+    url: "/:hookId/services",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "addAgentVaultHookService",
+      description:
+        "Add one of the project's services to a saved hook, optionally narrowed to some methods and paths (HTTP) or tools (MCP). A hook that asked about every request asks only about its services from then on. Sessions using the hook pick up the change on the proxy's next poll.",
+      tags: [ApiDocsTags.AgentVaultHooks],
+      params: HookIdParamsSchema,
+      body: AgentVaultHookRuleSchema,
+      response: { 200: z.object({ link: AgentVaultHookServiceLinkSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromHook(
+        actorContext(req),
+        req.params.hookId
+      );
+      const edit = await server.services.agentVaultHook.addHookService({
+        ...req.body,
+        projectId,
+        ctx: actorContext(req),
+        hookId: req.params.hookId
+      });
+      await auditHookServiceChange(req, projectId, "added", edit);
+      return { link: toHookServiceLink(edit) };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:hookId/services/:serviceId",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "updateAgentVaultHookService",
+      description:
+        "Change which of a service's requests a saved hook is asked about. Fields left out keep their values, and null removes one so the hook matches every method, path or tool.",
+      tags: [ApiDocsTags.AgentVaultHooks],
+      params: HookServiceParamsSchema,
+      body: AgentVaultHookServiceNarrowingUpdateSchema,
+      response: { 200: z.object({ link: AgentVaultHookServiceLinkSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromHook(
+        actorContext(req),
+        req.params.hookId
+      );
+      const edit = await server.services.agentVaultHook.updateHookService({
+        ...req.body,
+        projectId,
+        ctx: actorContext(req),
+        hookId: req.params.hookId,
+        serviceId: req.params.serviceId
+      });
+      await auditHookServiceChange(req, projectId, "narrowed", edit);
+      return { link: toHookServiceLink(edit) };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:hookId/services/:serviceId",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "removeAgentVaultHookService",
+      description:
+        "Remove a service from a saved hook. The service stays in the project. A hook left with no services is not asked about any request until one is added.",
+      tags: [ApiDocsTags.AgentVaultHooks],
+      params: HookServiceParamsSchema,
+      response: { 200: z.object({ link: AgentVaultHookServiceLinkSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromHook(
+        actorContext(req),
+        req.params.hookId
+      );
+      const edit = await server.services.agentVaultHook.removeHookService({
+        projectId,
+        ctx: actorContext(req),
+        hookId: req.params.hookId,
+        serviceId: req.params.serviceId
+      });
+      await auditHookServiceChange(req, projectId, "removed", edit);
+      return { link: toHookServiceLink(edit) };
     }
   });
 };

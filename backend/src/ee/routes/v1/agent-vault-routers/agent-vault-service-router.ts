@@ -32,6 +32,7 @@ import {
   AgentVaultListedProjectServiceSchema,
   AgentVaultProjectIdSchema,
   AgentVaultProjectServiceSchema,
+  AgentVaultProjectServiceWithHooksSchema,
   AgentVaultUpdateServiceBodySchema
 } from "./agent-vault-schemas";
 
@@ -141,7 +142,9 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
         "Get a service in an Agent Vault project and the access bundles it is in. A member can get only a service in an access bundle they have been granted.",
       tags: [ApiDocsTags.AgentVaultServices],
       params: ServiceIdParamsSchema,
-      response: { 200: z.object({ service: AgentVaultProjectServiceSchema }) }
+      response: {
+        200: z.object({ service: AgentVaultProjectServiceWithHooksSchema })
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
@@ -149,11 +152,17 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
         actorContext(req),
         req.params.serviceId
       );
-      return server.services.agentVaultAccessBundle.getService({
+      const { service } = await server.services.agentVaultAccessBundle.getService({
         projectId,
         ctx: actorContext(req),
         serviceId: req.params.serviceId
       });
+      const hooks = await server.services.agentVaultHook.listServiceHooks({
+        projectId,
+        ctx: actorContext(req),
+        serviceId: service.id
+      });
+      return { service: { ...service, ...(hooks ? { hooks } : {}) } };
     }
   });
 

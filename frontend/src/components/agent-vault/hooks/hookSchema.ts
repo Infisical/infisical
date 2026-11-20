@@ -11,6 +11,7 @@ import {
   TAgentVaultHook,
   TAgentVaultHookRule,
   TAgentVaultHookRuleInput,
+  TAgentVaultHookRuleNarrowing,
   TCreateAgentVaultHookDTO,
   TUpdateAgentVaultHookDTO
 } from "@app/hooks/api/agentVault/types";
@@ -29,7 +30,6 @@ const MIN_HOOK_SECRET_LENGTH = 32;
 const MAX_HOOK_SECRET_LENGTH = 512;
 export const MAX_HOOK_RULES = 50;
 const MAX_HOOK_RULE_ENTRIES = 100;
-const MAX_HOOK_RULE_SERVICE_LENGTH = 255;
 
 export const isPlainHttpUrl = (value: string) => /^http:\/\//i.test(value.trim());
 
@@ -86,28 +86,8 @@ export const hookSecretError = (value: string): string | null => {
   return null;
 };
 
-export const DELETED_SERVICE_LABEL = "Deleted service";
-
-export const hookRuleServiceError = (value: string): string | null => {
-  const trimmed = value.trim();
-  if (!trimmed) return "Pick or type the service this rule applies to.";
-  if (trimmed.length > MAX_HOOK_RULE_SERVICE_LENGTH) {
-    return `A service name can be at most ${MAX_HOOK_RULE_SERVICE_LENGTH} characters.`;
-  }
-  if (!AGENT_VAULT_NO_CONTROL_CHARS_RE.test(trimmed)) return AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE;
-  return null;
-};
-
-/**
- * A rule as the form edits it. `serviceId` is set for a project service, which `service` then shows by name; a typed
- * name, such as an inline service's, has no ID. A rule whose service was deleted keeps its ID with an empty name. The
- * service type decides which narrowing applies: methods and paths for HTTP, tools for MCP, nothing for the rest. It is
- * null for a name that isn't one of the project's services.
- */
-export type THookRuleDraft = {
-  serviceId: string | null;
-  service: string;
-  serviceType: AgentVaultServiceType | null;
+/** What a hook checks of one service: methods and paths for HTTP, tools for MCP, nothing for the rest. */
+export type THookNarrowingDraft = {
   methods: AgentVaultHttpMethod[];
   paths: string[];
   pathDraft: string;
@@ -115,13 +95,16 @@ export type THookRuleDraft = {
   toolDraft: string;
 };
 
-export const isDeletedServiceRule = (draft: Pick<THookRuleDraft, "serviceId" | "service">) =>
-  Boolean(draft.serviceId) && !draft.service;
+/**
+ * A rule as the form edits it: one of the project's services by name. Its type decides which narrowing applies, and is
+ * null only while no service is picked.
+ */
+export type THookRuleDraft = THookNarrowingDraft & {
+  service: string;
+  serviceType: AgentVaultServiceType | null;
+};
 
-export const blankHookRule = (): THookRuleDraft => ({
-  serviceId: null,
-  service: "",
-  serviceType: null,
+export const blankHookNarrowing = (): THookNarrowingDraft => ({
   methods: [...HTTP_METHODS],
   paths: [],
   pathDraft: "",
@@ -129,45 +112,55 @@ export const blankHookRule = (): THookRuleDraft => ({
   toolDraft: ""
 });
 
-// A saved rule's narrowing says which type it was written for, and wins over the named service's type so that editing
-// the hook never drops narrowing it was saved with.
+export const blankHookRule = (): THookRuleDraft => ({
+  ...blankHookNarrowing(),
+  service: "",
+  serviceType: null
+});
+
+export const hookNarrowingDraftOf = (
+  narrowing: TAgentVaultHookRuleNarrowing
+): THookNarrowingDraft => ({
+  ...blankHookNarrowing(),
+  methods: narrowing.methods
+    ? HTTP_METHODS.filter((m) => narrowing.methods?.includes(m))
+    : [...HTTP_METHODS],
+  paths: narrowing.paths ?? [],
+  tools: narrowing.tools ?? []
+});
+
+// A rule on a service missing from the picker's first page takes its type from the narrowing it was saved with.
 export const hookRuleDraftOf = (
   rule: TAgentVaultHookRule,
   serviceType?: AgentVaultServiceType
 ): THookRuleDraft => {
   let type: AgentVaultServiceType | null = serviceType ?? null;
-  if (rule.tools) type = AgentVaultServiceType.Mcp;
-  else if (rule.methods || rule.paths) type = AgentVaultServiceType.Http;
-  return {
-    ...blankHookRule(),
-    serviceId: rule.serviceId,
-    service: rule.service ?? "",
-    serviceType: type,
-    methods: rule.methods
-      ? HTTP_METHODS.filter((m) => rule.methods?.includes(m))
-      : [...HTTP_METHODS],
-    paths: rule.paths ?? [],
-    tools: rule.tools ?? []
-  };
+  if (!type && rule.tools) type = AgentVaultServiceType.Mcp;
+  else if (!type && (rule.methods || rule.paths)) type = AgentVaultServiceType.Http;
+  return { ...hookNarrowingDraftOf(rule), service: rule.service, serviceType: type };
 };
 
 /** Lists are left out rather than sent empty: the API reads an empty list as a mistake. */
-export const buildHookRule = (draft: THookRuleDraft): TAgentVaultHookRuleInput => {
-  const target = draft.serviceId
-    ? { serviceId: draft.serviceId }
-    : { service: draft.service.trim().toLowerCase() };
-  if (draft.serviceType === AgentVaultServiceType.Http) {
+export const buildHookNarrowing = (
+  draft: THookNarrowingDraft,
+  serviceType: AgentVaultServiceType | null
+): TAgentVaultHookRuleNarrowing => {
+  if (serviceType === AgentVaultServiceType.Http) {
     return {
-      ...target,
       ...(isAllMethods(draft.methods) || !draft.methods.length ? {} : { methods: draft.methods }),
       ...(draft.paths.length ? { paths: draft.paths } : {})
     };
   }
-  if (draft.serviceType === AgentVaultServiceType.Mcp) {
-    return { ...target, ...(draft.tools.length ? { tools: draft.tools } : {}) };
+  if (serviceType === AgentVaultServiceType.Mcp) {
+    return draft.tools.length ? { tools: draft.tools } : {};
   }
-  return target;
+  return {};
 };
+
+export const buildHookRule = (draft: THookRuleDraft): TAgentVaultHookRuleInput => ({
+  service: draft.service,
+  ...buildHookNarrowing(draft, draft.serviceType)
+});
 
 const addListIssues = (
   values: string[],
@@ -196,21 +189,52 @@ const addListIssues = (
 const toolError = (tool: string, existing: string[]) =>
   toolNameError(tool) ?? (existing.includes(tool) ? `"${tool}" is listed twice.` : null);
 
+/** Marks a narrowing the API would refuse on its field, under `path` (a rule's or a service's hook entry). */
+export const addHookNarrowingIssues = (
+  draft: THookNarrowingDraft,
+  serviceType: AgentVaultServiceType | null,
+  path: (string | number)[],
+  ctx: z.RefinementCtx
+) => {
+  if (serviceType === AgentVaultServiceType.Http) {
+    if (!draft.methods.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [...path, "methods"],
+        message: "Pick at least one method."
+      });
+    }
+    addListIssues(
+      draft.paths,
+      draft.pathDraft,
+      pathPrefixError,
+      "path prefixes",
+      [...path, "paths"],
+      ctx
+    );
+  }
+  if (serviceType === AgentVaultServiceType.Mcp) {
+    addListIssues(draft.tools, draft.toolDraft, toolError, "tools", [...path, "tools"], ctx);
+  }
+};
+
 // The form rebuilds lists in its own order, so lists compare as sets or an untouched rule would read as an edit.
 const asSet = (values?: string[]) => (values ? [...values].sort() : null);
 
-const canonicalRule = (rule: TAgentVaultHookRule | TAgentVaultHookRuleInput) => ({
-  serviceId: rule.serviceId ?? null,
-  service: rule.serviceId ? null : rule.service,
-  methods: asSet(rule.methods),
-  paths: asSet(rule.paths),
-  tools: asSet(rule.tools)
-});
+export const sameHookNarrowing = (
+  left: TAgentVaultHookRuleNarrowing,
+  right: TAgentVaultHookRuleNarrowing
+) =>
+  JSON.stringify([asSet(left.methods), asSet(left.paths), asSet(left.tools)]) ===
+  JSON.stringify([asSet(right.methods), asSet(right.paths), asSet(right.tools)]);
 
 const sameRules = (left: TAgentVaultHookRuleInput[], right: TAgentVaultHookRule[]) =>
-  JSON.stringify(left.map(canonicalRule)) === JSON.stringify(right.map(canonicalRule));
+  left.length === right.length &&
+  left.every(
+    (rule, index) => rule.service === right[index].service && sameHookNarrowing(rule, right[index])
+  );
 
-export const hookFormSchema = (savedRules?: TAgentVaultHookRule[]) =>
+export const hookFormSchema = () =>
   z
     .object({
       name: z
@@ -236,45 +260,24 @@ export const hookFormSchema = (savedRules?: TAgentVaultHookRule[]) =>
         if (secretIssue) issue(["secret"], secretIssue);
       }
 
-      // Unchanged rules aren't sent, so a rule on a deleted service only blocks a save that sends the rules.
-      const rulesUnchanged =
-        Boolean(savedRules) && sameRules(data.rules.map(buildHookRule), savedRules ?? []);
+      const seen = new Set<string>();
       data.rules.forEach((rule, index) => {
-        // A deleted service's ID can't be saved again, so the rule has to move to another service or go.
-        const serviceIssue =
-          isDeletedServiceRule(rule) && !rulesUnchanged
-            ? "This service was deleted. Pick another service or remove the rule."
-            : !rule.serviceId && hookRuleServiceError(rule.service);
-        if (serviceIssue) issue(["rules", index, "service"], serviceIssue);
-        if (rule.serviceType === AgentVaultServiceType.Http) {
-          if (!rule.methods.length) {
-            issue(["rules", index, "methods"], "Pick at least one method.");
-          }
-          addListIssues(
-            rule.paths,
-            rule.pathDraft,
-            pathPrefixError,
-            "path prefixes",
-            ["rules", index, "paths"],
-            ctx
+        if (!rule.service)
+          issue(["rules", index, "service"], "Pick the service this rule applies to.");
+        else if (seen.has(rule.service)) {
+          issue(
+            ["rules", index, "service"],
+            "This service already has a rule. Put all its methods, paths or tools in that one."
           );
         }
-        if (rule.serviceType === AgentVaultServiceType.Mcp) {
-          addListIssues(
-            rule.tools,
-            rule.toolDraft,
-            toolError,
-            "tools",
-            ["rules", index, "tools"],
-            ctx
-          );
-        }
+        seen.add(rule.service);
+        addHookNarrowingIssues(rule, rule.serviceType, ["rules", index], ctx);
       });
     });
 
 export type THookForm = z.infer<ReturnType<typeof hookFormSchema>>;
 
-/** `serviceTypes` holds the project's services' types by ID. */
+/** `serviceTypes` holds the project's services' types by name. */
 export const hookFormOf = (
   hook?: TAgentVaultHook | null,
   serviceTypes: Map<string, AgentVaultServiceType> = new Map(),
@@ -284,9 +287,7 @@ export const hookFormOf = (
   description: hook?.description ?? "",
   url: hook?.url ?? "",
   secret: hook ? UNCHANGED_SECRET : "",
-  rules: (hook?.rules ?? []).map((rule) =>
-    hookRuleDraftOf(rule, rule.serviceId ? serviceTypes.get(rule.serviceId) : undefined)
-  )
+  rules: (hook?.rules ?? []).map((rule) => hookRuleDraftOf(rule, serviceTypes.get(rule.service)))
 });
 
 export const buildCreateHookRequest = (data: THookForm): TCreateAgentVaultHookDTO => ({
@@ -321,12 +322,17 @@ export const buildUpdateHookRequest = (
 const listSummary = (values: string[], noun: string) =>
   values.length === 1 ? values[0] : `${values.length} ${noun}`;
 
+/** One short line for what a hook checks of a service, for tables and session details. */
+export const describeHookNarrowing = (narrowing: TAgentVaultHookRuleNarrowing): string | null => {
+  const parts: string[] = [];
+  if (narrowing.methods) parts.push(narrowing.methods.join(", "));
+  if (narrowing.paths) parts.push(listSummary(narrowing.paths, "paths"));
+  if (narrowing.tools) parts.push(listSummary(narrowing.tools, "tools"));
+  return parts.length ? parts.join(" on ") : null;
+};
+
 /** One short line per rule, for tables and session details. */
 export const describeHookRule = (rule: TAgentVaultHookRule): string => {
-  const parts: string[] = [];
-  if (rule.methods) parts.push(rule.methods.join(", "));
-  if (rule.paths) parts.push(listSummary(rule.paths, "paths"));
-  if (rule.tools) parts.push(listSummary(rule.tools, "tools"));
-  const service = rule.service ?? DELETED_SERVICE_LABEL;
-  return parts.length ? `${service}: ${parts.join(" on ")}` : service;
+  const narrowing = describeHookNarrowing(rule);
+  return narrowing ? `${rule.service}: ${narrowing}` : rule.service;
 };

@@ -6,7 +6,7 @@ import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
 
-import { TStoredHookRule } from "./agent-vault-hook-fns";
+import { THookServiceLink, THookServiceLinkInsert } from "./agent-vault-hook-fns";
 
 export type TAgentVaultHookDALFactory = ReturnType<typeof agentVaultHookDALFactory>;
 
@@ -20,7 +20,7 @@ const HOOK_COLUMNS = [
   "name",
   "description",
   "url",
-  "rules",
+  "appliesToAllServices",
   "secretsDeletedAt",
   "createdAt",
   "updatedAt"
@@ -47,7 +47,7 @@ const whereSessionEnded = (query: Knex.QueryBuilder, conn: Knex) =>
   });
 
 /**
- * Deletes the secret of the hook sent inline with a session, keeping its URL and rules for history. Called beside the
+ * Deletes the secret of the hook sent inline with a session, keeping its URL and services for history. Called beside the
  * inline services' own delete, in its transaction, so a session's secrets all go together. Never writes the session
  * row, whose updatedAt dates an ownerless session's last logs.
  */
@@ -81,37 +81,82 @@ export const deleteInlineHookSecretsOfEndedSessions = async (tx: Knex, limit: nu
   return rows.length;
 };
 
+const LINK = TableName.AgentVaultHookService;
+const SERVICE = TableName.AgentVaultService;
+
+const linkColumns = (conn: Knex) => [
+  `${LINK}.hookId`,
+  `${LINK}.serviceId`,
+  conn.ref("name").withSchema(SERVICE).as("serviceName"),
+  conn.ref("type").withSchema(SERVICE).as("serviceType"),
+  `${LINK}.position`,
+  `${LINK}.methods`,
+  `${LINK}.paths`,
+  `${LINK}.tools`
+];
+
 /**
- * The project's services (never a session's inline ones) with one of these IDs or names, for hook rules, which store a
- * project service by ID and show its current name. On the caller's connection, so resolve can read a replica.
+ * The services of these hooks with their current names, in rule order. On the caller's connection, so session reads
+ * and resolve can read a replica.
  */
-export const findProjectServicesForHookRules = async (
-  conn: Knex,
-  { projectId, ids = [], names = [] }: { projectId: string; ids?: string[]; names?: string[] }
-): Promise<{ id: string; name: string }[]> => {
-  if (!ids.length && !names.length) return [];
+export const findHookServiceLinks = async (conn: Knex, hookIds: string[]): Promise<THookServiceLink[]> => {
+  if (!hookIds.length) return [];
   try {
-    return (await conn(TableName.AgentVaultService)
-      .where({ projectId })
-      .whereNull("sessionId")
-      .whereNotNull("name")
-      .where((qb) => {
-        if (ids.length) void qb.orWhereIn("id", ids);
-        if (names.length) void qb.orWhereIn("name", names);
-      })
-      .select("id", "name")) as { id: string; name: string }[];
+    return (await conn(LINK)
+      .join(SERVICE, `${SERVICE}.id`, `${LINK}.serviceId`)
+      .whereIn(`${LINK}.hookId`, hookIds)
+      .orderBy([
+        { column: `${LINK}.hookId`, order: "asc" },
+        { column: `${LINK}.position`, order: "asc" }
+      ])
+      .select(linkColumns(conn))) as THookServiceLink[];
   } catch (error) {
-    throw new DatabaseError({ error, name: "Find agent vault services for hook rules" });
+    throw new DatabaseError({ error, name: "Find agent vault hook services" });
   }
 };
 
-export const findHookRuleServiceNames = async (
-  conn: Knex,
-  { projectId, ids }: { projectId: string; ids: string[] }
-): Promise<Map<string, string>> =>
-  new Map(
-    (await findProjectServicesForHookRules(conn, { projectId, ids })).map((service) => [service.id, service.name])
-  );
+/**
+ * The project's services (never a session's inline ones) with these names, taken FOR KEY SHARE in ID order: the lock
+ * the links' foreign keys take anyway, so a delete of one waits for the save instead of failing it on the key, and two
+ * saves naming the same services take them in the same order.
+ */
+export const lockProjectServicesForHook = async (
+  tx: Knex,
+  { projectId, names }: { projectId: string; names: string[] }
+): Promise<{ id: string; name: string; type: string }[]> => {
+  if (!names.length) return [];
+  try {
+    return (await tx(SERVICE)
+      .where({ projectId })
+      .whereNull("sessionId")
+      .whereIn("name", [...new Set(names)])
+      .orderBy("id", "asc")
+      .forKeyShare()
+      .select("id", "name", "type")) as { id: string; name: string; type: string }[];
+  } catch (error) {
+    throw new DatabaseError({ error, name: "Lock agent vault services for a hook" });
+  }
+};
+
+const toLinkRow = (hookId: string, link: THookServiceLinkInsert) => ({
+  hookId,
+  serviceId: link.serviceId,
+  position: link.position,
+  // Stringified: pg would send a JS array as a Postgres array, which a jsonb column refuses.
+  methods: link.methods ? JSON.stringify(link.methods) : null,
+  paths: link.paths ? JSON.stringify(link.paths) : null,
+  tools: link.tools ? JSON.stringify(link.tools) : null
+});
+
+/** Replaces every service of a hook, in the caller's transaction. */
+export const replaceHookServiceLinks = async (tx: Knex, hookId: string, links: THookServiceLinkInsert[]) => {
+  try {
+    await tx(LINK).where({ hookId }).delete();
+    if (links.length) await tx(LINK).insert(links.map((link) => toLinkRow(hookId, link)));
+  } catch (error) {
+    throw new DatabaseError({ error, name: "Replace agent vault hook services" });
+  }
+};
 
 /**
  * Saved hooks are the project's and reached through the hooks routes. A hook sent inline with a session (sessionId set)
@@ -237,17 +282,98 @@ export const agentVaultHookDALFactory = (db: TDbClient) => {
       sessionId,
       url,
       encryptedSecret,
-      rules
-    }: { projectId: string; sessionId: string; url: string; encryptedSecret: Buffer; rules: TStoredHookRule[] },
+      links
+    }: { projectId: string; sessionId: string; url: string; encryptedSecret: Buffer; links: THookServiceLinkInsert[] },
     tx: Knex
   ): Promise<TAgentVaultHookRow> => {
     try {
       const [row] = (await tx(TableName.AgentVaultHook)
-        .insert({ projectId, sessionId, url, encryptedSecret, rules: JSON.stringify(rules) })
+        .insert({ projectId, sessionId, url, encryptedSecret, appliesToAllServices: links.length === 0 })
         .returning(HOOK_COLUMNS)) as TAgentVaultHookRow[];
+      await replaceHookServiceLinks(tx, row.id, links);
       return row;
     } catch (error) {
       throw new DatabaseError({ error, name: "Create agent vault session inline hook" });
+    }
+  };
+
+  // Locked with the hook row already held, so an edit of the whole rule list and an edit of one link apply in turn.
+  const lockHookServiceLink = async (
+    { hookId, serviceId }: { hookId: string; serviceId: string },
+    tx: Knex
+  ): Promise<THookServiceLink | undefined> => {
+    try {
+      return (await tx(LINK)
+        .join(SERVICE, `${SERVICE}.id`, `${LINK}.serviceId`)
+        .where(`${LINK}.hookId`, hookId)
+        .where(`${LINK}.serviceId`, serviceId)
+        .forUpdate(LINK)
+        .first(linkColumns(tx))) as THookServiceLink | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Lock agent vault hook service" });
+    }
+  };
+
+  // Appended after the hook's last rule. The hook row is locked, so two adds can't take the same position.
+  const insertHookServiceLink = async (
+    { hookId, link }: { hookId: string; link: Omit<THookServiceLinkInsert, "position"> },
+    tx: Knex
+  ) => {
+    try {
+      const last = (await tx(LINK).where({ hookId }).max("position as position").first()) as
+        | { position: number | null }
+        | undefined;
+      const position = last?.position === null || last?.position === undefined ? 0 : last.position + 1;
+      await tx(LINK).insert(toLinkRow(hookId, { ...link, position }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Add agent vault hook service" });
+    }
+  };
+
+  const updateHookServiceLink = async (
+    {
+      hookId,
+      serviceId,
+      link
+    }: { hookId: string; serviceId: string; link: Omit<THookServiceLinkInsert, "position" | "serviceId"> },
+    tx: Knex
+  ) => {
+    try {
+      const { methods, paths, tools } = toLinkRow(hookId, { ...link, serviceId, position: 0 });
+      await tx(LINK).where({ hookId, serviceId }).update({ methods, paths, tools });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Update agent vault hook service" });
+    }
+  };
+
+  const deleteHookServiceLink = async ({ hookId, serviceId }: { hookId: string; serviceId: string }, tx: Knex) => {
+    try {
+      await tx(LINK).where({ hookId, serviceId }).delete();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Remove agent vault hook service" });
+    }
+  };
+
+  // The saved hooks a service is in, by name, with this service's narrowing in each.
+  const findSavedHooksOfService = async (
+    { serviceId, projectId }: { serviceId: string; projectId: string },
+    tx?: Knex
+  ): Promise<{ id: string; name: string; methods: unknown; paths: unknown; tools: unknown }[]> => {
+    try {
+      return (await savedHooks(tx || db)
+        .join(LINK, `${LINK}.hookId`, `${TableName.AgentVaultHook}.id`)
+        .where(`${LINK}.serviceId`, serviceId)
+        .where(`${TableName.AgentVaultHook}.projectId`, projectId)
+        .orderBy(`${TableName.AgentVaultHook}.name`, "asc")
+        .select(
+          `${TableName.AgentVaultHook}.id`,
+          `${TableName.AgentVaultHook}.name`,
+          `${LINK}.methods`,
+          `${LINK}.paths`,
+          `${LINK}.tools`
+        )) as { id: string; name: string; methods: unknown; paths: unknown; tools: unknown }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault hooks of a service" });
     }
   };
 
@@ -259,9 +385,15 @@ export const agentVaultHookDALFactory = (db: TDbClient) => {
     findSavedByNameInProject,
     findSavedForMint,
     insertInlineForSession,
-    findProjectServicesForHookRules: (scope: { projectId: string; ids?: string[]; names?: string[] }, tx?: Knex) =>
-      findProjectServicesForHookRules(tx || db, scope),
-    findHookRuleServiceNames: (scope: { projectId: string; ids: string[] }, tx?: Knex) =>
-      findHookRuleServiceNames(tx || db, scope)
+    lockHookServiceLink,
+    insertHookServiceLink,
+    updateHookServiceLink,
+    deleteHookServiceLink,
+    findSavedHooksOfService,
+    findHookServiceLinks: (hookIds: string[], tx?: Knex) => findHookServiceLinks(tx || db, hookIds),
+    lockProjectServicesForHook: (scope: { projectId: string; names: string[] }, tx: Knex) =>
+      lockProjectServicesForHook(tx, scope),
+    replaceHookServiceLinks: (hookId: string, links: THookServiceLinkInsert[], tx: Knex) =>
+      replaceHookServiceLinks(tx, hookId, links)
   };
 };

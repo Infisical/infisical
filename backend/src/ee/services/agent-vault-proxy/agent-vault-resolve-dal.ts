@@ -42,7 +42,9 @@ export type TResolveHookRow = {
   name: string | null;
   url: string;
   encryptedSecret: Buffer | null;
-  rules: unknown;
+  appliesToAllServices: boolean;
+  // The hook's services in rule order, by ID: resolve names them from the service rows it sends.
+  links: { serviceId: string; methods: unknown; paths: unknown; tools: unknown }[];
 };
 
 export type TResolveSkillRow = {
@@ -431,12 +433,21 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
     TResolveHookRow | undefined
   > => {
     try {
-      return (await (onPrimary ? db : db.replicaNode())(TableName.AgentVaultHook)
+      const conn = onPrimary ? db : db.replicaNode();
+      const hook = (await conn(TableName.AgentVaultHook)
         .where({ id: hookId, projectId })
         .where((qb) => {
           void qb.whereNull("sessionId").orWhere("sessionId", sessionId);
         })
-        .first("id", "name", "url", "encryptedSecret", "rules")) as TResolveHookRow | undefined;
+        .first("id", "name", "url", "encryptedSecret", "appliesToAllServices")) as
+        | Omit<TResolveHookRow, "links">
+        | undefined;
+      if (!hook) return undefined;
+      const links = (await conn(TableName.AgentVaultHookService)
+        .where({ hookId: hook.id })
+        .orderBy("position", "asc")
+        .select("serviceId", "methods", "paths", "tools")) as TResolveHookRow["links"];
+      return { ...hook, links };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault session hook" });
     }

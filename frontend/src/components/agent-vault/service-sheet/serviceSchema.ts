@@ -28,6 +28,8 @@ import {
 } from "@app/hooks/api/agentVault/types";
 import { slugSchema } from "@app/lib/schemas";
 
+import { addHookNarrowingIssues, THookNarrowingDraft } from "../hooks/hookSchema";
+
 /**
  * Seeded into a secret field on edit so the box can show that something is stored without the server
  * returning it. Never sent: the sheet maps it back to an omitted key.
@@ -416,8 +418,12 @@ export enum ServiceStep {
   Details = "details",
   Credential = "credential",
   Tools = "tools",
+  Hooks = "hooks",
   Review = "review"
 }
+
+/** A saved hook the service is in, with what the hook checks of it. */
+export type TServiceHookDraft = THookNarrowingDraft & { hookId: string; hookName: string };
 
 export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
   [ServiceStep.Template]: [],
@@ -442,6 +448,7 @@ export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "substitutions"
   ],
   [ServiceStep.Tools]: [],
+  [ServiceStep.Hooks]: ["hooks"],
   [ServiceStep.Review]: []
 };
 
@@ -466,6 +473,7 @@ export const NATIVE_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "sshCertificate"
   ],
   [ServiceStep.Tools]: [],
+  [ServiceStep.Hooks]: ["hooks"],
   [ServiceStep.Review]: []
 };
 
@@ -485,6 +493,7 @@ export const MCP_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "customHeaders"
   ],
   [ServiceStep.Tools]: ["toolScope", "allowedTools"],
+  [ServiceStep.Hooks]: ["hooks"],
   [ServiceStep.Review]: []
 };
 
@@ -689,9 +698,14 @@ export const buildServiceSchema = (
             surfaces: z.array(z.nativeEnum(AgentVaultSubstitutionSurface))
           })
         )
-        .max(MAX_SUBSTITUTIONS, `You can add at most ${MAX_SUBSTITUTIONS} substitutions.`)
+        .max(MAX_SUBSTITUTIONS, `You can add at most ${MAX_SUBSTITUTIONS} substitutions.`),
+      // Saved separately, through each hook, once the service itself is saved.
+      hooks: z.array(z.custom<TServiceHookDraft>())
     })
     .superRefine((data, ctx) => {
+      data.hooks.forEach((hook, index) =>
+        addHookNarrowingIssues(hook, data.serviceType, ["hooks", index], ctx)
+      );
       const isMcp = data.serviceType === AgentVaultServiceType.Mcp;
       const isHttp = data.serviceType === AgentVaultServiceType.Http;
       const issue = (path: string, message: string) =>

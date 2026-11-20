@@ -632,26 +632,31 @@ resolve.
   routes and `resolveFromHook` never return one. Its secret goes when the session ends, with the inline services'
   (`deleteInlineHookSecretBySessionId`, `deleteInlineHookSecretsOfEndedSessions`, called from the inline service DAL so
   revoke and the hourly cleanup cover both in one transaction).
-- **Rules reference a project service by ID and any other service by name** (`AgentVaultHookRuleSchema`), like
-  variables store `{{<uuid>}}`, so a rename never breaks a rule. A rule takes `serviceId` or `service` (lowercased),
-  never both; on save (`toStoredHookRulesForSave`, also for an inline hook at mint) a name that is one of the project's
-  services is stored as its ID, and a `serviceId` not in the project is a 404. Other names stay names, for inline
-  services (an unnamed one goes by its first host), and a name the session lacks matches nothing. Reads return
-  `serviceId` (null for a name rule) and `service`, the current name, or null once the service is deleted
-  (`toHookRuleViews`). Resolve sends names only (`toResolvedHookRules`), dropping a rule whose service is gone, so the
-  CLI contract stays `rules[].service`; a hook left with no rules that way asks about every request, which fails closed. HTTP rules narrow by `methods` and `paths` (prefixes, same semantics as
-  `allowedPathPrefixes`), MCP rules by `tools`, and database and SSH services take the whole service. No rules sends
-  every request to the hook. **A narrowing that doesn't fit the matched service's type is ignored and the rule matches the
-  whole service**: the type isn't known at save, and failing closed sends more traffic to the hook, never less.
+- **Rules are rows of `agent_vault_hook_services`, one per (hook, project service)**, like bundle service links. The
+  API takes and returns `{ service: <name>, methods?, paths?, tools? }` and never a service ID in a rule; on save
+  (`toHookServiceLinks`, also for an inline hook at mint) each name must be one of the project's services
+  (`sessionId IS NULL`, 404 naming it otherwise), read in the write's transaction with `lockProjectServicesForHook`
+  (FOR KEY SHARE in ID order, after the hook row lock), and a narrowing that doesn't fit its type is a 400
+  (`assertHookNarrowingFitsService`). A service listed twice is a 422. HTTP rules narrow by `methods` and `paths`
+  (prefixes, same semantics as `allowedPathPrefixes`), MCP rules by `tools`, and database and SSH services take the
+  whole service. Reads name each service by its current name; deleting a service removes its rows by cascade.
+- **No rules means every request only when the hook was saved that way** (`appliesToAllServices`, set on every save
+  of the rule list and on inline hook insert). A hook whose last service was deleted, or removed through
+  `/hooks/:hookId/services/:serviceId`, keeps `appliesToAllServices = false` and checks nothing; never derive "all
+  traffic" from an empty rule list alone, or deleting a service would widen what the hook checks.
+- **The service sheet edits one link at a time** through `POST /hooks/:hookId/services` and `PATCH`/`DELETE
+  /hooks/:hookId/services/:serviceId`: Edit on hooks plus the plan flag, audited as `agent-vault-hook-update` with
+  `serviceChange`. Each sets `appliesToAllServices = false`. `GET /services/:serviceId` adds `hooks: [{ id, name,
+  methods?, paths?, tools? }]` for callers with `read` on hooks (`listServiceHooks`); the list doesn't.
 - **A hook has one behavior, gate, and no `mode` field** in the API, the table or the resolve payload.
-- **Permissions are flat CRUD on `agent-vault-hooks`**: admin all, member `read`. Read returns name, URL and rules,
-  never the secret. Minting with `hookId` takes `read` on hooks; minting with an inline hook takes
+- **Permissions are flat CRUD on `agent-vault-hooks`**: admin all, member `read`. Read returns name, URL, rules and
+  `appliesToAllServices`, never the secret. Minting with `hookId` takes `read` on hooks; minting with an inline hook takes
   `create-with-inline-hook` on sessions (admin only, separate from `create-with-inline-services` so a custom role can
   let an orchestrator inline a hook without opening hosts), because an inline URL is a new destination the proxy POSTs
   to from inside the customer's network. Both are checked at mint only, never on resolve: a hook only adds checks, so
   dropping it on a demotion would widen access.
-- **Session reads return `hook: { id, name, isInline }`, plus `url` and `rules` only for callers with `read` on
-  hooks** (`toSessionHookView`).
+- **Session reads return `hook: { id, name, isInline }`, plus `url`, `rules` and `appliesToAllServices` only for
+  callers with `read` on hooks** (`toSessionHookView`).
 - **The secret is the admin's, write-only.** Sealed under the project data key as `{ value }` in `encryptedSecret`,
   never returned, audited only as `secretReplaced`. A PATCH without `secret` keeps it. The URL refuses a query string,
   userinfo and a fragment because it is shown in reads, audits and session details. The secret is never variable
@@ -662,11 +667,13 @@ resolve.
   as if no hook was given; nothing tracks usage. The FK update moves those sessions' `updatedAt`, which for a session
   that already lost its owner reopens its 24 hour late-log window; accepted.
 - **The plan flag gates writes only** (`agentVaultHooks`), through `assertAgentVaultHooksOnPlan`: saved hook create,
-  an edit of URL, secret or rules, and an inline hook at mint. Rename, delete, reads and a mint with a saved `hookId`
+  an edit of URL, secret or rules (including one service's link), and an inline hook at mint. Rename, delete, reads and a mint with a saved `hookId`
   never check it. Resolve never checks it, so a downgrade keeps existing hooks running: a hook only adds checks, and
   dropping it would widen access.
 - **Resolve sends one top-level `hook: { id, name, url, secret, rules } | null`** (`findSessionHook`, kept to the
-  session's project and, for an inline hook, the session; rules by name as above). It also sends each service's
+  session's project and, for an inline hook, the session). `toResolvedHookRules` names each service from the service
+  rows sent in the same response and leaves out one not in the session; a hook with services none of which is in the
+  session, or with none and `appliesToAllServices` false, goes out as no hook rather than checking everything. It also sends each service's
   `accessBundleId` (null when not from a bundle) and a top-level `session` (`label`, `metadata`, `actor` with the
   `actorType` fallback, `onBehalfOf`); metadata is read only for a session with a hook and is `{}` otherwise. The proxy
   puts `session` in the hook payload with `hook: { id, name }`. A hook row without a secret fails the resolve rather
