@@ -50,6 +50,14 @@ const axiosError = (status: number, data: unknown) =>
     data
   });
 
+const SELF_URL = "https://gitlab.example.com/api/v4/personal_access_tokens/self";
+
+// what GitLab answers for a token it no longer has: 404 on the token route, 401 when the token revokes itself
+const deleteAsGone = (url: string) =>
+  Promise.reject(
+    url === SELF_URL ? axiosError(401, { message: "401 Unauthorized" }) : axiosError(404, { message: "404 Not Found" })
+  );
+
 const buildConnection = (overrides: Record<string, unknown> = {}) => ({
   id: "connection-id",
   orgId: "org-id",
@@ -237,7 +245,7 @@ describe("gitLabGroupAccessTokenRotationFactory", () => {
   });
 
   it("treats a token GitLab no longer has as already revoked", async () => {
-    deleteMock.mockRejectedValue(axiosError(404, { message: "404 Not Found" }));
+    deleteMock.mockImplementation(deleteAsGone);
 
     await buildFactory().rotateCredentials({ tokenId: "77", token: "glpat-old" }, callback, {
       tokenId: "88",
@@ -328,7 +336,9 @@ describe("gitLabGroupAccessTokenRotationFactory", () => {
   });
 
   it("revokes every tracked token, tolerating ones that are already gone", async () => {
-    deleteMock.mockResolvedValueOnce({ status: 204 }).mockRejectedValueOnce(axiosError(404, {}));
+    deleteMock.mockImplementation((url: string) =>
+      url === `${TOKENS_URL}/1` ? Promise.resolve({ status: 204 }) : deleteAsGone(url)
+    );
 
     await buildFactory().revokeCredentials(
       [
@@ -338,7 +348,8 @@ describe("gitLabGroupAccessTokenRotationFactory", () => {
       callback
     );
 
-    expect(deleteMock.mock.calls.map(([url]) => url)).toEqual([`${TOKENS_URL}/1`, `${TOKENS_URL}/2`]);
+    expect(deleteMock.mock.calls.map(([url]) => url)).toEqual([`${TOKENS_URL}/1`, `${TOKENS_URL}/2`, SELF_URL]);
+    expect(deleteMock.mock.calls[2][1].headers).toEqual({ "PRIVATE-TOKEN": "b" });
     expect(callback).toHaveBeenCalledTimes(1);
   });
 

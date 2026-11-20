@@ -112,6 +112,7 @@ export const gitLabTokenRotationFactory = ({
           context,
           tokensPath,
           tokenId: credentials.tokenId,
+          token: credentials.token,
           resourceLabel,
           permissionHint
         });
@@ -141,8 +142,8 @@ export const gitLabTokenRotationFactory = ({
 
     const context = await $getContext();
     await Promise.all(
-      generatedCredentials.map(({ tokenId }) =>
-        revokeGitLabToken({ context, tokensPath, tokenId, resourceLabel, permissionHint })
+      generatedCredentials.map(({ tokenId, token }) =>
+        revokeGitLabToken({ context, tokensPath, tokenId, token, resourceLabel, permissionHint })
       )
     );
 
@@ -177,6 +178,7 @@ export const gitLabTokenRotationFactory = ({
         context,
         tokensPath,
         tokenId: credentialsToRevoke.tokenId,
+        token: credentialsToRevoke.token,
         resourceLabel,
         permissionHint
       });

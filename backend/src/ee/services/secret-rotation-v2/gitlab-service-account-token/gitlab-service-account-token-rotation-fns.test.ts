@@ -53,6 +53,14 @@ const axiosError = (status: number, data: unknown) =>
     data
   });
 
+const SELF_URL = "https://gitlab.example.com/api/v4/personal_access_tokens/self";
+
+// what GitLab answers for a token it no longer has: 404 on the token route, 401 when the token revokes itself
+const deleteAsGone = (url: string) =>
+  Promise.reject(
+    url === SELF_URL ? axiosError(401, { message: "401 Unauthorized" }) : axiosError(404, { message: "404 Not Found" })
+  );
+
 const buildConnection = (overrides: Record<string, unknown> = {}) => ({
   id: "connection-id",
   orgId: "org-id",
@@ -254,7 +262,7 @@ describe("gitLabServiceAccountTokenRotationFactory", () => {
   });
 
   it("treats a token GitLab no longer has as already revoked", async () => {
-    deleteMock.mockRejectedValue(axiosError(404, { message: "404 Not Found" }));
+    deleteMock.mockImplementation(deleteAsGone);
 
     await buildFactory().rotateCredentials({ tokenId: "77", token: "glpat-old" }, callback, {
       tokenId: "88",
@@ -281,7 +289,9 @@ describe("gitLabServiceAccountTokenRotationFactory", () => {
   });
 
   it("revokes every tracked token, tolerating ones that are already gone", async () => {
-    deleteMock.mockResolvedValueOnce({ status: 204 }).mockRejectedValueOnce(axiosError(404, {}));
+    deleteMock.mockImplementation((url: string) =>
+      url === `${TOKENS_URL}/1` ? Promise.resolve({ status: 204 }) : deleteAsGone(url)
+    );
 
     await buildFactory().revokeCredentials(
       [
@@ -291,8 +301,49 @@ describe("gitLabServiceAccountTokenRotationFactory", () => {
       callback
     );
 
-    expect(deleteMock.mock.calls.map(([url]) => url)).toEqual([`${TOKENS_URL}/1`, `${TOKENS_URL}/2`]);
+    expect(deleteMock.mock.calls.map(([url]) => url)).toEqual([`${TOKENS_URL}/1`, `${TOKENS_URL}/2`, SELF_URL]);
+    expect(deleteMock.mock.calls[2][1].headers).toEqual({ "PRIVATE-TOKEN": "b" });
     expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it("revokes a token with the token itself when GitLab has no route to revoke it with the connection", async () => {
+    deleteMock.mockImplementation((url: string) =>
+      url === SELF_URL ? Promise.resolve({ status: 204 }) : Promise.reject(axiosError(404, { error: "404 Not Found" }))
+    );
+
+    await buildFactory().revokeCredentials([{ tokenId: "1", token: "glpat-old" }], callback);
+
+    expect(deleteMock.mock.calls.map(([url]) => url)).toEqual([`${TOKENS_URL}/1`, SELF_URL]);
+    expect(deleteMock.mock.calls[1][1].headers).toEqual({ "PRIVATE-TOKEN": "glpat-old" });
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a token tracked when neither the connection nor the token itself can revoke it", async () => {
+    deleteMock.mockImplementation((url: string) =>
+      Promise.reject(
+        url === SELF_URL ? axiosError(403, { message: "403 Forbidden" }) : axiosError(404, { error: "404 Not Found" })
+      )
+    );
+
+    await expect(buildFactory().revokeCredentials([{ tokenId: "1", token: "glpat-old" }], callback)).rejects.toThrow(
+      "Failed to revoke GitLab token '1' of service account '12' in group '34'. GitLab has no endpoint to revoke it with the connection, and revoking it with the token itself failed. GitLab responded: \"403 Forbidden\"."
+    );
+    expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("does not create a replacement when a changed token can't be revoked by any route", async () => {
+    deleteMock.mockImplementation((url: string) =>
+      Promise.reject(url === SELF_URL ? axiosError(500, { message: "500 Internal Server Error" }) : axiosError(404, {}))
+    );
+
+    await expect(
+      buildFactory().rotateCredentials({ tokenId: "77", token: "glpat-old" }, callback, {
+        tokenId: "88",
+        token: "glpat-active"
+      })
+    ).rejects.toThrow("Failed to revoke GitLab token '77'");
+    expect(postMock).not.toHaveBeenCalled();
+    expect(callback).not.toHaveBeenCalled();
   });
 
   it("maps the token and its ID to the configured secrets", () => {

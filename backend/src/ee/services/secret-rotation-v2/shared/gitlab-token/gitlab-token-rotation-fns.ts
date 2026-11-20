@@ -194,29 +194,41 @@ export const revokeGitLabToken = async ({
   context,
   tokensPath,
   tokenId,
+  token,
   resourceLabel,
   permissionHint
 }: {
   context: TGitLabTokenApiContext;
   tokensPath: string;
   tokenId: string;
+  token: string;
   resourceLabel: string;
   permissionHint: string;
 }) => {
+  const failedToRevoke = `Failed to revoke GitLab token '${tokenId}' of ${resourceLabel}`;
+
   try {
     await safeRequest.delete(`${context.apiUrl}${tokensPath}/${encodeURIComponent(tokenId)}`, {
       headers: context.headers
     });
+    return;
   } catch (error: unknown) {
-    // already revoked or deleted, which is the end state revocation wants
-    if (error instanceof AxiosError && error.response?.status === HttpStatusCode.NotFound) return;
+    if (!(error instanceof AxiosError && error.response?.status === HttpStatusCode.NotFound)) {
+      throw new BadRequestError({ message: formatGitLabTokenError(failedToRevoke, error, permissionHint) });
+    }
+  }
+
+  // A 404 can also mean GitLab lacks the revoke route (service account tokens before GitLab 17.11), so the token
+  // revokes itself. GitLab answers 401 when it no longer accepts the token, which is the state revocation wants.
+  try {
+    await safeRequest.delete(`${context.apiUrl}/personal_access_tokens/self`, {
+      headers: { "PRIVATE-TOKEN": token }
+    });
+  } catch (error: unknown) {
+    if (error instanceof AxiosError && error.response?.status === HttpStatusCode.Unauthorized) return;
 
     throw new BadRequestError({
-      message: formatGitLabTokenError(
-        `Failed to revoke GitLab token '${tokenId}' of ${resourceLabel}`,
-        error,
-        permissionHint
-      )
+      message: `${failedToRevoke}. GitLab has no endpoint to revoke it with the connection, and revoking it with the token itself failed. GitLab responded: "${getGitLabErrorMessage(error)}".`
     });
   }
 };
