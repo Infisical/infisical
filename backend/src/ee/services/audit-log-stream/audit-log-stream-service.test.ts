@@ -43,6 +43,7 @@ const buildService = (permission: unknown = allowAll) => {
       encryptedCredentials: Buffer.from("encrypted")
     })),
     updateById: vi.fn(async (id: string) => ({ id, orgId: ORG_ID, provider: LogProvider.Splunk })),
+    primaryNode: vi.fn(),
     find: vi.fn(async () => [])
   };
 
@@ -197,6 +198,7 @@ describe("auditLogStreamServiceFactory PAM session activity", () => {
         filters: storedFilters
       })),
       updateById: vi.fn(async (id: string) => ({ id, orgId: ORG_ID, provider: LogProvider.Splunk })),
+      primaryNode: vi.fn(),
       create: vi.fn(async () => ({ id: STREAM_ID, orgId: ORG_ID, provider: LogProvider.Splunk })),
       find: vi.fn(async () => [])
     };

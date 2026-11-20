@@ -26,7 +26,11 @@ import {
 } from "../audit-log-stream/audit-log-stream-fns";
 import { TAuditLogStreamFilters } from "../audit-log-stream/audit-log-stream-schemas";
 import { TAuditLogStreamCredentials, TAuditLogStreamEvent } from "../audit-log-stream/audit-log-stream-types";
-import { PAM_SESSION_ACTIVITY_EVENT_TYPE_PREFIX } from "../pam-session-activity/pam-session-activity-types";
+import { toPamSessionActivityStreamEvent } from "../pam-session-activity/pam-session-activity-fns";
+import {
+  PAM_SESSION_ACTIVITY_EVENT_TYPE_PREFIX,
+  TPamSessionActivityEvent
+} from "../pam-session-activity/pam-session-activity-types";
 import { FLUSH_DEBOUNCE_MS, MAX_ATTEMPTS } from "./audit-log-stream-outbox-constants";
 import { TAuditLogStreamOutboxDALFactory } from "./audit-log-stream-outbox-dal";
 import {
@@ -275,7 +279,8 @@ export const auditLogStreamOutboxServiceFactory = ({
   // can't hold the worker hostage. If rows remain when we bail, the next event
   // for the stream will debounce-enqueue another flush.
   const drainStream = async ({ streamId, orgId, provider }: TAuditLogStreamFlushJobData) => {
-    const stream = await auditLogStreamDAL.findById(streamId);
+    // From the primary, so delivery uses the destination and session activity settings saved together.
+    const stream = await auditLogStreamDAL.findById(streamId, auditLogStreamDAL.primaryNode());
     if (!stream) {
       logger.warn(`audit-log-stream-outbox: stream deleted, dropping flush [streamId=${streamId}]`);
       return;
@@ -313,27 +318,27 @@ export const auditLogStreamOutboxServiceFactory = ({
     // else gets a JSON array per request. Single mode treats each row as its own chunk.
     const isSingleMode = stream.streamMode === StreamMode.Single;
 
-    // Once a PAM product admin turns session activity off, anyone with stream access can repoint the
-    // stream, so activity still queued for it is never delivered.
-    const withholdsSessionActivity = !(stream.filters as TAuditLogStreamFilters | null)?.pamSessionActivity;
-    // The read above can come from a replica that hasn't seen session activity turned on yet.
-    let optOutOnPrimary: Promise<boolean> | undefined;
-    const isOptedOutOnPrimary = () => {
-      optOutOnPrimary ??= auditLogStreamDAL
-        .findById(streamId, auditLogStreamDAL.primaryNode())
-        .then((current) => !(current?.filters as TAuditLogStreamFilters | null)?.pamSessionActivity);
-      return optOutOnPrimary;
-    };
+    // Current settings apply, since once a PAM admin turns activity off anyone with stream access can repoint it.
+    const sessionActivity = (stream.filters as TAuditLogStreamFilters | null)?.pamSessionActivity;
 
     for (let batchIdx = 0; batchIdx < MAX_BATCHES_PER_JOB; batchIdx += 1) {
       // eslint-disable-next-line no-await-in-loop
       const claimed = await auditLogStreamOutboxDAL.claimBatchForStream(streamId, BATCH_SIZE);
       if (claimed.length === 0) return;
 
-      const activityRows = withholdsSessionActivity ? claimed.filter(isPamSessionActivityRow) : [];
-      // eslint-disable-next-line no-await-in-loop
-      const withheld = activityRows.length > 0 && (await isOptedOutOnPrimary()) ? activityRows : [];
-      const deliverable = withheld.length > 0 ? claimed.filter((row) => !isPamSessionActivityRow(row)) : claimed;
+      const withheld: TAuditLogStreamOutboxRow[] = [];
+      const deliverable: TAuditLogStreamOutboxRow[] = [];
+      for (const row of claimed) {
+        if (isPamSessionActivityRow(row)) {
+          const payload = sessionActivity
+            ? toPamSessionActivityStreamEvent(row.payload as TPamSessionActivityEvent, sessionActivity.includeOutput)
+            : null;
+          if (payload) deliverable.push({ ...row, payload });
+          else withheld.push(row);
+        } else {
+          deliverable.push(row);
+        }
+      }
 
       const chunks = isSingleMode
         ? deliverable.map((row) => [row])

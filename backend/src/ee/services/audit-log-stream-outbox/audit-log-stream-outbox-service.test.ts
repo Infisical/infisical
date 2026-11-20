@@ -211,32 +211,50 @@ describe("audit-log-stream-outbox-service drainStream failure handling", () => {
     expect(call.successIds).toEqual([2, 1]);
   });
 
-  test("delivers queued session activity when only a lagging replica shows it switched off", async () => {
+  test("strips output from queued session activity once the stream stops including it", async () => {
     const { service, auditLogStreamOutboxDAL, auditLogStreamDAL } = createService();
-    const activity = buildRow({ id: 2, payload: { id: "act-1", eventType: "pam-session-activity-command" } as never });
-    const stream = {
+    const query = buildRow({
+      id: 2,
+      payload: {
+        id: "act-1",
+        eventType: "pam-session-activity-query",
+        eventMetadata: { query: "SELECT secret FROM vault", output: "hunter2" }
+      } as never
+    });
+    const output = buildRow({
+      id: 3,
+      payload: { id: "act-2", eventType: "pam-session-activity-output", eventMetadata: { output: "hunter2" } } as never
+    });
+
+    auditLogStreamDAL.findById.mockResolvedValueOnce({
       id: STREAM_ID,
       provider: PROVIDER,
       orgId: ORG_ID,
       encryptedCredentials: Buffer.from("x"),
-      streamMode: StreamMode.Batch
-    };
-
-    auditLogStreamDAL.findById
-      .mockResolvedValueOnce(stream)
-      .mockResolvedValueOnce({ ...stream, filters: { pamSessionActivity: { includeOutput: false } } });
-    auditLogStreamOutboxDAL.claimBatchForStream.mockResolvedValueOnce([activity]).mockResolvedValueOnce([]);
+      streamMode: StreamMode.Batch,
+      filters: { pamSessionActivity: { includeOutput: false } }
+    });
+    auditLogStreamOutboxDAL.claimBatchForStream.mockResolvedValueOnce([query, output]).mockResolvedValueOnce([]);
     batchStreamLog.mockResolvedValueOnce(undefined);
 
     await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
 
-    expect(auditLogStreamDAL.findById).toHaveBeenLastCalledWith(STREAM_ID, PRIMARY);
-    expect(batchStreamLog).toHaveBeenCalledWith(expect.objectContaining({ auditLogs: [activity.payload] }));
+    expect(auditLogStreamDAL.findById).toHaveBeenCalledWith(STREAM_ID, PRIMARY);
+    expect(batchStreamLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auditLogs: [expect.objectContaining({ eventMetadata: { query: "SELECT secret FROM vault" } })]
+      })
+    );
+    const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as { successIds: number[] };
+    expect(call.successIds).toEqual([3, 2]);
   });
 
   test("delivers queued session activity while the stream still receives it", async () => {
     const { service, auditLogStreamOutboxDAL, auditLogStreamDAL } = createService();
-    const activity = buildRow({ id: 2, payload: { id: "act-1", eventType: "pam-session-activity-command" } as never });
+    const activity = buildRow({
+      id: 2,
+      payload: { id: "act-1", eventType: "pam-session-activity-command", eventMetadata: { command: "ls" } } as never
+    });
 
     auditLogStreamDAL.findById.mockResolvedValueOnce({
       id: STREAM_ID,

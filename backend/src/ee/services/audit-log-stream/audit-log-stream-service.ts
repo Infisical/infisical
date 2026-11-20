@@ -140,7 +140,8 @@ export const auditLogStreamServiceFactory = ({
       });
     }
 
-    const logStream = await auditLogStreamDAL.findById(logStreamId);
+    // From the primary, since a replica that hasn't seen session activity turned on would skip the PAM check.
+    const logStream = await auditLogStreamDAL.findById(logStreamId, auditLogStreamDAL.primaryNode());
     if (!logStream) throw new NotFoundError({ message: `Audit Log Stream with ID '${logStreamId}' not found` });
 
     const { permission } = await permissionService.getOrgPermission({
