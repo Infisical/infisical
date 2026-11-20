@@ -50,11 +50,14 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, findings, or 
   source each: never send email or in-app notifications from this module. A scan emits `secrets-detected` or
   `scan-failed` (`secret-scanning-v2-events.ts`) with its data source as the `resourceId`, in the transaction that
   closes it, guarded on the status update matching, so a scan the reaper already closed emits nothing.
-- `secrets-detected` fires only for news: unresolved findings this scan created (`countUnresolvedCreatedByScanId`,
-  the finding's own `scanId`, written once under the resource's advisory lock, so a resumed full scan counts every
-  batch; never infer it from location `createdAt`, which is transaction start time and misorders overlapping scans,
-  and keep that column when the rollback-only finding columns are dropped), plus, for diff scans only,
-  findings it reopened. A new location of a finding that's still unresolved was already alerted on, and a resource's
+- Close a scan only through `completeFullScan`, `completeDiffScan` or `failScan` (`secret-scanning-v2-fns.ts`), never
+  with a status update from the queue. It owns the closing transaction and the alert decision, so
+  an alert is emitted exactly when its scan closes; the DAL keeps only the guarded transitions (`scans.markCompleted`,
+  `scans.markFailed`), and the queue keeps what runs after commit (pull request check, telemetry, audit logs).
+- `secrets-detected` fires only for news: unresolved findings this scan created (`countUnresolvedCreatedByScanId`),
+  plus, for diff scans only, findings it reopened. The creating scan is the finding's `scanId`, set under the
+  resource lock; never infer it from location `createdAt` (transaction start time), and keep that column when the
+  rollback-only finding columns go. A new location of a finding that's still unresolved was already alerted on, and a resource's
   first full scan never alerts (`hasEarlierCompletedHistoricalScan`), since all of its history is new then.
 - Every data source gets its default alerts (`SECRET_SCANNING_DEFAULT_ALERTS`) in the transaction that creates it. Its
   id is chosen before that transaction so the alerts can be prepared, a KMS call, outside it. Deleting a data source

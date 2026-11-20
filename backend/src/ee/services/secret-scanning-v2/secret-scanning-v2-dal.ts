@@ -716,6 +716,44 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
+  // Both transitions are guarded on the scan's current status, so a scan something else already closed keeps its
+  // outcome. They return whether this call closed it.
+  const markScanCompleted = async ({ scanId, metadata }: { scanId: string; metadata?: unknown }, tx?: Knex) => {
+    const completed = await scanOrm.update(
+      { id: scanId, status: SecretScanningScanStatus.Scanning },
+      {
+        status: SecretScanningScanStatus.Completed,
+        statusMessage: null,
+        completedAt: new Date(),
+        ...(metadata === undefined ? {} : { metadata })
+      },
+      tx
+    );
+
+    return completed.length > 0;
+  };
+
+  const markScanFailed = async (
+    {
+      scanId,
+      statusMessage,
+      fromStatuses
+    }: { scanId: string; statusMessage: string; fromStatuses: SecretScanningScanStatus[] },
+    tx?: Knex
+  ) => {
+    const failed = await scanOrm.update(
+      { id: scanId, $in: { status: fromStatuses } },
+      {
+        status: SecretScanningScanStatus.Failed,
+        statusMessage,
+        completedAt: new Date()
+      },
+      tx
+    );
+
+    return failed.length > 0;
+  };
+
   const findStuckScans = async (startedBefore: Date, limit: number, tx?: Knex) => {
     try {
       const scans = await (tx || db)(TableName.SecretScanningScan)
@@ -1073,6 +1111,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       findByDataSourceId: findScansByDataSourceId,
       findStuck: findStuckScans,
       hasEarlierCompletedHistoricalScan,
+      markCompleted: markScanCompleted,
+      markFailed: markScanFailed,
       findQueuedHistorical: findQueuedHistoricalScans
     },
     findings: {
