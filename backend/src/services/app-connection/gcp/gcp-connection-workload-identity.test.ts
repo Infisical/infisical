@@ -1,6 +1,6 @@
 import { AxiosError, AxiosHeaders } from "axios";
 
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, GatewayTimeoutError, NotFoundError } from "@app/lib/errors";
 
 import { GcpConnectionMethod } from "./gcp-connection-enums";
 import {
@@ -181,6 +181,47 @@ describe("validateGcpConnectionCredentials with workload identity federation", (
 
     await expect(validateGcpConnectionCredentials(wifConfig(), oidcIssuerService)).rejects.toThrow(
       `GCP denied the connection access to service account '${SERVICE_ACCOUNT}'. Grant the Workload Identity User role (roles/iam.workloadIdentityUser) on the service account to the connection's principal, subject 'app-connection:${CONNECTION.id}'.`
+    );
+  });
+});
+
+describe("validateGcpConnectionCredentials when GCP fails rather than refuses", () => {
+  test("reports an outage of the Security Token Service as GCP's failure, not a setup problem", async () => {
+    googleResponds({
+      sts: googleError(503, { error: "temporarily_unavailable", error_description: "Backend error." })
+    });
+
+    const error = (await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService).catch(
+      (e: unknown) => e
+    )) as Error;
+
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect(error.message).toBe(
+      "GCP's Security Token Service could not complete the request (HTTP 503): Backend error. Try again later."
+    );
+    expect(error.message).not.toContain("rejected the connection's token");
+  });
+
+  test("reports a timeout as a gateway timeout", async () => {
+    googleResponds({ sts: new AxiosError("timeout of 30000ms exceeded", AxiosError.ECONNABORTED) });
+
+    const error = await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(GatewayTimeoutError);
+    expect((error as Error).message).toBe(
+      "GCP's Security Token Service did not respond within 30 seconds. Try again later."
+    );
+  });
+
+  test("reports an outage of the IAM Credentials API without asking for a role grant", async () => {
+    googleResponds({ iam: googleError(500, { error: { message: "Internal error encountered." } }) });
+
+    const error = (await validateGcpConnectionCredentials(wifConfig(), oidcIssuerService).catch(
+      (e: unknown) => e
+    )) as Error;
+
+    expect(error.message).toBe(
+      "GCP's IAM Service Account Credentials API could not complete the request (HTTP 500): Internal error encountered. Try again later."
     );
   });
 });

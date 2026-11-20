@@ -81,16 +81,22 @@ export const AddAppConnectionModal = ({
   };
 
   const handleComplete = (appConnection: TAppConnection) => {
-    onComplete?.(appConnection);
-
     // The sheet stays open on a federated connection's credentials, which show the values to configure in the
-    // provider and verify the setup on reconnect
+    // provider and verify the setup on reconnect. Callers hear about it only once it verifies: they select it,
+    // which starts lookups (such as GCP project discovery) that fail until the provider trusts it and are not
+    // refetched afterwards.
     if (isFederatedAppConnection(appConnection)) {
       setIsDirty(false);
       setCreatedConnection(appConnection);
       return;
     }
 
+    onComplete?.(appConnection);
+    closeSheet();
+  };
+
+  const handleVerified = (appConnection: TAppConnection) => {
+    onComplete?.(appConnection);
     closeSheet();
   };
 
@@ -139,7 +145,7 @@ export const AddAppConnectionModal = ({
                 <AppConnectionForm
                   appConnection={createdConnection}
                   isNewConnection
-                  onComplete={closeSheet}
+                  onComplete={handleVerified}
                   onCancel={() => requestDiscardAction(closeSheet)}
                   onDirtyChange={setIsDirty}
                 />

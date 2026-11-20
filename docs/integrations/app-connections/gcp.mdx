@@ -33,8 +33,8 @@ GCP only returns an access token if two settings in a GCP [workload identity poo
 
 You switch between GCP and Infisical during setup, because each one needs a value from the other. Infisical needs the name of the GCP provider when you create the connection. GCP needs the connection's subject identifier, which includes the connection ID that Infisical assigns when it creates the connection:
 
-1. [Choose a name for the GCP provider](#step-1-choose-a-name-for-the-gcp-provider)
-2. [Create the connection](#step-2-create-the-connection) in Infisical with the provider's name
+1. [Find your GCP project number](#step-1-find-your-gcp-project-number)
+2. [Create the connection](#step-2-create-the-connection) in Infisical with the project number and the pool and provider IDs
 3. [Configure GCP](#step-3-configure-gcp) with the values that Infisical shows for the connection
 4. [Verify the connection](#step-4-verify-the-connection) in Infisical
 
@@ -44,41 +44,21 @@ You switch between GCP and Infisical during setup, because each one needs a valu
 - The [gcloud CLI](https://cloud.google.com/sdk/docs/install), signed in to an account with that access
 - If you self-host Infisical, `SITE_URL` set to your instance's public `https://` URL, because GCP downloads Infisical's signing keys from that URL over the internet (Infisical won't create the connection if `SITE_URL` isn't an `https://` URL)
 
-### Step 1: Choose a name for the GCP provider
+### Step 1: Find your GCP project number
 
-When you create the connection, Infisical asks for the full resource name of the GCP provider, which doesn't exist yet. Choose the IDs now, then use the same IDs when you [configure GCP](#step-3-configure-gcp).
+The workload identity pool and its provider live in an existing GCP project, and Infisical identifies them by that project's number. Pick the project, then look up its number. To find the project's ID, list the projects your account can access:
 
-<Steps>
-    <Step>
-        Choose an ID for the workload identity pool and an ID for its provider, such as `infisical` for both. Each ID is 4 to 32 lowercase letters, digits, and hyphens.
+```bash
+gcloud projects list --format="table(projectId, projectNumber, name)"
+```
 
-        If you already created a pool and provider for another GCP connection in the same Infisical organization, you can use their IDs instead.
-    </Step>
-    <Step>
-        Pick the existing GCP project that will hold the pool, then look up its project number. To find the project's ID, list the projects your account can access:
+The `PROJECT_NUMBER` column has the number you need. If you already know the project's ID, you can look up the number directly:
 
-        ```bash
-        gcloud projects list --format="table(projectId, projectNumber, name)"
-        ```
+```bash
+gcloud projects describe <GCP_PROJECT_ID> --format="value(projectNumber)"
+```
 
-        The `PROJECT_NUMBER` column has the number you need. If you already know the project's ID, you can look up the number directly:
-
-        ```bash
-        gcloud projects describe <GCP_PROJECT_ID> --format="value(projectNumber)"
-        ```
-
-        `<GCP_PROJECT_ID>` is the ID of your GCP project, not the pool or provider ID you chose in the previous step.
-    </Step>
-    <Step>
-        Combine the project number and the two IDs into the provider's full resource name:
-
-        ```
-        projects/<GCP_PROJECT_NUMBER>/locations/global/workloadIdentityPools/<POOL_ID>/providers/<PROVIDER_ID>
-        ```
-
-        The name uses the project number, not the project ID.
-    </Step>
-</Steps>
+The pool and provider don't need to exist yet. When you create the connection in Infisical, the form suggests IDs for them, and the setup commands create them.
 
 ### Step 2: Create the connection
 
@@ -96,7 +76,8 @@ When you create the connection, Infisical asks for the full resource name of the
             <Step>
                 Enter a **Name**, select the **Workload Identity Federation** method, then fill out the fields:
 
-                - **Workload Identity Provider**: the provider's full resource name from [Step 1](#step-1-choose-a-name-for-the-gcp-provider)
+                - **Project Number**: the number you found in [Step 1](#step-1-find-your-gcp-project-number)
+                - **Pool ID** and **Provider ID**: the form suggests new IDs, which the setup commands use to create the pool and provider. To use a pool and provider you already created, for example for another GCP connection in the same Infisical organization, enter their IDs instead. Each ID is 4 to 32 lowercase letters, digits, and hyphens.
                 - **Service Account Email** (optional): the email of a service account for the connection to impersonate (leave it empty to grant GCP roles to the connection itself)
 
                 Enter a service account if the roles your integrations need are already granted to one. Then select **Create Connection**.
@@ -114,7 +95,13 @@ When you create the connection, Infisical asks for the full resource name of the
         </Steps>
     </Tab>
     <Tab title="API">
-        Call the GCP Connections [Create](/api-reference/endpoints/app-connections/gcp/create) endpoint with `method` set to `workload-identity-federation`. The response returns the values you need in [Step 3](#step-3-configure-gcp) in `credentials.federatedCredential`:
+        Call the GCP Connections [Create](/api-reference/endpoints/app-connections/gcp/create) endpoint with `method` set to `workload-identity-federation`. Set `credentials.workloadIdentityProvider` to the provider's full resource name, which uses the project number, not the project ID:
+
+        ```
+        projects/<GCP_PROJECT_NUMBER>/locations/global/workloadIdentityPools/<POOL_ID>/providers/<PROVIDER_ID>
+        ```
+
+        Choose the pool and provider IDs yourself, or use those of a pool and provider you already created. Each ID is 4 to 32 lowercase letters, digits, and hyphens. The response returns the values you need in [Step 3](#step-3-configure-gcp) in `credentials.federatedCredential`:
 
         | Value | Response field | Format |
         | --- | --- | --- |
@@ -247,7 +234,7 @@ Back in Infisical, select **Verify Connection** on the connection's form. If you
     <Accordion title="GCP workload identity provider rejected the connection's token">
         GCP rejected the token because the provider doesn't exist, is disabled, or trusts a different issuer. Check the following in GCP:
 
-        - The provider named in the **Workload Identity Provider** field exists and is enabled
+        - The provider that the connection's **Project Number**, **Pool ID**, and **Provider ID** name exists and is enabled
         - The provider's issuer URI is the **Issuer** that Infisical shows for the connection
     </Accordion>
     <Accordion title="GCP denied the connection access to service account">

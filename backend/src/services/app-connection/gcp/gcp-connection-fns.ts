@@ -6,7 +6,7 @@ import RE2 from "re2";
 
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, GatewayTimeoutError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import {
   decryptAppConnectionCredentials,
@@ -200,6 +200,25 @@ const getGcpWorkloadIdentityAudience = (workloadIdentityProvider: string) =>
 
 const withoutTrailingPeriod = (text: string) => (text.endsWith(".") ? text.slice(0, -1) : text);
 
+// Only a 4xx is GCP refusing the request. A timeout, network error or 5xx is GCP failing
+const isGcpRefusal = (error: unknown) => {
+  const status = error instanceof AxiosError ? error.response?.status : undefined;
+  return status !== undefined && status >= 400 && status < 500;
+};
+
+const toGcpUpstreamError = (error: unknown, service: string, detail: string) => {
+  if (error instanceof AxiosError && (error.code === AxiosError.ECONNABORTED || error.code === AxiosError.ETIMEDOUT)) {
+    return new GatewayTimeoutError({
+      message: `${service} did not respond within ${GCP_TOKEN_REQUEST_TIMEOUT_MS / 1000} seconds. Try again later.`
+    });
+  }
+
+  const status = error instanceof AxiosError ? error.response?.status : undefined;
+  return new BadRequestError({
+    message: `${service} could not complete the request${status ? ` (HTTP ${status})` : ""}: ${withoutTrailingPeriod(detail)}. Try again later.`
+  });
+};
+
 export const getGcpConnectionFederatedCredential = ({
   id,
   orgId,
@@ -263,8 +282,10 @@ const exchangeGcpWorkloadIdentityToken = async (
         status: error instanceof AxiosError ? error.response?.status : undefined,
         detail
       },
-      "GCP Security Token Service rejected an OIDC issuer token"
+      "GCP Security Token Service token exchange failed"
     );
+    if (!isGcpRefusal(error)) throw toGcpUpstreamError(error, "GCP's Security Token Service", detail);
+
     const { SITE_URL } = getConfig();
     const issuerUrl = SITE_URL ? getOidcIssuerUrl(SITE_URL, appConnection.orgId) : "this organization's issuer URL";
 
@@ -299,8 +320,16 @@ const exchangeGcpWorkloadIdentityToken = async (
     // Not the error itself: its request config holds the federated token
     logger.warn(
       { connectionId: appConnection.id, serviceAccountEmail, status, googleMessage },
-      "GCP refused to issue a service account access token for a federated token"
+      "GCP service account access token request failed"
     );
+
+    if (!isGcpRefusal(error)) {
+      throw toGcpUpstreamError(
+        error,
+        "GCP's IAM Service Account Credentials API",
+        googleMessage ?? (error instanceof Error ? error.message : "Unknown error")
+      );
+    }
 
     if (isGcpServiceDisabledError(body, googleMessage ?? "")) {
       throw new BadRequestError({

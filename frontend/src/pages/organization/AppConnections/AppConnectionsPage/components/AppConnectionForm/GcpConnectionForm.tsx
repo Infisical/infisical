@@ -45,14 +45,35 @@ import {
 
 type Props = {
   appConnection?: TGcpConnection;
-  onSubmit: (formData: FormData) => Promise<void>;
+  onSubmit: (formData: SubmitData) => Promise<void>;
 };
 
 const WORKLOAD_IDENTITY_PROVIDER_PATTERN =
   /^projects\/([0-9]{1,20})\/locations\/global\/workloadIdentityPools\/([a-z0-9-]{4,32})\/providers\/([a-z0-9-]{4,32})$/;
 
-const WORKLOAD_IDENTITY_PROVIDER_FORMAT =
-  "projects/<project-number>/locations/global/workloadIdentityPools/<pool-id>/providers/<provider-id>";
+const parseWorkloadIdentityProvider = (workloadIdentityProvider: string) => {
+  const match = WORKLOAD_IDENTITY_PROVIDER_PATTERN.exec(workloadIdentityProvider);
+  if (!match) return null;
+
+  const [, projectNumber, poolId, providerId] = match;
+  return { projectNumber, poolId, providerId };
+};
+
+const PROJECT_NUMBER_PATTERN = /^[0-9]{1,20}$/;
+const POOL_OR_PROVIDER_ID_PATTERN = /^[a-z0-9-]{4,32}$/;
+const POOL_OR_PROVIDER_ID_RULE = "Use 4 to 32 lowercase letters, digits, and hyphens";
+
+type TWorkloadIdentityProviderParts = { projectNumber: string; poolId: string; providerId: string };
+
+const toWorkloadIdentityProvider = ({
+  projectNumber,
+  poolId,
+  providerId
+}: TWorkloadIdentityProviderParts) =>
+  `projects/${projectNumber.trim()}/locations/global/workloadIdentityPools/${poolId.trim()}/providers/${providerId.trim()}`;
+
+// GCP keeps a deleted pool's ID reserved for 30 days, so a fixed default would collide with one deleted earlier
+const randomGcpId = () => `infisical-${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.GCP)
@@ -68,15 +89,21 @@ const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
     method: z.literal(GcpConnectionMethod.WorkloadIdentityFederation),
     credentials: z.object({
-      workloadIdentityProvider: z
+      projectNumber: z
         .string()
         .trim()
-        .min(1, "Workload Identity Provider is required")
-        .max(255, "Workload Identity Provider cannot exceed 255 characters")
-        .regex(
-          WORKLOAD_IDENTITY_PROVIDER_PATTERN,
-          `Use the format ${WORKLOAD_IDENTITY_PROVIDER_FORMAT}`
-        ),
+        .min(1, "Project number is required")
+        .regex(PROJECT_NUMBER_PATTERN, "Use the project number, which is digits only"),
+      poolId: z
+        .string()
+        .trim()
+        .min(1, "Pool ID is required")
+        .regex(POOL_OR_PROVIDER_ID_PATTERN, POOL_OR_PROVIDER_ID_RULE),
+      providerId: z
+        .string()
+        .trim()
+        .min(1, "Provider ID is required")
+        .regex(POOL_OR_PROVIDER_ID_PATTERN, POOL_OR_PROVIDER_ID_RULE),
       serviceAccountEmail: z
         .union([
           z.literal(""),
@@ -93,6 +120,16 @@ const formSchema = z.discriminatedUnion("method", [
 
 type FormData = z.infer<typeof formSchema>;
 
+// What the API takes: the three provider fields joined into the provider's resource name
+type SubmitData =
+  | Extract<FormData, { method: GcpConnectionMethod.ServiceAccountImpersonation }>
+  | (Omit<
+      Extract<FormData, { method: GcpConnectionMethod.WorkloadIdentityFederation }>,
+      "credentials"
+    > & {
+      credentials: { workloadIdentityProvider: string; serviceAccountEmail?: string };
+    });
+
 type TWorkloadIdentityFederationConnection = Extract<
   TGcpConnection,
   { method: GcpConnectionMethod.WorkloadIdentityFederation }
@@ -107,27 +144,22 @@ const getDefaultValues = (appConnection?: TGcpConnection) => {
   }
 
   if (appConnection.method === GcpConnectionMethod.WorkloadIdentityFederation) {
+    const parts = parseWorkloadIdentityProvider(appConnection.credentials.workloadIdentityProvider);
     return {
       name: appConnection.name,
       description: appConnection.description,
       app: appConnection.app,
       method: appConnection.method,
       credentials: {
-        workloadIdentityProvider: appConnection.credentials.workloadIdentityProvider,
+        projectNumber: parts?.projectNumber ?? "",
+        poolId: parts?.poolId ?? "",
+        providerId: parts?.providerId ?? "",
         serviceAccountEmail: appConnection.credentials.serviceAccountEmail ?? ""
       }
     };
   }
 
   return appConnection;
-};
-
-const parseWorkloadIdentityProvider = (workloadIdentityProvider: string) => {
-  const match = WORKLOAD_IDENTITY_PROVIDER_PATTERN.exec(workloadIdentityProvider);
-  if (!match) return null;
-
-  const [, projectNumber, poolId, providerId] = match;
-  return { projectNumber, poolId, providerId };
 };
 
 enum BindingScope {
@@ -314,6 +346,9 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const isUpdate = Boolean(appConnection);
   const { isNewConnection } = useAppConnectionForm();
   const [hasVerifyFailed, setHasVerifyFailed] = useState(false);
+  // Suggested for a new connection, so the user only needs to look up the project number; the setup commands
+  // create a pool and provider with these IDs
+  const [suggestedIds] = useState(() => ({ poolId: randomGcpId(), providerId: randomGcpId() }));
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -328,8 +363,16 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
 
   const selectedMethod = watch("method");
   const watchedCredentials = watch("credentials") as
-    | { workloadIdentityProvider?: string; serviceAccountEmail?: string }
+    | (Partial<TWorkloadIdentityProviderParts> & { serviceAccountEmail?: string })
     | undefined;
+  const watchedProvider =
+    watchedCredentials?.projectNumber && watchedCredentials.poolId && watchedCredentials.providerId
+      ? toWorkloadIdentityProvider({
+          projectNumber: watchedCredentials.projectNumber,
+          poolId: watchedCredentials.poolId,
+          providerId: watchedCredentials.providerId
+        })
+      : undefined;
   const isWorkloadIdentityFederation =
     selectedMethod === GcpConnectionMethod.WorkloadIdentityFederation;
 
@@ -339,10 +382,10 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
       return;
     }
 
-    const payload: FormData = {
+    const payload: SubmitData = {
       ...formData,
       credentials: {
-        workloadIdentityProvider: formData.credentials.workloadIdentityProvider,
+        workloadIdentityProvider: toWorkloadIdentityProvider(formData.credentials),
         serviceAccountEmail: formData.credentials.serviceAccountEmail || undefined
       }
     };
@@ -505,30 +548,32 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
         {isWorkloadIdentityFederation && (
           <>
             <Controller
-              name="credentials.workloadIdentityProvider"
+              name="credentials.projectNumber"
               control={control}
               shouldUnregister
+              defaultValue=""
               render={({ field, fieldState: { error } }) => (
                 <Field className="mb-4">
-                  <FieldLabel htmlFor="workload-identity-provider">
-                    Workload Identity Provider
-                  </FieldLabel>
+                  <FieldLabel htmlFor="gcp-project-number">Project Number</FieldLabel>
                   <Input
                     {...field}
                     onChange={(e) => {
                       field.onChange(e);
                       setHasVerifyFailed(false);
                     }}
-                    id="workload-identity-provider"
+                    id="gcp-project-number"
                     disabled={isNewConnection}
-                    placeholder="projects/123456789/locations/global/workloadIdentityPools/infisical/providers/infisical"
+                    inputMode="numeric"
+                    placeholder="123456789012"
                     isError={Boolean(error)}
                   />
                   {!error && (
                     <FieldDescription>
-                      The full resource name of the pool provider, in the format{" "}
+                      The number of the GCP project that holds the workload identity pool. Find it
+                      with{" "}
                       <span className="font-mono break-all">
-                        {WORKLOAD_IDENTITY_PROVIDER_FORMAT}
+                        gcloud projects describe &lt;PROJECT_ID&gt;
+                        --format=&quot;value(projectNumber)&quot;
                       </span>
                       .
                     </FieldDescription>
@@ -537,6 +582,57 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 </Field>
               )}
             />
+            <div className="mb-4 grid grid-cols-2 gap-3">
+              <Controller
+                name="credentials.poolId"
+                control={control}
+                shouldUnregister
+                defaultValue={suggestedIds.poolId}
+                render={({ field, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel htmlFor="gcp-pool-id">Pool ID</FieldLabel>
+                    <Input
+                      {...field}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        setHasVerifyFailed(false);
+                      }}
+                      id="gcp-pool-id"
+                      disabled={isNewConnection}
+                      isError={Boolean(error)}
+                    />
+                    <FieldError errors={[error]} />
+                  </Field>
+                )}
+              />
+              <Controller
+                name="credentials.providerId"
+                control={control}
+                shouldUnregister
+                defaultValue={suggestedIds.providerId}
+                render={({ field, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel htmlFor="gcp-provider-id">Provider ID</FieldLabel>
+                    <Input
+                      {...field}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        setHasVerifyFailed(false);
+                      }}
+                      id="gcp-provider-id"
+                      disabled={isNewConnection}
+                      isError={Boolean(error)}
+                    />
+                    <FieldError errors={[error]} />
+                  </Field>
+                )}
+              />
+              <FieldDescription className="col-span-2">
+                {isUpdate
+                  ? "The workload identity pool and provider that trust this connection."
+                  : "Suggested IDs for a new pool and provider, which the setup commands create after you create the connection. To use an existing pool and provider, enter their IDs instead."}
+              </FieldDescription>
+            </div>
             <Controller
               name="credentials.serviceAccountEmail"
               control={control}
@@ -573,7 +669,7 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
               {appConnection?.method === GcpConnectionMethod.WorkloadIdentityFederation ? (
                 <WorkloadIdentityFederationSetup
                   appConnection={appConnection}
-                  editedProvider={watchedCredentials?.workloadIdentityProvider}
+                  editedProvider={watchedProvider}
                   editedServiceAccountEmail={watchedCredentials?.serviceAccountEmail}
                 />
               ) : (
