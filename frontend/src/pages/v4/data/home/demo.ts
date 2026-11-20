@@ -112,9 +112,13 @@ const STRESSED: HomeApproval[] = [
         " access for 8 hours",
         " signing request"
       ][index % 5],
-      index % 3 === 0
-        ? "Dana Wu-Hernandez. Rotating the EU checkout credentials ahead of the PCI audit window that closes on Friday. Needs 2 approvals."
-        : "deploy-bot. Profile web-tls.",
+      [
+        "Dana Wu-Hernandez. Rotating the EU checkout credentials ahead of the PCI audit window that closes on Friday. Needs 2 approvals.",
+        "deploy-bot. Needs 2 approvals.",
+        "deploy-bot. Profile web-tls.",
+        "Marcus Okafor-Lindqvist. Incident 4410. Needs 1 approval.",
+        "release-pipeline. 25 signings."
+      ][index % 5],
       12 + index * 53
     )
   )

@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--cipher-space-8);
-  padding: var(--cipher-space-8) var(--cipher-space-8) var(--cipher-space-12) var(--cipher-space-10);
+  padding: var(--cipher-space-8) var(--cipher-space-8) var(--cipher-space-12);
   border: var(--cipher-size-control-border) solid var(--cipher-line-soft);
   background: var(--cipher-surface);
   font-family: var(--cipher-type-small-font-family);
