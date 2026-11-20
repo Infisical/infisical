@@ -267,16 +267,27 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
     ];
     const bundle = await addBundle(`round-trip-${randomUUID().slice(0, 8)}`);
     const narrowed = await addBundle(`narrowed-${randomUUID().slice(0, 8)}`);
+    const denied = await addBundle(`denied-${randomUUID().slice(0, 8)}`);
     await Promise.all(
       [active, revoked, ended, timed].map((holder) => grant(bundle, { actorIdentityId: holder.identityId }))
     );
     await grant(narrowed, { actorIdentityId: active.identityId });
+    await grant(denied, { actorIdentityId: active.identityId });
     await up(testDb);
     const grantRoleId = await grantRoleIdOf(bundle);
-    // An admin edits the other bundle's role so it no longer allows use.
+    // An admin edits two other bundles' roles: one no longer allows use, and one saves a deny on its bundle before an
+    // allow on every bundle, which the app orders after the allow, so the deny wins.
     await testDb(TableName.Role)
       .where({ id: await grantRoleIdOf(narrowed) })
       .update({ permissions: JSON.stringify([["read", "agent-vault-access-bundles", { accessBundleId: narrowed }]]) });
+    await testDb(TableName.Role)
+      .where({ id: await grantRoleIdOf(denied) })
+      .update({
+        permissions: JSON.stringify([
+          ["use", "agent-vault-access-bundles", { accessBundleId: denied }, 1],
+          ["read,use", "agent-vault-access-bundles"]
+        ])
+      });
 
     // Revoked after the upgrade.
     await testDb(TableName.MembershipRole).where({ membershipId: revoked.membershipId, customRoleId: grantRoleId }).delete();
@@ -313,7 +324,10 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
     ).map((row) => row.actorIdentityId);
     expect(grantedTo.sort()).toEqual([active.identityId, assigned.identityId, bundleOnly.identityId].sort());
     // A role that no longer allows use gives no grant back.
-    expect(await testDb(TableName.Membership).where({ scope: "resource", scopeResourceId: narrowed })).toHaveLength(0);
+    for (const bundleId of [narrowed, denied]) {
+      // eslint-disable-next-line no-await-in-loop
+      expect(await testDb(TableName.Membership).where({ scope: "resource", scopeResourceId: bundleId })).toHaveLength(0);
+    }
     // A membership needs a role, and Member is what the old rules read every role but admin as.
     expect(await rolesOf(bundleOnly.membershipId)).toMatchObject([
       { role: ProjectMembershipRole.Member, customRoleId: null }

@@ -311,9 +311,12 @@ export async function up(knex: Knex): Promise<void> {
 
 // Whether a bundle's role still lets its holders use the bundle. An admin can edit the role after up(), and a grant can't
 // give less than use, so a role that no longer allows it gives no grants back. One that can't be read gives none either.
+// Denies go last, as buildProjectPermissionRules orders a role's rules, so a deny wins whatever order it was saved in.
 const roleUsesBundle = (permissions: unknown, accessBundleId: string) => {
   try {
-    const rules = unpackRules((permissions ?? []) as Parameters<typeof unpackRules>[0]);
+    const rules = unpackRules((permissions ?? []) as Parameters<typeof unpackRules>[0]).sort(
+      (a, b) => Number(Boolean(a.inverted)) - Number(Boolean(b.inverted))
+    );
     return createMongoAbility(rules as never).can("use", subject("agent-vault-access-bundles", { accessBundleId }));
   } catch {
     return false;
