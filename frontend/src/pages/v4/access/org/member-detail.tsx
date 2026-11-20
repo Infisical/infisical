@@ -288,11 +288,7 @@ const MemberAuditLogs = ({ userId }: { userId: string }) => {
     !permission.can(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member)
   )
     return null;
-  return (
-    <Card variant="framed" title="Audit logs">
-      <AuditLogsTab actorId={userId} />
-    </Card>
-  );
+  return <AuditLogsTab actorId={userId} />;
 };
 
 export const OrgMemberDetail = () => {

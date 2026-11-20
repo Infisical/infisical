@@ -1,0 +1,6 @@
+/* Stand-in: Cipher's framed Card has no toolbar row between its band and a flush table. */
+.toolbar {
+  --cipher-size-control-default: var(--cipher-size-control-band);
+  padding: var(--cipher-space-8) var(--cipher-card-inset);
+  border-bottom: 1px solid var(--cipher-line);
+}
