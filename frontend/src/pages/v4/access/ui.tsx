@@ -1,5 +1,5 @@
 import { type ReactElement, type ReactNode, useMemo, useState } from "react";
-import { Badge, Count } from "@infisical/cipher/ui/badge";
+import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import {
   DropdownMenu,
@@ -70,6 +70,9 @@ export const AccessRestricted = ({ requirement }: { requirement?: string }) => (
   />
 );
 
+const filterName = ({ label, selected }: { label: string; selected: readonly string[] }) =>
+  selected.length ? `${label}: ${selected.length} applied` : label;
+
 export const ListToolbar = ({
   search,
   onSearch,
@@ -88,53 +91,57 @@ export const ListToolbar = ({
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
   };
-}) => (
-  <div className={styles.toolbar}>
-    <HeaderSearch
-      label={placeholder}
-      placeholder={placeholder}
-      value={search}
-      onValueChange={onSearch}
-    />
-    {filter && (
-      <DropdownMenu open={filter.open} onOpenChange={filter.onOpenChange}>
-        {filter.disabledReason ? (
-          <Button
-            variant="outline"
-            aria-label={filter.label}
-            disabledReason={filter.disabledReason}
-          >
-            <Icon name="funnel" />
-          </Button>
-        ) : (
-          <Tooltip content={filter.label}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" aria-label={filter.label}>
-                <Icon name="funnel" />
-                {filter.selected.length > 0 && <Count tone="ink">{filter.selected.length}</Count>}
-              </Button>
-            </DropdownMenuTrigger>
-          </Tooltip>
-        )}
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>{filter.label}</DropdownMenuLabel>
-          {filter.options.map((option) => (
-            <DropdownMenuCheckboxItem
-              key={option.value}
-              checked={filter.selected.includes(option.value)}
-              onSelect={(event) => {
-                event.preventDefault();
-                filter.onToggle(option.value);
-              }}
+}) => {
+  const selected = new Set(filter?.selected);
+  return (
+    <div className={styles.toolbar}>
+      <HeaderSearch
+        label={placeholder}
+        placeholder={placeholder}
+        value={search}
+        onValueChange={onSearch}
+      />
+      {filter && (
+        <DropdownMenu open={filter.open} onOpenChange={filter.onOpenChange}>
+          {filter.disabledReason ? (
+            <Button
+              variant="bare"
+              icon="funnel"
+              iconOnly
+              aria-label={filter.label}
+              disabledReason={filter.disabledReason}
             >
-              {option.label}
-            </DropdownMenuCheckboxItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    )}
-  </div>
-);
+              {filter.label}
+            </Button>
+          ) : (
+            <Tooltip content={filterName(filter)}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="bare" icon="funnel" iconOnly aria-label={filterName(filter)}>
+                  {filterName(filter)}
+                </Button>
+              </DropdownMenuTrigger>
+            </Tooltip>
+          )}
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>{filter.label}</DropdownMenuLabel>
+            {filter.options.map((option) => (
+              <DropdownMenuCheckboxItem
+                key={option.value}
+                checked={selected.has(option.value)}
+                onSelect={(event) => {
+                  event.preventDefault();
+                  filter.onToggle(option.value);
+                }}
+              >
+                {option.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
+  );
+};
 
 export const usePagedList = <Row,>({
   rows,
