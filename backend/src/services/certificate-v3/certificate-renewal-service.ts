@@ -26,6 +26,7 @@ import { CaCapability, CaType } from "@app/services/certificate-authority/certif
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
   caIssuesFromCsr,
+  caSignsCsrAsSent,
   caSupportsCapability,
   CERTIFICATE_AUTHORITIES_TYPE_MAP
 } from "@app/services/certificate-authority/certificate-authority-maps";
@@ -138,7 +139,8 @@ import {
   resolveRenewalKeySource,
   resolveRenewalSubject,
   resolveRenewalUsages,
-  validateRenewalEligibility
+  validateRenewalEligibility,
+  withIssuedRenewalNames
 } from "./certificate-renewal-fns";
 import { processSelfSignedCertificate } from "./certificate-self-signed-fns";
 import {
@@ -1367,13 +1369,11 @@ export const certificateRenewalServiceFactory = ({
     }
 
     let csrRenewalRequest: TCertificateRequest | null = null;
+    let csrNamesRequest: TCertificateRequest | null = null;
     if (keySource === CertificateRenewalKeySource.Csr && csr) {
       assertCsrRenewalAttributes(attributes, { isStoredCsr });
-      csrRenewalRequest = buildCsrRenewalCertificateRequest({ csr, attributes });
-      if (issuedNames.altNames?.length) csrRenewalRequest.subjectAlternativeNames = issuedNames.altNames;
-      if (!csrRenewalRequest.commonName && issuedNames.commonName) {
-        csrRenewalRequest.commonName = issuedNames.commonName;
-      }
+      csrNamesRequest = buildCsrRenewalCertificateRequest({ csr, attributes });
+      csrRenewalRequest = isStoredCsr ? withIssuedRenewalNames(csrNamesRequest, issuedNames) : csrNamesRequest;
     }
 
     // Decided from what the caller asked for: resubmitting the stored CSR is how Infisical carries out a
@@ -1448,7 +1448,7 @@ export const certificateRenewalServiceFactory = ({
         const { certificateRequest, replayedRequest, ttl, resolvedCustomExtensions } = $buildValidatedRenewalRequest({
           originalCert,
           policy,
-          csrRenewalRequest,
+          csrRenewalRequest: caSignsCsrAsSent(caType) ? csrNamesRequest : csrRenewalRequest,
           issuedFrom: originatingRequest,
           attributes,
           keySource,

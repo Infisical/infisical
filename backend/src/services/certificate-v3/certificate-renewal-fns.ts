@@ -22,7 +22,9 @@ import {
   CertKeyAlgorithm,
   CertSignatureAlgorithm,
   CertStatus,
-  mapSanTypeToX509Type
+  mapLegacyAltNameType,
+  mapSanTypeToX509Type,
+  TAltNameType
 } from "@app/services/certificate/certificate-types";
 
 import { CertExtendedKeyUsageType, CertKeyUsageType } from "../certificate-common/certificate-constants";
@@ -397,6 +399,22 @@ export const resolveRenewalSubject = (
     domainComponents: splitStoredList(source.domainComponents)
   };
 };
+
+const CURRENT_SAN_TYPES = Object.values(CertSubjectAlternativeNameType) as string[];
+
+export const withIssuedRenewalNames = (
+  csrRequest: TCertificateRequest,
+  issued: { commonName: string | null; altNames?: { type: CertSubjectAlternativeNameType; value: string }[] | null }
+): TCertificateRequest => ({
+  ...csrRequest,
+  commonName: csrRequest.commonName || issued.commonName || undefined,
+  subjectAlternativeNames: issued.altNames?.length
+    ? issued.altNames.map(({ type, value }) => ({
+        type: CURRENT_SAN_TYPES.includes(type) ? type : mapLegacyAltNameType(type as unknown as TAltNameType),
+        value
+      }))
+    : csrRequest.subjectAlternativeNames
+});
 
 export const resolveRenewalAltNames = (
   requested: { exists: boolean; altNames: { type: CertSubjectAlternativeNameType; value: string }[] | null },

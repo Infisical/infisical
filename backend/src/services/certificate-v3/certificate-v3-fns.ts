@@ -6,6 +6,7 @@ import { CertExtendedKeyUsage, CertKeyUsage, toAltNameMappings } from "@app/serv
 
 import {
   ACME_SAN_TYPES,
+  SUPPORTED_GENERAL_NAME_TYPES,
   CertExtendedKeyUsageType,
   CertKeyUsageType,
   mapLegacyExtendedKeyUsageToStandard,
@@ -201,7 +202,17 @@ export const getCommonNameDefaultSubjectAltNames = ({
   isCsrSignedAsSent?: boolean;
 }): x509.Extension | null => {
   const hasCommonNameDefault = defaults?.subjectAltNames?.some((san) => san.value === RequestReference.CommonName);
-  if (!hasCommonNameDefault || csr.extensions.some((extension) => extension.type === "2.5.29.17")) return null;
+  if (!hasCommonNameDefault) return null;
+
+  const sanExtension = csr.extensions.find((extension) => extension.type === "2.5.29.17");
+  if (sanExtension) {
+    try {
+      const names = new x509.GeneralNames(sanExtension.value).items;
+      if (names.some((name) => SUPPORTED_GENERAL_NAME_TYPES.has(name.type))) return null;
+    } catch {
+      return null;
+    }
+  }
 
   const [commonName] = csr.subjectName.getField("CN");
   const { altNameEntries } = applyCommonNameDefaultSan({
