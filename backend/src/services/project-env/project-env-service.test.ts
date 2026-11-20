@@ -9,8 +9,17 @@ import { projectEnvServiceFactory } from "./project-env-service";
 const tx = {} as Knex;
 
 const buildService = () => {
+  let inTransaction = false;
+  const invalidatedInTransaction: boolean[] = [];
   const projectEnvDAL = {
-    transaction: vi.fn(<T>(callback: (trx: Knex) => Promise<T>) => callback(tx)),
+    transaction: vi.fn(async <T>(callback: (trx: Knex) => Promise<T>) => {
+      inTransaction = true;
+      try {
+        return await callback(tx);
+      } finally {
+        inTransaction = false;
+      }
+    }),
     delete: vi.fn().mockResolvedValue([{ id: "env-1", position: 2 }]),
     closePositionGap: vi.fn().mockResolvedValue(undefined),
     findOne: vi.fn().mockResolvedValue({ id: "env-1", position: 2 }),
@@ -19,7 +28,9 @@ const buildService = () => {
   };
   const secretV2BridgeDAL = {
     findGrantTargetProjectIds: vi.fn().mockResolvedValue(["importing-project"]),
-    invalidateSecretCacheByProjectId: vi.fn().mockResolvedValue(undefined)
+    invalidateSecretCacheByProjectId: vi.fn(async () => {
+      invalidatedInTransaction.push(inTransaction);
+    })
   };
   const service = projectEnvServiceFactory({
     projectEnvDAL,
@@ -36,7 +47,7 @@ const buildService = () => {
     },
     approvalPolicySecretEnvironmentDAL: { findPolicyByEnvId: vi.fn().mockResolvedValue(undefined) }
   } as unknown as Parameters<typeof projectEnvServiceFactory>[0]);
-  return { service, projectEnvDAL, secretV2BridgeDAL };
+  return { service, projectEnvDAL, secretV2BridgeDAL, invalidatedInTransaction };
 };
 
 const deleteDto = {
@@ -49,8 +60,8 @@ const deleteDto = {
 };
 
 describe("deleteEnvironment", () => {
-  test("reads the grant targets before a hard delete cascades them and invalidates them", async () => {
-    const { service, projectEnvDAL, secretV2BridgeDAL } = buildService();
+  test("reads the grant targets before a hard delete cascades them and invalidates them after commit", async () => {
+    const { service, projectEnvDAL, secretV2BridgeDAL, invalidatedInTransaction } = buildService();
 
     await service.deleteEnvironment({ ...deleteDto, hardDelete: true });
 
@@ -58,16 +69,20 @@ describe("deleteEnvironment", () => {
     expect(secretV2BridgeDAL.findGrantTargetProjectIds.mock.invocationCallOrder[0]).toBeLessThan(
       projectEnvDAL.delete.mock.invocationCallOrder[0]
     );
-    expect(secretV2BridgeDAL.invalidateSecretCacheByProjectId).toHaveBeenCalledWith("project-1", tx, {
+    expect(secretV2BridgeDAL.invalidateSecretCacheByProjectId).toHaveBeenCalledWith("project-1", undefined, {
       grantTargetProjectIds: ["importing-project"]
     });
+    expect(invalidatedInTransaction).toEqual([false]);
   });
 
-  test("invalidates the secret cache when an environment is soft-deleted", async () => {
-    const { service, secretV2BridgeDAL } = buildService();
+  test("invalidates the secret cache after commit when an environment is soft-deleted", async () => {
+    const { service, secretV2BridgeDAL, invalidatedInTransaction } = buildService();
 
     await service.deleteEnvironment(deleteDto);
 
-    expect(secretV2BridgeDAL.invalidateSecretCacheByProjectId).toHaveBeenCalledWith("project-1", tx);
+    expect(secretV2BridgeDAL.invalidateSecretCacheByProjectId).toHaveBeenCalledWith("project-1", undefined, {
+      grantTargetProjectIds: []
+    });
+    expect(invalidatedInTransaction).toEqual([false]);
   });
 });

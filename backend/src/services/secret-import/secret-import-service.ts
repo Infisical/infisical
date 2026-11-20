@@ -1035,7 +1035,7 @@ export const secretImportServiceFactory = ({
           recordSecretCacheAccessMetric(SecretCacheAccessResult.HIT, { hasIfNoneMatch, etagMissReason });
           return { secrets, etag: cachedEtag };
         } catch (err) {
-          logger.error(err, "Secret imports service layer cache miss");
+          logger.error(err, `Secret imports service layer cache miss [projectId=${projectId}] [actorId=${actorId}]`);
           await keyStore.deleteItem(cacheKey);
         }
       }
