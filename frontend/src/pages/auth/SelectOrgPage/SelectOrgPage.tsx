@@ -485,7 +485,7 @@ export const SelectOrgPage = () => {
             toggleShowMfa.off();
             if (!mfaOrgInfo.current) return;
             createNotification({
-              text: "Your verification session expired. Enter the new code to continue.",
+              text: "Your verification session expired, so we started a new one.",
               type: "info"
             });
             await handleSelectOrganization(mfaOrgInfo.current.rootOrg, mfaOrgInfo.current.subOrgId);
