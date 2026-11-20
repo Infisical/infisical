@@ -12937,8 +12937,16 @@ describe("Agent Vault V1 Router", async () => {
       expect(afterRemoval.session.metadata).toEqual({});
     });
 
-    test("an inline service names a saved hook, and an unknown name is a 404", async () => {
+    test("an inline service names a saved hook, the mint audit records it, and an unknown name is a 404", async () => {
+      const { auditLog } = (
+        globalThis as unknown as {
+          testServices: {
+            auditLog: { createAuditLog: (dto: { actor: unknown; orgId?: string; event: unknown }) => Promise<void> };
+          };
+        }
+      ).testServices;
       const hook = await createHook("inline-named-hook");
+      const auditLogs = vi.spyOn(auditLog, "createAuditLog");
       const { resolve } = await mintAndResolve(
         {
           services: [
@@ -12953,6 +12961,22 @@ describe("Agent Vault V1 Router", async () => {
         },
         "hooks-inline"
       );
+      expect(auditLogs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: expect.objectContaining({
+            type: "agent-vault-session-mint",
+            metadata: expect.objectContaining({
+              services: [
+                expect.objectContaining({
+                  name: "inline-hooked",
+                  hook: { id: hook.id, name: hook.name, methods: ["DELETE"] }
+                })
+              ]
+            })
+          })
+        })
+      );
+      auditLogs.mockRestore();
       expect((await resolve()).services[0].hook).toEqual({
         id: hook.id,
         name: hook.name,
