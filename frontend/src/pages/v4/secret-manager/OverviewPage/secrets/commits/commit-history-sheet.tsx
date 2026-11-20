@@ -52,6 +52,7 @@ import { wasErrorReported } from "@app/hooks/api/reactQuery";
 
 import { errorMessage } from "../../../../access/toast";
 import { copyText } from "../../../../clipboard";
+import { ShowMoreFooter } from "../../../../components/show-more-footer";
 import { useV4Adapter } from "../../../../data/adapters";
 import type { Scope } from "../../secrets-model";
 import { environmentLabel, Gate } from "../flows/shared";
@@ -444,16 +445,15 @@ function HistoryToolbar({
 function HistoryGroups({
   groups,
   remaining,
-  sort,
   onSelect,
   onLoadMore
 }: {
   groups: CommitGroup[];
   remaining: number;
-  sort: "asc" | "desc";
   onSelect: (id: string) => void;
   onLoadMore: () => void;
 }) {
+  const shown = groups.reduce((total, group) => total + group.commits.length, 0);
   return groups.length ? (
     <div className={styles.groups}>
       {groups.map((group) => (
@@ -471,11 +471,10 @@ function HistoryGroups({
         </section>
       ))}
       {remaining > 0 && (
-        <div className={styles.loadMore}>
-          <Button variant="outline" onClick={onLoadMore}>
-            {`Load ${remaining} ${sort === "desc" ? "older" : "newer"} commits`}
-          </Button>
-        </div>
+        <ShowMoreFooter
+          status={`Showing ${shown.toLocaleString()} of ${(shown + remaining).toLocaleString()} commits`}
+          onShowMore={onLoadMore}
+        />
       )}
     </div>
   ) : (
@@ -880,7 +879,6 @@ export function CommitHistorySheet({
         <HistoryGroups
           groups={groups}
           remaining={remaining}
-          sort={sort}
           onSelect={openDetails}
           onLoadMore={() => history.fetchNextPage()}
         />

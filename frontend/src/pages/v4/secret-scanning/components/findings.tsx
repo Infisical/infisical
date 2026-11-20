@@ -64,6 +64,7 @@ import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { useProjectPermission } from "../../access/permissions";
 import { failed, toast } from "../../access/toast";
+import { ShowMoreFooter } from "../../components/show-more-footer";
 import { useV4Adapter } from "../../data/adapters";
 
 export type FindingsStatusFilter = SecretScanningFindingStatus | "all";
@@ -328,17 +329,12 @@ const FindingLocations = ({
           ))}
         </Accordion>
       )}
-      {hasNextPage && (
-        <div>
-          <Button
-            variant="outline"
-            size="sm"
-            loading={isFetchingNextPage}
-            onClick={() => fetchNextPage()}
-          >
-            Show more
-          </Button>
-        </div>
+      {data && hasNextPage && (
+        <ShowMoreFooter
+          status={`Showing ${data.locations.length.toLocaleString()} of ${locationCount.toLocaleString()} locations`}
+          loading={isFetchingNextPage}
+          onShowMore={() => fetchNextPage()}
+        />
       )}
     </Stack>
   );

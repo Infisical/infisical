@@ -48,3 +48,7 @@
 span.nameFallback {
   max-width: calc(6 * var(--cipher-space-16));
 }
+/* Stand-in: a bare List's footer starts at the list edge, not at its rows' inset, so its status would sit left of the row text. */
+.inboxMore {
+  padding-inline-start: var(--cipher-space-12);
+}
