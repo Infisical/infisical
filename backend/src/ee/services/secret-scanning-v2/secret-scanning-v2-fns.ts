@@ -650,7 +650,7 @@ const getScanAlertScope = async (projectDAL: TScanOutcomeDeps["projectDAL"], dat
 // Counts are read back rather than passed in: a resumed full scan never saw the batches an earlier attempt saved.
 export const completeFullScan = async (
   { secretScanningV2DAL, projectDAL, eventEmitter }: TScanOutcomeDeps,
-  { dataSource, resourceId, scanId }: { dataSource: TScanDataSource; resourceId: string; scanId: string }
+  { dataSource, scanId }: { dataSource: TScanDataSource; scanId: string }
 ) => {
   const alertScope = await getScanAlertScope(projectDAL, dataSource);
 
@@ -659,15 +659,9 @@ export const completeFullScan = async (
 
     const counts = await secretScanningV2DAL.findings.countByScanId(scanId, tx);
 
-    // A resource's first full scan reports the history it already had, which the findings page shows, so only a
-    // secret a later full scan finds for the first time alerts. A full scan never alerts on a finding it reopened
-    // either: a secret coming back is news when someone pushes it, not when history is read again.
-    const isFirstFullScan = !(await secretScanningV2DAL.scans.hasEarlierCompletedHistoricalScan(
-      { resourceId, scanId },
-      tx
-    ));
-
-    if (alertScope && !isFirstFullScan) {
+    // A full scan never alerts on a finding it reopened: a secret coming back is news when someone pushes it, not when
+    // history is read again.
+    if (alertScope) {
       const newFindings = await secretScanningV2DAL.findings.countUnresolvedCreatedByScanId(scanId, tx);
 
       if (newFindings) {

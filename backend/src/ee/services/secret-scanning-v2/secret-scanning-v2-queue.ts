@@ -567,7 +567,7 @@ export const secretScanningV2QueueServiceFactory = ({
 
       // A scan the reaper already gave up on keeps its failure, and completing it returns null. Its findings are still
       // saved, since they are real, but the outcome the customer was told about isn't rewritten underneath them.
-      const counts = stillOwned ? await completeFullScan(scanOutcomeDeps, { dataSource, resourceId, scanId }) : null;
+      const counts = stillOwned ? await completeFullScan(scanOutcomeDeps, { dataSource, scanId }) : null;
 
       if (!counts) {
         logger.warn(

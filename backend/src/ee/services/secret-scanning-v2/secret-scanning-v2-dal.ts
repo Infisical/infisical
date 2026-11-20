@@ -694,28 +694,6 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
-  // Reads the primary: the caller writes these rows straight after, and a replica that still shows
-  // a just-completed scan as in-progress would have it reaped.
-  const hasEarlierCompletedHistoricalScan = async (
-    { resourceId, scanId }: { resourceId: string; scanId: string },
-    tx?: Knex
-  ) => {
-    try {
-      const scan = await (tx || db)(TableName.SecretScanningScan)
-        .where({
-          resourceId,
-          type: SecretScanningScanType.Historical,
-          status: SecretScanningScanStatus.Completed
-        })
-        .whereNot({ id: scanId })
-        .first("id");
-
-      return Boolean(scan);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Has Earlier Completed Historical Scan - Secret Scanning Scan" });
-    }
-  };
-
   // Both transitions are guarded on the scan's current status, so a scan something else already closed keeps its
   // outcome. They return whether this call closed it.
   const markScanCompleted = async ({ scanId, metadata }: { scanId: string; metadata?: unknown }, tx?: Knex) => {
@@ -1110,7 +1088,6 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       findWithDetailsByDataSourceId: findScansWithDetailsByDataSourceId,
       findByDataSourceId: findScansByDataSourceId,
       findStuck: findStuckScans,
-      hasEarlierCompletedHistoricalScan,
       markCompleted: markScanCompleted,
       markFailed: markScanFailed,
       findQueuedHistorical: findQueuedHistoricalScans

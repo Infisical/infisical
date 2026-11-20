@@ -72,8 +72,6 @@ When you create a data source, Infisical creates both alerts for it, and both em
 
 An alert sends one notification for each scan. If the scan found secrets, the notification links to the findings from that scan. If the scan failed, the notification links to the data source and includes the error.
 
-The first full scan of a repository doesn't send a **Secrets Detected** alert, because everything in the repository's history is new to Infisical at that point. Review those secrets on the **Findings** page instead.
-
 ### Change who gets a data source's alerts
 
 To change a data source's alerts, your [project role](/documentation/platform/access-controls/role-based-access-controls) needs the **Edit Data Sources** action on **Secret Scanning Data Sources**.

@@ -57,8 +57,9 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, findings, or 
 - `secrets-detected` fires only for news: unresolved findings this scan created (`countUnresolvedCreatedByScanId`),
   plus, for diff scans only, findings it reopened. The creating scan is the finding's `scanId`, set under the
   resource lock; never infer it from location `createdAt` (transaction start time), and keep that column when the
-  rollback-only finding columns go. A new location of a finding that's still unresolved was already alerted on, and a resource's
-  first full scan never alerts (`hasEarlierCompletedHistoricalScan`), since all of its history is new then.
+  rollback-only finding columns go. A new location of a finding that's still unresolved was already alerted on. A
+  resource's first full scan alerts like any other: don't exempt it, since a scan that found secrets and stayed silent
+  looks broken.
 - Every data source gets its default alerts (`SECRET_SCANNING_DEFAULT_ALERTS`) in the transaction that creates it. Its
   id is chosen before that transaction so the alerts can be prepared, a KMS call, outside it. Deleting a data source
   reaps its alerts in the delete transaction (`deleteAlertsForDeletedResource`), since alerts have no foreign key to it.

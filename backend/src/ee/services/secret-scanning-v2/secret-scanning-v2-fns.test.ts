@@ -347,13 +347,11 @@ const dataSource = { id: "ds-1", projectId: "project-1" };
 const buildOutcome = ({
   closes = true,
   projectExists = true,
-  hasEarlierFullScan = true,
   createdUnresolved = 1,
   reopened = 0
 }: {
   closes?: boolean;
   projectExists?: boolean;
-  hasEarlierFullScan?: boolean;
   createdUnresolved?: number;
   reopened?: number;
 } = {}) => {
@@ -365,8 +363,7 @@ const buildOutcome = ({
       scans: {
         transaction,
         markCompleted: vi.fn(async () => closes),
-        markFailed: vi.fn(async () => closes),
-        hasEarlierCompletedHistoricalScan: vi.fn(async () => hasEarlierFullScan)
+        markFailed: vi.fn(async () => closes)
       },
       findings: {
         transaction,
@@ -399,7 +396,7 @@ describe("completeFullScan", () => {
   test("alerts on the findings it created", async () => {
     const { deps, emit } = buildOutcome({ createdUnresolved: 2 });
 
-    await expect(completeFullScan(deps, { dataSource, resourceId: "r-1", scanId: "scan-1" })).resolves.toEqual(counts);
+    await expect(completeFullScan(deps, { dataSource, scanId: "scan-1" })).resolves.toEqual(counts);
 
     expect(emit).toHaveBeenCalledTimes(1);
     expect(emit.mock.calls[0][0][0]).toMatchObject({
@@ -408,24 +405,17 @@ describe("completeFullScan", () => {
     });
   });
 
-  test("never alerts on a resource's first full scan", async () => {
-    const { deps, emit } = buildOutcome({ hasEarlierFullScan: false });
-
-    await expect(completeFullScan(deps, { dataSource, resourceId: "r-1", scanId: "scan-1" })).resolves.toEqual(counts);
-    expect(emit).not.toHaveBeenCalled();
-  });
-
   test("returns null and emits nothing for a scan already closed", async () => {
     const { deps, emit } = buildOutcome({ closes: false });
 
-    await expect(completeFullScan(deps, { dataSource, resourceId: "r-1", scanId: "scan-1" })).resolves.toBeNull();
+    await expect(completeFullScan(deps, { dataSource, scanId: "scan-1" })).resolves.toBeNull();
     expect(emit).not.toHaveBeenCalled();
   });
 
   test("closes the scan without an alert when its project is being deleted", async () => {
     const { deps, emit } = buildOutcome({ projectExists: false });
 
-    await expect(completeFullScan(deps, { dataSource, resourceId: "r-1", scanId: "scan-1" })).resolves.toEqual(counts);
+    await expect(completeFullScan(deps, { dataSource, scanId: "scan-1" })).resolves.toEqual(counts);
     expect(emit).not.toHaveBeenCalled();
   });
 });
