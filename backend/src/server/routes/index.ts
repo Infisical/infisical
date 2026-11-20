@@ -1539,7 +1539,6 @@ export const registerRoutes = async (
     projectDAL,
     secretDAL,
     folderDAL,
-    projectBotService,
     reminderService,
     honeyTokenCleanupService,
     eventEmitter: eventOutboxService
