@@ -1,3 +1,5 @@
+//lint:file-ignore SA1019 these tests cover the project-scoped search route, which is deprecated but still served
+
 package inventory_test
 
 import (
