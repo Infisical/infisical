@@ -201,10 +201,14 @@ export const dynamicSecretLeaseServiceFactory = ({
         metadata: {
           projectId,
           passwordValidation,
+          // Read from the primary: a lease another instance just saved must not be missed while a replica catches up
           getLeaseEntityIds: async () =>
-            (await dynamicSecretLeaseDAL.find({ dynamicSecretId: dynamicSecretCfg.id })).map(
-              (lease) => lease.externalEntityId
-            )
+            (
+              await dynamicSecretLeaseDAL.find(
+                { dynamicSecretId: dynamicSecretCfg.id },
+                { tx: dynamicSecretLeaseDAL.primaryNode() }
+              )
+            ).map((lease) => lease.externalEntityId)
         },
         config
       });

@@ -8,6 +8,7 @@ import { ormify, selectAllTableCols, TOrmify } from "@app/lib/knex";
 export interface TDynamicSecretLeaseDALFactory extends Omit<TOrmify<TableName.DynamicSecretLease>, "findById"> {
   countLeasesForDynamicSecret: (dynamicSecretId: string, tx?: Knex) => Promise<number>;
   countLeasesForOrg: (orgId: string, tx?: Knex) => Promise<number>;
+  primaryNode: () => Knex;
   findExpiredByProjectId: (
     projectId: string,
     tx?: Knex
@@ -50,6 +51,8 @@ export interface TDynamicSecretLeaseDALFactory extends Omit<TOrmify<TableName.Dy
 
 export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.DynamicSecretLease);
+
+  const primaryNode = () => db.primaryNode();
 
   const countLeasesForDynamicSecret = async (dynamicSecretId: string, tx?: Knex) => {
     try {
@@ -164,5 +167,5 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findById, countLeasesForDynamicSecret, countLeasesForOrg, findExpiredByProjectId };
+  return { ...orm, primaryNode, findById, countLeasesForDynamicSecret, countLeasesForOrg, findExpiredByProjectId };
 };
