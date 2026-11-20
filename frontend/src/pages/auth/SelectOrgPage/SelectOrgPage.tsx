@@ -452,7 +452,7 @@ export const SelectOrgPage = () => {
     return (
       <>
         <PageTitle title={t("page-titles.select-organization")} />
-        <div className="h-screen w-screen bg-page">
+        <div className="h-dvh w-screen bg-page">
           <PageLoader />
         </div>
       </>

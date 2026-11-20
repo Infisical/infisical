@@ -2,6 +2,8 @@ import { Knex } from "knex";
 
 import { TApprovalRequestApprovals, TApprovalRequests } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
 import {
   ApprovalPolicyType,
@@ -19,6 +21,7 @@ import {
 } from "./approval-request-dal";
 import { TAutoApprovalEvidence } from "./auto-approval/auto-approval-types";
 import { TCertRequestRequestData } from "./cert-request/cert-request-policy-types";
+import { TCertRevocationRequestData } from "./cert-revocation/cert-revocation-policy-types";
 import { TCodeSigningRequestData } from "./code-signing/code-signing-policy-types";
 
 export interface TCreateApprovalRequestWithStepsParams {
@@ -224,7 +227,9 @@ export const resolveStepApproverUserIds = async (
     if (approver.type === ApproverType.User) {
       userIds.add(approver.id);
     } else if (approver.type === ApproverType.Group) {
-      const members = await userGroupMembershipDAL.find({ groupId: approver.id });
+      const members = await requestMemoize(requestMemoKeys.groupMembers(approver.id), () =>
+        userGroupMembershipDAL.find({ groupId: approver.id })
+      );
       members.forEach((member) => userIds.add(member.userId));
     }
   }
@@ -241,6 +246,11 @@ export const getApprovalRequestSubjectMetadata = (
   if (request.type === ApprovalPolicyType.CertRequest) {
     const { certificateRequestId, certificateRequest, profileName } = requestData as TCertRequestRequestData;
     return { certificateRequestId, commonName: certificateRequest?.commonName, profileName };
+  }
+
+  if (request.type === ApprovalPolicyType.CertRevocation) {
+    const { certificateId, commonName, profileName } = requestData as TCertRevocationRequestData;
+    return { certificateId, commonName, profileName };
   }
 
   if (request.type === ApprovalPolicyType.CertCodeSigning) {

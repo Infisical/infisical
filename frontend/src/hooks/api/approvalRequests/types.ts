@@ -1,4 +1,5 @@
 import { ApprovalPolicyScope, ApprovalPolicyType, ApproverType } from "../approvalPolicies";
+import { CrlReason } from "../certificates/enums";
 import { TCodeSigningScope } from "../signers/types";
 
 export enum ApprovalRequestStatus {
@@ -84,6 +85,16 @@ export type CertRequestRequestData = {
   certificateRequestId: string;
 };
 
+export type CertRevocationRequestData = {
+  certificateId: string;
+  serialNumber: string;
+  commonName: string;
+  profileId: string;
+  profileName: string;
+  applicationId: string;
+  revocationReason: CrlReason;
+};
+
 export type CodeSigningRequestData = {
   signerId: string;
   approvalPolicyId: string;
@@ -109,10 +120,17 @@ export type TApprovalRequest = {
   expiresAt?: string | null;
   requestData: {
     version: number;
-    requestData: PamAccessRequestData | CertRequestRequestData | CodeSigningRequestData;
+    requestData:
+      | PamAccessRequestData
+      | CertRequestRequestData
+      | CertRevocationRequestData
+      | CodeSigningRequestData;
   };
   steps: ApprovalRequestStep[];
   canBreakGlass: boolean;
+  canReview: boolean;
+  // Only revocation requests carry this.
+  approversCanNoLongerApprove?: boolean;
   isBreakGlass: boolean;
   bypassReason?: string | null;
   createdAt: string;

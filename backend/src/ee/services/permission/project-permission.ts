@@ -7,7 +7,7 @@ import {
   CASL_ACTION_SCHEMA_ENUM,
   CASL_ACTION_SCHEMA_NATIVE_ENUM
 } from "@app/ee/services/permission/permission-schemas";
-import { conditionsMatcher, PermissionConditionOperators } from "@app/lib/casl";
+import { canonicalizeSecretPathCondition, conditionsMatcher, PermissionConditionOperators } from "@app/lib/casl";
 import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
 
 import { PermissionConditionSchema } from "./permission-types";
@@ -783,26 +783,28 @@ export type ProjectPermissionSet =
     ];
 
 const SECRET_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
-const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
-  z.string().refine((val) => val.startsWith("/"), SECRET_PATH_MISSING_SLASH_ERR_MSG),
-  z
-    .object({
-      [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ].refine(
-        (val) => val.startsWith("/"),
-        SECRET_PATH_MISSING_SLASH_ERR_MSG
-      ),
-      [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ].refine(
-        (val) => val.startsWith("/"),
-        SECRET_PATH_MISSING_SLASH_ERR_MSG
-      ),
-      [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN].refine(
-        (val) => val.every((el) => el.startsWith("/")),
-        SECRET_PATH_MISSING_SLASH_ERR_MSG
-      ),
-      [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
-    })
-    .partial()
-]);
+const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z
+  .union([
+    z.string().refine((val) => val.startsWith("/"), SECRET_PATH_MISSING_SLASH_ERR_MSG),
+    z
+      .object({
+        [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ].refine(
+          (val) => val.startsWith("/"),
+          SECRET_PATH_MISSING_SLASH_ERR_MSG
+        ),
+        [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ].refine(
+          (val) => val.startsWith("/"),
+          SECRET_PATH_MISSING_SLASH_ERR_MSG
+        ),
+        [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN].refine(
+          (val) => val.every((el) => el.startsWith("/")),
+          SECRET_PATH_MISSING_SLASH_ERR_MSG
+        ),
+        [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+      })
+      .partial()
+  ])
+  .transform((condition) => canonicalizeSecretPathCondition(condition) as typeof condition);
 
 // akhilmhdh: don't modify this for v2
 // if you want to update create a new schema

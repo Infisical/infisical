@@ -805,6 +805,7 @@ tables:
       - defaultMembershipRole
       - enforceMfa
       - selectedMfaMethod
+      - allowedMfaMethods
       - allowSecretSharingOutsideOrganization
       - shouldUseNewPrivilegeSystem
       - privilegeUpgradeInitiatedByUsername

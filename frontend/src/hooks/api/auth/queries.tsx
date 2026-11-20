@@ -265,18 +265,14 @@ export const useGetAuthToken = () =>
     retry: 0
   });
 
-export const checkUserTotpMfa = async () => {
-  const { data } = await apiRequest.get<{ isVerified: boolean }>("/api/v2/auth/mfa/check/totp");
+export const getMfaMethods = async () => {
+  const { data } = await apiRequest.get<{
+    challengeMethod: MfaMethod;
+    usableMethods: MfaMethod[];
+    enrollableMethods: MfaMethod[];
+  }>("/api/v2/auth/mfa/methods");
 
-  return data.isVerified;
-};
-
-export const checkUserWebAuthnMfa = async () => {
-  const { data } = await apiRequest.get<{ hasPasskeys: boolean }>(
-    "/api/v2/auth/mfa/check/webauthn"
-  );
-
-  return data.hasPasskeys;
+  return data;
 };
 
 export const useMfaGenerateAuthenticationOptions = () =>

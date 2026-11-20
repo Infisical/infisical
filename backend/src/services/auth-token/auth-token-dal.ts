@@ -9,6 +9,8 @@ import { TDeleteTokenForUserDALDTO } from "./auth-token-types";
 
 export type TTokenDALFactory = ReturnType<typeof tokenDALFactory>;
 
+export const REFRESH_ROTATION_DB_TIMEOUT_MS = 5000;
+
 export const tokenDALFactory = (db: TDbClient) => {
   const authOrm = ormify(db, TableName.AuthTokens);
 
@@ -121,15 +123,22 @@ export const tokenDALFactory = (db: TDbClient) => {
   const incrementRefreshVersion = async (
     sessionId: string,
     userId: string,
-    tx?: Knex
+    expectedRefreshVersion: number
   ): Promise<{ refreshVersion: number; id: string } | undefined> => {
     try {
-      const [session] = await (tx || db)(TableName.AuthTokenSession)
-        .where({ id: sessionId, userId })
-        .increment("refreshVersion", 1)
-        .update({ lastUsed: new Date() })
-        .returning(["refreshVersion", "id"]);
-      return session;
+      return await db.transaction(async (tx) => {
+        const timeout = `${REFRESH_ROTATION_DB_TIMEOUT_MS}ms`;
+        await tx.raw("select set_config('lock_timeout', ?, true), set_config('statement_timeout', ?, true)", [
+          timeout,
+          timeout
+        ]);
+        const [session] = await tx(TableName.AuthTokenSession)
+          .where({ id: sessionId, userId, refreshVersion: expectedRefreshVersion })
+          .increment("refreshVersion", 1)
+          .update({ lastUsed: new Date() })
+          .returning(["refreshVersion", "id"]);
+        return session;
+      });
     } catch (error) {
       throw new DatabaseError({ error, name: "IncrementRefreshVersion" });
     }

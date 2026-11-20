@@ -456,6 +456,8 @@ export enum EventType {
   GET_CERT = "get-cert",
   DELETE_CERT = "delete-cert",
   REVOKE_CERT = "revoke-cert",
+  REQUEST_CERT_REVOCATION = "request-cert-revocation",
+  CERT_REVOCATION_FAILED = "cert-revocation-failed",
   ASSIGN_CERT_TO_APPLICATION = "assign-cert-to-application",
   GET_CERT_BODY = "get-cert-body",
   GET_CERT_PRIVATE_KEY = "get-cert-private-key",
@@ -3404,7 +3406,44 @@ interface RevokeCert {
     applicationId?: string | null;
     applicationName?: string | null;
     revocationReason?: CrlReason;
+    approvalRequestId?: string;
+    requesterName?: string;
+    requesterEmail?: string;
+    crlWarning?: string;
     source?: CertificateRevocationSource;
+  };
+}
+
+interface RequestCertRevocation {
+  type: EventType.REQUEST_CERT_REVOCATION;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
+    revocationReason: CrlReason;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
+    approvalPolicyId: string;
+    approvalPolicyName: string;
+  };
+}
+
+interface CertRevocationFailed {
+  type: EventType.CERT_REVOCATION_FAILED;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+    applicationId: string;
+    applicationName?: string | null;
+    revocationReason: CrlReason;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
+    error: string;
   };
 }
 
@@ -6072,6 +6111,7 @@ interface OrgUpdateEvent {
     defaultMembershipRoleSlug?: string;
     enforceMfa?: boolean;
     selectedMfaMethod?: string;
+    allowedMfaMethods?: string[];
     allowSecretSharingOutsideOrganization?: boolean;
     bypassOrgAuthEnabled?: boolean;
     userTokenExpiration?: string;
@@ -7739,6 +7779,8 @@ interface ApprovalRequestCancelEvent {
     approvalRequestId: string;
     requesterName: string;
     requesterEmail: string;
+    // Set when Infisical cancelled the request rather than its requester.
+    reason?: string;
   } & TApprovalRequestSubjectMetadata;
 }
 
@@ -8982,6 +9024,8 @@ export type Event =
   | GetCert
   | DeleteCert
   | RevokeCert
+  | RequestCertRevocation
+  | CertRevocationFailed
   | AssignCertToApplication
   | GetCertBody
   | GetCertPrivateKey

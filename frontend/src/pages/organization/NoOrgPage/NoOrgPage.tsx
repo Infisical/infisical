@@ -102,11 +102,11 @@ export const NoOrgPage = () => {
     <>
       <PageTitle title={t("page-titles.create-organization")} />
       <link rel="icon" href="/infisical.ico" />
-      <div className="min-h-screen bg-page">
+      <div className="min-h-dvh bg-page">
         {failed ? (
           <CreateOrgModal isOpen logoutOnClose />
         ) : (
-          <div className="h-screen">
+          <div className="h-dvh">
             <PageLoader text="Setting up your organization..." />
           </div>
         )}
