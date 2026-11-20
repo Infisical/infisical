@@ -192,16 +192,37 @@ const pamRow = (request: TPamAccessRequest, href: string): HomeApproval => {
 
 const BYPASS_TITLE = "Access approval bypassed";
 
-const breakGlassRow = (notification: TUserNotification): HomeApproval => {
+const unescape = (text: string) => text.replace(/\\(.)/g, "$1");
+
+const breakGlassRow = (
+  notification: TUserNotification,
+  orgId: string,
+  recent: TPamAccessRequest[]
+): HomeApproval => {
   const body = notification.body ?? "";
   const [requester, account] = [...body.matchAll(/\*\*(.+?)\*\*/g)].map((match) =>
-    match[1].replace(/\\(.)/g, "$1")
+    unescape(match[1])
   );
-  const reason = body.match(/Reason: "(.*)"$/)?.[1]?.replace(/\\(.)/g, "$1");
+  const sentAt = new Date(notification.createdAt).getTime();
+  const request = recent
+    .filter(
+      (item) =>
+        item.isBreakGlass && item.accountName === account && item.requesterName === requester
+    )
+    .sort(
+      (a, b) =>
+        Math.abs(new Date(a.updatedAt).getTime() - sentAt) -
+        Math.abs(new Date(b.updatedAt).getTime() - sentAt)
+    )[0];
+  const folderId = request?.requestData?.requestData.folderId;
+  const reason =
+    request?.bypassReason ?? body.match(/Reason: "([\s\S]*)"$/)?.[1]?.replace(/\\([\s\S])/g, "$1");
   return {
     id: notification.id,
     createdAt: notification.createdAt,
-    href: notification.link ?? undefined,
+    href: folderId
+      ? `/organizations/${orgId}/pam/accounts?folderId=${folderId}&tab=approvals`
+      : (notification.link ?? undefined),
     product: ProjectType.PAM,
     subject: "Break-glass",
     action: account ? ` access to ${account}` : " access",
@@ -368,6 +389,23 @@ export const homeLive: HomeAdapter = {
         })
       )
     });
+    const bypasses = all.filter(
+      (notification) =>
+        notification.type === NotificationType.ACCESS_APPROVAL_REQUEST_UPDATED &&
+        notification.title === BYPASS_TITLE &&
+        !notification.isRead
+    );
+    const recentPam = useQuery({
+      queryKey: pamKeys.listAccessRequests({ limit: 100 }),
+      queryFn: async () => {
+        const { data } = await apiRequest.get<{
+          requests: TPamAccessRequest[];
+          totalCount: number;
+        }>("/api/v1/pam/access-requests", { params: { limit: 100 } });
+        return data;
+      },
+      enabled: pamMember && bypasses.length > 0
+    });
     const lookups = [
       ...changeDetails,
       ...accessLists,
@@ -418,12 +456,8 @@ export const homeLive: HomeAdapter = {
         pamRow(request, `/organizations/${orgId}/pam/approval-requests?requestId=${request.id}`)
       ];
     });
-    const breakGlass = all.flatMap((notification) =>
-      notification.type === NotificationType.ACCESS_APPROVAL_REQUEST_UPDATED &&
-      notification.title === BYPASS_TITLE &&
-      !notification.isRead
-        ? [breakGlassRow(notification)]
-        : []
+    const breakGlass = bypasses.map((notification) =>
+      breakGlassRow(notification, orgId, recentPam.data?.requests ?? [])
     );
     const attention = all.flatMap((notification): HomeAttention[] =>
       notification.type in ATTENTION_PRODUCT && !notification.isRead
