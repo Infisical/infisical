@@ -86,6 +86,13 @@ const buildFactory = (connection: Record<string, unknown> = buildConnection()) =
 
 const callback = vi.fn(async (credentials?: unknown) => credentials as any);
 
+const TOKEN_SETTINGS = {
+  name: "ci-token",
+  description: "Used by CI",
+  scopes: ["read_api", "read_repository"],
+  accessLevel: GitLabTokenAccessLevel.Developer
+};
+
 const createInput = (parameters: Record<string, unknown>) => ({
   name: "gitlab-rotation",
   projectId: "project-id",
@@ -131,7 +138,7 @@ describe("gitLabGroupAccessTokenRotationFactory", () => {
     });
     expect(options.headers["PRIVATE-TOKEN"]).toBe("connection-token");
     expect(options["axios-retry"]).toEqual({ retries: 0 });
-    expect(result).toEqual({ tokenId: "101", token: "glpat-new" });
+    expect(result).toEqual({ tokenId: "101", token: "glpat-new", settings: TOKEN_SETTINGS });
     expect(deleteMock).not.toHaveBeenCalled();
   });
 
@@ -213,7 +220,7 @@ describe("gitLabGroupAccessTokenRotationFactory", () => {
 
     expect(deleteMock).toHaveBeenCalledWith(`${TOKENS_URL}/77`, expect.anything());
     expect(deleteMock.mock.invocationCallOrder[0]).toBeLessThan(postMock.mock.invocationCallOrder[0]);
-    expect(result).toEqual({ tokenId: "101", token: "glpat-new" });
+    expect(result).toEqual({ tokenId: "101", token: "glpat-new", settings: TOKEN_SETTINGS });
   });
 
   it("does not create a token when the inactive one cannot be revoked", async () => {
@@ -240,8 +247,84 @@ describe("gitLabGroupAccessTokenRotationFactory", () => {
     expect(postMock).toHaveBeenCalledTimes(1);
     expect(callback).toHaveBeenCalledWith({
       tokenId: "101",
-      token: "glpat-new"
+      token: "glpat-new",
+      settings: TOKEN_SETTINGS
     });
+  });
+
+  it("rotates the inactive token in place while its settings are unchanged, keeping its bot user", async () => {
+    postMock.mockResolvedValue({ data: { id: 102, token: "glpat-rotated" } });
+
+    const result = await buildFactory().rotateCredentials(
+      { tokenId: "77", token: "glpat-old", settings: TOKEN_SETTINGS },
+      callback,
+      { tokenId: "88", token: "glpat-active" }
+    );
+
+    expect(postMock).toHaveBeenCalledTimes(1);
+    const [url, body, options] = postMock.mock.calls[0];
+    expect(url).toBe(`${TOKENS_URL}/77/rotate`);
+    expect(body).toEqual({ expires_at: "2027-01-20" });
+    expect(options["axios-retry"]).toEqual({ retries: 0 });
+    expect(deleteMock).not.toHaveBeenCalled();
+    expect(result).toEqual({ tokenId: "102", token: "glpat-rotated", settings: TOKEN_SETTINGS });
+  });
+
+  it("matches the settings regardless of scope order", async () => {
+    postMock.mockResolvedValue({ data: { id: 102, token: "glpat-rotated" } });
+
+    await buildFactory().rotateCredentials(
+      {
+        tokenId: "77",
+        token: "glpat-old",
+        settings: { ...TOKEN_SETTINGS, scopes: [...TOKEN_SETTINGS.scopes].reverse().sort() }
+      },
+      callback,
+      { tokenId: "88", token: "glpat-active" }
+    );
+
+    expect(postMock.mock.calls[0][0]).toBe(`${TOKENS_URL}/77/rotate`);
+  });
+
+  it("creates a new token when GitLab no longer has the inactive one to rotate", async () => {
+    postMock
+      .mockRejectedValueOnce(axiosError(401, { message: "401 Unauthorized" }))
+      .mockResolvedValueOnce({ data: { id: 101, token: "glpat-new" } });
+
+    const result = await buildFactory().rotateCredentials(
+      { tokenId: "77", token: "glpat-old", settings: TOKEN_SETTINGS },
+      callback,
+      { tokenId: "88", token: "glpat-active" }
+    );
+
+    expect(postMock.mock.calls.map(([url]) => url)).toEqual([`${TOKENS_URL}/77/rotate`, TOKENS_URL]);
+    expect(deleteMock).not.toHaveBeenCalled();
+    expect(result).toEqual({ tokenId: "101", token: "glpat-new", settings: TOKEN_SETTINGS });
+  });
+
+  it("replaces the token with a new one when the rotation's settings changed", async () => {
+    await buildFactory().rotateCredentials(
+      { tokenId: "77", token: "glpat-old", settings: { ...TOKEN_SETTINGS, scopes: ["api"] } },
+      callback,
+      { tokenId: "88", token: "glpat-active" }
+    );
+
+    expect(deleteMock).toHaveBeenCalledWith(`${TOKENS_URL}/77`, expect.anything());
+    expect(postMock.mock.calls.map(([url]) => url)).toEqual([TOKENS_URL]);
+    expect(deleteMock.mock.invocationCallOrder[0]).toBeLessThan(postMock.mock.invocationCallOrder[0]);
+  });
+
+  it("does not create a token when GitLab fails to rotate the inactive one", async () => {
+    postMock.mockRejectedValue(axiosError(500, { message: "500 Internal Server Error" }));
+
+    await expect(
+      buildFactory().rotateCredentials({ tokenId: "77", token: "glpat-old", settings: TOKEN_SETTINGS }, callback, {
+        tokenId: "88",
+        token: "glpat-active"
+      })
+    ).rejects.toThrow("Failed to rotate GitLab token '77' of group '34'");
+    expect(postMock).toHaveBeenCalledTimes(1);
+    expect(callback).not.toHaveBeenCalled();
   });
 
   it("revokes every tracked token, tolerating ones that are already gone", async () => {

@@ -89,6 +89,8 @@ const buildFactory = (connection: Record<string, unknown> = buildConnection()) =
 
 const callback = vi.fn(async (credentials?: unknown) => credentials as any);
 
+const TOKEN_SETTINGS = { name: "ci-token", description: "Used by CI", scopes: ["read_api", "read_repository"] };
+
 describe("gitLabServiceAccountTokenRotationFactory", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -117,7 +119,7 @@ describe("gitLabServiceAccountTokenRotationFactory", () => {
     });
     expect(options.headers["PRIVATE-TOKEN"]).toBe("connection-token");
     expect(options["axios-retry"]).toEqual({ retries: 0 });
-    expect(result).toEqual({ tokenId: "101", token: "glpat-new" });
+    expect(result).toEqual({ tokenId: "101", token: "glpat-new", settings: TOKEN_SETTINGS });
     expect(deleteMock).not.toHaveBeenCalled();
   });
 
@@ -228,7 +230,7 @@ describe("gitLabServiceAccountTokenRotationFactory", () => {
 
     expect(deleteMock).toHaveBeenCalledWith(`${TOKENS_URL}/77`, expect.anything());
     expect(deleteMock.mock.invocationCallOrder[0]).toBeLessThan(postMock.mock.invocationCallOrder[0]);
-    expect(result).toEqual({ tokenId: "101", token: "glpat-new" });
+    expect(result).toEqual({ tokenId: "101", token: "glpat-new", settings: TOKEN_SETTINGS });
   });
 
   it("only creates a token on the first rotation, when there is no inactive token", async () => {
@@ -260,7 +262,22 @@ describe("gitLabServiceAccountTokenRotationFactory", () => {
     });
 
     expect(postMock).toHaveBeenCalledTimes(1);
-    expect(callback).toHaveBeenCalledWith({ tokenId: "101", token: "glpat-new" });
+    expect(callback).toHaveBeenCalledWith({ tokenId: "101", token: "glpat-new", settings: TOKEN_SETTINGS });
+  });
+
+  it("rotates the service account's inactive token in place while its settings are unchanged", async () => {
+    postMock.mockResolvedValue({ data: { id: 102, token: "glpat-rotated" } });
+
+    const result = await buildFactory().rotateCredentials(
+      { tokenId: "77", token: "glpat-old", settings: TOKEN_SETTINGS },
+      callback,
+      { tokenId: "88", token: "glpat-active" }
+    );
+
+    expect(postMock).toHaveBeenCalledTimes(1);
+    expect(postMock.mock.calls[0][0]).toBe(`${TOKENS_URL}/77/rotate`);
+    expect(deleteMock).not.toHaveBeenCalled();
+    expect(result).toEqual({ tokenId: "102", token: "glpat-rotated", settings: TOKEN_SETTINGS });
   });
 
   it("revokes every tracked token, tolerating ones that are already gone", async () => {

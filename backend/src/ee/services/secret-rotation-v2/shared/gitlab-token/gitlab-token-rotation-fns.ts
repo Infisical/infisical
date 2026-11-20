@@ -133,6 +133,63 @@ export const createGitLabToken = async ({
   }
 };
 
+/**
+ * Rotates a token in place: GitLab revokes it and issues the replacement to the same user, so a group
+ * access token keeps its bot user. Returns null when GitLab no longer has the token (revoked, expired or
+ * deleted). Rotating a token that was already revoked also makes GitLab revoke every active token rotated
+ * from it, including one someone rotated outside Infisical.
+ */
+export const rotateGitLabToken = async ({
+  context,
+  tokensPath,
+  tokenId,
+  rotationInterval,
+  resourceLabel,
+  permissionHint
+}: {
+  context: TGitLabTokenApiContext;
+  tokensPath: string;
+  tokenId: string;
+  rotationInterval: number;
+  resourceLabel: string;
+  permissionHint: string;
+}): Promise<TGitLabTokenCredentials | null> => {
+  try {
+    const { data } = await safeRequest.post<TGitLabCreateTokenResponse>(
+      `${context.apiUrl}${tokensPath}/${encodeURIComponent(tokenId)}/rotate`,
+      { expires_at: getGitLabTokenExpiresAt(rotationInterval) },
+      {
+        headers: { ...context.headers, "Content-Type": "application/json" },
+        // a retried rotate whose first response was lost would find the token revoked and revoke its replacement
+        "axios-retry": { retries: 0 }
+      }
+    );
+
+    if (!data?.id || !data?.token) {
+      throw new BadRequestError({ message: `GitLab did not return a rotated token for ${resourceLabel}` });
+    }
+
+    return { tokenId: data.id.toString(), token: data.token };
+  } catch (error: unknown) {
+    if (error instanceof BadRequestError) throw error;
+
+    if (
+      error instanceof AxiosError &&
+      (error.response?.status === HttpStatusCode.Unauthorized || error.response?.status === HttpStatusCode.NotFound)
+    ) {
+      return null;
+    }
+
+    throw new BadRequestError({
+      message: formatGitLabTokenError(
+        `Failed to rotate GitLab token '${tokenId}' of ${resourceLabel}`,
+        error,
+        permissionHint
+      )
+    });
+  }
+};
+
 export const revokeGitLabToken = async ({
   context,
   tokensPath,
