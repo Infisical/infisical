@@ -16,6 +16,7 @@ import type {
 } from "@app/hooks/api/secretInsights/types";
 
 import { useOrgId } from "../../../access/permissions";
+import { ShowMoreFooter } from "../../../components/show-more-footer";
 import { v4Path } from "../../../links";
 
 const COLLAPSED_ROW_COUNT = 4;
@@ -34,13 +35,13 @@ const WARNING_BADGES: {
   tone: BadgeTone;
   label: (count: number) => string;
 }[] = [
-  { key: "failedRotations", tone: "bad", label: (count) => counted(count, "Failed Rotation") },
-  { key: "failedSyncs", tone: "warn", label: (count) => counted(count, "Failed Sync") },
-  { key: "orphanedLeases", tone: "bad", label: (count) => counted(count, "Orphaned Lease") },
+  { key: "failedRotations", tone: "bad", label: (count) => counted(count, "failed rotation") },
+  { key: "failedSyncs", tone: "warn", label: (count) => counted(count, "failed sync") },
+  { key: "orphanedLeases", tone: "bad", label: (count) => counted(count, "orphaned lease") },
   {
     key: "duplicatedSecrets",
     tone: "soft",
-    label: (count) => `${count.toLocaleString()} Duplicated`
+    label: (count) => `${count.toLocaleString()} duplicated`
   }
 ];
 
@@ -93,22 +94,28 @@ export const ProjectsInsightsCard = ({
   const isSearching = search.trim().length > 0;
   const rows = showAll || isSearching ? filtered : filtered.slice(0, COLLAPSED_ROW_COUNT);
 
-  const loadMore = () => {
-    if (isSearching) return undefined;
+  const footer = () => {
+    if (isSearching || filtered.length === 0) return undefined;
+    const status = `Showing ${rows.length.toLocaleString()} of ${filtered.length.toLocaleString()}${hasMore ? "+" : ""} projects`;
     if (hasMore)
-      return {
-        label: "Show More Projects",
-        loading: isLoadingMore,
-        onClick: () => {
-          setShowAll(true);
-          onLoadMore();
-        }
-      };
+      return (
+        <ShowMoreFooter
+          status={status}
+          loading={isLoadingMore}
+          onShowMore={() => {
+            setShowAll(true);
+            onLoadMore();
+          }}
+        />
+      );
     if (filtered.length <= COLLAPSED_ROW_COUNT) return undefined;
-    return {
-      label: showAll ? "Show Fewer" : "Show More",
-      onClick: () => setShowAll((current) => !current)
-    };
+    return (
+      <ShowMoreFooter
+        status={status}
+        label={showAll ? "Show fewer" : "Show more"}
+        onShowMore={() => setShowAll((current) => !current)}
+      />
+    );
   };
 
   const empty = () => {
@@ -146,7 +153,7 @@ export const ProjectsInsightsCard = ({
     },
     {
       id: "stale",
-      header: "Stale Secrets",
+      header: "Stale secrets",
       align: "end",
       width: 140,
       render: (project) =>
@@ -162,6 +169,8 @@ export const ProjectsInsightsCard = ({
     <Card
       variant="framed"
       title="Projects"
+      footer={footer()}
+      footerPlacement="frame"
       action={
         <Inline gap={8} wrap={false}>
           <Tabs
@@ -170,8 +179,8 @@ export const ProjectsInsightsCard = ({
             value={view}
             onValueChange={setView}
             tabs={[
-              { value: NEEDS_ATTENTION, label: "Needs Attention" },
-              { value: ALL_PROJECTS, label: "All Projects" }
+              { value: NEEDS_ATTENTION, label: "Needs attention" },
+              { value: ALL_PROJECTS, label: "All projects" }
             ]}
           />
           <HeaderSearch
@@ -190,7 +199,6 @@ export const ProjectsInsightsCard = ({
         getRowId={(project) => project.projectId}
         rowLabel={(project) => project.projectName}
         empty={empty()}
-        loadMore={loadMore()}
       />
     </Card>
   );

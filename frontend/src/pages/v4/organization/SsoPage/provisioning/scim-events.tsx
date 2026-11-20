@@ -1,14 +1,15 @@
 import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@infisical/cipher/ui/hover-card";
 import { Json, type JsonValue } from "@infisical/cipher/ui/json";
-import { SettingsCard } from "@infisical/cipher/ui/settings-card";
 
 import { formatDateTime } from "@app/helpers/datetime";
 import { ScimEvent, type ScimEventData } from "@app/hooks/api/scim/types";
 
 import { useOrgId } from "../../../access/permissions";
+import { ShowMoreFooter } from "../../../components/show-more-footer";
 import { useV4Adapter } from "../../../data/adapters";
 
 import styles from "./provisioning.module.css";
@@ -91,10 +92,21 @@ export const ScimEvents = () => {
   const rows = scimEvents?.pages.flat() ?? [];
 
   return (
-    <SettingsCard
-      flush
+    <Card
+      variant="framed"
       title="SCIM events"
-      description="Events provisioned successfully from your SCIM provider in the last 30 days."
+      footerPlacement="frame"
+      footer={
+        <ShowMoreFooter
+          status={
+            rows.length > 0
+              ? `${rows.length.toLocaleString("en-US")}${hasNextPage ? "+" : ""} events in the last 30 days`
+              : "Last 30 days"
+          }
+          loading={isFetchingNextPage}
+          onShowMore={hasNextPage ? () => fetchNextPage() : undefined}
+        />
+      }
     >
       <DataTable
         label="SCIM events"
@@ -104,12 +116,6 @@ export const ScimEvents = () => {
         loadingRows={5}
         getRowId={(row) => row.id}
         rowLabel={(row) => `${row.eventType} at ${row.createdAt}`}
-        loadMore={
-          hasNextPage
-            ? { label: "Load more", loading: isFetchingNextPage, onClick: () => fetchNextPage() }
-            : undefined
-        }
-        end={isPending || rows.length === 0 ? undefined : "End of logs"}
         empty={
           <EmptyState
             size="sm"
@@ -120,6 +126,6 @@ export const ScimEvents = () => {
           />
         }
       />
-    </SettingsCard>
+    </Card>
   );
 };

@@ -32,6 +32,7 @@ import { Dash } from "../../access/org/detail-parts";
 import { formatDateTime } from "../../access/roles";
 import { toast } from "../../access/toast";
 import { EditDetailsButton, RESTRICTED } from "../../access/ui";
+import { ShowMoreFooter } from "../../components/show-more-footer";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, useGo, v4Path } from "../../links";
@@ -146,9 +147,24 @@ const LogsCard = ({ sync }: { sync: TPkiSync }) => {
       </Card>
     );
   const rows = logs.error ? [] : (logs.data?.pages ?? []).flat();
-  const lastPage = logs.data?.pages.at(-1);
+  const canLoadMore = logs.hasNextPage && logs.data?.pages.at(-1)?.length === LOG_PAGE_SIZE;
   return (
-    <Card variant="framed" title="Sync logs" footer={`Last ${days} days`} footerPlacement="frame">
+    <Card
+      variant="framed"
+      title="Sync logs"
+      footerPlacement="frame"
+      footer={
+        <ShowMoreFooter
+          status={
+            rows.length > 0
+              ? `${rows.length.toLocaleString("en-US")}${canLoadMore ? "+" : ""} events in the last ${days} days`
+              : `Last ${days} days`
+          }
+          loading={logs.isFetchingNextPage}
+          onShowMore={canLoadMore ? () => logs.fetchNextPage() : undefined}
+        />
+      }
+    >
       <DataTable
         label="Sync logs"
         rows={rows}
@@ -157,15 +173,6 @@ const LogsCard = ({ sync }: { sync: TPkiSync }) => {
         loadingRows={3}
         getRowId={(log) => log.id}
         rowLabel={(log) => `${log.event.type} at ${formatDateTime(log.createdAt)}`}
-        loadMore={
-          logs.hasNextPage && lastPage?.length === LOG_PAGE_SIZE
-            ? {
-                label: `Load ${LOG_PAGE_SIZE} more`,
-                loading: logs.isFetchingNextPage,
-                onClick: () => logs.fetchNextPage()
-              }
-            : undefined
-        }
         empty={
           logs.error ? (
             <EmptyState
