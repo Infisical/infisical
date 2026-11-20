@@ -182,8 +182,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     method: "GET",
     url: "/raw",
     config: {
-      rateLimit: secretsLimit,
-      limitSecretReadConcurrency: true
+      rateLimit: secretsLimit
     },
     serializerCompiler: fastJsonSerializerCompiler,
     schema: {
@@ -351,7 +350,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         recursive: req.query.recursive,
         tagSlugs: req.query.tagSlugs,
         ifNoneMatch: req.headers["if-none-match"],
-        abortSignal: getClientDisconnectSignal(reply)
+        abortSignal: getClientDisconnectSignal(reply),
+        secretReadSlot: server.secretReadSlot(req, reply)
       });
 
       const { secrets, imports, etag, notModified } = result;
@@ -1067,8 +1067,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     method: "GET",
     url: "/",
     config: {
-      rateLimit: secretsLimit,
-      limitSecretReadConcurrency: true
+      rateLimit: secretsLimit
     },
     schema: {
       deprecated: true,
@@ -1124,18 +1123,21 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       AuthMode.IDENTITY_ACCESS_TOKEN,
       AuthMode.OAUTH
     ]),
-    handler: async (req) => {
-      const { secrets, imports } = await server.services.secret.getSecrets({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        environment: req.query.environment,
-        projectId: req.query.workspaceId,
-        path: req.query.secretPath,
-        includeImports: req.query.include_imports,
-        recursive: req.query.recursive
-      });
+    handler: async (req, reply) => {
+      const readSlot = server.secretReadSlot(req, reply);
+      const { secrets, imports } = await readSlot(() =>
+        server.services.secret.getSecrets({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          environment: req.query.environment,
+          projectId: req.query.workspaceId,
+          path: req.query.secretPath,
+          includeImports: req.query.include_imports,
+          recursive: req.query.recursive
+        })
+      );
 
       await server.services.auditLog.createAuditLog({
         projectId: req.query.workspaceId,

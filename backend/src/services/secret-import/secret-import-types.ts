@@ -1,3 +1,4 @@
+import { TConcurrencySlot } from "@app/lib/concurrency/concurrency-limiter";
 import { TProjectPermission } from "@app/lib/types";
 
 export type TCreateSecretImportDTO = {
@@ -49,6 +50,7 @@ export type TGetSecretsFromImportDTO = {
 
 export type TGetRawSecretsFromImportDTO = TGetSecretsFromImportDTO & {
   ifNoneMatch?: string;
+  secretReadSlot?: TConcurrencySlot;
 };
 
 export type FolderResult = {

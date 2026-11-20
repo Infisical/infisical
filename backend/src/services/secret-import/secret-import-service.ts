@@ -941,7 +941,8 @@ export const secretImportServiceFactory = ({
     actorAuthMethod,
     actorId,
     actorOrgId,
-    ifNoneMatch
+    ifNoneMatch,
+    secretReadSlot
   }: TGetRawSecretsFromImportDTO): Promise<{
     secrets: TRawSecretsV2FromImports;
     etag?: string;
@@ -1014,74 +1015,80 @@ export const secretImportServiceFactory = ({
       await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
     };
 
-    const encryptedCachedSecrets = await keyStore.getItemBuffer(cacheKey);
-    if (encryptedCachedSecrets) {
-      try {
-        await keyStore.setExpiry(cacheKey, SECRET_DAL_TTL());
-        const cachedSecrets = await decompressZstd(secretManagerDecryptor({ cipherTextBlob: encryptedCachedSecrets }));
-        const cachedEtag = `"${generateCacheKeyFromBuffer(cachedSecrets)}"`;
-        const { secrets } = JSON.parse(cachedSecrets.toString("utf8")) as { secrets: TRawSecretsV2FromImports };
-        for (const importedFolder of secrets) {
-          for (const secret of importedFolder.secrets) {
-            secret.createdAt = new Date(secret.createdAt);
-            secret.updatedAt = new Date(secret.updatedAt);
+    const loadSecrets = async () => {
+      const encryptedCachedSecrets = await keyStore.getItemBuffer(cacheKey);
+      if (encryptedCachedSecrets) {
+        try {
+          await keyStore.setExpiry(cacheKey, SECRET_DAL_TTL());
+          const cachedSecrets = await decompressZstd(
+            secretManagerDecryptor({ cipherTextBlob: encryptedCachedSecrets })
+          );
+          const cachedEtag = `"${generateCacheKeyFromBuffer(cachedSecrets)}"`;
+          const { secrets } = JSON.parse(cachedSecrets.toString("utf8")) as { secrets: TRawSecretsV2FromImports };
+          for (const importedFolder of secrets) {
+            for (const secret of importedFolder.secrets) {
+              secret.createdAt = new Date(secret.createdAt);
+              secret.updatedAt = new Date(secret.updatedAt);
+            }
           }
+          await storeEtag(cachedEtag);
+          recordSecretCacheAccessMetric(SecretCacheAccessResult.HIT, { hasIfNoneMatch, etagMissReason });
+          return { secrets, etag: cachedEtag };
+        } catch (err) {
+          logger.error(err, "Secret imports service layer cache miss");
+          await keyStore.deleteItem(cacheKey);
         }
-        await storeEtag(cachedEtag);
-        recordSecretCacheAccessMetric(SecretCacheAccessResult.HIT, { hasIfNoneMatch, etagMissReason });
-        return { secrets, etag: cachedEtag };
-      } catch (err) {
-        logger.error(err, "Secret imports service layer cache miss");
-        await keyStore.deleteItem(cacheKey);
       }
-    }
 
-    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder) return { secrets: [] };
-    const secretImports = (
-      await $annotateCrossProjectImports(
-        await secretImportDAL.find({ folderId: folder.id, isReplication: false }),
+      const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+      if (!folder) return { secrets: [] };
+      const secretImports = (
+        await $annotateCrossProjectImports(
+          await secretImportDAL.find({ folderId: folder.id, isReplication: false }),
+          projectId,
+          actorOrgId
+        )
+      ).filter((imp) => !imp.isAccessRevoked);
+
+      const importedSecrets = await fnSecretsV2FromImports({
+        secretImports,
+        folderDAL,
+        viewSecretValue: true,
+        secretDAL: secretV2BridgeDAL,
+        secretImportDAL,
+        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
+        importAccessScopeByFolderId: new Map([[folder.id, { environment, secretPath }]]),
+        hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
+          hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+            environment: expandEnvironment,
+            secretPath: expandSecretPath,
+            secretName: expandSecretKey,
+            secretTags: expandSecretTags
+          }),
         projectId,
-        actorOrgId
-      )
-    ).filter((imp) => !imp.isAccessRevoked);
+        projectFolderGrantDAL,
+        actorOrgId,
+        orgDAL,
+        kmsDataKeyService
+      });
 
-    const importedSecrets = await fnSecretsV2FromImports({
-      secretImports,
-      folderDAL,
-      viewSecretValue: true,
-      secretDAL: secretV2BridgeDAL,
-      secretImportDAL,
-      decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
-      importAccessScopeByFolderId: new Map([[folder.id, { environment, secretPath }]]),
-      hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
-        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-          environment: expandEnvironment,
-          secretPath: expandSecretPath,
-          secretName: expandSecretKey,
-          secretTags: expandSecretTags
-        }),
-      projectId,
-      projectFolderGrantDAL,
-      actorOrgId,
-      orgDAL,
-      kmsDataKeyService
-    });
+      const serializedPayload = Buffer.from(JSON.stringify({ secrets: importedSecrets }));
+      const computedEtag = `"${generateCacheKeyFromBuffer(serializedPayload)}"`;
+      const encryptedPayload = secretManagerEncryptor({
+        plainText: await compressZstd(serializedPayload)
+      }).cipherTextBlob;
+      const cacheBytes = encryptedPayload.byteLength;
+      const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;
+      if (stored) {
+        await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedPayload);
+      }
+      recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
+      recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
+      await storeEtag(computedEtag);
+      return { secrets: importedSecrets, etag: computedEtag };
+    };
 
-    const serializedPayload = Buffer.from(JSON.stringify({ secrets: importedSecrets }));
-    const computedEtag = `"${generateCacheKeyFromBuffer(serializedPayload)}"`;
-    const encryptedPayload = secretManagerEncryptor({
-      plainText: await compressZstd(serializedPayload)
-    }).cipherTextBlob;
-    const cacheBytes = encryptedPayload.byteLength;
-    const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;
-    if (stored) {
-      await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedPayload);
-    }
-    recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
-    recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
-    await storeEtag(computedEtag);
-    return { secrets: importedSecrets, etag: computedEtag };
+    return secretReadSlot ? secretReadSlot(loadSecrets) : loadSecrets();
   };
 
   const $getRawSecretsV1FromImports = async ({
@@ -1157,7 +1164,10 @@ export const secretImportServiceFactory = ({
     // so must not run before the caller is authorized. A missing project takes the V2 path, whose permission check
     // refuses it.
     const project = await projectDAL.findById(dto.projectId);
-    if (project && project.version !== 3) return { secrets: await $getRawSecretsV1FromImports(dto) };
+    if (project && project.version !== 3) {
+      const loadSecrets = () => $getRawSecretsV1FromImports(dto);
+      return { secrets: await (dto.secretReadSlot ? dto.secretReadSlot(loadSecrets) : loadSecrets()) };
+    }
     return $getRawSecretsV2FromImports(dto);
   };
 

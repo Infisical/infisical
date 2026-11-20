@@ -481,8 +481,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     url: "/secrets",
     method: "GET",
     config: {
-      rateLimit: secretsLimit,
-      limitSecretReadConcurrency: true
+      rateLimit: secretsLimit
     },
     serializerCompiler: fastJsonSerializerCompiler,
     schema: {
@@ -527,7 +526,8 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.query,
-        ifNoneMatch: req.headers["if-none-match"]
+        ifNoneMatch: req.headers["if-none-match"],
+        secretReadSlot: server.secretReadSlot(req, reply)
       });
 
       if (etag) {

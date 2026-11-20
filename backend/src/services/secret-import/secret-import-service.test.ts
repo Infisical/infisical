@@ -2,6 +2,7 @@ import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { compressZstd } from "@app/lib/compression";
+import { TConcurrencySlot } from "@app/lib/concurrency/concurrency-limiter";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
@@ -110,5 +111,65 @@ describe("getRawSecretsFromImports ETag", () => {
     const afterWrite = await read(oldEtag);
     expect(afterWrite.notModified).toBeUndefined();
     expect(afterWrite.etag).not.toBe(oldEtag);
+  });
+});
+
+describe("getRawSecretsFromImports read slot", () => {
+  const buildCachedService = async () => {
+    const { keyStore } = await createRacingKeyStore();
+    const service = secretImportServiceFactory({
+      keyStore,
+      projectDAL: { findById: vi.fn().mockResolvedValue({ id: "project-1", version: 3 }) },
+      folderDAL: { findBySecretPath: vi.fn().mockResolvedValue(null) },
+      permissionService: {
+        getProjectPermission: vi
+          .fn()
+          .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
+        getProjectPermissionCacheFingerprint: vi.fn().mockResolvedValue("")
+      },
+      kmsDataKeyService: {
+        createCipherPairWithDataKey: vi.fn().mockResolvedValue({
+          decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob,
+          encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: plainText })
+        })
+      }
+    } as unknown as Parameters<typeof secretImportServiceFactory>[0]);
+    const slotTaken = vi.fn();
+    const secretReadSlot: TConcurrencySlot = (work) => {
+      slotTaken();
+      return work();
+    };
+    const read = (ifNoneMatch?: string) =>
+      service.getRawSecretsFromImports({
+        projectId: "project-1",
+        environment: "dev",
+        path: "/",
+        actor: ActorType.USER,
+        actorId: "user-1",
+        actorAuthMethod: null,
+        actorOrgId: "org-1",
+        ifNoneMatch,
+        secretReadSlot
+      });
+    return { keyStore, read, slotTaken };
+  };
+
+  test("takes a slot for a cache hit, and none to answer 304", async () => {
+    const { read, slotTaken } = await buildCachedService();
+
+    const { etag } = await read();
+    expect(slotTaken).toHaveBeenCalledTimes(1);
+
+    expect((await read(etag)).notModified).toBe(true);
+    expect(slotTaken).toHaveBeenCalledTimes(1);
+  });
+
+  test("takes a slot for a read the cache cannot answer", async () => {
+    const { keyStore, read, slotTaken } = await buildCachedService();
+    keyStore.getItemBuffer.mockResolvedValue(undefined);
+
+    await expect(read()).resolves.toEqual({ secrets: [] });
+
+    expect(slotTaken).toHaveBeenCalledTimes(1);
   });
 });

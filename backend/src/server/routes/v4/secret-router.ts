@@ -68,8 +68,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/",
     config: {
-      rateLimit: secretsLimit,
-      limitSecretReadConcurrency: true
+      rateLimit: secretsLimit
     },
     serializerCompiler: fastJsonSerializerCompiler,
     schema: {
@@ -227,7 +226,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         recursive: req.query.recursive,
         tagSlugs: req.query.tagSlugs,
         ifNoneMatch: req.headers["if-none-match"],
-        abortSignal: getClientDisconnectSignal(reply)
+        abortSignal: getClientDisconnectSignal(reply),
+        secretReadSlot: server.secretReadSlot(req, reply)
       });
 
       const { secrets, imports, etag, notModified } = result;

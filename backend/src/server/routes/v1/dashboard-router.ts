@@ -2082,8 +2082,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     url: "/secret-imports",
     method: "GET",
     config: {
-      rateLimit: secretsLimit,
-      limitSecretReadConcurrency: true
+      rateLimit: secretsLimit
     },
     serializerCompiler: fastJsonSerializerCompiler,
     schema: {

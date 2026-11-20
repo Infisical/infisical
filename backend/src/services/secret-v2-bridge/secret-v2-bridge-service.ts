@@ -1400,6 +1400,7 @@ export const secretV2BridgeServiceFactory = ({
       ifNoneMatch,
       abortSignal,
       onSecretReferenced,
+      secretReadSlot,
       ...params
     } = dto;
 
@@ -1476,261 +1477,373 @@ export const secretV2BridgeServiceFactory = ({
         projectId
       });
 
-    const encryptedCachedSecrets = await keyStore.getItemBuffer(cacheKey);
-    if (encryptedCachedSecrets) {
-      try {
-        await keyStore.setExpiry(cacheKey, SECRET_DAL_TTL());
-        const cachedSecrets = await decompressZstd(secretManagerDecryptor({ cipherTextBlob: encryptedCachedSecrets }));
-        // Decompressed bytes are the exact serialized payload the miss path hashed, so hashing them reproduces
-        // the same ETag without re-serializing the object.
-        const cachedEtag = `"${generateCacheKeyFromBuffer(cachedSecrets)}"`;
-        const {
-          secrets,
-          imports = [],
-          referencedSecretIds: cachedReferencedSecretIds = []
-        } = JSON.parse(cachedSecrets.toString("utf8")) as {
-          secrets: typeof decryptedSecrets;
-          imports: typeof importedSecrets;
-          referencedSecretIds?: string[];
+    const loadSecrets = async () => {
+      const encryptedCachedSecrets = await keyStore.getItemBuffer(cacheKey);
+      if (encryptedCachedSecrets) {
+        try {
+          await keyStore.setExpiry(cacheKey, SECRET_DAL_TTL());
+          const cachedSecrets = await decompressZstd(
+            secretManagerDecryptor({ cipherTextBlob: encryptedCachedSecrets })
+          );
+          // Decompressed bytes are the exact serialized payload the miss path hashed, so hashing them reproduces
+          // the same ETag without re-serializing the object.
+          const cachedEtag = `"${generateCacheKeyFromBuffer(cachedSecrets)}"`;
+          const {
+            secrets,
+            imports = [],
+            referencedSecretIds: cachedReferencedSecretIds = []
+          } = JSON.parse(cachedSecrets.toString("utf8")) as {
+            secrets: typeof decryptedSecrets;
+            imports: typeof importedSecrets;
+            referencedSecretIds?: string[];
+          };
+          cachedReferencedSecretIds.forEach((secretId) => onSecretReferenced?.(secretId));
+          // Parsed array is owned here, so rehydrate dates in place instead of cloning every secret.
+          for (const secret of secrets) {
+            secret.createdAt = new Date(secret.createdAt);
+            secret.updatedAt = new Date(secret.updatedAt);
+          }
+          const payload = { secrets, imports };
+          await keyStore.hashSet(etagRedisKey, etagField, cachedEtag);
+          await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
+          recordSecretCacheAccessMetric(SecretCacheAccessResult.HIT, { hasIfNoneMatch, etagMissReason });
+          return { ...payload, etag: cachedEtag };
+        } catch (err) {
+          logger.error(err, "Secret service layer cache miss");
+          await keyStore.deleteItem(cacheKey);
+        }
+      }
+
+      let paths: { folderId: string; path: string }[] = [];
+
+      if (recursive) {
+        const deepPaths = await recursivelyGetSecretPaths({
+          folderDAL,
+          projectEnvDAL,
+          projectId,
+          environment,
+          currentPath: path
+        });
+
+        if (!deepPaths?.length) {
+          throw new NotFoundError({
+            message: `Folder with path '${path}' in environment '${environment}' was not found. Please ensure the environment slug and secret path is correct.`,
+            name: "SecretPathNotFound"
+          });
+        }
+
+        paths = deepPaths.map(({ folderId, path: p }) => ({ folderId, path: p }));
+      } else {
+        const folder = await folderDAL.findBySecretPath(projectId, environment, path);
+        if (!folder) {
+          throw new NotFoundError({
+            message: `Folder with path '${path}' in environment '${environment}' was not found. Please ensure the environment slug and secret path is correct.`,
+            name: "SecretPathNotFound"
+          });
+        }
+
+        paths = [{ folderId: folder.id, path }];
+      }
+
+      const groupedPaths = groupBy(paths, (p) => p.folderId);
+
+      const unfilteredSecrets = await secretDAL.findByFolderIds({
+        folderIds: paths.map((p) => p.folderId),
+        userId: actorId,
+        tx: undefined,
+        filters: params
+      });
+
+      throwIfClientDisconnected(abortSignal);
+
+      let secrets: typeof unfilteredSecrets = [];
+
+      if (personalOverridesBehavior === PersonalOverridesBehavior.IncludeAll) {
+        secrets = unfilteredSecrets;
+      } else if (personalOverridesBehavior === PersonalOverridesBehavior.NeverInclude) {
+        secrets = unfilteredSecrets.filter((el) => el.type === SecretType.Shared);
+      } else if (personalOverridesBehavior === PersonalOverridesBehavior.Priority) {
+        // if include personaloverrides is enabled, personal overrides should take PRIORITY over shared secrets.
+        // this means if the secrets array already contains a shared secret of the same secret, and the current element is a personal secret, we should replace the existing shared secret with the personal secret.
+        // the TLDR is that we should always ensure that there is only ever 1 secret with the same key (in the same folder). and if personal secrets are included, they should take priorty.
+        const secretMap = new Map<string, (typeof unfilteredSecrets)[number]>();
+
+        unfilteredSecrets.forEach((el) => {
+          const key = `${el.key}-${el.folderId}`;
+          const existing = secretMap.get(key);
+
+          if (!existing) {
+            // no duplicate, add it (might be shared, might be personal)
+            secretMap.set(key, el);
+          } else if (el.type === SecretType.Personal) {
+            // duplicate found and current is personal, replace (personal takes priority)
+            secretMap.set(key, el);
+          }
+          // if duplicate found but current is shared, keep existing (which might be personal)
+        });
+
+        secrets = Array.from(secretMap.values());
+      }
+
+      // scott: if any of this changes it also needs to be mirrored in secret rotation for getting dashboard secrets
+      const decryptedSecrets: ReturnType<typeof reshapeBridgeSecret>[] = [];
+      for (const secret of secrets) {
+        const secretPath = groupedPaths[secret.folderId][0].path;
+        const secretSubjectFields = {
+          environment,
+          secretPath,
+          secretName: secret.key,
+          secretTags: secret.tags.map((i) => i.slug)
         };
-        cachedReferencedSecretIds.forEach((secretId) => onSecretReferenced?.(secretId));
-        // Parsed array is owned here, so rehydrate dates in place instead of cloning every secret.
-        for (const secret of secrets) {
-          secret.createdAt = new Date(secret.createdAt);
-          secret.updatedAt = new Date(secret.updatedAt);
-        }
-        const payload = { secrets, imports };
-        await keyStore.hashSet(etagRedisKey, etagField, cachedEtag);
-        await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
-        recordSecretCacheAccessMetric(SecretCacheAccessResult.HIT, { hasIfNoneMatch, etagMissReason });
-        return { ...payload, etag: cachedEtag };
-      } catch (err) {
-        logger.error(err, "Secret service layer cache miss");
-        await keyStore.deleteItem(cacheKey);
-      }
-    }
 
-    let paths: { folderId: string; path: string }[] = [];
-
-    if (recursive) {
-      const deepPaths = await recursivelyGetSecretPaths({
-        folderDAL,
-        projectEnvDAL,
-        projectId,
-        environment,
-        currentPath: path
-      });
-
-      if (!deepPaths?.length) {
-        throw new NotFoundError({
-          message: `Folder with path '${path}' in environment '${environment}' was not found. Please ensure the environment slug and secret path is correct.`,
-          name: "SecretPathNotFound"
-        });
-      }
-
-      paths = deepPaths.map(({ folderId, path: p }) => ({ folderId, path: p }));
-    } else {
-      const folder = await folderDAL.findBySecretPath(projectId, environment, path);
-      if (!folder) {
-        throw new NotFoundError({
-          message: `Folder with path '${path}' in environment '${environment}' was not found. Please ensure the environment slug and secret path is correct.`,
-          name: "SecretPathNotFound"
-        });
-      }
-
-      paths = [{ folderId: folder.id, path }];
-    }
-
-    const groupedPaths = groupBy(paths, (p) => p.folderId);
-
-    const unfilteredSecrets = await secretDAL.findByFolderIds({
-      folderIds: paths.map((p) => p.folderId),
-      userId: actorId,
-      tx: undefined,
-      filters: params
-    });
-
-    throwIfClientDisconnected(abortSignal);
-
-    let secrets: typeof unfilteredSecrets = [];
-
-    if (personalOverridesBehavior === PersonalOverridesBehavior.IncludeAll) {
-      secrets = unfilteredSecrets;
-    } else if (personalOverridesBehavior === PersonalOverridesBehavior.NeverInclude) {
-      secrets = unfilteredSecrets.filter((el) => el.type === SecretType.Shared);
-    } else if (personalOverridesBehavior === PersonalOverridesBehavior.Priority) {
-      // if include personaloverrides is enabled, personal overrides should take PRIORITY over shared secrets.
-      // this means if the secrets array already contains a shared secret of the same secret, and the current element is a personal secret, we should replace the existing shared secret with the personal secret.
-      // the TLDR is that we should always ensure that there is only ever 1 secret with the same key (in the same folder). and if personal secrets are included, they should take priorty.
-      const secretMap = new Map<string, (typeof unfilteredSecrets)[number]>();
-
-      unfilteredSecrets.forEach((el) => {
-        const key = `${el.key}-${el.folderId}`;
-        const existing = secretMap.get(key);
-
-        if (!existing) {
-          // no duplicate, add it (might be shared, might be personal)
-          secretMap.set(key, el);
-        } else if (el.type === SecretType.Personal) {
-          // duplicate found and current is personal, replace (personal takes priority)
-          secretMap.set(key, el);
-        }
-        // if duplicate found but current is shared, keep existing (which might be personal)
-      });
-
-      secrets = Array.from(secretMap.values());
-    }
-
-    // scott: if any of this changes it also needs to be mirrored in secret rotation for getting dashboard secrets
-    const decryptedSecrets: ReturnType<typeof reshapeBridgeSecret>[] = [];
-    for (const secret of secrets) {
-      const secretPath = groupedPaths[secret.folderId][0].path;
-      const secretSubjectFields = {
-        environment,
-        secretPath,
-        secretName: secret.key,
-        secretTags: secret.tags.map((i) => i.slug)
-      };
-
-      const canDescribeSecret = hasSecretReadValueOrDescribePermission(
-        permission,
-        ProjectPermissionSecretActions.DescribeSecret,
-        secretSubjectFields
-      );
-      if (!canDescribeSecret) continue;
-
-      const canReadValue =
-        viewSecretValue &&
-        hasSecretReadValueOrDescribePermission(
+        const canDescribeSecret = hasSecretReadValueOrDescribePermission(
           permission,
-          ProjectPermissionSecretActions.ReadValue,
+          ProjectPermissionSecretActions.DescribeSecret,
           secretSubjectFields
         );
+        if (!canDescribeSecret) continue;
 
-      if (viewSecretValue && !canReadValue) {
-        // Recursive secret, should be filtered out
-        if (secretPath !== path) continue;
-
-        if (throwOnMissingReadValuePermission) {
-          throwIfMissingSecretReadValueOrDescribePermission(
+        const canReadValue =
+          viewSecretValue &&
+          hasSecretReadValueOrDescribePermission(
             permission,
             ProjectPermissionSecretActions.ReadValue,
             secretSubjectFields
           );
+
+        if (viewSecretValue && !canReadValue) {
+          // Recursive secret, should be filtered out
+          if (secretPath !== path) continue;
+
+          if (throwOnMissingReadValuePermission) {
+            throwIfMissingSecretReadValueOrDescribePermission(
+              permission,
+              ProjectPermissionSecretActions.ReadValue,
+              secretSubjectFields
+            );
+          }
+          // Otherwise keep the secret with its value masked below.
         }
-        // Otherwise keep the secret with its value masked below.
+
+        const isPersonalSecret = secret.userId === actorId && secret.type === SecretType.Personal;
+        const isValueMasked = !canReadValue && !isPersonalSecret;
+
+        decryptedSecrets.push(
+          reshapeBridgeSecret(
+            projectId,
+            environment,
+            secretPath,
+            {
+              ...secret,
+              secretMetadata: secret.secretMetadata?.map((el) => ({
+                isEncrypted: Boolean(el.encryptedValue),
+                key: el.key,
+                value: el.encryptedValue
+                  ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+                  : el.value || ""
+              })),
+              value:
+                !isValueMasked && secret.encryptedValue
+                  ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
+                  : "",
+              comment: secret.encryptedComment
+                ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
+                : ""
+            },
+            isValueMasked
+          )
+        );
       }
 
-      const isPersonalSecret = secret.userId === actorId && secret.type === SecretType.Personal;
-      const isValueMasked = !canReadValue && !isPersonalSecret;
+      // note(daniel):  when in relative mode, direct secret references also resolve through imported secrets.
+      // wrap secretDAL with import-aware fetch so the expander sees the full merged view.
+      // A read that expands references with the reader's personal overrides keeps the ids its references resolved to,
+      // since matching a reference by key would credit the shared secret an override replaced. They are cached with
+      // the result, as a cache hit expands nothing. Every other read caches exactly what it did before.
+      const referencedSecretIds = new Set<string>();
+      const collectReferencedSecrets = expandPersonalOverrides
+        ? (_secret: unknown, secretIds: string[]) => secretIds.forEach((secretId) => referencedSecretIds.add(secretId))
+        : undefined;
+      const withReferencedSecretIds = <T extends object>(payload: T) =>
+        referencedSecretIds.size ? { ...payload, referencedSecretIds: [...referencedSecretIds].sort() } : payload;
+      const reportReferencedSecrets = () => referencedSecretIds.forEach((secretId) => onSecretReferenced?.(secretId));
+      // Logged at write time only, so each entry is logged once however often it is hit. The etag lets
+      // us count how many actors cache an identical payload.
+      const logLargeSecretCacheEntry = (entry: {
+        cacheBytes: number;
+        uncompressedBytes: number;
+        stored: boolean;
+        etag: string;
+        importedSecretCount: number;
+      }) => {
+        if (entry.cacheBytes < LARGE_SECRET_CACHE_LOG_BYTES) return;
+        logger.info(
+          `getSecrets: large secret cache entry [projectId=${projectId}] [actorType=${actor}] [actorId=${actorId}] [cacheBytes=${entry.cacheBytes}] [uncompressedBytes=${entry.uncompressedBytes}] [stored=${entry.stored}] [secretCount=${decryptedSecrets.length}] [importedSecretCount=${entry.importedSecretCount}] [environment=${environment}] [path=${path}] [recursive=${Boolean(recursive)}] [includeImports=${Boolean(includeImports)}] [expandSecretReferences=${Boolean(shouldExpandSecretReferences)}] [cacheVersion=${secretDalVersion}] [etag=${entry.etag}]`
+        );
+      };
 
-      decryptedSecrets.push(
-        reshapeBridgeSecret(
-          projectId,
-          environment,
-          secretPath,
-          {
-            ...secret,
-            secretMetadata: secret.secretMetadata?.map((el) => ({
-              isEncrypted: Boolean(el.encryptedValue),
-              key: el.key,
-              value: el.encryptedValue
-                ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
-                : el.value || ""
-            })),
-            value:
-              !isValueMasked && secret.encryptedValue
-                ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
-                : "",
-            comment: secret.encryptedComment
-              ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
-              : ""
-          },
-          isValueMasked
-        )
-      );
-    }
+      const mainExpanderSecretDAL =
+        secretImportReferencesBehavior === SecretImportReferencesBehavior.Relative
+          ? {
+              findByFolderId: createFetchFolderSecretsWithImports({ projectId, secretDAL, secretImportDAL, folderDAL })
+            }
+          : secretDAL;
 
-    // note(daniel):  when in relative mode, direct secret references also resolve through imported secrets.
-    // wrap secretDAL with import-aware fetch so the expander sees the full merged view.
-    // A read that expands references with the reader's personal overrides keeps the ids its references resolved to,
-    // since matching a reference by key would credit the shared secret an override replaced. They are cached with
-    // the result, as a cache hit expands nothing. Every other read caches exactly what it did before.
-    const referencedSecretIds = new Set<string>();
-    const collectReferencedSecrets = expandPersonalOverrides
-      ? (_secret: unknown, secretIds: string[]) => secretIds.forEach((secretId) => referencedSecretIds.add(secretId))
-      : undefined;
-    const withReferencedSecretIds = <T extends object>(payload: T) =>
-      referencedSecretIds.size ? { ...payload, referencedSecretIds: [...referencedSecretIds].sort() } : payload;
-    const reportReferencedSecrets = () => referencedSecretIds.forEach((secretId) => onSecretReferenced?.(secretId));
-    // Logged at write time only, so each entry is logged once however often it is hit. The etag lets
-    // us count how many actors cache an identical payload.
-    const logLargeSecretCacheEntry = (entry: {
-      cacheBytes: number;
-      uncompressedBytes: number;
-      stored: boolean;
-      etag: string;
-      importedSecretCount: number;
-    }) => {
-      if (entry.cacheBytes < LARGE_SECRET_CACHE_LOG_BYTES) return;
-      logger.info(
-        `getSecrets: large secret cache entry [projectId=${projectId}] [actorType=${actor}] [actorId=${actorId}] [cacheBytes=${entry.cacheBytes}] [uncompressedBytes=${entry.uncompressedBytes}] [stored=${entry.stored}] [secretCount=${decryptedSecrets.length}] [importedSecretCount=${entry.importedSecretCount}] [environment=${environment}] [path=${path}] [recursive=${Boolean(recursive)}] [includeImports=${Boolean(includeImports)}] [expandSecretReferences=${Boolean(shouldExpandSecretReferences)}] [cacheVersion=${secretDalVersion}] [etag=${entry.etag}]`
-      );
-    };
-
-    const mainExpanderSecretDAL =
-      secretImportReferencesBehavior === SecretImportReferencesBehavior.Relative
-        ? { findByFolderId: createFetchFolderSecretsWithImports({ projectId, secretDAL, secretImportDAL, folderDAL }) }
-        : secretDAL;
-
-    const { expandSecretReferences } = expandSecretReferencesFactory({
-      projectId,
-      folderDAL,
-      secretDAL: mainExpanderSecretDAL,
-      decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
-      canExpandValue: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
-        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-          environment: expandEnvironment,
-          secretPath: expandSecretPath,
-          secretName: expandSecretKey,
-          secretTags: expandSecretTags
-        }),
-      userId:
-        (personalOverridesBehavior === PersonalOverridesBehavior.Priority ||
-          personalOverridesBehavior === PersonalOverridesBehavior.IncludeAll) &&
-        expandPersonalOverrides
-          ? actorId
-          : undefined,
-      actorOrgId,
-      orgDAL,
-      projectFolderGrantDAL,
-      projectDAL,
-      kmsDataKeyService,
-      // mainExpanderSecretDAL may be import-aware in relative mode. Keep cross-project
-      // reads on the raw DAL so source imports are not resolved through this target project.
-      crossProjectSecretDAL: secretDAL,
-      onSecretExpanded: collectReferencedSecrets,
-      abortSignal
-    });
-
-    if (shouldExpandSecretReferences) {
-      throwIfClientDisconnected(abortSignal);
-      const errors = await expandSecretReferencesGroupedByPath({
-        // expandSecretReferences returns values without "${" unchanged, so skip them rather than await each one
-        secrets: decryptedSecrets.filter((secret) => secret.secretValue.includes("${")),
-        environment,
-        expandSecretReferences
+      const { expandSecretReferences } = expandSecretReferencesFactory({
+        projectId,
+        folderDAL,
+        secretDAL: mainExpanderSecretDAL,
+        decryptSecretValue: (value) =>
+          value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined,
+        canExpandValue: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
+          hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+            environment: expandEnvironment,
+            secretPath: expandSecretPath,
+            secretName: expandSecretKey,
+            secretTags: expandSecretTags
+          }),
+        userId:
+          (personalOverridesBehavior === PersonalOverridesBehavior.Priority ||
+            personalOverridesBehavior === PersonalOverridesBehavior.IncludeAll) &&
+          expandPersonalOverrides
+            ? actorId
+            : undefined,
+        actorOrgId,
+        orgDAL,
+        projectFolderGrantDAL,
+        projectDAL,
+        kmsDataKeyService,
+        // mainExpanderSecretDAL may be import-aware in relative mode. Keep cross-project
+        // reads on the raw DAL so source imports are not resolved through this target project.
+        crossProjectSecretDAL: secretDAL,
+        onSecretExpanded: collectReferencedSecrets,
+        abortSignal
       });
-      if (errors.length > 0) {
-        throw new ForbiddenRequestError({
-          message: "Failed to expand one or more secret references",
-          details: errors.map((err) => err.error)
-        });
-      }
-    }
 
-    if (!includeImports) {
-      const payload = { secrets: decryptedSecrets, imports: [] };
+      if (shouldExpandSecretReferences) {
+        throwIfClientDisconnected(abortSignal);
+        const errors = await expandSecretReferencesGroupedByPath({
+          // expandSecretReferences returns values without "${" unchanged, so skip them rather than await each one
+          secrets: decryptedSecrets.filter((secret) => secret.secretValue.includes("${")),
+          environment,
+          expandSecretReferences
+        });
+        if (errors.length > 0) {
+          throw new ForbiddenRequestError({
+            message: "Failed to expand one or more secret references",
+            details: errors.map((err) => err.error)
+          });
+        }
+      }
+
+      if (!includeImports) {
+        const payload = { secrets: decryptedSecrets, imports: [] };
+        const serializedPayload = Buffer.from(JSON.stringify(withReferencedSecretIds(payload)));
+        const computedEtag = `"${generateCacheKeyFromBuffer(serializedPayload)}"`;
+        const encryptedUpdatedCachedSecrets = secretManagerEncryptor({
+          plainText: await compressZstd(serializedPayload)
+        }).cipherTextBlob;
+        const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
+        const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;
+        if (stored) {
+          await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets);
+        }
+        recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
+        logLargeSecretCacheEntry({
+          cacheBytes,
+          uncompressedBytes: serializedPayload.byteLength,
+          stored,
+          etag: computedEtag,
+          importedSecretCount: 0
+        });
+        recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
+        await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
+        await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
+        reportReferencedSecrets();
+        return { ...payload, etag: computedEtag };
+      }
+
+      throwIfClientDisconnected(abortSignal);
+
+      const secretImports = await secretImportDAL.findByFolderIds(paths.map((p) => p.folderId));
+      const allowedImports = secretImports.filter(({ isReplication }) => !isReplication);
+
+      const { expandImportedSecretReferences } = createRelativeImportExpander({
+        projectId,
+        currentEnvironment: environment,
+        currentSecretPath: path,
+        secretDAL,
+        secretImportDAL,
+        folderDAL,
+        decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
+        canExpandValue: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
+          hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+            environment: expandEnvironment,
+            secretPath: expandSecretPath,
+            secretName: expandSecretKey,
+            secretTags: expandSecretTags
+          }),
+        userId: expandPersonalOverrides ? actorId : undefined,
+        onSecretExpanded: collectReferencedSecrets,
+        abortSignal
+      });
+
+      const importedSecrets = await fnSecretsV2FromImports({
+        viewSecretValue,
+        secretImports: allowedImports,
+        secretDAL,
+        folderDAL,
+        secretImportDAL,
+        userId: expandPersonalOverrides ? actorId : undefined,
+        personalOverridesBehavior,
+        expandSecretReferences:
+          secretImportReferencesBehavior === SecretImportReferencesBehavior.Relative
+            ? expandImportedSecretReferences
+            : expandSecretReferences,
+        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
+        importAccessScopeByFolderId: new Map(
+          paths.map((folderPath) => [
+            folderPath.folderId,
+            {
+              environment,
+              secretPath: folderPath.path
+            }
+          ])
+        ),
+        hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) => {
+          const canDescribe = hasSecretReadValueOrDescribePermission(
+            permission,
+            ProjectPermissionSecretActions.DescribeSecret,
+            {
+              environment: expandEnvironment,
+              secretPath: expandSecretPath,
+              secretName: expandSecretKey,
+              secretTags: expandSecretTags
+            }
+          );
+
+          const canReadValue = hasSecretReadValueOrDescribePermission(
+            permission,
+            ProjectPermissionSecretActions.ReadValue,
+            {
+              environment: expandEnvironment,
+              secretPath: expandSecretPath,
+              secretName: expandSecretKey,
+              secretTags: expandSecretTags
+            }
+          );
+
+          return viewSecretValue ? canDescribe && canReadValue : canDescribe;
+        },
+        projectId,
+        projectFolderGrantDAL,
+        actorOrgId,
+        orgDAL,
+        kmsDataKeyService,
+        abortSignal
+      });
+
+      const payload = { secrets: decryptedSecrets, imports: importedSecrets };
       const serializedPayload = Buffer.from(JSON.stringify(withReferencedSecretIds(payload)));
       const computedEtag = `"${generateCacheKeyFromBuffer(serializedPayload)}"`;
       const encryptedUpdatedCachedSecrets = secretManagerEncryptor({
@@ -1747,119 +1860,16 @@ export const secretV2BridgeServiceFactory = ({
         uncompressedBytes: serializedPayload.byteLength,
         stored,
         etag: computedEtag,
-        importedSecretCount: 0
+        importedSecretCount: importedSecrets.reduce((count, folder) => count + folder.secrets.length, 0)
       });
       recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
       await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
       await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
       reportReferencedSecrets();
       return { ...payload, etag: computedEtag };
-    }
+    };
 
-    throwIfClientDisconnected(abortSignal);
-
-    const secretImports = await secretImportDAL.findByFolderIds(paths.map((p) => p.folderId));
-    const allowedImports = secretImports.filter(({ isReplication }) => !isReplication);
-
-    const { expandImportedSecretReferences } = createRelativeImportExpander({
-      projectId,
-      currentEnvironment: environment,
-      currentSecretPath: path,
-      secretDAL,
-      secretImportDAL,
-      folderDAL,
-      decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
-      canExpandValue: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
-        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-          environment: expandEnvironment,
-          secretPath: expandSecretPath,
-          secretName: expandSecretKey,
-          secretTags: expandSecretTags
-        }),
-      userId: expandPersonalOverrides ? actorId : undefined,
-      onSecretExpanded: collectReferencedSecrets,
-      abortSignal
-    });
-
-    const importedSecrets = await fnSecretsV2FromImports({
-      viewSecretValue,
-      secretImports: allowedImports,
-      secretDAL,
-      folderDAL,
-      secretImportDAL,
-      userId: expandPersonalOverrides ? actorId : undefined,
-      personalOverridesBehavior,
-      expandSecretReferences:
-        secretImportReferencesBehavior === SecretImportReferencesBehavior.Relative
-          ? expandImportedSecretReferences
-          : expandSecretReferences,
-      decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
-      importAccessScopeByFolderId: new Map(
-        paths.map((folderPath) => [
-          folderPath.folderId,
-          {
-            environment,
-            secretPath: folderPath.path
-          }
-        ])
-      ),
-      hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) => {
-        const canDescribe = hasSecretReadValueOrDescribePermission(
-          permission,
-          ProjectPermissionSecretActions.DescribeSecret,
-          {
-            environment: expandEnvironment,
-            secretPath: expandSecretPath,
-            secretName: expandSecretKey,
-            secretTags: expandSecretTags
-          }
-        );
-
-        const canReadValue = hasSecretReadValueOrDescribePermission(
-          permission,
-          ProjectPermissionSecretActions.ReadValue,
-          {
-            environment: expandEnvironment,
-            secretPath: expandSecretPath,
-            secretName: expandSecretKey,
-            secretTags: expandSecretTags
-          }
-        );
-
-        return viewSecretValue ? canDescribe && canReadValue : canDescribe;
-      },
-      projectId,
-      projectFolderGrantDAL,
-      actorOrgId,
-      orgDAL,
-      kmsDataKeyService,
-      abortSignal
-    });
-
-    const payload = { secrets: decryptedSecrets, imports: importedSecrets };
-    const serializedPayload = Buffer.from(JSON.stringify(withReferencedSecretIds(payload)));
-    const computedEtag = `"${generateCacheKeyFromBuffer(serializedPayload)}"`;
-    const encryptedUpdatedCachedSecrets = secretManagerEncryptor({
-      plainText: await compressZstd(serializedPayload)
-    }).cipherTextBlob;
-    const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
-    const stored = cacheBytes < MAX_SECRET_CACHE_BYTES;
-    if (stored) {
-      await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets);
-    }
-    recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
-    logLargeSecretCacheEntry({
-      cacheBytes,
-      uncompressedBytes: serializedPayload.byteLength,
-      stored,
-      etag: computedEtag,
-      importedSecretCount: importedSecrets.reduce((count, folder) => count + folder.secrets.length, 0)
-    });
-    recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
-    await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
-    await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
-    reportReferencedSecrets();
-    return { ...payload, etag: computedEtag };
+    return secretReadSlot ? secretReadSlot(loadSecrets) : loadSecrets();
   };
 
   const getSecretById = async ({

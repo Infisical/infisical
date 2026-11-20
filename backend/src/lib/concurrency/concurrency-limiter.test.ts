@@ -239,3 +239,81 @@ describe("aggregate admission across keys", () => {
     expect(limiter.getTotalInFlight()).toBe(0);
   });
 });
+
+describe("refusal reasons", () => {
+  const keyedLimiter = (overrides: Partial<Parameters<typeof createKeyedConcurrencyLimiter>[0]> = {}) =>
+    createKeyedConcurrencyLimiter({
+      globalLimit: 8,
+      perKeyLimit: 1,
+      maxWaitMs: 20,
+      maxQueueDepth: 64,
+      maxTrackedKeys: 8,
+      maxTotalInFlight: 512,
+      ...overrides
+    });
+
+  it("should return the value of an admitted run", async () => {
+    await expect(keyedLimiter().tryRun("key", async () => null)).resolves.toEqual({ admitted: true, value: null });
+  });
+
+  it("should blame the key when its own queue is full", async () => {
+    const limiter = keyedLimiter({ maxQueueDepth: 0 });
+    const gate = deferred();
+    const holder = limiter.run("key", () => gate.promise);
+
+    await expect(limiter.tryRun("key", async () => "refused")).resolves.toEqual({
+      admitted: false,
+      scope: "key",
+      reason: "queue-full"
+    });
+
+    gate.resolve();
+    await holder;
+  });
+
+  it("should blame the key when a run waits too long behind the same key", async () => {
+    const limiter = keyedLimiter();
+    const gate = deferred();
+    const holder = limiter.run("key", () => gate.promise);
+
+    await expect(limiter.tryRun("key", async () => "refused")).resolves.toEqual({
+      admitted: false,
+      scope: "key",
+      reason: "wait-timeout"
+    });
+
+    gate.resolve();
+    await holder;
+  });
+
+  it("should blame the instance when other keys hold every global slot", async () => {
+    const limiter = keyedLimiter({ globalLimit: 1 });
+    const gate = deferred();
+    const holder = limiter.run("other", () => gate.promise);
+
+    await expect(limiter.tryRun("key", async () => "refused")).resolves.toEqual({
+      admitted: false,
+      scope: "instance",
+      reason: "wait-timeout"
+    });
+    expect(limiter.getKeyQueueDepth("key")).toBe(0);
+
+    gate.resolve();
+    await holder;
+  });
+
+  it("should blame the instance when the total in flight is used up", async () => {
+    const limiter = keyedLimiter({ maxTotalInFlight: 1 });
+    const gate = deferred();
+    const holder = limiter.run("other", () => gate.promise);
+
+    await expect(limiter.tryRun("key", async () => "refused")).resolves.toEqual({
+      admitted: false,
+      scope: "instance",
+      reason: "total-in-flight"
+    });
+
+    gate.resolve();
+    await holder;
+  });
+});

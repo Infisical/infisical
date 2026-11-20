@@ -343,6 +343,22 @@ const envSchema = z
       .describe(
         "Most requests to list secrets that may wait for their turn per organization, and most organizations that may wait for a free slot on an instance"
       ),
+    SECRET_READ_MAX_TRACKED_ORGS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(10000)
+      .describe(
+        "Most organizations whose secret list limiters an instance keeps. Idle organizations are dropped once this count is passed"
+      ),
+    SECRET_READ_MAX_TOTAL_IN_FLIGHT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(10000)
+      .describe(
+        "Most requests to list secrets an instance will accept at once, running or waiting, before it refuses further ones"
+      ),
     SECRETS_RATE_LIMIT_ENABLED: zodStrBool
       .default("false")
       .describe(

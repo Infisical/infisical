@@ -86,6 +86,7 @@ import { TSecretScanningV2ServiceFactory } from "@app/ee/services/secret-scannin
 import { TSecretScanningServiceFactory } from "@app/ee/services/secret-scanning/secret-scanning-service";
 import { TSubOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-types";
+import { TConcurrencySlot } from "@app/lib/concurrency/concurrency-limiter";
 import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
 import { RateLimitConfiguration } from "@app/server/config/rateLimiter";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
@@ -258,11 +259,6 @@ declare module "@fastify/request-context" {
 }
 
 declare module "fastify" {
-  interface FastifyContextConfig {
-    // Set on routes that list secrets, so secret-read-concurrency-limit.ts limits how many run at once.
-    limitSecretReadConcurrency?: boolean;
-  }
-
   interface Session {
     callbackPort: string;
     isAdminLogin: boolean;
@@ -320,6 +316,7 @@ declare module "fastify" {
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer
     store: FastifyStore;
+    secretReadSlot: (req: FastifyRequest, reply: FastifyReply) => TConcurrencySlot;
   }
 
   // Kept as named interfaces, not inline object types: an inline type in the generic FastifyInstance is copied per

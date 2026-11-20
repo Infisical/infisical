@@ -433,8 +433,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
     url: "/secrets",
     method: "GET",
     config: {
-      rateLimit: secretsLimit,
-      limitSecretReadConcurrency: true
+      rateLimit: secretsLimit
     },
     schema: {
       querystring: z.object({
@@ -467,15 +466,18 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
       AuthMode.IDENTITY_ACCESS_TOKEN,
       AuthMode.OAUTH
     ]),
-    handler: async (req) => {
-      const importedSecrets = await server.services.secretImport.getSecretsFromImports({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        ...req.query,
-        projectId: req.query.workspaceId
-      });
+    handler: async (req, reply) => {
+      const readSlot = server.secretReadSlot(req, reply);
+      const importedSecrets = await readSlot(() =>
+        server.services.secretImport.getSecretsFromImports({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          ...req.query,
+          projectId: req.query.workspaceId
+        })
+      );
       return { secrets: importedSecrets };
     }
   });
@@ -484,8 +486,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
     url: "/secrets/raw",
     method: "GET",
     config: {
-      rateLimit: secretsLimit,
-      limitSecretReadConcurrency: true
+      rateLimit: secretsLimit
     },
     serializerCompiler: fastJsonSerializerCompiler,
     schema: {
@@ -530,7 +531,8 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
         actorOrgId: req.permission.orgId,
         ...req.query,
         projectId: req.query.workspaceId,
-        ifNoneMatch: req.headers["if-none-match"]
+        ifNoneMatch: req.headers["if-none-match"],
+        secretReadSlot: server.secretReadSlot(req, reply)
       });
 
       if (etag) {

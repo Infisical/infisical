@@ -10,11 +10,17 @@ const config = vi.hoisted(() => ({
   SECRET_READ_MAX_IN_FLIGHT_PER_ORG: 1,
   SECRET_READ_MAX_IN_FLIGHT: 8,
   SECRET_READ_MAX_QUEUE_WAIT_MS: 5000,
-  SECRET_READ_MAX_QUEUE_DEPTH: 0
+  SECRET_READ_MAX_QUEUE_DEPTH: 0,
+  SECRET_READ_MAX_TRACKED_ORGS: 10_000,
+  SECRET_READ_MAX_TOTAL_IN_FLIGHT: 10_000
 }));
 
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => config
+}));
+
+vi.mock("@app/lib/logger", () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
 }));
 
 const defaults = { ...config };
@@ -29,8 +35,10 @@ const buildServer = async () => {
   });
 
   app.addHook("onRequest", async (req) => {
-    const orgId = req.headers["x-org-id"] as string | undefined;
-    Object.assign(req, { auth: orgId ? { orgId, rootOrgId: orgId } : undefined });
+    const rootOrgId = req.headers["x-org-id"] as string | undefined;
+    Object.assign(req, {
+      auth: rootOrgId ? { orgId: req.headers["x-sub-org-id"] ?? rootOrgId, rootOrgId } : undefined
+    });
   });
 
   await app.register(secretReadConcurrencyLimit);
@@ -42,7 +50,10 @@ const buildServer = async () => {
     return { ok: true };
   };
 
-  app.get("/secrets", { config: { limitSecretReadConcurrency: true } }, holdUntilReleased);
+  app.get("/secrets", async (req, reply) => {
+    if (req.headers["x-not-modified"]) return { ok: true };
+    return app.secretReadSlot(req, reply)(holdUntilReleased);
+  });
   app.get("/folders", holdUntilReleased);
 
   await app.ready();
@@ -69,6 +80,61 @@ describe("secretReadConcurrencyLimit", () => {
     expect(second.statusCode).toBe(429);
     expect(second.headers["retry-after"]).toBe("1");
     expect(second.json<{ message: string }>().message).toContain("too many secret list requests in progress");
+
+    held[0].finish();
+    expect((await first).statusCode).toBe(200);
+  });
+
+  test("counts a sub-organization's requests toward its root organization", async () => {
+    const { app, held } = await buildServer();
+
+    const first = app.inject({
+      method: "GET",
+      url: "/secrets",
+      headers: { "x-org-id": "org-a", "x-sub-org-id": "sub-org-1" }
+    });
+    await flush();
+    const second = await app.inject({
+      method: "GET",
+      url: "/secrets",
+      headers: { "x-org-id": "org-a", "x-sub-org-id": "sub-org-2" }
+    });
+
+    expect(second.statusCode).toBe(429);
+    held[0].finish();
+    expect((await first).statusCode).toBe(200);
+  });
+
+  test("answers a request that needs no slot while the organization's slot is taken", async () => {
+    const { app, held } = await buildServer();
+
+    const first = app.inject({ method: "GET", url: "/secrets", headers: { "x-org-id": "org-a" } });
+    await flush();
+    const notModified = await app.inject({
+      method: "GET",
+      url: "/secrets",
+      headers: { "x-org-id": "org-a", "x-not-modified": "1" }
+    });
+
+    expect(notModified.statusCode).toBe(200);
+    expect(held).toHaveLength(1);
+    held[0].finish();
+    expect((await first).statusCode).toBe(200);
+  });
+
+  test("does not blame an organization the instance limit refuses", async () => {
+    Object.assign(config, { SECRET_READ_MAX_IN_FLIGHT: 1 });
+    const { app, held } = await buildServer();
+
+    const first = app.inject({ method: "GET", url: "/secrets", headers: { "x-org-id": "org-a" } });
+    await flush();
+    const other = await app.inject({ method: "GET", url: "/secrets", headers: { "x-org-id": "org-b" } });
+
+    expect(other.statusCode).toBe(429);
+    expect(other.headers["retry-after"]).toBe("1");
+    const { message } = other.json<{ message: string }>();
+    expect(message).toContain("Infisical is handling too many secret list requests right now");
+    expect(message).not.toContain("Your organization");
 
     held[0].finish();
     expect((await first).statusCode).toBe(200);
@@ -132,7 +198,7 @@ describe("secretReadConcurrencyLimit", () => {
     expect((await next).statusCode).toBe(200);
   });
 
-  test("leaves routes without the flag, requests without an organization, and a disabled limit alone", async () => {
+  test("leaves routes that take no slot, requests without an organization, and a disabled limit alone", async () => {
     const { app, held } = await buildServer();
     const unflagged = [0, 1].map(() =>
       app.inject({ method: "GET", url: "/folders", headers: { "x-org-id": "org-a" } })
