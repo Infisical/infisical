@@ -224,7 +224,7 @@ export const GroupRoles = ({
             <PopoverTrigger asChild disabled={!canEdit}>
               <Button
                 variant="ghost"
-                size="icon-row"
+                size="icon-xs"
                 aria-label={`Edit roles for ${groupName}`}
                 disabled={!canEdit}
                 disabledReason={canEdit ? undefined : RESTRICTED}

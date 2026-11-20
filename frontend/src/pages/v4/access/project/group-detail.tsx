@@ -291,50 +291,50 @@ const GroupMembersCard = ({
           />
         }
       >
-        {hasRows && (
-          <DataTable
-            label="Group members"
-            rows={members}
-            columns={columns}
-            rowActions={rowActions}
-            getRowId={(member) => `${member.type}-${member.id}`}
-            rowLabel={(member) => member.email ?? member.name}
-            loading={query.isPending}
-            loadingRows={5}
-            sort={sort}
-            onSortChange={(next) => {
-              setSort(next);
-              setPage(1);
-            }}
-            pagination={
-              !query.isPending && totalCount > 0 ? (
-                <Pagination
-                  variant="compact"
-                  page={page}
-                  total={totalCount}
-                  pageSize={perPage}
-                  pageSizeOptions={[10, 20, 50, 100]}
-                  onPageChange={setPage}
-                  onPageSizeChange={(size) => {
-                    setPerPage(size);
-                    setPage(1);
-                  }}
-                />
-              ) : undefined
-            }
-          />
-        )}
-        {!hasRows &&
-          (filtered ? (
-            <EmptyState size="sm" icon="search" title="No group members match your filters" />
-          ) : (
-            <EmptyState
-              size="sm"
-              icon="user"
-              title="This group doesn't have any members"
-              description="Add members from organization access control."
-            />
-          ))}
+        <DataTable
+          label="Group members"
+          rows={members}
+          columns={columns}
+          rowActions={rowActions}
+          getRowId={(member) => `${member.type}-${member.id}`}
+          rowLabel={(member) => member.email ?? member.name}
+          loading={query.isPending}
+          loadingRows={5}
+          sort={sort}
+          onSortChange={(next) => {
+            setSort(next);
+            setPage(1);
+          }}
+          pagination={
+            !query.isPending && totalCount > 0 ? (
+              <Pagination
+                variant="compact"
+                page={page}
+                total={totalCount}
+                pageSize={perPage}
+                pageSizeOptions={[10, 20, 50, 100]}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => {
+                  setPerPage(size);
+                  setPage(1);
+                }}
+              />
+            ) : undefined
+          }
+          filtered={filtered}
+          empty={
+            filtered ? (
+              <EmptyState size="sm" icon="search" title="No group members match your filters" />
+            ) : (
+              <EmptyState
+                size="sm"
+                icon="user"
+                title="This group doesn't have any members"
+                description="Add members from organization access control."
+              />
+            )
+          }
+        />
       </Card>
       <AssumeMemberDialog
         projectId={projectId}
@@ -351,7 +351,7 @@ const CopyGroupId = ({ id }: { id: string }) => {
     <Tooltip content={copied ? "Group ID copied" : "Copy group ID"}>
       <Button
         variant="ghost"
-        size="icon-row"
+        size="icon-xs"
         icon={copied ? "check" : "copy"}
         iconOnly
         onClick={async () => {
