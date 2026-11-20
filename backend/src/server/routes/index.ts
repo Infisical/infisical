@@ -4056,7 +4056,11 @@ export const registerRoutes = async (
     aiService,
     kmsDataKeyService,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    membershipDAL,
+    userDAL,
+    groupDAL,
+    userGroupMembershipDAL
   });
 
   const approvalPolicyService = approvalPolicyServiceFactory({
