@@ -46,14 +46,10 @@ func (s *Service) CreateCipherPairWithOrgDataKey(ctx context.Context, orgID uuid
 		return nil, err
 	}
 
-	return &CipherPair{
-		encrypt: func(plainText []byte) ([]byte, error) {
-			return encryptWithVersion(plainText, dataKey)
-		},
-		decrypt: func(cipherTextBlob []byte) ([]byte, error) {
-			return decryptWithVersion(cipherTextBlob, dataKey)
-		},
-	}, nil
+	return NewCipherPair(
+		func(plainText []byte) ([]byte, error) { return encryptWithVersion(plainText, dataKey) },
+		func(cipherTextBlob []byte) ([]byte, error) { return decryptWithVersion(cipherTextBlob, dataKey) },
+	), nil
 }
 
 func (s *Service) getOrgDataKey(ctx context.Context, orgID uuid.UUID) ([]byte, error) {

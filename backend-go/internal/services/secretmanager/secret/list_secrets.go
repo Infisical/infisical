@@ -211,97 +211,291 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 	}, nil
 }
 
+// AbsoluteFolderLookup is the folder hierarchy view needed to resolve referenced
+// locations. It is the subset of *secretfolder.FolderLookup used by reference reads.
+type AbsoluteFolderLookup interface {
+	GetEnvIDBySlug(envSlug string) (uuid.UUID, bool)
+	GetByPath(envID uuid.UUID, path string) (*secretfolder.FolderNode, bool)
+	GetEnvSlug(envID uuid.UUID) (string, bool)
+}
+
 // AbsoluteFetchOpts contains options for fetching absolute secret references.
 type AbsoluteFetchOpts struct {
 	ProjectID    string
-	FolderLookup *secretfolder.FolderLookup
+	FolderLookup AbsoluteFolderLookup
 	CipherPair   *kms.CipherPair
 	UserID       *uuid.UUID
 }
 
-// FetchAbsoluteSecrets retrieves secrets for the given absolute references.
-// Returns all matching secrets - permission filtering should happen in the caller.
+// absoluteFetchLocation identifies an environment/path holding referenced values.
+type absoluteFetchLocation struct {
+	env  string
+	path string
+}
+
+// absoluteFetchTarget is a referenced location resolved to its folder, along with
+// the keys wanted from it.
+type absoluteFetchTarget struct {
+	location absoluteFetchLocation
+	folderID uuid.UUID
+	wanted   map[string]struct{}
+}
+
+// absoluteFetchMatch is a wanted key resolved to a secret, before decryption.
+type absoluteFetchMatch struct {
+	secret     *Secret
+	location   absoluteFetchLocation
+	imported   bool
+	importEnv  string
+	importPath string
+}
+
+// importChainResolver resolves the folders reachable through a folder's imports.
+type importChainResolver interface {
+	ResolveChain(startFolderID uuid.UUID, resolveFolder func(envID uuid.UUID, path string) (uuid.UUID, bool)) []secretimport.ResolvedImport
+}
+
+// absoluteSecretReader loads the raw records needed to resolve absolute references.
+// *Service implements it; tests substitute a fake to verify reference reads batch.
+type absoluteSecretReader interface {
+	FindByFolderIds(ctx context.Context, folderIDs []uuid.UUID, userID *uuid.UUID, filters *FindByFolderIdsFilter) ([]Secret, error)
+	LoadProjectImports(ctx context.Context, projectID string) (*secretimport.ImportLookup, error)
+}
+
+var _ absoluteSecretReader = (*Service)(nil)
+
+// FetchAbsoluteSecrets retrieves the values for absolute references, including
+// values a referenced location inherits through imports. The caller supplies the
+// folder hierarchy and cipher pair so this read reuses them instead of reloading
+// folders or asking KMS for another project data key. Reads are batched: one query
+// for every requested folder, and at most one more for the import folders reached
+// by keys that are not defined directly.
+//
+// A fetched value expands in the explicitly referenced environment/path (its
+// imports included), so an equivalent reference chain resolves to the same value
+// however it is nested. Imported values are exposed under the requested location
+// and keep their origin in ImportEnvironment/ImportPath, which the caller checks
+// access against.
 func (s *Service) FetchAbsoluteSecrets(ctx context.Context, refs []AbsoluteSecretRef, opts AbsoluteFetchOpts) []*ProcessedSecret {
-	if len(refs) == 0 {
+	return fetchAbsoluteSecrets(ctx, s.logger, s, refs, opts)
+}
+
+func fetchAbsoluteSecrets(ctx context.Context, logger *slog.Logger, reader absoluteSecretReader, refs []AbsoluteSecretRef, opts AbsoluteFetchOpts) []*ProcessedSecret {
+	targets := absoluteFetchTargets(refs, opts.FolderLookup)
+	if len(targets) == 0 {
 		return nil
 	}
 
-	// Build location map
-	type locationKey struct {
-		envID uuid.UUID
-		path  string
-	}
-
-	locationToKeys := make(map[locationKey]map[string]struct{})
-
-	for i := range refs {
-		ref := &refs[i]
-		envID, ok := opts.FolderLookup.GetEnvIDBySlug(ref.Env)
-		if !ok {
+	folderIDs := make([]uuid.UUID, 0, len(targets))
+	seenFolderIDs := make(map[uuid.UUID]struct{}, len(targets))
+	for _, target := range targets {
+		if _, seen := seenFolderIDs[target.folderID]; seen {
 			continue
 		}
-
-		key := locationKey{envID: envID, path: ref.Path}
-		if locationToKeys[key] == nil {
-			locationToKeys[key] = make(map[string]struct{})
-		}
-		locationToKeys[key][ref.Key] = struct{}{}
+		seenFolderIDs[target.folderID] = struct{}{}
+		folderIDs = append(folderIDs, target.folderID)
 	}
 
-	var folderIDs []uuid.UUID
-	folderToLocation := make(map[uuid.UUID]locationKey)
-
-	for loc := range locationToKeys {
-		node, ok := opts.FolderLookup.GetByPath(loc.envID, loc.path)
-		if !ok {
-			continue
-		}
-		folderIDs = append(folderIDs, node.ID)
-		folderToLocation[node.ID] = loc
-	}
-
-	if len(folderIDs) == 0 {
-		return nil
-	}
-
-	rawSecrets, err := s.FindByFolderIds(ctx, folderIDs, opts.UserID, nil)
+	directSecrets, err := reader.FindByFolderIds(ctx, folderIDs, opts.UserID, nil)
 	if err != nil {
 		return nil
 	}
 
-	var result []*ProcessedSecret
-	for i := range rawSecrets {
-		sec := &rawSecrets[i]
-		loc, ok := folderToLocation[sec.FolderID]
+	secretsByFolder := groupSecretsByFolder(directSecrets)
+	found := make([]map[string]struct{}, len(targets))
+	var matches []absoluteFetchMatch
+	var missing []int
+	for i := range targets {
+		target := &targets[i]
+		found[i] = make(map[string]struct{}, len(target.wanted))
+		for _, sec := range secretsByFolder[target.folderID] {
+			if _, wanted := target.wanted[sec.Key]; !wanted {
+				continue
+			}
+			if _, duplicate := found[i][sec.Key]; duplicate {
+				continue
+			}
+			found[i][sec.Key] = struct{}{}
+			matches = append(matches, absoluteFetchMatch{secret: sec, location: target.location})
+		}
+		if len(found[i]) < len(target.wanted) {
+			missing = append(missing, i)
+		}
+	}
+
+	if len(missing) > 0 {
+		matches = appendImportedAbsoluteFetchSecrets(ctx, reader, opts, targets, missing, found, matches)
+	}
+
+	return decryptAbsoluteFetchMatches(ctx, logger, matches, opts.CipherPair)
+}
+
+// appendImportedAbsoluteFetchSecrets resolves keys that are not defined directly in
+// a referenced location through that location's import chain. Project imports are
+// loaded once and the import folders for every location are read in one batch.
+func appendImportedAbsoluteFetchSecrets(
+	ctx context.Context,
+	reader absoluteSecretReader,
+	opts AbsoluteFetchOpts,
+	targets []absoluteFetchTarget,
+	missing []int,
+	found []map[string]struct{},
+	matches []absoluteFetchMatch,
+) []absoluteFetchMatch {
+	importLookup, err := reader.LoadProjectImports(ctx, opts.ProjectID)
+	if err != nil || importLookup == nil {
+		return matches
+	}
+
+	chains, folderIDs := absoluteImportReadPlan(targets, missing, importLookup, opts.FolderLookup)
+	if len(folderIDs) == 0 {
+		return matches
+	}
+
+	importedSecrets, err := reader.FindByFolderIds(ctx, folderIDs, opts.UserID, nil)
+	if err != nil {
+		return matches
+	}
+
+	return matchImportedAbsoluteFetchSecrets(targets, missing, chains, groupSecretsByFolder(importedSecrets), opts.FolderLookup, found, matches)
+}
+
+// absoluteFetchTargets resolves requested locations to folders using the supplied
+// lookup and groups the requested keys by location. Unknown locations are skipped.
+func absoluteFetchTargets(refs []AbsoluteSecretRef, folderLookup AbsoluteFolderLookup) []absoluteFetchTarget {
+	targets := make([]absoluteFetchTarget, 0, len(refs))
+	targetIndexByLocation := make(map[absoluteFetchLocation]int, len(refs))
+	for _, ref := range refs {
+		location := absoluteFetchLocation{env: ref.Env, path: ref.Path}
+		if idx, ok := targetIndexByLocation[location]; ok {
+			targets[idx].wanted[ref.Key] = struct{}{}
+			continue
+		}
+
+		envID, ok := folderLookup.GetEnvIDBySlug(ref.Env)
+		if !ok {
+			continue
+		}
+		node, ok := folderLookup.GetByPath(envID, ref.Path)
 		if !ok {
 			continue
 		}
 
-		wantedKeys := locationToKeys[loc]
-		if _, wanted := wantedKeys[sec.Key]; !wanted {
-			continue
+		targetIndexByLocation[location] = len(targets)
+		targets = append(targets, absoluteFetchTarget{
+			location: location,
+			folderID: node.ID,
+			wanted:   map[string]struct{}{ref.Key: {}},
+		})
+	}
+	return targets
+}
+
+// absoluteImportReadPlan resolves the import chain of every target that still has
+// unresolved keys and returns the unique source folders to read.
+func absoluteImportReadPlan(
+	targets []absoluteFetchTarget,
+	missing []int,
+	resolver importChainResolver,
+	folderLookup AbsoluteFolderLookup,
+) (map[int][]secretimport.ResolvedImport, []uuid.UUID) {
+	resolveFolder := func(envID uuid.UUID, path string) (uuid.UUID, bool) {
+		node, ok := folderLookup.GetByPath(envID, path)
+		if !ok {
+			return uuid.Nil, false
 		}
+		return node.ID, true
+	}
 
-		envSlug, _ := opts.FolderLookup.GetEnvSlug(loc.envID)
+	chains := make(map[int][]secretimport.ResolvedImport, len(missing))
+	folderIDs := make([]uuid.UUID, 0, len(missing))
+	seenFolderIDs := make(map[uuid.UUID]struct{}, len(missing))
+	for _, idx := range missing {
+		chains[idx] = resolver.ResolveChain(targets[idx].folderID, resolveFolder)
+		for i := len(chains[idx]) - 1; i >= 0; i-- {
+			folderID := chains[idx][i].FolderID
+			if _, seen := seenFolderIDs[folderID]; seen {
+				continue
+			}
+			seenFolderIDs[folderID] = struct{}{}
+			folderIDs = append(folderIDs, folderID)
+		}
+	}
+	return chains, folderIDs
+}
 
-		rawValue, displayValue, comment, metadata, decryptErrs := DecryptSecretFields(sec, opts.CipherPair, false)
+// matchImportedAbsoluteFetchSecrets resolves the remaining keys per target against
+// the import folders read for them. Imports are consulted in reverse resolution
+// order, which is the priority order used by ListSecretsResult.AllSecrets.
+func matchImportedAbsoluteFetchSecrets(
+	targets []absoluteFetchTarget,
+	missing []int,
+	chains map[int][]secretimport.ResolvedImport,
+	secretsByFolder map[uuid.UUID][]*Secret,
+	folderLookup AbsoluteFolderLookup,
+	found []map[string]struct{},
+	matches []absoluteFetchMatch,
+) []absoluteFetchMatch {
+	for _, idx := range missing {
+		target := &targets[idx]
+		for i := len(chains[idx]) - 1; i >= 0; i-- {
+			imp := chains[idx][i]
+			for _, sec := range secretsByFolder[imp.FolderID] {
+				if _, wanted := target.wanted[sec.Key]; !wanted {
+					continue
+				}
+				if _, duplicate := found[idx][sec.Key]; duplicate {
+					continue
+				}
+				found[idx][sec.Key] = struct{}{}
+				importEnv, _ := folderLookup.GetEnvSlug(imp.EnvID)
+				matches = append(matches, absoluteFetchMatch{
+					secret:     sec,
+					location:   target.location,
+					imported:   true,
+					importEnv:  importEnv,
+					importPath: imp.Path,
+				})
+			}
+		}
+	}
+	return matches
+}
+
+// decryptAbsoluteFetchMatches decrypts the matched secrets with the caller's cipher
+// pair and exposes every match under the location it was requested from.
+func decryptAbsoluteFetchMatches(ctx context.Context, logger *slog.Logger, matches []absoluteFetchMatch, cipherPair *kms.CipherPair) []*ProcessedSecret {
+	result := make([]*ProcessedSecret, 0, len(matches))
+	for _, match := range matches {
+		rawValue, displayValue, secretComment, metadata, decryptErrs := DecryptSecretFields(match.secret, cipherPair, false)
 		if decryptErrs.HasErrors() {
-			s.logger.WarnContext(ctx, "absolute ref decryption errors (fail-open)",
-				slog.String("secretId", sec.ID.String()),
+			logger.WarnContext(ctx, "absolute ref decryption errors (fail-open)",
+				slog.String("secretId", match.secret.ID.String()),
 				slog.Any("valueErr", decryptErrs.ValueErr))
 		}
 
 		result = append(result, &ProcessedSecret{
-			Secret:      sec,
-			SecretPath:  loc.path,
-			Environment: envSlug,
-			RawValue:    rawValue,
-			Value:       displayValue,
-			Comment:     comment,
-			Metadata:    metadata,
-			ValueHidden: false,
+			Secret:            match.secret,
+			SecretPath:        match.location.path,
+			Environment:       match.location.env,
+			RawValue:          rawValue,
+			Value:             displayValue,
+			Comment:           secretComment,
+			Metadata:          metadata,
+			IsImported:        match.imported,
+			ImportEnvironment: match.importEnv,
+			ImportPath:        match.importPath,
 		})
 	}
-
 	return result
+}
+
+// groupSecretsByFolder groups raw secrets by their folder, preserving read order.
+func groupSecretsByFolder(secrets []Secret) map[uuid.UUID][]*Secret {
+	grouped := make(map[uuid.UUID][]*Secret, len(secrets))
+	for i := range secrets {
+		sec := &secrets[i]
+		grouped[sec.FolderID] = append(grouped[sec.FolderID], sec)
+	}
+	return grouped
 }
