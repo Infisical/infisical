@@ -70,6 +70,108 @@ const CommitFolderSchema = SecretFoldersSchema.pick({
   updatedAt: true
 });
 
+const CommitChangesSchema = z.object({
+  secrets: z.object({
+    create: z
+      .array(
+        z.object({
+          secretKey: SecretNameSchema,
+          secretValue: z.string().transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
+          secretComment: z.string().trim().optional().default(""),
+          skipMultilineEncoding: z.boolean().optional(),
+          metadata: z.record(z.string()).optional(),
+          secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
+          tagIds: z.string().array().optional()
+        })
+      )
+      .optional(),
+    update: z
+      .array(
+        z.object({
+          secretKey: SecretNameSchema,
+          newSecretName: SecretNameSchema.optional(),
+          secretValue: z
+            .string()
+            .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
+            .optional(),
+          secretComment: z.string().trim().optional().default(""),
+          skipMultilineEncoding: z
+            .boolean()
+            .nullish()
+            .transform((val) => (val === null ? false : val)),
+          metadata: z.record(z.string()).optional(),
+          secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
+          tagIds: z.string().array().optional()
+        })
+      )
+      .optional(),
+    delete: z
+      .array(
+        z.object({
+          secretKey: SecretNameSchema
+        })
+      )
+      .optional()
+  }),
+  folders: z.object({
+    create: z
+      .array(
+        z.object({
+          folderName: z
+            .string()
+            .trim()
+            .refine((name) => isValidFolderName(name), {
+              message: "Invalid folder name. Only alphanumeric characters, dashes, and underscores are allowed."
+            }),
+          description: z.string().optional()
+        })
+      )
+      .optional(),
+    update: z
+      .array(
+        z.object({
+          folderName: z
+            .string()
+            .trim()
+            .refine((name) => isValidFolderName(name), {
+              message: "Invalid folder name. Only alphanumeric characters, dashes, and underscores are allowed."
+            }),
+          description: z.string().nullable().optional(),
+          id: z.string()
+        })
+      )
+      .optional(),
+    delete: z
+      .array(
+        z.object({
+          folderName: z
+            .string()
+            .trim()
+            .refine((name) => isValidFolderName(name), {
+              message: "Invalid folder name. Only alphanumeric characters, dashes, and underscores are allowed."
+            }),
+          id: z.string()
+        })
+      )
+      .optional()
+  })
+});
+
+const CommitResultSchema = z.object({
+  commitId: z.string().uuid().nullable(),
+  approval: CommitApprovalSchema.nullable(),
+  secrets: z.object({
+    created: CommitSecretSchema.array(),
+    updated: CommitSecretSchema.array(),
+    deleted: CommitSecretSchema.array()
+  }),
+  folders: z.object({
+    created: CommitFolderSchema.array(),
+    updated: CommitFolderSchema.array(),
+    deleted: CommitFolderSchema.array()
+  })
+});
+
 const folderStateSchema = z.array(
   z.object({
     type: z.string(),
@@ -587,108 +689,10 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         environment: z.string().trim(),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         message: z.string().trim().max(255).optional(),
-        changes: z.object({
-          secrets: z.object({
-            create: z
-              .array(
-                z.object({
-                  secretKey: SecretNameSchema,
-                  secretValue: z.string().transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
-                  secretComment: z.string().trim().optional().default(""),
-                  skipMultilineEncoding: z.boolean().optional(),
-                  metadata: z.record(z.string()).optional(),
-                  secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
-                  tagIds: z.string().array().optional()
-                })
-              )
-              .optional(),
-            update: z
-              .array(
-                z.object({
-                  secretKey: SecretNameSchema,
-                  newSecretName: SecretNameSchema.optional(),
-                  secretValue: z
-                    .string()
-                    .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
-                    .optional(),
-                  secretComment: z.string().trim().optional().default(""),
-                  skipMultilineEncoding: z
-                    .boolean()
-                    .nullish()
-                    .transform((val) => (val === null ? false : val)),
-                  metadata: z.record(z.string()).optional(),
-                  secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
-                  tagIds: z.string().array().optional()
-                })
-              )
-              .optional(),
-            delete: z
-              .array(
-                z.object({
-                  secretKey: SecretNameSchema
-                })
-              )
-              .optional()
-          }),
-          folders: z.object({
-            create: z
-              .array(
-                z.object({
-                  folderName: z
-                    .string()
-                    .trim()
-                    .refine((name) => isValidFolderName(name), {
-                      message: "Invalid folder name. Only alphanumeric characters, dashes, and underscores are allowed."
-                    }),
-                  description: z.string().optional()
-                })
-              )
-              .optional(),
-            update: z
-              .array(
-                z.object({
-                  folderName: z
-                    .string()
-                    .trim()
-                    .refine((name) => isValidFolderName(name), {
-                      message: "Invalid folder name. Only alphanumeric characters, dashes, and underscores are allowed."
-                    }),
-                  description: z.string().nullable().optional(),
-                  id: z.string()
-                })
-              )
-              .optional(),
-            delete: z
-              .array(
-                z.object({
-                  folderName: z
-                    .string()
-                    .trim()
-                    .refine((name) => isValidFolderName(name), {
-                      message: "Invalid folder name. Only alphanumeric characters, dashes, and underscores are allowed."
-                    }),
-                  id: z.string()
-                })
-              )
-              .optional()
-          })
-        })
+        changes: CommitChangesSchema
       }),
       response: {
-        200: z.object({
-          commitId: z.string().uuid().nullable(),
-          approval: CommitApprovalSchema.nullable(),
-          secrets: z.object({
-            created: CommitSecretSchema.array(),
-            updated: CommitSecretSchema.array(),
-            deleted: CommitSecretSchema.array()
-          }),
-          folders: z.object({
-            created: CommitFolderSchema.array(),
-            updated: CommitFolderSchema.array(),
-            deleted: CommitFolderSchema.array()
-          })
-        })
+        200: CommitResultSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
@@ -757,6 +761,98 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         approval: result.approval ?? null,
         secrets: result.secrets,
         folders: result.folders
+      };
+    }
+  });
+
+  // Batch endpoint: one request commits several folders in a single transaction so a multi-environment
+  // edit lands all at once or not at all. It sits beside /batch/commit, which already breaks REST the same way.
+  server.route({
+    method: "POST",
+    url: "/batch/commits",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "createBatchFolderCommits",
+      description: "Commit changes across several environments or secret paths in one transaction",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      body: z.object({
+        projectId: z.string().trim(),
+        message: z.string().trim().max(255).optional(),
+        commits: z
+          .object({
+            environment: z.string().trim(),
+            secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
+            changes: CommitChangesSchema
+          })
+          .array()
+          .min(1)
+          .max(50)
+      }),
+      response: {
+        200: z.object({
+          commits: CommitResultSchema.extend({
+            environment: z.string(),
+            secretPath: z.string()
+          }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const results = await server.services.pit.processNewCommitsRaw({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        projectId: req.body.projectId,
+        message: req.body.message || "",
+        commits: req.body.commits
+      });
+
+      for await (const result of results) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          projectId: req.body.projectId,
+          event: {
+            type: EventType.PIT_PROCESS_NEW_COMMIT_RAW,
+            metadata: {
+              commitId: result.commitId,
+              approvalId: result.approval?.id,
+              approvalSlug: result.approval?.slug,
+              projectId: req.body.projectId,
+              environment: result.environment,
+              secretPath: result.secretPath,
+              message: req.body.message || ""
+            }
+          }
+        });
+
+        for await (const event of result.secretMutationEvents) {
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            orgId: req.permission.orgId,
+            projectId: req.body.projectId,
+            event
+          });
+        }
+      }
+
+      return {
+        commits: results.map((result) => ({
+          environment: result.environment,
+          secretPath: result.secretPath,
+          commitId: result.commitId ?? null,
+          approval: result.approval ?? null,
+          secrets: result.secrets,
+          folders: result.folders
+        }))
       };
     }
   });

@@ -132,6 +132,7 @@ import {
   TABLE_ROW_ACTION_BAR_VISIBILITY_CLASS_NAME,
   TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
+import { useUnsavedEdit } from "../UnsavedEditsBar";
 import { SecretAccessInsights } from "./SecretAccessInsights";
 import { SecretCommentForm } from "./SecretCommentForm";
 import { SecretLastEditedTime } from "./SecretLastEditedTime";
@@ -1177,6 +1178,31 @@ export const SecretEditTableRow = ({
   const isDirtyState = Boolean(
     isDirty && (dirtyFields.key || dirtyFields.value) && !isImportedSecret && !isBatchMode
   );
+
+  useUnsavedEdit(isDirtyState && !isSubmitting, {
+    getChange: () => {
+      const value = getValues("value");
+      if (
+        value === null ||
+        value === undefined ||
+        (secretValueHidden && value === HIDDEN_SECRET_VALUE)
+      )
+        return null;
+      return {
+        environment,
+        environmentName,
+        secretKey: secretName,
+        secretValue: value,
+        originalValue: sharedValueData?.value ?? (defaultValue || null),
+        secretValueHidden,
+        isCreate: Boolean(isCreatable),
+        secretComment: comment,
+        tagIds: tags?.map((tag) => tag.id)
+      };
+    },
+    settle: () => reset({ value: secretValueHidden ? defaultValue || null : getValues("value") }),
+    discard: handleFormReset
+  });
 
   useEffect(() => {
     if (isDirtyState || hasPendingValueChange) setIsResolvedValueOpen.off();

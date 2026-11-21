@@ -27,6 +27,7 @@ type SelectedActionBarProps = Omit<React.ComponentProps<"div">, "children"> & {
   iconOnlyClear?: boolean;
   portalContainer?: Element | DocumentFragment | null;
   positionerClassName?: string;
+  clearOnEscape?: boolean;
 };
 
 function SelectedActionBar({
@@ -38,6 +39,7 @@ function SelectedActionBar({
   iconOnlyClear = true,
   portalContainer,
   positionerClassName,
+  clearOnEscape = true,
   className,
   "aria-label": ariaLabel = "Selection actions",
   ...props
@@ -49,7 +51,7 @@ function SelectedActionBar({
   clearSelectionRef.current = onClearSelection;
 
   React.useEffect(() => {
-    if (!isVisible) return undefined;
+    if (!isVisible || !clearOnEscape) return undefined;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
@@ -66,7 +68,7 @@ function SelectedActionBar({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isVisible]);
+  }, [isVisible, clearOnEscape]);
 
   if (isVisible) {
     lastVisibleContent.current = { children, selectedCount, selectionLabel };
