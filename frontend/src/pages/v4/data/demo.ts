@@ -14,6 +14,7 @@ import { certManagerSettingsDemo } from "./cert-manager-settings/demo";
 import { certificateAuthoritiesDemo } from "./certificate-authorities/demo";
 import { certificatesDemo } from "./certificates/demo";
 import { codeSigningDemo } from "./code-signing/demo";
+import { homeDemo } from "./home/demo";
 import { hsmConnectorsDemo } from "./hsm-connectors/demo";
 import { integrationsDemo } from "./integrations/demo";
 import { kmipDemo } from "./kmip/demo";
@@ -82,5 +83,6 @@ export const demoAdapters: V4Adapters = {
   appConnections: appConnectionsDemo,
   secretInsights: secretInsightsDemo,
   pamAccess: pamAccessDemo,
-  shell: shellDemo
+  shell: shellDemo,
+  home: homeDemo
 };
