@@ -108,6 +108,7 @@ export enum ApiDocsTags {
   AgentVaultServices = "Agent Vault Services",
   AgentVaultVariables = "Agent Vault Variables",
   AgentVaultSkills = "Agent Vault Skills",
+  AgentVaultHooks = "Agent Vault Hooks",
   AgentVaultSessions = "Agent Vault Sessions",
   AgentVaultProxies = "Agent Vault Proxies",
   AgentVaultMembers = "Agent Vault Members",
@@ -4604,6 +4605,12 @@ export const SECRET_SHARING = {
 } as const;
 
 export const GATEWAYS = {
+  RESPONSE: {
+    cliVersion:
+      "Infisical CLI version the gateway reported in its most recent connect or heartbeat request, such as 0.45.11, or devel for a build from source. Null when that request reported none; see cliVersionReportedAt. Self-reported by the gateway and not verified, so don't use it to decide what a gateway supports.",
+    cliVersionReportedAt:
+      "When the gateway last sent a connect or heartbeat request as the Infisical CLI. Set while cliVersion is null when the gateway runs a CLI older than v0.43.131, which doesn't report a version. Null when no such request has been recorded. Like cliVersion, it depends on what the gateway reports and is not verified."
+  },
   METRICS_REPORT: {
     activeChannels:
       "Number of channels the gateway is currently serving. Used to route new work to the least busy member of a gateway pool.",
@@ -4908,18 +4915,6 @@ export const AGENT_VAULT = {
       "PEM certificate(s) of the authority that signed the database's certificate, used only while `verify` is on. Send null to remove a stored one.",
     tlsCaRead:
       "PEM certificate(s) of the authority that signed the database's certificate, used only while `verify` is on. Null when none is stored.",
-    hook: "A server of yours that the proxy asks before it sends each request to this service, or opens each connection for a database or SSH service. The proxy sends the request on only if your server allows it. `url` is where the proxy sends each check, and `signingSecret` is the key it signs them with.",
-    updateHook:
-      "The hook to set or change. Send `url` alone to change only the URL and keep the saved signing secret, or `url` and `signingSecret` to replace both. Send null to remove the hook and its signing secret.",
-    hookUrl:
-      "Where the proxy sends each check: an `https://` or `http://` URL of at most 2048 characters, without a username, password, query string or fragment. Over `http://`, checks and answers are sent unencrypted.",
-    hookSigningSecret:
-      "The key the proxy signs each check with, so your server can tell the check came from the proxy. 32 to 512 printable ASCII characters with no spaces, used exactly as given. Never returned once saved.",
-    updateHookSigningSecret:
-      "The key the proxy signs each check with. 32 to 512 printable ASCII characters with no spaces, used exactly as given. Leave it out to keep the saved one; required when the service has no hook yet. Never returned once saved.",
-    hookRead:
-      "The service's hook, or null when it has none. Its signing secret is never returned. Left out for members.",
-    hookUrlRead: "Where the proxy sends each check.",
     databaseCredential: "The account the proxy logs in to the database as, a username and password.",
     sshCredential: "The account the proxy logs in to the SSH server as, a username with a password or an SSH key.",
     nativeUsername: `The user the proxy logs in as. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
@@ -5270,6 +5265,41 @@ export const AGENT_VAULT = {
     builtinName: "The name of the built-in skill, `infisical-agent-vault`. A skill in the library can't use this name.",
     builtinDescription: "What the built-in skill is for, taken from the `description` in its SKILL.md."
   },
+  HOOK: {
+    hookId: "The ID of the hook.",
+    projectId: "The ID of the Agent Vault project the hook is in.",
+    name: "The name of the hook, unique in the project. Lowercase letters, numbers and hyphens.",
+    description: "What the hook is for.",
+    updateDescription: "What the hook is for. Send null to remove it.",
+    descriptionRead: "What the hook is for, or null when it has no description.",
+    url: "Where the proxy sends each check: an `https://` or `http://` URL of at most 2048 characters, without a username, password, query string or fragment. Over `http://`, checks and answers are sent unencrypted.",
+    secret:
+      "The key the proxy signs each check with, so your server can tell the check came from the proxy. 32 to 512 printable ASCII characters with no spaces, used exactly as given. Never returned once saved.",
+    updateSecret:
+      "A new key for the proxy to sign each check with. 32 to 512 printable ASCII characters with no spaces, used exactly as given. Leave it out to keep the saved one. Never returned once saved.",
+    usedBy: "The project's services that use the hook, by name. Set a service's hook on the service.",
+    serviceHook:
+      "A saved hook of the project for the proxy to ask before it sends this service's requests, by name. Narrow it with `methods` and `paths` (HTTP) or `tools` (MCP), or leave those out to ask about every request, or every connection for a database or SSH service. Needs permission to read hooks.",
+    updateServiceHook:
+      "The saved hook for the proxy to ask before it sends this service's requests, by name, with its narrowing. Replaces the service's hook and narrowing. Send null to remove the hook, or leave it out to keep the current one. Needs permission to read hooks to set one.",
+    inlineServiceHook:
+      "A saved hook of the project for the proxy to ask before it sends this service's requests, by name. Narrow it with `methods` and `paths` (HTTP) or `tools` (MCP), or leave those out to ask about every request, or every connection for a database or SSH service. Needs permission to read hooks.",
+    serviceHookName: "The name of a saved hook in the project.",
+    serviceHookMethods:
+      "HTTP services only: ask the hook only about these methods. With `paths`, a request must match both. Leave it out to ask about every method.",
+    serviceHookPaths:
+      "HTTP services only: ask the hook only about paths that start with one of these prefixes, compared by whole segment like a service's allowed path prefixes. Leave it out to ask about every path.",
+    serviceHookTools:
+      "MCP services only: ask the hook only about calls to these tools. Can't be sent with `methods` or `paths`. Leave it out to ask about every tool.",
+    serviceHookRead:
+      "The saved hook the proxy asks before it sends this service's requests, and which requests it is asked about. No `methods`, `paths` or `tools` means every request. Null when the service has none. Left out for callers who can't read hooks.",
+    createdAt: "When the hook was created.",
+    updatedAt: "When the hook was last changed.",
+    search: "Match hooks whose name or URL contains this text.",
+    limit: "The maximum number of hooks to return. Defaults to 20.",
+    offset: "How many hooks to skip.",
+    totalCount: "How many hooks match the filters, across every page."
+  },
   MEMBER: {
     grantedAt: "When the access bundle was granted.",
     userId: "The ID of the user whose Agent Vault membership this is.",
@@ -5504,9 +5534,6 @@ export const AGENT_VAULT = {
     inlineServiceId: "The ID of the service sent with this session.",
     inlineServiceNameRead:
       "The name the service was sent with, or its first host if it was sent without one. Shown in session logs and in the proxy's error messages.",
-    inlineHook:
-      "A server of yours that the proxy asks before it sends each request to this service, or opens each connection for a database or SSH service. Its signing secret is deleted when the session ends.",
-    inlineHookRead: "The service's hook, or null when it was sent without one. Its signing secret is never returned.",
     ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d, or to 1h for a session started on behalf of a user.",
     label:
       "A short description of what the session is for, such as `nightly deploy` or `support ticket triage`. Up to 128 characters, without line breaks, tabs, or invisible characters. Shown wherever the session is listed.",
@@ -5706,15 +5733,17 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
   ruleName: "A name that tells approvers why the rule approved a request.",
   conditions: "Every condition in a rule must pass for the rule to approve.",
   conditionConnectionId:
-    "The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'. Omit it for an 'ai' condition.",
+    "The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'. Omit it for an 'ai' condition, or for a 'requester' condition that checks the requester's Infisical user or groups.",
   conditionSubject:
-    "What the condition checks: one of the inputs' subjects, 'requester' for the requester's own account, or 'ai' to have the organization's AI model review the request.",
+    "What the condition checks: one of the inputs' subjects, 'requester' for the requester's own account (in the connected service, or in Infisical when the condition has no connection), or 'ai' to have the organization's AI model review the request.",
   conditionPrompt:
     "For an 'ai' condition, the instructions the AI model checks the request against. The model receives the request details and every request form field value.",
   conditionContextConnectionIds:
     "For an 'ai' condition, the IDs of App Connections the AI model can read from with read-only lookups (e.g. a Jira connection).",
-  constraint: "Which check to run, from the subject's constraints in the auto-approval catalog (e.g. 'status').",
-  values: "The values the check accepts. Several values mean any of them; checks that take no value use an empty list.",
+  constraint:
+    "Which check to run, from the subject's constraints in the auto-approval catalog (e.g. 'status'). A 'requester' condition without a connection uses 'is-one-of'.",
+  values:
+    "The values the check accepts. Several values mean any of them; checks that take no value use an empty list. 'is-one-of' takes users as 'user:<id>' and groups as 'group:<id>'.",
   requestInputs:
     "Values for the policy's request form fields, such as a Jira ticket key or link. Malformed values are rejected.",
   requestInputValue: "The value the requester entered, such as 'PAY-123' or a link to the ticket.",

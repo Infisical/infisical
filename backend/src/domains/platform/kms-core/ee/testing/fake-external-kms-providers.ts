@@ -15,6 +15,9 @@ export class FakeExternalKmsProviders {
 
   onCall?: () => Promise<void>;
 
+  // The inputs each AWS client was built with, which is what AssumeRole would be sent.
+  readonly awsInputs: unknown[] = [];
+
   readonly providers: TExternalKmsProviders;
 
   constructor() {
@@ -38,7 +41,10 @@ export class FakeExternalKmsProviders {
       getKeysList: async () => ({ keys: ["fake-key"] })
     });
     this.providers = {
-      aws: (async ({ inputs }: { inputs: unknown }) => client(inputs)) as unknown as TExternalKmsProviders["aws"],
+      aws: (async ({ inputs }: { inputs: unknown }) => {
+        this.awsInputs.push(inputs);
+        return client(inputs);
+      }) as unknown as TExternalKmsProviders["aws"],
       gcp: (async ({ inputs }: { inputs: unknown }) => client(inputs)) as unknown as TExternalKmsProviders["gcp"]
     };
   }

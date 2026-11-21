@@ -19,6 +19,7 @@ vi.mock("@app/lib/logger", () => ({
 const EXTERNAL_PREFIX = Buffer.from("external:");
 
 const fakeExternalKms = (): TExternalKmsHook => ({
+  assertInputsAllowed: async () => {},
   encrypt: async (_key, _orgCipher, plainText) => Buffer.concat([EXTERNAL_PREFIX, plainText]),
   decrypt: async (_key, _orgCipher, cipherTextBlob) => Buffer.from(cipherTextBlob.subarray(EXTERNAL_PREFIX.length))
 });
@@ -62,7 +63,8 @@ const externalKeyIn = async (mem: InMemoryKmsCoreStores) => {
     orgId: "org-1",
     name: "external",
     provider: "aws",
-    encryptedProviderInputs: Buffer.from("inputs")
+    encryptedProviderInputs: Buffer.from("inputs"),
+    providerInputsVersion: 2
   });
   await mem.kmsKeyStore.insert(external);
   return external;
@@ -361,7 +363,8 @@ describe("KmsDataKeyService.updateProjectSecretManagerKmsKey", () => {
       orgId: "org-1",
       name: "external",
       provider: "aws",
-      encryptedProviderInputs: Buffer.from("inputs")
+      encryptedProviderInputs: Buffer.from("inputs"),
+      providerInputsVersion: 2
     });
     await mem.kmsKeyStore.insert(external);
 
@@ -407,7 +410,8 @@ describe("KmsDataKeyService.updateProjectSecretManagerKmsKey", () => {
       orgId: "org-1",
       name: "external",
       provider: "aws",
-      encryptedProviderInputs: Buffer.from("inputs")
+      encryptedProviderInputs: Buffer.from("inputs"),
+      providerInputsVersion: 2
     });
     await mem.kmsKeyStore.insert(external);
     await service.updateProjectSecretManagerKmsKey({
@@ -469,7 +473,8 @@ describe("KmsDataKeyService.updateProjectSecretManagerKmsKey", () => {
       orgId: "org-1",
       name: "external",
       provider: "aws",
-      encryptedProviderInputs: Buffer.from("inputs")
+      encryptedProviderInputs: Buffer.from("inputs"),
+      providerInputsVersion: 2
     });
     await mem.kmsKeyStore.insert(external);
 
@@ -494,7 +499,8 @@ describe("KmsDataKeyService.updateProjectSecretManagerKmsKey", () => {
       orgId: "org-1",
       name: "external",
       provider: "aws",
-      encryptedProviderInputs: Buffer.from("inputs")
+      encryptedProviderInputs: Buffer.from("inputs"),
+      providerInputsVersion: 2
     });
     await mem.kmsKeyStore.insert(external);
     vi.spyOn(mem.stores.projectKeyStore, "switchKey").mockResolvedValueOnce(false);
@@ -638,7 +644,8 @@ describe("KmsDataKeyService.deleteProjectKeys", () => {
       orgId: "org-1",
       name: "external",
       provider: "aws",
-      encryptedProviderInputs: Buffer.from("inputs")
+      encryptedProviderInputs: Buffer.from("inputs"),
+      providerInputsVersion: 2
     });
     await mem.kmsKeyStore.insert(external);
 

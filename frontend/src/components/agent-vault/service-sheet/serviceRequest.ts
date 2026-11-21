@@ -12,6 +12,7 @@ import {
   TAgentVaultCredentialUpdate,
   TAgentVaultOauthCredentialInput,
   TAgentVaultService,
+  TAgentVaultServiceHookInput,
   TAgentVaultSshKeyCredentialInput,
   TAgentVaultSshKeyCredentialUpdate,
   TCreateAgentVaultServiceDTO,
@@ -19,6 +20,7 @@ import {
   TUpdateAgentVaultServiceDTO
 } from "@app/hooks/api/agentVault/types";
 
+import { buildHookNarrowing, hookNarrowingDraftOf, sameHookNarrowing } from "../hooks/hookSchema";
 import {
   hasDatabase,
   hostOf,
@@ -294,24 +296,30 @@ const buildNativeConnection = (data: TServiceForm, serviceType: TAgentVaultNativ
 const intoBundle = (accessBundleId?: string) =>
   accessBundleId ? { accessBundleIds: [accessBundleId] } : {};
 
-// Only On sends a hook. A secret at the sentinel, or emptied, keeps the stored one.
-const typedHookSecret = (data: TServiceForm) =>
-  data.hookSigningSecret && data.hookSigningSecret !== UNCHANGED_SECRET
-    ? data.hookSigningSecret
-    : undefined;
+const buildServiceHook = (data: TServiceForm): TAgentVaultServiceHookInput | null =>
+  data.hook.hookId
+    ? { name: data.hook.hookName, ...buildHookNarrowing(data.hook, data.serviceType) }
+    : null;
 
-const buildHookCreate = (data: TServiceForm) =>
-  data.hookEnabled
-    ? { hook: { url: data.hookUrl.trim(), signingSecret: data.hookSigningSecret } }
-    : {};
+const withNewHook = (data: TServiceForm) => {
+  const hook = buildServiceHook(data);
+  return hook ? { hook } : {};
+};
 
-// Sent only when something changed, so a save that didn't touch the hook can't trip the plan check.
-const buildHookPatch = (service: TAgentVaultService, data: TServiceForm) => {
-  if (!data.hookEnabled) return service.hook ? { hook: null } : {};
-  const url = data.hookUrl.trim();
-  const signingSecret = typedHookSecret(data);
-  if (service.hook && url === service.hook.url && !signingSecret) return {};
-  return { hook: { url, ...(signingSecret ? { signingSecret } : {}) } };
+// Left out when unchanged: setting or changing a hook needs the plan's hooks feature, so an edit that leaves it alone
+// must not send it. A service read without its hook (a caller who can't read hooks) never has one to compare.
+const withHookChange = (service: TAgentVaultService, data: TServiceForm) => {
+  const next = buildServiceHook(data);
+  const saved = service.hook ?? null;
+  if (!next) return saved ? { hook: null } : {};
+  // The saved narrowing goes through the form's shape too: a saved list of every method is no list once built.
+  if (
+    saved &&
+    saved.id === data.hook.hookId &&
+    sameHookNarrowing(buildHookNarrowing(hookNarrowingDraftOf(saved), data.serviceType), next)
+  )
+    return {};
+  return { hook: next };
 };
 
 const buildNativeCreateRequest = (
@@ -356,7 +364,7 @@ export const buildCreateServiceRequest = (
     return {
       ...buildNativeCreateRequest(accessBundleId, data, data.serviceType),
       description,
-      ...buildHookCreate(data)
+      ...withNewHook(data)
     };
   }
   return data.serviceType === AgentVaultServiceType.Mcp
@@ -366,7 +374,7 @@ export const buildCreateServiceRequest = (
         ...buildMcpFields(data),
         description,
         credential: buildMcpCredential(data),
-        ...buildHookCreate(data)
+        ...withNewHook(data)
       }
     : {
         ...intoBundle(accessBundleId),
@@ -374,7 +382,7 @@ export const buildCreateServiceRequest = (
         ...buildHttpFields(data),
         description,
         credential: buildHttpCredential(data),
-        ...buildHookCreate(data)
+        ...withNewHook(data)
       };
 };
 
@@ -391,7 +399,7 @@ export const buildUpdateServiceRequest = (
       ...buildNativeConnection(data, data.serviceType),
       description,
       credential: buildNativeCredentialPatch(data),
-      ...buildHookPatch(service, data)
+      ...withHookChange(service, data)
     };
   }
   return data.serviceType === AgentVaultServiceType.Mcp
@@ -401,7 +409,7 @@ export const buildUpdateServiceRequest = (
         ...buildMcpFields(data),
         description,
         ...withCredential(buildMcpCredentialPatch(data, service)),
-        ...buildHookPatch(service, data)
+        ...withHookChange(service, data)
       }
     : {
         serviceId: service.id,
@@ -413,7 +421,7 @@ export const buildUpdateServiceRequest = (
             ? oauthVariableCredential(data, service)
             : buildHttpCredentialPatch(data)
         ),
-        ...buildHookPatch(service, data)
+        ...withHookChange(service, data)
       };
 };
 
