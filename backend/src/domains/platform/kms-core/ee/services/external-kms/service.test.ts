@@ -1,7 +1,10 @@
+import { RuleViolationError, StateConflictError } from "@app/domains/lib/errors";
 import { KmsAwsCredentialType, KmsProviders } from "@app/ee/services/external-kms/providers/model";
 
+import { KmsKey } from "../../../ce/models/kms-key";
 import { KmsDataKey } from "../../../ce/services/data-key/service";
 import { FakeKmsCore } from "../../../ce/testing/fake-kms-core";
+import { ExternalKmsProviderInputsVersion } from "../../models/aws-provider-inputs";
 import { FakeExternalKmsProviders } from "../../testing/fake-external-kms-providers";
 import { ExternalKmsService } from "./service";
 
@@ -127,5 +130,187 @@ describe("ExternalKmsService", () => {
 
     // Assert
     expect(keys).toEqual({ keys: ["fake-key"] });
+  });
+});
+
+const assumeRole = (externalId?: string, assumeRoleArn = "arn:aws:iam::123456789012:role/kms") => ({
+  credential: { type: KmsAwsCredentialType.AssumeRole, data: { assumeRoleArn, externalId } },
+  awsRegion: "us-east-1",
+  kmsKeyId: "key-1"
+});
+
+const sentExternalIds = (fake: FakeExternalKmsProviders) =>
+  fake.awsInputs.map(
+    (inputs) => (inputs as { credential: { data: { externalId?: string } } }).credential.data.externalId
+  );
+
+// Rows saved before the external ID had to be the organization ID.
+const seedLegacyKey = async (ctx: ReturnType<typeof setup>, inputs: ReturnType<typeof assumeRole>) => {
+  const orgCipher = await ctx.core.kmsDataKeyService.createCipherPairWithDataKey({
+    type: KmsDataKey.Organization,
+    orgId: ctx.orgId
+  });
+  const key = KmsKey.createExternal({
+    orgId: ctx.orgId,
+    name: "legacy",
+    provider: KmsProviders.Aws,
+    encryptedProviderInputs: orgCipher.encryptor({ plainText: Buffer.from(JSON.stringify(inputs)) }).cipherTextBlob,
+    providerInputsVersion: ExternalKmsProviderInputsVersion.Legacy
+  });
+  await ctx.core.memory.kmsKeyStore.insert(key);
+  return key;
+};
+
+const storedVersion = async (ctx: ReturnType<typeof setup>, kmsId: string) =>
+  (await ctx.core.memory.kmsKeyStore.findById(kmsId))?.externalRef()?.providerInputsVersion;
+
+describe("ExternalKmsService.create", () => {
+  test("should bind a new key's external ID to the organization and store it on the current rules", async () => {
+    // Setup
+    const ctx = setup();
+
+    // Action
+    const created = await ctx.service.create({
+      orgId: ctx.orgId,
+      name: "aws",
+      provider: { type: KmsProviders.Aws, inputs: assumeRole() }
+    });
+
+    // Assert
+    expect(sentExternalIds(ctx.fake)).toEqual([ctx.orgId]);
+    expect(await ctx.openStoredInputs(created.id)).toMatchObject({ credential: { data: { externalId: ctx.orgId } } });
+    expect(await storedVersion(ctx, created.id)).toBe(ExternalKmsProviderInputsVersion.OrgBoundExternalId);
+    expect(created.external.hasLegacyExternalId).toBe(false);
+  });
+
+  test("should refuse a new key whose external ID is not the organization ID, without calling AWS", async () => {
+    // Setup
+    const ctx = setup();
+    const otherProjectId = crypto.randomUUID();
+
+    // Action
+    const result = ctx.service.create({
+      orgId: ctx.orgId,
+      name: "aws",
+      provider: { type: KmsProviders.Aws, inputs: assumeRole(otherProjectId) }
+    });
+
+    // Assert
+    await expect(result).rejects.toBeInstanceOf(RuleViolationError);
+    expect(ctx.fake.awsInputs).toEqual([]);
+    expect(await ctx.core.memory.kmsKeyStore.find({ orgId: ctx.orgId, name: "aws" })).toEqual([]);
+  });
+});
+
+describe("ExternalKmsService.update", () => {
+  test("should keep a legacy key's external ID while its credential is unchanged, and flag it", async () => {
+    // Setup
+    const ctx = setup();
+    const key = await seedLegacyKey(ctx, assumeRole("customer-chosen-123"));
+
+    // Action
+    const updated = await ctx.service.update(key.id, {
+      provider: { type: KmsProviders.Aws, inputs: { awsRegion: "us-west-2" } }
+    });
+
+    // Assert
+    expect(sentExternalIds(ctx.fake)).toEqual(["customer-chosen-123"]);
+    expect(await storedVersion(ctx, key.id)).toBe(ExternalKmsProviderInputsVersion.Legacy);
+    expect(await ctx.openStoredInputs(key.id)).toMatchObject({ awsRegion: "us-west-2" });
+    expect(updated.external.hasLegacyExternalId).toBe(true);
+  });
+
+  test("should refuse a role change on a legacy key that keeps its custom external ID, without calling AWS", async () => {
+    // Setup
+    const ctx = setup();
+    const key = await seedLegacyKey(ctx, assumeRole("customer-chosen-123"));
+
+    // Action
+    const result = ctx.service.update(key.id, {
+      provider: {
+        type: KmsProviders.Aws,
+        inputs: assumeRole("customer-chosen-123", "arn:aws:iam::210987654321:role/x")
+      }
+    });
+
+    // Assert
+    await expect(result).rejects.toBeInstanceOf(RuleViolationError);
+    expect(ctx.fake.awsInputs).toEqual([]);
+    expect(await storedVersion(ctx, key.id)).toBe(ExternalKmsProviderInputsVersion.Legacy);
+  });
+
+  test("should move a legacy key to the current rules when its role changes", async () => {
+    // Setup
+    const ctx = setup();
+    const key = await seedLegacyKey(ctx, assumeRole("customer-chosen-123"));
+
+    // Action
+    const updated = await ctx.service.update(key.id, {
+      provider: { type: KmsProviders.Aws, inputs: assumeRole(ctx.orgId, "arn:aws:iam::210987654321:role/x") }
+    });
+
+    // Assert
+    expect(sentExternalIds(ctx.fake)).toEqual([ctx.orgId]);
+    expect(await storedVersion(ctx, key.id)).toBe(ExternalKmsProviderInputsVersion.OrgBoundExternalId);
+    expect(updated.external.hasLegacyExternalId).toBe(false);
+  });
+
+  test("should refuse to update a legacy key that sends another organization's project ID", async () => {
+    // Setup
+    const ctx = setup();
+    const foreignProjectId = crypto.randomUUID();
+    ctx.core.memory.platformRows.addProject(foreignProjectId, crypto.randomUUID());
+    const key = await seedLegacyKey(ctx, assumeRole(foreignProjectId));
+
+    // Action
+    const result = ctx.service.update(key.id, {
+      provider: { type: KmsProviders.Aws, inputs: { awsRegion: "us-west-2" } }
+    });
+
+    // Assert
+    await expect(result).rejects.toBeInstanceOf(RuleViolationError);
+    expect(ctx.fake.awsInputs).toEqual([]);
+  });
+
+  test("should refuse a legacy external ID that another organization's project takes while the update is checked", async () => {
+    // Setup
+    const ctx = setup();
+    const takenMeanwhile = crypto.randomUUID();
+    const key = await seedLegacyKey(ctx, assumeRole(takenMeanwhile));
+    ctx.fake.onCall = async () => {
+      ctx.fake.onCall = undefined;
+      ctx.core.memory.platformRows.addProject(takenMeanwhile, crypto.randomUUID());
+    };
+
+    // Action
+    const result = ctx.service.update(key.id, {
+      provider: { type: KmsProviders.Aws, inputs: { awsRegion: "us-west-2" } }
+    });
+
+    // Assert
+    await expect(result).rejects.toBeInstanceOf(RuleViolationError);
+    expect(await ctx.openStoredInputs(key.id)).toMatchObject({ awsRegion: "us-east-1" });
+  });
+
+  test("should refuse with a conflict when the provider inputs changed while the update was being checked", async () => {
+    // Setup
+    const ctx = setup();
+    const key = await seedLegacyKey(ctx, assumeRole("customer-chosen-123"));
+    ctx.fake.onCall = async () => {
+      ctx.fake.onCall = undefined;
+      const current = (await ctx.core.memory.kmsKeyStore.findForUpdate(key.id)) as KmsKey;
+      current.replaceProviderInputs(Buffer.from("written-meanwhile"), 2, current);
+      await ctx.core.memory.kmsKeyStore.save(current);
+    };
+
+    // Action
+    const result = ctx.service.update(key.id, {
+      provider: { type: KmsProviders.Aws, inputs: { awsRegion: "us-west-2" } }
+    });
+
+    // Assert
+    await expect(result).rejects.toBeInstanceOf(StateConflictError);
+    const stored = await ctx.core.memory.kmsKeyStore.findById(key.id);
+    expect(stored?.externalRef()?.encryptedProviderInputs).toEqual(Buffer.from("written-meanwhile"));
   });
 });

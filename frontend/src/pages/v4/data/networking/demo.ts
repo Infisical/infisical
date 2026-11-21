@@ -58,6 +58,8 @@ const gateway = (
   heartbeatTTL: null,
   directAddress: null,
   directHeartbeat: null,
+  cliVersion: null,
+  cliVersionReportedAt: null,
   canRevoke: false,
   connectedResourcesCount: 0,
   identity: null,

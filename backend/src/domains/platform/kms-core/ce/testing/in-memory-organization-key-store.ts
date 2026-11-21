@@ -30,6 +30,10 @@ export class InMemoryOrganizationKeyStore implements TOrganizationKeyStore {
     return [...this.rows.orgs.values()].some((org) => org.kmsDefaultKeyId === kmsKeyId);
   }
 
+  async isOrganization(id: string) {
+    return this.rows.orgs.has(id);
+  }
+
   private claim<K extends "kmsDefaultKeyId" | "kmsEncryptedDataKey">(
     orgId: string,
     column: K,
