@@ -7,6 +7,7 @@ import {
 } from "@app/services/certificate-common/certificate-constants";
 import { CertificateRenewalKeySource } from "@app/services/certificate-v3/certificate-v3-types";
 
+import { CertRequestRenewalApproval } from "../approval-policy-enums";
 import {
   BaseApprovalPolicySchema,
   BaseApprovalRequestGrantSchema,
@@ -27,7 +28,15 @@ export const CertRequestPolicyConditionsSchema = z
   })
   .array();
 
-export const CertRequestPolicyConstraintsSchema = z.object({});
+export const CertRequestPolicyConstraintsSchema = z.object({
+  renewalApproval: z.nativeEnum(CertRequestRenewalApproval).default(CertRequestRenewalApproval.OnChange)
+});
+
+// Policy rows reach callers unparsed, and policies created before this setting store no value for it.
+export const parseCertRequestRenewalApproval = (policy: { constraints?: unknown }) =>
+  CertRequestPolicyConstraintsSchema.parse(
+    (policy.constraints as { constraints?: unknown } | null | undefined)?.constraints ?? {}
+  ).renewalApproval;
 
 export const CertRequestPolicyRequestDataSchema = z.object({
   profileId: z.string().uuid(),
@@ -73,7 +82,10 @@ export const CertRequestPolicyRequestDataSchema = z.object({
       csr: z.string().optional(),
       attributes: certificateAttributesSchema.optional(),
       caId: z.string().uuid().optional(),
-      externalConfiguration: z.object({ reissue: z.boolean().optional() }).optional()
+      externalConfiguration: z.object({ reissue: z.boolean().optional() }).optional(),
+      // Whether the daily auto-renewal job raised the request. Requester columns can't tell: deleting a user clears
+      // them on their requests. Absent on requests raised before it existed.
+      raisedByAutoRenewal: z.boolean().optional()
     })
     .optional()
 });
@@ -98,7 +110,13 @@ export const CreateCertRequestPolicySchema = BaseCreateApprovalPolicySchema.exte
 
 export const UpdateCertRequestPolicySchema = BaseUpdateApprovalPolicySchema.extend({
   conditions: CertRequestPolicyConditionsSchema.optional(),
-  constraints: CertRequestPolicyConstraintsSchema.optional()
+  // Clients that predate the setting send `{}`: keep the stored value instead of resetting it to the default.
+  constraints: z
+    .object({ renewalApproval: z.nativeEnum(CertRequestRenewalApproval).optional() })
+    .optional()
+    .transform((constraints) =>
+      constraints?.renewalApproval ? { renewalApproval: constraints.renewalApproval } : undefined
+    )
 });
 
 export const CertRequestRequestSchema = BaseApprovalRequestSchema.extend({

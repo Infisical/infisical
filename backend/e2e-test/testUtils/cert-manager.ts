@@ -6,7 +6,7 @@ import { ProjectType } from "@app/db/schemas";
 import { ResourceMembershipRole } from "@app/db/schemas/models";
 import { ApprovalPolicyScope, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 import { CaStatus, InternalCaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import { CertKeyAlgorithm, CrlReason } from "@app/services/certificate/certificate-types";
+import { CertKeyAlgorithm, CertSignatureAlgorithm, CrlReason } from "@app/services/certificate/certificate-types";
 
 import { request } from "./request";
 
@@ -238,6 +238,7 @@ export const issueApplicationCertificate = (dto: {
   profileId: string;
   applicationId: string;
   commonName: string;
+  ttl?: string;
   authToken: string;
 }) =>
   request(
@@ -248,7 +249,14 @@ export const issueApplicationCertificate = (dto: {
       body: {
         profileId: dto.profileId,
         applicationId: dto.applicationId,
-        attributes: { commonName: dto.commonName, ttl: "1d" }
+        // createInternalRootCa's CA has an ECDSA P-256 key. A renewal reuses the certificate's algorithms, so a
+        // certificate issued without them from that CA can't be renewed.
+        attributes: {
+          commonName: dto.commonName,
+          ttl: dto.ttl ?? "1d",
+          keyAlgorithm: CertKeyAlgorithm.ECDSA_P256,
+          signatureAlgorithm: CertSignatureAlgorithm.ECDSA_SHA256
+        }
       }
     },
     (res) => ok<{ certificate: { certificateId: string } }>(res).certificate.certificateId
@@ -266,6 +274,54 @@ export const revokeCertificate = (dto: { certificateId: string; authToken: strin
       expect(res.statusCode, res.payload).toBe(202);
       return res.json<{ approvalRequestId: string }>().approvalRequestId;
     }
+  );
+
+export type TCertificate = {
+  id: string;
+  status: string;
+  serialNumber: string;
+  commonName: string;
+  renewedByCertificateId?: string | null;
+  renewBeforeDays?: number | null;
+  renewalError?: string | null;
+  revokedAt?: string | null;
+};
+
+export const getCertificate = (dto: { certificateId: string; authToken: string }) =>
+  request(
+    {
+      method: "GET",
+      url: `/api/v1/cert-manager/certificates/${dto.certificateId}`,
+      headers: auth(dto.authToken)
+    },
+    (res) => ok<{ certificate: TCertificate }>(res).certificate
+  );
+
+// Renews with no body: the certificate as it is, with a new key pair.
+export const renewCertificate = (dto: { certificateId: string; authToken: string }) =>
+  request(
+    {
+      method: "POST",
+      url: `/api/v1/cert-manager/certificates/${dto.certificateId}/renew`,
+      headers: auth(dto.authToken),
+      body: {}
+    },
+    ok<{ status: string; certificateId: string; certificateRequestId: string; serialNumber: string }>
+  );
+
+export const setCertificateRenewBeforeDays = (dto: {
+  certificateId: string;
+  renewBeforeDays: number;
+  authToken: string;
+}) =>
+  request(
+    {
+      method: "PATCH",
+      url: `/api/v1/cert-manager/certificates/${dto.certificateId}/config`,
+      headers: auth(dto.authToken),
+      body: { renewBeforeDays: dto.renewBeforeDays }
+    },
+    ok
   );
 
 export type TRevocationPolicyStep = {

@@ -30,7 +30,11 @@ import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
 import { TCertificateProfileDALFactory } from "../certificate-profile/certificate-profile-dal";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
-import { recordCertificateRequestFailure } from "../certificate-request/certificate-request-fns";
+import {
+  attachIssuedCertificate,
+  recordCertificateRequestFailure,
+  TRecordCertificateRequestFailureDeps
+} from "../certificate-request/certificate-request-fns";
 import {
   CertificateRequestStatus,
   TAttachCertificateToRequestDTO,
@@ -166,7 +170,12 @@ type TCertificateAuthorityServiceFactoryDep = {
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateRequestDAL: Pick<
     TCertificateRequestDALFactory,
-    "findById" | "updateById" | "transitionFromPending" | "attachCertificate" | "setPendingMessage"
+    | "findById"
+    | "updateById"
+    | "transitionFromPending"
+    | "attachCertificate"
+    | "attachCertificateIfUnlinked"
+    | "setPendingMessage"
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -178,7 +187,10 @@ type TCertificateAuthorityServiceFactoryDep = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne" | "primaryNode">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
-  auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog" | "createAuditLog">;
+  approvalRequestDAL: TRecordCertificateRequestFailureDeps["approvalRequestDAL"];
+  approvalPolicyDAL: TRecordCertificateRequestFailureDeps["approvalPolicyDAL"];
+  approvalPolicyService: TRecordCertificateRequestFailureDeps["approvalPolicyService"];
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -213,7 +225,10 @@ export const certificateAuthorityServiceFactory = ({
   certificateAuthoritySecretDAL,
   pkiAlertV2Queue,
   certificateAlertEventEmitter,
-  auditLogService
+  auditLogService,
+  approvalRequestDAL,
+  approvalPolicyDAL,
+  approvalPolicyService
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -1500,19 +1515,46 @@ export const certificateAuthorityServiceFactory = ({
         errorMessage,
         operation,
         originalCertificateId,
-        error
+        error,
+        failureStage
       }: TUpdateCertificateRequestStatusDTO) => {
         const updated = await certificateRequestDAL.transitionFromPending(id, status, errorMessage);
         if (updated && status === CertificateRequestStatus.FAILED) {
           await recordCertificateRequestFailure(
-            { auditLogService, certificateAuthorityDAL, certificateProfileDAL, pkiApplicationDAL },
-            { certificateRequest: updated, operation, originalCertificateId, error }
+            {
+              auditLogService,
+              certificateAuthorityDAL,
+              certificateProfileDAL,
+              pkiApplicationDAL,
+              approvalRequestDAL,
+              approvalPolicyDAL,
+              approvalPolicyService
+            },
+            {
+              certificateRequest: updated,
+              operation,
+              originalCertificateId,
+              error,
+              failureStage,
+              notifyApprovers: true
+            }
           );
         }
         return updated;
       },
-      attachCertificateToRequest: async ({ certificateRequestId: id, certificateId }: TAttachCertificateToRequestDTO) =>
-        certificateRequestDAL.attachCertificate(id, certificateId)
+      attachCertificateToRequest: ({ certificateRequestId: id, certificateId }: TAttachCertificateToRequestDTO) =>
+        attachIssuedCertificate(
+          {
+            auditLogService,
+            approvalRequestDAL,
+            approvalPolicyDAL,
+            certificateDAL,
+            certificateProfileDAL,
+            pkiApplicationDAL,
+            certificateRequestDAL
+          },
+          { certificateRequestId: id, certificateId }
+        )
     };
 
     const result =

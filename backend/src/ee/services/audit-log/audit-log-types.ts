@@ -3745,6 +3745,10 @@ interface CertificateIssuanceFailedEvent {
     commonName?: string;
     applicationId?: string;
     applicationName?: string;
+    approvalRequestId?: string;
+    approvalPolicyName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
     errorName: string;
     error: string;
   };
@@ -4431,6 +4435,10 @@ interface RenewCertificate {
     externalConfiguration?: TRenewCertificateDTO["externalConfiguration"];
     changedAttributes: TRenewalAuditChange[];
     status?: CertificateRequestStatus;
+    approvalRequestId?: string;
+    approvalPolicyName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
   };
 }
 

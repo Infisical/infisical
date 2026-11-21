@@ -28,7 +28,11 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
-import { CertificateIssuanceOperation, CertKeyAlgorithm } from "../certificate-common/certificate-constants";
+import {
+  CaOperationFailureStage,
+  CertificateIssuanceOperation,
+  CertKeyAlgorithm
+} from "../certificate-common/certificate-constants";
 import {
   calculateFinalRenewBeforeDays,
   resolveEffectiveApiConfig
@@ -70,12 +74,12 @@ import {
 } from "./acme/acme-certificate-authority-errors";
 import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-fns";
 import { ADCSCertificateAuthorityFns } from "./adcs/adcs-certificate-authority-fns";
-import { AcmPendingError } from "./aws-acm-public-ca/aws-acm-public-ca-certificate-authority-errors";
+import { AcmPendingError, AcmTerminalError } from "./aws-acm-public-ca/aws-acm-public-ca-certificate-authority-errors";
 import { AwsAcmPublicCaCertificateAuthorityFns } from "./aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
 import { AwsPcaCertificateAuthorityFns } from "./aws-pca/aws-pca-certificate-authority-fns";
 import { AzureAdCsCertificateAuthorityFns } from "./azure-ad-cs/azure-ad-cs-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
-import { CaType } from "./certificate-authority-enums";
+import { CaStatus, CaType } from "./certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "./certificate-authority-fns";
 import { assertCaSupportsCustomExtensions } from "./certificate-authority-maps";
 import { DigiCertCertificateAuthorityFns } from "./digicert/digicert-certificate-authority-fns";
@@ -435,6 +439,8 @@ export const certificateIssuanceQueueFactory = ({
     // must not be reported as issued.
     let certificateExistsAfterThisJob = true;
     let issuedCertificateId: string | undefined;
+    // Infisical's own checks run before any CA call, so a failure there mustn't be reported as the CA's.
+    let failureStage = CaOperationFailureStage.Infisical;
 
     try {
       logger.info(`Processing certificate issuance job for [certificateId=${certificateId}] [caId=${caId}]`);
@@ -458,11 +464,20 @@ export const certificateIssuanceQueueFactory = ({
       }
 
       const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+      if (ca.status !== CaStatus.ACTIVE) {
+        throw new BadRequestError({
+          message:
+            ca.status === CaStatus.DISABLED
+              ? `Certificate Authority '${ca.name}' is disabled, so it can't issue certificates. Enable it and request the certificate again.`
+              : `Certificate Authority '${ca.name}' isn't active, so it can't issue certificates.`
+        });
+      }
 
       if (customExtensions?.length) {
         assertCaSupportsCustomExtensions((ca.externalCa?.type ?? CaType.INTERNAL) as CaType, customExtensions.length);
       }
 
+      failureStage = CaOperationFailureStage.Ca;
       await setPending("Starting certificate issuance");
 
       if (ca.externalCa?.type === CaType.ACME) {
@@ -566,6 +581,7 @@ export const certificateIssuanceQueueFactory = ({
                 operation: issuanceOperation,
                 originalCertificateId,
                 error: attachError,
+                failureStage: CaOperationFailureStage.AttachingIssuedCertificate,
                 errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
               });
             } catch (statusUpdateError) {
@@ -635,6 +651,7 @@ export const certificateIssuanceQueueFactory = ({
                 operation: issuanceOperation,
                 originalCertificateId,
                 error: attachError,
+                failureStage: CaOperationFailureStage.AttachingIssuedCertificate,
                 errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
               });
             } catch (statusUpdateError) {
@@ -709,6 +726,7 @@ export const certificateIssuanceQueueFactory = ({
                 operation: issuanceOperation,
                 originalCertificateId,
                 error: attachError,
+                failureStage: CaOperationFailureStage.AttachingIssuedCertificate,
                 errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
               });
             } catch (statusUpdateError) {
@@ -781,6 +799,7 @@ export const certificateIssuanceQueueFactory = ({
                 operation: issuanceOperation,
                 originalCertificateId,
                 error: attachError,
+                failureStage: CaOperationFailureStage.AttachingIssuedCertificate,
                 errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
               });
             } catch (statusUpdateError) {
@@ -855,6 +874,7 @@ export const certificateIssuanceQueueFactory = ({
                 operation: issuanceOperation,
                 originalCertificateId,
                 error: attachError,
+                failureStage: CaOperationFailureStage.AttachingIssuedCertificate,
                 errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
               });
             } catch (statusUpdateError) {
@@ -1188,6 +1208,7 @@ export const certificateIssuanceQueueFactory = ({
                 operation: issuanceOperation,
                 originalCertificateId,
                 error: attachError,
+                failureStage: CaOperationFailureStage.AttachingIssuedCertificate,
                 errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
               });
             } catch (statusUpdateError) {
@@ -1346,6 +1367,7 @@ export const certificateIssuanceQueueFactory = ({
             operation: issuanceOperation,
             originalCertificateId,
             error,
+            failureStage,
             errorMessage: isAcmeTerminal ? errorMessage : `Certificate issuance failed: ${errorMessage}`
           });
           logger.info(`Updated certificate request ${certificateRequestId} status to failed due to issuance error`);
@@ -1385,14 +1407,14 @@ export const certificateIssuanceQueueFactory = ({
           const isFinalAttempt = attemptsMade + 1 >= maxAttempts;
           const { certificateRequestId, certificateId, caId } = job.data;
           if (isFinalAttempt && certificateRequestId && certificateRequestService) {
-            const finalMessage = `AWS ACM DNS validation did not complete after ${maxAttempts} attempts: ${error.message}`;
+            const finalMessage = `AWS ACM didn't finish after ${maxAttempts} attempts. Last status: ${error.pendingStatus}`;
             try {
               await certificateRequestService.updateCertificateRequestStatus({
                 certificateRequestId,
                 status: CertificateRequestStatus.FAILED,
                 operation: job.data.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
                 originalCertificateId: job.data.originalCertificateId,
-                error: new AcmPendingError(finalMessage),
+                error: new AcmTerminalError(finalMessage),
                 errorMessage: finalMessage
               });
               logger.info(

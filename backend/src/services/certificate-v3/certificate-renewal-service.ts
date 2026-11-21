@@ -16,7 +16,9 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
+import { CertRequestRenewalApproval } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
+import { parseCertRequestRenewalApproval } from "@app/services/approval-policy/cert-request/cert-request-policy-schemas";
 import { TCertRequestRequestData } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import {
@@ -212,8 +214,12 @@ type TCertificateRenewalServiceFactoryDep = {
 
 const MAX_RENEWAL_CHAIN_HOPS = 10;
 
+// An imported or discovered certificate was never reviewed by Infisical, so every renewal of it is held.
 const isSourcedOutsideInfisical = (certificate: TCertificates) =>
   Boolean(certificate.source) && certificate.source !== CertificateSource.Issued;
+
+const isEveryRenewalHeldForApproval = (certificate: TCertificates, renewalApproval: CertRequestRenewalApproval) =>
+  renewalApproval === CertRequestRenewalApproval.Always || isSourcedOutsideInfisical(certificate);
 
 class RenewalBlockedError extends BadRequestError {
   readonly renewalError: string;
@@ -1317,10 +1323,17 @@ export const certificateRenewalServiceFactory = ({
     });
   };
 
+  // Callers read this after the renewal has committed, and the name only labels the result, so a failed read
+  // mustn't turn a finished renewal into an error.
   const $resolveApplicationName = async (applicationId?: string | null) => {
     if (!applicationId) return null;
-    const application = await pkiApplicationDAL.findById(applicationId);
-    return application?.name ?? null;
+    try {
+      const application = await pkiApplicationDAL.findById(applicationId);
+      return application?.name ?? null;
+    } catch (error) {
+      logger.warn(error, `Failed to look up a renewed certificate's application [applicationId=${applicationId}]`);
+      return null;
+    }
   };
 
   const $holdRenewalForApproval = async (
@@ -1431,7 +1444,8 @@ export const certificateRenewalServiceFactory = ({
             ...requestedRenewal,
             attributes,
             caId,
-            ...(externalConfiguration && { externalConfiguration })
+            ...(externalConfiguration && { externalConfiguration }),
+            raisedByAutoRenewal: actorCtx.actor === ActorType.PLATFORM
           }
         },
         justification: `Certificate renewal request for ${certificateRequest.commonName || profile.slug}`,
@@ -1446,12 +1460,16 @@ export const certificateRenewalServiceFactory = ({
     );
   };
 
-  const recordRejectedRenewal = async (certificateId: string) => {
+  const recordRejectedRenewal = async (
+    certificateId: string,
+    { raisedByAutoRenewal }: { raisedByAutoRenewal: boolean }
+  ) => {
     const certificate = await certificateDAL.findById(certificateId);
-    if (!certificate || !isSourcedOutsideInfisical(certificate)) return;
+    if (!certificate || !(raisedByAutoRenewal || isSourcedOutsideInfisical(certificate))) return;
 
     await certificateDAL.updateById(certificateId, {
-      renewalError: "A renewal of this certificate was rejected. Renew it manually to request approval again."
+      renewalError:
+        "A renewal of this certificate was rejected. Infisical won't renew it automatically until a manual renewal completes."
     });
   };
 
@@ -1545,7 +1563,11 @@ export const certificateRenewalServiceFactory = ({
       ? null
       : await $matchRenewalApprovalPolicy({ originalCert: certForLicenseChecks, actor });
     const approval = approvalPolicy
-      ? { policy: approvalPolicy, requester: await $resolveRequesterInfo(actor, actorId, EnrollmentType.API) }
+      ? {
+          policy: approvalPolicy,
+          requester: await $resolveRequesterInfo(actor, actorId, EnrollmentType.API),
+          renewalApproval: parseCertRequestRenewalApproval(approvalPolicy)
+        }
       : null;
 
     const runRenewal = () =>
@@ -1717,7 +1739,7 @@ export const certificateRenewalServiceFactory = ({
           changedAttributes.length > 0 ||
           haveDifferentSubjectAlternativeNames(replayedRequest, certificateRequest) ||
           haveDifferentCustomExtensions(originalCert.customExtensions, resolvedCustomExtensions);
-        if (approval && (isSourcedOutsideInfisical(originalCert) || changesCertificate)) {
+        if (approval && (isEveryRenewalHeldForApproval(originalCert, approval.renewalApproval) || changesCertificate)) {
           const { certificateRequestId: heldRequestId, notifyApprovers } = await $holdRenewalForApproval(
             {
               approval,
@@ -2212,20 +2234,23 @@ export const certificateRenewalServiceFactory = ({
     organizationId: string;
     renewal: NonNullable<TCertRequestRequestData["renewal"]>;
     reviewedCertificateRequest: TCertRequestRequestData["certificateRequest"];
-  }) =>
-    renewCertificate({
+  }) => {
+    const renewedCertificateId = await $findLatestRenewalOf(renewal.certificateId);
+    const renewed = await renewCertificate({
       actor: ActorType.PLATFORM,
       actorId: "",
       actorAuthMethod: null,
       actorOrgId: organizationId,
       internal: true,
-      certificateId: await $findLatestRenewalOf(renewal.certificateId),
+      certificateId: renewedCertificateId,
       renewalKeySource: renewal.renewalKeySource,
       csr: renewal.csr,
       attributes: renewal.attributes,
       externalConfiguration: renewal.externalConfiguration,
       approvedRenewal: { certificateRequestId, reviewedCertificateRequest, reviewedCaId: renewal.caId }
     });
+    return { ...renewed, originalCertificateId: renewedCertificateId };
+  };
 
   return {
     renewCertificate,
