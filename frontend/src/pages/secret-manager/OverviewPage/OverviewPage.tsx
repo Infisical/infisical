@@ -1038,6 +1038,7 @@ const OverviewPageContent = () => {
         return (data ?? []).map((item) => ({
           environment: item.environment,
           secretPath: item.secretPath,
+          importId: item.importId,
           sourceEnv,
           secrets: item.secrets
         }));
@@ -1563,6 +1564,17 @@ const OverviewPageContent = () => {
     [isSingleEnvView, singleEnvSlug, getSecretImportsForEnv]
   );
   const [sortableImportItems, setSortableImportItems] = useState<TSecretImport[]>([]);
+  // A replication import's secrets are reported under its source's environment and path, so rows need to know
+  // which groups belong to one to keep a regular import of the same source from showing them.
+  const importedSecretsForRows = useMemo(() => {
+    const replicationImportIds = new Set(
+      sortableImportItems.filter(({ isReplication }) => isReplication).map(({ id }) => id)
+    );
+    return importedSecretsFlat.map((group) => ({
+      ...group,
+      isReplication: Boolean(group.importId && replicationImportIds.has(group.importId))
+    }));
+  }, [importedSecretsFlat, sortableImportItems]);
 
   useEffect(() => {
     if (!isOverviewFetching) {
@@ -4767,7 +4779,7 @@ const OverviewPageContent = () => {
                               onDelete={(secretImport) =>
                                 handlePopUpOpen("deleteSecretImport", secretImport)
                               }
-                              importedSecrets={importedSecretsFlat}
+                              importedSecrets={importedSecretsForRows}
                               isVisible={isSingleEnvSecretsVisible}
                               activityId={getTableRowActivityId("secret-import", imp.id)}
                               onActivityChange={handleTableRowActivityChange}
@@ -4799,7 +4811,7 @@ const OverviewPageContent = () => {
                                 onDelete={(secretImport) =>
                                   handlePopUpOpen("deleteSecretImport", secretImport)
                                 }
-                                importedSecrets={importedSecretsFlat}
+                                importedSecrets={importedSecretsForRows}
                                 isVisible={isSingleEnvSecretsVisible}
                                 activityId={getTableRowActivityId(
                                   "secret-import",

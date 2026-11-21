@@ -114,6 +114,10 @@ export const sapPubSchema = SecretApprovalPoliciesSchema.merge(
   })
 );
 
+export const secretChangePolicyPubSchema = sapPubSchema.extend({
+  enforceImportReplication: z.boolean()
+});
+
 export const SanitizedUserSchema = UsersSchema.pick({
   username: true,
   email: true,

@@ -1358,6 +1358,8 @@ export const registerRoutes = async (
     projectEnvDAL,
     projectDAL,
     userDAL,
+    secretImportDAL,
+    folderDAL,
     permissionService,
     licenseService
   });
@@ -2593,6 +2595,7 @@ export const registerRoutes = async (
   });
   const secretImportService = secretImportServiceFactory({
     eventEmitter: eventOutboxService,
+    secretChangePolicyService,
     licenseService,
     projectBotService,
     projectFolderGrantDAL,
