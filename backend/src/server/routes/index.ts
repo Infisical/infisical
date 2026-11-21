@@ -279,6 +279,8 @@ import { secretReminderAlertDALFactory } from "@app/services/alert/providers/sec
 import { secretReminderAlertProviderFactory } from "@app/services/alert/providers/secret-reminder-alert-provider";
 import { secretRotationAlertDALFactory } from "@app/services/alert/providers/secret-rotation-alert-dal";
 import { secretRotationAlertProviderFactory } from "@app/services/alert/providers/secret-rotation-alert-provider";
+import { secretScanningAlertDALFactory } from "@app/services/alert/providers/secret-scanning-alert-dal";
+import { secretScanningAlertProviderFactory } from "@app/services/alert/providers/secret-scanning-alert-provider";
 import { secretSyncAlertDALFactory } from "@app/services/alert/providers/secret-sync-alert-dal";
 import { secretSyncAlertProviderFactory } from "@app/services/alert/providers/secret-sync-alert-provider";
 import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
@@ -1117,6 +1119,12 @@ export const registerRoutes = async (
       permissionService,
       licenseService,
       certManagerProjectResolver
+    })
+  );
+  alertProviderRegistry.register(
+    secretScanningAlertProviderFactory({
+      secretScanningAlertDAL: secretScanningAlertDALFactory(db),
+      permissionService
     })
   );
   alertProviderRegistry.register(
@@ -4832,7 +4840,8 @@ export const registerRoutes = async (
     keyStore,
     appConnectionDAL,
     notificationService,
-    telemetryService
+    telemetryService,
+    eventEmitter: eventOutboxService
   });
 
   const secretScanningV2ProjectResolver = secretScanningV2ProjectResolverFactory({
@@ -4856,7 +4865,9 @@ export const registerRoutes = async (
     secretScanningV2Queue,
     kmsDataKeyService,
     appConnectionDAL,
-    keyStore
+    keyStore,
+    projectDAL,
+    alertService
   });
 
   const migrationService = externalMigrationServiceFactory({
