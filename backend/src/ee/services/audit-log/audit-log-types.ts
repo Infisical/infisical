@@ -5933,6 +5933,7 @@ interface PitProcessNewCommitRawEvent {
   type: EventType.PIT_PROCESS_NEW_COMMIT_RAW;
   metadata: {
     projectId: string;
+    projectName?: string;
     environment: string;
     secretPath: string;
     message: string;

@@ -215,7 +215,8 @@ import {
   TSecretRotationV2
 } from "@app/hooks/api/secretRotationsV2";
 import { useCheckSecretRotationV2Credentials } from "@app/hooks/api/secretRotationsV2/mutations";
-import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
+import { useCreateCommit, useCreateCommits } from "@app/hooks/api/secrets/mutations";
 import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
 import {
   ApiErrorTypes,
@@ -309,6 +310,7 @@ import {
   type TableRowActivityChangeHandler,
   type TableRowActivityId
 } from "./components/tableRowActivity";
+import { UnsavedEditsBar, UnsavedEditsScope, useUnsavedEdits } from "./components/UnsavedEditsBar";
 import {
   createOverviewTelemetry,
   observeOverviewRequest,
@@ -831,6 +833,13 @@ const OverviewPageContent = () => {
 
   const isSingleEnvView = visibleEnvs.length === 1;
   const [activeTableRows, setActiveTableRows] = useState<Set<TableRowActivityId>>(new Set());
+  const { count: unsavedEditsCount, getEdits: getUnsavedEdits } = useUnsavedEdits();
+  const { mutateAsync: createCommits, isPending: isCommittingUnsavedEdits } = useCreateCommits();
+  const [layoutContainer, setLayoutContainer] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setLayoutContainer(document.querySelector<HTMLElement>('[data-slot="sidebar-inset"]'));
+  }, []);
   const handleTableRowActivityChange = useCallback<TableRowActivityChangeHandler>(
     (rowId, isActive) => {
       setActiveTableRows((current) => {
@@ -2520,6 +2529,57 @@ const OverviewPageContent = () => {
     }
   };
 
+  const getUnsavedChanges = () =>
+    getUnsavedEdits().flatMap((edit) => {
+      const change = edit.getChange();
+      return change ? [change] : [];
+    });
+
+  const handleCommitUnsavedEdits = async (message: string) => {
+    const edits = getUnsavedEdits().flatMap((edit) => {
+      const change = edit.getChange();
+      return change ? [{ edit, change }] : [];
+    });
+    const changes = edits.map(({ change }) => change);
+    if (!changes.length) return false;
+
+    try {
+      const { commits } = await createCommits({ projectId, secretPath, message, secrets: changes });
+      edits.forEach(({ edit, change }) => edit.settle(change.secretValue));
+
+      const reviewEnvironments = commits
+        .filter((commit) => commit.approval)
+        .map((commit) => commit.environment);
+      const reviewEnvironmentNames = [
+        ...new Set(
+          changes
+            .filter((change) => reviewEnvironments.includes(change.environment))
+            .map((change) => change.environmentName)
+        )
+      ];
+      const committedCount = changes.filter(
+        (change) => !reviewEnvironments.includes(change.environment)
+      ).length;
+
+      if (committedCount > 0) {
+        createNotification({
+          type: "success",
+          text: `Committed ${committedCount} change${committedCount === 1 ? "" : "s"}`
+        });
+      }
+      if (reviewEnvironmentNames.length > 0) {
+        createNotification({
+          type: "info",
+          text: `Change request opened for ${reviewEnvironmentNames.join(", ")}`
+        });
+      }
+      return true;
+    } catch (error) {
+      showSecretWriteErrors([{ error }]);
+      return false;
+    }
+  };
+
   const handleSecretDelete = async (
     env: string,
     key: string,
@@ -3306,6 +3366,9 @@ const OverviewPageContent = () => {
     secrets?.length || folders?.length || secretRotationNames?.length
   );
 
+  const hasSelectedEntries = Object.values(selectedEntries).some(
+    (entries) => Object.keys(entries).length > 0
+  );
   const hasSelectedEntriesOnPage =
     mergedFolderNamesAndDescriptions.some(({ name }) => selectedEntries.folder[name]) ||
     secretRotationNames.some((name) => selectedEntries.secretRotation[name]) ||
@@ -5608,10 +5671,7 @@ const OverviewPageContent = () => {
       <SecretsActivationNudge
         popUp={invitePopUp}
         handlePopUpToggle={handleInvitePopUpToggle}
-        isLifted={
-          hasPendingBatchChanges ||
-          Object.values(selectedEntries).some((entries) => Object.keys(entries).length > 0)
-        }
+        isLifted={hasPendingBatchChanges || hasSelectedEntries || unsavedEditsCount > 0}
       />
       {isSingleEnvView && singleVisibleEnv && (
         <CommitForm
@@ -5626,12 +5686,24 @@ const OverviewPageContent = () => {
           onReviewOpenChange={setIsReviewOpen}
         />
       )}
+      {!isSingleEnvView && (
+        <UnsavedEditsBar
+          count={hasSelectedEntries ? 0 : unsavedEditsCount}
+          isCommitting={isCommittingUnsavedEdits}
+          portalContainer={layoutContainer}
+          getChanges={getUnsavedChanges}
+          onCommit={handleCommitUnsavedEdits}
+          onDiscardAll={() => getUnsavedEdits().forEach((edit) => edit.discard())}
+        />
+      )}
     </div>
   );
 };
 
 export const OverviewPage = () => (
   <StoreProvider>
-    <OverviewPageContent />
+    <UnsavedEditsScope>
+      <OverviewPageContent />
+    </UnsavedEditsScope>
   </StoreProvider>
 );
