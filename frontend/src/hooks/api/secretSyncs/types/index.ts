@@ -21,6 +21,7 @@ import { TConvexSync } from "./convex-sync";
 import { TCoolifySync } from "./coolify-sync";
 import { TDatabricksSync } from "./databricks-sync";
 import { TDaytonaSync } from "./daytona-sync";
+import { TDenoDeploySync } from "./deno-deploy-sync";
 import { TDevinSync } from "./devin-sync";
 import { TDigitalOceanAppPlatformSync } from "./digital-ocean-app-platform-sync";
 import { TExternalInfisicalSync } from "./external-infisical-sync";
@@ -120,6 +121,7 @@ export type TSecretSync =
   | TCloud66Sync
   | TSpaceliftSync
   | TDaytonaSync
+  | TDenoDeploySync
   | TKeeperSync
   | TJenkinsSync
   | TCoolifySync;

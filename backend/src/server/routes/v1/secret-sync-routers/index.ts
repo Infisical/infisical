@@ -21,6 +21,7 @@ import { registerConvexSyncRouter } from "./convex-sync-router";
 import { registerCoolifySyncRouter } from "./coolify-sync-router";
 import { registerDatabricksSyncRouter } from "./databricks-sync-router";
 import { registerDaytonaSyncRouter } from "./daytona-sync-router";
+import { registerDenoDeploySyncRouter } from "./deno-deploy-sync-router";
 import { registerDevinSyncRouter } from "./devin-sync-router";
 import { registerDigitalOceanAppPlatformSyncRouter } from "./digital-ocean-app-platform-sync-router";
 import { registerExternalInfisicalSyncRouter } from "./external-infisical-sync-router";
@@ -111,6 +112,7 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.Cloud66]: registerCloud66SyncRouter,
   [SecretSync.Spacelift]: registerSpaceliftSyncRouter,
   [SecretSync.Daytona]: registerDaytonaSyncRouter,
+  [SecretSync.DenoDeploy]: registerDenoDeploySyncRouter,
   [SecretSync.Keeper]: registerKeeperSyncRouter,
   [SecretSync.Jenkins]: registerJenkinsSyncRouter,
   [SecretSync.Coolify]: registerCoolifySyncRouter
