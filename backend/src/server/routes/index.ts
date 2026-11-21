@@ -619,6 +619,8 @@ import { shadowToGoSidecar } from "../plugins/go-sidecar-shadowing";
 import { injectPamProjectId } from "../plugins/inject-pam-project-id";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { forwardWritesToPrimary } from "../plugins/primary-forwarding-mode";
+import { secretReadConcurrencyLimit } from "../plugins/secret-read-concurrency-limit";
+import { secretsRateLimit } from "../plugins/secrets-rate-limit";
 import { registerV1Routes } from "./v1";
 import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
@@ -2577,7 +2579,8 @@ export const registerRoutes = async (
     keyStore,
     licenseService,
     folderDAL,
-    approvalPolicySecretEnvironmentDAL
+    approvalPolicySecretEnvironmentDAL,
+    secretV2BridgeDAL
   });
 
   const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService, secretV2BridgeDAL });
@@ -2605,7 +2608,8 @@ export const registerRoutes = async (
     secretDAL,
     secretQueueService,
     secretV2BridgeDAL,
-    kmsDataKeyService
+    kmsDataKeyService,
+    keyStore
   });
   const projectFolderGrantService = projectFolderGrantServiceFactory({
     projectFolderGrantDAL,
@@ -5211,6 +5215,8 @@ export const registerRoutes = async (
   await server.register(injectPermission);
   await server.register(injectPamProjectId);
   await server.register(injectRateLimits);
+  await server.register(secretsRateLimit);
+  await server.register(secretReadConcurrencyLimit);
   await server.register(injectAuditLogInfo);
   await server.register(injectPermissionDeniedAuditLog);
 

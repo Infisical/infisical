@@ -12,6 +12,7 @@ import { ApprovalPolicyType } from "@app/services/approval-policy/approval-polic
 
 import { ActorType } from "../auth/auth-type";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TProjectEnvDALFactory } from "./project-env-dal";
 import { SOFT_DELETE_GRACE_MS } from "./project-env-queue";
 import {
@@ -30,6 +31,7 @@ type TProjectEnvServiceFactoryDep = {
   licenseService: TLicenseService;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "waitTillReady" | "deleteItem">;
   approvalPolicySecretEnvironmentDAL: Pick<TApprovalPolicySecretEnvironmentDALFactory, "findPolicyByEnvId">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId" | "findGrantTargetProjectIds">;
 };
 
 export type TProjectEnvServiceFactory = ReturnType<typeof projectEnvServiceFactory>;
@@ -40,7 +42,8 @@ export const projectEnvServiceFactory = ({
   licenseService,
   keyStore,
   folderDAL,
-  approvalPolicySecretEnvironmentDAL
+  approvalPolicySecretEnvironmentDAL,
+  secretV2BridgeDAL
 }: TProjectEnvServiceFactoryDep) => {
   const createEnvironment = async ({
     projectId,
@@ -218,6 +221,7 @@ export const projectEnvServiceFactory = ({
         await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
         return updated;
       });
+      await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
 
       await keyStore.setItemWithExpiry(
         KeyStorePrefixes.WaitUntilReadyProjectEnvironmentOperation(projectId),
@@ -273,6 +277,8 @@ export const projectEnvServiceFactory = ({
           });
         }
         if (hardDelete) {
+          // Read before the delete, which cascades the environment's folder grants away.
+          const grantTargetProjectIds = await secretV2BridgeDAL.findGrantTargetProjectIds(projectId, tx);
           const [doc] = await projectEnvDAL.delete({ id, projectId }, tx);
           if (!doc)
             throw new NotFoundError({
@@ -281,6 +287,7 @@ export const projectEnvServiceFactory = ({
             });
 
           await projectEnvDAL.closePositionGap(projectId, doc.position, tx);
+          await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx, { grantTargetProjectIds });
           await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
 
           return doc;
@@ -319,6 +326,7 @@ export const projectEnvServiceFactory = ({
             name: "DeleteEnvironment"
           });
 
+        await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx);
         await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
         return doc;
       });
@@ -414,6 +422,7 @@ export const projectEnvServiceFactory = ({
         await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
         return doc;
       });
+      await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
 
       return env;
     } finally {

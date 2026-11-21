@@ -42,7 +42,19 @@ const pickSecretV2Columns = (row: TSecretsV2) => {
 export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const secretOrm = ormify(db, TableName.SecretV2);
 
-  const invalidateSecretCacheByProjectId = async (projectId: string, tx?: Knex) => {
+  const findGrantTargetProjectIds = async (sourceProjectId: string, tx?: Knex) => {
+    const targetGrants = await (tx || db.replicaNode())(TableName.ProjectFolderGrant)
+      .where("sourceProjectId", sourceProjectId)
+      .select("targetProjectId")
+      .groupBy("targetProjectId");
+    return targetGrants.map(({ targetProjectId }) => targetProjectId as string);
+  };
+
+  const invalidateSecretCacheByProjectId = async (
+    projectId: string,
+    tx?: Knex,
+    { grantTargetProjectIds = [] }: { grantTargetProjectIds?: string[] } = {}
+  ) => {
     const secretDalVersionKey = KeyStorePrefixes.SecretDalVersion(projectId);
     await keyStore.pgIncrementBy(secretDalVersionKey, { incr: 1, tx, expiry: SECRET_DAL_VERSION_TTL });
     await keyStore.deleteItem(KeyStorePrefixes.SecretEtag(projectId, utcDayStamp()));
@@ -50,14 +62,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     // When a source project's secrets change, target projects that consume them
     // via cross-project grants must also be invalidated so they don't serve
     // stale source values from cache.
-    const targetGrants = await (tx || db.replicaNode())(TableName.ProjectFolderGrant)
-      .where("sourceProjectId", projectId)
-      .select("targetProjectId")
-      .groupBy("targetProjectId");
+    const targetProjectIds = new Set([...(await findGrantTargetProjectIds(projectId, tx)), ...grantTargetProjectIds]);
 
     const stamp = utcDayStamp();
     await Promise.all(
-      targetGrants.map(async ({ targetProjectId }) => {
+      [...targetProjectIds].map(async (targetProjectId) => {
         const targetVersionKey = KeyStorePrefixes.SecretDalVersion(targetProjectId);
         await keyStore.pgIncrementBy(targetVersionKey, { incr: 1, tx, expiry: SECRET_DAL_VERSION_TTL });
         await keyStore.deleteItem(KeyStorePrefixes.SecretEtag(targetProjectId, stamp));
@@ -194,7 +203,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         key: "id",
         parentMapper: (el) => ({
           _id: el.id,
-          ...SecretsV2Schema.parse(el),
+          ...pickSecretV2Columns(el),
           isHoneyTokenSecret: Boolean(el.honeyTokenId),
           rotationId: el.rotationId,
           isRotatedSecret: Boolean(el.rotationId),
@@ -1902,6 +1911,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findOne,
     find,
     invalidateSecretCacheByProjectId,
+    findGrantTargetProjectIds,
     findSecretsWithReminderRecipients,
     findSecretsWithReminderRecipientsOld,
     findReferencedSecretReferencesBySecretKey,

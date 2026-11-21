@@ -1,5 +1,6 @@
 import { MongoAbility } from "@casl/ability";
 import { Knex } from "knex";
+import { z } from "zod";
 
 import { SecretType, TSecretFolders, TSecretsV2, TSecretsV2Insert, TSecretsV2Update } from "@app/db/schemas";
 import { TCipherPair, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
@@ -7,6 +8,8 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
+import { TConcurrencySlot } from "@app/lib/concurrency/concurrency-limiter";
+import { getConfig } from "@app/lib/config/env";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -42,6 +45,15 @@ export type TSecretReferenceDTO = {
   secretKey: string;
 };
 
+export const limitSecretBatchSize = <T extends z.ZodTypeAny>(secrets: z.ZodArray<T>) => {
+  const max = getConfig().MAX_SECRETS_PER_BATCH_REQUEST;
+  if (!max) return secrets;
+
+  return secrets
+    .max(max, `A batch request can include at most ${max} secrets. Split the secrets into multiple requests.`)
+    .describe(`At most ${max} secrets per request.`);
+};
+
 export enum SecretUpdateMode {
   Ignore = "ignore",
   Upsert = "upsert",
@@ -75,6 +87,7 @@ export type TGetSecretsDTO = {
   abortSignal?: AbortSignal;
   // Called with each secret in the project a reference resolved to, a personal override included.
   onSecretReferenced?: (secretId: string) => void;
+  secretReadSlot?: TConcurrencySlot;
 } & TProjectPermission;
 
 export type TGetSecretsMissingReadValuePermissionDTO = Omit<

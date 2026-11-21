@@ -87,6 +87,7 @@ import { SecretConflictsDialog } from "../SecretConflictsDialog";
 import { CsvColumnMapContent } from "./CsvColumnMapDialog";
 import {
   buildFolderTree,
+  chunkByCount,
   chunkSecretsByRequestSize,
   createFolderResolver,
   createRateLimitedQueue,
@@ -638,69 +639,67 @@ const ImportSecretsContent = ({
           return {
             oversizedKeys: [] as string[],
             results: await Promise.allSettled([
-              ...(secretsToCreate.length
-                ? [
-                    createSecretBatch({
-                      projectId,
-                      environment,
-                      secretPath: path,
-                      secrets: secretsToCreate
-                    }).then((result) => {
-                      addCount(createdCountByEnv, environment, result, secretsToCreate.length);
-                      if (!("approval" in result))
-                        shareableSecrets.push(
-                          ...resolvedEntries
-                            .filter(({ finalKey }) => !existingKeys.has(finalKey))
-                            .map(({ finalKey, secretData }) => ({
+              ...chunkByCount(secretsToCreate).map((chunk) =>
+                createSecretBatch({
+                  projectId,
+                  environment,
+                  secretPath: path,
+                  secrets: chunk
+                }).then((result) => {
+                  addCount(createdCountByEnv, environment, result, chunk.length);
+                  if (!("approval" in result)) {
+                    const chunkKeys = new Set(chunk.map(({ secretKey }) => secretKey));
+                    shareableSecrets.push(
+                      ...resolvedEntries
+                        .filter(({ finalKey }) => chunkKeys.has(finalKey))
+                        .map(({ finalKey, secretData }) => ({
+                          environment,
+                          key: finalKey,
+                          value: secretData.value,
+                          tags: secretData.tagSlugs?.filter((slug) => slugToTagId.has(slug))
+                        }))
+                    );
+                  }
+                  return result;
+                })
+              ),
+              ...(overwriteExisting ? chunkByCount(secretsToUpdate) : []).map((chunk) =>
+                updateSecretBatch({
+                  projectId,
+                  environment,
+                  secretPath: path,
+                  secrets: chunk
+                }).then((result) => {
+                  addCount(updatedCountByEnv, environment, result, chunk.length);
+                  if (!("approval" in result)) {
+                    const chunkKeys = new Set(chunk.map(({ secretKey }) => secretKey));
+                    shareableSecrets.push(
+                      ...resolvedEntries
+                        .filter(({ finalKey }) => chunkKeys.has(finalKey))
+                        .flatMap(({ finalKey, secretData }) => {
+                          const existing = existingSecretsByKey.get(finalKey);
+                          // The API keeps the stored value of rotated secrets and honey tokens
+                          if (!existing || existing.isRotatedSecret || existing.isHoneyTokenSecret)
+                            return [];
+                          const uploadedTags = secretData.tagSlugs?.filter((slug) =>
+                            slugToTagId.has(slug)
+                          );
+                          return [
+                            {
                               environment,
                               key: finalKey,
                               value: secretData.value,
-                              tags: secretData.tagSlugs?.filter((slug) => slugToTagId.has(slug))
-                            }))
-                        );
-                      return result;
-                    })
-                  ]
-                : []),
-              ...(overwriteExisting && secretsToUpdate.length
-                ? [
-                    updateSecretBatch({
-                      projectId,
-                      environment,
-                      secretPath: path,
-                      secrets: secretsToUpdate
-                    }).then((result) => {
-                      addCount(updatedCountByEnv, environment, result, secretsToUpdate.length);
-                      if (!("approval" in result))
-                        shareableSecrets.push(
-                          ...resolvedEntries.flatMap(({ finalKey, secretData }) => {
-                            const existing = existingSecretsByKey.get(finalKey);
-                            // The API keeps the stored value of rotated secrets and honey tokens
-                            if (
-                              !existing ||
-                              existing.isRotatedSecret ||
-                              existing.isHoneyTokenSecret
-                            )
-                              return [];
-                            const uploadedTags = secretData.tagSlugs?.filter((slug) =>
-                              slugToTagId.has(slug)
-                            );
-                            return [
-                              {
-                                environment,
-                                key: finalKey,
-                                value: secretData.value,
-                                tags: uploadedTags?.length
-                                  ? uploadedTags
-                                  : existing.tags?.map((tag) => tag.slug)
-                              }
-                            ];
-                          })
-                        );
-                      return result;
-                    })
-                  ]
-                : [])
+                              tags: uploadedTags?.length
+                                ? uploadedTags
+                                : existing.tags?.map((tag) => tag.slug)
+                            }
+                          ];
+                        })
+                    );
+                  }
+                  return result;
+                })
+              )
             ])
           };
         }

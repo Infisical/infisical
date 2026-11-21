@@ -159,6 +159,14 @@ const platformMappings: TFeatureMapping[] = [
   {
     v2Key: "secrets_rate_limit",
     v1Field: "rateLimits.secretsLimit"
+  },
+  {
+    v2Key: "secrets_org_rate_limit",
+    v1Field: "rateLimits.secretsOrgLimit"
+  },
+  {
+    v2Key: "secrets_actor_rate_limit",
+    v1Field: "rateLimits.secretsActorLimit"
   }
 ];
 

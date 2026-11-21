@@ -6,6 +6,7 @@ import { ApiDocsTags, SECRET_IMPORTS } from "@app/lib/api-docs";
 import { canonicalizeSecretPath, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { fastJsonSerializerCompiler } from "@app/server/plugins/fastify-zod";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 import { secretRawSchema } from "../sanitizedSchemas";
@@ -465,15 +466,18 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
       AuthMode.IDENTITY_ACCESS_TOKEN,
       AuthMode.OAUTH
     ]),
-    handler: async (req) => {
-      const importedSecrets = await server.services.secretImport.getSecretsFromImports({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        ...req.query,
-        projectId: req.query.workspaceId
-      });
+    handler: async (req, reply) => {
+      const readSlot = server.secretReadSlot(req, reply);
+      const importedSecrets = await readSlot(() =>
+        server.services.secretImport.getSecretsFromImports({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          ...req.query,
+          projectId: req.query.workspaceId
+        })
+      );
       return { secrets: importedSecrets };
     }
   });
@@ -484,6 +488,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
     config: {
       rateLimit: secretsLimit
     },
+    serializerCompiler: fastJsonSerializerCompiler,
     schema: {
       hide: false,
       tags: [ApiDocsTags.SecretImports],
@@ -507,7 +512,8 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
               secrets: secretRawSchema.array()
             })
             .array()
-        })
+        }),
+        304: z.void()
       }
     },
     onRequest: verifyAuth([
@@ -517,16 +523,28 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
       AuthMode.IDENTITY_ACCESS_TOKEN,
       AuthMode.OAUTH
     ]),
-    handler: async (req) => {
-      const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
+    handler: async (req, reply) => {
+      const { secrets, etag, notModified } = await server.services.secretImport.getRawSecretsFromImports({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.query,
-        projectId: req.query.workspaceId
+        projectId: req.query.workspaceId,
+        ifNoneMatch: req.headers["if-none-match"],
+        secretReadSlot: server.secretReadSlot(req, reply)
       });
-      return { secrets: importedSecrets };
+
+      if (etag) {
+        void reply.header("ETag", etag);
+      }
+
+      if (notModified) {
+        void reply.code(304).send();
+        return;
+      }
+
+      return { secrets };
     }
   });
 };

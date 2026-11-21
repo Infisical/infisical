@@ -312,6 +312,82 @@ const envSchema = z
       z.string().describe("PostgreSQL role to grant read access to the sanitized schema").optional()
     ),
     MAX_LEASE_LIMIT: z.coerce.number().default(10000),
+    SECRET_READ_CONCURRENCY_LIMIT_ENABLED: zodStrBool
+      .default("false")
+      .describe(
+        "Limit how many API requests to list secrets run at once, per organization and per instance, and refuse those that wait longer than SECRET_READ_MAX_QUEUE_WAIT_MS"
+      ),
+    SECRET_READ_MAX_IN_FLIGHT_PER_ORG: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(1)
+      .describe("Most requests to list secrets one organization may have running at once on an instance"),
+    SECRET_READ_MAX_IN_FLIGHT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(8)
+      .describe("Most requests to list secrets that may run at once on an instance, across all organizations"),
+    SECRET_READ_MAX_QUEUE_WAIT_MS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(5000)
+      .describe("How long, in milliseconds, a request to list secrets may wait for its turn before it is refused"),
+    SECRET_READ_MAX_QUEUE_DEPTH: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(500)
+      .describe(
+        "Most requests to list secrets that may wait for their turn per organization, and most organizations that may wait for a free slot on an instance"
+      ),
+    SECRET_READ_MAX_TRACKED_ORGS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(10000)
+      .describe(
+        "Most organizations whose secret list limiters an instance keeps. Idle organizations are dropped once this count is passed"
+      ),
+    SECRET_READ_MAX_TOTAL_IN_FLIGHT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(10000)
+      .describe(
+        "Most requests to list secrets an instance will accept at once, running or waiting, before it refuses further ones"
+      ),
+    MAX_SECRETS_PER_BATCH_REQUEST: zpStr(
+      z.coerce
+        .number()
+        .int()
+        .min(1)
+        .optional()
+        .describe("Most secrets one batch request may include. Unset, batch requests have no limit")
+    ),
+    SECRETS_RATE_LIMIT_ENABLED: zodStrBool
+      .default("false")
+      .describe(
+        "Limit secret requests per machine identity or user and per organization, on top of the per-IP secrets rate limit"
+      ),
+    SECRETS_ACTOR_RATE_LIMIT_OFFSET: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(25)
+      .describe(
+        "When an organization's plan sets no secrets rate limit per machine identity or user, each one gets the per-IP secrets rate limit plus this many requests per minute"
+      ),
+    SECRETS_ORG_RATE_LIMIT_OFFSET: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(50)
+      .describe(
+        "When an organization's plan sets no organization-wide secrets rate limit, it gets its per-IP secrets rate limit plus this many requests per minute"
+      ),
     DB_ROOT_CERT: zpStr(z.string().describe("Postgres database base64-encoded CA cert").optional()),
     DB_HOST: zpStr(z.string().describe("Postgres database host").optional()),
     DB_PORT: zpStr(z.string().describe("Postgres database port").optional()).default("5432"),

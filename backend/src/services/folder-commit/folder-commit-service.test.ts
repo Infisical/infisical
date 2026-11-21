@@ -151,7 +151,8 @@ describe("folderCommitServiceFactory", () => {
     updateById: vi.fn().mockResolvedValue({}),
     update: vi.fn().mockResolvedValue({}),
     insertMany: vi.fn().mockResolvedValue([]),
-    invalidateSecretCacheByProjectId: vi.fn().mockResolvedValue({})
+    invalidateSecretCacheByProjectId: vi.fn().mockResolvedValue({}),
+    findGrantTargetProjectIds: vi.fn().mockResolvedValue([])
   };
 
   const mockProjectDAL = {
@@ -841,7 +842,12 @@ describe("folderCommitServiceFactory", () => {
 
       // Assert
       expect(mockFolderCommitDAL.create).toHaveBeenCalled();
-      expect(mockSecretV2BridgeDAL.invalidateSecretCacheByProjectId).toHaveBeenCalledWith(projectId, {});
+      expect(mockSecretV2BridgeDAL.findGrantTargetProjectIds).not.toHaveBeenCalled();
+      expect(mockSecretV2BridgeDAL.invalidateSecretCacheByProjectId).toHaveBeenCalledWith(
+        projectId,
+        {},
+        { grantTargetProjectIds: [] }
+      );
 
       // Check that we got the right counts
       expect(result.totalChanges).toEqual(2);
@@ -934,6 +940,52 @@ describe("folderCommitServiceFactory", () => {
         ])
       );
       expect(calls.flatMap(([events]) => events)).toHaveLength(3);
+    });
+
+    it("reads the grant targets before a rollback deletes a folder and invalidates them", async () => {
+      const folderId = "folder-id";
+      const projectId = "project-id";
+      const tx = {} as Knex;
+      const locations: Record<string, { path: string; environmentSlug: string }> = {
+        [folderId]: { path: "/app", environmentSlug: "dev" },
+        "shared-folder": { path: "/app/shared", environmentSlug: "dev" }
+      };
+
+      mockFolderDAL.findById.mockResolvedValue({ id: folderId, envId: "env-1", projectId });
+      mockFolderDAL.findSecretPathByFolderIds.mockImplementation((_, ids: string[]) =>
+        Promise.resolve(ids.map((id) => locations[id]))
+      );
+      mockFolderDAL.deleteById.mockResolvedValue({});
+      mockFolderDAL.findByParentId.mockResolvedValue([]);
+      mockProjectDAL.findById.mockResolvedValue(null);
+      mockSecretVersionV2BridgeDAL.findByIdsWithLatestVersion.mockResolvedValue({});
+      mockSecretVersionV2BridgeDAL.findLatestSharedVersionsByFolderId.mockResolvedValue([]);
+      mockFolderVersionDAL.findByIdsWithLatestVersion.mockResolvedValue({});
+      mockFolderVersionDAL.findLatestVersion.mockResolvedValue(null);
+      mockFolderVersionDAL.find.mockResolvedValue({});
+      mockFolderCommitDAL.findLatestCommit.mockResolvedValue({ id: "latest-commit-id", folderId });
+      mockFolderCommitDAL.create.mockResolvedValue({ id: "new-commit-id" });
+      mockFolderCheckpointDAL.findLatestByFolderId.mockResolvedValue(null);
+      mockSecretV2BridgeDAL.findGrantTargetProjectIds.mockResolvedValue(["importing-project"]);
+
+      await folderCommitService.applyFolderStateDifferences({
+        differences: [
+          { id: "shared-folder", versionId: "fv-1", changeType: ChangeType.DELETE, type: ResourceType.FOLDER }
+        ] as ResourceChange[],
+        actorInfo: { actorType: ActorType.USER, actorId: "user-id", message: "Rolling back" },
+        folderId,
+        projectId,
+        reconstructNewFolders: false,
+        tx
+      });
+
+      expect(mockSecretV2BridgeDAL.findGrantTargetProjectIds).toHaveBeenCalledWith(projectId, tx);
+      expect(mockSecretV2BridgeDAL.findGrantTargetProjectIds.mock.invocationCallOrder[0]).toBeLessThan(
+        mockFolderDAL.deleteById.mock.invocationCallOrder[0]
+      );
+      expect(mockSecretV2BridgeDAL.invalidateSecretCacheByProjectId).toHaveBeenCalledWith(projectId, tx, {
+        grantTargetProjectIds: ["importing-project"]
+      });
     });
   });
 });
