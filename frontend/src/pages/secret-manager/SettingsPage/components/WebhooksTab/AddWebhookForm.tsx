@@ -247,12 +247,12 @@ export const AddWebhookForm = ({
                       {...field}
                       id="webhook-secret-path"
                       environment={selectedEnvironment}
-                      placeholder="/"
+                      placeholder="/**"
                       isError={Boolean(error)}
                     />
                     <FieldError>{error?.message}</FieldError>
                     <FieldDescription>
-                      Enter `/` to match all secret paths in the selected environment.
+                      Enter `/**` to match all secret paths in the selected environment, or `/` for the root path only.
                     </FieldDescription>
                   </Field>
                 )}
