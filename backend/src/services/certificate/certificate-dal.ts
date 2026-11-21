@@ -953,20 +953,27 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findPendingRevocationApprovalRequest = async (
+  const $findPendingCertificateActionRequest = async (
+    type: ApprovalPolicyType.CertRevocation | ApprovalPolicyType.CertDeletion,
     { certificateId, projectId }: { certificateId: string; projectId: string },
     tx?: Knex
   ) => {
     try {
       const row = await (tx || db)(TableName.ApprovalRequests)
-        .where({ projectId, type: ApprovalPolicyType.CertRevocation, status: ApprovalRequestStatus.Pending })
+        .where({ projectId, type, status: ApprovalRequestStatus.Pending })
         .whereRaw(`"${TableName.ApprovalRequests}"."requestData"->'requestData'->>'certificateId' = ?`, [certificateId])
         .first("id", "expiresAt");
       return row as { id: string; expiresAt: Date | null } | undefined;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find pending revocation approval request" });
+      throw new DatabaseError({ error, name: `Find pending ${type} approval request` });
     }
   };
+
+  const findPendingRevocationApprovalRequest = (filter: { certificateId: string; projectId: string }, tx?: Knex) =>
+    $findPendingCertificateActionRequest(ApprovalPolicyType.CertRevocation, filter, tx);
+
+  const findPendingDeletionApprovalRequest = (filter: { certificateId: string; projectId: string }, tx?: Knex) =>
+    $findPendingCertificateActionRequest(ApprovalPolicyType.CertDeletion, filter, tx);
 
   const getOriginatingRequestByCertId = async (certId: string, tx?: Knex): Promise<TOriginatingCertificateRequest> => {
     try {
@@ -1681,6 +1688,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     findCertificatesEligibleForRenewal,
     hasRenewalAwaitingApproval,
     findPendingRevocationApprovalRequest,
+    findPendingDeletionApprovalRequest,
     getRequestEnrollmentTypeByCertId,
     getOriginatingRequestByCertId,
     canRenewFromCsr,

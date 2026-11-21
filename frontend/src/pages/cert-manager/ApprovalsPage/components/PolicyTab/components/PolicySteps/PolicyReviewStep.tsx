@@ -5,7 +5,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useProject } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
-import { ApprovalPolicyType, ApproverType } from "@app/hooks/api/approvalPolicies";
+import {
+  APPLICATION_POLICY_TYPE_LABELS,
+  ApproverType,
+  isCertificateActionPolicyType
+} from "@app/hooks/api/approvalPolicies";
 
 import { TPolicyForm } from "../PolicySchema";
 
@@ -26,7 +30,6 @@ export const PolicyReviewStep = () => {
 
   const { name, policyType, conditions, maxRequestTtl, bypassForMachineIdentities, steps } =
     watch();
-  const isRevocationPolicy = policyType === ApprovalPolicyType.CertRevocation;
 
   const getApproverLabel = (approverId: string, approverType: ApproverType) => {
     if (approverType === ApproverType.User) {
@@ -51,7 +54,7 @@ export const PolicyReviewStep = () => {
         </div>
         <div className="grid grid-cols-2 gap-2">
           <ReviewField label="Policy Name" value={name || "Not set"} />
-          <ReviewField label="Policy Type" value={isRevocationPolicy ? "Revocation" : "Issuance"} />
+          <ReviewField label="Policy Type" value={APPLICATION_POLICY_TYPE_LABELS[policyType]} />
           <ReviewField label="Max. Request TTL" value={maxRequestTtl || "Not set"} />
           <ReviewField
             label="Certificate Profiles"
@@ -59,7 +62,7 @@ export const PolicyReviewStep = () => {
               conditions[0].profileNames.length ? conditions[0].profileNames.join(", ") : "Not set"
             }
           />
-          {!isRevocationPolicy && (
+          {!isCertificateActionPolicyType(policyType) && (
             <ReviewField
               label="Machine Identity Bypass"
               value={bypassForMachineIdentities ? "Enabled" : "Disabled"}

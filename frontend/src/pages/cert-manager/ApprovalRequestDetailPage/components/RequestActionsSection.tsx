@@ -32,6 +32,20 @@ type Props = {
   canReview: boolean;
 };
 
+const APPROVE_DESCRIPTIONS: Partial<Record<ApprovalPolicyType, string>> = {
+  [ApprovalPolicyType.CertRevocation]:
+    "Once every step approves, the certificate is revoked with the requester's reason. This can't be undone.",
+  [ApprovalPolicyType.CertDeletion]:
+    "Once every step approves, the certificate is deleted. This can't be undone."
+};
+
+const REJECT_DESCRIPTIONS: Partial<Record<ApprovalPolicyType, string>> = {
+  [ApprovalPolicyType.CertRevocation]:
+    "The request is closed and the certificate isn't revoked. The requester can ask again.",
+  [ApprovalPolicyType.CertDeletion]:
+    "The request is closed and the certificate isn't deleted. The requester can ask again."
+};
+
 export const RequestActionsSection = ({ request, canReview }: Props) => {
   const { user } = useUser();
   const [comment, setComment] = useState("");
@@ -152,9 +166,8 @@ export const RequestActionsSection = ({ request, canReview }: Props) => {
           <DialogHeader>
             <DialogTitle>Approve request</DialogTitle>
             <DialogDescription>
-              {request.type === ApprovalPolicyType.CertRevocation
-                ? "Once every step approves, the certificate is revoked with the requester's reason. This can't be undone."
-                : "The requester gets the access described on this request as soon as you approve."}
+              {APPROVE_DESCRIPTIONS[request.type] ??
+                "The requester gets the access described on this request as soon as you approve."}
             </DialogDescription>
           </DialogHeader>
           <Field>
@@ -197,9 +210,8 @@ export const RequestActionsSection = ({ request, canReview }: Props) => {
           <DialogHeader>
             <DialogTitle>Reject request</DialogTitle>
             <DialogDescription>
-              {request.type === ApprovalPolicyType.CertRevocation
-                ? "The request is closed and the certificate isn't revoked. The requester can ask again."
-                : "The request is closed and the requester gets no access. They can open a new one."}
+              {REJECT_DESCRIPTIONS[request.type] ??
+                "The request is closed and the requester gets no access. They can open a new one."}
             </DialogDescription>
           </DialogHeader>
           <Field>

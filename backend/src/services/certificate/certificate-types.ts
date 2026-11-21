@@ -132,6 +132,17 @@ export enum CertificateRevocationStatus {
   PendingApproval = "pending_approval"
 }
 
+export enum CertificateDeletionStatus {
+  Deleted = "deleted",
+  PendingApproval = "pending_approval"
+}
+
+export enum ApprovedDeletionOutcomeKind {
+  Deleted = "deleted",
+  AlreadyDeleted = "already-deleted",
+  Failed = "failed"
+}
+
 export enum ApprovedRevocationOutcomeKind {
   Revoked = "revoked",
   AlreadyRevoked = "already-revoked",

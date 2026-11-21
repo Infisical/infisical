@@ -104,6 +104,8 @@ export enum EventType {
   REVOKE_CERT = "revoke-cert",
   REQUEST_CERT_REVOCATION = "request-cert-revocation",
   CERT_REVOCATION_FAILED = "cert-revocation-failed",
+  REQUEST_CERT_DELETION = "request-cert-deletion",
+  CERT_DELETION_FAILED = "cert-deletion-failed",
   ASSIGN_CERT_TO_APPLICATION = "assign-cert-to-application",
   CREATE_PKI_APPLICATION = "create-pki-application",
   UPDATE_PKI_APPLICATION = "update-pki-application",

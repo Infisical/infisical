@@ -41,6 +41,8 @@ From the certificate details page, use the **Options** menu:
 
 Deleting a certificate doesn't revoke it. Revoke it first if clients should stop trusting it.
 
+If a [deletion policy](/documentation/platform/pki/applications/approvals#deletion) covers the certificate's profile, deleting the certificate creates an approval request, and Infisical doesn't delete the certificate until the request is approved.
+
 ## Issuing certificates
 
 Go to the **Certificate Requests** tab and select **Request Certificate**. Select a certificate profile and choose a request method:
@@ -172,7 +174,7 @@ openssl verify -crl_check -CAfile chain.pem -CRLfile crl.pem cert.pem
     Get notified before certificates expire.
   </Card>
   <Card title="Approvals" icon="check-check" href="/documentation/platform/pki/applications/approvals">
-    Require human review before issuance or revocation.
+    Require human review before issuance, revocation, or deletion.
   </Card>
   <Card title="Enrollment Methods" icon="log-in" href="/documentation/platform/pki/applications/enrollment-methods/overview">
     Configure how certificates are requested.

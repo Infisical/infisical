@@ -1,17 +1,21 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { signerKeys } from "@app/hooks/api/signers/queries";
 
-import { ApprovalPolicyType } from "../approvalPolicies/types";
-import { invalidateRevokedCertificate } from "../certificates/mutations";
+import {
+  ApprovalPolicyType,
+  isCertificateActionPolicyType,
+  TCertificateActionPolicyType
+} from "../approvalPolicies/types";
+import { invalidateCertificate, invalidateDeletedCertificate } from "../certificates/mutations";
 import { approvalRequestQuery } from "./queries";
 import {
   ApprovalRequestStatus,
-  CertRevocationRequestData,
   TApprovalRequest,
   TApproveApprovalRequestDTO,
   TCancelApprovalRequestDTO,
+  TCertificateActionRequestData,
   TCreateApprovalRequestDTO,
   TRejectApprovalRequestDTO
 } from "./types";
@@ -19,6 +23,14 @@ import {
 const invalidateApprovalRequests = (queryClient: ReturnType<typeof useQueryClient>) => {
   queryClient.invalidateQueries({ queryKey: approvalRequestQuery.allKey() });
   queryClient.invalidateQueries({ queryKey: signerKeys.requestsAll() });
+};
+
+const invalidateCertificateOnDecision: Record<
+  TCertificateActionPolicyType,
+  (queryClient: QueryClient, certificateId: string) => void
+> = {
+  [ApprovalPolicyType.CertRevocation]: invalidateCertificate,
+  [ApprovalPolicyType.CertDeletion]: invalidateDeletedCertificate
 };
 
 export const useCreateApprovalRequest = () => {
@@ -48,12 +60,12 @@ export const useApproveApprovalRequest = () => {
     onSuccess: (request) => {
       invalidateApprovalRequests(queryClient);
       if (
-        request.type === ApprovalPolicyType.CertRevocation &&
+        isCertificateActionPolicyType(request.type) &&
         request.status !== ApprovalRequestStatus.Pending
       ) {
-        invalidateRevokedCertificate(
+        invalidateCertificateOnDecision[request.type](
           queryClient,
-          (request.requestData.requestData as CertRevocationRequestData).certificateId
+          (request.requestData.requestData as TCertificateActionRequestData).certificateId
         );
       }
     }

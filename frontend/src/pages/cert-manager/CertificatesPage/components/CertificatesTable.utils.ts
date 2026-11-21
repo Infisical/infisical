@@ -1,12 +1,20 @@
 import { format } from "date-fns";
 import ms from "ms";
 
-import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies/types";
+import { getCertificateLabel } from "@app/components/utilities/certificateDisplayUtils";
+import {
+  ApprovalPolicyType,
+  TCertificateActionPolicyType
+} from "@app/hooks/api/approvalPolicies/types";
 import { TApprovalRequest } from "@app/hooks/api/approvalRequests/types";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { CaType } from "@app/hooks/api/ca/enums";
 import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
-import { TCertificateSource } from "@app/hooks/api/certificates/types";
+import {
+  CertificateDeletionStatus,
+  TCertificateSource,
+  TDeleteCertResponse
+} from "@app/hooks/api/certificates/types";
 import {
   PkiApplicationResourceActions,
   PkiApplicationResourceSub
@@ -36,9 +44,13 @@ type TApplicationAbility = {
   can: (action: string, subjectType: string) => boolean;
 };
 
+// canDelete and canRevoke count asking for approval when a policy covers the certificate.
+// hasDeletePermission is the Delete action alone, which reissuing needs to revoke the current
+// certificate.
 export type TApplicationCertificateAccess = {
   canRenew: boolean;
   canEdit: boolean;
+  hasDeletePermission: boolean;
   canDelete: boolean;
   canRevoke: boolean;
   canManagePkiSyncs: boolean;
@@ -52,26 +64,31 @@ export type TApplicationCertificateAccess = {
 
 // The backend checks only the application role for a certificate that belongs to an application,
 // and gives a project admin who is not a member read access alone, so project permissions must not
-// unlock these actions. Without Delete, revoking only opens an approval request, which the backend
-// refuses unless a revocation policy covers the certificate's profile.
+// unlock these actions. Without Delete, revoking or deleting only opens an approval request, which
+// the backend refuses unless a revocation or deletion policy covers the certificate's profile.
 export const getApplicationCertificateAccess = ({
   applicationName,
   permission,
-  isRevocationApprovalRequired = false
+  isRevocationApprovalRequired = false,
+  isDeletionApprovalRequired = false
 }: {
   applicationName: string;
   permission?: TApplicationAbility;
   isRevocationApprovalRequired?: boolean;
+  isDeletionApprovalRequired?: boolean;
 }): TApplicationCertificateAccess => {
   const can = (
     action: PkiApplicationResourceActions,
     subjectType: PkiApplicationResourceSub = PkiApplicationResourceSub.Certificates
   ) => Boolean(permission?.can(action, subjectType));
   const canEdit = can(PkiApplicationResourceActions.Edit);
-  const canDelete = can(PkiApplicationResourceActions.Delete);
+  const hasDeletePermission = can(PkiApplicationResourceActions.Delete);
   const canRenew = can(PkiApplicationResourceActions.Create) && canEdit;
+  const canDelete =
+    hasDeletePermission ||
+    (isDeletionApprovalRequired && can(PkiApplicationResourceActions.RequestDeletion));
   const canRevoke =
-    canDelete ||
+    hasDeletePermission ||
     (isRevocationApprovalRequired && can(PkiApplicationResourceActions.RequestRevocation));
   const canManagePkiSyncs = can(
     PkiApplicationResourceActions.Edit,
@@ -79,7 +96,9 @@ export const getApplicationCertificateAccess = ({
   );
 
   // Until the ability loads the actions stay disabled without blaming a role.
-  if (!permission) return { canRenew, canEdit, canDelete, canRevoke, canManagePkiSyncs };
+  if (!permission) {
+    return { canRenew, canEdit, hasDeletePermission, canDelete, canRevoke, canManagePkiSyncs };
+  }
 
   const operatorOrAdmin = `You need the Operator or Admin role on ${applicationName}`;
   const admin = `You need the Admin role on ${applicationName}`;
@@ -87,6 +106,7 @@ export const getApplicationCertificateAccess = ({
   return {
     canRenew,
     canEdit,
+    hasDeletePermission,
     canDelete,
     canRevoke,
     canManagePkiSyncs,
@@ -100,53 +120,119 @@ export const getApplicationCertificateAccess = ({
     revokeBlockedReason: canRevoke
       ? undefined
       : `${isRevocationApprovalRequired ? operatorOrAdmin : admin} to revoke this certificate.`,
-    deleteBlockedReason: canDelete ? undefined : `${admin} to delete this certificate.`,
+    deleteBlockedReason: canDelete
+      ? undefined
+      : `${isDeletionApprovalRequired ? operatorOrAdmin : admin} to delete this certificate.`,
     managePkiSyncsBlockedReason: canManagePkiSyncs
       ? undefined
       : `${admin} to manage PKI syncs for this certificate.`
   };
 };
 
-export const PENDING_REVOCATION_REASON =
-  "A revocation of this certificate is already waiting for approval.";
+type TCertificateActionTarget = {
+  status?: string | null;
+  deletedAt?: string | null;
+  profileName?: string | null;
+};
 
-export const REPLACEABLE_REVOCATION_REASON =
-  "Not enough of the approvers on this certificate's revocation request can still approve it. Once the revocation policy has approvers who can approve, revoking the certificate again replaces the request.";
+export const CERTIFICATE_ACTION_APPROVALS: Record<
+  TCertificateActionPolicyType,
+  {
+    noun: string;
+    pastParticiple: string;
+    pendingLabel: string;
+    pendingReason: string;
+    replaceableReason: string;
+    isDone: (certificate: TCertificateActionTarget) => boolean;
+  }
+> = {
+  [ApprovalPolicyType.CertRevocation]: {
+    noun: "revocation",
+    pastParticiple: "revoked",
+    pendingLabel: "Revocation Pending",
+    pendingReason: "A revocation of this certificate is already waiting for approval.",
+    replaceableReason:
+      "Not enough of the approvers on this certificate's revocation request can still approve it. Once the revocation policy has approvers who can approve, revoking the certificate again replaces the request.",
+    isDone: (certificate) => certificate.status === CertStatus.REVOKED
+  },
+  [ApprovalPolicyType.CertDeletion]: {
+    noun: "deletion",
+    pastParticiple: "deleted",
+    pendingLabel: "Deletion Pending",
+    pendingReason: "A deletion of this certificate is already waiting for approval.",
+    replaceableReason:
+      "Not enough of the approvers on this certificate's deletion request can still approve it. Once the deletion policy has approvers who can approve, deleting the certificate again replaces the request.",
+    isDone: (certificate) => Boolean(certificate.deletedAt)
+  }
+};
 
 // Without `from: "root-requests"` the sidebar opens the legacy Approvals submenu, which doesn't list
-// revocation requests. The Approval Requests inbox links the same way.
-export const getPendingRevocationRequestLink = (
+// revocation or deletion requests. The Approval Requests inbox links the same way.
+export const getPendingRequestLink = (
   project: Pick<Project, "id" | "type" | "orgId">,
+  policyType: TCertificateActionPolicyType,
   approvalRequestId: string
 ) =>
   getCertManagerLink(project, `approvals/${approvalRequestId}`, {
-    policyType: ApprovalPolicyType.CertRevocation,
+    policyType,
     from: "root-requests"
   });
 
-// With no revocation policy covering the certificate, revoking skips approval, so a pending request
-// is no reason to block it. A revoked certificate's request can no longer revoke anything (a DigiCert
-// sync can revoke one while its request is pending), so it is not shown at all. A request its
-// approvers can no longer approve is replaced when the certificate is revoked again.
-export const getPendingRevocationState = ({
+// With no policy covering the certificate, the action skips approval, so a pending request is no
+// reason to block it. Once the action is done its request can't do anything (a DigiCert sync can
+// revoke a certificate while its request is pending), so it is not shown at all. A request its
+// approvers can no longer approve is replaced when the action is taken again.
+export const getCertificateActionApproval = ({
+  policyType,
+  certificate,
   pendingRequest,
-  isRevoked,
-  isRevocationApprovalRequired
+  policyProfileNames
 }: {
+  policyType: TCertificateActionPolicyType;
+  certificate: TCertificateActionTarget;
   pendingRequest?: Pick<TApprovalRequest, "approversCanNoLongerApprove">;
-  isRevoked: boolean;
-  isRevocationApprovalRequired: boolean;
+  policyProfileNames?: Set<string>;
 }) => {
-  const isPending = Boolean(pendingRequest) && !isRevoked;
-  const blocksRevoke = isPending && isRevocationApprovalRequired;
-  const isReplaceable = blocksRevoke && Boolean(pendingRequest?.approversCanNoLongerApprove);
+  const action = CERTIFICATE_ACTION_APPROVALS[policyType];
+  const isApprovalRequired = Boolean(
+    certificate.profileName && policyProfileNames?.has(certificate.profileName)
+  );
+  const isPending = Boolean(pendingRequest) && !action.isDone(certificate);
+  const blocksAction = isPending && isApprovalRequired;
+  const isReplaceable = blocksAction && Boolean(pendingRequest?.approversCanNoLongerApprove);
 
   return {
+    isApprovalRequired,
     isPending,
-    revokeBlockedReason: blocksRevoke && !isReplaceable ? PENDING_REVOCATION_REASON : undefined,
-    revokeReplacesRequestReason: isReplaceable ? REPLACEABLE_REVOCATION_REASON : undefined
+    pendingLabel: action.pendingLabel,
+    blockedReason: blocksAction && !isReplaceable ? action.pendingReason : undefined,
+    replacesRequestReason: isReplaceable ? action.replaceableReason : undefined
   };
 };
+
+export type TCertificateActionApproval = ReturnType<typeof getCertificateActionApproval>;
+
+export const getCertificateActionMenuState = ({
+  canAct,
+  approval,
+  accessBlockedReason
+}: {
+  canAct: boolean;
+  approval: TCertificateActionApproval;
+  accessBlockedReason?: string;
+}) => {
+  const blockedReason = approval.blockedReason ?? accessBlockedReason;
+  return {
+    isDisabled: !canAct || Boolean(approval.blockedReason),
+    isDisabledFocusable: Boolean(blockedReason),
+    reason: blockedReason ?? approval.replacesRequestReason
+  };
+};
+
+export const getCertificateDeletionToast = ({ status }: TDeleteCertResponse) =>
+  status === CertificateDeletionStatus.PendingApproval
+    ? "Deletion requested. The certificate isn't deleted until the request is approved."
+    : "Successfully deleted certificate";
 
 type TCertificateRenewalPreview = {
   profileId?: string | null;
@@ -239,17 +325,30 @@ const getCertificateTrustWarning = (
   return " It can't be revoked once deleted, so revoke it first if clients should stop trusting it.";
 };
 
+export const getCertificateDeletionTitle = (certificate: {
+  commonName: string;
+  altNames?: string | null;
+  friendlyName?: string | null;
+  serialNumber: string;
+}) =>
+  `Delete Certificate ${getCertificateLabel(certificate, certificate.serialNumber.toUpperCase())}?`;
+
 export const getCertificateDeletionWarning = (
   certificate?: TCertificateDeletionSource,
   canRevoke = false,
-  isRevocableAfterDeletion = true
+  isRevocableAfterDeletion = true,
+  isApprovalRequired = false
 ) => {
   const removed =
     certificate?.hasPrivateKey === false
-      ? "This removes the certificate."
-      : "This removes the certificate and its private key.";
+      ? "this removes the certificate"
+      : "this removes the certificate and its private key";
+  const trustWarning = getCertificateTrustWarning(certificate, canRevoke, isRevocableAfterDeletion);
 
-  return `${removed}${getCertificateTrustWarning(certificate, canRevoke, isRevocableAfterDeletion)} This cannot be undone.`;
+  if (isApprovalRequired) {
+    return `Confirming creates an approval request. Once it's approved, ${removed}, which can't be undone.${trustWarning}`;
+  }
+  return `${removed.charAt(0).toUpperCase()}${removed.slice(1)}.${trustWarning} This cannot be undone.`;
 };
 
 // Without the private key, Infisical renews on the existing key pair only from a CSR it holds for it, and

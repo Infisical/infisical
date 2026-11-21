@@ -1,22 +1,25 @@
 import {
   ApprovalRequestStatus,
-  type CertRevocationRequestData,
-  type TApprovalRequest
+  type TApprovalRequest,
+  type TCertificateActionRequestData
 } from "./types";
 
-export type TPendingRevocation = Pick<TApprovalRequest, "id" | "approversCanNoLongerApprove">;
+export type TPendingCertificateAction = Pick<
+  TApprovalRequest,
+  "id" | "approversCanNoLongerApprove"
+>;
 
-export type TPendingRevocations = {
-  requestByCertificateId: Map<string, TPendingRevocation>;
+export type TPendingCertificateActions = {
+  requestByCertificateId: Map<string, TPendingCertificateAction>;
   nextExpiresAt: number | null;
 };
 
 // The server only marks a lapsed request expired when someone acts on it, so a listed request can
 // still say pending after its expiresAt.
-export const getPendingRevocations = (
+export const getPendingCertificateActions = (
   requests: TApprovalRequest[],
   now: number
-): TPendingRevocations => {
+): TPendingCertificateActions => {
   const pending = requests.filter(
     (request) =>
       request.status === ApprovalRequestStatus.Pending &&
@@ -28,7 +31,7 @@ export const getPendingRevocations = (
   return {
     requestByCertificateId: new Map(
       pending.map((request) => [
-        (request.requestData.requestData as CertRevocationRequestData).certificateId,
+        (request.requestData.requestData as TCertificateActionRequestData).certificateId,
         { id: request.id, approversCanNoLongerApprove: request.approversCanNoLongerApprove }
       ])
     ),

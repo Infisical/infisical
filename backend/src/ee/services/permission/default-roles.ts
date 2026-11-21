@@ -1119,6 +1119,7 @@ const buildApplicationOperatorPermissionRules = () => {
       ResourcePermissionCertificateActions.Create,
       ResourcePermissionCertificateActions.Edit,
       ResourcePermissionCertificateActions.RequestRevocation,
+      ResourcePermissionCertificateActions.RequestDeletion,
       ResourcePermissionCertificateActions.ReadPrivateKey,
       ResourcePermissionCertificateActions.Import
     ],
