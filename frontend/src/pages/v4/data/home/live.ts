@@ -26,7 +26,7 @@ export const homeLive: HomeAdapter = {
   },
   useSetup: (orgId, enabled = true) => {
     const { projects } = useV4Session();
-    const stats = useGetOrgProductStats(orgId, { enabled });
+    const stats = useGetOrgProductStats(orgId, { enabled, staleTime: 0 });
     const reads = homeLive.useSecretReads(orgId, enabled);
     const members = useGetOrgUserAccess(orgId, { enabled });
     return {
