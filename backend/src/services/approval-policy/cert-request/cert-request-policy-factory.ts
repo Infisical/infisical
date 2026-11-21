@@ -1,5 +1,3 @@
-import { AccessScope, ResourceType } from "@app/db/schemas";
-import { ProjectMembershipRole, RESOURCE_SCOPE } from "@app/db/schemas/models";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { getConfig } from "@app/lib/config/env";
@@ -28,12 +26,12 @@ import {
   ApprovalNotificationEvent,
   ApprovalPolicyScope,
   ApprovalPolicyType,
-  ApprovalRequestStatus,
-  ApproverType
+  ApprovalRequestStatus
 } from "../approval-policy-enums";
 import { TApprovalPolicyServiceFactory } from "../approval-policy-service";
 import { TApprovalResource } from "../approval-policy-types";
 import { getApprovalRequestAuditLabel } from "../approval-request-fns";
+import { findLiveApproverEntries, PKI_APPROVER_RULES } from "../pki-approvers/application-approver-checks";
 import { TCertRequestPolicy, TCertRequestPolicyInputs, TCertRequestRequestData } from "./cert-request-policy-types";
 
 type TCertRequestApprovalResourceDep = {
@@ -91,54 +89,17 @@ export const certRequestApprovalResourceFactory = ({
 
   // A request saves its approvers when it is raised, so someone removed from the Application since then (or, for a
   // policy without one, from Certificate Management) would still get its notices, including a failure's reason.
-  // Issuance approvers may hold any Application role, so any active membership counts.
-  filterActiveApprovers: async (request, approvers) => {
-    if (approvers.length === 0) return [];
-    const tx = approvalPolicyDAL.primaryNode();
-    const applicationId = request.scopeType === ApprovalPolicyScope.PkiApplication ? request.scopeId : null;
-    let memberships = (
-      await membershipDAL.find(
-        applicationId
-          ? {
-              scope: RESOURCE_SCOPE,
-              scopeProjectId: request.projectId,
-              scopeResourceType: ResourceType.CertificateApplication,
-              scopeResourceId: applicationId
-            }
-          : { scope: AccessScope.Project, scopeProjectId: request.projectId },
-        { tx }
-      )
-    ).filter((membership) => membership.isActive);
-    if (!applicationId && memberships.length > 0) {
-      const roles = await membershipRoleDAL.find({ $in: { membershipId: memberships.map((m) => m.id) } }, { tx });
-      const withAccess = new Set(
-        roles.filter((r) => r.role !== ProjectMembershipRole.NoAccess).map((r) => r.membershipId)
-      );
-      memberships = memberships.filter((membership) => withAccess.has(membership.id));
-    }
-    if (memberships.length === 0) return applicationId ? [] : approvers.filter((a) => a.type === ApproverType.Group);
-
-    const memberUserIds = new Set(memberships.flatMap((m) => (m.actorUserId ? [m.actorUserId] : [])));
-    const memberGroupIds = new Set(memberships.flatMap((m) => (m.actorGroupId ? [m.actorGroupId] : [])));
-    const usersToCheckViaGroups = approvers
-      .filter((a) => a.type === ApproverType.User && !memberUserIds.has(a.id))
-      .map((a) => a.id);
-    const memberViaGroup = new Set<string>();
-    if (usersToCheckViaGroups.length > 0 && memberGroupIds.size > 0) {
-      const links = await userGroupMembershipDAL.find(
-        { $in: { userId: usersToCheckViaGroups, groupId: [...memberGroupIds] } },
-        { tx }
-      );
-      links.forEach((link) => memberViaGroup.add(link.userId));
-    }
-
-    // A policy without an Application never had its group approvers checked against Certificate Management when saved,
-    // and they can still approve, so they keep getting its notices.
-    return approvers.filter((a) => {
-      if (a.type === ApproverType.Group) return !applicationId || memberGroupIds.has(a.id);
-      return memberUserIds.has(a.id) || memberViaGroup.has(a.id);
-    });
-  },
+  filterActiveApprovers: async (request, approvers) =>
+    findLiveApproverEntries(
+      { membershipDAL, membershipRoleDAL, userGroupMembershipDAL },
+      PKI_APPROVER_RULES[ApprovalPolicyType.CertRequest],
+      {
+        projectId: request.projectId,
+        applicationId: request.scopeType === ApprovalPolicyScope.PkiApplication ? (request.scopeId ?? null) : null
+      },
+      approvers,
+      approvalPolicyDAL.primaryNode()
+    ),
 
   // Cert approvals notify approvers when raised, and everyone when the approved action then fails.
   buildNotification: async ({ event, request, failureReason }) => {
