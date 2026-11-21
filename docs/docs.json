@@ -4769,6 +4769,16 @@
                     ]
                   },
                   {
+                    "group": "Hooks",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-hooks/list",
+                      "api-reference/endpoints/agent-vault-hooks/get",
+                      "api-reference/endpoints/agent-vault-hooks/create",
+                      "api-reference/endpoints/agent-vault-hooks/update",
+                      "api-reference/endpoints/agent-vault-hooks/delete"
+                    ]
+                  },
+                  {
                     "group": "Access bundle members",
                     "pages": [
                       "api-reference/endpoints/agent-vault-access-bundle-members/list",

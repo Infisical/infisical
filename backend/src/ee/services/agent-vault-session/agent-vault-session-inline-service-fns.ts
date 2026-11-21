@@ -4,6 +4,11 @@ import { BadRequestError, InternalServerError } from "@app/lib/errors";
 
 import { assertCustomHeadersDoNotShadowCredential } from "../agent-vault-access-bundle/agent-vault-transformation-fns";
 import {
+  assertHookNarrowingFitsService,
+  serviceHookView,
+  TAgentVaultServiceHookInput
+} from "../agent-vault-hook/agent-vault-hook-fns";
+import {
   isVariableOauth,
   oauthVariableIdOf,
   toResolvedOauthCredential
@@ -84,8 +89,7 @@ const InlineServiceSecretsSchema = z.object({
     ])
     .nullable(),
   customHeaders: z.string().array(),
-  substitutions: z.string().array(),
-  hookSecret: z.string().nullable()
+  substitutions: z.string().array()
 });
 
 export type TInlineServiceSecrets = z.infer<typeof InlineServiceSecretsSchema>;
@@ -103,12 +107,13 @@ export type TPreparedInlineService = {
   credentialConfig: TInlineCredentialConfig;
   customHeaders: TInlineCustomHeader[];
   substitutions: TInlineSubstitution[];
-  hookUrl: string | null;
-  // Null when there is nothing to seal: a pass-through service, or one using an OAuth variable, with no custom headers,
-  // substitutions or hook.
+  // Null when there is nothing to seal: a pass-through service, or one using an OAuth variable, with no custom headers
+  // or substitutions.
   secrets: TInlineServiceSecrets | null;
   // The OAuth variable a credential names, by key until bindInlineOauthVariables puts its id in credentialConfig.
   oauthVariableKey: string | null;
+  // The project's saved hook it uses, by name until mint finds it in its transaction.
+  hook: TAgentVaultServiceHookInput | null;
 };
 
 // What an inline service is called wherever a name is shown: its own, or its first host when it was sent without one,
@@ -334,6 +339,12 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
   const customHeaders = input.customHeaders ?? [];
   const substitutions = input.substitutions ?? [];
   assertCustomHeadersDoNotShadowCredential(credentialConfig, customHeaders);
+  if (input.hook) {
+    assertHookNarrowingFitsService(input.hook, {
+      name: inlineServiceDisplayName({ name: input.name, hostPattern }),
+      type: definition.type
+    });
+  }
 
   return {
     position,
@@ -351,15 +362,14 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
       placeholder: substitution.placeholder,
       surfaces: substitution.surfaces
     })),
-    hookUrl: input.hook?.url ?? null,
     oauthVariableKey: variableKey,
+    hook: input.hook ?? null,
     secrets:
-      secret || customHeaders.length || substitutions.length || input.hook
+      secret || customHeaders.length || substitutions.length
         ? {
             credential: secret,
             customHeaders: customHeaders.map((header) => header.value),
-            substitutions: substitutions.map((substitution) => substitution.value),
-            hookSecret: input.hook?.signingSecret ?? null
+            substitutions: substitutions.map((substitution) => substitution.value)
           }
         : null
   };
@@ -575,13 +585,14 @@ const toInlineCredentialSummary = (
 // Built by hand rather than spread, so the sealed column stays off the wire even if a response schema is loosened.
 export const toInlineServiceSummary = (
   row: TAgentVaultSessionInlineServiceSummaryRow,
-  oauthVariables: TInlineOauthVariableKeys = new Map()
+  oauthVariables: TInlineOauthVariableKeys = new Map(),
+  hookNames?: ReadonlyMap<string, string>
 ): TAgentVaultInlineServiceSummary => {
   const base = {
     id: row.id,
     name: inlineServiceDisplayName(row),
     description: row.description ?? null,
-    hook: row.hookUrl ? { url: row.hookUrl } : null
+    ...(hookNames && { hook: serviceHookView(row, hookNames) })
   };
   const credential = toInlineCredentialSummary(row.credentialConfig as TInlineCredentialConfig, oauthVariables);
   // Every mint checks the credential against the type, so this means a row written some other way.
@@ -630,10 +641,9 @@ const sealsCredential = (row: Pick<TAgentVaultInlineServiceRow, "credentialType"
   (row.credentialConfig as TInlineCredentialConfig).type !== AgentVaultCredentialType.Passthrough &&
   !isVariableOauth(row);
 
-// Whether the service needs a sealed value to go out, its hook's signing secret included. One that does and has none
-// had its session end.
+// Whether the service needs a sealed value to go out. One that does and has none had its session end.
 const needsSecrets = (row: TAgentVaultInlineServiceRow) =>
-  sealsCredential(row) || row.customHeaders.length > 0 || row.substitutions.length > 0 || Boolean(row.hookUrl);
+  sealsCredential(row) || row.customHeaders.length > 0 || row.substitutions.length > 0;
 
 /**
  * The service's sealed values, opened, in the order of the names and placeholders beside them. Null once its session
@@ -645,15 +655,13 @@ export const openInlineServiceSecrets = (
 ): TInlineServiceSecrets | null => {
   if (row.secretsDeletedAt || !needsSecrets(row)) return null;
   if (sealsCredential(row) && !row.encryptedCredential) return null;
-  if (row.hookUrl && !row.encryptedHookSecret) return null;
   const values = [...row.customHeaders, ...row.substitutions].map((entry) => entry.encryptedValue);
   if (values.some((value) => !value)) return null;
   const valueOf = (encrypted: Buffer | null) => (decryptJson(encrypted!) as { value: string }).value;
   return InlineServiceSecretsSchema.parse({
     credential: row.encryptedCredential ? decryptJson(row.encryptedCredential) : null,
     customHeaders: row.customHeaders.map((header) => valueOf(header.encryptedValue)),
-    substitutions: row.substitutions.map((substitution) => valueOf(substitution.encryptedValue)),
-    hookSecret: row.encryptedHookSecret ? valueOf(row.encryptedHookSecret) : null
+    substitutions: row.substitutions.map((substitution) => valueOf(substitution.encryptedValue))
   });
 };
 
@@ -787,8 +795,6 @@ export const toResolvedInlineService = (
   ) {
     return null;
   }
-  if (row.hookUrl && !secrets?.hookSecret) return null;
-
   return {
     id: row.id,
     name: inlineServiceDisplayName(row),
@@ -810,6 +816,6 @@ export const toResolvedInlineService = (
     ...(credentialRemoved ? { credentialRemoved } : {}),
     ...(credentialNotConnected ? { credentialNotConnected } : {}),
     memberProvided: false,
-    hook: row.hookUrl ? { url: row.hookUrl, secret: secrets!.hookSecret! } : null
+    hook: null
   };
 };

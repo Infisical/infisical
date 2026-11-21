@@ -149,6 +149,17 @@ export type TResolvedService = {
   memberProvided: boolean;
   // The bundle the service came from. Null for a service sent inline with the session and for one it lists by name.
   accessBundleId: string | null;
-  // Asked before each request (each connection for a database or SSH service). Null when the service has none.
-  hook: { url: string; secret: string } | null;
+  // Asked before the requests its narrowing picks, or all of them without one (each connection for a database or SSH
+  // service). Proxies from before narrowing ignore methods, paths and tools and ask about every request.
+  hook: TResolvedServiceHook | null;
+};
+
+export type TResolvedServiceHook = {
+  id: string;
+  name: string;
+  url: string;
+  secret: string;
+  methods?: string[];
+  paths?: string[];
+  tools?: string[];
 };
