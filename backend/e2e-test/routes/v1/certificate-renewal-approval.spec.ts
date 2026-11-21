@@ -9,6 +9,8 @@ import { CertificateRequestStatus } from "@app/services/certificate-common/certi
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import { NotificationType } from "@app/services/notification/notification-types";
 
+import { certificateAutoRenewalJob } from "e2e-test/fakes/certificate-v3-queue";
+
 import { flushAuditLogs, listAuditLogs, TAuditLog } from "../../testUtils/audit-logs";
 import {
   approveCertRequestApproval,
@@ -17,20 +19,21 @@ import {
   rejectCertRequestApproval,
   renewalApprovalsFor
 } from "../../testUtils/cert-approvals";
-import { removeApplicationMember } from "../../testUtils/cert-manager";
+import {
+  addApplicationUsers,
+  createActiveCertManagerProject,
+  createApplicationWithApiProfile,
+  createCertificateProfile,
+  createInternalRootCa,
+  getCertificate,
+  issueApplicationCertificate,
+  removeApplicationMember,
+  renewCertificate,
+  setCertificateRenewBeforeDays
+} from "../../testUtils/cert-manager";
 import { createIsolatedOrgAndProject } from "../../testUtils/fixtures";
 import { overrideLicenseFeatures } from "../../testUtils/license";
 import { listUserNotifications } from "../../testUtils/notifications";
-import {
-  addApplicationUser,
-  createPkiApplication,
-  getCertificate,
-  issueCertificate,
-  renewCertificate,
-  runCertificateAutoRenewal,
-  setCertificateRenewBeforeDays,
-  TPkiApplication
-} from "../../testUtils/pki";
 import { pollUntil } from "../../testUtils/poll";
 import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "../../testUtils/users";
 
@@ -41,7 +44,7 @@ const CERTIFICATE_TTL_DAYS = 10;
 type TApplicationContext = {
   authToken: string;
   orgId: string;
-  app: TPkiApplication;
+  app: { projectId: string; caId: string; profileId: string; profileSlug: string; applicationId: string };
   approverId: string;
   approverToken: string;
   startedAt: Date;
@@ -51,12 +54,21 @@ type TApplicationContext = {
 const setUpApplication = async (namePrefix: string): Promise<TApplicationContext> => {
   const startedAt = new Date(Date.now() - 60_000);
   const { orgId, authToken, cleanup } = await createIsolatedOrgAndProject(namePrefix);
-  const app = await createPkiApplication({ authToken, namePrefix, domain: DOMAIN });
+  const projectId = await createActiveCertManagerProject(authToken);
+  const caId = await createInternalRootCa({ projectId, authToken });
+  const profile = await createCertificateProfile({ projectId, caId, commonNames: [`*.${DOMAIN}`], authToken });
+  const application = await createApplicationWithApiProfile({ projectId, profileId: profile.id, authToken });
+  const app = { projectId, caId, profileId: profile.id, profileSlug: profile.slug, applicationId: application.id };
 
   const { userId: approverId } = await createUser("renewal-approver");
   await addUserMembership({ userId: approverId, orgId, role: OrgMembershipRole.Member });
   await addUserMembership({ userId: approverId, orgId, projectId: app.projectId, role: ProjectMembershipRole.Member });
-  await addApplicationUser({ authToken, app, userId: approverId, role: ResourceMembershipRole.Admin });
+  await addApplicationUsers({
+    applicationId: app.applicationId,
+    userIds: [approverId],
+    role: ResourceMembershipRole.Admin,
+    authToken
+  });
   const approverToken = await createUserAccessToken({ userId: approverId, orgId });
 
   return {
@@ -73,16 +85,14 @@ const setUpApplication = async (namePrefix: string): Promise<TApplicationContext
   };
 };
 
-const issue = async (ctx: TApplicationContext) => {
-  const issued = await issueCertificate({
-    authToken: ctx.authToken,
-    app: ctx.app,
+const issue = (ctx: TApplicationContext) =>
+  issueApplicationCertificate({
+    profileId: ctx.app.profileId,
+    applicationId: ctx.app.applicationId,
     commonName: `${randomUUID().slice(0, 8)}.${DOMAIN}`,
-    ttl: CERTIFICATE_TTL
+    ttl: CERTIFICATE_TTL,
+    authToken: ctx.authToken
   });
-  expect(issued.certificate?.certificateId, "the certificate was issued before any policy existed").toBeTruthy();
-  return issued.certificate!.certificateId;
-};
 
 // Auto-renewal is turned on through the API, which only accepts a window that opens tomorrow at the
 // earliest. The job decides eligibility from the dates alone, so widening the window to the whole
@@ -281,11 +291,11 @@ describe("Certificate renewal approval", async () => {
           projectId: ctx.app.projectId,
           role: ProjectMembershipRole.Member
         });
-        await addApplicationUser({
-          authToken: ctx.authToken,
-          app: ctx.app,
-          userId: requesterId,
-          role: ResourceMembershipRole.Admin
+        await addApplicationUsers({
+          applicationId: ctx.app.applicationId,
+          userIds: [requesterId],
+          role: ResourceMembershipRole.Admin,
+          authToken: ctx.authToken
         });
         const requesterToken = await createUserAccessToken({ userId: requesterId, orgId: ctx.orgId });
 
@@ -340,14 +350,14 @@ describe("Certificate renewal approval", async () => {
         const certificateId = certificateIds.approved;
         await makeDueForAutoRenewal(ctx, certificateId);
 
-        await runCertificateAutoRenewal();
+        await certificateAutoRenewalJob.run();
 
         const pending = await pendingRenewalApprovals(ctx, certificateId);
         expect(pending, "the job raised one approval request for the certificate").toHaveLength(1);
         expect(pending[0].requesterName, "the request comes from automatic renewal").toBe("Automatic Renewal");
         await expectNotRenewed(ctx, certificateId, "after the job raised the request");
 
-        await runCertificateAutoRenewal();
+        await certificateAutoRenewalJob.run();
 
         expect(await renewalApprovals(ctx, certificateId), "a second run raised no second request").toHaveLength(1);
         expect(await failedAutoRenewalsOf(ctx, certificateId), "neither run recorded a failed renewal").toHaveLength(0);
@@ -366,7 +376,7 @@ describe("Certificate renewal approval", async () => {
         const certificateId = certificateIds.rejected;
         await makeDueForAutoRenewal(ctx, certificateId);
 
-        await runCertificateAutoRenewal();
+        await certificateAutoRenewalJob.run();
 
         const pending = await pendingRenewalApprovals(ctx, certificateId);
         expect(pending, "the job raised one approval request for the certificate").toHaveLength(1);
@@ -379,7 +389,7 @@ describe("Certificate renewal approval", async () => {
         expect(rejected.status).toBe(ApprovalRequestStatus.Rejected);
         await expectNotRenewed(ctx, certificateId, "after the rejection");
 
-        await runCertificateAutoRenewal();
+        await certificateAutoRenewalJob.run();
 
         expect(
           await pendingRenewalApprovals(ctx, certificateId),
@@ -399,7 +409,7 @@ describe("Certificate renewal approval", async () => {
         const renewal = await renewCertificate({ authToken: ctx.authToken, certificateId });
         expect(renewal.status, "the manual renewal waits for approval").toBe(CertificateRequestStatus.PENDING_APPROVAL);
 
-        await runCertificateAutoRenewal();
+        await certificateAutoRenewalJob.run();
 
         expect(
           await failedAutoRenewalsOf(ctx, certificateId),
@@ -430,7 +440,7 @@ describe("Certificate renewal approval", async () => {
         const [manualRequest] = await pendingRenewalApprovals(ctx, certificateId);
         await expire(manualRequest.id);
 
-        await runCertificateAutoRenewal();
+        await certificateAutoRenewalJob.run();
 
         const jobRequests = (await pendingRenewalApprovals(ctx, certificateId)).filter(
           (req) => req.requesterName === "Automatic Renewal"
@@ -471,7 +481,7 @@ describe("Certificate renewal approval", async () => {
       "keeps waiting for the request the job raised instead of renewing around it",
       async () => {
         await makeDueForAutoRenewal(ctx, certificateId);
-        await runCertificateAutoRenewal();
+        await certificateAutoRenewalJob.run();
         const [pending] = await pendingRenewalApprovals(ctx, certificateId);
         expect(pending?.requesterName, "the job raised a request under Every renewal").toBe("Automatic Renewal");
 
@@ -483,7 +493,7 @@ describe("Certificate renewal approval", async () => {
         });
         expect(switched.statusCode, switched.payload).toBe(200);
 
-        await runCertificateAutoRenewal();
+        await certificateAutoRenewalJob.run();
 
         await expectNotRenewed(ctx, certificateId, "while the job's own request still waits");
         expect(await renewalApprovals(ctx, certificateId), "the job raised no second request").toHaveLength(1);
@@ -514,11 +524,11 @@ describe("Certificate renewal approval", async () => {
         projectId: ctx.app.projectId,
         role: ProjectMembershipRole.Member
       });
-      await addApplicationUser({
-        authToken: ctx.authToken,
-        app: ctx.app,
-        userId: removedApproverId,
-        role: ResourceMembershipRole.Admin
+      await addApplicationUsers({
+        applicationId: ctx.app.applicationId,
+        userIds: [removedApproverId],
+        role: ResourceMembershipRole.Admin,
+        authToken: ctx.authToken
       });
       removedApproverToken = await createUserAccessToken({ userId: removedApproverId, orgId: ctx.orgId });
 
