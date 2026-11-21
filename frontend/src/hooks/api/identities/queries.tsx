@@ -59,6 +59,8 @@ export const identitiesKeys = {
   getIdentityLdapAuth: (identityId: string) => [{ identityId }, "identity-ldap-auth"] as const,
   getIdentityTokensTokenAuth: (identityId: string) =>
     [{ identityId }, "identity-tokens-token-auth"] as const,
+  getIdentityTokensTokenAuthPage: (identityId: string, params: { offset: number; limit: number }) =>
+    [...identitiesKeys.getIdentityTokensTokenAuth(identityId), params] as const,
   getIdentityProjectMemberships: (identityId: string) =>
     [{ identityId }, "identity-project-memberships"] as const,
   // The membership list is filtered to the viewing org (Membership.scopeOrgId),
@@ -368,21 +370,21 @@ export const useGetIdentityLdapAuth = (
 };
 
 export const useGetIdentityTokensTokenAuth = (
-  identityId: string,
+  { identityId, offset = 0, limit = 5 }: { identityId: string; offset?: number; limit?: number },
   options?: TReactQueryOptions["options"]
 ) => {
   return useQuery({
-    queryKey: identitiesKeys.getIdentityTokensTokenAuth(identityId),
+    queryKey: identitiesKeys.getIdentityTokensTokenAuthPage(identityId, { offset, limit }),
     queryFn: async () => {
-      const {
-        data: { tokens }
-      } = await apiRequest.get<{ tokens: IdentityAccessToken[] }>(
-        `/api/v1/auth/token-auth/identities/${identityId}/tokens`
+      const { data } = await apiRequest.get<{ tokens: IdentityAccessToken[]; totalCount: number }>(
+        `/api/v1/auth/token-auth/identities/${identityId}/tokens`,
+        { params: { offset, limit } }
       );
-      return tokens;
+      return data;
     },
     staleTime: 0,
     gcTime: 0,
+    placeholderData: (previousData) => previousData,
     ...options,
     enabled: Boolean(identityId) && (options?.enabled ?? true)
   });
