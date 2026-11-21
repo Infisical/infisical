@@ -28,44 +28,38 @@ const accessIsOpen = (request: TAccessApprovalRequest) =>
   getAccessRequestState(request) === "pending";
 
 /**
- * The list returns one flat vote per reviewer, so a vote can only be tied to a step when no
- * approver sits in more than one step. Requests whose policy repeats an approver are not counted.
+ * The list returns one entry per vote with no step attached. Steps are approved in order and each
+ * takes one vote per approver, so an approver's votes fill their own steps in sequence.
  */
-const accessNeedsReview = (request: TAccessApprovalRequest, userId: string) => {
+export const accessNeedsReview = (request: TAccessApprovalRequest, userId: string) => {
   if (!accessIsOpen(request) || request.delegatedApproval) return false;
   if (request.requestedByUserId === userId && !request.policy.allowedSelfApprovals) return false;
   const { approvers } = request.policy;
   const stepOfApprover = (approver: (typeof approvers)[number]) => approver.sequence || 1;
-  const repeated = approvers.some((approver) =>
-    approvers.some(
-      (other) =>
-        other.userId === approver.userId && stepOfApprover(other) !== stepOfApprover(approver)
-    )
-  );
-  if (repeated) return false;
-  const stepOf = new Map(
-    approvers.flatMap((approver) =>
-      approver.userId ? [[approver.userId, stepOfApprover(approver)] as const] : []
-    )
-  );
-  const inProgress = [...new Set(stepOf.values())]
-    .sort((a, b) => a - b)
-    .find((sequence) => {
-      const required =
-        approvers.find((approver) => (approver.sequence || 1) === sequence)?.approvalsRequired ||
-        request.policy.approvals ||
-        1;
-      const votes = request.reviewers.filter(
-        (reviewer) =>
-          reviewer.status === ApprovalStatus.APPROVED && stepOf.get(reviewer.userId) === sequence
-      ).length;
-      return votes < required;
+  const steps = [...new Set(approvers.map(stepOfApprover))].sort((x, y) => x - y);
+  const stepsOf = (id: string) =>
+    steps.filter((step) =>
+      approvers.some((approver) => approver.userId === id && stepOfApprover(approver) === step)
+    );
+  const cast = new Map<string, number>();
+  const votes = new Map<number, number>();
+  request.reviewers
+    .filter((reviewer) => reviewer.status === ApprovalStatus.APPROVED)
+    .forEach((reviewer) => {
+      const count = cast.get(reviewer.userId) ?? 0;
+      cast.set(reviewer.userId, count + 1);
+      const step = stepsOf(reviewer.userId)[count];
+      if (step !== undefined) votes.set(step, (votes.get(step) ?? 0) + 1);
     });
-  return (
-    inProgress !== undefined &&
-    stepOf.get(userId) === inProgress &&
-    !request.reviewers.some((reviewer) => reviewer.userId === userId)
-  );
+  const inProgress = steps.find((step) => {
+    const required =
+      approvers.find((approver) => stepOfApprover(approver) === step)?.approvalsRequired ||
+      request.policy.approvals ||
+      1;
+    return (votes.get(step) ?? 0) < required;
+  });
+  if (inProgress === undefined) return false;
+  return stepsOf(userId).indexOf(inProgress) >= (cast.get(userId) ?? 0);
 };
 
 const current = <T>(query: V4QueryResult<T>) =>
