@@ -250,6 +250,8 @@ export const recordApprovedRenewalIssued = async (
           applicationName: application?.name,
           renewalKeySource: approval.renewal.renewalKeySource,
           externalConfiguration: approval.renewal.externalConfiguration,
+          // The approval's own renew-certificate event, with the same certificateRequestId, lists what changed.
+          changedAttributes: [],
           status: CertificateRequestStatus.ISSUED,
           ...getApprovalRequestAuditLabel(approval.approvalRequest, approval.policy)
         }

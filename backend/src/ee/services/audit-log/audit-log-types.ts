@@ -4421,7 +4421,7 @@ interface RenewCertificate {
   type: EventType.RENEW_CERTIFICATE;
   metadata: {
     originalCertificateId: string;
-    newCertificateId?: string;
+    newCertificateId: string;
     certificateRequestId: string;
     profileName: string;
     commonName: string;
@@ -4430,9 +4430,7 @@ interface RenewCertificate {
     serialNumber?: string;
     renewalKeySource: CertificateRenewalKeySource;
     externalConfiguration?: TRenewCertificateDTO["externalConfiguration"];
-    // Absent on the event recording the certificate an external CA issued after an approved renewal: the
-    // approval's own renew-certificate event, with the same certificateRequestId, lists what changed.
-    changedAttributes?: TRenewalAuditChange[];
+    changedAttributes: TRenewalAuditChange[];
     status?: CertificateRequestStatus;
     approvalRequestId?: string;
     approvalPolicyName?: string;

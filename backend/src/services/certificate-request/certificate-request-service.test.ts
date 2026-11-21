@@ -1155,6 +1155,7 @@ describe("CertificateRequestService", () => {
               serialNumber: "0a1b",
               certificateRequestId: "req-2",
               profileName: "public-web",
+              changedAttributes: [],
               status: CertificateRequestStatus.ISSUED,
               approvalRequestId: "approval-2",
               approvalPolicyName: "prod renewals",

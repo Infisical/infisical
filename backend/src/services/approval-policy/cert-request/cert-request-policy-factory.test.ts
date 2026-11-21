@@ -366,9 +366,10 @@ describe("certRequestApprovalResourceFactory.postApprovalRoutine", () => {
       const [[{ event }]] = deps.auditLogService.createAuditLog.mock.calls as [[{ event: { metadata: object } }]];
       expect(event.metadata).toMatchObject({
         status: CertificateRequestStatus.PENDING,
-        approvalRequestId: "approval-1"
+        approvalRequestId: "approval-1",
+        newCertificateId: "",
+        changedAttributes: []
       });
-      expect(event.metadata).not.toHaveProperty("newCertificateId");
       expect(event.metadata).not.toHaveProperty("serialNumber");
     });
 

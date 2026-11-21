@@ -242,7 +242,8 @@ export const certRequestApprovalResourceFactory = ({
             type: EventType.RENEW_CERTIFICATE,
             metadata: {
               originalCertificateId: renewed.originalCertificateId,
-              ...(isIssued && { newCertificateId: renewed.certificateId, serialNumber: renewed.serialNumber }),
+              newCertificateId: (isIssued && renewed.certificateId) || "",
+              ...(isIssued && { serialNumber: renewed.serialNumber }),
               certificateRequestId: renewed.certificateRequestId,
               profileName: renewed.profileName,
               commonName: renewed.commonName || "",
