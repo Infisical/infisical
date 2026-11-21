@@ -53,7 +53,7 @@ type TIdentityTokenAuthServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   identityAccessTokenDAL: Pick<
     TIdentityAccessTokenDALFactory,
-    "create" | "find" | "update" | "findById" | "findOne" | "updateById" | "delete"
+    "create" | "find" | "update" | "findById" | "findOne" | "updateById" | "delete" | "countTokens"
   >;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
@@ -603,15 +603,12 @@ export const identityTokenAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const tokens = await identityAccessTokenDAL.find(
-      {
-        identityId,
-        authMethod: IdentityAuthMethod.TOKEN_AUTH
-      },
-      { offset, limit, sort: [["updatedAt", "desc"]], count: true }
-    );
+    const filter = { identityId, authMethod: IdentityAuthMethod.TOKEN_AUTH };
+    const [tokens, totalCount] = await Promise.all([
+      identityAccessTokenDAL.find(filter, { offset, limit, sort: [["updatedAt", "desc"]] }),
+      identityAccessTokenDAL.countTokens(filter)
+    ]);
 
-    const totalCount = tokens?.[0]?.count ? parseInt(tokens[0].count, 10) : 0;
     return { tokens, totalCount, identityMembershipOrg };
   };
 

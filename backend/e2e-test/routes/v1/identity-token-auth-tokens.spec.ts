@@ -61,6 +61,8 @@ describe("Token Auth token listing", () => {
     });
 
     expect(res.statusCode).toBe(200);
-    expect(res.json().tokens).toHaveLength(0);
+    const body = res.json();
+    expect(body.tokens).toHaveLength(0);
+    expect(body.totalCount).toBe(3);
   });
 });
