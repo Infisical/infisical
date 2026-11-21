@@ -130,6 +130,7 @@ import {
   withPending
 } from "./secrets/batch/pending";
 import { commitLabel, ReviewSheet } from "./secrets/batch/review-sheet";
+import { UnsavedEditsContext, useUnsavedEdits } from "./secrets/batch/unsaved-edits";
 import { BulkTagDialog } from "./secrets/bulk/bulk-tag-dialog";
 import { type CopySecretsInvocation, CopySecretsSheet } from "./secrets/bulk/copy-secrets-sheet";
 import { MoveSecretsDialog } from "./secrets/bulk/move-secrets-dialog";
@@ -341,6 +342,9 @@ export const OverviewPage = () => {
   const [pending, setPending] = useState<PendingChange[]>([]);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [discardingPending, setDiscardingPending] = useState(false);
+  const unsavedEdits = useUnsavedEdits();
+  const [savingAll, setSavingAll] = useState(false);
+  const saveAllOutcome = useRef<{ saved: number; held: string[]; errors: string[] }>(undefined);
   const [deletingEnvironment, setDeletingEnvironment] = useState<{
     value: string;
     label: string;
@@ -656,11 +660,18 @@ export const OverviewPage = () => {
     options?: ResourceApplyOptions,
     onFieldError?: (message: string) => void
   ) => {
+    const batch = saveAllOutcome.current;
     const before = resourcesRef.current;
     const after = update([...before]);
     return runApply(before, after, { ...options, quiet: Boolean(onFieldError) }).then(
       ({ written, held }) => {
         if (!feedback) return true;
+        if (batch) {
+          if (held.length)
+            batch.held.push(...held.map((scope) => environmentLabel(scope.environment)));
+          else batch.saved += 1;
+          return true;
+        }
         if (held.length && !written.length) {
           toast({
             tone: "neutral",
@@ -706,7 +717,9 @@ export const OverviewPage = () => {
       (error: unknown) => {
         const fieldError = onFieldError && fieldErrorText(error);
         if (fieldError) onFieldError(fieldError);
-        else if (!wasErrorReported(error))
+        else if (batch) {
+          if (!wasErrorReported(error)) batch.errors.push(errorText(error));
+        } else if (!wasErrorReported(error))
           toast({
             tone: "bad",
             title: feedback
@@ -974,6 +987,43 @@ export const OverviewPage = () => {
           });
         }
       );
+  };
+  const changeCount = (count: number) => `${count} ${count === 1 ? "change" : "changes"}`;
+  const saveAllEdits = () => {
+    const edits = unsavedEdits.list();
+    if (savingAll || !edits.length) return;
+    const outcome = { saved: 0, held: [] as string[], errors: [] as string[] };
+    saveAllOutcome.current = outcome;
+    const saves = edits.map((edit) => edit.save());
+    saveAllOutcome.current = undefined;
+    setSavingAll(true);
+    Promise.all(saves).then((results) => {
+      setSavingAll(false);
+      const unsaved = results.filter((ok) => !ok).length;
+      const held = [...new Set(outcome.held)];
+      const description = [
+        held.length
+          ? `Change request opened for ${new Intl.ListFormat("en").format(held)}`
+          : undefined,
+        unsaved ? `${changeCount(unsaved)} still unsaved` : undefined,
+        outcome.errors[0]
+      ]
+        .filter(Boolean)
+        .join(". ");
+      if (unsaved)
+        toast({
+          tone: "bad",
+          title: `Saved ${results.length - unsaved} of ${changeCount(results.length)}`,
+          description
+        });
+      else if (held.length && !outcome.saved)
+        toast({ tone: "neutral", title: "Change request opened", description });
+      else toast({ tone: "ok", title: `Saved ${changeCount(results.length)}`, description });
+    });
+  };
+  const discardAllEdits = () => {
+    if (savingAll) return;
+    unsavedEdits.list().forEach((edit) => edit.discard());
   };
   const expandableKeysOnPage = windowRows
     .filter(([, entries]) => entries[0].kind !== "folder")
@@ -1860,7 +1910,14 @@ export const OverviewPage = () => {
     },
     report: (message) => toast({ tone: "bad", title: message })
   };
-  const provide = (children: ReactNode) => valueStore.provider(planGates.provider(children));
+  const provide = (children: ReactNode) =>
+    valueStore.provider(
+      planGates.provider(
+        <UnsavedEditsContext value={single ? undefined : unsavedEdits.registry}>
+          {children}
+        </UnsavedEditsContext>
+      )
+    );
   return provide(
     <BreadthContext value={holdBreadth}>
       <ReferenceSourceProvider value={referenceSource}>
@@ -2317,9 +2374,29 @@ export const OverviewPage = () => {
             <div
               className={styles.fabDock}
               data-active={
-                selected.length > 0 || (pendingHere.length > 0 && !reviewOpen) || undefined
+                selected.length > 0 ||
+                (pendingHere.length > 0 && !reviewOpen) ||
+                unsavedEdits.count > 0 ||
+                undefined
               }
             >
+              <FloatingActionBar
+                label="Unsaved change actions"
+                count={selected.length ? 0 : unsavedEdits.count}
+                noun={unsavedEdits.count === 1 ? "unsaved change" : "unsaved changes"}
+                onClear={() => {
+                  if (!savingAll) discardAllEdits();
+                }}
+                actions={[
+                  {
+                    label: "Save all",
+                    icon: "check",
+                    disabled: savingAll,
+                    loading: savingAll,
+                    onClick: saveAllEdits
+                  }
+                ]}
+              />
               {pendingHere.length ? (
                 <FloatingActionBar
                   label="Pending change actions"
@@ -2701,7 +2778,11 @@ export const OverviewPage = () => {
             projectId={projectId}
             open={activationNudge.open}
             onOpenChange={activationNudge.setOpen}
-            lifted={selected.length > 0 || (pendingHere.length > 0 && !reviewOpen)}
+            lifted={
+              selected.length > 0 ||
+              (pendingHere.length > 0 && !reviewOpen) ||
+              unsavedEdits.count > 0
+            }
           />
         </div>
       </ReferenceSourceProvider>

@@ -86,6 +86,7 @@ import {
   selectionKey
 } from "../secrets-model";
 import type { PendingType } from "./batch/pending";
+import { useRegisterUnsavedEdit } from "./batch/unsaved-edits";
 import { environmentLabel } from "./flows/shared";
 import {
   ChildSelectCell,
@@ -213,6 +214,7 @@ function InlineEditor({
   saveLabel,
   undoLabel,
   dirtyFromStart,
+  multiline,
   onSave,
   onCancel,
   idle
@@ -224,31 +226,45 @@ function InlineEditor({
   saveLabel: string;
   undoLabel: string;
   dirtyFromStart?: boolean;
+  multiline?: boolean;
   onSave: (value: string, onFieldError: (message: string) => void) => Promise<boolean>;
   onCancel: () => void;
   idle?: ReactNode;
 }) {
+  useRequestBreadth(Boolean(multiline));
   const [draft, setDraft] = useState(initial);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const dirty = dirtyFromStart || draft !== initial;
   const save = () => {
-    if (saving) return;
+    if (saving) return Promise.resolve(false);
     setSaving(true);
-    onSave(draft, setError).finally(() => setSaving(false));
+    return onSave(draft, setError).finally(() => setSaving(false));
+  };
+  useRegisterUnsavedEdit(dirty, { save, discard: onCancel });
+  const control = {
+    autoFocus: true,
+    className: styles.inlineInput,
+    "aria-invalid": Boolean(error) || undefined,
+    "aria-label": label,
+    placeholder,
+    autoComplete: "off",
+    spellCheck: false
   };
   return (
     <div ref={root} className={styles.inlineEdit} data-invalid={error ? "" : undefined}>
       <ReferenceEditor
         value={draft}
         scope={scope}
+        multiline={multiline}
         onValueChange={(next) => {
           setDraft(next);
           setError("");
         }}
         onKeyDown={(event) => {
-          if (event.key === "Enter" && dirty) {
+          if (event.nativeEvent.isComposing) return;
+          if (event.key === "Enter" && !event.shiftKey && dirty) {
             event.preventDefault();
             save();
           }
@@ -261,18 +277,13 @@ function InlineEditor({
           if (!dirty && !root.current?.contains(event.relatedTarget as Node)) onCancel();
         }}
       >
-        {(control) => (
-          <Input
-            {...control}
-            autoFocus
-            className={styles.inlineInput}
-            aria-invalid={Boolean(error) || undefined}
-            aria-label={label}
-            placeholder={placeholder}
-            autoComplete="off"
-            spellCheck={false}
-          />
-        )}
+        {(editor) =>
+          multiline ? (
+            <Textarea {...editor} {...control} rows={1} />
+          ) : (
+            <Input {...editor} {...control} />
+          )
+        }
       </ReferenceEditor>
       {dirty ? (
         <span className={styles.quickActions}>
@@ -1139,6 +1150,85 @@ function SecretActionsRow({
   );
 }
 
+function EnvironmentValueCell({
+  secret,
+  label,
+  visible,
+  ctx,
+  onUpdate
+}: {
+  secret: Secret;
+  label: string;
+  visible: boolean;
+  ctx: RowContext;
+  onUpdate: SecretUpdate;
+}) {
+  const [initial, setInitial] = useState<string>();
+  const loader = useValueLoader();
+  const canEdit = canEditInline(secret, ctx);
+  const begin = async () => {
+    if (!canEdit || initial !== undefined) return;
+    const current = readableValue(secret);
+    if (current !== undefined || secret.value.status === "unreadable") {
+      setInitial(current ?? "");
+      return;
+    }
+    const values = await loader.ensure([secret]);
+    const loaded =
+      values[valueKey(secret.environment, secret.path, secret.name, false, secret.version)];
+    if (typeof loaded === "string") setInitial(loaded);
+    else ctx.report(`Could not read ${secret.name}.`, "bad");
+  };
+  return (
+    <TableCell
+      colSpan={2}
+      className={styles.valueCell}
+      data-editable={canEdit || undefined}
+      tabIndex={canEdit && initial === undefined ? 0 : undefined}
+      onClick={() => begin()}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key !== "Enter" && event.key !== "F2") return;
+        event.preventDefault();
+        begin();
+      }}
+    >
+      <div className={styles.nameLine}>
+        {initial === undefined ? (
+          <>
+            <SecretValue secret={secret} visible={visible} />
+            <Indicators secret={secret} />
+          </>
+        ) : (
+          <InlineEditor
+            multiline
+            label={`Value of ${secret.name} in ${label}`}
+            scope={secret}
+            initial={initial}
+            placeholder={
+              secret.value.status === "unreadable" ? "Enter a new value" : "Secret value"
+            }
+            saveLabel="Save"
+            undoLabel="Discard"
+            onCancel={() => setInitial(undefined)}
+            onSave={(value, onFieldError) =>
+              onUpdate(
+                secret,
+                { value },
+                { title: `Updated ${secret.name} in ${label}` },
+                onFieldError
+              ).then((ok) => {
+                if (ok) setInitial(undefined);
+                return ok;
+              })
+            }
+          />
+        )}
+      </div>
+    </TableCell>
+  );
+}
+
 function OverrideValue({
   secret,
   creating,
@@ -1654,12 +1744,21 @@ function SecretRowView({
                           )}
                         </span>
                       </TableCell>
-                      <TableCell colSpan={2} className={styles.valueCell}>
-                        <div className={styles.nameLine}>
-                          <SecretValue secret={secret} visible={rowVisible} />
-                          {secret && <Indicators secret={secret} />}
-                        </div>
-                      </TableCell>
+                      {secret ? (
+                        <EnvironmentValueCell
+                          secret={secret}
+                          label={environment.label}
+                          visible={rowVisible}
+                          ctx={ctx}
+                          onUpdate={handlers.onUpdate}
+                        />
+                      ) : (
+                        <TableCell colSpan={2} className={styles.valueCell}>
+                          <div className={styles.nameLine}>
+                            <SecretValue visible={rowVisible} />
+                          </div>
+                        </TableCell>
+                      )}
                     </>
                   );
                   const addValue: RowActionProps = {
