@@ -32,7 +32,14 @@ const storedHook: TAgentVaultHook = {
   name: "approvals",
   description: null,
   url: HOOK_URL,
-  usedBy: [{ id: "33333333-3333-4333-8333-333333333333", name: "github" }],
+  usedBy: [
+    {
+      id: "33333333-3333-4333-8333-333333333333",
+      name: "github",
+      type: AgentVaultServiceType.Http,
+      hostPattern: "api.github.com"
+    }
+  ],
   createdAt: "2026-11-19T00:00:00.000Z",
   updatedAt: "2026-11-19T00:00:00.000Z"
 };

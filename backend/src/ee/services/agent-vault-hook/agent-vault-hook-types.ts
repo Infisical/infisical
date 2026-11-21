@@ -1,5 +1,7 @@
 import { TGenericPermission } from "@app/lib/types";
 
+import { AgentVaultServiceType } from "../agent-vault/agent-vault-enums";
+
 export type TAgentVaultHookScoped = { projectId: string; ctx: TGenericPermission };
 
 export type TCreateHookDTO = TAgentVaultHookScoped & {
@@ -21,7 +23,7 @@ export type TUpdateHookDTO = THookByIdDTO & {
   secret?: string;
 };
 
-export type THookServiceRef = { id: string; name: string; type: string; hostPattern: string | null };
+export type THookServiceRef = { id: string; name: string; type: AgentVaultServiceType; hostPattern: string | null };
 
 /** A saved hook as every read returns it: never its secret. */
 export type TAgentVaultHook = {
