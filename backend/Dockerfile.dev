@@ -26,7 +26,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
 
 # Compilers for SoftHSM2 and OpenSSL live only in these stages; the dev image gets the
 # installed output, not the sources, object files or autotools.
-FROM node:26.12.1-trixie-slim AS native-tools
+FROM node:26.13.1-trixie-slim AS native-tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     autoconf \
@@ -61,7 +61,7 @@ RUN wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.9/o
     && make -j"$(nproc)" \
     && make install_sw
 
-FROM node:26.12.1-trixie-slim
+FROM node:26.13.1-trixie-slim
 
 ARG SOFTHSM2_VERSION=2.5.0
 ENV SOFTHSM2_VERSION=${SOFTHSM2_VERSION}

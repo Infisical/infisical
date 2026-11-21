@@ -4,7 +4,7 @@
   "description": "",
   "main": "./dist/main.mjs",
   "engines": {
-    "node": ">=26.0.0",
+    "node": ">=26.13.1",
     "npm": ">=11.10.0"
   },
   "scripts": {
