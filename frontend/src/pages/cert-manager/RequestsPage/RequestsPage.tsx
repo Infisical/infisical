@@ -4,8 +4,6 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 import { FilterIcon, SearchIcon } from "lucide-react";
 
 import { PageTitle } from "@app/components/PageTitle";
-import { getCertificateLabel } from "@app/components/utilities/certificateDisplayUtils";
-import { truncateSerialNumber } from "@app/components/utilities/serialNumberUtils";
 import {
   Badge,
   Card,
@@ -43,22 +41,23 @@ import { useProject } from "@app/context";
 import { getInstancePinningLink } from "@app/helpers/project";
 import { useDebounce } from "@app/hooks";
 import {
-  APPLICATION_POLICY_TYPE_LABELS,
   APPLICATION_POLICY_TYPES,
   ApprovalPolicyScope,
-  ApprovalPolicyType,
-  isCertificateActionPolicyType
+  ApprovalPolicyType
 } from "@app/hooks/api/approvalPolicies";
 import {
   approvalRequestQuery,
   ApprovalRequestStatus,
-  CertRequestRequestData,
   CodeSigningRequestData,
-  TApprovalRequest,
-  TCertificateActionRequestData
+  TApprovalRequest
 } from "@app/hooks/api/approvalRequests";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
 import { ProjectType } from "@app/hooks/api/projects/types";
+
+import {
+  getApplicationRequestSummary,
+  matchesApplicationRequestSearch
+} from "./RequestsPage.utils";
 
 type StatusFilter = "pending" | "approved" | "rejected";
 
@@ -98,38 +97,6 @@ const formatRelative = (iso: string): string => {
   if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
   const days = Math.round(hours / 24);
   return `${days} day${days === 1 ? "" : "s"} ago`;
-};
-
-const isCertRequestData = (data: unknown): data is { requestData: CertRequestRequestData } => {
-  return Boolean(
-    data &&
-    typeof data === "object" &&
-    "requestData" in data &&
-    data.requestData &&
-    typeof data.requestData === "object" &&
-    "profileName" in (data.requestData as object)
-  );
-};
-
-const getApplicationRequestSummary = (request: TApprovalRequest) => {
-  if (isCertificateActionPolicyType(request.type)) {
-    const data = request.requestData.requestData as TCertificateActionRequestData;
-    return {
-      typeLabel: APPLICATION_POLICY_TYPE_LABELS[request.type],
-      commonName: getCertificateLabel(data, data.serialNumber),
-      displayName: getCertificateLabel(data, truncateSerialNumber(data.serialNumber)),
-      profileName: data.profileName
-    };
-  }
-
-  const data = isCertRequestData(request.requestData) ? request.requestData.requestData : null;
-  const commonName = data?.certificateRequest?.commonName ?? "";
-  return {
-    typeLabel: data && "renewal" in data && data.renewal ? "Renewal" : "Issuance",
-    commonName,
-    displayName: commonName,
-    profileName: data?.profileName ?? ""
-  };
 };
 
 const getCodeSigningData = (data: unknown): CodeSigningRequestData | null => {
@@ -249,17 +216,7 @@ export const RequestsPage = () => {
 
     return (requests as TApprovalRequest[])
       .filter((r) => matchesStatus(r.status as ApprovalRequestStatus))
-      .filter((r) => {
-        if (!norm) return true;
-        const { typeLabel, commonName, profileName } = getApplicationRequestSummary(r);
-        const requester = `${r.requesterName} ${r.requesterEmail}`;
-        return (
-          commonName.toLowerCase().includes(norm) ||
-          profileName.toLowerCase().includes(norm) ||
-          typeLabel.toLowerCase().includes(norm) ||
-          requester.toLowerCase().includes(norm)
-        );
-      });
+      .filter((r) => matchesApplicationRequestSearch(r, norm));
   }, [requests, statusFilters, debouncedSearch]);
 
   const filteredSigning = useMemo(() => {
