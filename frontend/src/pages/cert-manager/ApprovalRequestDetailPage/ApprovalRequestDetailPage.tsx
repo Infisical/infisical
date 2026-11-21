@@ -64,7 +64,7 @@ const CERTIFICATE_ACTION_PENDING_NOTES: Record<TCertificateActionPolicyType, str
   [ApprovalPolicyType.CertRevocation]:
     "The certificate isn't revoked until this request is approved. Once approved, it is revoked with the reason above and added to its CA's revocation list.",
   [ApprovalPolicyType.CertDeletion]:
-    "The certificate isn't deleted until this request is approved. Deleting doesn't revoke it, so it stays trusted until it expires."
+    "The certificate isn't deleted until this request is approved. Deleting doesn't revoke it, so if it's still active, it stays trusted until it expires."
 };
 
 const CertificateActionDetailsSection = ({
