@@ -25,48 +25,15 @@ import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/t
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { SshConnectionMethod, TSshConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { sshConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TSshConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const configurationSchema = z.object({
-  blockedUsers: z.string().trim().optional()
-});
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.SSH),
-  configuration: configurationSchema.optional()
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(SshConnectionMethod.Password),
-    credentials: z.object({
-      host: z.string().trim().min(1, "Host required"),
-      port: z.coerce.number().int().min(1).max(65535, "Port must be between 1 and 65535"),
-      username: z.string().trim().min(1, "Username required"),
-      password: z.string().trim().min(1, "Password required")
-    })
-  }),
-  rootSchema.extend({
-    method: z.literal(SshConnectionMethod.SshKey),
-    credentials: z.object({
-      host: z.string().trim().min(1, "Host required"),
-      port: z.coerce.number().int().min(1).max(65535, "Port must be between 1 and 65535"),
-      username: z.string().trim().min(1, "Username required"),
-      privateKey: z.string().trim().min(1, "Private key required"),
-      passphrase: z.string().trim().optional()
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

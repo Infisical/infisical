@@ -24,36 +24,15 @@ import {
   TExternalInfisicalConnection
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { externalInfisicalConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TExternalInfisicalConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.ExternalInfisical)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth),
-    credentials: z.object({
-      instanceUrl: z.string().trim().url("Must be a valid URL").min(1, "Instance URL is required"),
-      machineIdentityClientId: z
-        .string()
-        .trim()
-        .uuid("Must be a valid UUID")
-        .min(1, "Client ID is required"),
-      machineIdentityClientSecret: z.string().trim().min(1, "Client Secret is required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

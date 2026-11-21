@@ -1,0 +1,27 @@
+.icon {
+  --cipher-provider-icon: var(--cipher-size-icon);
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--cipher-provider-icon);
+  height: var(--cipher-provider-icon);
+  object-fit: contain;
+}
+.icon[data-size="sm"] {
+  --cipher-provider-icon: var(--cipher-size-icon-sm);
+}
+.icon[data-size="lg"] {
+  --cipher-provider-icon: var(--cipher-size-icon-lg);
+}
+.icon[data-size="xl"] {
+  --cipher-provider-icon: var(--cipher-size-icon-xl);
+}
+.fallback {
+  color: var(--cipher-faint);
+}
+.fallback > svg {
+  width: 100%;
+  height: 100%;
+  stroke-width: var(--cipher-stroke-icon);
+}

@@ -39,6 +39,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
+import { getCertificateImportReference } from "@app/helpers/certificateImportLinkage";
 import type { TCertificatePemSummary } from "@app/helpers/certificatePem";
 import type { TPkcs12Entry } from "@app/helpers/pkcs12";
 import { useImportCertificate, useImportPkcs12Entries } from "@app/hooks/api";
@@ -53,7 +54,6 @@ import {
   useCertificateImportProfiles,
   useCertificateImportReference
 } from "./certificate-import-fields";
-import { getCertificateImportReference } from "./certificate-import-linkage";
 import { CertificateWizardSheet, WizardStep } from "./CertificateWizardSheet";
 import { CertificateImportFormData, certificateImportSchema } from "./types";
 

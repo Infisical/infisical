@@ -4,6 +4,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access/"
 )({
+  staticData: { v3Alias: true },
   beforeLoad: ({ params }) => {
     throw redirect({
       to: "/organizations/$orgId/pam/accounts",

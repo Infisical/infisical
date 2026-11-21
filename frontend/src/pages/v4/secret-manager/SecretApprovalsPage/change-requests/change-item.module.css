@@ -1,0 +1,85 @@
+.change {
+  container-type: inline-size;
+  min-width: 0;
+  padding: var(--cipher-space-surface-inset-sm);
+  background: var(--cipher-tint);
+}
+.head {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: var(--cipher-space-8);
+}
+.icon {
+  flex: none;
+  margin-block-start: calc((var(--cipher-type-label-line-height) - 16px) / 2);
+  color: var(--cipher-muted);
+}
+.title {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--cipher-space-2) var(--cipher-space-8);
+}
+.name {
+  min-width: 0;
+  font-family: var(--cipher-type-mono-font-family);
+  overflow-wrap: anywhere;
+}
+.name[data-deleted] {
+  color: var(--cipher-bad);
+  text-decoration: line-through;
+}
+.meta {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--cipher-space-8);
+}
+.action {
+  font-size: var(--cipher-type-small-font-size);
+  line-height: var(--cipher-type-small-line-height);
+}
+.action[data-action="create"] {
+  color: var(--cipher-ok);
+}
+.action[data-action="update"] {
+  color: var(--cipher-warn);
+}
+.action[data-action="delete"] {
+  color: var(--cipher-bad);
+}
+.viewed {
+  display: inline-flex;
+  flex: none;
+  color: var(--cipher-muted);
+}
+@container (max-width: 400px) {
+  .viewedLabel {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+.change[data-viewed] .title {
+  color: var(--cipher-muted);
+}
+.body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--cipher-space-8);
+  padding-block-start: var(--cipher-space-12);
+}
+.body > :first-child {
+  align-self: stretch;
+}
+.stateToggle {
+  margin-inline-start: calc(-1 * var(--cipher-space-control-inline-sm));
+}

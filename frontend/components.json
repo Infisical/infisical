@@ -1,0 +1,9 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "tailwind": {
+    "css": "src/pages/v4/cipher.css"
+  },
+  "aliases": {
+    "ui": "@infisical/cipher/ui"
+  }
+}

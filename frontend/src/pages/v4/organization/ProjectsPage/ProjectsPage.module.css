@@ -1,0 +1,47 @@
+.productCard {
+  transition: background-color calc(var(--cipher-duration-slow) * 2) var(--cipher-ease-fade);
+}
+.productCard.productCard[data-stretched-link]:hover {
+  background-color: color-mix(
+    in oklab,
+    var(--cipher-mix-ink) var(--cipher-hover-mix),
+    var(--cipher-tint)
+  );
+  background-image: none;
+}
+.productCard > :global([data-slot="card-inset"]) {
+  transition: border-color calc(var(--cipher-duration-slow) * 2) var(--cipher-ease-fade);
+}
+.productCard:is(:hover, :focus-within) > :global([data-slot="card-inset"]) {
+  border-color: var(--cipher-line);
+}
+.productCard > :global([data-slot="card-footer"]) {
+  padding-inline: calc(var(--cipher-size-control-border) + var(--cipher-space-surface-inset));
+}
+.productCard :global([data-slot="card-header"]) {
+  padding-bottom: 0;
+}
+.productCard :global([data-slot="card-content"]) {
+  padding-bottom: calc(var(--cipher-card-inset) + var(--cipher-space-12));
+}
+.productTitle {
+  color: var(--cipher-hue-icon);
+}
+.productTitle a {
+  color: inherit;
+}
+.setUp {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cipher-space-6);
+  color: var(--cipher-ink);
+  font-weight: 500;
+  text-decoration: none;
+}
+.setUp:hover {
+  text-decoration: underline;
+}
+.blocked.blocked,
+.blocked.blocked * {
+  color: var(--cipher-faint);
+}

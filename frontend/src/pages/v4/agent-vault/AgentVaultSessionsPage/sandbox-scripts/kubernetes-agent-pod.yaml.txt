@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  # Leave <run-id> as is. The script replaces it with a unique ID for each run.
+  name: agent-<run-id>
+  namespace: agents
+spec:
+  # The isolation level. For gVisor or Kata, uncomment this line and set it to
+  # your cluster's RuntimeClass, such as gvisor or kata-qemu.
+  # runtimeClassName: gvisor
+  automountServiceAccountToken: false
+  restartPolicy: Never
+  # Stops a stuck agent after 30 minutes, so its session doesn't stay open.
+  activeDeadlineSeconds: 1800
+  securityContext:
+    runAsNonRoot: true
+    # The node user's ID in the image from Step 5.
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: agent
+      # The image you pushed in Step 5.
+      image: <agent-image>
+      # The agent's command, one list item per argument. The image's entrypoint
+      # starts it through infisical agent-vault run. Replace <prompt> with the
+      # agent's task, such as "Fix the failing test".
+      args:
+        - claude
+        - -p
+        - --permission-mode
+        - bypassPermissions
+        - <prompt>
+      # INFISICAL_AGENT_VAULT_SESSION_TOKEN, which the script in the next step creates.
+      envFrom:
+        - secretRef:
+            name: agent-<run-id>
+      env:
+        - name: INFISICAL_AGENT_VAULT_PROXY_ADDRESS
+          value: agent-vault-proxy.agent-vault.svc.cluster.local:17323
+        # Claude Code won't start without a key; the proxy replaces this one.
+        - name: ANTHROPIC_API_KEY
+          value: agent-vault
+        # Node.js 24 or later: make the built-in fetch read HTTPS_PROXY.
+        - name: NODE_USE_ENV_PROXY
+          value: "1"
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        limits:
+          cpu: "1"
+          memory: 1Gi

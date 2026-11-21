@@ -26,42 +26,15 @@ import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/t
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { AdcsConnectionMethod, TAdcsConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { adcsConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TAdcsConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.ADCS)
-});
-
-const formSchema = z
-  .discriminatedUnion("method", [
-    rootSchema.extend({
-      method: z.literal(AdcsConnectionMethod.UsernamePassword),
-      credentials: z.object({
-        host: z.string().trim().min(1, "CA Host required"),
-        username: z.string().trim().min(1, "Username required"),
-        password: z.string().trim().min(1, "Password required")
-      })
-    })
-  ])
-  .superRefine((data, ctx) => {
-    if (!data.gatewayId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Gateway required",
-        path: ["gatewayId"]
-      });
-    }
-  });
 
 type FormData = z.infer<typeof formSchema>;
 

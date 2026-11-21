@@ -1,0 +1,18 @@
+// sandboxImage.ts
+import { Daytona, DaytonaNotFoundError, Image } from "@daytona/sdk";
+
+export const SNAPSHOT = "agent-vault-agent";
+
+const IMAGE = Image.base("node:24-bookworm-slim").runCommands(
+  "apt-get update && apt-get install -y --no-install-recommends ca-certificates curl iproute2 && rm -rf /var/lib/apt/lists/*",
+  "npm install -g @infisical/cli @anthropic-ai/claude-code",
+);
+
+export async function ensureSnapshot(daytona: Daytona): Promise<void> {
+  try {
+    await daytona.snapshot.get(SNAPSHOT);
+  } catch (err) {
+    if (!(err instanceof DaytonaNotFoundError)) throw err;
+    await daytona.snapshot.create({ name: SNAPSHOT, image: IMAGE }, { onLogs: console.log });
+  }
+}

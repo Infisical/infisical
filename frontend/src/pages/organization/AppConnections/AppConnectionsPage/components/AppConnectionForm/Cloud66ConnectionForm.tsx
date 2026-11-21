@@ -23,30 +23,15 @@ import {
   Cloud66ConnectionMethod,
   TCloud66Connection
 } from "@app/hooks/api/appConnections/types/cloud-66-connection";
+import { cloud66ConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TCloud66Connection;
   onSubmit: (formData: FormData) => void;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Cloud66)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(Cloud66ConnectionMethod.AccessToken),
-    credentials: z.object({
-      accessToken: z.string().trim().min(1, "Personal Access Token required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

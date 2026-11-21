@@ -1,0 +1,198 @@
+.editorFrame {
+  min-width: 0;
+  container-type: inline-size;
+}
+
+.editor {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--cipher-space-16);
+}
+
+@container (min-width: 560px) {
+  .editor {
+    grid-template-columns: minmax(0, 14rem) minmax(0, 1fr);
+  }
+}
+
+.treePane {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--cipher-space-8);
+}
+
+.treeMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cipher-space-4);
+  color: var(--cipher-muted);
+}
+
+.dot {
+  display: inline-block;
+  flex: none;
+  width: var(--cipher-space-6);
+  height: var(--cipher-space-6);
+  background: var(--cipher-warn);
+}
+
+.filePane {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--cipher-space-8);
+}
+
+.fileHead {
+  display: flex;
+  min-width: 0;
+  min-height: var(--cipher-size-control-sm);
+  align-items: center;
+  gap: var(--cipher-space-8);
+}
+
+.path {
+  overflow: hidden;
+  min-width: 0;
+  flex: 1 1 0;
+  color: var(--cipher-muted);
+  font-family: var(--cipher-type-mono-font-family);
+  font-size: var(--cipher-type-mono-sm-font-size);
+  line-height: var(--cipher-type-mono-sm-line-height);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileBody {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.unsaved {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cipher-space-6);
+  color: var(--cipher-muted);
+  font-size: var(--cipher-type-small-font-size);
+  line-height: var(--cipher-type-small-line-height);
+}
+
+.changeHead {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  align-items: center;
+  gap: var(--cipher-space-8);
+}
+
+.changePath {
+  overflow: hidden;
+  min-width: 0;
+  flex: 1 1 0;
+  font-family: var(--cipher-type-mono-font-family);
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.counts {
+  flex: none;
+  font-family: var(--cipher-type-mono-font-family);
+  font-size: var(--cipher-type-mono-sm-font-size);
+  font-variant-numeric: tabular-nums;
+}
+
+.additions {
+  color: var(--cipher-ok-deep);
+}
+
+.deletions {
+  color: var(--cipher-bad-deep);
+}
+
+.diff {
+  overflow-x: auto;
+  min-width: 0;
+  font-family: var(--cipher-type-mono-font-family);
+  font-size: var(--cipher-type-mono-sm-font-size);
+  line-height: var(--cipher-type-mono-sm-line-height);
+}
+
+.diffTable {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+}
+
+.diffRow[data-change="added"] {
+  background: var(--cipher-ok-bg);
+}
+
+.diffRow[data-change="removed"] {
+  background: var(--cipher-bad-bg);
+}
+
+.diffSkip {
+  color: var(--cipher-muted);
+  background: var(--cipher-tint);
+}
+
+.diffSkip > td {
+  padding-inline: var(--cipher-space-12);
+}
+
+.lineNumber {
+  width: var(--cipher-space-40);
+  padding-inline: var(--cipher-space-8);
+  color: var(--cipher-muted);
+  text-align: end;
+  user-select: none;
+}
+
+.lineMark {
+  width: var(--cipher-space-16);
+  user-select: none;
+}
+
+.diffRow[data-change="added"] > .lineMark {
+  color: var(--cipher-ok-deep);
+}
+
+.diffRow[data-change="removed"] > .lineMark {
+  color: var(--cipher-bad-deep);
+}
+
+.lineText {
+  padding-inline-end: var(--cipher-space-12);
+  white-space: pre;
+}
+
+.uploadList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cipher-space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.uploadItem {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--cipher-space-8);
+}
+
+.uploadName {
+  overflow: hidden;
+  min-width: 0;
+  flex: 1 1 0;
+  font-family: var(--cipher-type-mono-font-family);
+  font-size: var(--cipher-type-mono-sm-font-size);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

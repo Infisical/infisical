@@ -18,32 +18,15 @@ import {
   SalesforceConnectionMethod,
   TSalesforceConnection
 } from "@app/hooks/api/appConnections/types/salesforce-connection";
+import { salesforceConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TSalesforceConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Salesforce)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(SalesforceConnectionMethod.ClientCredentials),
-    credentials: z.object({
-      instanceUrl: z.string().trim().min(1, "Instance URL required"),
-      consumerKey: z.string().trim().min(1, "Consumer Key required"),
-      consumerSecret: z.string().trim().min(1, "Consumer Secret required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

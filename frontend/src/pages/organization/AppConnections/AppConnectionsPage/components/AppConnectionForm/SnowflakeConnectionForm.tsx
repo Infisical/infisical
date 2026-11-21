@@ -18,32 +18,15 @@ import {
   SnowflakeConnectionMethod,
   TSnowflakeConnection
 } from "@app/hooks/api/appConnections/types/snowflake-connection";
+import { snowflakeConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TSnowflakeConnection;
   onSubmit: (formData: FormData) => void;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Snowflake)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(SnowflakeConnectionMethod.UsernameAndToken),
-    credentials: z.object({
-      account: z.string().trim().min(1, "Account required"),
-      username: z.string().trim().min(1, "Username required"),
-      password: z.string().trim().min(1, "Programmatic Access Token required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

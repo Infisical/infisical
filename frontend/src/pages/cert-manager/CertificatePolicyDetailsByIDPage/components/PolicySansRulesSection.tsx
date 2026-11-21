@@ -6,11 +6,8 @@ import {
   CardTitle,
   DetailGroup
 } from "@app/components/v3";
+import { CertSubjectAlternativeNameType, formatSANType } from "@app/helpers/certificateConstants";
 import { TCertificatePolicy } from "@app/hooks/api/certificatePolicies";
-import {
-  CertSubjectAlternativeNameType,
-  formatSANType
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import { RuleList } from "./RuleList";
 

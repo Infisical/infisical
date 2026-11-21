@@ -9,6 +9,14 @@ lerna-debug.log*
 
 node_modules
 dist
+dist-ui/
+
+# v4 build outputs, written by npm run ui:generate (predev, prebuild, pretest)
+/registry.json
+/public/r/
+/src/components/v4/tokens.generated.css
+/src/components/v4/docs/components.json
+/src/components/v4/docs/coverage.json
 .cache
 dist-ssr
 *.local

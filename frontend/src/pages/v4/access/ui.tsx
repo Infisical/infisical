@@ -1,0 +1,266 @@
+import { type ReactElement, type ReactNode, useMemo, useState } from "react";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger
+} from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { HeaderSearch } from "@infisical/cipher/ui/header-search";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Pagination } from "@infisical/cipher/ui/pagination";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { ClockAlertIcon, ClockIcon } from "lucide-react";
+
+import { grantLabel, isGrantExpired, type RoleGrant } from "./roles";
+
+import styles from "./access.module.css";
+
+export type Sort = { columnId: string; direction: "asc" | "desc" };
+
+export const RESTRICTED = "Access restricted";
+
+export const Gate = ({
+  allowed,
+  reason = RESTRICTED,
+  children
+}: {
+  allowed: boolean;
+  reason?: string;
+  children: ReactElement;
+}) =>
+  allowed ? (
+    children
+  ) : (
+    <Tooltip content={reason}>
+      <span className={styles.blockedCheck}>{children}</span>
+    </Tooltip>
+  );
+
+export const EditDetailsButton = ({
+  label,
+  allowed,
+  onClick
+}: {
+  label: string;
+  allowed: boolean;
+  onClick: () => void;
+}) => (
+  <Button
+    variant="ghost"
+    size="sm"
+    aria-label={label}
+    disabledReason={allowed ? undefined : RESTRICTED}
+    onClick={onClick}
+  >
+    Edit
+  </Button>
+);
+
+export const AccessRestricted = ({ requirement }: { requirement?: string }) => (
+  <EmptyState
+    icon="lock"
+    title="You're one permission away."
+    description={`Your role doesn't include the permission this page requires. An admin can grant it.${requirement ? ` Missing: ${requirement}.` : ""}`}
+  />
+);
+
+const filterName = ({ label, selected }: { label: string; selected: readonly string[] }) =>
+  selected.length ? `${label}: ${selected.length} applied` : label;
+
+export const ListToolbar = ({
+  search,
+  onSearch,
+  placeholder,
+  filter
+}: {
+  search: string;
+  onSearch: (value: string) => void;
+  placeholder: string;
+  filter?: {
+    label: string;
+    options: readonly { value: string; label: string }[];
+    selected: readonly string[];
+    onToggle: (value: string) => void;
+    disabledReason?: string;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+  };
+}) => {
+  const selected = new Set(filter?.selected);
+  return (
+    <div className={styles.toolbar}>
+      <HeaderSearch
+        label={placeholder}
+        placeholder={placeholder}
+        value={search}
+        onValueChange={onSearch}
+      />
+      {filter && (
+        <DropdownMenu open={filter.open} onOpenChange={filter.onOpenChange}>
+          {filter.disabledReason ? (
+            <Button
+              variant="bare"
+              icon="funnel"
+              iconOnly
+              aria-label={filter.label}
+              disabledReason={filter.disabledReason}
+            >
+              {filter.label}
+            </Button>
+          ) : (
+            <Tooltip content={filterName(filter)}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="bare"
+                  icon="funnel"
+                  iconOnly
+                  applied={filter.selected.length > 0}
+                  aria-label={filterName(filter)}
+                >
+                  {filterName(filter)}
+                </Button>
+              </DropdownMenuTrigger>
+            </Tooltip>
+          )}
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>{filter.label}</DropdownMenuLabel>
+            {filter.options.map((option) => (
+              <DropdownMenuCheckboxItem
+                key={option.value}
+                checked={selected.has(option.value)}
+                onSelect={(event) => {
+                  event.preventDefault();
+                  filter.onToggle(option.value);
+                }}
+              >
+                {option.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
+  );
+};
+
+export const usePagedList = <Row,>({
+  rows,
+  matches,
+  compare,
+  initialSort,
+  initialSearch = "",
+  perPage: initialPerPage = 20
+}: {
+  rows: readonly Row[];
+  matches: (row: Row, needle: string) => boolean;
+  compare: (a: Row, b: Row, columnId: string) => number;
+  initialSort: Sort;
+  initialSearch?: string;
+  perPage?: number;
+}) => {
+  const [search, setSearchValue] = useState(initialSearch);
+  const [sort, setSort] = useState<Sort>(initialSort);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(initialPerPage);
+  const filtered = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return rows
+      .filter((row) => matches(row, needle))
+      .sort((a, b) => compare(a, b, sort.columnId) * (sort.direction === "asc" ? 1 : -1));
+  }, [rows, search, sort, matches, compare]);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / perPage));
+  const current = Math.min(page, pageCount);
+  return {
+    search,
+    setSearch: (value: string) => {
+      setSearchValue(value);
+      setPage(1);
+    },
+    sort,
+    setSort,
+    filtered,
+    pageRows: filtered.slice((current - 1) * perPage, current * perPage),
+    resetPage: () => setPage(1),
+    pagination:
+      filtered.length > 0 ? (
+        <Pagination
+          variant="compact"
+          page={current}
+          total={filtered.length}
+          pageSize={perPage}
+          pageSizeOptions={[10, 20, 50, 100]}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPerPage(size);
+            setPage(1);
+          }}
+        />
+      ) : null
+  };
+};
+
+export const RoleBadges = ({ roles, max = 2 }: { roles: readonly RoleGrant[]; max?: number }) => {
+  const badge = (grant: RoleGrant) => {
+    const expired = isGrantExpired(grant);
+    const node = (
+      <Badge key={grant.id} tone={expired ? "bad" : "soft"}>
+        {grantLabel(grant)}
+        {grant.isTemporary && <Icon icon={expired ? ClockAlertIcon : ClockIcon} size={12} />}
+      </Badge>
+    );
+    return grant.isTemporary ? (
+      <Tooltip key={grant.id} content={expired ? "Access expired" : "Temporary access"}>
+        {node}
+      </Tooltip>
+    ) : (
+      node
+    );
+  };
+  const overflow = roles.slice(max);
+  return (
+    <span className={styles.roles}>
+      {roles.slice(0, max).map(badge)}
+      {overflow.length > 0 && (
+        <Tooltip
+          content={overflow
+            .map((grant) => grantLabel(grant) + (grant.isTemporary ? " (temporary)" : ""))
+            .join(", ")}
+        >
+          <Badge tone="outline">{`+${overflow.length}`}</Badge>
+        </Tooltip>
+      )}
+    </span>
+  );
+};
+
+export const DetailSkeleton = ({ label, rows = 5 }: { label: string; rows?: number }) => (
+  <Stack gap={12} role="status" aria-label={label}>
+    {Array.from({ length: rows }, (_, index) => (
+      <Inline key={index} gap={16} justify="between">
+        <Skeleton width={160} />
+        <Skeleton width={120} />
+      </Inline>
+    ))}
+  </Stack>
+);
+
+export const FormSkeleton = ({ label, fields = 4 }: { label: string; fields?: number }) => (
+  <Stack gap={24} role="status" aria-label={label}>
+    {Array.from({ length: fields }, (_, index) => (
+      <Stack key={index} gap={8}>
+        <Skeleton width={120} />
+        <Skeleton height={32} />
+      </Stack>
+    ))}
+  </Stack>
+);
+
+export const Muted = ({ children }: { children: ReactNode }) => (
+  <span className={styles.muted}>{children}</span>
+);

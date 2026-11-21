@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { UseFormClearErrors, UseFormWatch } from "react-hook-form";
 
-import { TCertificatePolicy } from "@app/hooks/api/certificatePolicies";
-
 import {
   buildPolicyRules,
   CustomExtensionsGuidance,
@@ -12,8 +10,9 @@ import {
   PolicySectionGuidance,
   TCustomExtensionDeclaration,
   validateTtlAgainstPolicy
-} from "./certificatePolicyGuidance";
-import { SubjectAltName, SubjectAttribute } from "./certificateUtils";
+} from "@app/helpers/certificatePolicyGuidance";
+import { SubjectAltName, SubjectAttribute } from "@app/helpers/certificateUtils";
+import { TCertificatePolicy } from "@app/hooks/api/certificatePolicies";
 
 /** The form fields this hook evaluates. Each wizard step declares the ones it owns. */
 export const POLICY_FIELDS = [

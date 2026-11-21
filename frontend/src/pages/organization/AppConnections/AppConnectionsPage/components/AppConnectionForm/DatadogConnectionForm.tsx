@@ -24,41 +24,15 @@ import {
   DatadogConnectionMethod,
   TDatadogConnection
 } from "@app/hooks/api/appConnections/types/datadog-connection";
+import { datadogConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TDatadogConnection;
   onSubmit: (formData: FormData) => void;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Datadog)
-});
-
-const urlSchema = z.string().trim().url("Invalid Datadog URL").min(1, "URL required").max(255);
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(DatadogConnectionMethod.Token),
-    credentials: z.object({
-      url: urlSchema,
-      token: z.string().trim().min(1, "Token required")
-    })
-  }),
-  rootSchema.extend({
-    method: z.literal(DatadogConnectionMethod.ApiKey),
-    credentials: z.object({
-      url: urlSchema,
-      apiKey: z.string().trim().min(1, "API Key required"),
-      applicationKey: z.string().trim().min(1, "Application Key required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

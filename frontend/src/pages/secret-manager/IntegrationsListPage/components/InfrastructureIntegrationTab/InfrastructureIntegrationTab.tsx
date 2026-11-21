@@ -11,9 +11,9 @@ import {
   InputGroupAddon,
   InputGroupInput
 } from "@app/components/v3";
+import integrations from "@app/const/integrationDocs/infrastructureIntegrations.json";
 
 import { IntegrationDocsCard } from "../IntegrationDocsCard";
-import integrations from "../json/infrastructureIntegrations.json";
 
 export const InfrastructureIntegrationTab = () => {
   const [search, setSearch] = useState("");

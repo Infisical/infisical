@@ -1,0 +1,120 @@
+.chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--cipher-size-control-sm);
+  height: var(--cipher-size-control-sm);
+  color: var(--cipher-muted);
+  background: var(--cipher-inset);
+}
+
+.stack {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cipher-space-2);
+}
+
+.chipCount {
+  composes: chip;
+  font-size: var(--cipher-type-caption-font-size);
+}
+
+.detailPage {
+  container-type: inline-size;
+}
+
+.name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.description {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.linkWrap {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.variableKey {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--cipher-type-mono-font-family);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fieldRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cipher-space-12);
+}
+.grow {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.prefixCell {
+  flex: none;
+  width: calc(var(--cipher-size-cell-min) * 1.75);
+}
+.nameCell,
+.valueCell {
+  composes: grow;
+}
+.miniLabel {
+  display: block;
+  margin-bottom: var(--cipher-space-field-label);
+  color: var(--cipher-muted);
+  font-family: var(--cipher-type-small-font-family);
+  font-size: var(--cipher-type-small-font-size);
+  line-height: var(--cipher-type-small-line-height);
+}
+.rowAction {
+  display: inline-flex;
+}
+.rowAction[data-first] {
+  margin-top: calc(var(--cipher-type-small-line-height) + var(--cipher-space-field-label));
+}
+.miniLabel[data-repeat] {
+  display: none;
+}
+.headerFields {
+  container-type: inline-size;
+}
+@container (width < 32rem) {
+  .headerFields .fieldRow {
+    display: grid;
+    grid-template-columns: calc(var(--cipher-size-cell-min) * 1.75) minmax(0, 1fr) auto;
+    grid-template-areas:
+      "name name action"
+      "prefix value value";
+  }
+  .headerFields .nameCell {
+    grid-area: name;
+  }
+  .headerFields .prefixCell {
+    grid-area: prefix;
+    width: auto;
+  }
+  .headerFields .valueCell {
+    grid-area: value;
+  }
+  .headerFields .rowAction {
+    grid-area: action;
+    margin-top: calc(var(--cipher-type-small-line-height) + var(--cipher-space-field-label));
+  }
+  .headerFields .miniLabel[data-repeat] {
+    display: block;
+  }
+}

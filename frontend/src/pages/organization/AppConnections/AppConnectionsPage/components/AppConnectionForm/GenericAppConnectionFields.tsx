@@ -1,6 +1,5 @@
 import { useFormContext, useWatch } from "react-hook-form";
 import slugify from "@sindresorhus/slugify";
-import { z } from "zod";
 
 import {
   Field,
@@ -13,33 +12,9 @@ import {
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { TAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { slugSchema } from "@app/lib/schemas";
+import { genericAppConnectionFieldsSchema, rotationSchema } from "@app/lib/schemas/app-connections";
 
-export const rotationSchema = z.object({
-  rotationInterval: z
-    .number()
-    .min(1)
-    .max(365 * 2.5),
-  rotateAtUtc: z.object({
-    hours: z.number().min(0).max(23),
-    minutes: z.number().min(0).max(59)
-  })
-});
-
-export const genericAppConnectionFieldsSchema = z.object({
-  name: slugSchema({ min: 1, max: 64, field: "Name" }),
-  description: z.string().trim().max(256, "Description cannot exceed 256 characters").nullish(),
-  gatewayId: z
-    .string()
-    .nullish()
-    .transform((v) => (v === "" ? null : v)),
-  gatewayPoolId: z
-    .string()
-    .nullish()
-    .transform((v) => (v === "" ? null : v)),
-  isAutoRotationEnabled: z.boolean().optional(),
-  rotation: rotationSchema.optional()
-});
+export { genericAppConnectionFieldsSchema, rotationSchema };
 
 const getSuggestedConnectionName = (app?: AppConnection, method?: TAppConnection["method"]) => {
   if (!app || !method || !APP_CONNECTION_MAP[app]) return "";

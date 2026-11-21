@@ -11,6 +11,7 @@ import {
 
 import { commitKeys } from "../folderCommits/queries";
 import { secretApprovalRequestKeys } from "../secretApprovalRequest/queries";
+import { folderQueryKeys } from "../secretFolders/queries";
 import { PendingAction } from "../secretFolders/types";
 import { secretKeys } from "./queries";
 import {
@@ -601,10 +602,14 @@ export const useCreateCommit = ({
       });
       return data;
     },
-    onSuccess: (_, { projectId, environment, secretPath }) => {
+    onSuccess: (_, { projectId, environment, secretPath, pendingChanges }) => {
       queryClient.invalidateQueries({
         queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
       });
+      if (pendingChanges.folders.length)
+        queryClient.invalidateQueries({
+          queryKey: folderQueryKeys.getProjectEnvironmentsFolders(projectId)
+        });
       queryClient.invalidateQueries({
         predicate: (query) =>
           (query.queryKey[0] as { projectId?: string })?.projectId === projectId &&

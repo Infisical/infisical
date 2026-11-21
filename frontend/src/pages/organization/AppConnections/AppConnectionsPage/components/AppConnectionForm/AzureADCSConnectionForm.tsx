@@ -32,42 +32,15 @@ import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/
 import { useScopeVariant } from "@app/hooks";
 import { AzureADCSConnectionMethod, TAzureADCSConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { azureAdcsConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TAzureADCSConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.AzureADCS)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(AzureADCSConnectionMethod.UsernamePassword),
-    credentials: z.object({
-      adcsUrl: z
-        .string()
-        .trim()
-        .min(1, "ADCS URL required")
-        .refine((value) => value.startsWith("https://"), "ADCS URL must use HTTPS"),
-      username: z.string().trim().min(1, "Username required"),
-      password: z.string().trim().min(1, "Password required"),
-      sslRejectUnauthorized: z.boolean().optional(),
-      sslCertificate: z
-        .string()
-        .trim()
-        .transform((value) => value || undefined)
-        .optional()
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

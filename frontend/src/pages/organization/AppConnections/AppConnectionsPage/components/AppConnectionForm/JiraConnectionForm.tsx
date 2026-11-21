@@ -33,16 +33,13 @@ import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { OrgPermissionSubjects } from "@app/context";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
-import { isValidEmail } from "@app/helpers/email";
 import { useScopeVariant } from "@app/hooks";
 import { JiraConnectionMethod, TJiraConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { jiraConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TJiraConnection;
@@ -62,73 +59,6 @@ const DEPLOYMENT_BY_METHOD: Record<
     instanceUrlPlaceholder: "https://jira.example.com"
   }
 };
-
-const isValidInstanceUrl = (value: string) => {
-  try {
-    const url = new URL(value);
-    return (
-      ["http:", "https:"].includes(url.protocol) &&
-      !url.username &&
-      !url.password &&
-      !url.search &&
-      !url.hash
-    );
-  } catch {
-    return false;
-  }
-};
-
-const instanceUrlSchema = z
-  .string()
-  .trim()
-  .min(1, "Instance URL required")
-  .max(512, "Instance URL cannot exceed 512 characters")
-  .refine(
-    isValidInstanceUrl,
-    "Instance URL must be an http or https URL without credentials, a query, or a fragment"
-  );
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Jira)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(JiraConnectionMethod.ApiToken),
-    credentials: z.object({
-      instanceUrl: instanceUrlSchema,
-      email: z
-        .string()
-        .trim()
-        .min(1, "Email required")
-        .max(320, "Email cannot exceed 320 characters")
-        .refine(isValidEmail, "Email must be a valid email address"),
-      apiToken: z
-        .string()
-        .trim()
-        .min(1, "API token required")
-        .max(1024, "API token cannot exceed 1024 characters")
-    })
-  }),
-  rootSchema.extend({
-    method: z.literal(JiraConnectionMethod.PersonalAccessToken),
-    credentials: z.object({
-      instanceUrl: instanceUrlSchema,
-      personalAccessToken: z
-        .string()
-        .trim()
-        .min(1, "Personal access token required")
-        .max(1024, "Personal access token cannot exceed 1024 characters"),
-      sslRejectUnauthorized: z.boolean().default(true),
-      sslCertificate: z
-        .string()
-        .trim()
-        .max(16384, "SSL certificate cannot exceed 16384 characters")
-        .transform((value) => value || undefined)
-        .optional()
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

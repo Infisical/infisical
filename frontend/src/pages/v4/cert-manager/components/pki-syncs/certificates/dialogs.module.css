@@ -1,0 +1,7 @@
+.wide.wide {
+  max-width: var(--cipher-size-sheet-lg);
+}
+
+.form.form {
+  max-width: var(--cipher-size-measure-form);
+}

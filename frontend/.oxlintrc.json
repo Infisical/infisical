@@ -391,6 +391,15 @@
               "**/UpgradePlanModal/*"
             ],
             "message": "Use the shared UpgradeGate with a product or capability intent."
+          },
+          {
+            "group": [
+              "@infisical/cipher",
+              "@infisical/cipher/**",
+              "@app/pages/v4",
+              "@app/pages/v4/**"
+            ],
+            "message": "v4 is incubating. Only src/pages/v4 may import it or Cipher."
           }
         ]
       }
@@ -1239,6 +1248,48 @@
       "files": ["**/*.stories.tsx"],
       "rules": {
         "react/rules-of-hooks": "off"
+      }
+    },
+    {
+      "files": [
+        "src/pages/v4/**/*.{ts,tsx}"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/UpgradePlanModal",
+                  "**/UpgradePlanModal/*"
+                ],
+                "message": "Use the shared UpgradeGate with a product or capability intent."
+              },
+              {
+                "group": [
+                  "@app/components/v2",
+                  "@app/components/v2/**",
+                  "@app/components/v3",
+                  "@app/components/v3/**",
+                  "!@app/components/v3/platform/ThemeProvider/ThemeProvider",
+                  "@app/layouts/**",
+                  "@app/views/**",
+                  "@app/pages/**",
+                  "!@app/pages/v4/**",
+                  "!@app/pages/**/*.utils",
+                  "!@app/pages/**/helpers",
+                  "!@app/pages/**/parseNestedJson",
+                  "@fortawesome/*",
+                  "react-icons",
+                  "react-icons/*"
+                ],
+                "allowTypeImports": true,
+                "message": "v4 code never imports v3 UI, layouts or pages. Use Cipher (@infisical/cipher), and hooks/api, context, helpers or lib for data and logic."
+              }
+            ]
+          }
+        ]
       }
     }
   ]

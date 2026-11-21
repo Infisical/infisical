@@ -102,16 +102,18 @@ export const fetchUserOrgPermissions = async ({ orgId }: TGetUserOrgPermissionsD
   return data;
 };
 
+const selectUserOrgPermissions = (data: Awaited<ReturnType<typeof fetchUserOrgPermissions>>) => {
+  const rule = unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(data.permissions);
+  const ability = createMongoAbility<OrgPermissionSet>(rule, { conditionsMatcher });
+  return { permission: ability, memberships: data.memberships };
+};
+
 export const useGetUserOrgPermissions = ({ orgId }: TGetUserOrgPermissionsDTO) =>
   useQuery({
     queryKey: roleQueryKeys.getUserOrgPermissions({ orgId }),
     queryFn: () => fetchUserOrgPermissions({ orgId }),
     // enabled: Boolean(orgId),
-    select: (data) => {
-      const rule = unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(data.permissions);
-      const ability = createMongoAbility<OrgPermissionSet>(rule, { conditionsMatcher });
-      return { permission: ability, memberships: data.memberships };
-    }
+    select: selectUserOrgPermissions
   });
 
 export const fetchUserProjectPermissions = async ({ projectId }: TGetUserProjectPermissionDTO) => {
@@ -131,40 +133,44 @@ export const fetchUserProjectPermissions = async ({ projectId }: TGetUserProject
   return data.data;
 };
 
+const selectUserProjectPermissions = (
+  data: Awaited<ReturnType<typeof fetchUserProjectPermissions>>
+) => {
+  const rule = unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(data.permissions);
+  const negatedRules = groupBy(
+    rule.filter((i) => i.inverted && i.conditions),
+    (i) => `${i.subject}-${JSON.stringify(i.conditions)}`
+  );
+  const ability = createMongoAbility<ProjectPermissionSet>(rule, {
+    // this allows in frontend to skip some rules using *
+    conditionsMatcher: (rules) => {
+      return (entity) => {
+        // skip validation if its negated rules
+        const isNegatedRule =
+          // eslint-disable-next-line no-underscore-dangle
+          negatedRules?.[`${entity.__caslSubjectType__}-${JSON.stringify(rules)}`];
+        if (isNegatedRule) {
+          const baseMatcher = conditionsMatcher(rules);
+          return baseMatcher(entity);
+        }
+
+        const rulesStrippedOfWildcard = omit(
+          rules,
+          Object.keys(entity).filter((el) => entity[el]?.includes("*"))
+        );
+        const baseMatcher = conditionsMatcher(rulesStrippedOfWildcard);
+        return baseMatcher(entity);
+      };
+    }
+  });
+
+  return { permission: ability, memberships: data.memberships };
+};
+
 export const useGetUserProjectPermissions = ({ projectId }: TGetUserProjectPermissionDTO) =>
   useQuery({
     queryKey: roleQueryKeys.getUserProjectPermissions({ projectId }),
     queryFn: () => fetchUserProjectPermissions({ projectId }),
     enabled: Boolean(projectId),
-    select: (data) => {
-      const rule = unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(data.permissions);
-      const negatedRules = groupBy(
-        rule.filter((i) => i.inverted && i.conditions),
-        (i) => `${i.subject}-${JSON.stringify(i.conditions)}`
-      );
-      const ability = createMongoAbility<ProjectPermissionSet>(rule, {
-        // this allows in frontend to skip some rules using *
-        conditionsMatcher: (rules) => {
-          return (entity) => {
-            // skip validation if its negated rules
-            const isNegatedRule =
-              // eslint-disable-next-line no-underscore-dangle
-              negatedRules?.[`${entity.__caslSubjectType__}-${JSON.stringify(rules)}`];
-            if (isNegatedRule) {
-              const baseMatcher = conditionsMatcher(rules);
-              return baseMatcher(entity);
-            }
-
-            const rulesStrippedOfWildcard = omit(
-              rules,
-              Object.keys(entity).filter((el) => entity[el]?.includes("*"))
-            );
-            const baseMatcher = conditionsMatcher(rulesStrippedOfWildcard);
-            return baseMatcher(entity);
-          };
-        }
-      });
-
-      return { permission: ability, memberships: data.memberships };
-    }
+    select: selectUserProjectPermissions
   });

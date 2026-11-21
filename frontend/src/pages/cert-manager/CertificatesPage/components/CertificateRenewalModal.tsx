@@ -31,6 +31,20 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
+import {
+  CertSubjectAlternativeNameType,
+  CertSubjectAttributeType
+} from "@app/helpers/certificateConstants";
+import { buildPolicyRules, withRequiredRows } from "@app/helpers/certificatePolicyGuidance";
+import {
+  buildRenewalFormDefaults,
+  buildRenewalRequestAttributes,
+  capTtlToDays,
+  getRemovedCertificateNames,
+  getRemovedCertificateNamesFromCsr,
+  unionUsageOptions
+} from "@app/helpers/certificateRenewalUtils";
+import { isExternalTemplateCa, rowErrorsOf } from "@app/helpers/certificateUtils";
 import { useRenewCertificate } from "@app/hooks/api";
 import { CaType } from "@app/hooks/api/ca";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
@@ -54,37 +68,23 @@ import {
   useGetCertificateById,
   useGetCertificateRenewalPreview
 } from "@app/hooks/api/certificates/queries";
+import {
+  DEFAULT_TEMPLATE_CONSTRAINTS,
+  deriveTemplateConstraints,
+  useCertificatePolicyOptions
+} from "@app/hooks/useCertificatePolicy";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { useWizardSteps } from "@app/hooks/useWizardSteps";
 import { PkiDocsUrls } from "@app/pages/cert-manager/pki-docs-urls";
-import {
-  CertSubjectAlternativeNameType,
-  CertSubjectAttributeType
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import { AlgorithmSelectors } from "./AlgorithmSelectors";
 import { BasicConstraintsField } from "./BasicConstraintsField";
-import { buildPolicyRules, withRequiredRows } from "./certificatePolicyGuidance";
-import {
-  buildRenewalFormDefaults,
-  buildRenewalRequestAttributes,
-  capTtlToDays,
-  getRemovedCertificateNames,
-  getRemovedCertificateNamesFromCsr,
-  unionUsageOptions
-} from "./certificateRenewalUtils";
-import { isExternalTemplateCa, rowErrorsOf } from "./certificateUtils";
 import { CertificateWizardSheet, WizardStep } from "./CertificateWizardSheet";
 import { IssuerModifiedNotice } from "./IssuerModifiedNotice";
 import { KeyUsageSection } from "./KeyUsageSection";
 import { RequestCustomExtensionsField } from "./RequestCustomExtensionsField";
 import { SubjectAltNamesField } from "./SubjectAltNamesField";
 import { SubjectAttributesField } from "./SubjectAttributesField";
-import {
-  DEFAULT_TEMPLATE_CONSTRAINTS,
-  deriveTemplateConstraints,
-  useCertificatePolicyOptions
-} from "./useCertificatePolicy";
 import { usePolicyGuidance } from "./usePolicyGuidance";
 import { ValidityField } from "./ValidityField";
 

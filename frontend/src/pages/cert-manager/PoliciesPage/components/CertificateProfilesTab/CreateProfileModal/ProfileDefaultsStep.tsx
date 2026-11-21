@@ -26,17 +26,17 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import {
-  EXTENDED_KEY_USAGES_OPTIONS,
-  getCaSignatureIncompatibilityReason,
-  KEY_USAGES_OPTIONS
-} from "@app/hooks/api/certificates/constants";
-import {
   CertExtensionCriticality,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
   formatSANType,
   formatSubjectAttributeType
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+} from "@app/helpers/certificateConstants";
+import {
+  EXTENDED_KEY_USAGES_OPTIONS,
+  getCaSignatureIncompatibilityReason,
+  KEY_USAGES_OPTIONS
+} from "@app/hooks/api/certificates/constants";
 
 import type { FormData } from "../CreateProfileModal";
 import { CustomExtensionDefaults } from "./CustomExtensionDefaults";

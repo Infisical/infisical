@@ -1,5 +1,5 @@
 import { Badge, ButtonGroup } from "@app/components/v3";
-import { customExtensionLabelFor } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+import { customExtensionLabelFor } from "@app/helpers/certificateConstants";
 
 export type TCustomExtensionListEntry = {
   oid: string;

@@ -27,35 +27,17 @@ import {
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { MySqlConnectionMethod, TMySqlConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { mySqlConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 import { PlatformManagedConfirmationModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm/shared/PlatformManagedConfirmationModal";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
-import {
-  BaseSqlUsernameAndPasswordConnectionSchema,
-  PlatformManagedNoticeBanner,
-  SqlConnectionFields
-} from "./shared";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
+import { PlatformManagedNoticeBanner, SqlConnectionFields } from "./shared";
 
 type Props = {
   appConnection?: TMySqlConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.MySql),
-  isPlatformManagedCredentials: z.boolean().optional()
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(MySqlConnectionMethod.UsernameAndPassword),
-    credentials: BaseSqlUsernameAndPasswordConnectionSchema
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

@@ -30,46 +30,15 @@ import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/t
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { TWinRMConnection, WinRMConnectionMethod } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { winRMConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TWinRMConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.WinRM)
-});
-
-const formSchema = z
-  .discriminatedUnion("method", [
-    rootSchema.extend({
-      method: z.literal(WinRMConnectionMethod.UsernamePassword),
-      credentials: z.object({
-        host: z.string().trim().min(1, "Host required"),
-        port: z.coerce.number().int().min(1).max(65535),
-        username: z.string().trim().min(1, "Username required"),
-        password: z.string().min(1, "Password required"),
-        sslEnabled: z.boolean(),
-        sslRejectUnauthorized: z.boolean(),
-        sslCertificate: z.string().optional()
-      })
-    })
-  ])
-  .superRefine((data, ctx) => {
-    if (!data.gatewayId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Gateway required",
-        path: ["gatewayId"]
-      });
-    }
-  });
 
 type FormData = z.infer<typeof formSchema>;
 

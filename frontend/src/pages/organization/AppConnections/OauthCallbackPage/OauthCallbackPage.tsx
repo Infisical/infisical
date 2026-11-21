@@ -11,7 +11,8 @@ import {
   getConnectionFlowReturnNavigateOptions,
   getIntegrationsListTab,
   GITHUB_CONNECTION_FORM_STORAGE_KEY,
-  readConnectionFormData
+  readConnectionFormData,
+  V4_CONNECTION_REDIRECT_STORAGE_KEY
 } from "@app/helpers/appConnections";
 import {
   AzureAppConfigurationConnectionMethod,
@@ -54,6 +55,11 @@ export const OAuthCallbackPage = () => {
   const rawAppConnection = useParams({
     strict: false,
     select: (el) => el?.appConnection as AppConnection
+  });
+
+  const orgId = useParams({
+    strict: false,
+    select: (el) => el?.orgId as string
   });
 
   const updateAppConnection = useUpdateAppConnection();
@@ -670,8 +676,21 @@ export const OAuthCallbackPage = () => {
     }
   }, [localStorage.length]);
 
+  const isV4Redirect = () => {
+    const result = readConnectionFormData<{ state?: string }>(V4_CONNECTION_REDIRECT_STORAGE_KEY);
+    return Boolean(state) && result.status === "ok" && result.data.state === state;
+  };
+
   useEffect(() => {
     if (!isReady) return;
+
+    if (isV4Redirect()) {
+      navigate({
+        href: `/v4/organizations/${orgId}/app-connections/${appConnection}/callback${window.location.search}`,
+        replace: true
+      });
+      return;
+    }
 
     (async () => {
       let data: {

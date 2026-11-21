@@ -26,36 +26,15 @@ import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/t
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { PortainerConnectionMethod, TPortainerConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { portainerConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TPortainerConnection;
   onSubmit: (formData: FormData) => void;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Portainer)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(PortainerConnectionMethod.ApiToken),
-    credentials: z.object({
-      instanceUrl: z
-        .string()
-        .trim()
-        .url("Invalid Instance URL")
-        .min(1, "Instance URL required")
-        .max(255),
-      apiToken: z.string().trim().min(1, "API Token required").max(255)
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

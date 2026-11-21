@@ -28,12 +28,10 @@ import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/
 import { AwsConnectionMethod, TAwsConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { awsConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TAwsConnection;
@@ -41,34 +39,6 @@ type Props = {
   projectType?: ProjectType;
   projectId?: string | null;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.AWS)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(AwsConnectionMethod.AssumeRole),
-    credentials: z.object({
-      roleArn: z.string().trim().min(1, "Role ARN required"),
-      stsEndpoint: z
-        .string()
-        .trim()
-        .url("Must be a valid URL")
-        .startsWith("https://", "Must use HTTPS")
-        .or(z.literal(""))
-        .optional()
-        .transform((val) => val || undefined)
-    })
-  }),
-  rootSchema.extend({
-    method: z.literal(AwsConnectionMethod.AccessKey),
-    credentials: z.object({
-      accessKeyId: z.string().trim().min(1, "Access Key ID required"),
-      secretAccessKey: z.string().trim().min(1, "Secret Access Key required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

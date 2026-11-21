@@ -1,0 +1,546 @@
+import { useRef, useState } from "react";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Checkbox } from "@infisical/cipher/ui/checkbox";
+import { Field } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { type DataListItem, DataList } from "@infisical/cipher/ui/list";
+import { MultiSelect } from "@infisical/cipher/ui/multi-select";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
+import { Select } from "@infisical/cipher/ui/select";
+import { Separator } from "@infisical/cipher/ui/separator";
+import { Heading } from "@infisical/cipher/ui/text";
+import ms from "ms";
+
+import {
+  ProjectPermissionCertificateProfileActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import {
+  ApprovalPolicyScope,
+  ApprovalPolicyType,
+  ApproverType,
+  type CertRequestPolicyConditions,
+  type TApprovalPolicy
+} from "@app/hooks/api/approvalPolicies/types";
+import {
+  PkiApplicationMemberRole,
+  type TPkiApplicationMember
+} from "@app/hooks/api/pkiApplications/types";
+
+import { useProjectPermission } from "../../access/permissions";
+import { readableFailure, saved } from "../../access/toast";
+import { useV4Adapter } from "../../data/adapters";
+import { policyTypeLabel } from "../components/approval";
+import { CertificateProfileSheet } from "../components/profile-sheet";
+
+type StepDraft = {
+  key: string;
+  name: string;
+  requiredApprovals: string;
+  notifyApprovers: boolean;
+  users: string[];
+  groups: string[];
+};
+
+type Draft = {
+  name: string;
+  policyType: ApprovalPolicyType;
+  maxRequestTtl: string;
+  profileNames: string[];
+  bypassForMachineIdentities: boolean;
+  steps: StepDraft[];
+};
+
+type Errors = {
+  name?: string;
+  maxRequestTtl?: string;
+  profileNames?: string;
+  steps?: string;
+  stepErrors?: { name?: string; requiredApprovals?: string; approvers?: string }[];
+};
+
+const emptyStep = (): StepDraft => ({
+  key: crypto.randomUUID(),
+  name: "",
+  requiredApprovals: "1",
+  notifyApprovers: true,
+  users: [],
+  groups: []
+});
+
+const policyTypeOptions = [ApprovalPolicyType.CertRequest, ApprovalPolicyType.CertRevocation].map(
+  (value) => ({ value, label: policyTypeLabel(value) })
+);
+
+const draftOf = (policy?: TApprovalPolicy): Draft => ({
+  name: policy?.name ?? "",
+  policyType: policy?.type ?? ApprovalPolicyType.CertRequest,
+  maxRequestTtl: policy?.maxRequestTtl ?? "",
+  profileNames:
+    (policy?.conditions.conditions as CertRequestPolicyConditions | undefined)?.[0]?.profileNames ??
+    [],
+  bypassForMachineIdentities: policy?.bypassForMachineIdentities ?? false,
+  steps: policy?.steps.length
+    ? policy.steps.map((step, index) => ({
+        key: `step-${index}`,
+        name: step.name ?? "",
+        requiredApprovals: String(step.requiredApprovals),
+        notifyApprovers: step.notifyApprovers ?? true,
+        users: step.approvers.filter(({ type }) => type === ApproverType.User).map(({ id }) => id),
+        groups: step.approvers.filter(({ type }) => type === ApproverType.Group).map(({ id }) => id)
+      }))
+    : [emptyStep()]
+});
+
+const ttlError = (value: string) => {
+  if (!value) return undefined;
+  const seconds = Number(ms(value)) / 1000;
+  return seconds >= 86400 && seconds <= 2592000
+    ? undefined
+    : "Duration must be between 1 day and 30 days";
+};
+
+const configurationErrors = (draft: Draft): Errors => ({
+  name: !draft.name.trim()
+    ? "Policy name is required"
+    : (draft.name.length > 128 && "Policy name must be 128 characters or fewer") || undefined,
+  maxRequestTtl: ttlError(draft.maxRequestTtl),
+  profileNames: draft.profileNames.length ? undefined : "Must have at least one profile"
+});
+
+const stepErrors = (draft: Draft): Errors => {
+  const perStep = draft.steps.map((step) => {
+    const required = Number(step.requiredApprovals);
+    return {
+      name: step.name.length > 128 ? "Step name must be 128 characters or fewer" : undefined,
+      requiredApprovals:
+        Number.isInteger(required) && required >= 1 && required <= 100
+          ? undefined
+          : "Enter a number from 1 to 100",
+      approvers:
+        step.users.length + step.groups.length ? undefined : "At least one approver is required"
+    };
+  });
+  return {
+    steps: draft.steps.length ? undefined : "At least one approval step is required",
+    stepErrors: perStep
+  };
+};
+
+const hasErrors = (errors: Errors) =>
+  Boolean(
+    errors.name ||
+    errors.maxRequestTtl ||
+    errors.profileNames ||
+    errors.steps ||
+    errors.stepErrors?.some((step) => Object.values(step).some(Boolean))
+  );
+
+const memberOptions = (
+  members: TPkiApplicationMember[] | undefined,
+  key: "actorUserId" | "actorGroupId",
+  excludeAuditors: boolean
+) =>
+  (members ?? []).flatMap((member) => {
+    const id = member[key];
+    if (!id) return [];
+    if (excludeAuditors && member.role === PkiApplicationMemberRole.Auditor) return [];
+    const { name, username, email } = member.details ?? {};
+    return [{ value: id, label: name || username || email || id }];
+  });
+
+type PolicySheetProps = {
+  projectId: string;
+  policy?: TApprovalPolicy;
+  application?: { id: string; name: string };
+  onClose: () => void;
+};
+
+const PolicyForm = ({ projectId, policy, application, onClose }: PolicySheetProps) => {
+  const approvals = useV4Adapter("approvalRequests");
+  const applications = useV4Adapter("pkiApplications");
+  const updateProjectPolicy = approvals.useUpdatePolicy();
+  const updateApplicationPolicy = applications.useUpdatePolicy();
+  const update = application ? updateApplicationPolicy : updateProjectPolicy;
+  const create = applications.useCreatePolicy();
+  const { data: profileData } = useV4Adapter("certificates").useCertificateProfiles({
+    applicationId: application?.id
+  });
+  const { data: directory } = approvals.useApprovers(projectId, { includeGroupMembers: false });
+  const { data: appMembers } = applications.useApplicationMembers(application?.id ?? "");
+  const [initial] = useState(() => draftOf(policy));
+  const [draft, setDraft] = useState<Draft>(initial);
+  const [errors, setErrors] = useState<Errors>({});
+  const [step, setStep] = useState(0);
+  const [discarding, setDiscarding] = useState(false);
+  const [creatingProfile, setCreatingProfile] = useState<string>();
+  const canCreateProfile = useProjectPermission(projectId).permission.can(
+    ProjectPermissionCertificateProfileActions.Create,
+    ProjectPermissionSub.CertificateProfiles
+  );
+  const completed = useRef(false);
+  const isRevocation = draft.policyType === ApprovalPolicyType.CertRevocation;
+
+  const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
+  const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {
+    setDraft((current) => ({ ...current, [key]: value }));
+    setErrors((current) => ({ ...current, [key]: undefined }));
+  };
+  const setStepField = <K extends keyof StepDraft>(index: number, key: K, value: StepDraft[K]) =>
+    setDraft((current) => ({
+      ...current,
+      steps: current.steps.map((entry, at) => (at === index ? { ...entry, [key]: value } : entry))
+    }));
+  const check = (next: Errors) => {
+    setErrors(next);
+    return !hasErrors(next);
+  };
+  const profileOptions = [
+    ...new Set([
+      ...(profileData?.certificateProfiles ?? []).map((profile) => profile.slug),
+      ...draft.profileNames
+    ])
+  ].map((slug) => ({ value: slug, label: slug }));
+  const userOptions = application
+    ? memberOptions(appMembers, "actorUserId", isRevocation)
+    : (directory?.users ?? []).map(({ id, label }) => ({ value: id, label }));
+  const groupOptions = application
+    ? memberOptions(appMembers, "actorGroupId", isRevocation)
+    : (directory?.groups ?? []).map(({ id, label }) => ({ value: id, label }));
+  const nameOf = (options: { value: string; label: string }[], id: string) =>
+    options.find((option) => option.value === id)?.label ?? id;
+  const close = () => {
+    setStep(0);
+    onClose();
+  };
+  const review: DataListItem[] = [
+    ["Policy name", draft.name || "Not set"],
+    ...(application
+      ? ([["Policy type", policyTypeLabel(draft.policyType), { span: "half" }]] as DataListItem[])
+      : []),
+    ["Max. request TTL", draft.maxRequestTtl || "Not set", { span: "half" }],
+    ...(isRevocation
+      ? []
+      : ([
+          [
+            "Machine identity bypass",
+            draft.bypassForMachineIdentities ? "Enabled" : "Disabled",
+            { span: "half" }
+          ]
+        ] as DataListItem[])),
+    ["Certificate profiles", draft.profileNames.length ? draft.profileNames.join(", ") : "Not set"],
+    ...draft.steps.map((entry, index): DataListItem => [
+      entry.name ? `Step ${index + 1}: ${entry.name}` : `Step ${index + 1}`,
+      [
+        `Requires ${entry.requiredApprovals} approval${entry.requiredApprovals === "1" ? "" : "s"}`,
+        entry.users.length
+          ? `Users: ${entry.users.map((id) => nameOf(userOptions, id)).join(", ")}`
+          : "",
+        entry.groups.length
+          ? `Groups: ${entry.groups.map((id) => nameOf(groupOptions, id)).join(", ")}`
+          : ""
+      ]
+        .filter(Boolean)
+        .join(". ")
+    ])
+  ];
+  return (
+    <>
+      <MultiStep
+        variant="sheet"
+        size="lg"
+        title={policy ? "Edit certificate approval policy" : "Create certificate approval policy"}
+        open
+        step={step}
+        onStepChange={setStep}
+        onOpenChange={(next) => {
+          if (next) return;
+          if (completed.current) {
+            completed.current = false;
+            close();
+            return;
+          }
+          if (dirty) {
+            setStep(step);
+            setDiscarding(true);
+            return;
+          }
+          close();
+        }}
+        completeLabel={policy ? "Update" : "Create"}
+        onComplete={async () => {
+          const fields = {
+            name: draft.name.trim(),
+            maxRequestTtl: draft.maxRequestTtl || null,
+            constraints: {},
+            bypassForMachineIdentities: isRevocation ? false : draft.bypassForMachineIdentities,
+            steps: draft.steps.map((entry) => ({
+              name: entry.name.trim() || null,
+              requiredApprovals: Number(entry.requiredApprovals),
+              notifyApprovers: entry.notifyApprovers,
+              approvers: [
+                ...entry.users.map((id) => ({ type: ApproverType.User, id })),
+                ...entry.groups.map((id) => ({ type: ApproverType.Group, id }))
+              ]
+            }))
+          };
+          if (policy) {
+            const conditions = (policy.conditions.conditions as CertRequestPolicyConditions).slice(
+              1
+            );
+            await update
+              .mutateAsync({
+                policyType: policy.type,
+                policyId: policy.id,
+                conditions: [{ profileNames: draft.profileNames }, ...conditions],
+                ...fields
+              })
+              .catch(readableFailure("Could not update the policy."));
+            saved("Policy updated");
+          } else {
+            if (!application) return;
+            await create
+              .mutateAsync({
+                policyType: draft.policyType,
+                scope: ApprovalPolicyScope.PkiApplication,
+                scopeId: application.id,
+                conditions: [{ profileNames: draft.profileNames }],
+                ...fields
+              })
+              .catch(readableFailure("Could not create the policy."));
+            saved("Policy created");
+          }
+          completed.current = true;
+        }}
+        steps={[
+          {
+            title: "Configuration",
+            summary: draft.name || undefined,
+            validate: () => check(configurationErrors(draft)),
+            content: (
+              <Stack gap={16}>
+                <Field label="Policy name" error={errors.name} wide>
+                  <Input
+                    value={draft.name}
+                    invalid={Boolean(errors.name)}
+                    placeholder="Production TLS"
+                    autoComplete="off"
+                    onChange={(event) => set("name", event.target.value)}
+                  />
+                </Field>
+                {application && (
+                  <Field
+                    label="Policy type"
+                    description={
+                      policy
+                        ? "A policy's type can't be changed after it's created."
+                        : "Issuance covers new certificates and renewals. Revocation covers revoking certificates."
+                    }
+                    wide
+                  >
+                    <Select
+                      aria-label="Policy type"
+                      options={policyTypeOptions}
+                      value={draft.policyType}
+                      disabled={Boolean(policy)}
+                      onChange={(value) => set("policyType", value as ApprovalPolicyType)}
+                    />
+                  </Field>
+                )}
+                <Field
+                  label="Max. request TTL"
+                  optional
+                  description="How long a request can stay pending, from 1 day to 30 days."
+                  error={errors.maxRequestTtl}
+                  wide
+                >
+                  <Input
+                    mono
+                    value={draft.maxRequestTtl}
+                    invalid={Boolean(errors.maxRequestTtl)}
+                    placeholder="7d"
+                    autoComplete="off"
+                    onChange={(event) => set("maxRequestTtl", event.target.value)}
+                  />
+                </Field>
+                <Field
+                  label="Certificate profiles"
+                  description={
+                    isRevocation
+                      ? "Revoking a certificate issued from these profiles requires approval."
+                      : "The policy applies to certificates issued from these profiles."
+                  }
+                  error={errors.profileNames}
+                  wide
+                >
+                  <MultiSelect
+                    label="Certificate profiles"
+                    placeholder="Select certificate profiles"
+                    searchable
+                    invalid={Boolean(errors.profileNames)}
+                    options={profileOptions}
+                    value={draft.profileNames}
+                    onChange={(value) => set("profileNames", value)}
+                    onCreate={canCreateProfile ? (query) => setCreatingProfile(query) : undefined}
+                    createLabel={(query) => `Create profile ${query}`}
+                  />
+                </Field>
+                {!isRevocation && (
+                  <Checkbox
+                    label="Bypass approval for machine identities"
+                    description="Machine identities can issue certificates without approval."
+                    checked={draft.bypassForMachineIdentities}
+                    onChange={(checked) => set("bypassForMachineIdentities", checked === true)}
+                  />
+                )}
+              </Stack>
+            )
+          },
+          {
+            title: "Approval sequence",
+            summary: `${draft.steps.length} step${draft.steps.length === 1 ? "" : "s"}`,
+            validate: () => check(stepErrors(draft)),
+            content: (
+              <Stack gap={24}>
+                {draft.steps.map((entry, index) => {
+                  const stepError = errors.stepErrors?.[index];
+                  return (
+                    <Stack key={entry.key} gap={16}>
+                      {index > 0 && <Separator />}
+                      <Inline gap={8} align="center" justify="between">
+                        <Heading level={3} size="subsection">
+                          {`Step ${index + 1}`}
+                        </Heading>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          icon="trash"
+                          iconOnly
+                          disabledReason={
+                            draft.steps.length > 1 ? undefined : "A policy needs at least one step"
+                          }
+                          onClick={() =>
+                            setDraft((current) => ({
+                              ...current,
+                              steps: current.steps.filter((_, at) => at !== index)
+                            }))
+                          }
+                        >
+                          {`Remove step ${index + 1}`}
+                        </Button>
+                      </Inline>
+                      <Field label="Step name" optional error={stepError?.name} wide>
+                        <Input
+                          value={entry.name}
+                          invalid={Boolean(stepError?.name)}
+                          placeholder="Security team review"
+                          autoComplete="off"
+                          onChange={(event) => setStepField(index, "name", event.target.value)}
+                        />
+                      </Field>
+                      <Field
+                        label="Required approvals"
+                        description="Between 1 and 100."
+                        error={stepError?.requiredApprovals}
+                        wide
+                      >
+                        <Input
+                          type="number"
+                          min={1}
+                          max={100}
+                          step={1}
+                          value={entry.requiredApprovals}
+                          invalid={Boolean(stepError?.requiredApprovals)}
+                          onChange={(event) =>
+                            setStepField(index, "requiredApprovals", event.target.value)
+                          }
+                        />
+                      </Field>
+                      <Field
+                        label="User approvers"
+                        description={
+                          application
+                            ? `Only members of ${application.name} can approve.`
+                            : undefined
+                        }
+                        error={stepError?.approvers}
+                        wide
+                      >
+                        <MultiSelect
+                          label="User approvers"
+                          placeholder="Select users"
+                          searchable
+                          invalid={Boolean(stepError?.approvers)}
+                          options={userOptions}
+                          value={entry.users}
+                          onChange={(value) => setStepField(index, "users", value)}
+                        />
+                      </Field>
+                      <Field label="Group approvers" wide>
+                        <MultiSelect
+                          label="Group approvers"
+                          placeholder="Select groups"
+                          searchable
+                          invalid={Boolean(stepError?.approvers)}
+                          options={groupOptions}
+                          value={entry.groups}
+                          onChange={(value) => setStepField(index, "groups", value)}
+                        />
+                      </Field>
+                    </Stack>
+                  );
+                })}
+                <div>
+                  <Button
+                    variant="outline"
+                    icon="plus"
+                    onClick={() =>
+                      setDraft((current) => ({
+                        ...current,
+                        steps: [...current.steps, emptyStep()]
+                      }))
+                    }
+                  >
+                    Add step
+                  </Button>
+                </div>
+              </Stack>
+            )
+          },
+          {
+            title: "Review",
+            content: <DataList variant="props" density="compact" items={review} />
+          }
+        ]}
+      />
+      <DiscardChangesAlertDialog
+        open={discarding}
+        onOpenChange={setDiscarding}
+        onDiscard={() => {
+          setDiscarding(false);
+          close();
+        }}
+        description="Your unsaved policy changes will be lost."
+      />
+      {creatingProfile !== undefined && (
+        <CertificateProfileSheet
+          projectId={projectId}
+          initialSlug={creatingProfile}
+          onCreated={(profile) => set("profileNames", [...draft.profileNames, profile.slug])}
+          onClose={() => setCreatingProfile(undefined)}
+        />
+      )}
+    </>
+  );
+};
+
+export const PolicySheet = ({
+  creating = false,
+  ...props
+}: PolicySheetProps & { creating?: boolean }) => {
+  if (props.policy) return <PolicyForm key={props.policy.id} {...props} />;
+  if (creating && props.application) return <PolicyForm key="create" {...props} />;
+  return null;
+};

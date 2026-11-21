@@ -23,30 +23,15 @@ import {
   HasuraCloudConnectionMethod,
   THasuraCloudConnection
 } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
+import { hasuraCloudConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: THasuraCloudConnection;
   onSubmit: (formData: FormData) => void;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.HasuraCloud)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(HasuraCloudConnectionMethod.AccessToken),
-    credentials: z.object({
-      accessToken: z.string().trim().min(1, "Access Token required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

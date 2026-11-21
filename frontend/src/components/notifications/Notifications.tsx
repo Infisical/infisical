@@ -8,7 +8,11 @@ import { IconButton } from "@app/components/v3/generic/IconButton";
 import { Toaster } from "@app/components/v3/generic/Toast";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3/generic/Tooltip";
 import { useTheme } from "@app/components/v3/platform/ThemeProvider";
+import { isV4Href } from "@app/helpers/v4Bridge";
 import { useTimedReset } from "@app/hooks";
+
+// The Cipher Toaster's id (TOASTER_ID in @infisical/cipher/ui/sonner), which main code may not import.
+const CIPHER_TOASTER_ID = "cipher";
 
 export type NotificationType = "success" | "error" | "info" | "warning" | "loading" | "default";
 
@@ -121,12 +125,47 @@ export const createNotification = (
   const bodyText = title ? text : undefined;
   const hasBody = Boolean(bodyText || children || callToAction || copyActions);
 
+  const onV4 = isV4Href(window.location.pathname);
+  const errorDuration = onV4 ? Infinity : 8000;
   const duration =
     type === "loading" || options.autoClose === false
       ? Infinity
-      : (options.duration ?? options.autoClose ?? (type === "error" ? 8000 : 3000));
+      : (options.duration ?? options.autoClose ?? (type === "error" ? errorDuration : 3000));
 
   const notify = toastByType[type] ?? toast.message;
+
+  if (onV4) {
+    const copy = copyActions?.[0];
+    return notify(title || text, {
+      description:
+        children || callToAction ? (
+          <>
+            {bodyText}
+            {children}
+            {callToAction}
+          </>
+        ) : (
+          bodyText
+        ),
+      action: copy && {
+        label: `Copy ${copy.name}`,
+        onClick: (event) => {
+          event.preventDefault();
+          navigator.clipboard
+            .writeText(copy.value)
+            .then(() => toast.success(`Copied ${copy.name}`, { toasterId: CIPHER_TOASTER_ID }))
+            .catch(() =>
+              toast.error(`Couldn't copy ${copy.name}`, {
+                toasterId: CIPHER_TOASTER_ID,
+                duration: Infinity
+              })
+            );
+        }
+      },
+      duration,
+      toasterId: CIPHER_TOASTER_ID
+    });
+  }
 
   return notify(title || text, {
     description: hasBody ? (
