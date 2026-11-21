@@ -63,7 +63,7 @@ To run one command instead of opening a shell, put the command after `--`:
 infisical pam access <folder>/<account> -- systemctl status nginx
 ```
 
-To use your own SSH client, or to copy files with `scp`, `sftp`, or `rsync`, add `--proxy`. The CLI then starts a local proxy and prints the port to connect to.
+To use your own SSH client, or to copy files with `scp`, `sftp`, or `rsync`, add `--proxy`. The CLI then starts a local proxy and prints the port to connect to. Infisical blocks `scp`, `sftp`, and port forwarding on accounts whose template has [Output Masking](/documentation/platform/pam/templates/overview#output-masking) on, which new SSH templates have by default.
 
 ## Next steps
 
