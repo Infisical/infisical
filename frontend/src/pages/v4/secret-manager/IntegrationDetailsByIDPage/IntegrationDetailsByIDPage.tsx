@@ -40,7 +40,6 @@ import { formatDateTime } from "../../access/roles";
 import { toast } from "../../access/toast";
 import { AccessRestricted, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
-import { ShowMoreFooter } from "../../components/show-more-footer";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, useGo, v4Path } from "../../links";
@@ -249,24 +248,19 @@ const LogsCard = ({
   const rows = logs.error ? [] : (logs.data?.pages ?? []).flat();
   const canLoadMore = logs.hasNextPage && logs.data?.pages.at(-1)?.length === LOG_PAGE_SIZE;
   return (
-    <Card
-      variant="framed"
-      title="Integration logs"
-      footerPlacement="frame"
-      footer={
-        <ShowMoreFooter
-          status={
-            rows.length > 0
-              ? `${rows.length.toLocaleString("en-US")}${canLoadMore ? "+" : ""} events in the last ${days} days`
-              : `Last ${days} days`
-          }
-          loading={logs.isFetchingNextPage}
-          onShowMore={canLoadMore ? () => logs.fetchNextPage() : undefined}
-        />
-      }
-    >
+    <Card variant="framed" title="Integration logs" footerPlacement="frame">
       <DataTable
         label="Integration logs"
+        persistentStatus={
+          rows.length > 0
+            ? `${rows.length.toLocaleString("en-US")}${canLoadMore ? "+" : ""} events in the last ${days} days`
+            : `Last ${days} days`
+        }
+        loadMore={
+          canLoadMore
+            ? { loading: logs.isFetchingNextPage, onClick: () => logs.fetchNextPage() }
+            : undefined
+        }
         rows={rows}
         columns={logColumns}
         loading={logs.isPending && !logs.error}

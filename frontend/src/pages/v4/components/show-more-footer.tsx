@@ -3,8 +3,8 @@ import { Button } from "@infisical/cipher/ui/button";
 import { Inline } from "@infisical/cipher/ui/layout";
 import { Meta } from "@infisical/cipher/ui/text";
 
-// Stand-in: Cipher's DataTable draws its load more as an outline button inside the table, with no way to
-// hand it to a Card's frame footer, so cards and lists compose the quiet footer here until it ships one.
+// Stand-in: Cipher's quiet show more footer lives inside DataTable only, so Lists and other
+// non-table collections compose the same count and Show more here until Cipher ships one for them.
 export const ShowMoreFooter = ({
   status,
   label = "Show more",

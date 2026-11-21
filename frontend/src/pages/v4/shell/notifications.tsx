@@ -163,12 +163,10 @@ const InboxPanel = ({
         empty={<EmptyState size="sm" icon="bell" title="No notifications" />}
         footer={
           notifications.length > shownCount && (
-            <div className={styles.inboxMore}>
-              <ShowMoreFooter
-                status={`Showing ${shownCount.toLocaleString()} of ${notifications.length.toLocaleString()}`}
-                onShowMore={() => setShownCount(shownCount + PAGE_SIZE)}
-              />
-            </div>
+            <ShowMoreFooter
+              status={`Showing ${shownCount.toLocaleString()} of ${notifications.length.toLocaleString()}`}
+              onShowMore={() => setShownCount(shownCount + PAGE_SIZE)}
+            />
           )
         }
       >
