@@ -36,7 +36,12 @@ import {
   StepperStep
 } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
-import { useProject } from "@app/context";
+import {
+  ProjectPermissionAgentVaultHookActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import { hostError } from "@app/helpers/agentVaultHostPattern";
 import {
   AgentVaultHttpTemplate,
@@ -77,7 +82,7 @@ import { ServiceTemplateSelect } from "../ServiceTemplateSelect";
 import { VariableFormSheet } from "../VariableFormSheet";
 import { CredentialFields } from "./CredentialFields";
 import { DetailsFields } from "./DetailsFields";
-import { HookFields } from "./HookFields";
+import { HookField } from "./HookField";
 import { McpCredentialFields } from "./McpCredentialFields";
 import { McpDetailsFields } from "./McpDetailsFields";
 import { McpToolsFields, TLoadedMcpTools } from "./McpToolsFields";
@@ -93,7 +98,6 @@ import {
 import {
   buildServiceSchema,
   displayHostPattern,
-  HOOK_SIGNING_SECRET_REQUIRED_MESSAGE,
   HTTP_METHODS,
   isCredentialMemberProvided,
   isNativeService,
@@ -106,6 +110,7 @@ import {
   OAUTH_OWN_APP_REQUIRED_ERROR,
   SERVICE_STEP_FIELDS,
   SERVICE_TYPE_LABELS,
+  serviceHookDraftOf,
   serviceKindOf,
   ServiceStep,
   storedMemberFields,
@@ -169,9 +174,7 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   pathPrefixes: [],
   customHeaders: [],
   substitutions: [],
-  hookEnabled: false,
-  hookUrl: "",
-  hookSigningSecret: ""
+  hook: serviceHookDraftOf(null)
 };
 
 const BLANK_MCP_SERVICE_FORM: TServiceForm = {
@@ -191,13 +194,6 @@ const blankNativeForm = (serviceType: TAgentVaultNativeServiceType): TServiceFor
   serviceType,
   port: String(AGENT_VAULT_NATIVE_DEFAULT_PORTS[serviceType]),
   credentialType: AgentVaultCredentialType.Basic
-});
-
-// A hook on a saved service always has a stored secret, so the box starts at the sentinel.
-const hookFormFieldsOf = (service: TAgentVaultService) => ({
-  hookEnabled: Boolean(service.hook),
-  hookUrl: service.hook?.url ?? "",
-  hookSigningSecret: service.hook ? UNCHANGED_SECRET : ""
 });
 
 const mcpFormFromTemplate = (picked: AgentVaultMcpTemplate | null): TServiceForm => {
@@ -403,6 +399,12 @@ export const ServiceSheet = ({
   const createService = useCreateAgentVaultService(projectId);
   const updateService = useUpdateAgentVaultService(projectId);
 
+  const { permission } = useProjectPermission();
+  const canReadHooks = permission.can(
+    ProjectPermissionAgentVaultHookActions.Read,
+    ProjectPermissionSub.AgentVaultHooks
+  );
+
   const storedKeys = useMemo(() => storedVariableKeys(service), [service]);
   // One dialog for every field. The request settles once the dialog has closed, not when the variable is
   // saved: until then the dialog's focus trap would pull focus back from the field that asked.
@@ -510,8 +512,12 @@ export const ServiceSheet = ({
     let all = SERVICE_STEPS;
     if (nativeType) all = nativeServiceSteps(nativeType);
     else if (isMcp) all = MCP_SERVICE_STEPS;
-    return hasTemplateStep ? all : all.filter((meta) => meta.step !== ServiceStep.Template);
-  }, [hasTemplateStep, isMcp, nativeType]);
+    return all.filter(
+      (meta) =>
+        (hasTemplateStep || meta.step !== ServiceStep.Template) &&
+        (canReadHooks || meta.step !== ServiceStep.Hook)
+    );
+  }, [hasTemplateStep, isMcp, nativeType, canReadHooks]);
   const stepKeys = useMemo(() => steps.map((meta) => meta.step), [steps]);
 
   const panelRef = useRef<HTMLDivElement>(null);
@@ -598,7 +604,7 @@ export const ServiceSheet = ({
         memberProvidedFields,
         sshPrivateKey: isSshKey ? UNCHANGED_SECRET : "",
         sshCertificate: isSshKey && credential.hasCertificate ? UNCHANGED_SECRET : "",
-        ...hookFormFieldsOf(service)
+        hook: serviceHookDraftOf(service.hook)
       });
     } else if (service?.type === AgentVaultServiceType.Mcp) {
       const { credential } = service;
@@ -628,7 +634,7 @@ export const ServiceSheet = ({
           prefix: header.prefix,
           value: UNCHANGED_SECRET
         })),
-        ...hookFormFieldsOf(service)
+        hook: serviceHookDraftOf(service.hook)
       });
     } else if (service) {
       const { credential } = service;
@@ -676,7 +682,7 @@ export const ServiceSheet = ({
           surfaces: substitution.surfaces,
           value: UNCHANGED_SECRET
         })),
-        ...hookFormFieldsOf(service)
+        hook: serviceHookDraftOf(service.hook)
       });
     } else if (prefillHost) {
       const { template: picked, form } = prefillFor(
@@ -856,15 +862,6 @@ export const ServiceSheet = ({
         return;
       }
 
-      if (
-        serverResponse?.error === ApiErrorTypes.BadRequestError &&
-        serverResponse.message === HOOK_SIGNING_SECRET_REQUIRED_MESSAGE
-      ) {
-        setError("hookSigningSecret", { type: "server", message: serverResponse.message });
-        setStep(stepKeys.indexOf(ServiceStep.Hook));
-        return;
-      }
-
       if (serverResponse?.error === ApiErrorTypes.ValidationError) {
         const STEP_OF_FIELD: Record<string, ServiceStep> = {
           name: ServiceStep.Details,
@@ -881,8 +878,7 @@ export const ServiceSheet = ({
           allowedTools: ServiceStep.Tools,
           credential: ServiceStep.Credential,
           customHeaders: ServiceStep.Credential,
-          substitutions: ServiceStep.Credential,
-          hook: ServiceStep.Hook
+          substitutions: ServiceStep.Credential
         };
 
         const FORM_FIELD_OF: Record<string, keyof TServiceForm> = {
@@ -895,8 +891,7 @@ export const ServiceSheet = ({
             return data.credentialType === AgentVaultCredentialType.OAuth
               ? "oauthAuthorizationId"
               : "secret";
-          })(),
-          hook: "hookUrl"
+          })()
         };
         const FORM_FIELD_OF_CREDENTIAL_PART: Record<string, keyof TServiceForm> = {
           username: "username",
@@ -904,10 +899,6 @@ export const ServiceSheet = ({
           value: "secret",
           privateKey: "sshPrivateKey",
           certificate: "sshCertificate"
-        };
-        const FORM_FIELD_OF_HOOK_PART: Record<string, keyof TServiceForm> = {
-          url: "hookUrl",
-          signingSecret: "hookSigningSecret"
         };
 
         let earliestStep: number | null = null;
@@ -925,10 +916,7 @@ export const ServiceSheet = ({
             root === "credential"
               ? FORM_FIELD_OF_CREDENTIAL_PART[String(issue.path[1])]
               : undefined;
-          const hookPart =
-            root === "hook" ? FORM_FIELD_OF_HOOK_PART[String(issue.path[1])] : undefined;
-          let target =
-            credentialPart ?? hookPart ?? FORM_FIELD_OF[root] ?? (root as keyof TServiceForm);
+          let target = credentialPart ?? FORM_FIELD_OF[root] ?? (root as keyof TServiceForm);
           if (issue.path.length > 1 && (root === "customHeaders" || root === "substitutions")) {
             target = issue.path.join(".") as keyof TServiceForm;
           }
@@ -1193,14 +1181,10 @@ export const ServiceSheet = ({
                       onSignInChange={setIsSigningIn}
                     />
                   )}
-                  {current.step === ServiceStep.Hook && (
-                    <HookFields
-                      serviceType={formServiceType}
-                      hasStoredHook={Boolean(service?.hook)}
-                    />
-                  )}
+                  {current.step === ServiceStep.Hook && <HookField />}
                   {current.step === ServiceStep.Review && (
                     <ReviewFields
+                      showHooks={canReadHooks}
                       isUpdate={isUpdate}
                       service={service}
                       storedType={service?.credential.type}

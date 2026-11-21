@@ -54,12 +54,13 @@ export type HomeSetup = {
 
 export type HomeAdapter = {
   /** Null when the org has no secret reads endpoint available, such as without audit log analytics. */
-  useSecretReads: (orgId: string) => V4QueryResult<HomeSecretReads | null>;
+  useSecretReads: (orgId: string, enabled?: boolean) => V4QueryResult<HomeSecretReads | null>;
   /** Null when Secret Scanning has no data source yet. */
   useFindings: (orgId: string) => V4QueryResult<HomeFindings | null>;
   /** Null when Certificate Manager holds no certificates yet. */
   useExpiringCertificates: (orgId: string) => V4QueryResult<HomeExpiringCertificates | null>;
   useQueue: (orgId: string) => V4QueryResult<HomeQueue>;
   useApprove: V4Mutation<HomeApprovalTarget>;
-  useSetup: (orgId: string) => V4QueryResult<HomeSetup>;
+  /** Pass enabled false when the checklist can't show, so its queries don't run. */
+  useSetup: (orgId: string, enabled?: boolean) => V4QueryResult<HomeSetup>;
 };

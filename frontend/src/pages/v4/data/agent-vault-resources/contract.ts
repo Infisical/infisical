@@ -38,6 +38,7 @@ import type {
   useGetAgentVaultSkillVersion,
   useListAgentVaultAccessBundleMembers,
   useListAgentVaultAccessBundles,
+  useListAgentVaultHooks,
   useListAgentVaultAccessBundleSkills,
   useListAllAgentVaultServicesRequiringSetup,
   useListAgentVaultProxies,
@@ -84,6 +85,7 @@ export type AgentVaultResourcesAdapter = {
   useRevokeAccessBundleMembers: ProjectMutationOf<typeof useRevokeAgentVaultAccessBundleMembers>;
 
   useServices: QueryOf<typeof useListAgentVaultServices>;
+  useHooks: QueryOf<typeof useListAgentVaultHooks>;
   useAllServicesRequiringSetup: QueryOf<typeof useListAllAgentVaultServicesRequiringSetup>;
   useCreateService: ProjectMutationOf<typeof useCreateAgentVaultService>;
   useUpdateService: ProjectMutationOf<typeof useUpdateAgentVaultService>;

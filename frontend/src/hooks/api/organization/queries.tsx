@@ -440,12 +440,12 @@ export const useGetAvailableOrgUsers = (enabled = true) =>
     enabled
   });
 
-export const useGetOrgProductStats = (orgId: string) =>
+export const useGetOrgProductStats = (orgId: string, options?: { enabled?: boolean }) =>
   useQuery({
     queryKey: organizationKeys.getOrgProductStats(orgId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TOrgProductStats>("/api/v1/organization/product-stats");
       return data;
     },
-    enabled: Boolean(orgId)
+    enabled: Boolean(orgId) && (options?.enabled ?? true)
   });

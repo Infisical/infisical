@@ -12,6 +12,7 @@ export {
   ApproverType,
   AUTO_APPROVAL_AI_CONSTRAINT,
   AUTO_APPROVAL_AI_SUBJECT,
+  AUTO_APPROVAL_REQUESTER_CONSTRAINT,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AutoApprovalConstraintValue,
   type CertRequestPolicyConditions,

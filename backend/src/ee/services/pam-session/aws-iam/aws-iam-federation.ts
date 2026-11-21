@@ -1,13 +1,17 @@
 import { AssumeRoleCommand, Credentials, STSClient, STSClientConfig } from "@aws-sdk/client-sts";
 import { Signer } from "@aws-sdk/rds-signer";
 import axios from "axios";
+import RE2 from "re2";
 
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 export const AWS_STS_MIN_DURATION_SECONDS = 900;
+
+export const AWS_STS_ROLE_CHAINING_MAX_DURATION_SECONDS = 3600;
 
 const AWS_STS_DEFAULT_REGION = "us-east-1";
 
@@ -62,6 +66,13 @@ const assumeRole = async ({
   }
 
   return result.Credentials;
+};
+
+// STS requires roleSessionName to be 2-64 chars; pad short names with random characters so the actor's
+// name stays recognizable in CloudTrail (1-char identity name, user with no email and empty names)
+export const toAwsRoleSessionName = (federatedUsername: string): string => {
+  const roleSessionName = federatedUsername.replace(new RE2(/[^\w+=,.@-]/g), "_").substring(0, 64);
+  return roleSessionName.length < 2 ? `${roleSessionName}${alphaNumericNanoId(8)}` : roleSessionName;
 };
 
 export type TAwsIamSessionCredentials = {

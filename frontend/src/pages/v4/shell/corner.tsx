@@ -52,9 +52,9 @@ const useCanInvite = (orgId: string) => {
 };
 
 /** The Get started checklist, derived from what the org already holds. Admins only. */
-export const useGetStarted = (orgId: string) => {
-  const { data: setup } = useV4Adapter("home").useSetup(orgId);
+export const useGetStarted = (orgId: string, enabled = true) => {
   const canInvite = useCanInvite(orgId);
+  const { data: setup } = useV4Adapter("home").useSetup(orgId, enabled && canInvite);
   const [dismissed, dismiss] = useDismissed(orgId, "get-started");
   const steps: Step[] = setup
     ? [
@@ -123,7 +123,14 @@ const CardHead = ({
       {title}
       {meta && <span className={styles.meta}>{meta}</span>}
     </span>
-    <Button variant="ghost" size="sm" icon="x" aria-label={dismissLabel} onClick={onDismiss} />
+    <Button
+      variant="ghost"
+      size="sm"
+      icon="x"
+      className={styles.close}
+      aria-label={dismissLabel}
+      onClick={onDismiss}
+    />
   </div>
 );
 
@@ -137,6 +144,7 @@ const GetStartedCard = ({ getStarted }: { getStarted: ReturnType<typeof useGetSt
           type="button"
           className={styles.toggle}
           aria-expanded={open}
+          aria-label={`${open ? "Collapse" : "Expand"} Get started, ${done} of ${steps.length}`}
           onClick={() => setOpen(!open)}
         >
           <span className={styles.title}>
@@ -190,7 +198,7 @@ export const useCornerCard = (
   enabled: boolean,
   whatsNew?: WhatsNew
 ): Pick<SidebarProps, "footer" | "footerIcon" | "footerLabel"> => {
-  const getStarted = useGetStarted(orgId);
+  const getStarted = useGetStarted(orgId, enabled);
   const [inviteDismissed, dismissInvite] = useDismissed(orgId, "invite");
   if (!enabled) return {};
   if (getStarted.active)

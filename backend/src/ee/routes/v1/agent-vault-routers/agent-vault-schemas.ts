@@ -6,6 +6,11 @@ import {
   OAUTH_NEEDS_AUTHORIZATION_OR_MEMBERS_MESSAGE
 } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
 import {
+  AgentVaultHookSecretSchema,
+  AgentVaultHookUrlSchema,
+  AgentVaultServiceHookInputSchema
+} from "@app/ee/services/agent-vault-hook/agent-vault-hook-fns";
+import {
   MAX_CLIENT_ID_LENGTH,
   MAX_CLIENT_SECRET_LENGTH,
   OAUTH_CLIENT_ID_OR_DYNAMIC_MESSAGE,
@@ -54,10 +59,6 @@ import {
   AgentVaultVariableType,
   TAgentVaultMemberProvidedField
 } from "@app/ee/services/agent-vault/agent-vault-enums";
-import {
-  AgentVaultHookSigningSecretSchema,
-  AgentVaultHookUrlSchema
-} from "@app/ee/services/agent-vault/agent-vault-hook-fns";
 import { hostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
 import {
   AGENT_VAULT_MAX_NATIVE_SERVICE_NAME_LENGTH,
@@ -658,23 +659,13 @@ export const AgentVaultSubstitutionsUpdateSchema = AgentVaultSubstitutionUpdateS
   .superRefine(addDuplicatePlaceholderIssues)
   .describe(AGENT_VAULT.SERVICE.substitutions);
 
-const hookInputSchema = z.object({
-  url: AgentVaultHookUrlSchema.describe(AGENT_VAULT.SERVICE.hookUrl),
-  signingSecret: AgentVaultHookSigningSecretSchema.describe(AGENT_VAULT.SERVICE.hookSigningSecret)
-});
-const hookCreateField = { hook: hookInputSchema.optional().describe(AGENT_VAULT.SERVICE.hook) };
+const hookCreateField = { hook: AgentVaultServiceHookInputSchema.optional().describe(AGENT_VAULT.HOOK.serviceHook) };
 const hookUpdateField = {
-  hook: z
-    .object({
-      url: AgentVaultHookUrlSchema.describe(AGENT_VAULT.SERVICE.hookUrl),
-      signingSecret: AgentVaultHookSigningSecretSchema.optional().describe(AGENT_VAULT.SERVICE.updateHookSigningSecret)
-    })
-    .nullable()
-    .optional()
-    .describe(AGENT_VAULT.SERVICE.updateHook)
+  hook: AgentVaultServiceHookInputSchema.nullable().optional().describe(AGENT_VAULT.HOOK.updateServiceHook)
 };
-const inlineHookField = { hook: hookInputSchema.optional().describe(AGENT_VAULT.SESSION.inlineHook) };
-const hookResponseSchema = z.object({ url: z.string().describe(AGENT_VAULT.SERVICE.hookUrlRead) });
+const inlineHookField = {
+  hook: AgentVaultServiceHookInputSchema.optional().describe(AGENT_VAULT.HOOK.inlineServiceHook)
+};
 
 // Checked fully when the service builds its config; bounded here so nothing unreasonable reaches it.
 const AgentVaultNativeHostSchema = z
@@ -1239,12 +1230,24 @@ const serviceResponseTypeFields = {
   }
 };
 
+const serviceHookResponseSchema = z
+  .object({
+    id: z.string().uuid().describe(AGENT_VAULT.HOOK.hookId),
+    name: z.string().describe(AGENT_VAULT.HOOK.name),
+    methods: z.nativeEnum(AgentVaultHttpMethod).array().optional().describe(AGENT_VAULT.HOOK.serviceHookMethods),
+    paths: z.string().array().optional().describe(AGENT_VAULT.HOOK.serviceHookPaths),
+    tools: z.string().array().optional().describe(AGENT_VAULT.HOOK.serviceHookTools)
+  })
+  .nullable()
+  .optional()
+  .describe(AGENT_VAULT.HOOK.serviceHookRead);
+
 // The sealed values are never in here, and the serializer emits only what this schema lists.
 const inlineServiceResponseBase = {
   id: z.string().uuid().describe(AGENT_VAULT.SESSION.inlineServiceId),
   name: z.string().describe(AGENT_VAULT.SESSION.inlineServiceNameRead),
   description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead),
-  hook: hookResponseSchema.nullable().describe(AGENT_VAULT.SESSION.inlineHookRead)
+  hook: serviceHookResponseSchema
 };
 
 const inlineBearerCredentialSummarySchema = z
@@ -1471,7 +1474,7 @@ const serviceResponseBase = {
   description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead),
   createdAt: z.date().describe(AGENT_VAULT.SERVICE.createdAt),
   updatedAt: z.date().describe(AGENT_VAULT.SERVICE.updatedAt),
-  hook: hookResponseSchema.nullable().optional().describe(AGENT_VAULT.SERVICE.hookRead)
+  hook: serviceHookResponseSchema
 };
 
 const customHeadersResponseSchema = z
@@ -2253,6 +2256,43 @@ export const AgentVaultProjectIdSchema = z
   .max(36)
   .optional()
   .describe(AGENT_VAULT.projectId);
+
+export const AgentVaultHookSchema = z.object({
+  id: z.string().uuid().describe(AGENT_VAULT.HOOK.hookId),
+  projectId: z.string().describe(AGENT_VAULT.HOOK.projectId),
+  name: z.string().describe(AGENT_VAULT.HOOK.name),
+  description: z.string().nullable().describe(AGENT_VAULT.HOOK.descriptionRead),
+  url: z.string().describe(AGENT_VAULT.HOOK.url),
+  usedBy: z
+    .object({
+      id: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId),
+      name: z.string().describe(AGENT_VAULT.SERVICE.name),
+      type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.VARIABLE.usedByServiceType),
+      hostPattern: z.string().nullable().describe(AGENT_VAULT.VARIABLE.usedByServiceHostPattern)
+    })
+    .array()
+    .describe(AGENT_VAULT.HOOK.usedBy),
+  createdAt: z.date().describe(AGENT_VAULT.HOOK.createdAt),
+  updatedAt: z.date().describe(AGENT_VAULT.HOOK.updatedAt)
+});
+
+export const AgentVaultCreateHookBodySchema = z.object({
+  name: AgentVaultNameSchema.describe(AGENT_VAULT.HOOK.name),
+  description: AgentVaultDescriptionSchema.optional().describe(AGENT_VAULT.HOOK.description),
+  url: AgentVaultHookUrlSchema.describe(AGENT_VAULT.HOOK.url),
+  secret: AgentVaultHookSecretSchema.describe(AGENT_VAULT.HOOK.secret)
+});
+
+export const AgentVaultUpdateHookBodySchema = z
+  .object({
+    name: AgentVaultNameSchema.optional().describe(AGENT_VAULT.HOOK.name),
+    description: AgentVaultDescriptionSchema.nullable().optional().describe(AGENT_VAULT.HOOK.updateDescription),
+    url: AgentVaultHookUrlSchema.optional().describe(AGENT_VAULT.HOOK.url),
+    secret: AgentVaultHookSecretSchema.optional().describe(AGENT_VAULT.HOOK.updateSecret)
+  })
+  .refine((fields) => Object.values(fields).some((value) => value !== undefined), {
+    message: "Provide at least one field to update."
+  });
 
 type TVariableCreateShape = {
   scope: AgentVaultVariableScope;

@@ -474,6 +474,8 @@ const migrationGateways = [
   heartbeatTTL: 180,
   directAddress: null,
   directHeartbeat: null,
+  cliVersion: null,
+  cliVersionReportedAt: null,
   canRevoke: true,
   connectedResourcesCount: 0,
   identity: null

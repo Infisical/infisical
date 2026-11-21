@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--cipher-space-8);
-  padding: var(--cipher-space-8) var(--cipher-space-8) var(--cipher-space-12);
+  padding: var(--cipher-space-6) var(--cipher-space-8) var(--cipher-space-12);
   border: var(--cipher-size-control-border) solid var(--cipher-line-soft);
   background: var(--cipher-surface);
   font-family: var(--cipher-type-small-font-family);
@@ -23,7 +23,7 @@
   justify-content: space-between;
   gap: var(--cipher-space-8);
   min-height: 28px;
-  padding: 0 var(--cipher-space-6) 0 0;
+  padding: 0 var(--cipher-space-4) 0 0;
   border: 0;
   background: none;
   color: inherit;
@@ -47,7 +47,7 @@
   color: var(--cipher-muted);
   transition: transform var(--cipher-duration-fast) var(--cipher-ease-fade);
 }
-.toggle[aria-expanded="true"] .chevron {
+.toggle[aria-expanded="false"] .chevron {
   transform: rotate(180deg);
 }
 .progress {
@@ -55,7 +55,7 @@
   grid-auto-columns: minmax(0, 1fr);
   grid-auto-flow: column;
   gap: var(--cipher-space-2);
-  padding-inline-end: var(--cipher-space-6);
+  padding-inline-end: var(--cipher-space-4);
 }
 .progress > span {
   height: 3px;
@@ -69,7 +69,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--cipher-space-8);
-  padding-inline-end: var(--cipher-space-6);
+  padding-inline-end: var(--cipher-space-4);
   color: var(--cipher-text2);
   text-decoration: none;
   cursor: pointer;
@@ -137,4 +137,11 @@
 }
 :global([data-slot="sidebar"]) > :has(> .card) {
   flex-shrink: 0;
+}
+.close.close {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  margin-inline-end: calc(var(--cipher-space-3) * -1);
 }

@@ -65,6 +65,13 @@ const shellLevel = (
 /** The sidebar id of a product page's row in the org level's Products section. */
 export const productNavId = (slug: string, itemId: string) => `org:${slug}:${itemId}`;
 
+export const productCurrentId = (type: ProjectType, itemId: string) => {
+  const product = productOf(type);
+  return productSections(product)[0].items.length > 1
+    ? productNavId(product.slug, itemId)
+    : `org:${product.slug}`;
+};
+
 const withProducts = (
   level: V4ShellLevel,
   linkTo: LinkTo,
@@ -83,8 +90,7 @@ const withProducts = (
           product.id === "agent-vault"
             ? createElement(Badge, { size: "sm", collapse: true }, "Preview")
             : undefined,
-        disabled: product.disabled,
-        ...(product.children && !product.disabled
+        ...(product.children
           ? {
               defaultOpen: product.id === "secret-management",
               children: product.children.map((page) => ({
