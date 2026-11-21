@@ -238,13 +238,30 @@ export const HooksCard = () => {
                       to="/organizations/$orgId/projects/agent-vault/$projectId/hooks"
                       params={{ orgId: currentOrg.id, projectId }}
                       search={{ hookId: hook.id }}
-                      title={hook.description ?? undefined}
+                      className="flex items-center gap-2.5"
                     >
-                      {hook.name}
+                      <span className="truncate" title={hook.name} data-row-interactive>
+                        {hook.name}
+                      </span>
+                      {hook.description && (
+                        <span
+                          className="min-w-0 flex-1 truncate text-sm text-muted"
+                          title={hook.description}
+                          data-row-interactive
+                        >
+                          {hook.description}
+                        </span>
+                      )}
                     </RowLink>
                   </TableCell>
-                  <TableCell isTruncatable>
-                    {hook.url}
+                  <TableCell>
+                    <span
+                      className="block max-w-72 truncate text-sm"
+                      title={hook.url}
+                      data-row-interactive
+                    >
+                      {hook.url}
+                    </span>
                   </TableCell>
                   <TableCell isTruncatable>
                     <UsedBySummary usedBy={hook.usedBy} />
