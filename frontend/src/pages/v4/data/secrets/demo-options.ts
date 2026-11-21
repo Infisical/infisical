@@ -83,6 +83,8 @@ export const secretsOptionsDemo: SecretsOptionsAdapter = {
         heartbeatTTL: 60,
         directAddress: null,
         directHeartbeat: null,
+        cliVersion: null,
+        cliVersionReportedAt: null,
         canRevoke: false,
         connectedResourcesCount: 0,
         identity: null
