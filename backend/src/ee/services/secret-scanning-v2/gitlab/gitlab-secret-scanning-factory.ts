@@ -49,7 +49,11 @@ const PROJECT_HOOK_CONCURRENCY = 5;
 
 type TGitLabProjectHook = { projectId: number; projectName: string; hookId: number };
 
-export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsDataKeyService }: TSecretScanningFactoryParams) => {
+export const GitLabSecretScanningFactory = ({
+  appConnectionDAL,
+  kmsDataKeyService,
+  instanceConfigService
+}: TSecretScanningFactoryParams) => {
   type TGitLabClient = Awaited<ReturnType<typeof getGitLabConnectionClient>>;
   type THookableConfig = Exclude<TGitLabDataSourceInput["config"], { scope: GitLabDataSourceScope.Account }>;
 
@@ -211,7 +215,12 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsDataKeyServic
     // An account data source starts with no projects; each one gets its hook as it is added.
     if (config.scope === GitLabDataSourceScope.Account) return callback({});
 
-    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsDataKeyService);
+    const client = await getGitLabConnectionClient(
+      connection,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    );
     const token = alphaNumericNanoId(64);
     const hookId = await createHook(client, config, token, name);
 
@@ -230,7 +239,12 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsDataKeyServic
   > = async ({ connection, dataSourceId, credentials, payload: { config } }) => {
     if (!credentials || !("hookId" in credentials) || config.scope === GitLabDataSourceScope.Account) return;
 
-    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsDataKeyService);
+    const client = await getGitLabConnectionClient(
+      connection,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    );
     await bindHookToDataSource(client, config, credentials.hookId, dataSourceId);
   };
 
@@ -241,14 +255,24 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsDataKeyServic
     if (config.scope === GitLabDataSourceScope.Account) {
       if (!resourceNames.length) return undefined;
 
-      const accountClient = await getGitLabConnectionClient(connection, appConnectionDAL, kmsDataKeyService);
+      const accountClient = await getGitLabConnectionClient(
+        connection,
+        appConnectionDAL,
+        kmsDataKeyService,
+        instanceConfigService
+      );
       const accountToken = alphaNumericNanoId(64);
       const projectHooks = await addProjectHooks(accountClient, resourceNames, accountToken, id);
 
       return { token: accountToken, projectHooks };
     }
 
-    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsDataKeyService);
+    const client = await getGitLabConnectionClient(
+      connection,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    );
     const token = alphaNumericNanoId(64);
     const hookId = await createHook(client, config, token, name);
     await bindHookToDataSource(client, config, hookId, id);
@@ -268,7 +292,12 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsDataKeyServic
 
     if (!stale.length && !missing.length) return undefined;
 
-    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsDataKeyService);
+    const client = await getGitLabConnectionClient(
+      connection,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    );
     const added = await addProjectHooks(client, missing, credentials.token, id);
 
     return {
@@ -283,7 +312,12 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsDataKeyServic
   ) => {
     const { connection, config } = dataSource;
 
-    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsDataKeyService);
+    const client = await getGitLabConnectionClient(
+      connection,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    );
 
     if (config.scope === GitLabDataSourceScope.Project) {
       const { projectId } = config;
@@ -323,7 +357,12 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsDataKeyServic
 
     const instanceUrl = await getGitLabInstanceUrl(connection.credentials.instanceUrl);
 
-    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsDataKeyService);
+    const client = await getGitLabConnectionClient(
+      connection,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    );
 
     const user = await client.Users.showCurrentUser();
 
@@ -357,7 +396,12 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsDataKeyServic
   > = async ({ dataSource: { connection, config }, credentials }) => {
     if (!credentials) return;
 
-    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsDataKeyService);
+    const client = await getGitLabConnectionClient(
+      connection,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    );
 
     if ("projectHooks" in credentials) {
       await removeProjectHooks(client, credentials.projectHooks);
@@ -384,7 +428,12 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsDataKeyServic
   > = async ({ dataSource, payload, resourceName, configPath }) => {
     const { connection } = dataSource;
 
-    const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsDataKeyService);
+    const client = await getGitLabConnectionClient(
+      connection,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService
+    );
 
     const { commits, project } = payload;
 

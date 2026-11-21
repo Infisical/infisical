@@ -4,7 +4,7 @@ import { AwsClient, ExternalAccountClient, gaxios, Impersonated, JWT } from "goo
 import { GetAccessTokenResponse } from "google-auth-library/build/src/auth/oauth2client";
 import RE2 from "re2";
 
-import { getConfig } from "@app/lib/config/env";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -131,9 +131,12 @@ export const buildGcpSourceCredential = (credentialJson: string) => {
   });
 };
 
-export const getGcpConnectionAuthToken = async (appConnection: TGcpConnectionConfig) => {
-  const appCfg = getConfig();
-  if (!appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
+export const getGcpConnectionAuthToken = async (
+  appConnection: TGcpConnectionConfig,
+  instanceConfigService: TInstanceConfigService
+) => {
+  const { INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL } = await instanceConfigService.getInstanceConfig();
+  if (!INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
     throw new InternalServerError({
       message: `Environment variables have not been configured for GCP ${getAppConnectionMethodName(
         GcpConnectionMethod.ServiceAccountImpersonation
@@ -141,7 +144,7 @@ export const getGcpConnectionAuthToken = async (appConnection: TGcpConnectionCon
     });
   }
 
-  const sourceClient = buildGcpSourceCredential(appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL);
+  const sourceClient = buildGcpSourceCredential(INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL);
 
   const impersonatedCredentials = new Impersonated({
     sourceClient,
@@ -174,8 +177,11 @@ export const getGcpConnectionAuthToken = async (appConnection: TGcpConnectionCon
   return tokenResponse.token;
 };
 
-export const getGcpSecretManagerProjects = async (appConnection: TGcpConnection) => {
-  const accessToken = await getGcpConnectionAuthToken(appConnection);
+export const getGcpSecretManagerProjects = async (
+  appConnection: TGcpConnection,
+  instanceConfigService: TInstanceConfigService
+) => {
+  const accessToken = await getGcpConnectionAuthToken(appConnection, instanceConfigService);
 
   let gcpApps: GCPApp[] = [];
 
@@ -242,8 +248,12 @@ export const getGcpSecretManagerProjects = async (appConnection: TGcpConnection)
   return projects;
 };
 
-export const getGcpSecretManagerProjectLocations = async (projectId: string, appConnection: TGcpConnection) => {
-  const accessToken = await getGcpConnectionAuthToken(appConnection);
+export const getGcpSecretManagerProjectLocations = async (
+  projectId: string,
+  appConnection: TGcpConnection,
+  instanceConfigService: TInstanceConfigService
+) => {
+  const accessToken = await getGcpConnectionAuthToken(appConnection, instanceConfigService);
 
   let gcpLocations: GCPLocation[] = [];
 
@@ -281,7 +291,10 @@ export const getGcpSecretManagerProjectLocations = async (projectId: string, app
   return gcpLocations.sort((a, b) => a.displayName.localeCompare(b.displayName));
 };
 
-export const validateGcpConnectionCredentials = async (appConnection: TGcpConnectionConfig) => {
+export const validateGcpConnectionCredentials = async (
+  appConnection: TGcpConnectionConfig,
+  instanceConfigService: TInstanceConfigService
+) => {
   // Check if provided service account email suffix matches organization ID.
   // We do this to mitigate confused deputy attacks in multi-tenant instances
   if (appConnection.credentials.serviceAccountEmail) {
@@ -294,7 +307,7 @@ export const validateGcpConnectionCredentials = async (appConnection: TGcpConnec
     }
   }
 
-  await getGcpConnectionAuthToken(appConnection);
+  await getGcpConnectionAuthToken(appConnection, instanceConfigService);
 
   return appConnection.credentials;
 };
@@ -408,8 +421,12 @@ const isGcpServiceEnabled = async (accessToken: string, projectId: string, servi
   }
 };
 
-const getGcpProjectsWithServiceEnabled = async (appConnection: TGcpConnection, serviceName: string) => {
-  const accessToken = await getGcpConnectionAuthToken(appConnection);
+const getGcpProjectsWithServiceEnabled = async (
+  appConnection: TGcpConnection,
+  serviceName: string,
+  instanceConfigService: TInstanceConfigService
+) => {
+  const accessToken = await getGcpConnectionAuthToken(appConnection, instanceConfigService);
 
   const apps = await fetchGcpPages<GCPGetProjectsRes, GCPApp>({
     url: `${IntegrationUrls.GCP_API_URL}/v1/projects`,
@@ -434,14 +451,27 @@ const getGcpProjectsWithServiceEnabled = async (appConnection: TGcpConnection, s
   return projects.sort((a, b) => a.name.localeCompare(b.name));
 };
 
-export const getGcpCertificateManagerProjects = async (appConnection: TGcpConnection) =>
-  getGcpProjectsWithServiceEnabled(appConnection, IntegrationUrls.GCP_CERTIFICATE_MANAGER_SERVICE_NAME);
+export const getGcpCertificateManagerProjects = async (
+  appConnection: TGcpConnection,
+  instanceConfigService: TInstanceConfigService
+) =>
+  getGcpProjectsWithServiceEnabled(
+    appConnection,
+    IntegrationUrls.GCP_CERTIFICATE_MANAGER_SERVICE_NAME,
+    instanceConfigService
+  );
 
-export const getGcpCloudDnsProjects = async (appConnection: TGcpConnection) =>
-  getGcpProjectsWithServiceEnabled(appConnection, IntegrationUrls.GCP_CLOUD_DNS_SERVICE_NAME);
+export const getGcpCloudDnsProjects = async (
+  appConnection: TGcpConnection,
+  instanceConfigService: TInstanceConfigService
+) => getGcpProjectsWithServiceEnabled(appConnection, IntegrationUrls.GCP_CLOUD_DNS_SERVICE_NAME, instanceConfigService);
 
-export const getGcpCloudDnsZones = async (projectId: string, appConnection: TGcpConnection) => {
-  const accessToken = await getGcpConnectionAuthToken(appConnection);
+export const getGcpCloudDnsZones = async (
+  projectId: string,
+  appConnection: TGcpConnection,
+  instanceConfigService: TInstanceConfigService
+) => {
+  const accessToken = await getGcpConnectionAuthToken(appConnection, instanceConfigService);
 
   const zones = await fetchGcpPages<GCPGetCloudDnsManagedZonesRes, GCPCloudDnsManagedZone>({
     url: `${IntegrationUrls.GCP_CLOUD_DNS_URL}/dns/v1/projects/${projectId}/managedZones`,
@@ -463,8 +493,12 @@ export const getGcpCloudDnsZones = async (projectId: string, appConnection: TGcp
     .sort((a, b) => a.dnsName.localeCompare(b.dnsName));
 };
 
-export const getGcpCertificateManagerLocations = async (projectId: string, appConnection: TGcpConnection) => {
-  const accessToken = await getGcpConnectionAuthToken(appConnection);
+export const getGcpCertificateManagerLocations = async (
+  projectId: string,
+  appConnection: TGcpConnection,
+  instanceConfigService: TInstanceConfigService
+) => {
+  const accessToken = await getGcpConnectionAuthToken(appConnection, instanceConfigService);
 
   const locations = await fetchGcpPages<GCPGetProjectLocationsRes, GCPLocation>({
     url: `${IntegrationUrls.GCP_CERTIFICATE_MANAGER_URL}/v1/projects/${projectId}/locations`,
@@ -488,8 +522,12 @@ export const getGcpCertificateManagerLocations = async (projectId: string, appCo
   }));
 };
 
-export const getGcpCertificateMaps = async (projectId: string, appConnection: TGcpConnection) => {
-  const accessToken = await getGcpConnectionAuthToken(appConnection);
+export const getGcpCertificateMaps = async (
+  projectId: string,
+  appConnection: TGcpConnection,
+  instanceConfigService: TInstanceConfigService
+) => {
+  const accessToken = await getGcpConnectionAuthToken(appConnection, instanceConfigService);
 
   const certificateMaps = await fetchGcpPages<GCPGetCertificateMapsRes, { name: string; description?: string }>({
     url: `${IntegrationUrls.GCP_CERTIFICATE_MANAGER_URL}/v1/projects/${projectId}/locations/${GCP_GLOBAL_LOCATION}/certificateMaps`,

@@ -5,6 +5,7 @@ import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } 
 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   PlanFeature,
@@ -62,7 +63,6 @@ import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -95,6 +95,7 @@ import {
 import { createSsrfSafeOidcClient, discoverOidcIssuer, secureOidcIssuer } from "./oidc-ssrf-fns";
 
 type TOidcConfigServiceFactoryDep = {
+  instanceConfigService: TInstanceConfigService;
   userDAL: Pick<
     TUserDALFactory,
     | "create"
@@ -158,6 +159,7 @@ type TOidcConfigServiceFactoryDep = {
 export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFactory>;
 
 export const oidcConfigServiceFactory = ({
+  instanceConfigService,
   orgDAL,
   userDAL,
   userAliasDAL,
@@ -260,9 +262,9 @@ export const oidcConfigServiceFactory = ({
     manageGroupMemberships,
     idpMfa
   }: TOidcLoginDTO) => {
-    const serverCfg = await getServerCfg();
+    const { enabledLoginMethods } = await instanceConfigService.getInstanceConfig();
 
-    if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.OIDC)) {
+    if (enabledLoginMethods && !enabledLoginMethods.includes(LoginMethod.OIDC)) {
       throw new ForbiddenRequestError({
         message: "Login with OIDC is disabled by administrator."
       });

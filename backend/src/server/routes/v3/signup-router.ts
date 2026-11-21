@@ -12,7 +12,6 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { CompleteAccountType } from "@app/services/auth/auth-signup-type";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { PostHogEventTypes, SignupAttributionType, SignupSource } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedUserSchema } from "../sanitizedSchemas";
@@ -45,16 +44,16 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { email } = req.body;
 
-      const serverCfg = await getServerCfg();
-      if (!serverCfg.allowSignUp) {
+      const { allowSignUp, allowedSignUpDomain } = await server.services.instanceConfigService.getInstanceConfig();
+      if (!allowSignUp) {
         throw new ForbiddenRequestError({
           message: "Signup's are disabled"
         });
       }
 
-      if (serverCfg?.allowedSignUpDomain) {
+      if (allowedSignUpDomain) {
         const domain = email.split("@")[1];
-        if (!matchesAllowedEmailDomain(email, serverCfg.allowedSignUpDomain)) {
+        if (!matchesAllowedEmailDomain(email, allowedSignUpDomain)) {
           throw new ForbiddenRequestError({
             message: `Email with a domain (@${domain}) is not supported`
           });
@@ -95,8 +94,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const serverCfg = await getServerCfg();
-      if (!serverCfg.allowSignUp) {
+      const { allowSignUp } = await server.services.instanceConfigService.getInstanceConfig();
+      if (!allowSignUp) {
         throw new ForbiddenRequestError({
           message: "Signup's are disabled"
         });
