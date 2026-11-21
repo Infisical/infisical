@@ -16,6 +16,7 @@ import {
   getCertificateActionApproval,
   getCertificateActionMenuState,
   getCertificateDeletedBySummary,
+  getCertificateDeletionTitle,
   getCertificateDeletionToast,
   getCertificateDeletionWarning,
   getCertificateDisplayStatus,
@@ -528,6 +529,31 @@ describe("getCertificateDisplayStatus", () => {
     expect(
       getCertificateDisplayStatus({ status: CertStatus.ACTIVE, notAfter: future }).status
     ).toBe(CertStatus.ACTIVE);
+  });
+});
+
+describe("getCertificateDeletionTitle", () => {
+  const serialNumber = "4f1a9c2be07d";
+
+  it("names a certificate with only alternative names by them", () => {
+    expect(
+      getCertificateDeletionTitle({ commonName: "", altNames: "api.example.com", serialNumber })
+    ).toBe("Delete Certificate api.example.com?");
+  });
+
+  it("names a certificate by its common name", () => {
+    expect(getCertificateDeletionTitle({ commonName: "web.example.com", serialNumber })).toBe(
+      "Delete Certificate web.example.com?"
+    );
+  });
+
+  it("falls back to the friendly name, then the serial number", () => {
+    expect(
+      getCertificateDeletionTitle({ commonName: "", friendlyName: "payments api", serialNumber })
+    ).toBe("Delete Certificate payments api?");
+    expect(getCertificateDeletionTitle({ commonName: "", serialNumber })).toBe(
+      "Delete Certificate 4F1A9C2BE07D?"
+    );
   });
 });
 
