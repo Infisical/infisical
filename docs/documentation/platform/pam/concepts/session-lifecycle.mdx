@@ -34,6 +34,8 @@ The session ends when one of the following happens:
 - The person disconnects
 - The session reaches the template's maximum session length
 - An Admin on the account [terminates the session](/documentation/platform/pam/sessions/overview)
+- The person no longer has a role that lets them launch sessions on the account, such as when an Admin removes their role or they leave the group that has it
+- The person's access to the account expires, if every role that lets them launch sessions on it has an expiry
 
 ## After the session
 
