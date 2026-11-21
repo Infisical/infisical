@@ -28,7 +28,8 @@ import { usePendingApprovals } from "../secret-manager/pending-approvals";
 import { type ShellBannerContext, type ShellBannerScope, PageFrame, ShellBanners } from "./banners";
 import { useShellChrome } from "./chrome";
 import { CommandPalette } from "./command-palette";
-import { shellTrail, type V4ShellLevel } from "./levels";
+import { useCornerCard } from "./corner";
+import { productCurrentId, shellTrail, type V4ShellLevel } from "./levels";
 import { resolveShellLocation, type ShellLocation } from "./location";
 import {
   hueOf,
@@ -40,6 +41,7 @@ import {
   projectHome
 } from "./navigation";
 import { NotificationInbox, useNotificationInbox } from "./notifications";
+import { useBlockedProducts } from "./product-access";
 import { ProjectGate } from "./project-gate";
 import { nameLabel, useProjectName } from "./resource-name";
 
@@ -125,6 +127,23 @@ const bannerContext = ({
   };
 };
 
+const sidebarCurrentId = ({
+  nav,
+  at,
+  shownId,
+  sidebarCurrent
+}: {
+  nav?: V4ShellNav;
+  at: ShellLocation;
+  shownId: string;
+  sidebarCurrent?: { id: string };
+}) => {
+  if (nav) return nav.current;
+  if (at.level === "product" && at.product && at.current)
+    return productCurrentId(at.product, at.current.id);
+  return sidebarCurrent && `${shownId}:${sidebarCurrent.id}`;
+};
+
 export type V4ShellNav = {
   levels?: readonly V4ShellLevel[];
   current?: string;
@@ -148,8 +167,12 @@ export const V4Shell = ({
   const resolve = useResolveV4Href();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const inbox = useNotificationInbox(orgId);
-  const readiness = useMatches({ select: (matches) => matches.at(-1)?.staticData.readiness });
-  const toClassic = useMatches({ select: (matches) => matches.at(-1)?.staticData.classicHref });
+  const readiness = useMatches({
+    select: (matches) => matches.at(-1)?.staticData.readiness
+  });
+  const toClassic = useMatches({
+    select: (matches) => matches.at(-1)?.staticData.classicHref
+  });
   const [switchingTo, setSwitchingTo] = useState<string>();
   const switching =
     switchingTo !== undefined &&
@@ -161,7 +184,10 @@ export const V4Shell = ({
   const base = orgHref(orgId);
   const { selectedTab } = location.search as { selectedTab?: string };
   const at: ShellLocation = nav
-    ? { level: "org", sections: orgSections(session.organization.isSubOrganization) }
+    ? {
+        level: "org",
+        sections: orgSections(session.organization.isSubOrganization)
+      }
     : resolveShellLocation(
         location.pathname.slice(base.length),
         selectedTab,
@@ -173,6 +199,7 @@ export const V4Shell = ({
   const sidebarCurrent = at.current ?? (at.projectId ? at.sections[0]?.items[0] : undefined);
   const projectName = useProjectName(at.projectId ?? "");
   const agentVaultSetup = useAgentVaultSetupSidebar(orgId, at);
+  const blocked = useBlockedProducts(orgId);
   const approvals = usePendingApprovals(
     at.product === ProjectType.SecretManager ? (at.projectId ?? "") : ""
   );
@@ -180,12 +207,15 @@ export const V4Shell = ({
     at,
     projectName: projectName.name,
     isSubOrganization: session.organization.isSubOrganization,
+    blocked,
     nested: nav?.levels,
     linkTo: (path, search) => ({ to: resolve(`${base}${path}`), search }) as LinkOptions,
     projectCounts: { approvals: approvals.changesToReview + approvals.accessToReview }
   });
   const shown = trail[trail.length - 1];
   const parent = trail[trail.length - 2];
+  const corner = useCornerCard(orgId, shown.id === "org", chrome.whatsNew);
+  const current = sidebarCurrentId({ nav, at, shownId: shown.id, sidebarCurrent });
 
   const orgCrumb: BreadcrumbCrumb = {
     label: organization.name,
@@ -304,20 +334,31 @@ export const V4Shell = ({
           scope={
             parent && {
               id: shown.id,
-              back: { id: parent.id, label: parent.label, link: parent.landing },
+              back: {
+                id: parent.id,
+                label: parent.label,
+                link: parent.landing
+              },
               sections: shown.sections
             }
           }
-          current={nav ? nav.current : sidebarCurrent && `${shown.id}:${sidebarCurrent.id}`}
+          current={current}
           help={chrome.help}
           announcements={chrome.announcements}
+          {...corner}
           {...agentVaultSetup}
         />
         <HuePortal {...hue}>
           <AppInset {...hueScope(hue.hue, hue.level)}>
             <ShellBanners
               orgId={orgId}
-              {...bannerContext({ at, base, pathname: location.pathname, nav, banners })}
+              {...bannerContext({
+                at,
+                base,
+                pathname: location.pathname,
+                nav,
+                banners
+              })}
             />
             <PageGutter className={styles.content}>{content}</PageGutter>
           </AppInset>
