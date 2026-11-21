@@ -1,7 +1,14 @@
 import { packRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
 
-import { AccessScope, ActionProjectType, OrganizationActionScope, ProjectType, TableName } from "@app/db/schemas";
+import {
+  AccessScope,
+  ActionProjectType,
+  OrganizationActionScope,
+  ProjectMembershipRole,
+  ProjectType,
+  TableName
+} from "@app/db/schemas";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -56,7 +63,7 @@ type TRoleServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   externalGroupOrgRoleMappingDAL: Pick<TExternalGroupOrgRoleMappingDALFactory, "findOne">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find" | "delete">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find" | "delete" | "insertMany">;
   licenseService: TLicenseService;
 };
 
@@ -192,13 +199,26 @@ export const roleServiceFactory = ({
         await lockProjectRoleChanges(projectId, tx);
         // A time limit that has ended confers nothing and no member list shows it, so only live holders keep the role,
         // and the ended rows go with it.
-        const holders = (await membershipRoleDAL.find({ customRoleId: existingRole.id }, { tx })).filter(isActiveRole);
+        const rows = await membershipRoleDAL.find({ customRoleId: existingRole.id }, { tx });
+        const holders = rows.filter(isActiveRole);
         if (holders.length) {
           throw new BadRequestError({
             message: `${holders.length} member${holders.length > 1 ? "s hold" : " holds"} this role. Remove it from them under Access Control first.`
           });
         }
         await membershipRoleDAL.delete({ customRoleId: existingRole.id }, tx);
+        // A membership needs a role row, so one whose only row was an ended assignment of this role gets No Access.
+        const membershipIds = [...new Set(rows.map((row) => row.membershipId))];
+        if (membershipIds.length) {
+          const remaining = await membershipRoleDAL.find({ $in: { membershipId: membershipIds } }, { tx });
+          const emptied = membershipIds.filter((id) => !remaining.some((row) => row.membershipId === id));
+          if (emptied.length) {
+            await membershipRoleDAL.insertMany(
+              emptied.map((membershipId) => ({ membershipId, role: ProjectMembershipRole.NoAccess })),
+              tx
+            );
+          }
+        }
         return roleDAL.delete({ id: existingRole.id, projectId }, tx);
       });
       return { ...role, projectId, permissions: unpackPermissions(role.permissions) };

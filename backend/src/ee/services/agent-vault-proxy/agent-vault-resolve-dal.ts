@@ -106,6 +106,46 @@ const whereUsable = (
 // A session found only on the primary is newer than the replica, and so are the bundle links written with it.
 type TResolveReadOptions = { onPrimary?: boolean };
 
+const wildcardsOf = ({ hostPattern }: { hostPattern: string | null }) =>
+  hostPattern ? parseHostPatterns(hostPattern).patterns.filter((pattern) => pattern.isWildcard) : [];
+
+/**
+ * A role's deny on a service holds inside a bundle too, so a denied row is left out. An exact host beats a wildcard, so
+ * leaving out a row hands its hosts to a wildcard row left beside it, with that row's credential and none of the left
+ * out row's limits. So a row whose wildcard covers a host of a row left out goes too, and so on until no row left can
+ * take over a host, unless the owner can use it directly and so could name it alone anyway.
+ */
+export const withoutDeniedServices = <T extends { id: string; hostPattern: string | null }>(
+  rows: T[],
+  isDenied: ((id: string) => boolean) | null,
+  directIds: string[] | null
+) => {
+  if (!isDenied) return rows;
+  const denied = rows.filter((row) => isDenied(row.id));
+  if (!denied.length) return rows;
+  const direct = new Set(directIds ?? []);
+  const takesHostOf = (row: T, leftOut: T[]) => {
+    const wildcards = wildcardsOf(row);
+    return (
+      wildcards.length > 0 &&
+      leftOut.some(
+        (leftOutRow) =>
+          Boolean(leftOutRow.hostPattern) &&
+          parseHostPatterns(leftOutRow.hostPattern!).patterns.some((pattern) =>
+            wildcards.some((wildcard) => relateHostPatterns(wildcard, pattern) !== AgentVaultPatternRelation.Disjoint)
+          )
+      )
+    );
+  };
+  const leaveOut = (leftOut: T[]): T[] => {
+    const leftOutIds = new Set(leftOut.map((row) => row.id));
+    const takers = rows.filter((row) => !leftOutIds.has(row.id) && !direct.has(row.id) && takesHostOf(row, leftOut));
+    return takers.length ? leaveOut([...leftOut, ...takers]) : leftOut;
+  };
+  const leftOutIds = new Set(leaveOut(denied).map((row) => row.id));
+  return rows.filter((row) => !leftOutIds.has(row.id));
+};
+
 export const agentVaultResolveDALFactory = (db: TDbClient) => {
   // The session's bundles that the actor can still use: the bundle set fixed at mint, intersected with the bundles the
   // actor's roles let them use now (accessBundleIds, null when every bundle in the project is allowed). Services and
@@ -146,9 +186,6 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
     "encryptedHookSecret"
   ] as const;
 
-  const wildcardsOf = ({ hostPattern }: { hostPattern: string | null }) =>
-    hostPattern ? parseHostPatterns(hostPattern).patterns.filter((pattern) => pattern.isWildcard) : [];
-
   const coversExactHostOf = (wildcards: TAgentVaultHostPattern[], { hostPattern }: { hostPattern: string | null }) =>
     Boolean(hostPattern) &&
     parseHostPatterns(hostPattern!).patterns.some(
@@ -156,37 +193,6 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
         !pattern.isWildcard &&
         wildcards.some((wildcard) => relateHostPatterns(wildcard, pattern) === AgentVaultPatternRelation.Contained)
     );
-
-  /**
-   * A role's deny on a service holds inside a bundle too, so a denied row is left out. An exact host beats a wildcard,
-   * so leaving out only the denied service would hand its hosts to a wildcard service beside it, with that service's
-   * credential and none of the denied one's limits. A row whose wildcard covers a host of a denied row is left out with
-   * it, unless the owner can use it directly and so could name it alone anyway.
-   */
-  const withoutDeniedServices = <T extends { id: string; hostPattern: string | null }>(
-    rows: T[],
-    isDenied: ((id: string) => boolean) | null,
-    directIds: string[] | null
-  ) => {
-    if (!isDenied) return rows;
-    const deniedRows = rows.filter((row) => isDenied(row.id));
-    if (!deniedRows.length) return rows;
-    const direct = new Set(directIds ?? []);
-    const coversDeniedHost = (row: T) => {
-      const wildcards = wildcardsOf(row);
-      return (
-        wildcards.length > 0 &&
-        deniedRows.some(
-          (deniedRow) =>
-            Boolean(deniedRow.hostPattern) &&
-            parseHostPatterns(deniedRow.hostPattern!).patterns.some((pattern) =>
-              wildcards.some((wildcard) => relateHostPatterns(wildcard, pattern) !== AgentVaultPatternRelation.Disjoint)
-            )
-        )
-      );
-    };
-    return rows.filter((row) => !isDenied(row.id) && (direct.has(row.id) || !coversDeniedHost(row)));
-  };
 
   /**
    * An exact host beats a wildcard, which is how a bundle writes an override: `api.example.com` read-only beside an

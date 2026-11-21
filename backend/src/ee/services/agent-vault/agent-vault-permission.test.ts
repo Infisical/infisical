@@ -170,6 +170,16 @@ describe("a deny in one role holds against another", () => {
     expect(usable).toEqual([]);
   });
 
+  test("a deny on the all-zero id takes back only that id, since a rule may name any id", async () => {
+    const zeroId = "00000000-0000-0000-0000-000000000000";
+    const permission = permissionOfRoles(
+      [useBundle("b1")],
+      [denyUse(ProjectPermissionSub.AgentVaultServices, { serviceId: zeroId })]
+    );
+    const reach = await reachOf(permission, { agentVaultReachDAL: reachDAL }, "p");
+    expect(reach.deniedServiceIds).toEqual([zeroId]);
+  });
+
   test("a deny that a later allow overrides takes nothing back", async () => {
     const ability = createMongoAbility([
       { action: "use", subject: ProjectPermissionSub.AgentVaultAccessBundles },

@@ -148,13 +148,15 @@ export const canUseAgentVaultSkill = (
   );
 };
 
-// No role names a skill that doesn't exist yet, so an id no rule can hold asks whether the caller's roles let them use
-// every new skill.
-const NEW_SKILL_ID = "00000000-0000-0000-0000-000000000000";
-
-// Adding a skill to a bundle takes being able to use it, and a skill just created is in no bundle yet.
+// Adding a skill to a bundle takes being able to use it, and a skill just created is in no bundle yet. No rule can name
+// an id made just now, so checking one asks whether the caller's roles let them use every new skill. A fixed id
+// wouldn't do: a rule may name any id.
 export const canUseNewAgentVaultSkill = (permission: MongoAbility<ProjectPermissionSet>) =>
-  canOnAgentVaultSkill(permission, ProjectPermissionAgentVaultSkillActions.Use, NEW_SKILL_ID);
+  canOnAgentVaultSkill(
+    permission,
+    ProjectPermissionAgentVaultSkillActions.Use,
+    crypto.randomUUID()
+  );
 
 // The members API takes adding a member, or changing one's roles, on users, groups and machine identities alike when a
 // request names all three kinds, so assigning a role from anywhere needs Create and Edit on all three.
@@ -175,11 +177,21 @@ export const canReadAgentVaultMembers = (permission: MongoAbility<ProjectPermiss
   permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups) ||
   permission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
 
-// Only then does the members list hold everyone, so a count from it can say nobody holds a role.
-export const canReadEveryAgentVaultMember = (permission: MongoAbility<ProjectPermissionSet>) =>
-  permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) &&
-  permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups) &&
-  permission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
+// Only then does the members list hold everyone, so a count from it can say nobody holds a role. The list leaves out
+// each machine identity the caller's roles can't read, so identity read has to cover every one: an allow without
+// conditions, and no deny.
+export const canReadEveryAgentVaultMember = (permission: MongoAbility<ProjectPermissionSet>) => {
+  const identityRules = permission.rulesFor(
+    ProjectPermissionIdentityActions.Read,
+    ProjectPermissionSub.Identity
+  );
+  return (
+    permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) &&
+    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups) &&
+    identityRules.some((rule) => !rule.inverted && !rule.conditions) &&
+    identityRules.every((rule) => !rule.inverted)
+  );
+};
 
 // Access Control has a tab for each kind of member and one for roles, so reading any of them opens it.
 export const canOpenAgentVaultAccessControl = (permission: MongoAbility<ProjectPermissionSet>) =>

@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessScope, OrgMembershipStatus, TableName, TAgentVaultAccessBundles } from "@app/db/schemas";
+import { AccessScope, OrgMembershipStatus, TableName, TAgentVaultAccessBundles, TRoles } from "@app/db/schemas";
 import {
   AGENT_VAULT_ACTOR_COLUMN,
   AgentVaultMemberType,
@@ -250,6 +250,19 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Locks a bundle's role row, so an edit to the role waits for this transaction and a check of its rules holds until
+  // the transaction ends.
+  const lockBundleRole = async (
+    { id, projectId }: { id: string; projectId: string },
+    tx: Knex
+  ): Promise<TRoles | undefined> => {
+    try {
+      return await tx(TableName.Role).where({ id, projectId }).forUpdate().first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Lock agent vault access bundle role" });
+    }
+  };
+
   // How many active project members hold each role, built-in roles by slug and custom roles by id. An ended temporary
   // role isn't held.
   const countRoleHolders = async (projectId: string, tx?: Knex) => {
@@ -424,5 +437,5 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findForList, findByIdInProject, lockByIdInProject, findMembers, countRoleHolders };
+  return { ...orm, findForList, findByIdInProject, lockByIdInProject, lockBundleRole, findMembers, countRoleHolders };
 };

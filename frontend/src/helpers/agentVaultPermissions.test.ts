@@ -2,15 +2,19 @@ import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
 import { describe, expect, it } from "vitest";
 
 import {
+  ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultServiceActions,
   ProjectPermissionAgentVaultSkillActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext";
 import { conditionsMatcher } from "@app/hooks/api/roles/permission-matcher";
 
 import {
+  canReadEveryAgentVaultMember,
   canUseAgentVaultAccessBundle,
   canUseAgentVaultAccessBundles,
   canUseAgentVaultService,
@@ -169,5 +173,48 @@ describe("canUseNewAgentVaultSkill", () => {
     expect(canUseNewAgentVaultSkill(abilityOf([useSkills(), useSkills(undefined, true)]))).toBe(
       false
     );
+  });
+
+  it("isn't fooled by a deny on the all-zero id, which a rule may name like any other", () => {
+    const zeroId = "00000000-0000-0000-0000-000000000000";
+    expect(
+      canUseNewAgentVaultSkill(
+        abilityOf([useSkills(), useSkills({ skillId: { $eq: zeroId } }, true)])
+      )
+    ).toBe(true);
+  });
+});
+
+describe("canReadEveryAgentVaultMember", () => {
+  const readUsersAndGroups: TRule[] = [
+    { action: ProjectPermissionMemberActions.Read, subject: ProjectPermissionSub.Member },
+    { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Groups }
+  ];
+  const readIdentities = (conditions?: Record<string, unknown>, inverted = false): TRule => ({
+    action: ProjectPermissionIdentityActions.Read,
+    subject: ProjectPermissionSub.Identity,
+    ...(conditions ? { conditions } : {}),
+    ...(inverted ? { inverted } : {})
+  });
+
+  it("is true only when identity read covers every machine identity", () => {
+    expect(canReadEveryAgentVaultMember(abilityOf([...readUsersAndGroups, readIdentities()]))).toBe(
+      true
+    );
+    expect(
+      canReadEveryAgentVaultMember(
+        abilityOf([...readUsersAndGroups, readIdentities({ identityId: { $eq: OTHER_SERVICE } })])
+      )
+    ).toBe(false);
+    expect(
+      canReadEveryAgentVaultMember(
+        abilityOf([
+          ...readUsersAndGroups,
+          readIdentities(),
+          readIdentities({ identityId: { $eq: OTHER_SERVICE } }, true)
+        ])
+      )
+    ).toBe(false);
+    expect(canReadEveryAgentVaultMember(abilityOf([readIdentities()]))).toBe(false);
   });
 });

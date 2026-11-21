@@ -1335,6 +1335,7 @@ const buildBundleService = ({
   const agentVaultAccessBundleDAL = {
     findByIdInProject: vi.fn().mockResolvedValue(bundle),
     lockByIdInProject: vi.fn().mockResolvedValue(bundle),
+    lockBundleRole: vi.fn().mockResolvedValue(bundleRole),
     findOne: vi.fn().mockResolvedValue(undefined),
     updateById: vi.fn(async (_id: string, columns: Record<string, unknown>) => ({ ...bundle, ...columns })),
     deleteById: vi.fn().mockResolvedValue(bundle),
@@ -1526,6 +1527,11 @@ describe("deleteAccessBundle, the bundle's own role", () => {
 
     expect(result.removedRole).toEqual({ id: BUNDLE_ROLE_ID, slug: "infra-users" });
     expect(tx.raw).toHaveBeenCalled();
+    // A role edit doesn't take the project's lock, so the delete checks the role's rules on a locked row.
+    expect(agentVaultAccessBundleDAL.lockBundleRole).toHaveBeenCalledWith(
+      { id: BUNDLE_ROLE_ID, projectId: PROJECT_ID },
+      tx
+    );
     expect(membershipRoleDAL.delete).toHaveBeenCalledWith({ customRoleId: BUNDLE_ROLE_ID }, tx);
     expect(membershipRoleDAL.insertMany).toHaveBeenCalledWith(
       [{ membershipId: TARGET_MEMBERSHIP_ID, role: "no-access" }],

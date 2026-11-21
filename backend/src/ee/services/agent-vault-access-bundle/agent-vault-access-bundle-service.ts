@@ -1289,7 +1289,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     // then its services, so this can't deadlock with a grant, a link or a personal values save. The services stay in the
     // project; the delete only takes their links. The bundle's own role goes too while it grants only this bundle: it
     // would cover nothing and still count toward each holder's role limit. A role an admin changed stays, like any other
-    // role that names the bundle, and covers nothing once the bundle is gone.
+    // role that names the bundle, and covers nothing once the bundle is gone. The role row is locked before its rules are
+    // checked, since a role edit doesn't take the project's lock: an edit then either lands first and keeps the role, or
+    // waits for the delete.
     return agentVaultAccessBundleDAL.transaction(async (tx) => {
       await lockProjectRoleChanges(rest.projectId, tx);
       const locked = await agentVaultAccessBundleDAL.lockByIdInProject(
@@ -1298,7 +1300,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       );
       if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
       await agentVaultServiceDAL.lockByAccessBundleId(bundle.id, tx);
-      const role = locked.grantRoleId ? await roleDAL.findById(locked.grantRoleId, tx) : undefined;
+      const role = locked.grantRoleId
+        ? await agentVaultAccessBundleDAL.lockBundleRole({ id: locked.grantRoleId, projectId: rest.projectId }, tx)
+        : undefined;
       const removedRole = role && hasOnlyBundleRoleRules(role.permissions, locked.id) ? role : undefined;
       if (removedRole) await takeBundleRoleFromEveryone({ membershipRoleDAL }, { roleId: removedRole.id }, tx);
       const accessBundle = await agentVaultAccessBundleDAL.deleteById(bundle.id, tx);

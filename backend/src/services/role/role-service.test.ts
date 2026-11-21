@@ -20,10 +20,13 @@ const scopeData = { scope: AccessScope.Project, orgId: ORG_ID, projectId: PROJEC
 const build = ({
   projectType,
   holderRows = [],
+  remainingRows = [],
   roleExists = false
 }: {
   projectType: ProjectType;
   holderRows?: Record<string, unknown>[];
+  // The rows the holders' memberships still have once the role's rows are gone.
+  remainingRows?: Record<string, unknown>[];
   roleExists?: boolean;
 }) => {
   const raw = vi.fn().mockResolvedValue(undefined);
@@ -36,8 +39,9 @@ const build = ({
     transaction: vi.fn(async (cb: (trx: Knex) => Promise<unknown>) => cb(tx))
   };
   const membershipRoleDAL = {
-    find: vi.fn().mockResolvedValue(holderRows),
-    delete: vi.fn().mockResolvedValue([])
+    find: vi.fn().mockResolvedValueOnce(holderRows).mockResolvedValue(remainingRows),
+    delete: vi.fn().mockResolvedValue([]),
+    insertMany: vi.fn().mockResolvedValue([])
   };
   const service = roleServiceFactory({
     roleDAL: roleDAL as never,
@@ -79,7 +83,9 @@ describe("custom roles without the RBAC plan", () => {
 });
 
 describe("deleting an Agent Vault role", () => {
+  const MEMBERSHIP_ID = "membership-1";
   const ended = {
+    membershipId: MEMBERSHIP_ID,
     customRoleId: ROLE_ID,
     role: ProjectMembershipRole.Custom,
     isTemporary: true,
@@ -90,6 +96,7 @@ describe("deleting an Agent Vault role", () => {
     const { service, roleDAL, membershipRoleDAL, raw, tx } = build({
       projectType: ProjectType.AgentVault,
       holderRows: [ended],
+      remainingRows: [{ membershipId: MEMBERSHIP_ID, role: ProjectMembershipRole.Custom, customRoleId: "role-other" }],
       roleExists: true
     });
 
@@ -99,9 +106,27 @@ describe("deleting an Agent Vault role", () => {
       PgSqlLock.LastAdminGuard("project", PROJECT_ID)
     ]);
     expect(membershipRoleDAL.delete).toHaveBeenCalledWith({ customRoleId: ROLE_ID }, tx);
+    expect(membershipRoleDAL.insertMany).not.toHaveBeenCalled();
     expect(roleDAL.delete).toHaveBeenCalledWith({ id: ROLE_ID, projectId: PROJECT_ID }, tx);
     expect(membershipRoleDAL.delete.mock.invocationCallOrder[0]).toBeLessThan(
       roleDAL.delete.mock.invocationCallOrder[0]
+    );
+  });
+
+  test("a member whose only row was an ended assignment of the role gets No Access, so their membership keeps a role", async () => {
+    const { service, membershipRoleDAL, tx } = build({
+      projectType: ProjectType.AgentVault,
+      holderRows: [ended],
+      remainingRows: [],
+      roleExists: true
+    });
+
+    await service.deleteRole(deleteDto);
+
+    expect(membershipRoleDAL.find).toHaveBeenLastCalledWith({ $in: { membershipId: [MEMBERSHIP_ID] } }, { tx });
+    expect(membershipRoleDAL.insertMany).toHaveBeenCalledWith(
+      [{ membershipId: MEMBERSHIP_ID, role: ProjectMembershipRole.NoAccess }],
+      tx
     );
   });
 

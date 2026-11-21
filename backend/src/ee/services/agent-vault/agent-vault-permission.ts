@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
 
@@ -125,16 +127,14 @@ const idsAllowed = async (
   return ids.filter((id) => permission.can(action as never, subject(subjectType, { [field]: id }) as never));
 };
 
-// Matches no row, so a deny that matches it covers ids no rule names, as an unconditioned deny does.
-const ANY_ID = "00000000-0000-0000-0000-000000000000";
-
 // The ids a deny on this action takes back: those the denies name, or "all" when one covers every id. Checked through
-// relevantRuleFor, so a deny that a later allow overrides doesn't count.
+// relevantRuleFor, so a deny that a later allow overrides doesn't count. A deny that matches an id made just now covers
+// ids no rule names, as an unconditioned deny does; a fixed id wouldn't do, since a rule may name any id.
 const deniedIdsOf = (permission: TAbility, { action, subjectType, field }: TIdRules): TAgentVaultDeniedIds => {
   const denies = rulesOf(permission, action, subjectType).filter((rule) => rule.inverted);
   if (!denies.length) return [];
   const isDenied = isDeniedFor(permission, action, subjectType, field);
-  if (isDenied(ANY_ID)) return "all";
+  if (isDenied(randomUUID())) return "all";
   return [...new Set(denies.flatMap((rule) => idsNamedBy(rule, field) ?? []))].filter(isDenied);
 };
 
