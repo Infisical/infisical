@@ -92,7 +92,8 @@ A deletion policy lists profiles by name. It covers a certificate only while the
 
 - Renaming the certificate's profile, until you update the policy with the new name
 - Detaching the certificate's profile from the Application and deleting the profile
-- Deleting the Application
+
+If you delete an Application, Infisical also deletes its approval policies and pending approval requests, and its members lose access to its certificates. A [Product Admin](/documentation/platform/pki/concepts/access-control#product-level) can then delete those certificates right away.
 
 Deleting a certificate doesn't cancel its other pending requests, such as a revocation request, and approvers can still approve them. If certificate cleanup or an Application Admin deletes the certificate while its deletion request is pending, the request stays open. Approving the request later changes nothing.
 
@@ -138,7 +139,7 @@ In the Certificate Manager sidebar, go to **Approval Requests** to see all pendi
 | Status | Meaning |
 |--------|---------|
 | **Open** | Pending approval |
-| **Approved** | The approvers at every step approved the request, and Infisical [issued, revoked, or deleted the certificate, or recorded why it couldn't](#approve-a-request) |
+| **Approved** | The approvers at every step approved the request, and Infisical then [tried to issue, revoke, or delete the certificate](#approve-a-request) |
 | **Rejected** | An approver rejected the request |
 | **Cancelled** | The requester cancelled the request, someone deleted its policy, or a new revocation or deletion request replaced it |
 | **Expired** | Request exceeded max TTL |
