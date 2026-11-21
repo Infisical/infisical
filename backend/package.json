@@ -180,7 +180,7 @@
     "@fastify/multipart": "^10.0.0",
     "@fastify/passport": "^3.0.2",
     "@fastify/rate-limit": "^10.3.0",
-    "@fastify/reply-from": "^12.6.2",
+    "@fastify/reply-from": "^12.8.1",
     "@fastify/request-context": "^6.2.1",
     "@fastify/session": "^11.1.1",
     "@fastify/static": "^10.1.6",
