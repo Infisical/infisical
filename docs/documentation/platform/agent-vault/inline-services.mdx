@@ -13,7 +13,7 @@ A session can use only inline services, or [combine them with services in the pr
 
 ## Prerequisites
 
-- A machine identity with the **Admin** role in an [Agent Vault project](/documentation/platform/agent-vault/access-control#roles)
+- A machine identity in an [Agent Vault project](/documentation/platform/agent-vault/projects) with the **Admin** role, or with a [custom role](/documentation/platform/agent-vault/access-control#create-a-custom-role) that can start sessions with inline services
 - An access token for the machine identity, from the Universal Auth [Login](/api-reference/endpoints/universal-auth/login) endpoint, or an SDK client logged in as the machine identity ([Python](/documentation/platform/agent-vault/create-a-session#create-a-session-with-the-python-sdk) or [Node.js](/documentation/platform/agent-vault/create-a-session#create-a-session-with-the-node-js-sdk))
 - A running [proxy](/documentation/platform/agent-vault/proxies) in the same project, which the agent's machine can reach
 
@@ -80,7 +80,7 @@ const session = await client.agentVault().sessions.create({
 [Start the agent](/documentation/platform/agent-vault/create-a-session#start-the-agent) with the new session's token. When the agent finishes, [revoke the session](/documentation/platform/agent-vault/revoke-a-session).
 
 <Tip>
-  A machine identity can also send inline services with a session that it creates [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users). The user doesn't need the **Admin** role, and the inline services don't use the user's [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values).
+  A machine identity can also send inline services with a session that it creates [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users). The user's roles don't need to allow inline services, and the inline services don't use the user's [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values).
 </Tip>
 
 ### Inline service fields
@@ -171,9 +171,12 @@ If you set `ttl` to `never`, revoke the session when the agent finishes, so that
 
 <AccordionGroup>
   <Accordion title="Creating the session fails with &quot;You are not allowed to create-with-inline-services on agent-vault-sessions&quot;">
-    None of the machine identity's roles can send inline services. Either give it the **Admin** role, or add the services to an access bundle, give the machine identity a [role that can use the bundle](/documentation/platform/agent-vault/access-bundles#who-can-use-an-access-bundle), and create the session with the access bundle or those services instead.
+    None of the machine identity's roles can start sessions with inline services. Do one of these:
 
-    To give the machine identity the **Admin** role:
+    - Give the machine identity the **Admin** role, or a [custom role](/documentation/platform/agent-vault/access-control#create-a-custom-role) with **Inline Services** set to **Yes**
+    - Add the services to an access bundle, give the machine identity a [role that can use the bundle](/documentation/platform/agent-vault/access-bundles#who-can-use-an-access-bundle), and create the session with the access bundle or those services instead
+
+    To give the machine identity another role:
 
     <Steps>
       <Step>
@@ -183,12 +186,12 @@ If you set `ttl` to `never`, revoke the session when the agent finishes, so that
         Open the machine identity's menu and select **Edit Roles**.
       </Step>
       <Step>
-        Pick **Admin** in **Roles**, then select **Save**.
+        Pick the role in **Roles**, then select **Save**.
       </Step>
     </Steps>
   </Accordion>
   <Accordion title="Requests to an inline service's host stop getting credentials">
-    The user or machine identity that created the session no longer has the **Admin** role in the Agent Vault project. Give the role back, or create a new session as an admin.
+    The user or machine identity that created the session no longer has a role that can start sessions with inline services. Give them such a role again, or create a new session as someone whose role can.
   </Accordion>
 </AccordionGroup>
 

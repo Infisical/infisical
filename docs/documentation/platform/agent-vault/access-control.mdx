@@ -23,10 +23,16 @@ Every project has two built-in roles. For any other set of permissions, create a
 | Role | What it allows |
 |------|----------------|
 | **Admin** | Everything in the project, including managing members and roles, letting machine identities [create sessions on behalf of users](/documentation/platform/agent-vault/sessions-on-behalf-of-users), and sending [inline services](/documentation/platform/agent-vault/inline-services) with a session |
-| **No Access** | Nothing, until an admin gives the member another role |
+| **No Access** | Nothing, until someone gives the member another role |
 | Custom role | Exactly the permissions you choose for the role |
 
-If a member holds several roles, they can do everything that any of their roles allows. Members you invite to the organization with access to an Agent Vault project start with **No Access**.
+If a member holds several roles, they can do everything that any of their roles allows, except what one of their roles denies. Members you invite to the organization with access to an Agent Vault project start with **No Access**.
+
+A member's roles have three limits:
+
+- A member can hold up to 10 roles
+- **No Access** can't be combined with another role
+- You can't give a role for a limited time
 
 ### Use an access bundle, service, or skill
 
@@ -35,16 +41,20 @@ To create sessions with an access bundle, a service, or a skill, a member needs 
 - **Use** on an access bundle lets a member create sessions with the bundle, including every service and skill in it, without permissions on those services and skills
 - **Use** on a service or a skill lets a member [pick it for a session](/documentation/platform/agent-vault/create-a-session) without an access bundle
 
+If one of a member's roles denies **Use** on a service or skill, the member can't use it, even through an access bundle that holds it.
+
+A deny on a service for one host also covers a wildcard service for that host. For example, if a role denies **Use** on a service for `api.github.com`, the member also can't use a service for `*.github.com` through an access bundle. Otherwise, their requests to `api.github.com` would [go to the `*.github.com` service](/documentation/platform/agent-vault/http-apis#host-conflicts), which might allow more.
+
 **View** lets a member see an access bundle, service, or skill without using it. Each permission can cover every access bundle, service, or skill in the project, including ones created later, or only the ones you pick.
 
 ### See who can use an access bundle, service, or skill
 
-Infisical lists the roles that can use each access bundle, service, and skill, and the members who hold each role. To open the list, select **Who Can Use** in one of these places:
+Infisical lists the roles that allow **Use** on each access bundle, service, and skill, and the members who hold each role. For a service or skill, the list also includes the roles that can use it through an access bundle. If one of those members also holds a role that denies **Use**, the member still can't use it.
+
+To open the list, select **Who Can Use** in one of these places:
 
 - The row's actions menu on the **Access Bundles**, **Services**, or **Skills** page
 - **Options** on an access bundle's page
-
-For a service or skill, the list includes the roles that can use it through an access bundle.
 
 Through the API, call the [List access bundle roles](/api-reference/endpoints/agent-vault-access-bundles/list-roles), [List service roles](/api-reference/endpoints/agent-vault-services/list-roles), or [List skill roles](/api-reference/endpoints/agent-vault-skills/list-roles) endpoint.
 
@@ -72,7 +82,27 @@ Through the API, call the [List access bundle roles](/api-reference/endpoints/ag
 
 To write a role's rules as JSON, select the **JSON** tab on the role's page. The [Agent Vault permissions reference](/internals/permissions/project-permissions#agent-vault) lists every subject, action, and condition a rule can use, with an example of creating a role through the API.
 
-To give the role to members, [add them](#add-members) with the role, or change the roles of existing members.
+<Warning>
+If a member's role can edit roles, the member can change what any role allows, including their own roles. Give **Manage** on **Roles** only to people you'd trust with the **Admin** role.
+</Warning>
+
+### Give a role to members
+
+To give a role to members of the project, you need the **Admin** role, or another role with **Full Control** on **Members and Groups**.
+
+<Steps>
+  <Step>
+    In your Agent Vault project, go to **Access Control**, select the **Roles** tab, and select the role.
+  </Step>
+  <Step>
+    Under **Assigned To**, select **Assign**.
+  </Step>
+  <Step>
+    In **Assign To**, pick the users, machine identities, or groups, then select **Assign**.
+  </Step>
+</Steps>
+
+If you pick someone who isn't a member of the project yet, Infisical adds them to the project with only this role.
 
 ## Add members
 
@@ -95,7 +125,7 @@ To add members, you need a role that can add them, such as **Admin**.
 
 You can only add users who are already in the [organization](/documentation/platform/organization), including users whose invite is still pending. If a user's invite is pending, they can't create sessions until they accept it.
 
-Only an admin can give someone the **Admin** role, or change or remove another admin. You can't change your own roles or remove your own access, so ask an admin if you need to do either.
+Only an admin can give someone the **Admin** role, or change or remove another admin. You can't change your own roles or remove your own access, even if you're an admin. To do either, ask another admin.
 
 If you're an organization admin, you can add yourself to any project with the **Admin** role by selecting **Join as Admin** (see [Join as an organization admin](/documentation/platform/agent-vault/projects#join-as-an-organization-admin)). You don't need another admin to add you.
 

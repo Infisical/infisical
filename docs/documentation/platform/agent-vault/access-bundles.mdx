@@ -36,11 +36,13 @@ To create a new access bundle:
   </Step>
 </Steps>
 
+If none of your roles can use the new access bundle, Infisical creates a role that can use it, named after the access bundle (such as `deploy-checks users`), and gives you the role. If you're in the project only through a group, Infisical doesn't create the role.
+
 Now you can [add services](/documentation/platform/agent-vault/services#add-a-service-to-an-access-bundle) to the access bundle so agents using it can make authenticated requests. You can also [add skills](/documentation/platform/agent-vault/skills#add-a-skill-to-an-access-bundle) to the access bundle, so the CLI installs your team's instructions for every agent that starts with it.
 
 ## Who can use an access bundle
 
-Access bundles give agents credentials for external APIs, so members of a project can't create sessions with an access bundle until one of their [roles](/documentation/platform/agent-vault/access-control#roles) lets them use it. A role that can use an access bundle can use every service and skill in the bundle.
+Access bundles give agents credentials for external APIs, so members of a project can't create sessions with an access bundle until one of their [roles](/documentation/platform/agent-vault/access-control#roles) lets them use it. If a member can use an access bundle, they can use every service and skill in it, unless one of their roles denies **Use** on that service or skill.
 
 To let someone use an access bundle:
 
@@ -102,9 +104,37 @@ If the provider stops accepting your login, the service shows **Requires Setup**
 
 Infisical never shows your personal values to anyone else, admins included.
 
-Infisical keeps your personal values until you leave the project. If you lose access to a service, your sessions stop using your values for it, and they use them again if you get access back.
-
 - To change your personal values, open the service's actions menu, select **Update My Personal Values**, and enter the values you want to change
 - To delete your personal values, select **Remove** in the same dialog, then select **Remove Personal Values** (**Disconnect Account** for an OAuth service)
 
 A machine identity sets up its personal values with [the set personal values endpoint](/api-reference/endpoints/agent-vault-services/set-personal-values), and keeps its own personal variables with [the create variable endpoint](/api-reference/endpoints/agent-vault-variables/create). A machine identity can't connect an OAuth account. For an MCP service where each member connects their own account, have the machine identity create the session [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users) who has connected theirs.
+
+### Retention of personal values
+
+If you lose access to a service but stay in the project, Infisical keeps your personal values for the service. Your sessions stop using them, and use them again if you get access back. You can still delete them with the [Delete personal values](/api-reference/endpoints/agent-vault-services/delete-personal-values) endpoint.
+
+Infisical deletes your personal values for a service if:
+
+- You leave the project, or someone removes you from it
+- Someone deletes the service
+- Someone [changes where the service connects, or weakens its TLS settings](/documentation/platform/agent-vault/services#edit-a-service)
+- Someone changes the service's [credential type](/documentation/platform/agent-vault/http-apis#credential-types)
+
+## Delete an access bundle
+
+<Steps>
+  <Step>
+    On the **Access Bundles** page, open the access bundle's actions menu and select **Delete**. On the access bundle's own page, select **Options** > **Delete Access Bundle** instead.
+  </Step>
+  <Step>
+    Enter the access bundle's name, then select **Delete**.
+  </Step>
+</Steps>
+
+To delete an access bundle through the API, call the [Delete access bundle](/api-reference/endpoints/agent-vault-access-bundles/delete) endpoint.
+
+When you delete an access bundle:
+
+- Its services and skills stay in the project
+- Sessions that use it [stop getting its credentials](/documentation/platform/agent-vault/sessions#access-changes) within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval)
+- Infisical deletes the role it created for the access bundle, unless someone changed the role's permissions (a member who held only that role gets **No Access**)

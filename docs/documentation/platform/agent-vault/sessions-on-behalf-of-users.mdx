@@ -185,29 +185,31 @@ To let the machine identity create sessions over one of them, give the machine i
 
 Infisical checks the delegation again each time the proxy polls, once every [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default). The proxy refuses every request on the session if any of these happen:
 
-- An admin removes the delegation, or edits it so it no longer covers the user
+- Someone removes the delegation, or edits it so it no longer covers the user
 - The delegation covered the user only through a group, and either the user leaves that group or the group is removed from the project
 - The user is removed from the project or from your organization, which also takes the user out of the delegation
 - The user or the machine identity is deactivated in your organization
-- An admin removes the machine identity from the project, which also deletes its delegation
+- Someone removes the machine identity from the project, which also deletes its delegation
 - Someone deletes the machine identity or the user (the session then shows as **Revoked**)
 
-If an admin sets up the delegation again, adds the user back to it, or reactivates the user or the machine identity, the session works again. To end a session for good, [revoke it](/documentation/platform/agent-vault/revoke-a-session).
+If someone sets up the delegation again, adds the user back to it, or reactivates the user or the machine identity, the session works again. To end a session for good, [revoke it](/documentation/platform/agent-vault/revoke-a-session).
 
 If the user or the machine identity can no longer use the access bundle, the session [stops getting credentials](/documentation/platform/agent-vault/sessions#access-changes) for the bundle. The same goes for each service you listed. For a skill you listed, agents that start with the session afterwards don't get it.
 
 ## Track sessions created on behalf of users
 
-A session created on behalf of a user belongs to the machine identity, so the user can't see it. Only the machine identity and admins of the project can see the session, read its [session logs](/documentation/platform/agent-vault/session-logs), and revoke it:
+A session created on behalf of a user belongs to the machine identity, not the user. Only the following can see the session and read its [session logs](/documentation/platform/agent-vault/session-logs):
 
-- The machine identity, through the [Get session](/api-reference/endpoints/agent-vault-sessions/get), [List session logs](/api-reference/endpoints/agent-vault-session-logs/list), and [Revoke session](/api-reference/endpoints/agent-vault-sessions/revoke) endpoints
-- Admins, under **All Sessions** on the **Sessions** page
+- The machine identity, through the [Get session](/api-reference/endpoints/agent-vault-sessions/get) and [List session logs](/api-reference/endpoints/agent-vault-session-logs/list) endpoints
+- Members whose roles can view everyone's sessions, such as admins, under **All Sessions** on the **Sessions** page
+
+The machine identity can revoke the session with the [Revoke session](/api-reference/endpoints/agent-vault-sessions/revoke) endpoint, and so can members whose roles can revoke everyone's sessions.
 
 On the **Sessions** page, the **Identity** column shows the machine identity's name, followed by "on behalf of" and the user's name. The session's details list the user under **On Behalf Of**.
 
 ### Audit events
 
-When the machine identity creates the session, Infisical writes an audit event with the machine identity as the actor and the user in `onBehalfOfUserId`, `onBehalfOfUserName`, and `onBehalfOfUserEmail`. The audit events for changing the session's label and revoking the session include the same three fields. Infisical also writes an audit event when an admin sets up, changes, or removes a delegation.
+When the machine identity creates the session, Infisical writes an audit event with the machine identity as the actor and the user in `onBehalfOfUserId`, `onBehalfOfUserName`, and `onBehalfOfUserEmail`. The audit events for changing the session's label and revoking the session include the same three fields. Infisical also writes an audit event when someone sets up, changes, or removes a delegation.
 
 ## Considerations
 
@@ -216,7 +218,7 @@ When the machine identity creates the session, Infisical writes an audit event w
 A delegation lets a machine identity use other people's personal values, so protect who can set one and who can use one:
 
 - If a machine identity has a delegation, anyone who can log in as the machine identity can send requests with the personal values of every user the delegation covers (protect the machine identity's credentials as carefully as those users' own credentials)
-- A machine identity with the **Admin** role in the project can set delegations, including one for itself that covers every member and project admin (give a machine identity the **Admin** role only if it needs it)
+- If a machine identity has the **Admin** role, or another role that allows **Sessions on Behalf of Users** and **Edit** on machine identities, it can set delegations, including one for itself that covers every member and project admin (give a machine identity such a role only if it needs it)
 
 ### Project membership
 
