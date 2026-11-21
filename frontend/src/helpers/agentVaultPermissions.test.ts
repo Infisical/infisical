@@ -1,5 +1,5 @@
 import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   ProjectPermissionActions,
@@ -173,6 +173,17 @@ describe("canUseNewAgentVaultSkill", () => {
     expect(canUseNewAgentVaultSkill(abilityOf([useSkills(), useSkills(undefined, true)]))).toBe(
       false
     );
+  });
+
+  it("doesn't need crypto.randomUUID, which a dashboard served over plain HTTP lacks", () => {
+    const randomUUID = vi.spyOn(globalThis.crypto, "randomUUID").mockImplementation(() => {
+      throw new TypeError("crypto.randomUUID is not a function");
+    });
+    try {
+      expect(canUseNewAgentVaultSkill(abilityOf([useSkills()]))).toBe(true);
+    } finally {
+      randomUUID.mockRestore();
+    }
   });
 
   it("isn't fooled by a deny on the all-zero id, which a rule may name like any other", () => {

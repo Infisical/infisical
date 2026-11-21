@@ -148,15 +148,16 @@ export const canUseAgentVaultSkill = (
   );
 };
 
-// Adding a skill to a bundle takes being able to use it, and a skill just created is in no bundle yet. No rule can name
-// an id made just now, so checking one asks whether the caller's roles let them use every new skill. A fixed id
-// wouldn't do: a rule may name any id.
-export const canUseNewAgentVaultSkill = (permission: MongoAbility<ProjectPermissionSet>) =>
-  canOnAgentVaultSkill(
-    permission,
-    ProjectPermissionAgentVaultSkillActions.Use,
-    crypto.randomUUID()
-  );
+// Adding a skill to a bundle takes being able to use it, and a skill just created is in no bundle yet. A rule can name
+// only ids that already exist, so for a new skill only the rules without conditions count, and the first of those
+// decides, as CASL lists an action's rules most relevant first. A made-up id wouldn't do: a rule may name any fixed one,
+// and crypto.randomUUID is missing from a dashboard served over plain HTTP.
+export const canUseNewAgentVaultSkill = (permission: MongoAbility<ProjectPermissionSet>) => {
+  const decidingRule = permission
+    .rulesFor(ProjectPermissionAgentVaultSkillActions.Use, ProjectPermissionSub.AgentVaultSkills)
+    .find((rule) => !rule.conditions);
+  return Boolean(decidingRule && !decidingRule.inverted);
+};
 
 // The members API takes adding a member, or changing one's roles, on users, groups and machine identities alike when a
 // request names all three kinds, so assigning a role from anywhere needs Create and Edit on all three.
