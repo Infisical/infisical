@@ -37,6 +37,7 @@ import {
 import { useGetOrgSecretsAccessVolume } from "@app/hooks/api/secretInsights/queries";
 import { useGetOrgUserAccess } from "@app/hooks/api/users/queries";
 
+import { accessNeedsReview } from "../../secret-manager/pending-approvals";
 import { useV4Session } from "../session/contract";
 import { shellLive } from "../shell/live";
 import type {
@@ -475,20 +476,7 @@ export const homeLive: HomeAdapter = {
       if (entry.kind === "access") {
         const list = accessLists[accessProjects.indexOf(entry.projectId)]?.data;
         const request = list?.requests.find((item) => item.id === entry.requestId);
-        const reviewed = request?.reviewers.some(
-          (reviewer) => reviewer.userId === user.id && reviewer.status !== ApprovalStatus.PENDING
-        );
-        const ownBlocked =
-          request?.requestedByUserId === user.id && !request.policy.allowedSelfApprovals;
-        if (
-          !list ||
-          !request ||
-          request.status !== ApprovalStatus.PENDING ||
-          isExpired(request) ||
-          reviewed ||
-          ownBlocked
-        )
-          return [];
+        if (!list || !request || !accessNeedsReview(request, user.id)) return [];
         return [accessRow(base, request, list.project)];
       }
       const request =

@@ -2,6 +2,7 @@ import { useRouterState } from "@tanstack/react-router";
 
 import { ProjectType } from "@app/hooks/api/projects/types";
 
+import { orgHref } from "../../links";
 import { V4_DEMO_ORG_ID } from "../../mode";
 import { createFixtureStore } from "../fixture-store";
 import type { HomeAdapter, HomeApproval, HomeAttention, HomeDay } from "./contract";
@@ -22,7 +23,7 @@ const ok = <T>(data: T) => ({ data, isPending: false, error: null });
 const NOW = Date.now();
 const DAY = 86_400_000;
 const minutesAgo = (minutes: number) => new Date(NOW - minutes * 60_000).toISOString();
-const org = (path: string) => `/organizations/${V4_DEMO_ORG_ID}${path}`;
+const org = (path: string) => orgHref(V4_DEMO_ORG_ID, path);
 const pastDays = (values: number[]): HomeDay[] =>
   values.map((value, index) => ({
     date: new Date(NOW - (values.length - 1 - index) * DAY).toISOString(),
