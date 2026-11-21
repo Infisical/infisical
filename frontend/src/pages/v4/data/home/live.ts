@@ -465,11 +465,16 @@ export const homeLive: HomeAdapter = {
         const ownBlocked =
           request?.committerUserId === user.id && request.policy.allowedSelfApprovals === false;
         const approver = request?.policy.approvers.some((item) => item.userId === user.id);
+        const settled =
+          request?.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED) ||
+          (request?.reviewers.filter((reviewer) => reviewer.status === ApprovalStatus.APPROVED)
+            .length ?? 0) >= (request?.policy.approvals ?? 1);
         if (
           !request ||
           request.status !== "open" ||
           request.hasMerged ||
           !approver ||
+          settled ||
           reviewed ||
           ownBlocked
         )
@@ -508,6 +513,10 @@ export const homeLive: HomeAdapter = {
             {
               id: notification.id,
               product: ATTENTION_PRODUCT[notification.type],
+              icon:
+                notification.type === NotificationType.CREDENTIAL_ROTATION_FAILED
+                  ? "apps"
+                  : "server",
               title: notification.title,
               description: notification.body ?? undefined,
               createdAt: notification.createdAt,

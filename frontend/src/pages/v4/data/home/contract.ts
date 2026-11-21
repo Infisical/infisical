@@ -1,3 +1,5 @@
+import type { IconName } from "@infisical/cipher/ui/icon";
+
 import type { ProjectType } from "@app/hooks/api/projects/types";
 
 import type { V4Mutation, V4QueryResult } from "../contract";
@@ -33,6 +35,8 @@ export type HomeApproval = {
 export type HomeAttention = {
   id: string;
   product?: ProjectType;
+  /** Shown when the alert has no product, such as gateway health or an app connection. */
+  icon?: IconName;
   title: string;
   description?: string;
   createdAt: string;

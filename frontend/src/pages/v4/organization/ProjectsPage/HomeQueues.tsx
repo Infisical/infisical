@@ -38,7 +38,7 @@ const emphasis = (markdown: string) => (
 );
 
 const ProductMedia = ({ type }: { type?: HomeApproval["product"] }) => {
-  if (!type) return <Media icon="network" tone="bad" />;
+  if (!type) return <Media icon="server" tone="bad" />;
   const product = productOf(type);
   return <Media icon={product.icon} className={styles.hueMedia} {...hueScope(product.hue)} />;
 };
@@ -136,7 +136,13 @@ const ApprovalRow = ({ approval }: { approval: HomeApproval }) => {
 const AttentionRow = ({ item }: { item: HomeAttention }) => (
   <Item
     variant="outline"
-    media={<ProductMedia type={item.product} />}
+    media={
+      item.product ? (
+        <ProductMedia type={item.product} />
+      ) : (
+        <Media icon={item.icon ?? "server"} tone="bad" />
+      )
+    }
     title={emphasis(item.title)}
     titleLines={2}
     description={item.description && emphasis(item.description)}
