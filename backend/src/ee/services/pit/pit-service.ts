@@ -1172,6 +1172,16 @@ export const pitServiceFactory = ({
   }: Omit<TNewCommitRawDTO, "environment" | "secretPath" | "changes"> & {
     commits: Pick<TNewCommitRawDTO, "environment" | "secretPath" | "changes">[];
   }) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor: dto.actor,
+      actorId: dto.actorId,
+      projectId: dto.projectId,
+      actorAuthMethod: dto.actorAuthMethod,
+      actorOrgId: dto.actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    const project = await projectDAL.findById(dto.projectId);
+
     const canonicalCommits = commits.map((commit) => ({
       ...commit,
       secretPath: canonicalizeSecretPath(commit.secretPath)
@@ -1205,15 +1215,6 @@ export const pitServiceFactory = ({
       const policy = await prepareNewCommitRaw({ ...dto, ...commit });
       prepared.push({ ...dto, ...commit, policy });
     }
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor: dto.actor,
-      actorId: dto.actorId,
-      projectId: dto.projectId,
-      actorAuthMethod: dto.actorAuthMethod,
-      actorOrgId: dto.actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
 
     const applied = await folderCommitDAL.transaction(async (trx) => {
       const secretIdsToLock: string[] = [];
@@ -1265,6 +1266,7 @@ export const pitServiceFactory = ({
 
     return applied.map((result, index) => ({
       ...result,
+      projectName: project.name,
       environment: prepared[index].environment,
       secretPath: prepared[index].secretPath
     }));

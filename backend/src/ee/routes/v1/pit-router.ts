@@ -5,7 +5,7 @@ import { SecretApprovalRequestsSchema, SecretFoldersSchema } from "@app/db/schem
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { isValidFolderName } from "@app/lib/validator";
-import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
+import { bulkWriteLimit, readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -771,7 +771,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/batch/commits",
     config: {
-      rateLimit: secretsLimit
+      rateLimit: bulkWriteLimit
     },
     schema: {
       hide: true,
@@ -783,7 +783,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         }
       ],
       body: z.object({
-        projectId: z.string().trim().min(1).max(64),
+        projectId: z.string().trim().min(1).max(36),
         message: z.string().trim().max(255).optional(),
         commits: z
           .object({
@@ -794,6 +794,20 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
           .array()
           .min(1)
           .max(50)
+          .refine(
+            (commits) =>
+              commits.reduce(
+                (total, { changes }) =>
+                  total +
+                  [changes.secrets, changes.folders].reduce(
+                    (sum, group) =>
+                      sum + (group.create?.length ?? 0) + (group.update?.length ?? 0) + (group.delete?.length ?? 0),
+                    0
+                  ),
+                0
+              ) <= 500,
+            { message: "A batch of commits can include at most 500 changes" }
+          )
       }),
       response: {
         200: z.object({
@@ -827,6 +841,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
               approvalId: result.approval?.id,
               approvalSlug: result.approval?.slug,
               projectId: req.body.projectId,
+              projectName: result.projectName,
               environment: result.environment,
               secretPath: result.secretPath,
               message: req.body.message || ""
