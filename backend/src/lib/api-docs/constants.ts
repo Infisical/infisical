@@ -2302,6 +2302,15 @@ export const AUDIT_LOG_STREAMS = {
   },
   GET_BY_ID: {
     id: "The ID of the audit log stream to get details."
+  },
+  FILTERS: {
+    products:
+      "The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.",
+    pamSessionActivity: {
+      desc: "Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.",
+      includeOutput:
+        "Also send command output, query results and request and response bodies, which can contain sensitive data."
+    }
   }
 };
 

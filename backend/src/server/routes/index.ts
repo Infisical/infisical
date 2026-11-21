@@ -150,6 +150,7 @@ import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal"
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { pamMembershipServiceFactory } from "@app/ee/services/pam-membership/pam-membership-service";
 import { pamProjectResolverFactory } from "@app/ee/services/pam-project/pam-project-resolver";
+import { pamSessionActivityServiceFactory } from "@app/ee/services/pam-session-activity/pam-session-activity-service";
 import { pamSessionEventChunkDALFactory } from "@app/ee/services/pam-session-recording/pam-recording-chunk-dal";
 import { pamSessionChunkServiceFactory } from "@app/ee/services/pam-session-recording/pam-recording-chunk-service";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
@@ -1213,13 +1214,6 @@ export const registerRoutes = async (
     keyStore
   });
 
-  const auditLogStreamService = auditLogStreamServiceFactory({
-    licenseService,
-    permissionService,
-    auditLogStreamDAL,
-    kmsDataKeyService
-  });
-
   const auditLogStreamOutboxService = auditLogStreamOutboxServiceFactory({
     auditLogStreamOutboxDAL,
     auditLogStreamDAL,
@@ -2182,6 +2176,14 @@ export const registerRoutes = async (
     membershipRoleDAL,
     keyStore,
     usageMeteringService
+  });
+
+  const auditLogStreamService = auditLogStreamServiceFactory({
+    licenseService,
+    permissionService,
+    auditLogStreamDAL,
+    kmsDataKeyService,
+    pamProjectResolver
   });
 
   const pamAccountTemplateDAL = pamAccountTemplateDALFactory(db);
@@ -4377,6 +4379,14 @@ export const registerRoutes = async (
     appConnectionDAL
   });
 
+  const pamSessionActivityService = pamSessionActivityServiceFactory({
+    queueService,
+    auditLogStreamDAL,
+    auditLogStreamOutboxService,
+    pamSessionDAL,
+    pamSessionChunkService
+  });
+
   const pamWebAccessService = pamWebAccessServiceFactory({
     pamAccountDAL,
     pamAccessRequestService,
@@ -4914,6 +4924,7 @@ export const registerRoutes = async (
   digicertRevocationSyncQueue.init();
   scepIntuneRevocationSyncQueue.init();
   pamSessionExpirationService.init();
+  pamSessionActivityService.init();
   godaddyCaQueue.init();
   caAutoRenewalQueue.startDailyAutoRenewalJob();
   signerAutoRenewalQueue.start();
@@ -5034,6 +5045,7 @@ export const registerRoutes = async (
     pamMembership: pamMembershipService,
     pamSession: pamSessionService,
     pamSessionChunk: pamSessionChunkService,
+    pamSessionActivity: pamSessionActivityService,
     pamAccessRequest: pamAccessRequestService,
     pamWebAccess: pamWebAccessService,
     certManagerInstance: certManagerInstanceService,

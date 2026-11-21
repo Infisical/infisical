@@ -2,6 +2,7 @@ import { AuditLogStreamProduct, StreamMode } from "../../enums";
 
 export type TAuditLogStreamFilters = {
   products?: AuditLogStreamProduct[] | null;
+  pamSessionActivity?: { includeOutput: boolean } | null;
 };
 
 export type TRootProviderLogStream = {

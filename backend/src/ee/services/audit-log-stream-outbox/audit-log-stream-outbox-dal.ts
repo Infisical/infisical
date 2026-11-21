@@ -1,12 +1,13 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TAuditLogs } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { withTransaction } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 
+import { TAuditLogStreamEvent } from "../audit-log-stream/audit-log-stream-types";
 import { AuditLogStreamOutboxStatus, TAuditLogStreamOutboxRow } from "./audit-log-stream-outbox-types";
 
 export type TAuditLogStreamOutboxDALFactory = ReturnType<typeof auditLogStreamOutboxDALFactory>;
@@ -14,7 +15,7 @@ export type TAuditLogStreamOutboxDALFactory = ReturnType<typeof auditLogStreamOu
 export type TInsertOutboxRow = {
   streamId: string;
   orgId: string;
-  payload: TAuditLogs;
+  payload: TAuditLogStreamEvent;
 };
 
 const OUTBOX_INSERT_CHUNK_SIZE = 1_000;
@@ -27,6 +28,7 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
       const records = rows.map((row) => ({
         streamId: row.streamId,
         orgId: row.orgId,
+        // Also holds PAM session activity event ids, which dedup the same way.
         auditLogId: row.payload.id,
         payload: JSON.stringify(row.payload),
         status: AuditLogStreamOutboxStatus.Pending
