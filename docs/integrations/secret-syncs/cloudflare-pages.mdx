@@ -66,7 +66,7 @@ description: "Learn how to configure a Cloudflare Pages Sync for Infisical."
 
   </Tab>
   <Tab title="API">
-    To create a **Cloudflare Pages Sync**, make an API request to the [Create Cloudflare Pages Sync](/api-reference/endpoints/secret-syncs/cloudflare-pages/create) API endpoint.
+    To create a **Cloudflare Pages Sync**, make an API request to the [Create Cloudflare Pages Sync](/api-reference/endpoints/secret-syncs/cloudflare-pages/create) API endpoint. Set `destinationConfig.variableType` to `secret_text` or `plain_text`. If you omit `variableType`, Infisical uses `secret_text`.
 
     ### Sample request
 
@@ -88,7 +88,8 @@ description: "Learn how to configure a Cloudflare Pages Sync for Infisical."
         "destinationConfig": {
           "projectId": "your-cloudflare-pages-project-id",
           "projectName": "my-pages-project",
-          "environment": "production"
+          "environment": "production",
+          "variableType": "secret_text"
         }
       }'
     ```
@@ -133,7 +134,8 @@ description: "Learn how to configure a Cloudflare Pages Sync for Infisical."
         "destinationConfig": {
           "projectId": "your-cloudflare-pages-project-id",
           "projectName": "my-pages-project",
-          "environment": "production"
+          "environment": "production",
+          "variableType": "secret_text"
         }
       }
     }
