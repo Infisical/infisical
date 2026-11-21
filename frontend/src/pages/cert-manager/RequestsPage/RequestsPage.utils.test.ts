@@ -31,7 +31,7 @@ const certificateActionRequest = (
   }) as TApprovalRequest;
 
 describe("matchesApplicationRequestSearch", () => {
-  it.each([ApprovalPolicyType.CertRevocation, ApprovalPolicyType.CertDeletion])(
+  it.each([ApprovalPolicyType.CertRevocation, ApprovalPolicyType.CertDeletion] as const)(
     "finds a %s request for a named certificate by its full serial number",
     (type) => {
       const request = certificateActionRequest(type, {
