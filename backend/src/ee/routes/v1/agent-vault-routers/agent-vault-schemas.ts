@@ -1230,11 +1230,24 @@ const serviceResponseTypeFields = {
   }
 };
 
+const serviceHookResponseSchema = z
+  .object({
+    id: z.string().uuid().describe(AGENT_VAULT.HOOK.hookId),
+    name: z.string().describe(AGENT_VAULT.HOOK.name),
+    methods: z.nativeEnum(AgentVaultHttpMethod).array().optional().describe(AGENT_VAULT.HOOK.serviceHookMethods),
+    paths: z.string().array().optional().describe(AGENT_VAULT.HOOK.serviceHookPaths),
+    tools: z.string().array().optional().describe(AGENT_VAULT.HOOK.serviceHookTools)
+  })
+  .nullable()
+  .optional()
+  .describe(AGENT_VAULT.HOOK.serviceHookRead);
+
 // The sealed values are never in here, and the serializer emits only what this schema lists.
 const inlineServiceResponseBase = {
   id: z.string().uuid().describe(AGENT_VAULT.SESSION.inlineServiceId),
   name: z.string().describe(AGENT_VAULT.SESSION.inlineServiceNameRead),
-  description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead)
+  description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead),
+  hook: serviceHookResponseSchema
 };
 
 const inlineBearerCredentialSummarySchema = z
@@ -1454,18 +1467,6 @@ const variableReferencesField = <TType extends AgentVaultServiceType, TOptional 
     ? z.ZodOptional<z.ZodArray<(typeof variableReferenceSchemas)[TType]>>
     : z.ZodArray<(typeof variableReferenceSchemas)[TType]>;
 };
-
-const serviceHookResponseSchema = z
-  .object({
-    id: z.string().uuid().describe(AGENT_VAULT.HOOK.hookId),
-    name: z.string().describe(AGENT_VAULT.HOOK.name),
-    methods: z.nativeEnum(AgentVaultHttpMethod).array().optional().describe(AGENT_VAULT.HOOK.serviceHookMethods),
-    paths: z.string().array().optional().describe(AGENT_VAULT.HOOK.serviceHookPaths),
-    tools: z.string().array().optional().describe(AGENT_VAULT.HOOK.serviceHookTools)
-  })
-  .nullable()
-  .optional()
-  .describe(AGENT_VAULT.HOOK.serviceHookRead);
 
 const serviceResponseBase = {
   id: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId),

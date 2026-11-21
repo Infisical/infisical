@@ -192,8 +192,11 @@ export const serviceHookView = (
   return name ? { id: service.hookId!, name, ...pickHookNarrowing(service) } : null;
 };
 
+const normalizeList = (list: string[] | undefined) => (list ? [...new Set(list)].sort() : null);
+
+// Compared as sets, since the order or a repeat of a method, path or tool doesn't change what the hook checks.
 const sameList = (left: string[] | undefined, right: string[] | undefined) =>
-  JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
+  JSON.stringify(normalizeList(left)) === JSON.stringify(normalizeList(right));
 
 /** Whether a service's hook input sets a different hook or narrowing than the row holds. */
 export const isServiceHookChange = (

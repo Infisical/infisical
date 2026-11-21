@@ -420,6 +420,8 @@ export type TAgentVaultSessionInlineService = (
   // The name it was sent with, or its first host when it was sent without one.
   name: string;
   description: string | null;
+  // Left out for a caller who can't read hooks.
+  hook?: TAgentVaultServiceHook | null;
 };
 
 /**

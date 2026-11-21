@@ -12826,7 +12826,7 @@ describe("Agent Vault V1 Router", async () => {
       const mint = await inject("POST", sessionsUrl, { ttl: "1h", ...body });
       expect(mint.statusCode, mint.payload).toBe(200);
       const proxyToken = await createProxyToken(proxyName);
-      const { session } = mint.json() as { session: { id: string; token: string } };
+      const { session } = mint.json() as { session: { id: string; token: string; services: { hook?: unknown }[] } };
       return {
         session,
         resolve: async () => {
@@ -12949,7 +12949,7 @@ describe("Agent Vault V1 Router", async () => {
       ).testServices;
       const hook = await createHook("inline-named-hook");
       const auditLogs = vi.spyOn(auditLog, "createAuditLog");
-      const { resolve } = await mintAndResolve(
+      const { session, resolve } = await mintAndResolve(
         {
           services: [
             {
@@ -12986,6 +12986,12 @@ describe("Agent Vault V1 Router", async () => {
         secret,
         methods: ["DELETE"]
       });
+
+      const inlineHook = { id: hook.id, name: hook.name, methods: ["DELETE"] };
+      expect(session.services[0].hook).toEqual(inlineHook);
+      const read = await inject("GET", `${sessionsUrl}/${session.id}`);
+      expect(read.statusCode, read.payload).toBe(200);
+      expect(read.json().session.services[0].hook).toEqual(inlineHook);
 
       const unknown = await inject("POST", sessionsUrl, {
         services: [

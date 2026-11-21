@@ -63,7 +63,7 @@ export const HookField = () => {
 
   const { creation, upgradeGate: creationUpgradeGate } = useHookCreation(pickHook);
 
-  // Off-plan, a service's hook can't be set or changed, though the one it has keeps working.
+  // Off-plan, a service's hook can't be set or changed, though the one it has keeps working and can be removed.
   const isOnPlan = Boolean(subscription.agentVaultHooks);
 
   return (
@@ -102,8 +102,9 @@ export const HookField = () => {
             searchAriaLabel="Search hooks"
             emptyMessage={search ? "No hooks match your search" : "No hooks yet"}
             modal
-            isDisabled={!isOnPlan}
-            creation={creation}
+            isDisabled={!isOnPlan && !hookId}
+            isOptionDisabled={() => !isOnPlan}
+            creation={isOnPlan ? creation : undefined}
             onValueChange={pickHook}
             onClear={removeHook}
           />
@@ -118,7 +119,7 @@ export const HookField = () => {
             ) : (
               <>
                 Hooks aren&apos;t included in your plan, so this service&apos;s hook can&apos;t be
-                set or changed. A hook it already has keeps working.{" "}
+                set or changed. You can still remove it. A hook it already has keeps working.{" "}
                 <Button
                   type="button"
                   variant="link"

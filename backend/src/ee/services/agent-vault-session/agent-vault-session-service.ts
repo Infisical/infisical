@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultHookActions,
@@ -24,7 +25,12 @@ import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent
 import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
 import { findCallerDelegation, resolveOnBehalfOfUser } from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
 import { TAgentVaultHookDALFactory } from "../agent-vault-hook/agent-vault-hook-dal";
-import { hookNotFoundByName, NO_SERVICE_HOOK, toServiceHookColumns } from "../agent-vault-hook/agent-vault-hook-fns";
+import {
+  assertAgentVaultHooksOnPlan,
+  hookNotFoundByName,
+  NO_SERVICE_HOOK,
+  toServiceHookColumns
+} from "../agent-vault-hook/agent-vault-hook-fns";
 import { TAgentVaultResolveDALFactory } from "../agent-vault-proxy/agent-vault-resolve-dal";
 import { generateSessionLogKey, wrapSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { TAgentVaultSkillBundleDALFactory } from "../agent-vault-skill/agent-vault-skill-bundle-dal";
@@ -91,7 +97,7 @@ export const AGENT_VAULT_ON_BEHALF_OF_SESSION_DEFAULT_TTL = "1h";
 
 type TAgentVaultSessionServiceFactoryDep = {
   agentVaultSessionDAL: TAgentVaultSessionDALFactory;
-  agentVaultHookDAL: Pick<TAgentVaultHookDALFactory, "findByNamesForService">;
+  agentVaultHookDAL: Pick<TAgentVaultHookDALFactory, "findByNamesForService" | "findNamesByIds">;
   agentVaultSessionAccessBundleDAL: TAgentVaultSessionAccessBundleDALFactory;
   agentVaultSessionInlineServiceDAL: Pick<
     TAgentVaultSessionInlineServiceDALFactory,
@@ -119,6 +125,7 @@ type TAgentVaultSessionServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsDataKeyService: TKmsDataKeyService;
+  licenseService: Pick<TLicenseService, "getPlan">;
 };
 
 export type TAgentVaultSessionServiceFactory = ReturnType<typeof agentVaultSessionServiceFactory>;
@@ -146,7 +153,8 @@ export const agentVaultSessionServiceFactory = ({
   userDAL,
   orgDAL,
   permissionService,
-  kmsDataKeyService
+  kmsDataKeyService,
+  licenseService
 }: TAgentVaultSessionServiceFactoryDep) => {
   const requireSessionActor = (ctx: TMintSessionDTO["ctx"]) => {
     if (ctx.actor !== ActorType.USER && ctx.actor !== ActorType.IDENTITY) {
@@ -219,6 +227,14 @@ export const agentVaultSessionServiceFactory = ({
     return new Map(variables.map((variable) => [variable.id, { id: variable.id, key: variable.key }]));
   };
 
+  const findInlineHookNames = async (
+    rows: { projectId: string; hookId?: string | null }[]
+  ): Promise<ReadonlyMap<string, string>> => {
+    const hookIds = rows.flatMap((row) => (row.hookId ? [row.hookId] : []));
+    if (!hookIds.length) return new Map();
+    return agentVaultHookDAL.findNamesByIds({ ids: hookIds, projectId: rows[0].projectId });
+  };
+
   // Each session's services or skills, listed by name or sent inline, as one list in the order they were sent. A listed
   // one is read from the live catalog, so one the reader no longer reaches is left out, the same as a deleted one: its
   // later name, description and hosts are the catalog's to show, not the session's. The reach is read only when a
@@ -266,19 +282,27 @@ export const agentVaultSessionServiceFactory = ({
       ProjectPermissionAgentVaultVariableActions.Read,
       ProjectPermissionSub.AgentVaultVariables
     );
+    const canReadHooks = permission.can(
+      ProjectPermissionAgentVaultHookActions.Read,
+      ProjectPermissionSub.AgentVaultHooks
+    );
     // Filled once the inline rows are loaded, which findSessionEntries awaits before it maps any of them.
     let oauthVariables: TInlineOauthVariableKeys = new Map();
+    let hookNames: ReadonlyMap<string, string> | undefined;
     return findSessionEntries({
       sessionIds,
       loadInline: async (ids) => {
         const rows = await agentVaultSessionInlineServiceDAL.findSummariesBySessionIds(ids);
-        if (canReadVariables) oauthVariables = await findInlineOauthVariableKeys(rows);
+        [oauthVariables, hookNames] = await Promise.all([
+          canReadVariables ? findInlineOauthVariableKeys(rows) : oauthVariables,
+          canReadHooks ? findInlineHookNames(rows) : undefined
+        ]);
         return rows;
       },
       loadListed: (ids) => agentVaultSessionServiceDAL.findSummariesBySessionIds(ids),
       loadReachableIds: () => serviceIdsReachedThrough(agentVaultServiceDAL, readerAccessBundleIds),
       fromInline: (row): TAgentVaultSessionServiceSummary => ({
-        ...toInlineServiceSummary(row, oauthVariables),
+        ...toInlineServiceSummary(row, oauthVariables, hookNames),
         isInline: true
       }),
       fromListed: ({ id, name, type, description, hostPattern }): TAgentVaultSessionServiceSummary => ({
@@ -423,7 +447,7 @@ export const agentVaultSessionServiceFactory = ({
         await agentVaultVariableDAL.findKeys({ projectId, owner: null })
       );
     }
-    // Using a saved hook only adds checks an admin set up, so naming one takes reading hooks and no plan check.
+    // Naming a saved hook takes reading hooks, and the plan's hooks feature, as setting one on a project service does.
     const inlineHookNames = [
       ...new Set(preparedInlineServices.flatMap((service) => (service.hook ? [service.hook.name] : [])))
     ];
@@ -432,7 +456,12 @@ export const agentVaultSessionServiceFactory = ({
         ProjectPermissionAgentVaultHookActions.Read,
         ProjectPermissionSub.AgentVaultHooks
       );
+      await assertAgentVaultHooksOnPlan(licenseService, ctx.actorOrgId);
     }
+    const canReadHooks = permission.can(
+      ProjectPermissionAgentVaultHookActions.Read,
+      ProjectPermissionSub.AgentVaultHooks
+    );
     const preparedInlineSkills = prepareInlineSkills(
       inlineSkillEntries.map(({ input }) => input),
       inlineSkillEntries.map(({ position }) => position)
@@ -896,7 +925,10 @@ export const agentVaultSessionServiceFactory = ({
           })),
           ...insertedInlineServices.map((row) => ({
             position: row.position,
-            service: { ...toInlineServiceSummary(row, oauthVariables, inlineHookNamesById), isInline: true as const }
+            service: {
+              ...toInlineServiceSummary(row, oauthVariables, canReadHooks ? inlineHookNamesById : undefined),
+              isInline: true as const
+            }
           }))
         ]
           .sort((a, b) => a.position - b.position)

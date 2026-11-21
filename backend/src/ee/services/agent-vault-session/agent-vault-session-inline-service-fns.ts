@@ -588,12 +588,11 @@ export const toInlineServiceSummary = (
   oauthVariables: TInlineOauthVariableKeys = new Map(),
   hookNames?: ReadonlyMap<string, string>
 ): TAgentVaultInlineServiceSummary => {
-  const hook = hookNames ? serviceHookView(row, hookNames) : null;
   const base = {
     id: row.id,
     name: inlineServiceDisplayName(row),
     description: row.description ?? null,
-    ...(hook && { hook })
+    ...(hookNames && { hook: serviceHookView(row, hookNames) })
   };
   const credential = toInlineCredentialSummary(row.credentialConfig as TInlineCredentialConfig, oauthVariables);
   // Every mint checks the credential against the type, so this means a row written some other way.

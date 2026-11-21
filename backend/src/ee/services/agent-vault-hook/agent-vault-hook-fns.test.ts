@@ -236,6 +236,12 @@ describe("a service's hook", () => {
       expect(isServiceHookChange(hook, row)).toBe(true);
     });
 
+    test("reordered or repeated methods are no change", () => {
+      const twoMethods = { ...row, hookMethods: ["GET", "POST"] };
+      const reordered = [AgentVaultHttpMethod.Post, AgentVaultHttpMethod.Get, AgentVaultHttpMethod.Post];
+      expect(isServiceHookChange({ id: HOOK_ID, methods: reordered }, twoMethods)).toBe(false);
+    });
+
     test("a service with no hook changes when given one", () => {
       expect(isServiceHookChange({ id: HOOK_ID }, { hookId: null })).toBe(true);
     });

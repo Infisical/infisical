@@ -107,8 +107,8 @@ export type TAgentVaultInlineServiceSummary = {
   // The name it was sent with, or its first host when it was sent without one.
   name: string;
   description: string | null;
-  // Only where the caller passed the hook names: mint, for its audit event. Reads leave it out.
-  hook?: TAgentVaultServiceHookView;
+  // Left out for a caller who can't read hooks, since null would claim there is none.
+  hook?: TAgentVaultServiceHookView | null;
 } & (
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Http }> & {
       credential: Exclude<TAgentVaultInlineCredentialSummary, { type: AgentVaultCredentialType.SshKey }>;

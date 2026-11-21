@@ -640,9 +640,9 @@ resolve.
   lock, clears their hook columns and deletes the hook. Keep that order in anything new that touches both.
 - **Permissions**: flat CRUD on `agent-vault-hooks` (admin all, member `read`). Setting a hook on a service is like
   using a variable in it: Edit on services plus `read` on hooks, which naming a hook on an inline service also takes.
-  Removing one takes only Edit on services. Service reads (list, single, bundle, create and update responses) carry
-  `hook: { id, name, methods?, paths?, tools? } | null` only for callers with `read` on hooks, and leave the field out
-  otherwise, since null would claim there is none.
+  Removing one takes only Edit on services. Service reads (list, single, bundle, create and update responses) and a
+  session's inline services (mint, get and list) carry `hook: { id, name, methods?, paths?, tools? } | null` only for
+  callers with `read` on hooks, and leave the field out otherwise, since null would claim there is none.
 - **The secret is the admin's, write-only.** Sealed under the project data key as `{ value }` in `encryptedSecret`,
   never returned, audited only as `secretReplaced`. A PATCH without `secret` keeps it. The URL refuses a query string,
   userinfo and a fragment because it is shown in reads and audits. The secret is never variable expanded.
@@ -651,9 +651,10 @@ resolve.
 - **Deleting a hook is never blocked**, and the response (`usedBy`) and the `agent-vault-hook-delete` audit event
   (`services`) list the services that lose it.
 - **The plan flag gates writes that add or change a hook** (`agentVaultHooks`, `assertAgentVaultHooksOnPlan`): hook
-  create, a hook edit of URL or secret, and setting or changing a service's hook or narrowing (`isServiceHookChange`,
-  so re-sending the same hook is free). Rename, description, removing a service's hook, deleting a hook, reads, a mint
-  whose inline service names an existing hook and resolve never check it, so a downgrade keeps existing hooks running.
+  create, a hook edit of URL or secret, setting or changing a service's hook or narrowing (`isServiceHookChange`, which
+  compares narrowing as sets, so re-sending the same hook in any order is free), and a mint whose inline service names
+  a hook. Rename, description, removing a service's hook, deleting a hook, reads and resolve never check it, so a
+  downgrade keeps existing hooks running.
 - **Resolve sends `services[i].hook: { id, name, url, secret, methods?, paths?, tools? } | null`** (`findHooks`, kept to
   the session's project, retried on the primary for IDs the replica lacks; one still missing was deleted and goes out
   as none). `session.metadata` is read and sent only when some service has a hook. Proxies

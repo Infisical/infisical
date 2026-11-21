@@ -1,9 +1,12 @@
 import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
+import { Plan } from "@app/domains/platform/license/ce/module";
+import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import { NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
+import { AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE } from "../agent-vault-hook/agent-vault-hook-fns";
 import { sha256Hex } from "../agent-vault-skill/agent-vault-skill-fns";
 import { AgentVaultSkillFileMode } from "../agent-vault-skill/agent-vault-skill-types";
 import {
@@ -35,10 +38,12 @@ const inlineCredentialOf = (service: TAgentVaultSessionServiceSummary) => {
 
 const buildService = ({
   rules = [{ action: "manage", subject: "all" }],
-  savedHooks = [{ id: HOOK_ID, name: "approvals" }]
+  savedHooks = [{ id: HOOK_ID, name: "approvals" }],
+  hooksOnPlan = true
 }: {
   rules?: { action: string; subject: string; inverted?: boolean }[];
   savedHooks?: { id: string; name: string }[];
+  hooksOnPlan?: boolean;
 } = {}) => {
   const findKeys = vi.fn().mockResolvedValue([{ id: VARIABLE_ID, key: "GDRIVE_U123", type: "oauth" }]);
   const findOauthForResolve = vi
@@ -88,7 +93,10 @@ const buildService = ({
         memberships: []
       })
     },
-    kmsDataKeyService
+    kmsDataKeyService,
+    licenseService: {
+      getPlan: vi.fn().mockResolvedValue(Plan.restore({ ...testFeatures(), agentVaultHooks: hooksOnPlan }))
+    }
   } as unknown as Parameters<typeof agentVaultSessionServiceFactory>[0]);
   return { service, transaction, insertForSession, findByNamesForService, resourceMetadataDAL, findKeys };
 };
@@ -154,7 +162,61 @@ describe("mintSession, inline services with a saved hook", () => {
     expect(withHook).toMatchObject({
       hook: { id: HOOK_ID, name: "approvals", methods: ["POST"], paths: ["/charges"] }
     });
-    expect(withoutHook).not.toHaveProperty("hook");
+    expect(withoutHook).toMatchObject({ hook: null });
+  });
+
+  test("leaves each inline service's hook out for a caller who can't read hooks", async () => {
+    const { service } = buildService({
+      rules: [
+        { action: "manage", subject: "all" },
+        { action: "read", subject: "agent-vault-hooks", inverted: true }
+      ]
+    });
+
+    const { session } = await service.mintSession({
+      projectId: PROJECT_ID,
+      ctx,
+      services: [
+        {
+          type: AgentVaultServiceType.Http,
+          hostPattern: "other.example.com",
+          credential: { type: AgentVaultCredentialType.Passthrough }
+        }
+      ],
+      actorName: "Ana Silva",
+      actorEmail: null,
+      label: null
+    });
+
+    expect(session.services[0]).not.toHaveProperty("hook");
+  });
+
+  test("off-plan, naming a hook is refused with the plan message before any transaction", async () => {
+    const { service, transaction } = buildService({ hooksOnPlan: false });
+
+    await expect(mintWithHook(service, { name: "approvals" })).rejects.toThrow(AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE);
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  test("off-plan, an inline service without a hook still mints", async () => {
+    const { service, insertForSession } = buildService({ hooksOnPlan: false });
+
+    await service.mintSession({
+      projectId: PROJECT_ID,
+      ctx,
+      services: [
+        {
+          type: AgentVaultServiceType.Http,
+          hostPattern: "other.example.com",
+          credential: { type: AgentVaultCredentialType.Passthrough }
+        }
+      ],
+      actorName: "Ana Silva",
+      actorEmail: null,
+      label: null
+    });
+
+    expect(insertForSession).toHaveBeenCalledTimes(1);
   });
 
   test("a name the project has no hook for is a 404 naming it, and nothing is written", async () => {
@@ -497,9 +559,11 @@ describe("updateSession", () => {
       delete: vi.fn(),
       insertMany: vi.fn()
     };
+    const findNamesByIds = vi.fn().mockResolvedValue(new Map([[HOOK_ID, "approvals"]]));
     const service = agentVaultSessionServiceFactory({
       agentVaultSessionDAL,
       resourceMetadataDAL,
+      agentVaultHookDAL: { findNamesByIds },
       agentVaultSessionInlineServiceDAL: { findSummariesBySessionIds: vi.fn().mockResolvedValue(inlineRows) },
       agentVaultSessionServiceDAL: { findSummariesBySessionIds: vi.fn().mockResolvedValue([]) },
       agentVaultVariableDAL: {
@@ -515,7 +579,7 @@ describe("updateSession", () => {
         })
       }
     } as unknown as Parameters<typeof agentVaultSessionServiceFactory>[0]);
-    return { service, agentVaultSessionDAL, resourceMetadataDAL, tx };
+    return { service, agentVaultSessionDAL, resourceMetadataDAL, tx, findNamesByIds };
   };
 
   test("a session's service names its OAuth variable only to a caller who can read variables", async () => {
@@ -559,6 +623,54 @@ describe("updateSession", () => {
       type: AgentVaultCredentialType.OAuth,
       source: "variable"
     });
+  });
+
+  test("a session's inline service names its hook only to a caller who can read hooks, from one lookup", async () => {
+    const inlineRowOf = (position: number, hookId: string | null) => ({
+      id: `inline-${position}`,
+      sessionId: SESSION_ID,
+      projectId: PROJECT_ID,
+      position,
+      name: `api-${position}`,
+      description: null,
+      hookUrl: null,
+      hookId,
+      hookMethods: hookId ? ["POST"] : null,
+      hookPaths: hookId ? ["/v1/refunds"] : null,
+      hookTools: null,
+      type: AgentVaultServiceType.Http,
+      hostPattern: `api-${position}.example.com`,
+      config: null,
+      allowedMethods: null,
+      allowedPathPrefixes: null,
+      allowedTools: null,
+      credentialType: AgentVaultCredentialType.Passthrough,
+      credentialConfig: { type: AgentVaultCredentialType.Passthrough },
+      customHeaders: [],
+      substitutions: []
+    });
+    const inlineRows = [inlineRowOf(0, HOOK_ID), inlineRowOf(1, HOOK_ID), inlineRowOf(2, null)];
+    const reader = buildUpdateService({ inlineRows });
+    const withoutRead = buildUpdateService({
+      inlineRows,
+      rules: [
+        { action: "manage", subject: "all" },
+        { action: "read", subject: "agent-vault-hooks", inverted: true }
+      ]
+    });
+
+    const read = await reader.service.getSessionById({ projectId: PROJECT_ID, ctx, sessionId: SESSION_ID });
+    const hidden = await withoutRead.service.getSessionById({ projectId: PROJECT_ID, ctx, sessionId: SESSION_ID });
+
+    expect(reader.findNamesByIds).toHaveBeenCalledTimes(1);
+    expect(reader.findNamesByIds).toHaveBeenCalledWith({ ids: [HOOK_ID, HOOK_ID], projectId: PROJECT_ID });
+    expect(read.session.services.map((service) => (service.isInline ? service.hook : undefined))).toEqual([
+      { id: HOOK_ID, name: "approvals", methods: ["POST"], paths: ["/v1/refunds"] },
+      { id: HOOK_ID, name: "approvals", methods: ["POST"], paths: ["/v1/refunds"] },
+      null
+    ]);
+    expect(withoutRead.findNamesByIds).not.toHaveBeenCalled();
+    hidden.session.services.forEach((service) => expect(service).not.toHaveProperty("hook"));
   });
 
   const update = (service: ReturnType<typeof buildUpdateService>["service"], fields: object) =>

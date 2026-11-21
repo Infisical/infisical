@@ -288,7 +288,7 @@ describe("inline service reads", () => {
     });
   });
 
-  test("the summary carries the service's hook and its narrowing only when given the hook names", () => {
+  test("the summary carries the service's hook and its narrowing, or null, only when given the hook names", () => {
     const row = storedRow({ hookId: "hook-1", hookMethods: ["POST"], hookPaths: ["/v1/charges"], hookTools: null });
     expect(toInlineServiceSummary(row, new Map(), new Map([["hook-1", "approvals"]])).hook).toEqual({
       id: "hook-1",
@@ -297,9 +297,7 @@ describe("inline service reads", () => {
       paths: ["/v1/charges"]
     });
     expect(toInlineServiceSummary(row)).not.toHaveProperty("hook");
-    expect(toInlineServiceSummary(storedRow(), new Map(), new Map([["hook-1", "approvals"]]))).not.toHaveProperty(
-      "hook"
-    );
+    expect(toInlineServiceSummary(storedRow(), new Map(), new Map([["hook-1", "approvals"]])).hook).toBeNull();
   });
 });
 
