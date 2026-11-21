@@ -71,6 +71,7 @@ import {
 import { cn } from "@app/components/v3/utils";
 import {
   ProjectPermissionActions,
+  ProjectPermissionAgentVaultServiceActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub,
   useOrganization,
@@ -81,7 +82,6 @@ import {
 } from "@app/context";
 import {
   canActOnAgentVaultSession,
-  canManageAgentVaultServices,
   canReadAgentVaultSessions,
   canUseAgentVaultAccessBundles,
   canUseAgentVaultServices,
@@ -192,7 +192,11 @@ const AgentVaultSessionsPageContent = () => {
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Settings
   );
-  const canManageServices = canManageAgentVaultServices(permission);
+  // The empty state points at adding a service, which only someone who can create one can act on.
+  const canCreateServices = permission.can(
+    ProjectPermissionAgentVaultServiceActions.Create,
+    ProjectPermissionSub.AgentVaultServices
+  );
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
@@ -307,8 +311,8 @@ const AgentVaultSessionsPageContent = () => {
     emptyTitle = "No sessions match these filters";
     emptyDescription = "Try a different search term, status or metadata.";
   } else if (!canStartSession) {
-    emptyTitle = canManageServices ? "No sessions yet" : "Nothing you can start a session with";
-    emptyDescription = canManageServices
+    emptyTitle = canCreateServices ? "No sessions yet" : "Nothing you can start a session with";
+    emptyDescription = canCreateServices
       ? "Add a service first, then create a session with it, on its own or through an access bundle. Agents also need a proxy to route through."
       : "Ask an Agent Vault admin for a role that can use an access bundle, a service or a skill.";
   } else {
@@ -323,7 +327,7 @@ const AgentVaultSessionsPageContent = () => {
           <EmptyTitle>{emptyTitle}</EmptyTitle>
           <EmptyDescription>{emptyDescription}</EmptyDescription>
         </EmptyHeader>
-        {!isFiltered && !canStartSession && canManageServices && (
+        {!isFiltered && !canStartSession && canCreateServices && (
           <Button variant="av" asChild>
             <Link
               to="/organizations/$orgId/projects/agent-vault/$projectId/services"

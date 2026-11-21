@@ -138,7 +138,7 @@ export const SUBJECT_RULES: Partial<Record<ProjectPermissionSub, TSubjectRules>>
 const RESOURCE_COPY = {
   accessBundles: {
     read: "See the bundle and the services and skills in it.",
-    use: "Start sessions from the bundle, with every service and skill in it.",
+    use: "Start sessions from the bundle, with the services and skills in it that no role denies.",
     edit: "Rename the bundle and change which services and skills are in it.",
     delete: "Delete the bundle. Its services and skills stay in the project.",
     create: "Add new access bundles to the project."
@@ -146,7 +146,7 @@ const RESOURCE_COPY = {
   services: {
     read: "See the service and its settings.",
     use: "Put the service in a session so agents can reach it.",
-    edit: "Change the service. Pointing it somewhere else takes entering its credential again.",
+    edit: "Change the service. Pointing it somewhere else, or weakening its TLS, takes entering its credential again.",
     delete: "Delete the service from the project.",
     create: "Add new services to the project."
   },
@@ -366,7 +366,7 @@ export const PERMISSION_ROWS: TPermissionRow[] = [
     key: "services",
     label: "Services",
     description:
-      "Use puts a service in a session. Use and Edit can also change what agents can do with its credential, such as its allowed paths and tools. Pointing it somewhere else takes entering the credential again. Denied overrides every other role.",
+      "Use puts a service in a session. Use and Edit can also change what agents can do with its credential, such as its allowed paths and tools. Pointing it somewhere else or weakening its TLS takes entering the credential again. Denied overrides every other role, and holds inside access bundles too.",
     actions: resourceActions(Sub.AgentVaultServices, RESOURCE_COPY.services),
     levels: RESOURCE_LEVELS
   },
@@ -374,7 +374,7 @@ export const PERMISSION_ROWS: TPermissionRow[] = [
     key: "skills",
     label: "Skills",
     description:
-      "Use puts a skill in a session. Use and Edit can also change a skill's files, which every session that loads it runs. Denied overrides every other role.",
+      "Use puts a skill in a session. Use and Edit can also change a skill's files, which every session that loads it runs. Denied overrides every other role, and holds inside access bundles too.",
     actions: resourceActions(Sub.AgentVaultSkills, RESOURCE_COPY.skills),
     levels: RESOURCE_LEVELS
   },
@@ -382,7 +382,7 @@ export const PERMISSION_ROWS: TPermissionRow[] = [
     key: "accessBundles",
     label: "Access Bundles",
     description:
-      "Use starts sessions from a bundle and reaches every service and skill in it, without Use on them under Services or Skills. Use and Edit can also change what a bundle holds. Denied overrides every other role.",
+      "Use starts sessions from a bundle and reaches the services and skills in it without Use on them under Services or Skills, except any a role denies. Use and Edit can also change what a bundle holds. Denied overrides every other role.",
     actions: resourceActions(Sub.AgentVaultAccessBundles, RESOURCE_COPY.accessBundles),
     levels: RESOURCE_LEVELS
   },
@@ -681,7 +681,7 @@ export const PERMISSION_ROWS: TPermissionRow[] = [
         (key) => !DIRECTORY_READ_KEYS.includes(key)
       ),
       message:
-        "Can add anyone to this project and change what they can do, including making someone an admin."
+        "Can add anyone to this project and give them any role except Admin, which only an admin can give."
     }
   },
   {

@@ -469,7 +469,13 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
         properties: telemetryDelegationFields(delegation)
       });
 
-      return { delegation };
+      return {
+        delegation: await server.services.agentVaultDelegation.hideUnreadableSubjects({
+          projectId,
+          ctx: actorContext(req),
+          delegation
+        })
+      };
     }
   });
 };

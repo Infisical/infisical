@@ -2,7 +2,12 @@ import { useMemo } from "react";
 
 import { RoleOptionContent } from "@app/components/roles";
 import { Combobox, FieldDescription } from "@app/components/v3";
-import { assignableAgentVaultRoles, nextAgentVaultRoles } from "@app/helpers/agentVaultMembers";
+import {
+  AGENT_VAULT_MAX_MEMBER_ROLES,
+  assignableAgentVaultRoles,
+  canAddAgentVaultRole,
+  nextAgentVaultRoles
+} from "@app/helpers/agentVaultMembers";
 import { TAgentVaultRoleOption, useAgentVaultRoleOptions } from "@app/hooks/api/agentVaultRoles";
 
 import { useAgentVaultAdminGuard } from "./useAgentVaultAdminGuard";
@@ -60,13 +65,15 @@ export const ProductRolesField = ({ projectId, value, onChange, id, isError }: P
         getOptionLabel={(role) => role.name}
         getOptionKeywords={(role) => [role.slug, role.description]}
         getOptionGroup={(role) => (role.isCustom ? "Custom" : "Built-In")}
+        isOptionDisabled={(role) => !canAddAgentVaultRole(value, role.slug)}
         renderOption={(role) => <RoleOptionContent role={role} />}
         placeholder="Pick roles"
         searchAriaLabel="Search roles"
         emptyMessage="No roles match your search"
       />
       <FieldDescription>
-        Roles add up. No Access can&apos;t be combined with other roles.
+        Roles add up, to at most {AGENT_VAULT_MAX_MEMBER_ROLES}. No Access can&apos;t be combined
+        with other roles.
       </FieldDescription>
     </>
   );

@@ -12,12 +12,12 @@ import {
   AgentVaultServiceType,
   AgentVaultVariableReferenceField
 } from "../agent-vault/agent-vault-enums";
+import { usableServiceIdsOf } from "../agent-vault/agent-vault-permission";
 import { agentVaultPersonalValueServiceFactory } from "./agent-vault-personal-value-service";
 
 // The caller can use the one bundle these tests use, which holds the service.
 vi.mock("../agent-vault/agent-vault-permission", () => ({
   getAgentVaultReachability: vi.fn(async () => ({
-    reachesEverything: false,
     accessBundleIds: ["22222222-2222-4222-8222-222222222222"],
     serviceIds: [],
     skillIds: [],
@@ -63,12 +63,14 @@ const setup = ({
   readService = memberService(),
   lockedService = readService,
   memberships = [{ id: "membership" }],
-  createFails = false
+  createFails = false,
+  savedValues = []
 }: {
   readService?: ReturnType<typeof memberService>;
   lockedService?: ReturnType<typeof memberService>;
   memberships?: unknown[];
   createFails?: boolean;
+  savedValues?: { id: string }[];
 } = {}) => {
   const restore = vi.fn(async () => {});
   const claimAuthorization = vi.fn(async () => ({
@@ -80,12 +82,13 @@ const setup = ({
     return {};
   });
   const tx = {};
+  const deleteValues = vi.fn(async () => []);
   const service = agentVaultPersonalValueServiceFactory({
     agentVaultPersonalValueDAL: {
       transaction: async (fn: (t: unknown) => Promise<unknown>) => fn(tx),
       lockProjectMembershipsForOwner: vi.fn(async () => memberships),
-      lockForOwnerAndService: vi.fn(async () => []),
-      delete: vi.fn(async () => []),
+      lockForOwnerAndService: vi.fn(async () => savedValues),
+      delete: deleteValues,
       create,
       findServicesNeedingValues: vi.fn(async () => []),
       findForOwner: vi.fn(async () => [])
@@ -106,7 +109,9 @@ const setup = ({
     } as never,
     permissionService: {} as never,
     agentVaultReachDAL: {} as never,
-    kmsDataKeyService: {} as never
+    kmsDataKeyService: {
+      createCipherPairWithDataKey: async () => ({ encryptor: () => ({ cipherTextBlob: Buffer.from("sealed") }) })
+    } as never
   });
 
   const connect = () =>
@@ -122,8 +127,89 @@ const setup = ({
       }
     });
 
-  return { connect, create, restore, claimAuthorization };
+  const deleteOwn = () =>
+    service.deletePersonalValues({
+      projectId: PROJECT_ID,
+      serviceId: SERVICE_ID,
+      ctx: {
+        actor: ActorType.USER,
+        actorId: USER_ID,
+        actorAuthMethod: null,
+        actorOrgId: "org"
+      }
+    });
+
+  const save = (value: string) =>
+    service.setPersonalValues({
+      projectId: PROJECT_ID,
+      serviceId: SERVICE_ID,
+      values: [{ field: AgentVaultVariableReferenceField.CredentialValue, value }],
+      ctx: {
+        actor: ActorType.USER,
+        actorId: USER_ID,
+        actorAuthMethod: null,
+        actorOrgId: "org"
+      }
+    });
+
+  return { connect, create, restore, claimAuthorization, deleteOwn, deleteValues, save };
 };
+
+describe("setPersonalValues", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const databaseService = (tls: { enabled: boolean; verify: boolean }) =>
+    memberService({
+      type: AgentVaultServiceType.Postgres,
+      config: { host: "db.example.com", port: 5432, database: "app", tls },
+      credentialType: AgentVaultCredentialType.Basic,
+      credentialConfig: { type: AgentVaultCredentialType.Basic }
+    });
+
+  test("refuses a save when the service's TLS was turned off between its read and the lock", async () => {
+    const { save, create } = setup({
+      readService: databaseService({ enabled: true, verify: true }),
+      lockedService: databaseService({ enabled: false, verify: true })
+    });
+
+    await expect(save("hunter2")).rejects.toThrow(
+      "An admin changed this service's TLS settings while you were setting up your values. Reload the service and save again."
+    );
+    expect(create).not.toHaveBeenCalled();
+  });
+});
+
+describe("deletePersonalValues", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("deletes the caller's values for a service they can no longer use", async () => {
+    vi.mocked(usableServiceIdsOf).mockResolvedValueOnce([]);
+    const { deleteOwn, deleteValues } = setup({ savedValues: [{ id: "value" }] });
+
+    const { personalValues } = await deleteOwn();
+
+    expect(deleteValues).toHaveBeenCalledWith({ $in: { id: ["value"] } }, {});
+    expect(personalValues).toMatchObject({ serviceId: SERVICE_ID, isConfigured: false, fields: [] });
+  });
+
+  test("answers a service the caller can't use and holds no values for like one that does not exist", async () => {
+    vi.mocked(usableServiceIdsOf).mockResolvedValueOnce([]);
+    const { deleteOwn, deleteValues } = setup();
+
+    await expect(deleteOwn()).rejects.toThrow(`Service with ID '${SERVICE_ID}' not found`);
+    expect(deleteValues).not.toHaveBeenCalled();
+  });
+
+  test("tells a caller who can use the service that they set no values for it", async () => {
+    const { deleteOwn } = setup();
+
+    await expect(deleteOwn()).rejects.toThrow("You haven't set any values for the service 'example'.");
+  });
+});
 
 describe("connectOauth", () => {
   beforeEach(() => {
@@ -316,5 +402,35 @@ describe("findStatusesForOwner", () => {
 
     expect(status.isConfigured).toBe(true);
     expect(status.fields[0]).toEqual(expect.objectContaining({ isSet: true, oauth: null }));
+  });
+
+  test("leaves out a service a role denies use on, since no bundle gives it", async () => {
+    const bearerField = [AgentVaultVariableReferenceField.CredentialValue];
+    const withDenied = (deniedServiceIds: string[] | "all") =>
+      agentVaultPersonalValueServiceFactory({
+        agentVaultPersonalValueDAL: {
+          findServicesNeedingValues: vi.fn(async () => [
+            serviceRow(SERVICE_ID, AgentVaultCredentialType.Bearer, bearerField),
+            serviceRow(OTHER_SERVICE_ID, AgentVaultCredentialType.Bearer, bearerField)
+          ]),
+          findForOwner: vi.fn(async () => [])
+        } as never,
+        agentVaultPersonalValueReferenceDAL: {} as never,
+        agentVaultVariableDAL: {} as never,
+        agentVaultServiceDAL: {} as never,
+        agentVaultOauthService: {} as never,
+        permissionService: {} as never,
+        agentVaultReachDAL: {} as never,
+        kmsDataKeyService: {} as never
+      }).findStatusesForOwner({
+        projectId: PROJECT_ID,
+        owner: { userId: USER_ID },
+        accessBundleIds: [BUNDLE_ID],
+        withVariableReferences: false,
+        deniedServiceIds
+      });
+
+    expect((await withDenied([SERVICE_ID])).map((entry) => entry.serviceId)).toEqual([OTHER_SERVICE_ID]);
+    expect(await withDenied("all")).toEqual([]);
   });
 });

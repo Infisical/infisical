@@ -62,6 +62,14 @@ type TFindAccessBundlesDTO = {
   offset: number;
 };
 
+// Keeps the membership_roles rows that still grant something, as isActiveRole decides: an ended time-limited role
+// grants nothing, so it isn't held.
+export const whereRoleRowIsLive = (query: Knex.QueryBuilder) => {
+  void query
+    .whereRaw(`?? IS NOT TRUE`, [`${TableName.MembershipRole}.isTemporary`])
+    .orWhere(`${TableName.MembershipRole}.temporaryAccessEndTime`, ">", new Date());
+};
+
 export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultAccessBundle);
 
@@ -138,6 +146,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
         .where(`${TableName.Membership}.isActive`, true)
         .whereNotNull(`${TableName.MembershipRole}.customRoleId`)
+        .where(whereRoleRowIsLive)
         .select(`${TableName.MembershipRole}.customRoleId`)
         .count("* as count")
         .groupBy(`${TableName.MembershipRole}.customRoleId`)
@@ -228,8 +237,8 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Inside addMember's transaction, so a concurrent bundle delete either waits for the grant and reaps
-  // it, or leaves nothing to grant to.
+  // Inside a grant's transaction, so a concurrent bundle delete either waits for the grant and then takes the bundle's
+  // role from everyone holding it, or leaves nothing to grant to.
   const lockByIdInProject = async (
     { id, projectId }: { id: string; projectId: string },
     tx: Knex
@@ -250,11 +259,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
         .where(`${TableName.Membership}.isActive`, true)
-        .where((qb) => {
-          void qb
-            .whereRaw(`?? IS NOT TRUE`, [`${TableName.MembershipRole}.isTemporary`])
-            .orWhere(`${TableName.MembershipRole}.temporaryAccessEndTime`, ">", new Date());
-        })
+        .where(whereRoleRowIsLive)
         .select(
           db.raw(`COALESCE(??::text, ??) AS "key"`, [
             `${TableName.MembershipRole}.customRoleId`,
@@ -304,6 +309,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
           .where(`${TableName.Membership}.isActive`, true)
           .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
           .where(`${TableName.MembershipRole}.customRoleId`, roleId)
+          .where(whereRoleRowIsLive)
           .leftJoin(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
           .leftJoin(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
           .leftJoin(TableName.Groups, `${TableName.Membership}.actorGroupId`, `${TableName.Groups}.id`);
@@ -365,10 +371,10 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
             [TableName.Membership, AccessScope.Organization, orgId, TableName.Membership, OrgMembershipStatus.Invited]
           )
         )
-        // The id breaks ties: createdAt is the transaction's start time, so a bulk grant leaves a hundred rows
-        // sharing one, and offset paging would show some twice and others never.
-        .orderBy(`${TableName.Membership}.createdAt`, "asc")
-        .orderBy(`${TableName.Membership}.id`, "asc")
+        // Oldest grant first. The id breaks ties: createdAt is the transaction's start time, so a bulk grant leaves a
+        // hundred rows sharing one, and offset paging would show some twice and others never.
+        .orderBy(`${TableName.MembershipRole}.createdAt`, "asc")
+        .orderBy(`${TableName.MembershipRole}.id`, "asc")
         .limit(limit)
         .offset(offset)) as {
         userId: string | null;

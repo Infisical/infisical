@@ -42,7 +42,11 @@ import { hasPostgresConstraintViolation, hasPostgresErrorCode } from "@app/lib/e
 import { shake } from "@app/lib/fn";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
-import { assertAgentVaultAdminOnlyChange } from "@app/services/membership/membership-fns";
+import {
+  assertAgentVaultAdminOnlyChange,
+  lockProjectRoleChanges,
+  roleNeedsPrivilegeBoundary
+} from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
@@ -139,8 +143,9 @@ import {
   getServiceServerUrl,
   isCredentialOfType,
   resolveServiceHostPattern,
-  serviceDestinationOf,
+  serviceMoveOf,
   TAgentVaultServiceConfig,
+  TAgentVaultServiceMove,
   toServiceTypeFields
 } from "../agent-vault/agent-vault-service-type-fns";
 import {
@@ -187,7 +192,11 @@ import {
   bundleRolePermissions,
   ensureBundleRole,
   giveBundleRole,
-  takeBundleRole
+  hasOnlyBundleRoleRules,
+  heldRolesOf,
+  renameBundleRole,
+  takeBundleRole,
+  takeBundleRoleFromEveryone
 } from "./agent-vault-bundle-role-fns";
 import {
   assertNativeBasicHasUsername,
@@ -234,8 +243,8 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
   kmsDataKeyService: TKmsDataKeyService;
   licenseService: Pick<TLicenseService, "getPlan">;
   membershipDAL: Pick<TMembershipDALFactory, "findOne" | "find">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find" | "insertMany" | "delete">;
-  roleDAL: Pick<TRoleDALFactory, "find" | "findById" | "create">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find" | "insertMany" | "delete" | "findRolesByMembershipIds">;
+  roleDAL: Pick<TRoleDALFactory, "find" | "findById" | "create" | "updateById" | "deleteById">;
   agentVaultReachDAL: Pick<
     TAgentVaultReachDALFactory,
     "findAccessBundleIds" | "findServiceIds" | "findSkillIds" | "findServiceIdsInAnyBundle"
@@ -631,7 +640,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   };
 
   // canSeeSetup is per service: a role can let the caller edit some services and not others.
-  const serviceVisibilityOf = (permission: TAgentVaultPermission["permission"]) => ({
+  const serviceFieldVisibilityOf = (permission: TAgentVaultPermission["permission"]) => ({
     canReadVariables: permission.can(
       ProjectPermissionAgentVaultVariableActions.Read,
       ProjectPermissionSub.AgentVaultVariables
@@ -1064,10 +1073,12 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     let scopeIds: string[] | null;
     let excludeIds: string[] = [];
     let owner: ReturnType<typeof ownerOrNullOf>;
+    let { deniedServiceIds } = reachability;
     if (onBehalfOf) {
       const scope = await $onBehalfOfListScope({ projectId, ctx, onBehalfOf, callerReach: reachability });
       scopeIds = scope.reach.accessBundleIds;
       owner = scope.owner;
+      deniedServiceIds = scope.reach.deniedServiceIds;
     } else {
       owner = ownerOrNullOf(ctx);
       const assignedIds = idsPickedOutFor(permission, {
@@ -1089,7 +1100,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         projectId,
         owner,
         accessBundleIds: bundleIds,
-        withVariableReferences: false
+        withVariableReferences: false,
+        deniedServiceIds
       });
       statuses.forEach((status) => {
         const bundleId = status.accessBundleId;
@@ -1132,8 +1144,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   };
 
   const getAccessBundleById = async (dto: TGetAccessBundleDTO) => {
-    const { bundle, permission } = await resolveReachableBundle(dto);
-    const { canReadVariables, canSeeSetup } = serviceVisibilityOf(permission);
+    const { bundle, permission, deniedServiceIds } = await resolveReachableBundle(dto);
+    const { canReadVariables, canSeeSetup } = serviceFieldVisibilityOf(permission);
 
     const services = await agentVaultServiceDAL.findByAccessBundleId(bundle.id);
     const transformations = await loadTransformations(services, undefined, {
@@ -1144,7 +1156,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ? await agentVaultPersonalValueService.findStatusesForOwner({
           projectId: dto.projectId,
           owner,
-          accessBundleIds: [bundle.id]
+          accessBundleIds: [bundle.id],
+          deniedServiceIds
         })
       : [];
 
@@ -1188,33 +1201,32 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     else if (ctx.actor === ActorType.IDENTITY) creatorColumn = "actorIdentityId";
 
     // A creator whose roles don't already let them use the new bundle gets its role, so whoever builds a bundle can try
-    // it. One who already holds the most roles a member can goes without.
+    // it. One who already holds the most roles a member can goes without. Returns the role it made, if any.
     const create = () =>
       agentVaultAccessBundleDAL.transaction(async (tx) => {
-        const bundle = await agentVaultAccessBundleDAL.create({ projectId, name, description }, tx);
+        const accessBundle = await agentVaultAccessBundleDAL.create({ projectId, name, description }, tx);
 
         if (
-          creatorColumn &&
-          permission.cannot(ProjectPermissionAgentVaultAccessBundleActions.Use, bundleSubject(bundle.id))
+          !creatorColumn ||
+          permission.can(ProjectPermissionAgentVaultAccessBundleActions.Use, bundleSubject(accessBundle.id))
         ) {
-          // The lock every role change takes, so two bundles made at once can't each count the creator's roles before the
-          // other adds one and take them past the limit together.
-          await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("project", projectId)]);
-          const direct = await membershipDAL.findOne(
-            { scope: AccessScope.Project, scopeProjectId: projectId, [creatorColumn]: ctx.actorId },
-            tx
-          );
-          if (direct) {
-            const role = await ensureBundleRole({ roleDAL, agentVaultAccessBundleDAL }, bundle, tx);
-            await giveBundleRole(
-              { membershipDAL, membershipRoleDAL },
-              { projectId, roleId: role.id, actors: [{ actorColumn: creatorColumn, actorId: ctx.actorId }] },
-              tx
-            );
-          }
+          return { accessBundle, role: null };
         }
-
-        return bundle;
+        // The lock every role change takes, so two bundles made at once can't each count the creator's roles before the
+        // other adds one and take them past the limit together.
+        await lockProjectRoleChanges(projectId, tx);
+        const direct = await membershipDAL.findOne(
+          { scope: AccessScope.Project, scopeProjectId: projectId, [creatorColumn]: ctx.actorId },
+          tx
+        );
+        if (!direct) return { accessBundle, role: null };
+        const role = await ensureBundleRole({ roleDAL, agentVaultAccessBundleDAL }, accessBundle, tx);
+        await giveBundleRole(
+          { membershipDAL, membershipRoleDAL },
+          { projectId, roleId: role.id, actors: [{ actorColumn: creatorColumn, actorId: ctx.actorId }] },
+          tx
+        );
+        return { accessBundle, role: { id: role.id, slug: role.slug } };
       });
 
     try {
@@ -1246,7 +1258,18 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
 
     try {
-      return await agentVaultAccessBundleDAL.updateById(bundle.id, { name, description });
+      return await agentVaultAccessBundleDAL.transaction(async (tx) => {
+        const locked = await agentVaultAccessBundleDAL.lockByIdInProject(
+          { id: bundle.id, projectId: rest.projectId },
+          tx
+        );
+        if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
+        const updated = await agentVaultAccessBundleDAL.updateById(bundle.id, { name, description }, tx);
+        if (name && name !== locked.name && locked.grantRoleId) {
+          await renameBundleRole({ roleDAL }, { roleId: locked.grantRoleId, previousName: locked.name, name }, tx);
+        }
+        return updated;
+      });
     } catch (err) {
       if (isUniqueViolation(err)) {
         throw new BadRequestError({ message: `An access bundle named '${name}' already exists` });
@@ -1262,13 +1285,25 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       bundleSubject(bundle.id)
     );
 
-    // Locks in the order every path takes them, bundle row then services, so this can't deadlock with a link or a
-    // personal values save. The services stay in the project; the delete only takes their links. Roles that name the
-    // bundle stay too, and cover nothing once it's gone.
+    // Locks in the order every path takes them: the project's role-change lock as a grant takes it, then the bundle row,
+    // then its services, so this can't deadlock with a grant, a link or a personal values save. The services stay in the
+    // project; the delete only takes their links. The bundle's own role goes too while it grants only this bundle: it
+    // would cover nothing and still count toward each holder's role limit. A role an admin changed stays, like any other
+    // role that names the bundle, and covers nothing once the bundle is gone.
     return agentVaultAccessBundleDAL.transaction(async (tx) => {
-      await agentVaultAccessBundleDAL.lockByIdInProject({ id: bundle.id, projectId: rest.projectId }, tx);
+      await lockProjectRoleChanges(rest.projectId, tx);
+      const locked = await agentVaultAccessBundleDAL.lockByIdInProject(
+        { id: bundle.id, projectId: rest.projectId },
+        tx
+      );
+      if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
       await agentVaultServiceDAL.lockByAccessBundleId(bundle.id, tx);
-      return agentVaultAccessBundleDAL.deleteById(bundle.id, tx);
+      const role = locked.grantRoleId ? await roleDAL.findById(locked.grantRoleId, tx) : undefined;
+      const removedRole = role && hasOnlyBundleRoleRules(role.permissions, locked.id) ? role : undefined;
+      if (removedRole) await takeBundleRoleFromEveryone({ membershipRoleDAL }, { roleId: removedRole.id }, tx);
+      const accessBundle = await agentVaultAccessBundleDAL.deleteById(bundle.id, tx);
+      if (removedRole) await roleDAL.deleteById(removedRole.id, tx);
+      return { accessBundle, removedRole: removedRole ? { id: removedRole.id, slug: removedRole.slug } : null };
     });
   };
 
@@ -1344,14 +1379,48 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     serviceId: string
   ) => ForbiddenError.from(permission).throwUnlessCan(action, serviceSubject(serviceId));
 
-  // Putting a service in a bundle changes what everyone who can use the bundle reaches, so it is an edit of the bundle.
-  const requireBundleEdits = (permission: TAgentVaultPermission["permission"], bundles: { id: string }[]) =>
-    bundles.forEach((bundle) =>
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAgentVaultAccessBundleActions.Edit,
-        bundleSubject(bundle.id)
-      )
+  // What the caller can see: services they can read or use, and those a bundle they can use holds. null for all of them.
+  const $visibleServiceIds = async (
+    reachability: Awaited<ReturnType<typeof getAgentVaultReachability>>,
+    projectId: string
+  ) =>
+    unionWithin(
+      await visibleIdsWithin(reachability.permission, {
+        subjectType: ProjectPermissionSub.AgentVaultServices,
+        field: "serviceId",
+        loadIds: () => agentVaultReachDAL.findServiceIds(projectId)
+      }),
+      await usableServiceIdsOf({ agentVaultServiceDAL, agentVaultReachDAL }, reachability, projectId)
     );
+
+  // For a service that was found: one the caller may not act on and can't see answers as a missing one would, so the
+  // request can't confirm the id exists. One they can see is a 403.
+  const requireOnFoundService = async (
+    dto: { projectId: string; ctx: TGetAccessBundleDTO["ctx"] },
+    permission: TAgentVaultPermission["permission"],
+    action: ProjectPermissionAgentVaultServiceActions,
+    { serviceId, requestedId }: { serviceId: string; requestedId: string }
+  ) => {
+    if (permission.can(action, serviceSubject(serviceId))) return;
+    const reachability = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, dto);
+    const visibleIds = await $visibleServiceIds(reachability, dto.projectId);
+    if (visibleIds !== null && !visibleIds.includes(serviceId)) {
+      throw new NotFoundError({ message: `Service with ID '${requestedId}' not found` });
+    }
+    requireOnService(permission, action, serviceId);
+  };
+
+  // Putting a service in a bundle changes what everyone who can use the bundle reaches, so it is an edit of the bundle.
+  // A bundle the caller may not edit and can't see answers as a missing one would.
+  const requireBundleEdits = (permission: TAgentVaultPermission["permission"], bundles: { id: string }[]) =>
+    bundles.forEach((bundle) => {
+      const subject = bundleSubject(bundle.id);
+      if (permission.can(ProjectPermissionAgentVaultAccessBundleActions.Edit, subject)) return;
+      if (!canSeeBundle(permission, bundle.id)) {
+        throw new NotFoundError({ message: `Access bundle with ID '${bundle.id}' not found` });
+      }
+      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionAgentVaultAccessBundleActions.Edit, subject);
+    });
 
   const createService = async ({
     accessBundleIds = [],
@@ -1611,8 +1680,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return {
       service: createdService,
       visibleService: hideSetup(
-        hideVariables(createdService, serviceVisibilityOf(permission).canReadVariables),
-        serviceVisibilityOf(permission).canSeeSetup(createdService.id)
+        hideVariables(createdService, serviceFieldVisibilityOf(permission).canReadVariables),
+        serviceFieldVisibilityOf(permission).canSeeSetup(createdService.id)
       )
     };
   };
@@ -1643,7 +1712,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     const service = await agentVaultServiceDAL.findByIdInProject({ id: serviceId, projectId: rest.projectId });
     if (!service) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
-    requireOnService(permission, ProjectPermissionAgentVaultServiceActions.Edit, service.id);
+    await requireOnFoundService(rest, permission, ProjectPermissionAgentVaultServiceActions.Edit, {
+      serviceId: service.id,
+      requestedId: serviceId
+    });
     const bundlesOf = async (tx?: Knex) =>
       (await agentVaultServiceDAL.findBundlesForServices([service.id], null, tx)).get(service.id) ?? [];
 
@@ -1783,30 +1855,41 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       (credential !== undefined && !sameMemberProvidedFields(nextMemberFields, previousMemberFields));
     const needsStoredSecret = credential !== undefined && needsStoredSecretFor(credential, service);
 
-    // Where a service connects decides who receives its credential, custom header values and substitution values, so a
-    // save that moves it has to send each of them again rather than keep what is sealed: whoever moves a credential
-    // must hold it, and a typed variable reference takes read-value as anywhere else. Members' saved values go with the
-    // old destination. Checked before the write to fail fast, and again under the lock against the row it writes over.
-    const destinationOfUpdate = (row: TAgentVaultServices, next: { hostPattern?: string | null; config?: unknown }) =>
-      serviceDestinationOf({ hostPattern: next.hostPattern ?? row.hostPattern, config: next.config ?? row.config }) !==
-      serviceDestinationOf(row);
+    // Where a service connects, and how safely, decides who can receive its credential, custom header values and
+    // substitution values, so a save that moves it (serviceMoveOf) has to send each of them again rather than keep what
+    // is sealed: whoever moves a credential must hold it, and a typed variable reference takes read-value as anywhere
+    // else. Members' saved values go with the old destination. Checked before the write to fail fast, and again under
+    // the lock against the row it writes over.
+    const moveOfUpdate = (row: TAgentVaultServices, next: { hostPattern?: string | null; config?: unknown }) =>
+      serviceMoveOf(row, { hostPattern: next.hostPattern ?? row.hostPattern, config: next.config ?? row.config });
+    const moveRefusal = (
+      move: TAgentVaultServiceMove,
+      serviceName: TAgentVaultServices["name"],
+      { needs, sentAgain = "sent again", receives = "it" }: { needs: string; sentAgain?: string; receives?: string }
+    ) => {
+      const needed = [needs, sentAgain].filter(Boolean).join(" ");
+      return new BadRequestError({
+        message:
+          move === "tls"
+            ? `Turning off TLS or certificate verification for the service '${serviceName}', or changing its CA, needs ${needed} in the same change, since anyone between the proxy and the server could then read ${receives}.`
+            : `Changing where the service '${serviceName}' connects needs ${needed} in the same change, since the new destination would receive ${receives}.`
+      });
+    };
     // An entry sent without a value keeps the one sealed on the row it matches, so a move can't take one.
-    const assertTransformationValuesSent = (serviceName: string) => {
+    const assertTransformationValuesSent = (move: TAgentVaultServiceMove, serviceName: TAgentVaultServices["name"]) => {
       const keptHeader = customHeaders?.find((header) => header.value === undefined);
       if (keptHeader) {
-        throw new BadRequestError({
-          message: `Changing where the service '${serviceName}' connects needs the value of the custom header '${keptHeader.name}' sent again in the same change, since the new destination would receive it.`
-        });
+        throw moveRefusal(move, serviceName, { needs: `the value of the custom header '${keptHeader.name}'` });
       }
       const keptSubstitution = substitutions?.find((substitution) => substitution.value === undefined);
       if (keptSubstitution) {
-        throw new BadRequestError({
-          message: `Changing where the service '${serviceName}' connects needs the value of the substitution for '${keptSubstitution.placeholder}' sent again in the same change, since the new destination would receive it.`
+        throw moveRefusal(move, serviceName, {
+          needs: `the value of the substitution for '${keptSubstitution.placeholder}'`
         });
       }
     };
-    const destinationChanged = destinationOfUpdate(service, { hostPattern, config: serviceConfig });
-    if (destinationChanged) assertTransformationValuesSent(service.name);
+    const move = moveOfUpdate(service, { hostPattern, config: serviceConfig });
+    if (move) assertTransformationValuesSent(move, service.name);
 
     const storedSecretCipher = needsStoredSecret ? await getProjectCipher(rest.projectId) : null;
     const storedSecret = storedSecretCipher
@@ -1946,22 +2029,21 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         credential.type !== AgentVaultCredentialType.OAuth &&
         "encryptedCredential" in credentialUpdate &&
         !keepsStoredSecretPart(credential, service));
-    const assertCredentialSentForMove = (row: TAgentVaultServices) => {
+    const assertCredentialSentForMove = (rowMove: TAgentVaultServiceMove, row: TAgentVaultServices) => {
       if (replacesSealedCredential || isMemberProvidedOauth(row)) return;
       if (isVariableOauth(row)) {
-        throw new BadRequestError({
-          message: `Changing where the service '${row.name}' connects needs its OAuth variable named again in the same change, since the new destination would receive the variable's tokens.`
+        throw moveRefusal(rowMove, row.name, {
+          needs: "its OAuth variable",
+          sentAgain: "named again",
+          receives: "the variable's tokens"
         });
       }
       if (!row.encryptedCredential) return;
-      throw new BadRequestError({
-        message:
-          row.credentialType === AgentVaultCredentialType.OAuth
-            ? `Changing where the service '${row.name}' connects needs a new OAuth sign-in in the same change, since the new destination would receive its tokens.`
-            : `Changing where the service '${row.name}' connects needs its credential sent again in the same change, since the new destination would receive it.`
-      });
+      throw row.credentialType === AgentVaultCredentialType.OAuth
+        ? moveRefusal(rowMove, row.name, { needs: "a new OAuth sign-in", sentAgain: "", receives: "its tokens" })
+        : moveRefusal(rowMove, row.name, { needs: "its credential" });
     };
-    if (destinationChanged) assertCredentialSentForMove(service);
+    if (move) assertCredentialSentForMove(move, service);
 
     const newHookSigningSecret = hookChange && hookChange.kind !== "removed" ? hookChange.signingSecret : undefined;
     const cipherForTransformations =
@@ -2186,23 +2268,27 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
         // The move checked against the locked row, which a save since the first read may have given a credential or
         // transformations that this request would otherwise carry to the new destination.
-        const movesDestination = destinationOfUpdate(locked, {
+        const lockedMove = moveOfUpdate(locked, {
           hostPattern: reconciled.hostPattern,
           config: reconciled.serviceConfig
         });
-        if (movesDestination) {
-          assertCredentialSentForMove(locked);
+        if (lockedMove) {
+          assertCredentialSentForMove(lockedMove, locked);
           // A save that keeps the first read's destination skipped the check above, and still moves a row that
           // another save pointed elsewhere since, so entries that keep a value are refused here too.
-          assertTransformationValuesSent(locked.name);
+          assertTransformationValuesSent(lockedMove, locked.name);
           if (!customHeaders && (await agentVaultServiceCustomHeaderDAL.findByServiceIds([service.id], tx)).length) {
-            throw new BadRequestError({
-              message: `Changing where the service '${locked.name}' connects needs its custom headers sent again with their values in the same change, since the new destination would receive them.`
+            throw moveRefusal(lockedMove, locked.name, {
+              needs: "its custom headers",
+              sentAgain: "sent again with their values",
+              receives: "them"
             });
           }
           if (!substitutions && (await agentVaultServiceSubstitutionDAL.findByServiceIds([service.id], tx)).length) {
-            throw new BadRequestError({
-              message: `Changing where the service '${locked.name}' connects needs its substitutions sent again with their values in the same change, since the new destination would receive them.`
+            throw moveRefusal(lockedMove, locked.name, {
+              needs: "its substitutions",
+              sentAgain: "sent again with their values",
+              receives: "them"
             });
           }
         }
@@ -2255,7 +2341,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           memberFieldsChanged,
           nextMemberFields,
           oauthMembersRebound,
-          destinationChanged: movesDestination
+          destinationChanged: lockedMove !== null
         });
         if (toClear === "all") {
           const deleted = await agentVaultPersonalValueDAL.delete({ serviceId: service.id }, tx);
@@ -2431,9 +2517,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       visibleService: hideSetup(
         hideVariables(
           await withReachableBundles(rest, updatedService),
-          serviceVisibilityOf(permission).canReadVariables
+          serviceFieldVisibilityOf(permission).canReadVariables
         ),
-        serviceVisibilityOf(permission).canSeeSetup(updatedService.id)
+        serviceFieldVisibilityOf(permission).canSeeSetup(updatedService.id)
       ),
       update: {
         hostPattern: requestedHostPattern,
@@ -2743,7 +2829,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     const service = await agentVaultServiceDAL.findByIdInProject({ id: serviceId, projectId: rest.projectId });
     if (!service) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
-    requireOnService(permission, ProjectPermissionAgentVaultServiceActions.Delete, service.id);
+    await requireOnFoundService(rest, permission, ProjectPermissionAgentVaultServiceActions.Delete, {
+      serviceId: service.id,
+      requestedId: serviceId
+    });
 
     // Read before the delete, since CASCADE takes these rows with the service.
     const [{ customHeaders, substitutions, variableReferences, oauthVariables }, bundlesByService] = await Promise.all([
@@ -2766,9 +2855,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       visibleService: hideSetup(
         hideVariables(
           await withReachableBundles(rest, deletedService),
-          serviceVisibilityOf(permission).canReadVariables
+          serviceFieldVisibilityOf(permission).canReadVariables
         ),
-        serviceVisibilityOf(permission).canSeeSetup(deletedService.id)
+        serviceFieldVisibilityOf(permission).canSeeSetup(deletedService.id)
       )
     };
   };
@@ -2778,7 +2867,12 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   const statusScopeOf = (reach: TAgentVaultReach) =>
     reach.serviceIds === null
       ? { accessBundleIds: null, includeUnlinked: true }
-      : { accessBundleIds: reach.accessBundleIds, includeUnlinked: false, directServiceIds: reach.serviceIds };
+      : {
+          accessBundleIds: reach.accessBundleIds,
+          includeUnlinked: false,
+          directServiceIds: reach.serviceIds,
+          deniedServiceIds: reach.deniedServiceIds
+        };
 
   // The services the caller can see, each with the bundles they reach it through and their own setup status.
   // personalValues describe the owner's values: the caller's, or the user a session on their behalf would be for.
@@ -2796,7 +2890,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     },
     services: TAgentVaultCatalogService[],
     reach: TAgentVaultReach,
-    visibility: ReturnType<typeof serviceVisibilityOf>
+    visibility: ReturnType<typeof serviceFieldVisibilityOf>
   ) => {
     const serviceIds = services.map((service) => service.id);
     const [transformations, bundlesByService, statuses] = await Promise.all([
@@ -2838,22 +2932,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         ProjectPermissionSub.AgentVaultServices
       );
     }
-    return { reachability, visibility: serviceVisibilityOf(permission) };
+    return { reachability, visibility: serviceFieldVisibilityOf(permission) };
   };
-
-  // What the caller can see: services they can read or use, and those a bundle they can use holds. null for all of them.
-  const $visibleServiceIds = async (
-    reachability: Awaited<ReturnType<typeof getAgentVaultReachability>>,
-    projectId: string
-  ) =>
-    unionWithin(
-      await visibleIdsWithin(reachability.permission, {
-        subjectType: ProjectPermissionSub.AgentVaultServices,
-        field: "serviceId",
-        loadIds: () => agentVaultReachDAL.findServiceIds(projectId)
-      }),
-      await usableServiceIdsOf({ agentVaultServiceDAL, agentVaultReachDAL }, reachability, projectId)
-    );
 
   // The list a member sets up their personal values from, so it can be narrowed to what still needs them. Setup is
   // counted over what the list is scoped to, the way the bundle list counts it. With `assigned` it lists the services
@@ -2891,7 +2971,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
               subjectType: ProjectPermissionSub.AgentVaultServices,
               field: "serviceId"
             }),
-            skillIds: []
+            skillIds: [],
+            deniedServiceIds: reachability.deniedServiceIds
           },
           projectId
         )) ?? [];
@@ -2942,7 +3023,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
   const getService = async ({ projectId, ctx, serviceId }: TServiceByIdDTO) => {
     const reachability = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, { projectId, ctx });
-    const visibility = serviceVisibilityOf(reachability.permission);
+    const visibility = serviceFieldVisibilityOf(reachability.permission);
     const service = await agentVaultServiceDAL.findByIdInProject({ id: serviceId, projectId });
     const visibleIds = service ? await $visibleServiceIds(reachability, projectId) : [];
     // A service the caller can't see reads like one that doesn't exist, whatever their roles: a 403 here would confirm
@@ -3039,7 +3120,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
     // Shown as the caller's own read of each service would show it, so a bundle they can't see stays out of it.
     const services = result.added.length
-      ? await $viewServices(rest, result.added, reachability, serviceVisibilityOf(permission))
+      ? await $viewServices(rest, result.added, reachability, serviceFieldVisibilityOf(permission))
       : [];
     return { services, skipped: result.skipped, accessBundle: { id: bundle.id, name: bundle.name } };
   };
@@ -3074,7 +3155,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       return row;
     });
 
-    const [view] = await $viewServices(rest, [service], reachability, serviceVisibilityOf(permission));
+    const [view] = await $viewServices(rest, [service], reachability, serviceFieldVisibilityOf(permission));
     return { service: view, accessBundle: { id: bundle.id, name: bundle.name } };
   };
 
@@ -3196,7 +3277,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   // Giving or taking the bundle's role is giving or taking a role, so it is bounded the way the members API bounds one:
   // assign-role on each kind of member, and on the legacy privilege system everything the role grants. The role is a
   // custom role an admin can edit, so it is read as it stands; a bundle with none yet is checked against the rules its
-  // role would be made with.
+  // role would be made with. On the legacy privilege system the members API also refuses any change to a member whose
+  // roles grant more than the caller holds, so the roles each member holds are checked too. They are read on the
+  // primary and returned, for the write to check again under its lock (assertHeldRolesUnchanged).
   const assertBundleRoleBoundary = async ({
     bundle,
     projectId,
@@ -3204,7 +3287,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     permission,
     actors,
     nameByKey,
-    baseMessage
+    baseMessage,
+    heldBaseMessage
   }: {
     bundle: { id: string; grantRoleId?: string | null };
     projectId: string;
@@ -3213,27 +3297,64 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     actors: TGrantActor[];
     nameByKey: Map<string, TAgentVaultActorName>;
     baseMessage: string;
+    heldBaseMessage: string;
   }) => {
     const [org, role] = await Promise.all([
       orgDAL.findById(ctx.actorOrgId),
       bundle.grantRoleId ? roleDAL.findById(bundle.grantRoleId) : undefined
     ]);
+    const shouldUseNewPrivilegeSystem = Boolean(org?.shouldUseNewPrivilegeSystem);
     const targets = role
       ? await permissionService.getProjectPermissionByRoles([role.slug], projectId)
       : [{ permission: createMongoAbility(unpackRules(bundleRolePermissions(bundle.id)), { conditionsMatcher }) }];
-    actors.forEach((actor) => {
+    const assertWithin = (
+      actor: TGrantActor,
+      targetPermissions: Parameters<typeof assertRoleSetBoundary>[0]["targetPermissions"],
+      message: string
+    ) => {
       const ref = toActorRefFromGrant(actor);
       const op = AGENT_VAULT_ROLE_ASSIGNMENT[ref.type];
       assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem: Boolean(org?.shouldUseNewPrivilegeSystem),
+        shouldUseNewPrivilegeSystem,
         opActions: [...op.actions],
         opSubject: op.subject,
         actorPermission: permission,
-        targetPermissions: targets,
-        baseMessage,
+        targetPermissions,
+        baseMessage: message,
         subjectFields: op.fields(ref.id, nameByKey.get(agentVaultActorKey(ref)))
       });
-    });
+    };
+    actors.forEach((actor) => assertWithin(actor, targets, baseMessage));
+    if (shouldUseNewPrivilegeSystem) return null;
+
+    const held = await agentVaultAccessBundleDAL.transaction((tx) =>
+      heldRolesOf({ membershipDAL, membershipRoleDAL }, { projectId, actors }, tx)
+    );
+    const slugs = [...new Set(held.flatMap(({ roles }) => roles))].filter(roleNeedsPrivilegeBoundary);
+    const abilities = slugs.length
+      ? await permissionService.getProjectPermissionByRoles(slugs, projectId, { ignoreUnresolvedRoles: true })
+      : [];
+    held.forEach(({ actor, roles }) =>
+      assertWithin(
+        actor,
+        abilities.filter((ability) => ability.role && roles.includes(ability.role.slug)),
+        heldBaseMessage
+      )
+    );
+    return held;
+  };
+
+  // The held roles the boundary check passed were read before the write's lock. If another change got in since (an
+  // admin gave the member a role the caller doesn't cover, say), the write would skip that check, so it starts over. An
+  // admin passes the check whatever the members hold, so callers skip this for one.
+  const assertHeldRolesUnchanged = async (
+    { projectId, actors, checked }: { projectId: string; actors: TGrantActor[]; checked: { roles: string[] }[] },
+    tx: Knex
+  ) => {
+    const now = await heldRolesOf({ membershipDAL, membershipRoleDAL }, { projectId, actors }, tx);
+    if (now.some(({ roles }, index) => roles.join(",") !== checked[index]?.roles.join(","))) {
+      throw new ConflictError({ message: "A member's roles changed while this request was running. Try again." });
+    }
   };
 
   // Each kind of member is read on its own subject, as on the members API, so a role that can read users but not
@@ -3347,47 +3468,66 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     assertNotOwnBundleRole({ actors, callerIsAdmin, ctx: rest.ctx });
     await assertActorsInProject({ projectId: rest.projectId, actors });
     const nameByKey = await resolveActorNames(actors);
-    await assertBundleRoleBoundary({
+    const held = await assertBundleRoleBoundary({
       bundle,
       projectId: rest.projectId,
       ctx: rest.ctx,
       permission,
       actors,
       nameByKey,
-      baseMessage: "Failed to grant the access bundle"
+      baseMessage: "Failed to grant the access bundle",
+      heldBaseMessage: "Failed to grant the access bundle to a more privileged member"
     });
 
-    const outcome = await agentVaultAccessBundleDAL.transaction(async (tx) => {
-      // First, as the members API takes it for a role change: a grant and a revoke for one member each read the roles
-      // the other is changing.
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("project", rest.projectId)]);
-      const locked = await agentVaultAccessBundleDAL.lockByIdInProject(
-        { id: bundle.id, projectId: rest.projectId },
-        tx
-      );
-      if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
-      await assertAdminTargetsAllowed({ projectId: rest.projectId, actors, callerIsAdmin }, tx);
-      const role = await ensureBundleRole({ roleDAL, agentVaultAccessBundleDAL }, locked, tx);
-      const given = await giveBundleRole(
-        { membershipDAL, membershipRoleDAL },
-        { projectId: rest.projectId, roleId: role.id, actors },
-        tx
-      );
-      // All or nothing: throwing rolls back the grants already written for the others.
-      const [atLimit] = given.full;
-      if (atLimit) {
-        const name = nameByKey.get(agentVaultActorKey(toActorRefFromGrant(atLimit)));
-        throw new BadRequestError({
-          message: `Granting this access bundle would give ${name ? `'${name.email ?? name.name}'` : "a member"} more than ${AGENT_VAULT_MAX_MEMBER_ROLES} roles, the most a member can hold. Remove one of their other roles first.`
+    const grant = () =>
+      agentVaultAccessBundleDAL.transaction(async (tx) => {
+        // First, as the members API takes it for a role change: a grant and a revoke for one member each read the roles
+        // the other is changing.
+        await lockProjectRoleChanges(rest.projectId, tx);
+        if (held && !callerIsAdmin) {
+          await assertHeldRolesUnchanged({ projectId: rest.projectId, actors, checked: held }, tx);
+        }
+        const locked = await agentVaultAccessBundleDAL.lockByIdInProject(
+          { id: bundle.id, projectId: rest.projectId },
+          tx
+        );
+        if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
+        await assertAdminTargetsAllowed({ projectId: rest.projectId, actors, callerIsAdmin }, tx);
+        const role = await ensureBundleRole({ roleDAL, agentVaultAccessBundleDAL }, locked, tx);
+        const given = await giveBundleRole(
+          { membershipDAL, membershipRoleDAL },
+          { projectId: rest.projectId, roleId: role.id, actors },
+          tx
+        );
+        // All or nothing: throwing rolls back the grants already written for the others.
+        const [atLimit] = given.full;
+        if (atLimit) {
+          const name = nameByKey.get(agentVaultActorKey(toActorRefFromGrant(atLimit)));
+          throw new BadRequestError({
+            message: `Granting this access bundle would give ${name ? `'${name.email ?? name.name}'` : "a member"} more than ${AGENT_VAULT_MAX_MEMBER_ROLES} roles, the most a member can hold. Remove one of their other roles first.`
+          });
+        }
+        return { ...given, role: { id: role.id, slug: role.slug } };
+      });
+
+    let outcome: Awaited<ReturnType<typeof grant>>;
+    try {
+      outcome = await grant();
+    } catch (err) {
+      // The bundle's first grant makes its role, whose slug a role made at the same moment can take.
+      if (isUniqueViolation(err)) {
+        throw new ConflictError({
+          message: "Another change to this project's roles happened at the same time. Try again."
         });
       }
-      return given;
-    });
+      throw err;
+    }
 
     return {
       members: withActorNames(outcome.added.map(grantedAt), nameByKey),
       skipped: outcome.skipped.map(toActorRefFromGrant),
-      accessBundleName: bundle.name
+      accessBundleName: bundle.name,
+      role: outcome.role
     };
   };
 
@@ -3409,38 +3549,45 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const actors = actorsOf({ userIds, groupIds, machineIdentityIds });
     assertNotOwnBundleRole({ actors, callerIsAdmin, ctx: rest.ctx });
     const nameByKey = await resolveActorNames(actors);
-    await assertBundleRoleBoundary({
+    const held = await assertBundleRoleBoundary({
       bundle,
       projectId: rest.projectId,
       ctx: rest.ctx,
       permission,
       actors,
       nameByKey,
-      baseMessage: "Failed to revoke the access bundle"
+      baseMessage: "Failed to revoke the access bundle",
+      heldBaseMessage: "Failed to revoke the access bundle from a more privileged member"
     });
 
     const outcome = await agentVaultAccessBundleDAL.transaction(async (tx) => {
       // First, as the members API takes it for a role change: two revokes for one member that holds only those two
       // bundles' roles would each count the other's as left and leave the member with no role at all.
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("project", rest.projectId)]);
+      await lockProjectRoleChanges(rest.projectId, tx);
+      if (held && !callerIsAdmin) {
+        await assertHeldRolesUnchanged({ projectId: rest.projectId, actors, checked: held }, tx);
+      }
       const locked = await agentVaultAccessBundleDAL.lockByIdInProject(
         { id: bundle.id, projectId: rest.projectId },
         tx
       );
       if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
-      if (!locked.grantRoleId) return { removed: [] as TGrantActor[], skipped: actors };
+      if (!locked.grantRoleId) return { removed: [] as TGrantActor[], skipped: actors, role: null };
       await assertAdminTargetsAllowed({ projectId: rest.projectId, actors, callerIsAdmin }, tx);
-      return takeBundleRole(
+      const taken = await takeBundleRole(
         { membershipDAL, membershipRoleDAL },
         { projectId: rest.projectId, roleId: locked.grantRoleId, actors },
         tx
       );
+      const role = await roleDAL.findById(locked.grantRoleId, tx);
+      return { ...taken, role: role ? { id: role.id, slug: role.slug } : null };
     });
 
     return {
       members: withActorNames(outcome.removed.map(toActorRefFromGrant), nameByKey),
       skipped: outcome.skipped.map(toActorRefFromGrant),
-      accessBundleName: bundle.name
+      accessBundleName: bundle.name,
+      role: outcome.role
     };
   };
 

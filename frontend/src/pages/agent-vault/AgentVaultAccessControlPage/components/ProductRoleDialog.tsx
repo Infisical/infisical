@@ -10,6 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DiscardChangesAlertDialog,
   Field,
   FieldContent,
   FieldLabel
@@ -20,6 +21,7 @@ import {
   defaultAgentVaultRoles,
   isSameRoleSet
 } from "@app/helpers/agentVaultMembers";
+import { useDiscardChangesGuard } from "@app/hooks";
 import { useUpdateAgentVaultMemberRoles } from "@app/hooks/api/agentVault";
 import { TAgentVaultProductMember } from "@app/hooks/api/agentVault/types";
 
@@ -38,6 +40,10 @@ export const ProductRoleDialog = ({ member, onOpenChange, subject }: Props) => {
   useEffect(() => {
     if (member) setRoles(member.roles);
   }, [member]);
+
+  const isDirty = Boolean(member) && !isSameRoleSet(roles, currentRoles);
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: () => onOpenChange(false) });
 
   const handleSave = async () => {
     try {
@@ -60,37 +66,53 @@ export const ProductRoleDialog = ({ member, onOpenChange, subject }: Props) => {
   };
 
   return (
-    <Dialog open={Boolean(member)} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Edit Roles</DialogTitle>
-          <DialogDescription>Choose what {subject} can do in this project.</DialogDescription>
-        </DialogHeader>
-        <Field>
-          <FieldLabel htmlFor="agent-vault-edit-roles">Roles</FieldLabel>
-          <FieldContent>
-            <ProductRolesField
-              id="agent-vault-edit-roles"
-              projectId={projectId}
-              value={roles}
-              onChange={setRoles}
-            />
-          </FieldContent>
-        </Field>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            variant="av"
-            isPending={updateRoles.isPending}
-            isDisabled={isSameRoleSet(roles, currentRoles)}
-            onClick={handleSave}
-          >
-            Save
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog
+        open={Boolean(member)}
+        onOpenChange={(next) => {
+          if (next) onOpenChange(true);
+          else requestDiscard();
+        }}
+      >
+        <DialogContent isPending={updateRoles.isPending}>
+          <DialogHeader>
+            <DialogTitle>Edit Roles</DialogTitle>
+            <DialogDescription>Choose what {subject} can do in this project.</DialogDescription>
+          </DialogHeader>
+          <Field>
+            <FieldLabel htmlFor="agent-vault-edit-roles">Roles</FieldLabel>
+            <FieldContent>
+              <ProductRolesField
+                id="agent-vault-edit-roles"
+                projectId={projectId}
+                value={roles}
+                onChange={setRoles}
+              />
+            </FieldContent>
+          </Field>
+          <DialogFooter>
+            <Button variant="outline" isDisabled={updateRoles.isPending} onClick={requestDiscard}>
+              Cancel
+            </Button>
+            <Button
+              variant="av"
+              isPending={updateRoles.isPending}
+              isDisabled={!isDirty}
+              onClick={handleSave}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description={`Your unsaved changes to the roles of ${subject} will be lost.`}
+      />
+    </>
   );
 };

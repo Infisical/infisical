@@ -119,19 +119,42 @@ export const canUseAgentVaultAccessBundle = (
 
 type TBundledItem = { id: string; accessBundles: { id: string }[] };
 
+// A role's deny on a service or skill holds even inside a bundle the caller can use, so only an item no rule denies
+// comes through a bundle.
+const isInUsableBundle = (permission: MongoAbility<ProjectPermissionSet>, item: TBundledItem) =>
+  item.accessBundles.some((bundle) => canUseAgentVaultAccessBundle(permission, bundle.id));
+
 export const canUseAgentVaultService = (
   permission: MongoAbility<ProjectPermissionSet>,
   service: TBundledItem
-) =>
-  canOnAgentVaultService(permission, ProjectPermissionAgentVaultServiceActions.Use, service.id) ||
-  service.accessBundles.some((bundle) => canUseAgentVaultAccessBundle(permission, bundle.id));
+) => {
+  const target = subject(ProjectPermissionSub.AgentVaultServices, { serviceId: service.id });
+  return (
+    permission.can(ProjectPermissionAgentVaultServiceActions.Use, target) ||
+    (!permission.relevantRuleFor(ProjectPermissionAgentVaultServiceActions.Use, target)?.inverted &&
+      isInUsableBundle(permission, service))
+  );
+};
 
 export const canUseAgentVaultSkill = (
   permission: MongoAbility<ProjectPermissionSet>,
   skill: TBundledItem
-) =>
-  canOnAgentVaultSkill(permission, ProjectPermissionAgentVaultSkillActions.Use, skill.id) ||
-  skill.accessBundles.some((bundle) => canUseAgentVaultAccessBundle(permission, bundle.id));
+) => {
+  const target = subject(ProjectPermissionSub.AgentVaultSkills, { skillId: skill.id });
+  return (
+    permission.can(ProjectPermissionAgentVaultSkillActions.Use, target) ||
+    (!permission.relevantRuleFor(ProjectPermissionAgentVaultSkillActions.Use, target)?.inverted &&
+      isInUsableBundle(permission, skill))
+  );
+};
+
+// No role names a skill that doesn't exist yet, so an id no rule can hold asks whether the caller's roles let them use
+// every new skill.
+const NEW_SKILL_ID = "00000000-0000-0000-0000-000000000000";
+
+// Adding a skill to a bundle takes being able to use it, and a skill just created is in no bundle yet.
+export const canUseNewAgentVaultSkill = (permission: MongoAbility<ProjectPermissionSet>) =>
+  canOnAgentVaultSkill(permission, ProjectPermissionAgentVaultSkillActions.Use, NEW_SKILL_ID);
 
 // The members API takes adding a member, or changing one's roles, on users, groups and machine identities alike when a
 // request names all three kinds, so assigning a role from anywhere needs Create and Edit on all three.
@@ -150,6 +173,12 @@ export const canChangeAgentVaultMembers = (permission: MongoAbility<ProjectPermi
 export const canReadAgentVaultMembers = (permission: MongoAbility<ProjectPermissionSet>) =>
   permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) ||
   permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups) ||
+  permission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
+
+// Only then does the members list hold everyone, so a count from it can say nobody holds a role.
+export const canReadEveryAgentVaultMember = (permission: MongoAbility<ProjectPermissionSet>) =>
+  permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) &&
+  permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups) &&
   permission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
 
 // Access Control has a tab for each kind of member and one for roles, so reading any of them opens it.

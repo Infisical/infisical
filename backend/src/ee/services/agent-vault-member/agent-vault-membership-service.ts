@@ -11,7 +11,6 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TGenericPermission } from "@app/lib/types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
@@ -19,6 +18,7 @@ import { lockMembershipsById, TMembershipDALFactory } from "@app/services/member
 import {
   assertAgentVaultAdminOnlyChange,
   assertWillRetainProjectAdmin,
+  lockProjectRoleChanges,
   roleNeedsPrivilegeBoundary
 } from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -60,7 +60,7 @@ type TAgentVaultMembershipServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "insertMany" | "find" | "transaction" | "delete">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find" | "insertMany" | "delete" | "findRolesByMembershipIds">;
-  roleDAL: Pick<TRoleDALFactory, "find" | "findOne" | "findById" | "create">;
+  roleDAL: Pick<TRoleDALFactory, "find" | "findById">;
   agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
   projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "delete">;
@@ -805,7 +805,7 @@ export const agentVaultMembershipServiceFactory = ({
     const written = await membershipDAL.transaction(async (tx) => {
       // Before the roles are read, not only around the admin count: two changes for one member that both
       // read the old role would each insert their own, leaving the member with two roles.
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("project", projectId)]);
+      await lockProjectRoleChanges(projectId, tx);
       if (!isAdmin) await assertRolesUnchanged(projectId, actors, current, tx);
       const existing = await findMembershipsForActors(projectId, actors, tx);
       const held = actors.filter((actor) => existing.has(actorKey(actor)));
@@ -952,7 +952,7 @@ export const agentVaultMembershipServiceFactory = ({
 
     const written = await membershipDAL.transaction(async (tx) => {
       // The lock a role change takes, so a promotion can't land between the checks above and this removal.
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("project", projectId)]);
+      await lockProjectRoleChanges(projectId, tx);
       if (!isAdmin) await assertRolesUnchanged(projectId, actors, current, tx);
       const existing = await findMembershipsForActors(projectId, actors, tx);
       const skipped = actors.filter((actor) => !existing.has(actorKey(actor)));

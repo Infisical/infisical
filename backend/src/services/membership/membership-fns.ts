@@ -12,6 +12,7 @@ import {
 } from "@app/db/schemas";
 import { PlanProduct, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
+  AGENT_VAULT_BUILT_IN_ROLES,
   agentVaultNoSuchRoleMessage,
   assertAgentVaultKeptRolesWithinLimit,
   assertAgentVaultRoleSetLimits,
@@ -19,8 +20,9 @@ import {
 } from "@app/ee/services/agent-vault-member/agent-vault-member-role-fns";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { isCustomProjectRole } from "@app/ee/services/permission/project-permission";
 import { PgSqlLock } from "@app/keystore/keystore";
-import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, ForbiddenRequestError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor } from "@app/lib/types";
@@ -189,7 +191,10 @@ export const withAgentVaultMemberAlias = async <T extends { role: string }>(
   ) {
     return roles;
   }
-  const project = await projectDAL.findById(scopeData.projectId);
+  const { projectId } = scopeData;
+  const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+    projectDAL.findById(projectId)
+  );
   if (project?.type !== ProjectType.AgentVault) return roles;
   // A project in another org is left to the guards, so the request learns nothing about it before they run.
   if (scopeData.orgId && project.orgId !== scopeData.orgId) return roles;
@@ -291,8 +296,10 @@ export const assertAgentVaultAdminOnlyChange = ({
 };
 
 // The members API's limits on one member's roles (assertAgentVaultRoleSetLimits), so a generic route can't save a set the
-// members API and the dashboard would refuse. That includes a time limit: the members API takes none, and nothing in
-// Agent Vault shows when a role ends.
+// members API and the dashboard would refuse. That includes a time limit, which the members API never takes and nothing
+// in Agent Vault shows, and the built-in roles of other products, which Agent Vault resolves to nothing (`custom`, with
+// no role behind it, would break every permission check for the member). Call it after withAgentVaultMemberAlias has
+// turned `member` and `viewer` into the project's Member role.
 export const assertAgentVaultRoleLimits = ({
   project,
   roles
@@ -306,31 +313,36 @@ export const assertAgentVaultRoleLimits = ({
       message: "Agent Vault doesn't support temporary roles yet. Give the role without a time limit."
     });
   }
+  const otherBuiltIn = roles.find(
+    (el) => !isCustomProjectRole(el.role) && !AGENT_VAULT_BUILT_IN_ROLES.includes(el.role)
+  );
+  if (otherBuiltIn) {
+    throw new BadRequestError({ message: agentVaultNoSuchRoleMessage(otherBuiltIn.role) });
+  }
   assertAgentVaultRoleSetLimits(roles.map((el) => el.role));
 };
 
+type TAgentVaultRoleChangeDeps = {
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+};
+
+type TAgentVaultRoleChangeArg = {
+  scopeData: { scope: AccessScope; projectId?: string };
+  actor: Pick<OrgServiceActor, "type" | "id" | "authMethod" | "orgId">;
+};
+
+export type TAgentVaultRoleChange = { projectId: string; actorIsAdmin: boolean } | null;
+
 /**
- * The admin rule above runs in a scope's guard, on the target's roles as read before the write takes its lock. In an
- * Agent Vault project a non-admin's write checks again under the lock: call this before the write's transaction, and
- * pass what it returns to assertAgentVaultAdminTargetUnchanged first thing inside it. Null for any other project, and
- * for an admin, who passes the rule whatever the target holds.
+ * A role change through a generic route in an Agent Vault project runs under the project's role-change lock and, for a
+ * non-admin, checks its target again there (lockAgentVaultRoleChange). Call this before the write's transaction. Null
+ * for any other project.
  */
-export const agentVaultProjectToRecheck = async (
-  {
-    projectDAL,
-    permissionService
-  }: {
-    projectDAL: Pick<TProjectDALFactory, "findById">;
-    permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  },
-  {
-    scopeData,
-    actor
-  }: {
-    scopeData: { scope: AccessScope; projectId?: string };
-    actor: Pick<OrgServiceActor, "type" | "id" | "authMethod" | "orgId">;
-  }
-) => {
+export const findAgentVaultRoleChange = async (
+  { projectDAL, permissionService }: TAgentVaultRoleChangeDeps,
+  { scopeData, actor }: TAgentVaultRoleChangeArg
+): Promise<TAgentVaultRoleChange> => {
   if (scopeData.scope !== AccessScope.Project || !scopeData.projectId) return null;
   const { projectId } = scopeData;
   const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
@@ -345,12 +357,13 @@ export const agentVaultProjectToRecheck = async (
     actorOrgId: actor.orgId,
     actionProjectType: ActionProjectType.Any
   });
-  return hasRole(ProjectMembershipRole.Admin) ? null : projectId;
+  return { projectId, actorIsAdmin: hasRole(ProjectMembershipRole.Admin) };
 };
 
 // Takes the project's role-change lock, then refuses if any of these memberships holds Admin now. An expired temporary
 // Admin confers nothing, so it doesn't count, as in the guard and the last-admin check. Call it before the write locks a
-// membership row (see lockProjectRoleChanges), with the project agentVaultProjectToRecheck returned.
+// membership row (see lockProjectRoleChanges), for a non-admin's write only: an admin passes the rule whatever the
+// target holds.
 export const assertAgentVaultAdminTargetUnchanged = async (
   { projectId, membershipIds }: { projectId: string | null; membershipIds: string[] },
   tx: Knex
@@ -372,6 +385,55 @@ export const assertAgentVaultAdminTargetUnchanged = async (
   });
 };
 
+// The role slugs a guard checks its target against, read the way lockAgentVaultRoleChange reads them again under the
+// lock: every live row (an ended time limit confers nothing), custom roles by slug.
+export const checkedRoleSlugsOf = (roles: TMembershipRole[]) =>
+  [...new Set(roles.filter(isActiveRole).map((role) => role.customRoleSlug || role.role))].sort();
+
+// The roles a guard in an Agent Vault project checked its target against, for lockAgentVaultRoleChange.
+export type TAgentVaultCheckedTarget = { checkedRoleSlugs?: string[] };
+
+// A guard in an Agent Vault project reads its target's roles on the primary: lockAgentVaultRoleChange compares them with
+// the rows under the write's lock, and a replica behind a change made a moment ago would make the two disagree.
+export const readTargetForAgentVaultRecheck = <T>(
+  dal: { transaction: <R>(cb: (tx: Knex) => Promise<R>) => Promise<R> },
+  isAgentVault: boolean,
+  read: (tx?: Knex) => Promise<T>
+): Promise<T> => (isAgentVault ? dal.transaction((tx) => read(tx)) : read());
+
+/**
+ * First thing in the transaction of a role change through a generic route (findAgentVaultRoleChange). Takes the project's
+ * role-change lock, so no grant or other change lands between this write's reads and its writes. A non-admin's guard
+ * checked the target's roles as read before the lock, so this refuses if the target holds Admin now, and starts over if
+ * its roles changed at all: the boundary check covered only the roles it read. An admin passes both checks whatever the
+ * target holds.
+ */
+export const lockAgentVaultRoleChange = async (
+  change: TAgentVaultRoleChange,
+  { membershipId, checked }: { membershipId?: string; checked?: TAgentVaultCheckedTarget | void },
+  tx: Knex
+) => {
+  if (!change) return;
+  await lockProjectRoleChanges(change.projectId, tx);
+  if (change.actorIsAdmin || !membershipId) return;
+  await assertAgentVaultAdminTargetUnchanged({ projectId: change.projectId, membershipIds: [membershipId] }, tx);
+
+  const checkedRoleSlugs = checked ? checked.checkedRoleSlugs : undefined;
+  if (!checkedRoleSlugs) return;
+  const rows = (await tx(TableName.MembershipRole)
+    .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
+    .where(`${TableName.MembershipRole}.membershipId`, membershipId)
+    .select(
+      `${TableName.MembershipRole}.role`,
+      `${TableName.MembershipRole}.isTemporary`,
+      `${TableName.MembershipRole}.temporaryAccessEndTime`,
+      `${TableName.Role}.slug as customRoleSlug`
+    )) as TMembershipRole[];
+  if (checkedRoleSlugsOf(rows).join(",") !== checkedRoleSlugs.join(",")) {
+    throw new ConflictError({ message: "A member's roles changed while this request was running. Try again." });
+  }
+};
+
 export const rolesGiveAdmin = (roles: { role: string }[]) =>
   roles.some((el) => el.role === ProjectMembershipRole.Admin);
 
@@ -382,6 +444,9 @@ export const customRolesNeedRbacPlan = async (
   scopeData: { scope: AccessScope; projectId?: string }
 ) => {
   if (scopeData.scope !== AccessScope.Project || !scopeData.projectId) return true;
-  const project = await projectDAL.findById(scopeData.projectId);
+  const { projectId } = scopeData;
+  const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+    projectDAL.findById(projectId)
+  );
   return project?.type !== ProjectType.AgentVault;
 };

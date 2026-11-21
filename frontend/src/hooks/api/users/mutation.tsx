@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { agentVaultKeys } from "@app/hooks/api/agentVault/queries";
+import { invalidateAgentVaultRoleDependents } from "@app/hooks/api/agentVaultRoles/queries";
 import { isCertManagerProject, userMembershipsBase } from "@app/hooks/api/certManagerAccess";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -31,8 +32,13 @@ export const useAddUserToWsNonE2EE = () => {
       );
       return data;
     },
-    onSuccess: (_, { orgId, projectId }) => {
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.members(orgId, projectId) });
+    onSuccess: (_, { orgId, projectId, projectType }) => {
+      // In Agent Vault the new members' roles also change who can use each bundle, service and skill.
+      if (projectType === ProjectType.AgentVault) {
+        invalidateAgentVaultRoleDependents(queryClient, orgId, projectId);
+      } else {
+        queryClient.invalidateQueries({ queryKey: agentVaultKeys.members(orgId, projectId) });
+      }
       queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId) });
       queryClient.invalidateQueries({ queryKey: projectKeys.getAvailableProjectUsers(projectId) });
       queryClient.invalidateQueries({

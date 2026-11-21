@@ -198,6 +198,11 @@ const canonicalLegacy = (rowKey: TPermissionRowKey, sets: TActionSets): TActionS
 const withImpliedRead = (keys: string[]) =>
   keys.includes(ResourceAction.Use) ? unique([...keys, ResourceAction.Read]) : keys;
 
+// Where use is denied, read that only came with it stays implied: writing it would let the bundle, service or skill be
+// read, which it couldn't be while only use was allowed.
+const withReadImpliedUnlessUseDenied = (keys: string[], isUseDenied: boolean) =>
+  isUseDenied ? keys : withImpliedRead(keys);
+
 const normalizeSets = (rowKey: TPermissionRowKey, sets: TActionSets): TActionSets => {
   const canonical = canonicalLegacy(rowKey, sets);
   return {
@@ -241,7 +246,13 @@ const normalizeResource = (
       id,
       allow: orderKeys(
         rowKey,
-        without(withImpliedRead(sets.allow), inherited).filter((key) => itemKeys.includes(key))
+        without(
+          withReadImpliedUnlessUseDenied(
+            sets.allow,
+            sets.deny.includes(ResourceAction.Use) || all.deny.includes(ResourceAction.Use)
+          ),
+          inherited
+        ).filter((key) => itemKeys.includes(key))
       ),
       deny: orderKeys(
         rowKey,
@@ -340,7 +351,13 @@ export const policyToRules = (policy: TAgentVaultPolicy): TProjectPermission[] =
           resourceKey,
           resource.items.map((item) => ({
             id: item.id,
-            keys: orderKeys(resourceKey, withImpliedRead(without(item.allow, resource.allow)))
+            keys: orderKeys(
+              resourceKey,
+              withReadImpliedUnlessUseDenied(
+                without(item.allow, resource.allow),
+                item.deny.includes(ResourceAction.Use) || resource.deny.includes(ResourceAction.Use)
+              )
+            )
           })),
           false
         )
@@ -629,9 +646,12 @@ export const getItemLevel = (
 ) => {
   const scope = { rowKey, itemId };
   const { deny } = getSets(policy, scope);
-  if (isSubset(itemKeysOf(rowKey), getEffectiveDeny(policy, scope))) return DENIED_LEVEL;
-  if (deny.length) return CUSTOM_LEVEL;
-  return levelByAllow(rowKey, getEffectiveAllow(policy, scope));
+  const effectiveDeny = getEffectiveDeny(policy, scope);
+  const effectiveAllow = getEffectiveAllow(policy, scope);
+  if (isSubset(itemKeysOf(rowKey), effectiveDeny)) return DENIED_LEVEL;
+  // A named level would claim an action that a deny for every one of them takes back.
+  if (deny.length || effectiveAllow.some((key) => effectiveDeny.includes(key))) return CUSTOM_LEVEL;
+  return levelByAllow(rowKey, effectiveAllow);
 };
 
 /** Whether a listed bundle, service or skill gets nothing the rest don't, so saving leaves it out. */
@@ -793,10 +813,16 @@ export const setItemLevel = (
   return withSets(policy, { rowKey, itemId }, { allow: level.allow, deny: [] });
 };
 
-/** The level a newly picked bundle, service or skill starts at: the first that adds to what every one of them has. */
+/**
+ * The level a newly picked bundle, service or skill starts at: the first that adds to what every one of them has, and
+ * that holds nothing denied for every one of them.
+ */
 export const getDefaultItemLevel = (policy: TAgentVaultPolicy, rowKey: TResourceRowKey) => {
   const inherited = policy[rowKey].allow.filter((key) => itemKeysOf(rowKey).includes(key));
-  const levels = getPermissionRow(rowKey).levels.filter(({ value }) => value !== NONE_LEVEL);
+  const deniedForAll = policy[rowKey].deny;
+  const levels = getPermissionRow(rowKey).levels.filter(
+    ({ value, allow }) => value !== NONE_LEVEL && !allow.some((key) => deniedForAll.includes(key))
+  );
   const preferred = [
     ...levels.filter(({ allow }) => allow.includes(ResourceAction.Use)),
     ...levels
@@ -1037,51 +1063,6 @@ export const getRowSummary = (
     access: accessOf(sets.allow.length > 0, sets.deny.length > 0, level === top.value),
     details
   };
-};
-
-const isEverything = (policy: TAgentVaultPolicy) =>
-  PERMISSION_ROWS.every((row) => getRowSummary(policy, row.key, () => "").access === "full");
-
-const RESOURCE_BRIEF_VERBS: Record<string, string> = {
-  view: "Views",
-  use: "Uses",
-  edit: "Edits",
-  manage: "Manages",
-  [CUSTOM_LEVEL]: "Custom access to",
-  [DENIED_LEVEL]: "Denies"
-};
-
-const countOf = (count: number, rowKey: TResourceRowKey) => {
-  const { singular, plural } = RESOURCE_NOUNS[rowKey];
-  return `${count} ${count === 1 ? singular : plural}`;
-};
-
-const resourceBrief = (policy: TAgentVaultPolicy, rowKey: TResourceRowKey) => {
-  const { plural } = RESOURCE_NOUNS[rowKey];
-  const resource = normalizeResource(rowKey, policy[rowKey]);
-  const level = getRowLevel(policy, rowKey);
-  const parts: string[] = [];
-  if (level !== NONE_LEVEL) parts.push(`${RESOURCE_BRIEF_VERBS[level]} all ${plural}`);
-  ITEM_LEVEL_ORDER.forEach((itemLevel) => {
-    const count = resource.items.filter(
-      (item) => getItemLevel(policy, rowKey, item.id) === itemLevel
-    ).length;
-    if (count) parts.push(`${RESOURCE_BRIEF_VERBS[itemLevel]} ${countOf(count, rowKey)}`);
-  });
-  if (resource.deny.includes(ResourceAction.Create)) parts.push(`Can't create ${plural}`);
-  else if (resource.allow.includes(ResourceAction.Create)) parts.push(`Creates ${plural}`);
-  return parts;
-};
-
-/** One phrase per row the policy grants something on, for lists that have room for a line. Empty when it grants nothing. */
-export const describeAgentVaultPolicy = (policy: TAgentVaultPolicy): string[] => {
-  if (isEverything(policy)) return ["Everything in this project"];
-  return PERMISSION_ROWS.flatMap((row) => {
-    if (isResourceRowKey(row.key)) return resourceBrief(policy, row.key);
-    const level = getRowLevel(policy, row.key);
-    if (level === NONE_LEVEL) return [];
-    return [`${row.label}: ${getLevelLabel(row.key, level)}`];
-  });
 };
 
 /**

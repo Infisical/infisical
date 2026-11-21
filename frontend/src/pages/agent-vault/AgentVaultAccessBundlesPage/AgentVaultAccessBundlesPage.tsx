@@ -233,7 +233,7 @@ const AgentVaultAccessBundlesPageContent = () => {
           </CardTitle>
           <CardDescription>
             Each bundle is a named set of services and skills. A role that can use a bundle can
-            start sessions from it with every service and skill in it.
+            start sessions from it with the services and skills in it that no role denies.
           </CardDescription>
           {canCreateBundles && (
             <CardAction>

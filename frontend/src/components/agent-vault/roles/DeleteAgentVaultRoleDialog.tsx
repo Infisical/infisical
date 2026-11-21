@@ -20,15 +20,38 @@ export type TRoleToDelete = { id: string; name: string; slug: string };
 
 type Props = {
   role: TRoleToDelete | null;
-  // How many members hold the role, when that is known. The API refuses to delete a role anyone holds.
+  // How many of the members the caller can see hold the role, when that is known. The API refuses to delete a role
+  // anyone holds.
   holderCount?: number;
+  isHolderCountPending?: boolean;
+  // The caller can see every kind of member, so a count of none means nobody holds the role.
+  isHolderCountComplete?: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onDeleted?: () => void;
+};
+
+const holdersPhrase = (count: number, isComplete: boolean) => {
+  const members = count === 1 ? "1 member holds" : `${count} members hold`;
+  return isComplete ? members : `At least ${members}`;
+};
+
+const deleteDescription = (
+  holderCount: number | undefined,
+  isPending: boolean,
+  isComplete: boolean
+) => {
+  if (isPending) return "Checking who holds this role.";
+  if (holderCount === 0 && isComplete) {
+    return "Nobody holds this role, so nobody loses access. This cannot be undone.";
+  }
+  return "The role and its rules are deleted. This cannot be undone.";
 };
 
 export const DeleteAgentVaultRoleDialog = ({
   role,
   holderCount,
+  isHolderCountPending = false,
+  isHolderCountComplete = false,
   onOpenChange,
   onDeleted
 }: Props) => {
@@ -44,8 +67,8 @@ export const DeleteAgentVaultRoleDialog = ({
           <AlertDialogHeader>
             <AlertDialogTitle>Can&apos;t Delete &quot;{role.name}&quot; Yet</AlertDialogTitle>
             <AlertDialogDescription>
-              {holderCount === 1 ? "1 member holds" : `${holderCount} members hold`} this role. Give{" "}
-              {holderCount === 1 ? "them" : "each of them"} another role under Access Control, then
+              {holdersPhrase(holderCount, isHolderCountComplete)} this role. Roles add up, so remove
+              it from {holderCount === 1 ? "them" : "each of them"} under Access Control, then
               delete it.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -62,14 +85,10 @@ export const DeleteAgentVaultRoleDialog = ({
       isOpen={Boolean(role)}
       onOpenChange={onOpenChange}
       title={`Delete "${role?.name ?? ""}"`}
-      description={
-        holderCount === 0
-          ? "Nobody holds this role, so nobody loses access. This cannot be undone."
-          : "The role and its rules are deleted. This cannot be undone."
-      }
+      description={deleteDescription(holderCount, isHolderCountPending, isHolderCountComplete)}
       confirmKey={role?.slug ?? ""}
       confirmLabel="Delete Role"
-      isPending={deleteRole.isPending}
+      isPending={deleteRole.isPending || isHolderCountPending}
       onConfirm={async () => {
         if (!role) return;
         await deleteRole.mutateAsync({

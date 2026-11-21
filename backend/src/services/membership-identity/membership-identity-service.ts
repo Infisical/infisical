@@ -23,15 +23,14 @@ import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import {
-  agentVaultProjectToRecheck,
-  assertAgentVaultAdminTargetUnchanged,
-  customRolesNeedRbacPlan,
-  withAgentVaultMemberAlias,
   assertProductWillRetainAdmin,
   assertSecretsTemporaryAccessAllowed,
+  customRolesNeedRbacPlan,
+  findAgentVaultRoleChange,
   findProjectKeepingBundleRoles,
-  lockProjectRoleChanges,
-  replaceMembershipRoles
+  lockAgentVaultRoleChange,
+  replaceMembershipRoles,
+  withAgentVaultMemberAlias
 } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TProjectAccessRevokeServiceFactory, TRevokedProjectAccess } from "../membership/project-access-revoke-service";
@@ -55,7 +54,7 @@ import { newProjectMembershipIdentityFactory } from "./project/project-membershi
 type TMembershipIdentityServiceFactoryDep = {
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete" | "find">;
-  roleDAL: Pick<TRoleDALFactory, "find" | "findOne" | "findById" | "create">;
+  roleDAL: Pick<TRoleDALFactory, "find" | "findById">;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getProjectPermissionByRoles" | "getOrgPermissionByRoles"
@@ -272,7 +271,7 @@ export const membershipIdentityServiceFactory = ({
     const keepBundleRolesInProjectId = await findProjectKeepingBundleRoles(projectDAL, scopeData, data.roles);
     data.roles = await withAgentVaultMemberAlias({ projectDAL, roleDAL }, scopeData, data.roles);
 
-    await factory.onUpdateMembershipIdentityGuard(dto);
+    const checked = await factory.onUpdateMembershipIdentityGuard(dto);
 
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
@@ -341,16 +340,13 @@ export const membershipIdentityServiceFactory = ({
     let shouldRevokeOrgTokens = false;
     let shouldRestoreOrgTokens = false;
 
-    const agentVaultProjectId = await agentVaultProjectToRecheck(
+    const agentVaultChange = await findAgentVaultRoleChange(
       { projectDAL, permissionService },
       { scopeData, actor: dto.permission }
     );
     const membershipDoc = await membershipIdentityDAL.transaction(async (tx) => {
-      await assertAgentVaultAdminTargetUnchanged(
-        { projectId: agentVaultProjectId, membershipIds: [existingMembership.id] },
-        tx
-      );
-      if (keepBundleRolesInProjectId) await lockProjectRoleChanges(keepBundleRolesInProjectId, tx);
+      // Takes the lock replaceMembershipRoles needs to keep access bundle roles, which only Agent Vault projects have.
+      await lockAgentVaultRoleChange(agentVaultChange, { membershipId: existingMembership.id, checked }, tx);
       // The project advisory lock before the row lock, the order every other caller takes: a product-route
       // change holding the advisory lock needs KEY SHARE on this row, so the reverse order deadlocks.
       const newIsActive = data.isActive ?? existingMembership.isActive;
@@ -494,7 +490,7 @@ export const membershipIdentityServiceFactory = ({
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
 
-    await factory.onDeleteMembershipIdentityGuard(dto);
+    const checked = await factory.onDeleteMembershipIdentityGuard(dto);
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const existingMembership = await membershipIdentityDAL.findOne({
@@ -514,7 +510,7 @@ export const membershipIdentityServiceFactory = ({
 
     let revoked: TRevokedProjectAccess[] = [];
 
-    const agentVaultProjectId = await agentVaultProjectToRecheck(
+    const agentVaultChange = await findAgentVaultRoleChange(
       { projectDAL, permissionService },
       { scopeData, actor: dto.permission }
     );
@@ -524,10 +520,7 @@ export const membershipIdentityServiceFactory = ({
         return existingMembership;
       }
 
-      await assertAgentVaultAdminTargetUnchanged(
-        { projectId: agentVaultProjectId, membershipIds: [existingMembership.id] },
-        tx
-      );
+      await lockAgentVaultRoleChange(agentVaultChange, { membershipId: existingMembership.id, checked }, tx);
       await assertProductWillRetainAdmin({
         project: await projectDAL.findById(scopeData.projectId, tx),
         excludeMembershipIds: [existingMembership.id],

@@ -20,6 +20,17 @@ const ADMIN: string = ProjectMembershipRole.Admin;
 /** What a member starts with when nobody picks a role for them. */
 export const defaultAgentVaultRoles = () => [NO_ACCESS];
 
+// Mirrors AGENT_VAULT_MAX_MEMBER_ROLES on the backend, which refuses a member with more.
+export const AGENT_VAULT_MAX_MEMBER_ROLES = 10;
+
+export const AGENT_VAULT_ROLE_LIMIT_REACHED = `Holds ${AGENT_VAULT_MAX_MEMBER_ROLES} roles already, the most a member can have.`;
+
+/** Whether a role the picker doesn't hold yet can still be added, which No Access always can since it replaces them. */
+export const canAddAgentVaultRole = (roles: readonly string[], slug: string) =>
+  slug === NO_ACCESS ||
+  roles.includes(slug) ||
+  roles.filter((role) => role !== NO_ACCESS).length < AGENT_VAULT_MAX_MEMBER_ROLES;
+
 /**
  * The roles a picker holds after a change. No Access grants nothing, so the API refuses it beside another role: picking
  * it drops the rest, picking anything else drops it, and taking every role away leaves No Access.

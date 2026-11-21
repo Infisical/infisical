@@ -120,19 +120,29 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   `resolveAgentVaultProjectRoleRules` (`permission-service.ts`) gives admin `buildAgentVaultProjectAdminPermissionRules`,
   unpacks a custom role, and gives any other slug nothing, a leftover `member` row included.
   So a new action goes into the admin rule set and nowhere else built in; anything narrower is a custom role, never a
-  branch in a service. The role migration (`20261118120000_agent-vault-roles-replace-bundle-grants.ts`) moves a
-  project's Member, Viewer and custom-role rows onto a per-project custom role, slug `member-role`, with Member's rules,
-  so nobody's access changes.
+  branch in a service. When you add an action or subject an Agent Vault role can grant, also add it to a row of the
+  frontend's policy editor catalog and to `ADMIN_RULES` in its tests (see
+  `frontend/src/components/agent-vault/policy-editor/AGENTS.md`), or every role holding it opens in JSON only. The role
+  migration (`20261118120000_agent-vault-roles-replace-bundle-grants.ts`) moves every role row in a project but admin
+  (Member, Viewer, No Access, any other built-in, and custom roles) onto a per-project custom role, slug `member-role`,
+  with Member's rules, so nobody's access changes.
 - **Roles are the only thing that grants access.** `getProjectPermission` leaves a member's additional privileges out of an
   Agent Vault project's permission, and the project additional privilege factory refuses to create or update one there
   (`assertProjectTakesAdditionalPrivileges`), so the Who Can Use lists stay complete. A role takes no time limit either:
   the members API takes role slugs only and `assertAgentVaultRoleLimits` refuses a temporary role on the generic routes,
-  since nothing in Agent Vault shows when one ends. Member lists and role counts leave out a row that has ended.
+  since nothing in Agent Vault shows when one ends. Member lists, role counts and the checks of who holds a role leave
+  out a row that has ended (`isActiveRole`, or `whereRoleRowIsLive` in SQL). Deleting a role (`deleteRole` in
+  `role-service.ts`) counts only live holders too, and deletes the ended rows with it.
 - **Changing a delegation takes `manage-delegations` on sessions as well as `edit` on the identity**
   (`checkIdentityPermission` in the delegation service): a delegation's sessions send the covered users' personal
   values, which editing an identity alone must not reach. Reading one takes identity `read`.
-- **Agent Vault's custom roles need no `rbac` plan** (`isRbacExempt` in `role-service.ts`, `customRolesNeedRbacPlan` in
-  `membership-fns.ts`): with Member gone, a custom role is the only way to give anyone less than admin.
+- **Delegation reads show only what the caller can read**: the list holds only machine identities the caller's role
+  can read (`readableIdentityIdsOf`, in the query), and users and groups show only with member read and group read
+  (`withReadableSubjects`), except to the machine identity itself. The available-subjects list takes identity `edit`
+  plus `manage-delegations` and lists only the member kinds the caller can read.
+- **Agent Vault's custom roles need no `rbac` plan** (`customRolesNeedRbacPlan` in `membership-fns.ts`, which
+  `role-service.ts` uses too): Agent Vault has no built-in role between admin and No Access, so a custom role is the
+  only way to give anyone less than admin.
 - **Giving, changing or removing a member's role is bounded like Secrets Management's membership routes**
   (`assertRoleBoundary` in the membership service): `assign-role` on that kind of member, and on the legacy privilege
   system every permission of each role involved. The change actions alone would let a role that only manages
@@ -140,14 +150,17 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   admin (`assertAdminOnlyChange`), so a custom role that manages members can't make or unmake one.
 - **Members take a list of roles** (`roles`, at most `AGENT_VAULT_MAX_MEMBER_ROLES`, resolved by
   `resolveAgentVaultMemberRoles`): admin, no-access or a custom role's slug, and No Access only alone. The generic
-  membership routes apply the same limits (`assertAgentVaultRoleLimits`), so neither can save a set the other refuses.
+  membership routes apply the same limits (`assertAgentVaultRoleLimits`), including refusing other products' built-in
+  roles, so neither can save a set the other refuses. Nobody changes their own roles through either, an admin included.
   A role change keeps the row of every role it names again, time limit included, but a row whose time limit has ended
   counts as not held, so naming its role again gives it afresh. A non-admin's change or removal reads the targets' roles
   on the primary, re-reads them under the project's `LastAdminGuard` lock, and answers 409 if they changed since its
-  admin and boundary checks, which an admin passes whatever the targets hold. The generic user, group and identity
-  routes, the bulk user removal (`deleteProjectMemberships`) included, repeat the admin rule under the same lock for an
-  Agent Vault project (`agentVaultProjectToRecheck` before the transaction, `assertAgentVaultAdminTargetUnchanged` first
-  inside it).
+  admin and boundary checks, which an admin passes whatever the targets hold. Every change or removal through the
+  generic user, group and identity routes, the bulk user removal (`deleteProjectMemberships`) and deleting a project's
+  own machine identity included, takes the same lock first thing in its transaction, an admin's too
+  (`findAgentVaultRoleChange` before it, `lockAgentVaultRoleChange` inside it). For a non-admin the guard reads the
+  target's roles on the primary (`readTargetForAgentVaultRecheck`), and the write repeats the admin rule under the lock
+  and answers 409 if the target's roles changed at all.
   The deprecated `role` field still takes admin or member, where member is the Member role the migration made, and keeps
   the member's bundle roles (`keepBundleRoles`), since it never touched grants. The kept roles count toward
   `AGENT_VAULT_MAX_MEMBER_ROLES` (`assertAgentVaultKeptRolesWithinLimit`), as a grant does. Responses carry `roles` and the
@@ -169,14 +182,20 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
 
 - **What an actor can put in a session comes from their roles' `use` rules** on `agent-vault-access-bundles`,
   `agent-vault-services` and `agent-vault-skills`. Using a bundle covers its services and skills, so a role that uses a
-  bundle needs nothing on what it holds. `getAgentVaultReachability` (`agent-vault-permission.ts`) turns the permission
+  bundle needs nothing on what it holds, unless a role denies `use` on one of them: a deny holds inside a bundle too.
+  The reach carries the denied ids (`deniedServiceIds`, `deniedSkillIds`, "all" for an unconditioned deny), and
+  `usableServiceIdsOf`, `usableSkillIdsOf` and resolve leave them out. Resolve also leaves out a service whose wildcard
+  covers a host of a denied one, unless the owner can use it directly, since dropping only the narrower service would
+  widen the wildcard. `getAgentVaultReachability` (`agent-vault-permission.ts`) turns the permission
   into a `TAgentVaultReach`: a list of ids per kind, null when the rules cover every one, ones created later included.
   Mint, resolve, the skills fetch, member-facing reads and delegations all go through it, so they can't disagree.
-- **Conditions name ids only** (`accessBundleId`, `serviceId`, `skillId`, with `$eq` or `$in`;
-  `AGENT_VAULT_ID_CONDITION_SCHEMA`), and `create` takes none. `coverageOf` reads one action's rules with `rulesFor`:
-  an unconditioned allow and no deny covers everything without a query; otherwise every id in the project
-  (`agentVaultReachDAL`, on the primary so a bundle created a moment ago counts) is checked one by one. That is a
-  service-layer filter, not SQL, because SQL can't evaluate a role's rules.
+- **Conditions name ids only** (`accessBundleId`, `serviceId`, `skillId`, with one of `$eq` or `$in`;
+  `AGENT_VAULT_ID_CONDITION_SCHEMA`). A condition must name the id, since an empty one would match every id, and
+  `create` takes none. `coverageOf` reads one action's rules with `rulesFor`: an unconditioned allow and no deny covers
+  everything without a query; when every allow names its ids, only those are looked up (`onlyIds`); otherwise every id
+  in the project (`agentVaultReachDAL`, on the primary so a bundle created a moment ago counts) is checked one by one.
+  That is a service-layer filter, not SQL, because SQL can't evaluate a role's rules. Callers ask `reachOf` only for
+  the kinds they read (`TAgentVaultReachKinds`).
 - **Usable and visible are different sets.** Usable services and skills are those with `use` plus those a usable
   bundle holds (`usableServiceIdsOf`, `usableSkillIdsOf`); a session can list exactly those. Visible adds `read`
   (`serviceVisibilityOf`, `skillVisibilityOf`, `visibleIdsWithin`), because a session can't name what its creator
@@ -188,7 +207,7 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   cache (`withCacheFingerprint`, 10 second marker), grants through the deprecated endpoints included. Don't read roles
   around the cache to make one path immediate, or two paths would disagree. The e2e request helper expires the
   project's markers before each request (`expireProjectPermissionMarkers`) so tests can act on a change at once.
-- **Grants are gone; the deprecated grant endpoints work through a role.** `POST`, `DELETE` and `GET
+- **The deprecated grant endpoints work through a role.** `POST`, `DELETE` and `GET
   /access-bundles/:id/members` (and `/members/available`) give, take and list the bundle's role (`grantRoleId`,
   `agent-vault-bundle-role-fns.ts`): `ensureBundleRole` makes `<bundle> users` (read and use on that bundle) the first
   time one is needed, and taking the last role from a membership leaves it No Access, since a membership needs a role.
@@ -197,17 +216,26 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
   ID (`readableIdentityIdsOf`), as the members API does. Only an admin can give one to or take one from an admin
   (`assertAdminTargetsAllowed`), and only an admin can give or take their own (`assertNotOwnBundleRole`). A grant that
   would take a member past `AGENT_VAULT_MAX_MEMBER_ROLES` is refused whole (`giveBundleRole` returns them in `full`).
-  Each locks the bundle row first, so two calls can't make two roles and the dedupe read inside it is authoritative.
+  Each takes the project's role-change lock (`lockProjectRoleChanges`), then the bundle row, so two calls can't make
+  two roles and the dedupe read inside it is authoritative. On the legacy privilege system each also refuses a member
+  whose roles grant more than the caller holds, and reads those roles again under the lock (a 409 if they changed), as
+  the members API does.
   They are hidden from the API reference and go after 2027-01-04 with the role helpers.
 - **The bundle's creator gets its role when their own roles can't use it** (`createAccessBundle`), so whoever built a
   bundle can try it, unless they already hold `AGENT_VAULT_MAX_MEMBER_ROLES` roles. It counts their roles under the
   project's `LastAdminGuard` lock, like every role change. Only a creator with a direct project membership gets one:
   the role on a group's membership would reach the whole group.
-- **Deleting a bundle keeps every role that names it**, the bundle's own included: a role is the admin's to change, and
-  a rule that picks out an id no bundle has covers nothing, so a bundle made later with the same name isn't covered either.
+- **Deleting a bundle deletes its own role while the role grants only that bundle** (`hasOnlyBundleRoleRules`): it
+  would cover nothing and still count toward each holder's `AGENT_VAULT_MAX_MEMBER_ROLES`. The delete takes it from
+  everyone holding it, giving No Access to anyone left with no live role, under the project's role-change lock and then
+  the bundle row lock. A bundle role an admin changed stays, like every other role that names the bundle: a rule that
+  picks out an id no bundle has covers nothing, so a bundle made later with the same name isn't covered either.
+  Renaming a bundle renames its role's name and description while they still read as made, never its slug.
 - `GET /access-bundles/:id/roles`, `GET /services/:id/roles` and `GET /skills/:id/roles` (`findRolesThatCanUse`) answer
   who can use something: admin and every custom role whose rules allow `use` on it or, for a service or skill, on a
-  bundle that holds it, with member counts. They take role `read` and an item the caller can see (a 404 otherwise).
+  bundle that holds it, unless the role denies `use` on the service or skill itself, with member counts. Each role is
+  judged alone, so a deny in another role a member holds isn't seen. They take role `read` and an item the caller can
+  see (a 404 otherwise).
 - Member responses, for bundles and for the product, are the actor itself, flat (`type`, the actor's `id`,
   its profile) plus what the membership adds (`roles`, `addedAt`, `grantedAt`). There is no membership id:
   every write names a member by its actor, so the id a client reads is the one it sends back.
@@ -380,18 +408,22 @@ dialog never leaves a half-added batch; ids already linked come back in `skipped
 keyed by the service, so a member sets them once however many bundles give them the service.
 
 - **Services take their own subject, `agent-vault-services`** (`read`, `use`, `create`, `edit`, `delete`), checked on the
-  subject and then on the service (`requireServiceWrite`, `requireOnService`). Putting a service in a bundle or taking it
-  out also takes `edit` on each bundle (`requireBundleEdits`), since it changes what everyone who uses the bundle
-  reaches. A service's setup (its OAuth sign-in state and hook) is shown only to a role that can edit it
+  subject and then on the service (`requireServiceWrite`, `requireOnFoundService`): a service the caller may not act on
+  and can't see is a 404, like a missing one. Putting a service in a bundle or taking it out also takes `edit` on each
+  bundle (`requireBundleEdits`, where a bundle the caller can't see is a 404 too), since it changes what everyone who
+  uses the bundle reaches. A service's setup (its OAuth sign-in state and hook) is shown only to a role that can edit it
   (`canSeeSetup`).
-- **A save that changes where a service connects sends every sealed value again** (`serviceDestinationOf`, checked in
+- **A save that changes where a service connects, or weakens a database's TLS, sends every sealed value again**
+  (`serviceMoveOf`, checked in
   `updateService` before the write and again under the lock): the credential, each custom header value and each
   substitution value. Otherwise a role that can edit and use a service could point it at a host of its own and receive
   the credential, and a typed reference still takes `read-value`. The move deletes every member's personal values for
   the service, and a personal values save that waited on it is refused, since the personal-values lock re-reads where
   the service connects. A members' OAuth sign-in seals only the admin's client secret, which goes to the issuer, so it needn't
   be sent. Host patterns compare as parsed host and port pairs, so `api.example.com:443` is the same destination as
-  `api.example.com`. Loading an MCP service's tools follows the same rule (`listMcpTools`): from any server URL but the
+  `api.example.com`. Turning TLS or certificate verification off, or changing the CA (set, replaced or removed),
+  counts as a move, since whoever sits between the proxy and the server could then read the credential; turning
+  either on doesn't. Loading an MCP service's tools follows the same rule (`listMcpTools`): from any server URL but the
   saved one, it uses no saved value. Any new path that sends a saved value somewhere a request names needs it too.
 - **Names are unique per project** among the project's services (`agent_vault_services_project_name_unique`, partial on
   `sessionId IS NULL`). A bundle read still puts `accessBundleId` (the bundle read) on each service, hidden from the
@@ -821,6 +853,8 @@ personal values can reference.
   service's sealed secret holds only the admin's fields, so a bearer token left to members stores no secret at all
   and `encryptedCredential` is NULL. Code that reads `encryptedCredential` NULL as passthrough has to check
   `memberProvidedFields` first.
+- **A member can delete their own values for a service they can no longer use** (`deletePersonalValues`): losing
+  access keeps them until the member leaves the project. Without values of theirs, such a service still answers 404.
 - **One variables resource, two scopes.** `scope` on `/agent-vault/variables` (`global` or `personal`) picks the list
   and is required for a new one; a list without it returns everything the caller can see (their own, plus the global
   ones for an admin), and the service sheet's picker asks for `global` explicitly. Every variable read and lock by
@@ -908,7 +942,8 @@ set and how its connection is doing come from the same row.
   issuer, the client (id, registration mode, or a new secret), the credential type, or switching back to shared. The
   update's audit event records `personalValuesCleared`. An admin-entered client's stored secret is never kept across an
   issuer change: the save is refused until the secret is sent again. A save without a credential that would move a
-  member-provided service off the server its members' sign-in is bound to (a concurrent save changed it) 409s. Revoke, removal and demotion clear them like any personal value.
+  member-provided service off the server its members' sign-in is bound to (a concurrent save changed it) 409s. Leaving
+  the project clears them like any personal value; losing access to the service keeps them.
 - **Refresh and scope reports run on a token holder** (`serviceTokenHolder` or `personalTokenHolder`), so a member's
   token gets the same compare-and-swap and jsonb merge as a service's (`agent-vault-oauth-token-dal-fns.ts`). The
   personal lock is keyed by service and owner, not row id, because a reconnect replaces the row; a refresh racing a

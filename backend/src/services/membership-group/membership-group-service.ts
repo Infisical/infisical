@@ -33,15 +33,14 @@ import { TApprovalRequestDALFactory } from "../approval-policy/approval-request-
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { lockMembershipsById, TMembershipDALFactory } from "../membership/membership-dal";
 import {
-  agentVaultProjectToRecheck,
-  assertAgentVaultAdminTargetUnchanged,
-  customRolesNeedRbacPlan,
-  withAgentVaultMemberAlias,
   assertProductWillRetainAdmin,
   assertSecretsTemporaryAccessAllowed,
+  customRolesNeedRbacPlan,
+  findAgentVaultRoleChange,
   findProjectKeepingBundleRoles,
-  lockProjectRoleChanges,
-  replaceMembershipRoles
+  lockAgentVaultRoleChange,
+  replaceMembershipRoles,
+  withAgentVaultMemberAlias
 } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -68,7 +67,7 @@ type TMembershipGroupServiceFactoryDep = {
     "findPoliciesWhereSubjectIsApprover" | "deleteStepApproversBySubject" | "deleteBypassersBySubject"
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findOpenSecretChangeRequestsWhereSubjectIsApprover">;
-  roleDAL: Pick<TRoleDALFactory, "find" | "findOne" | "findById" | "create">;
+  roleDAL: Pick<TRoleDALFactory, "find" | "findById">;
   permissionService: TPermissionServiceFactory;
   orgDAL: TOrgDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findById">;
@@ -267,7 +266,7 @@ export const membershipGroupServiceFactory = ({
     const keepBundleRolesInProjectId = await findProjectKeepingBundleRoles(projectDAL, scopeData, data.roles);
     data.roles = await withAgentVaultMemberAlias({ projectDAL, roleDAL }, scopeData, data.roles);
 
-    const { group } = await factory.onUpdateMembershipGroupGuard(dto);
+    const { group, ...checked } = await factory.onUpdateMembershipGroupGuard(dto);
 
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
@@ -333,16 +332,13 @@ export const membershipGroupServiceFactory = ({
 
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
-    const agentVaultProjectId = await agentVaultProjectToRecheck(
+    const agentVaultChange = await findAgentVaultRoleChange(
       { projectDAL, permissionService },
       { scopeData, actor: dto.permission }
     );
     const membershipDoc = await membershipGroupDAL.transaction(async (tx) => {
-      await assertAgentVaultAdminTargetUnchanged(
-        { projectId: agentVaultProjectId, membershipIds: [existingMembership.id] },
-        tx
-      );
-      if (keepBundleRolesInProjectId) await lockProjectRoleChanges(keepBundleRolesInProjectId, tx);
+      // Takes the lock replaceMembershipRoles needs to keep access bundle roles, which only Agent Vault projects have.
+      await lockAgentVaultRoleChange(agentVaultChange, { membershipId: existingMembership.id, checked }, tx);
       const newIsActive = data.isActive ?? existingMembership.isActive;
       const newRolesHavePermanentAdmin =
         newIsActive && data.roles.some((r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary);
@@ -514,7 +510,7 @@ export const membershipGroupServiceFactory = ({
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
 
-    const { group } = await factory.onDeleteMembershipGroupGuard(dto);
+    const { group, ...checked } = await factory.onDeleteMembershipGroupGuard(dto);
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const existingMembership = await membershipGroupDAL.findOne({
@@ -573,16 +569,13 @@ export const membershipGroupServiceFactory = ({
 
     let identityIdsLosingOrgAccess: string[] = [];
     let sendPamCancellations = () => {};
-    const agentVaultProjectId = await agentVaultProjectToRecheck(
+    const agentVaultChange = await findAgentVaultRoleChange(
       { projectDAL, permissionService },
       { scopeData, actor: dto.permission }
     );
     const performDelete = async (tx: Knex) => {
       if (scopeData.scope === AccessScope.Project && existingMembership.scopeProjectId) {
-        await assertAgentVaultAdminTargetUnchanged(
-          { projectId: agentVaultProjectId, membershipIds: [existingMembership.id] },
-          tx
-        );
+        await lockAgentVaultRoleChange(agentVaultChange, { membershipId: existingMembership.id, checked }, tx);
         await assertProductWillRetainAdmin({
           project: await projectDAL.findById(existingMembership.scopeProjectId, tx),
           excludeMembershipIds: [existingMembership.id],

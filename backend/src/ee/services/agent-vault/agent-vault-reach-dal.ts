@@ -3,17 +3,26 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { isUuidV4 } from "@app/lib/validator/validate-uuid";
 
 export type TAgentVaultReachDALFactory = ReturnType<typeof agentVaultReachDALFactory>;
+
+// A role names ids by uuid, but one a role names may not be a row in this project. onlyIds narrows a lookup to the ids
+// a role names, so a role that names a few doesn't load the project's whole list; one that isn't a uuid matches nothing.
+const narrowTo = (query: Knex.QueryBuilder, onlyIds: string[] | undefined) => {
+  if (onlyIds) void query.whereIn("id", onlyIds.filter(isUuidV4));
+  return query;
+};
 
 // The ids a role's conditions are checked against. Read on the primary: a bundle, service or skill created a moment
 // before must count at once, or a role covering every one of them except some would refuse it.
 export const agentVaultReachDALFactory = (db: TDbClient) => {
-  const findAccessBundleIds = async (projectId: string, tx?: Knex): Promise<string[]> => {
+  const findAccessBundleIds = async (projectId: string, tx?: Knex, onlyIds?: string[]): Promise<string[]> => {
+    if (onlyIds && !onlyIds.length) return [];
     try {
-      const rows = (await (tx || db)(TableName.AgentVaultAccessBundle).where({ projectId }).select("id")) as {
-        id: string;
-      }[];
+      const rows = (await narrowTo((tx || db)(TableName.AgentVaultAccessBundle).where({ projectId }), onlyIds).select(
+        "id"
+      )) as { id: string }[];
       return rows.map((row) => row.id);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault access bundle ids" });
@@ -21,12 +30,13 @@ export const agentVaultReachDALFactory = (db: TDbClient) => {
   };
 
   // The project's own services, never one sent with a session.
-  const findServiceIds = async (projectId: string, tx?: Knex): Promise<string[]> => {
+  const findServiceIds = async (projectId: string, tx?: Knex, onlyIds?: string[]): Promise<string[]> => {
+    if (onlyIds && !onlyIds.length) return [];
     try {
-      const rows = (await (tx || db)(TableName.AgentVaultService)
-        .where({ projectId })
-        .whereNull("sessionId")
-        .select("id")) as { id: string }[];
+      const rows = (await narrowTo(
+        (tx || db)(TableName.AgentVaultService).where({ projectId }).whereNull("sessionId"),
+        onlyIds
+      ).select("id")) as { id: string }[];
       return rows.map((row) => row.id);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault service ids" });
@@ -34,12 +44,13 @@ export const agentVaultReachDALFactory = (db: TDbClient) => {
   };
 
   // The project's own skills, never one sent with a session.
-  const findSkillIds = async (projectId: string, tx?: Knex): Promise<string[]> => {
+  const findSkillIds = async (projectId: string, tx?: Knex, onlyIds?: string[]): Promise<string[]> => {
+    if (onlyIds && !onlyIds.length) return [];
     try {
-      const rows = (await (tx || db)(TableName.AgentVaultSkill)
-        .where({ projectId })
-        .whereNull("sessionId")
-        .select("id")) as { id: string }[];
+      const rows = (await narrowTo(
+        (tx || db)(TableName.AgentVaultSkill).where({ projectId }).whereNull("sessionId"),
+        onlyIds
+      ).select("id")) as { id: string }[];
       return rows.map((row) => row.id);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault skill ids" });

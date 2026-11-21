@@ -18,6 +18,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DiscardChangesAlertDialog,
   Field,
   FieldContent,
   FieldDescription,
@@ -33,6 +34,7 @@ import {
   SelectValue
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
+import { useDiscardChangesGuard } from "@app/hooks";
 import { useCreateProjectRole } from "@app/hooks/api";
 import {
   fetchAgentVaultRoleBySlug,
@@ -100,12 +102,15 @@ export const CreateAgentVaultRoleDialog = ({
     reset,
     setValue,
     getFieldState,
-    formState: { isSubmitting }
+    formState: { isSubmitting, isDirty }
   } = useForm<TForm>({ resolver: zodResolver(schema), defaultValues: defaultsFor(copyFrom) });
 
   useEffect(() => {
     if (isOpen) reset(defaultsFor(copyFrom));
   }, [isOpen, copyFrom?.slug, copyFrom?.name, reset]);
+
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: () => onOpenChange(false) });
 
   const permissionsFor = async (source: string): Promise<TProjectPermission[]> => {
     if (source.startsWith(TEMPLATE_PREFIX)) {
@@ -162,163 +167,179 @@ export const CreateAgentVaultRoleDialog = ({
   const isDuplicate = Boolean(copyFrom);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent isPending={isSubmitting}>
-        <DialogHeader>
-          <DialogTitle>{isDuplicate ? "Duplicate Role" : "Create Role"}</DialogTitle>
-          <DialogDescription>
-            A role grants exactly what it lists, and nothing else. Pick its access bundles,
-            services, skills and capabilities after you create it.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog
+        open={isOpen}
+        onOpenChange={(next) => {
+          if (next) onOpenChange(true);
+          else requestDiscard();
+        }}
+      >
+        <DialogContent isPending={isSubmitting}>
+          <DialogHeader>
+            <DialogTitle>{isDuplicate ? "Duplicate Role" : "Create Role"}</DialogTitle>
+            <DialogDescription>
+              A role grants exactly what it lists, and nothing else. Pick its access bundles,
+              services, skills and capabilities after you create it.
+            </DialogDescription>
+          </DialogHeader>
 
-        <form
-          id="agent-vault-create-role"
-          onSubmit={handleSubmit(onSubmit)}
-          autoComplete="off"
-          className="flex flex-col gap-4"
-        >
-          <Controller
-            control={control}
-            name="name"
-            render={({ field: { onChange, ...field }, fieldState }) => (
-              <Field>
-                <FieldLabel htmlFor="agent-vault-role-name">Name</FieldLabel>
-                <FieldContent>
-                  <Input
-                    {...field}
-                    id="agent-vault-role-name"
-                    placeholder="Release Engineers"
-                    data-1p-ignore
-                    isError={Boolean(fieldState.error)}
-                    onChange={(event) => {
-                      onChange(event);
-                      if (getFieldState("slug").isDirty) return;
-                      setValue("slug", toRoleSlug(event.target.value), { shouldValidate: true });
-                    }}
-                  />
-                  <FieldError>{fieldState.error?.message}</FieldError>
-                </FieldContent>
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="slug"
-            render={({ field, fieldState }) => (
-              <Field>
-                <FieldLabel htmlFor="agent-vault-role-slug">Slug</FieldLabel>
-                <FieldContent>
-                  <Input
-                    {...field}
-                    id="agent-vault-role-slug"
-                    placeholder="release-engineers"
-                    className="font-mono"
-                    data-1p-ignore
-                    isError={Boolean(fieldState.error)}
-                  />
-                  <FieldDescription>
-                    Names the role when you assign it through the API or CLI.
-                  </FieldDescription>
-                  <FieldError>{fieldState.error?.message}</FieldError>
-                </FieldContent>
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="description"
-            render={({ field, fieldState }) => (
-              <Field>
-                <FieldLabel htmlFor="agent-vault-role-description">Description</FieldLabel>
-                <FieldContent>
-                  <Input
-                    {...field}
-                    id="agent-vault-role-description"
-                    placeholder="Ship releases with the GitHub and Linear services"
-                    isError={Boolean(fieldState.error)}
-                  />
-                  <FieldError>{fieldState.error?.message}</FieldError>
-                </FieldContent>
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="source"
-            render={({ field }) => (
-              <Field>
-                <FieldLabel htmlFor="agent-vault-role-source">Start From</FieldLabel>
-                <FieldContent>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger id="agent-vault-role-source" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent position="popper" className="w-(--radix-select-trigger-width)">
-                      <SelectGroup>
-                        <SelectItem
-                          value={BLANK_SOURCE}
-                          description="Holders can do nothing until you add permissions."
-                        >
-                          Blank
-                        </SelectItem>
-                      </SelectGroup>
-                      <SelectGroup>
-                        <SelectLabel>Templates</SelectLabel>
-                        {AGENT_VAULT_ROLE_TEMPLATES.map((template) => (
-                          <SelectItem
-                            key={template.id}
-                            value={`${TEMPLATE_PREFIX}${template.id}`}
-                            description={template.description}
-                          >
-                            {template.name}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                      {copyableRoles.length > 0 && (
+          <form
+            id="agent-vault-create-role"
+            onSubmit={handleSubmit(onSubmit)}
+            autoComplete="off"
+            className="flex flex-col gap-4"
+          >
+            <Controller
+              control={control}
+              name="name"
+              render={({ field: { onChange, ...field }, fieldState }) => (
+                <Field>
+                  <FieldLabel htmlFor="agent-vault-role-name">Name</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      {...field}
+                      id="agent-vault-role-name"
+                      placeholder="Release Engineers"
+                      data-1p-ignore
+                      isError={Boolean(fieldState.error)}
+                      onChange={(event) => {
+                        onChange(event);
+                        if (getFieldState("slug").isDirty) return;
+                        setValue("slug", toRoleSlug(event.target.value), { shouldValidate: true });
+                      }}
+                    />
+                    <FieldError>{fieldState.error?.message}</FieldError>
+                  </FieldContent>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="slug"
+              render={({ field, fieldState }) => (
+                <Field>
+                  <FieldLabel htmlFor="agent-vault-role-slug">Slug</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      {...field}
+                      id="agent-vault-role-slug"
+                      placeholder="release-engineers"
+                      className="font-mono"
+                      data-1p-ignore
+                      isError={Boolean(fieldState.error)}
+                    />
+                    <FieldDescription>
+                      Names the role when you assign it through the API or CLI.
+                    </FieldDescription>
+                    <FieldError>{fieldState.error?.message}</FieldError>
+                  </FieldContent>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="description"
+              render={({ field, fieldState }) => (
+                <Field>
+                  <FieldLabel htmlFor="agent-vault-role-description">Description</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      {...field}
+                      id="agent-vault-role-description"
+                      placeholder="Ship releases with the GitHub and Linear services"
+                      isError={Boolean(fieldState.error)}
+                    />
+                    <FieldError>{fieldState.error?.message}</FieldError>
+                  </FieldContent>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="source"
+              render={({ field }) => (
+                <Field>
+                  <FieldLabel htmlFor="agent-vault-role-source">Start From</FieldLabel>
+                  <FieldContent>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger id="agent-vault-role-source" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper" className="w-(--radix-select-trigger-width)">
                         <SelectGroup>
-                          <SelectLabel>Copy a Role</SelectLabel>
-                          {copyableRoles.map((role) => (
+                          <SelectItem
+                            value={BLANK_SOURCE}
+                            description="Holders can do nothing until you add permissions."
+                          >
+                            Blank
+                          </SelectItem>
+                        </SelectGroup>
+                        <SelectGroup>
+                          <SelectLabel>Templates</SelectLabel>
+                          {AGENT_VAULT_ROLE_TEMPLATES.map((template) => (
                             <SelectItem
-                              key={role.slug}
-                              value={`${COPY_PREFIX}${role.slug}`}
-                              description={role.description || role.slug}
+                              key={template.id}
+                              value={`${TEMPLATE_PREFIX}${template.id}`}
+                              description={template.description}
                             >
-                              Copy of {role.name}
+                              {template.name}
                             </SelectItem>
                           ))}
                         </SelectGroup>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <FieldDescription>
-                    You can change everything it grants after you create it.
-                  </FieldDescription>
-                </FieldContent>
-              </Field>
-            )}
-          />
-        </form>
+                        {copyableRoles.length > 0 && (
+                          <SelectGroup>
+                            <SelectLabel>Copy a Role</SelectLabel>
+                            {copyableRoles.map((role) => (
+                              <SelectItem
+                                key={role.slug}
+                                value={`${COPY_PREFIX}${role.slug}`}
+                                description={role.description || role.slug}
+                              >
+                                Copy of {role.name}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FieldDescription>
+                      You can change everything it grants after you create it.
+                    </FieldDescription>
+                  </FieldContent>
+                </Field>
+              )}
+            />
+          </form>
 
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="ghost"
-            isDisabled={isSubmitting}
-            onClick={() => onOpenChange(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            form="agent-vault-create-role"
-            variant="av"
-            isPending={isSubmitting}
-          >
-            {isDuplicate ? "Duplicate Role" : "Create Role"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              isDisabled={isSubmitting}
+              onClick={requestDiscard}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="agent-vault-create-role"
+              variant="av"
+              isPending={isSubmitting}
+            >
+              {isDuplicate ? "Duplicate Role" : "Create Role"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Role Setup?"
+        description="Your progress setting up this role will be lost."
+      />
+    </>
   );
 };

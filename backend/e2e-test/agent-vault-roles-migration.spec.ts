@@ -5,6 +5,9 @@ import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
 
 import { down, up } from "@app/db/migrations/20261118120000_agent-vault-roles-replace-bundle-grants";
 import { AccessScope, ProjectMembershipRole, TableName } from "@app/db/schemas";
+import { findAgentVaultMemberRole } from "@app/ee/services/agent-vault-member/agent-vault-member-role-fns";
+import { slugSchema } from "@app/server/lib/schemas";
+import { TRoleDALFactory } from "@app/services/role/role-dal";
 
 type TRoleRow = { membershipId: string; role: string; customRoleId: string | null; temporaryAccessEndTime: Date | null };
 
@@ -14,9 +17,10 @@ type TRoleRow = { membershipId: string; role: string; customRoleId: string | nul
 describe("Migration: Agent Vault roles replace bundle grants", () => {
   let cleanupOrg: () => Promise<void>;
   let orgId: string;
+  let authToken: string;
   let projectId: string;
 
-  const addIdentity = async (role: string, extra: Partial<TRoleRow> = {}) => {
+  const addIdentity = async (role: string, extra: Partial<TRoleRow> = {}, inProjectId = projectId) => {
     const [identity] = (await testDb(TableName.Identity)
       .insert({ name: `av-migration-${randomUUID().slice(0, 8)}`, orgId })
       .returning("id")) as { id: string }[];
@@ -30,7 +34,7 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
       .insert({
         scope: AccessScope.Project,
         scopeOrgId: orgId,
-        scopeProjectId: projectId,
+        scopeProjectId: inProjectId,
         actorIdentityId: identity.id,
         isActive: true
       })
@@ -39,20 +43,25 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
     return { identityId: identity.id, membershipId: membership.id };
   };
 
-  const addBundle = async (name: string) => {
+  const addBundle = async (name: string, inProjectId = projectId) => {
     const [bundle] = (await testDb(TableName.AgentVaultAccessBundle)
-      .insert({ projectId, name })
+      .insert({ projectId: inProjectId, name })
       .returning("id")) as { id: string }[];
     return bundle.id;
   };
 
   // A grant as the old code wrote it: a resource-scoped membership on the bundle with the consumer role.
-  const grant = async (accessBundleId: string, actor: { actorIdentityId?: string; actorGroupId?: string }, isActive = true) => {
+  const grant = async (
+    accessBundleId: string,
+    actor: { actorIdentityId?: string; actorGroupId?: string },
+    isActive = true,
+    inProjectId = projectId
+  ) => {
     const [membership] = (await testDb(TableName.Membership)
       .insert({
         scope: "resource",
         scopeOrgId: orgId,
-        scopeProjectId: projectId,
+        scopeProjectId: inProjectId,
         scopeResourceType: "agent-vault-access-bundle",
         scopeResourceId: accessBundleId,
         isActive,
@@ -67,6 +76,16 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
       TRoleRow[]
     >;
 
+  // The Member role as the app finds it: by the id derived from the project's, whatever its slug.
+  const memberRoleOf = async (inProjectId: string) =>
+    (await findAgentVaultMemberRole(
+      { findById: (id: string) => testDb(TableName.Role).where({ id }).first() } as unknown as Pick<
+        TRoleDALFactory,
+        "findById"
+      >,
+      inProjectId
+    )) as { id: string; slug: string };
+
   const grantRoleIdOf = async (accessBundleId: string) =>
     ((await testDb(TableName.AgentVaultAccessBundle).where({ id: accessBundleId }).first()) as { grantRoleId: string })
       .grantRoleId;
@@ -74,6 +93,7 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
   beforeAll(async () => {
     const org = await createIsolatedOrgAndProject("av-roles-migration");
     orgId = org.orgId;
+    authToken = org.authToken;
     cleanupOrg = org.cleanup;
     projectId = await createAgentVaultProject({ authToken: org.authToken, name: `av-roles-migration-${Date.now()}` });
   });
@@ -82,7 +102,7 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
     await cleanupOrg();
   });
 
-  test("member-like and custom rows move onto the Member role, and grants become bundle roles", async () => {
+  test("every role but admin moves onto the Member role, and grants become bundle roles", async () => {
     const endsAt = new Date(Date.now() + 86_400_000);
     const member = await addIdentity(ProjectMembershipRole.Member, {
       isTemporary: true,
@@ -93,6 +113,9 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
     } as Partial<TRoleRow>);
     const viewer = await addIdentity(ProjectMembershipRole.Viewer);
     const noAccess = await addIdentity(ProjectMembershipRole.NoAccess);
+    const cryptographicOperator = await addIdentity(ProjectMembershipRole.KmsCryptographicOperator);
+    // A custom row that names no role, which the generic routes could write.
+    const roleless = await addIdentity(ProjectMembershipRole.Custom);
     const admin = await addIdentity(ProjectMembershipRole.Admin);
     // A custom role whose own rules never applied: it resolved to Member's.
     const [legacyCustom] = (await testDb(TableName.Role)
@@ -129,6 +152,7 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
     const granted = await addBundle(`granted-${randomUUID().slice(0, 8)}`);
     const onlyInactive = await addBundle(`inactive-${randomUUID().slice(0, 8)}`);
     await grant(granted, { actorIdentityId: member.identityId });
+    await grant(granted, { actorIdentityId: noAccess.identityId });
     await grant(granted, { actorGroupId: group.id });
     await grant(onlyInactive, { actorIdentityId: viewer.identityId }, false);
 
@@ -168,7 +192,21 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
     expect(await rolesOf(memberAndCustom.membershipId)).toEqual([
       expect.objectContaining({ role: ProjectMembershipRole.Custom, customRoleId: memberRole.id, temporaryAccessEndTime: null })
     ]);
-    expect(await rolesOf(noAccess.membershipId)).toEqual([expect.objectContaining({ role: ProjectMembershipRole.NoAccess })]);
+    // No Access and any other built-in read as Member's rules too, so they move onto the Member role, and No Access never
+    // ends up beside a bundle role.
+    expect(await rolesOf(noAccess.membershipId)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ role: ProjectMembershipRole.Custom, customRoleId: memberRole.id }),
+        expect.objectContaining({ role: ProjectMembershipRole.Custom, customRoleId: grantRoleId })
+      ])
+    );
+    expect(await rolesOf(noAccess.membershipId)).toHaveLength(2);
+    for (const { membershipId } of [cryptographicOperator, roleless]) {
+      // eslint-disable-next-line no-await-in-loop
+      expect(await rolesOf(membershipId)).toEqual([
+        expect.objectContaining({ role: ProjectMembershipRole.Custom, customRoleId: memberRole.id })
+      ]);
+    }
     expect(await rolesOf(admin.membershipId)).toEqual([expect.objectContaining({ role: ProjectMembershipRole.Admin })]);
     expect(await rolesOf(groupMembership.id)).toEqual(
       expect.arrayContaining([
@@ -203,6 +241,64 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
     expect(await grantRoleIdOf(granted)).toBe(grantRoleId);
     expect(await testDb(TableName.Role).where({ projectId, slug: "member-role" })).toHaveLength(1);
   });
+
+  test("a member granted more bundles than a member can hold roles gets a role for each", async () => {
+    const holder = await addIdentity(ProjectMembershipRole.Member);
+    const bundles = await Promise.all(
+      Array.from({ length: 12 }, (_, index) => addBundle(`many-${index}-${randomUUID().slice(0, 8)}`))
+    );
+    await Promise.all(bundles.map((bundle) => grant(bundle, { actorIdentityId: holder.identityId })));
+
+    await up(testDb);
+
+    // No grant is dropped to fit the limit the app keeps when it gives roles: losing one would lose access.
+    const memberRole = await memberRoleOf(projectId);
+    const grantRoleIds = await Promise.all(bundles.map(grantRoleIdOf));
+    expect((await rolesOf(holder.membershipId)).map((row) => row.customRoleId).sort()).toEqual(
+      [memberRole.id, ...grantRoleIds].sort()
+    );
+  });
+
+  test("a role slug that's taken gets a suffix, and a name cut to fit leaves no hyphen before the suffix", async () => {
+    // A project of its own, so its Member role is made here, next to a role that already has the Member role's slug.
+    const slugProjectId = await createAgentVaultProject({ authToken, name: `av-roles-migration-slugs-${Date.now()}` });
+    const [takenMemberSlug] = (await testDb(TableName.Role)
+      .insert({ projectId: slugProjectId, name: "Member role", slug: "member-role", permissions: JSON.stringify([]) })
+      .returning("id")) as { id: string }[];
+    const holder = await addIdentity(ProjectMembershipRole.Custom, { customRoleId: takenMemberSlug.id }, slugProjectId);
+
+    const takenName = `taken-${randomUUID().slice(0, 8)}`;
+    await testDb(TableName.Role).insert({
+      projectId: slugProjectId,
+      name: "Taken",
+      slug: `${takenName}-users`,
+      permissions: JSON.stringify([])
+    });
+    const taken = await addBundle(takenName, slugProjectId);
+    // 64 characters with a hyphen right where the name is cut to make room for the suffix.
+    const longName = `${"a".repeat(57)}-${"b".repeat(6)}`;
+    const long = await addBundle(longName, slugProjectId);
+    await grant(taken, { actorIdentityId: holder.identityId }, true, slugProjectId);
+    await grant(long, { actorIdentityId: holder.identityId }, true, slugProjectId);
+
+    await up(testDb);
+
+    const slugOf = async (roleId: string) =>
+      ((await testDb(TableName.Role).where({ id: roleId }).first()) as { slug: string }).slug;
+    expect(await slugOf(await grantRoleIdOf(taken))).toBe(`${takenName}-users-2`);
+    const longSlug = await slugOf(await grantRoleIdOf(long));
+    expect(longSlug).toBe(`${"a".repeat(57)}-users`);
+    expect(slugSchema().safeParse(longSlug).success).toBe(true);
+
+    // The Member role takes another slug, and the app still finds it by the id derived from the project's.
+    const memberRole = await memberRoleOf(slugProjectId);
+    expect(memberRole.slug).toBe("member-role-2");
+    expect(await rolesOf(holder.membershipId)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ customRoleId: memberRole.id })])
+    );
+    expect(await testDb(TableName.MembershipRole).where({ customRoleId: takenMemberSlug.id })).toHaveLength(0);
+  });
+
   test("a group's bundle role lasts only as long as its grant counted, while the group held a live role", async () => {
     const windowEndingAt = (endsAt: Date) =>
       ({
@@ -257,13 +353,23 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
   });
 
   test("down() turns bundle roles back into grants for who holds them for good now, leaving each member a role", async () => {
-    const [active, revoked, ended, timed, assigned, bundleOnly] = [
+    const memberEndsAt = new Date(Date.now() + 86_400_000);
+    const [active, revoked, ended, timed, assigned, bundleOnly, endedOnly, timedOnly, timedMember] = [
       await addIdentity(ProjectMembershipRole.Member),
       await addIdentity(ProjectMembershipRole.Member),
       await addIdentity(ProjectMembershipRole.Member),
       await addIdentity(ProjectMembershipRole.Member),
       await addIdentity(ProjectMembershipRole.Member),
-      await addIdentity(ProjectMembershipRole.NoAccess)
+      await addIdentity(ProjectMembershipRole.NoAccess),
+      await addIdentity(ProjectMembershipRole.Member),
+      await addIdentity(ProjectMembershipRole.Member),
+      await addIdentity(ProjectMembershipRole.Member, {
+        isTemporary: true,
+        temporaryMode: "relative",
+        temporaryRange: "1d",
+        temporaryAccessStartTime: new Date(),
+        temporaryAccessEndTime: memberEndsAt
+      } as Partial<TRoleRow>)
     ];
     const bundle = await addBundle(`round-trip-${randomUUID().slice(0, 8)}`);
     const narrowed = await addBundle(`narrowed-${randomUUID().slice(0, 8)}`);
@@ -308,13 +414,21 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
       role: ProjectMembershipRole.Custom,
       customRoleId: grantRoleId
     });
-    // Given after the upgrade to a member with No Access, which the bundle role takes the place of.
-    await testDb(TableName.MembershipRole).where({ membershipId: bundleOnly.membershipId }).delete();
-    await testDb(TableName.MembershipRole).insert({
-      membershipId: bundleOnly.membershipId,
-      role: ProjectMembershipRole.Custom,
-      customRoleId: grantRoleId
-    });
+    // Given after the upgrade as a member's only role: for good, and for a time that's over and one still running.
+    const endedAt = new Date(Date.now() - 3_600_000);
+    const timedEndsAt = new Date(Date.now() + 3_600_000);
+    for (const only of [bundleOnly, endedOnly, timedOnly]) {
+      // eslint-disable-next-line no-await-in-loop
+      await testDb(TableName.MembershipRole).where({ membershipId: only.membershipId }).delete();
+      // eslint-disable-next-line no-await-in-loop
+      await testDb(TableName.MembershipRole).insert({
+        membershipId: only.membershipId,
+        role: ProjectMembershipRole.Custom,
+        customRoleId: grantRoleId
+      });
+    }
+    await makeTemporary(endedOnly.membershipId, endedAt);
+    await makeTemporary(timedOnly.membershipId, timedEndsAt);
 
     await down(testDb);
     const grantedTo = (
@@ -328,9 +442,23 @@ describe("Migration: Agent Vault roles replace bundle grants", () => {
       // eslint-disable-next-line no-await-in-loop
       expect(await testDb(TableName.Membership).where({ scope: "resource", scopeResourceId: bundleId })).toHaveLength(0);
     }
-    // A membership needs a role, and Member is what the old rules read every role but admin as.
+    // A membership needs a role, and Member is what the old rules read every role but admin as. It lasts as long as the
+    // bundle role did, an ended one included, which the old rules ignore too.
     expect(await rolesOf(bundleOnly.membershipId)).toMatchObject([
-      { role: ProjectMembershipRole.Member, customRoleId: null }
+      { role: ProjectMembershipRole.Member, customRoleId: null, temporaryAccessEndTime: null }
+    ]);
+    expect(await rolesOf(endedOnly.membershipId)).toMatchObject([
+      { role: ProjectMembershipRole.Member, customRoleId: null, temporaryAccessEndTime: endedAt }
+    ]);
+    expect(await rolesOf(timedOnly.membershipId)).toMatchObject([
+      { role: ProjectMembershipRole.Member, customRoleId: null, temporaryAccessEndTime: timedEndsAt }
+    ]);
+    // Member role rows go back to the built-in role, keeping their windows.
+    expect(await rolesOf(active.membershipId)).toMatchObject([
+      { role: ProjectMembershipRole.Member, customRoleId: null, temporaryAccessEndTime: null }
+    ]);
+    expect(await rolesOf(timedMember.membershipId)).toMatchObject([
+      { role: ProjectMembershipRole.Member, customRoleId: null, temporaryAccessEndTime: memberEndsAt }
     ]);
 
     // Back to the migrated shape, which the specs after this one run on.

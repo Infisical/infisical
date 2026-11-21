@@ -7,10 +7,12 @@ import { testFeatures } from "@app/domains/platform/license/ce/testing/test-feat
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultServiceActions,
+  ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultVariableActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, ConflictError, DatabaseError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { hashAccessToken } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
@@ -30,6 +32,7 @@ import {
   agentVaultAccessBundleServiceFactory,
   HTTP_OAUTH_NEEDS_VARIABLE_MESSAGE
 } from "./agent-vault-access-bundle-service";
+import { bundleRolePermissions } from "./agent-vault-bundle-role-fns";
 import { McpListError } from "./agent-vault-mcp-tool-list-fns";
 
 const listMcpServerTools = vi.hoisted(() => vi.fn());
@@ -177,6 +180,7 @@ const buildService = ({
       status: "connected"
     }))
   };
+  const agentVaultPersonalValueDAL = { delete: vi.fn().mockResolvedValue([]), deleteForServiceExceptFields: vi.fn() };
   const service = agentVaultAccessBundleServiceFactory({
     agentVaultAccessBundleDAL: {
       findByIdInProject: vi.fn().mockResolvedValue({ id: BUNDLE_ID, name: "infra", projectId: PROJECT_ID }),
@@ -188,7 +192,7 @@ const buildService = ({
     agentVaultServiceVariableReferenceDAL,
     agentVaultVariableDAL,
     agentVaultOauthService,
-    agentVaultPersonalValueDAL: { delete: vi.fn().mockResolvedValue([]), deleteForServiceExceptFields: vi.fn() },
+    agentVaultPersonalValueDAL,
     permissionService: {
       getProjectPermission: vi.fn().mockResolvedValue({
         permission: createMongoAbility(
@@ -221,6 +225,7 @@ const buildService = ({
     agentVaultVariableDAL,
     agentVaultServiceVariableReferenceDAL,
     agentVaultOauthService,
+    agentVaultPersonalValueDAL,
     kmsDataKeyService,
     licenseService
   };
@@ -1155,6 +1160,419 @@ describe("createAccessBundle, a write that loses a race", () => {
     await expect(result).rejects.toBeInstanceOf(ConflictError);
     await expect(result).rejects.toThrow(
       "Another change to this project's roles happened at the same time. Try again."
+    );
+  });
+});
+
+const postgresService = (tls: { enabled: boolean; verify: boolean; ca?: string }): TAgentVaultServices => ({
+  id: SERVICE_ID,
+  projectId: PROJECT_ID,
+  name: "orders-db",
+  type: AgentVaultServiceType.Postgres,
+  hostPattern: null,
+  config: { host: "db.internal", port: 5432, database: "orders", tls },
+  credentialType: AgentVaultCredentialType.Basic,
+  credentialConfig: { type: AgentVaultCredentialType.Basic },
+  encryptedCredential: Buffer.from(`sealed:${JSON.stringify({ username: "app", password: "old" })}`),
+  memberProvidedFields: null,
+  allowedMethods: null,
+  allowedPathPrefixes: null,
+  allowedTools: null,
+  createdAt: new Date("2026-01-01T00:00:00Z"),
+  updatedAt: new Date("2026-01-01T00:00:00Z")
+});
+
+const updatePostgres = (service: ReturnType<typeof buildService>["service"], fields: Partial<TUpdateServiceInput>) =>
+  service.updateService({
+    projectId: PROJECT_ID,
+    ctx,
+    serviceId: SERVICE_ID,
+    type: AgentVaultServiceType.Postgres,
+    ...fields
+  });
+
+describe("updateService, a save that weakens a database's TLS", () => {
+  test("takes the password again, and keeping it is refused before anything is written", async () => {
+    const stored = postgresService({ enabled: true, verify: true });
+    const { service, agentVaultServiceDAL } = buildService({ firstRead: stored, locked: stored });
+
+    await expect(updatePostgres(service, { tls: { verify: false } })).rejects.toThrow(
+      "Turning off TLS or certificate verification for the service 'orders-db', or changing its CA, needs its credential sent again in the same change, since anyone between the proxy and the server could then read it."
+    );
+    await expect(updatePostgres(service, { tls: { enabled: false } })).rejects.toBeInstanceOf(BadRequestError);
+    expect(agentVaultServiceDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("goes through with the credential sent again, and clears members' personal values", async () => {
+    const stored = postgresService({ enabled: true, verify: true });
+    const { service, agentVaultServiceDAL, agentVaultPersonalValueDAL } = buildService({
+      firstRead: stored,
+      locked: stored
+    });
+
+    await updatePostgres(service, {
+      tls: { verify: false },
+      credential: { type: AgentVaultCredentialType.Basic, username: "app", password: "new" }
+    });
+
+    expect(writtenColumns(agentVaultServiceDAL).config).toMatchObject({ tls: { enabled: true, verify: false } });
+    expect(agentVaultPersonalValueDAL.delete).toHaveBeenCalledWith({ serviceId: SERVICE_ID }, expect.anything());
+  });
+
+  test("turning verification on needs nothing sent again and keeps members' values", async () => {
+    const stored = postgresService({ enabled: true, verify: false });
+    const { service, agentVaultServiceDAL, agentVaultPersonalValueDAL } = buildService({
+      firstRead: stored,
+      locked: stored
+    });
+
+    await updatePostgres(service, { tls: { verify: true } });
+
+    expect(writtenColumns(agentVaultServiceDAL).config).toMatchObject({ tls: { verify: true } });
+    expect(agentVaultPersonalValueDAL.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe("a service the caller may not act on", () => {
+  const OTHER_SERVICE_ID = "service-other";
+  const editsOnlyAnother: RawRuleOf<MongoAbility>[] = [
+    {
+      action: [ProjectPermissionAgentVaultServiceActions.Edit, ProjectPermissionAgentVaultServiceActions.Delete],
+      subject: ProjectPermissionSub.AgentVaultServices,
+      conditions: { serviceId: OTHER_SERVICE_ID }
+    }
+  ];
+  const readsIt: RawRuleOf<MongoAbility> = {
+    action: ProjectPermissionAgentVaultServiceActions.Read,
+    subject: ProjectPermissionSub.AgentVaultServices,
+    conditions: { serviceId: SERVICE_ID }
+  };
+  const build = (rules: RawRuleOf<MongoAbility>[]) => {
+    const stored = sshService({ hasCertificate: false, secret: "key" });
+    const built = buildService({ firstRead: stored, locked: stored, rules });
+    // No bundle the caller can use holds it.
+    built.agentVaultServiceDAL.findIdsInBundles.mockResolvedValue([]);
+    return built;
+  };
+
+  test("is a 404 to edit or delete when the caller can't see it, so the request doesn't confirm the id exists", async () => {
+    const { service } = build(editsOnlyAnother);
+    await expect(service.deleteService({ projectId: PROJECT_ID, ctx, serviceId: SERVICE_ID })).rejects.toBeInstanceOf(
+      NotFoundError
+    );
+    await expect(updateSsh(service, { description: "edited" })).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  test("is a 403 to edit or delete when the caller can see it", async () => {
+    const { service } = build([...editsOnlyAnother, readsIt]);
+    await expect(service.deleteService({ projectId: PROJECT_ID, ctx, serviceId: SERVICE_ID })).rejects.toBeInstanceOf(
+      ForbiddenError
+    );
+    await expect(updateSsh(service, { description: "edited" })).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  test("creating one in a bundle the caller can't see is a 404, and in one they can only see a 403", async () => {
+    const createsServices: RawRuleOf<MongoAbility> = {
+      action: ProjectPermissionAgentVaultServiceActions.Create,
+      subject: ProjectPermissionSub.AgentVaultServices
+    };
+    const create = (rules: RawRuleOf<MongoAbility>[]) =>
+      build(rules).service.createService({
+        projectId: PROJECT_ID,
+        ctx,
+        accessBundleIds: [BUNDLE_ID],
+        type: AgentVaultServiceType.Http,
+        name: "github",
+        hostPattern: "api.github.com",
+        credential: { type: AgentVaultCredentialType.Bearer, token: "token" }
+      } as never);
+
+    await expect(create([createsServices])).rejects.toBeInstanceOf(NotFoundError);
+    await expect(
+      create([
+        createsServices,
+        {
+          action: ProjectPermissionAgentVaultAccessBundleActions.Read,
+          subject: ProjectPermissionSub.AgentVaultAccessBundles,
+          conditions: { accessBundleId: BUNDLE_ID }
+        }
+      ])
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+});
+
+// The deprecated grant endpoints, bundle edits and deletes, on a bundle whose role is BUNDLE_ROLE_ID.
+const BUNDLE_ROLE_ID = "role-bundle";
+const TARGET_USER_ID = "user-2";
+const TARGET_MEMBERSHIP_ID = "membership-user-2";
+
+const buildBundleService = ({
+  rules,
+  isAdmin = false,
+  shouldUseNewPrivilegeSystem = false,
+  heldRoleSlugs = [[]],
+  roleRules = {},
+  bundleRole = {
+    id: BUNDLE_ROLE_ID,
+    slug: "infra-users",
+    name: "infra users",
+    description: "Use the access bundle 'infra'.",
+    permissions: bundleRolePermissions(BUNDLE_ID)
+  },
+  transactionError
+}: {
+  rules: RawRuleOf<MongoAbility>[];
+  isAdmin?: boolean;
+  shouldUseNewPrivilegeSystem?: boolean;
+  // The target's live custom roles on each read: the first before the write, the next under its lock.
+  heldRoleSlugs?: string[][];
+  roleRules?: Record<string, RawRuleOf<MongoAbility>[]>;
+  bundleRole?: Record<string, unknown> | null;
+  transactionError?: Error;
+}) => {
+  const tx = { raw: vi.fn() };
+  const bundle = { id: BUNDLE_ID, name: "infra", projectId: PROJECT_ID, grantRoleId: BUNDLE_ROLE_ID };
+  const agentVaultAccessBundleDAL = {
+    findByIdInProject: vi.fn().mockResolvedValue(bundle),
+    lockByIdInProject: vi.fn().mockResolvedValue(bundle),
+    findOne: vi.fn().mockResolvedValue(undefined),
+    updateById: vi.fn(async (_id: string, columns: Record<string, unknown>) => ({ ...bundle, ...columns })),
+    deleteById: vi.fn().mockResolvedValue(bundle),
+    transaction: vi.fn(async (fn: (trx: unknown) => Promise<unknown>) => {
+      if (transactionError) throw transactionError;
+      return fn(tx);
+    })
+  };
+  let heldRead = 0;
+  const membershipRoleDAL = {
+    find: vi.fn().mockResolvedValue([]),
+    delete: vi.fn().mockResolvedValue([]),
+    insertMany: vi.fn().mockResolvedValue([]),
+    findRolesByMembershipIds: vi.fn(async () => {
+      const slugs = heldRoleSlugs[Math.min(heldRead, heldRoleSlugs.length - 1)];
+      heldRead += 1;
+      return slugs.map((customRoleSlug) => ({
+        membershipId: TARGET_MEMBERSHIP_ID,
+        role: "custom",
+        customRoleSlug,
+        isTemporary: false
+      }));
+    })
+  };
+  const roleDAL = {
+    find: vi.fn().mockResolvedValue([]),
+    findById: vi.fn().mockResolvedValue(bundleRole),
+    create: vi.fn(),
+    updateById: vi.fn(),
+    deleteById: vi.fn()
+  };
+  const permissionService = {
+    getProjectPermission: vi.fn().mockResolvedValue({
+      permission: createMongoAbility(rules),
+      hasRole: () => isAdmin,
+      memberships: []
+    }),
+    getProjectPermissionByRoles: vi.fn(async (slugs: string[]) =>
+      slugs.map((slug) => ({
+        permission: createMongoAbility(
+          slug === "infra-users"
+            ? [
+                {
+                  action: [
+                    ProjectPermissionAgentVaultAccessBundleActions.Read,
+                    ProjectPermissionAgentVaultAccessBundleActions.Use
+                  ],
+                  subject: ProjectPermissionSub.AgentVaultAccessBundles,
+                  conditions: { accessBundleId: BUNDLE_ID }
+                }
+              ]
+            : (roleRules[slug] ?? [])
+        ),
+        role: { slug }
+      }))
+    )
+  };
+  const service = agentVaultAccessBundleServiceFactory({
+    agentVaultAccessBundleDAL,
+    agentVaultServiceDAL: { lockByAccessBundleId: vi.fn() },
+    membershipDAL: {
+      find: vi.fn().mockResolvedValue([{ id: TARGET_MEMBERSHIP_ID, actorUserId: TARGET_USER_ID }]),
+      findOne: vi.fn().mockResolvedValue({ id: TARGET_MEMBERSHIP_ID })
+    },
+    membershipRoleDAL,
+    roleDAL,
+    permissionService,
+    orgDAL: { findById: vi.fn().mockResolvedValue({ shouldUseNewPrivilegeSystem }) },
+    userDAL: { find: vi.fn().mockResolvedValue([{ id: TARGET_USER_ID, username: "dana", email: "dana@example.com" }]) },
+    groupDAL: { find: vi.fn().mockResolvedValue([]) },
+    identityDAL: { find: vi.fn().mockResolvedValue([]) },
+    agentVaultReachDAL: agentVaultTestReachDAL({ accessBundleIds: [BUNDLE_ID] })
+  } as unknown as Parameters<typeof agentVaultAccessBundleServiceFactory>[0]);
+  return { service, tx, agentVaultAccessBundleDAL, membershipRoleDAL, roleDAL, permissionService };
+};
+
+// A non-admin who can change who holds this bundle's role, but holds nothing on sessions.
+const GRANTER_RULES: RawRuleOf<MongoAbility>[] = [
+  {
+    action: [
+      ProjectPermissionAgentVaultAccessBundleActions.Read,
+      ProjectPermissionAgentVaultAccessBundleActions.Use,
+      ProjectPermissionAgentVaultAccessBundleActions.Edit
+    ],
+    subject: ProjectPermissionSub.AgentVaultAccessBundles,
+    conditions: { accessBundleId: BUNDLE_ID }
+  },
+  {
+    action: [
+      ProjectPermissionMemberActions.Read,
+      ProjectPermissionMemberActions.Edit,
+      ProjectPermissionMemberActions.AssignRole,
+      ProjectPermissionMemberActions.GrantPrivileges
+    ],
+    subject: ProjectPermissionSub.Member
+  }
+];
+const AUDITOR_RULES: RawRuleOf<MongoAbility>[] = [
+  { action: ProjectPermissionAgentVaultSessionActions.ReadAny, subject: ProjectPermissionSub.AgentVaultSessions }
+];
+const grantDTO = {
+  projectId: PROJECT_ID,
+  ctx,
+  accessBundleId: BUNDLE_ID,
+  userIds: [TARGET_USER_ID],
+  groupIds: [],
+  machineIdentityIds: []
+};
+
+describe("granting or revoking a bundle on the legacy privilege system", () => {
+  test("refuses a member whose roles grant more than the caller holds", async () => {
+    const { service } = buildBundleService({
+      rules: GRANTER_RULES,
+      heldRoleSlugs: [["auditor"]],
+      roleRules: { auditor: AUDITOR_RULES }
+    });
+    await expect(service.addMembers(grantDTO)).rejects.toThrow(
+      "Failed to grant the access bundle to a more privileged member"
+    );
+    await expect(service.revokeMembers(grantDTO)).rejects.toThrow(
+      "Failed to revoke the access bundle from a more privileged member"
+    );
+  });
+
+  test("starts over when the member's roles changed before the write's lock", async () => {
+    const { service, membershipRoleDAL } = buildBundleService({
+      rules: GRANTER_RULES,
+      heldRoleSlugs: [[], ["auditor"]],
+      roleRules: { auditor: AUDITOR_RULES }
+    });
+    await expect(service.addMembers(grantDTO)).rejects.toBeInstanceOf(ConflictError);
+    expect(membershipRoleDAL.insertMany).not.toHaveBeenCalled();
+  });
+
+  test("gives the role to a member whose roles the caller covers, and returns it for the audit", async () => {
+    const { service, membershipRoleDAL } = buildBundleService({ rules: GRANTER_RULES, heldRoleSlugs: [[]] });
+    const result = await service.addMembers(grantDTO);
+    expect(result.role).toEqual({ id: BUNDLE_ROLE_ID, slug: "infra-users" });
+    expect(membershipRoleDAL.insertMany).toHaveBeenCalledWith(
+      [{ membershipId: TARGET_MEMBERSHIP_ID, role: "custom", customRoleId: BUNDLE_ROLE_ID }],
+      expect.anything()
+    );
+  });
+
+  test("on the new privilege system, reads no roles the member holds", async () => {
+    const { service, membershipRoleDAL } = buildBundleService({
+      rules: GRANTER_RULES,
+      shouldUseNewPrivilegeSystem: true,
+      heldRoleSlugs: [["auditor"]],
+      roleRules: { auditor: AUDITOR_RULES }
+    });
+    await service.addMembers(grantDTO);
+    expect(membershipRoleDAL.findRolesByMembershipIds).not.toHaveBeenCalled();
+  });
+});
+
+describe("addMembers, a first grant that loses a race", () => {
+  test("whose role loses its slug to a role made at the same moment asks to try again", async () => {
+    const { service } = buildBundleService({
+      rules: [{ action: "manage", subject: "all" }],
+      isAdmin: true,
+      shouldUseNewPrivilegeSystem: true,
+      transactionError: new DatabaseError({
+        error: Object.assign(new Error("duplicate key value"), {
+          code: "23505",
+          constraint: "role_name_project_id_unique"
+        })
+      })
+    });
+    const result = service.addMembers(grantDTO);
+    await expect(result).rejects.toBeInstanceOf(ConflictError);
+    await expect(result).rejects.toThrow(
+      "Another change to this project's roles happened at the same time. Try again."
+    );
+  });
+});
+
+describe("deleteAccessBundle, the bundle's own role", () => {
+  test("goes with the bundle while it grants only that bundle, and is taken from everyone first", async () => {
+    const { service, membershipRoleDAL, roleDAL, agentVaultAccessBundleDAL, tx } = buildBundleService({
+      rules: [{ action: "manage", subject: "all" }],
+      isAdmin: true
+    });
+    membershipRoleDAL.find
+      .mockResolvedValueOnce([{ membershipId: TARGET_MEMBERSHIP_ID, customRoleId: BUNDLE_ROLE_ID, isTemporary: false }])
+      .mockResolvedValueOnce([]);
+
+    const result = await service.deleteAccessBundle({ projectId: PROJECT_ID, ctx, accessBundleId: BUNDLE_ID });
+
+    expect(result.removedRole).toEqual({ id: BUNDLE_ROLE_ID, slug: "infra-users" });
+    expect(tx.raw).toHaveBeenCalled();
+    expect(membershipRoleDAL.delete).toHaveBeenCalledWith({ customRoleId: BUNDLE_ROLE_ID }, tx);
+    expect(membershipRoleDAL.insertMany).toHaveBeenCalledWith(
+      [{ membershipId: TARGET_MEMBERSHIP_ID, role: "no-access" }],
+      tx
+    );
+    expect(agentVaultAccessBundleDAL.deleteById).toHaveBeenCalledWith(BUNDLE_ID, tx);
+    expect(roleDAL.deleteById).toHaveBeenCalledWith(BUNDLE_ROLE_ID, tx);
+    expect(roleDAL.deleteById.mock.invocationCallOrder[0]).toBeGreaterThan(
+      agentVaultAccessBundleDAL.deleteById.mock.invocationCallOrder[0]
+    );
+  });
+
+  test("stays when an admin changed what it grants", async () => {
+    const { service, membershipRoleDAL, roleDAL } = buildBundleService({
+      rules: [{ action: "manage", subject: "all" }],
+      isAdmin: true,
+      bundleRole: {
+        id: BUNDLE_ROLE_ID,
+        slug: "infra-users",
+        permissions: [
+          ...(bundleRolePermissions(BUNDLE_ID) as unknown[]),
+          ["read", ProjectPermissionSub.AgentVaultProxies]
+        ]
+      }
+    });
+
+    const result = await service.deleteAccessBundle({ projectId: PROJECT_ID, ctx, accessBundleId: BUNDLE_ID });
+
+    expect(result.removedRole).toBeNull();
+    expect(membershipRoleDAL.delete).not.toHaveBeenCalled();
+    expect(roleDAL.deleteById).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateAccessBundle, renaming", () => {
+  test("renames the bundle's role while it still has the name it was made with, and keeps its slug", async () => {
+    const { service, roleDAL, tx } = buildBundleService({
+      rules: [{ action: "manage", subject: "all" }],
+      isAdmin: true
+    });
+
+    await service.updateAccessBundle({ projectId: PROJECT_ID, ctx, accessBundleId: BUNDLE_ID, name: "platform" });
+
+    expect(roleDAL.updateById).toHaveBeenCalledWith(
+      BUNDLE_ROLE_ID,
+      { name: "platform users", description: "Use the access bundle 'platform'." },
+      tx
     );
   });
 });

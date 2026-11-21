@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useBlocker, useNavigate, useParams } from "@tanstack/react-router";
+import axios from "axios";
 import {
   ChevronLeftIcon,
   CopyIcon,
@@ -53,7 +54,10 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
-import { canReadAgentVaultMembers } from "@app/helpers/agentVaultPermissions";
+import {
+  canReadAgentVaultMembers,
+  canReadEveryAgentVaultMember
+} from "@app/helpers/agentVaultPermissions";
 import { isCustomProjectRole } from "@app/helpers/roles";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 import {
@@ -98,8 +102,9 @@ const RoleEditor = ({ role }: { role: TProjectRole }) => {
     setEditorKey((key) => key + 1);
   };
 
-  const { data: members } = useListAllAgentVaultMembers(projectId, {
-    enabled: canReadAgentVaultMembers(permission)
+  const canReadMembers = canReadAgentVaultMembers(permission);
+  const { data: members, isPending: isMembersPending } = useListAllAgentVaultMembers(projectId, {
+    enabled: canReadMembers
   });
   const holderCount = members?.items.filter((member) => member.roles.includes(role.slug)).length;
 
@@ -314,6 +319,8 @@ const RoleEditor = ({ role }: { role: TProjectRole }) => {
       <DeleteAgentVaultRoleDialog
         role={dialog === "delete" ? role : null}
         holderCount={holderCount}
+        isHolderCountPending={canReadMembers && isMembersPending}
+        isHolderCountComplete={canReadEveryAgentVaultMember(permission)}
         onOpenChange={(isOpen) => setDialog(isOpen ? "delete" : null)}
         onDeleted={() => leaveTo(() => navigate(rolesTabLink))}
       />
@@ -328,11 +335,13 @@ const RoleDetail = () => {
     strict: false,
     select: (params) => params.roleSlug as string
   });
-  const { data: role, isPending } = useGetProjectRoleBySlug(
-    projectId,
-    roleSlug,
-    ProjectType.AgentVault
-  );
+  const {
+    data: role,
+    isPending,
+    error,
+    refetch,
+    isRefetching
+  } = useGetProjectRoleBySlug(projectId, roleSlug, ProjectType.AgentVault);
 
   if (isPending) {
     return (
@@ -340,6 +349,24 @@ const RoleDetail = () => {
         <PageTitle title="Role" />
         <PageLoader />
       </>
+    );
+  }
+
+  // Only a 404 means the role is gone. Anything else, such as a dropped connection, can be tried again.
+  if (error && !(axios.isAxiosError(error) && error.response?.status === 404)) {
+    return (
+      <div className="mx-auto mb-6 w-full max-w-8xl">
+        <PageTitle title="Role" />
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>Couldn&apos;t load this role</EmptyTitle>
+            <EmptyDescription>Check your connection and try again.</EmptyDescription>
+          </EmptyHeader>
+          <Button variant="outline" isPending={isRefetching} onClick={() => refetch()}>
+            Try Again
+          </Button>
+        </Empty>
+      </div>
     );
   }
 

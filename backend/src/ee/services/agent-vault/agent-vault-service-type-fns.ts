@@ -20,6 +20,7 @@ import {
   AgentVaultMysqlServiceConfigSchema,
   AgentVaultPostgresServiceConfigSchema,
   AgentVaultSshServiceConfigSchema,
+  describeNativeTlsCaChange,
   isNativeServiceType,
   TAgentVaultNativeServiceConfig,
   TAgentVaultNativeTls
@@ -119,6 +120,37 @@ export const serviceDestinationOf = (service: { hostPattern?: string | null; con
         .sort()
     : null;
   return JSON.stringify([hosts, config.serverUrl ?? null, config.host ?? null, config.port ?? null]);
+};
+
+// A database service's TLS settings. One saved before they existed has the defaults the config schema gives.
+const nativeTlsOf = (config: unknown) => {
+  const tls = (config as TAgentVaultServiceConfig | null)?.tls;
+  return { enabled: tls?.enabled ?? true, verify: tls?.verify ?? true };
+};
+
+export type TAgentVaultServiceMove = "destination" | "tls";
+
+/**
+ * Whether a change to a service sends its credential somewhere it wasn't sent before: to another destination, or to
+ * the same one over a weaker connection. Turning TLS or certificate verification off, or trusting another CA (set,
+ * replaced or removed), lets whoever sits between the proxy and the server read the credential, so each counts as a
+ * move. Turning either one on doesn't.
+ */
+export const serviceMoveOf = (
+  current: { hostPattern?: string | null; config?: unknown },
+  next: { hostPattern?: string | null; config?: unknown }
+): TAgentVaultServiceMove | null => {
+  if (serviceDestinationOf(next) !== serviceDestinationOf(current)) return "destination";
+  const before = nativeTlsOf(current.config);
+  const after = nativeTlsOf(next.config);
+  if (
+    (before.enabled && !after.enabled) ||
+    (before.verify && !after.verify) ||
+    describeNativeTlsCaChange(current.config, next.config) !== undefined
+  ) {
+    return "tls";
+  }
+  return null;
 };
 
 export type TAgentVaultServiceTypeDefinition = {

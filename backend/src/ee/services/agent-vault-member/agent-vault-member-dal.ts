@@ -10,6 +10,8 @@ import {
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 
+import { whereRoleRowIsLive } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
+
 export type TAgentVaultMemberDALFactory = ReturnType<typeof agentVaultMemberDALFactory>;
 
 export type TAgentVaultProductActor =
@@ -121,6 +123,7 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
           .where(`${TableName.Membership}.scope`, AccessScope.Project)
           .where(`${TableName.Membership}.scopeProjectId`, projectId)
           .where(`${TableName.MembershipRole}.customRoleId`, excludeRoleId!)
+          .where(whereRoleRowIsLive)
           .whereNotNull(`${TableName.Membership}.${column}`)
           .select(`${TableName.Membership}.${column}`);
 

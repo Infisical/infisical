@@ -1,11 +1,12 @@
 import { AccessScope, AccessScopeData, TemporaryPermissionMode } from "@app/db/schemas";
 import { TSearchResourceOperator } from "@app/lib/search-resource/search";
 import { OrderByDirection, OrgServiceActor, TOrgPermission } from "@app/lib/types";
+import { TAgentVaultCheckedTarget } from "@app/services/membership/membership-fns";
 
 export interface TIdentityV2Factory {
   onCreateIdentityGuard: (arg: TCreateIdentityV2DTO) => Promise<void>;
   onUpdateIdentityGuard: (arg: TUpdateIdentityV2DTO) => Promise<void>;
-  onDeleteIdentityGuard: (arg: TDeleteIdentityV2DTO) => Promise<void>;
+  onDeleteIdentityGuard: (arg: TDeleteIdentityV2DTO) => Promise<TAgentVaultCheckedTarget | void>;
   onListIdentityGuard: (arg: TListIdentityV2DTO) => Promise<(arg: { identityId: string }) => boolean>;
   onGetIdentityByIdGuard: (arg: TGetIdentityByIdV2DTO) => Promise<void>;
   getScopeField: (scope: AccessScopeData) => { key: "orgId" | "projectId"; value: string };

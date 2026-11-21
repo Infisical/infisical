@@ -1,4 +1,7 @@
+import { Knex } from "knex";
+
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
+import { seedData1 } from "@app/db/seed-data";
 import { agentVaultMemberRoleIdOf } from "@app/ee/services/agent-vault-member/agent-vault-member-role-fns";
 import { PgSqlLock } from "@app/keystore/keystore";
 
@@ -17,6 +20,8 @@ type TMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
 const GIVE_ADMIN = "Only an Agent Vault admin can give the admin role.";
 const TOUCH_ADMIN = "Only an Agent Vault admin can change or remove another admin.";
+const OWN_ROLE = "You cannot change your own role";
+const ROLES_CHANGED = "A member's roles changed while this request was running. Try again.";
 
 // Resolves once a backend waits on a lock the given one holds: by then a request has done everything before the lock.
 const waitUntilBlockedBy = async (pid: number, attemptsLeft = 200): Promise<void> => {
@@ -42,6 +47,7 @@ describe("Agent Vault through the generic membership routes", () => {
   let projectId: string;
   let cleanup: () => Promise<void>;
   let managerToken: string;
+  let managerIdentityId: string;
   const userIds: string[] = [];
 
   const requester = (token: () => string) => async (method: TMethod, url: string, body?: Record<string, unknown>) => {
@@ -95,6 +101,29 @@ describe("Agent Vault through the generic membership routes", () => {
     return addUserMembership({ userId, orgId, projectId, role });
   };
 
+  // Holds the project's role-change lock while `meanwhile` writes, starts the request, and lets it through once it waits
+  // on the lock: by then the request has run every check it makes before the lock.
+  const runBehindLock = async (
+    run: () => ReturnType<typeof asAdmin>,
+    meanwhile: (trx: Knex.Transaction) => Promise<unknown> = async () => undefined
+  ) => {
+    const trx = await testDb.transaction();
+    let pending: ReturnType<typeof run> | undefined;
+    try {
+      const { rows } = await trx.raw("select pg_backend_pid() as pid");
+      await trx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("project", projectId)]);
+      await meanwhile(trx);
+      pending = run();
+      await waitUntilBlockedBy(rows[0].pid);
+      await trx.commit();
+      return await pending;
+    } catch (err) {
+      if (!trx.isCompleted()) await trx.rollback();
+      await pending?.catch(() => undefined);
+      throw err;
+    }
+  };
+
   beforeAll(async () => {
     const isolated = await createIsolatedOrgAndProject("av-generic-membership");
     ({ orgId, cleanup } = isolated);
@@ -116,6 +145,7 @@ describe("Agent Vault through the generic membership routes", () => {
 
     const manager = await createIdentityActor({ orgId, authToken: adminToken, name: `av-manager-${Date.now()}` });
     managerToken = manager.authToken;
+    managerIdentityId = manager.identityId;
     const added = await asAdmin("POST", identityPath(manager.identityId), {
       roles: [{ role: "membership-manager" }]
     });
@@ -295,6 +325,13 @@ describe("Agent Vault through the generic membership routes", () => {
       userIds.push(userId);
       await addUserMembership({ userId, orgId, role: OrgMembershipRole.Member });
       const userMembershipId = await addUserMembership({ userId, orgId, projectId, role: ProjectMembershipRole.NoAccess });
+      const projectIdentity = await asAdmin("POST", `/api/v1/projects/${projectId}/identities`, {
+        name: `av-generic-stale-project-${Date.now()}`,
+        roles: [{ role: "membership-manager" }]
+      });
+      expect(projectIdentity.statusCode, projectIdentity.payload).toBe(200);
+      const projectIdentityId = projectIdentity.json().identity.id as string;
+      const projectIdentityMembership = await projectMembershipOf({ actorIdentityId: projectIdentityId });
 
       const changes = [
         {
@@ -305,6 +342,10 @@ describe("Agent Vault through the generic membership routes", () => {
         {
           membershipId: userMembershipId,
           run: () => asManager("DELETE", `/api/v1/projects/${projectId}/memberships`, { usernames: [username] })
+        },
+        {
+          membershipId: projectIdentityMembership.id,
+          run: () => asManager("DELETE", `/api/v1/projects/${projectId}/identities/${projectIdentityId}`)
         }
       ];
       for (const change of changes) {
@@ -343,6 +384,65 @@ describe("Agent Vault through the generic membership routes", () => {
       }
       expect(await roleSlugsOf(membership.id)).toEqual(["membership-manager"]);
       expect(await roleSlugsOf(userMembershipId)).toEqual([ProjectMembershipRole.NoAccess]);
+      expect(await roleSlugsOf(projectIdentityMembership.id)).toEqual(["membership-manager"]);
+    });
+
+    test("a change or removal waiting on the lock starts over when the member got another role meanwhile", async () => {
+      const target = await createOrgIdentity("av-generic-changed");
+      const added = await asAdmin("POST", identityPath(target), { roles: [{ role: "membership-manager" }] });
+      expect(added.statusCode, added.payload).toBe(200);
+      const membership = await projectMembershipOf({ actorIdentityId: target });
+      const userMembershipId = await createProjectUser(ProjectMembershipRole.NoAccess);
+      const userPath = `/api/v1/projects/${projectId}/memberships/${userMembershipId}`;
+
+      const changes = [
+        {
+          membershipId: membership.id,
+          run: () => asManager("PATCH", identityPath(target), { roles: [{ role: ProjectMembershipRole.NoAccess }] })
+        },
+        { membershipId: membership.id, run: () => asManager("DELETE", identityPath(target)) },
+        {
+          membershipId: userMembershipId,
+          run: () => asManager("PATCH", userPath, { roles: [{ role: "membership-manager" }] })
+        },
+        { membershipId: userMembershipId, run: () => asManager("DELETE", userPath) }
+      ];
+      for (const change of changes) {
+        let givenMeanwhile: string | undefined;
+        // eslint-disable-next-line no-await-in-loop
+        const res = await runBehindLock(change.run, async (trx) => {
+          // An admin gives the member the Member role while the manager's change waits for the lock. The guard checked
+          // the roles the member held before it, so the change has to start over.
+          const [row] = (await trx(TableName.MembershipRole)
+            .insert({
+              membershipId: change.membershipId,
+              role: ProjectMembershipRole.Custom,
+              customRoleId: agentVaultMemberRoleIdOf(projectId)
+            })
+            .returning("id")) as { id: string }[];
+          givenMeanwhile = row.id;
+        });
+        expect(res.statusCode, res.payload).toBe(409);
+        expect(res.json().message).toBe(ROLES_CHANGED);
+        // eslint-disable-next-line no-await-in-loop
+        await testDb(TableName.MembershipRole).where({ id: givenMeanwhile }).delete();
+      }
+      expect(await roleSlugsOf(membership.id)).toEqual(["membership-manager"]);
+      expect(await roleSlugsOf(userMembershipId)).toEqual([ProjectMembershipRole.NoAccess]);
+    });
+
+    test("an admin's change waits for the project's role-change lock too", async () => {
+      const target = await createOrgIdentity("av-generic-admin-lock");
+      const added = await asAdmin("POST", identityPath(target), { roles: [{ role: "membership-manager" }] });
+      expect(added.statusCode, added.payload).toBe(200);
+
+      // A grant that holds the lock would otherwise read the member's roles before this change and write after it.
+      const promoted = await runBehindLock(() =>
+        asAdmin("PATCH", identityPath(target), { roles: [{ role: ProjectMembershipRole.Admin }] })
+      );
+      expect(promoted.statusCode, promoted.payload).toBe(200);
+      const membership = await projectMembershipOf({ actorIdentityId: target });
+      expect(await roleSlugsOf(membership.id)).toEqual([ProjectMembershipRole.Admin]);
     });
 
     test("an Admin assignment that already ended doesn't stop a manager changing the member", async () => {
@@ -379,6 +479,28 @@ describe("Agent Vault through the generic membership routes", () => {
       } finally {
         await deleteAgentVaultProject({ authToken: adminToken, projectId: bare });
       }
+    });
+  });
+
+  describe("nobody changes their own roles here, as on the members API", () => {
+    test("a machine identity can't change its own roles", async () => {
+      const res = await asManager("PATCH", identityPath(managerIdentityId), {
+        roles: [{ role: ProjectMembershipRole.NoAccess }]
+      });
+      expect(res.statusCode).toBe(403);
+      expect(res.json().message).toBe(OWN_ROLE);
+      const membership = await projectMembershipOf({ actorIdentityId: managerIdentityId });
+      expect(await roleSlugsOf(membership.id)).toEqual(["membership-manager"]);
+    });
+
+    test("a user can't change their own roles, an admin included", async () => {
+      const membership = await projectMembershipOf({ actorUserId: seedData1.id });
+      const res = await asAdmin("PATCH", `/api/v1/projects/${projectId}/memberships/${membership.id}`, {
+        roles: [{ role: ProjectMembershipRole.Admin }, { role: "membership-manager" }]
+      });
+      expect(res.statusCode).toBe(403);
+      expect(res.json().message).toBe(OWN_ROLE);
+      expect(await roleSlugsOf(membership.id)).toEqual([ProjectMembershipRole.Admin]);
     });
   });
 
@@ -543,6 +665,29 @@ describe("Agent Vault through the generic membership routes", () => {
       const membership = await projectMembershipOf({ actorIdentityId: identityId });
       const [row] = await testDb(TableName.MembershipRole).where({ membershipId: membership.id });
       expect(row).toMatchObject({ isTemporary: false, temporaryAccessEndTime: null });
+    });
+
+    test("another product's built-in role is refused, since Agent Vault resolves none of them", async () => {
+      const noSuchRole = (role: string) =>
+        `This project has no role '${role}'. Use admin, no-access, or the slug of one of the project's roles.`;
+      const identityId = await createOrgIdentity("av-generic-built-in");
+      for (const role of [ProjectMembershipRole.Custom, ProjectMembershipRole.KmsCryptographicOperator]) {
+        // eslint-disable-next-line no-await-in-loop
+        const added = await asAdmin("POST", identityPath(identityId), { roles: [{ role }] });
+        expect(added.statusCode).toBe(400);
+        expect(added.json().message).toBe(noSuchRole(role));
+      }
+      expect(await testDb(TableName.Membership).where({ scopeProjectId: projectId, actorIdentityId: identityId })).toEqual(
+        []
+      );
+
+      const membershipId = await createProjectUser(ProjectMembershipRole.NoAccess);
+      const updated = await asAdmin("PATCH", `/api/v1/projects/${projectId}/memberships/${membershipId}`, {
+        roles: [{ role: ProjectMembershipRole.KmsCryptographicOperator }]
+      });
+      expect(updated.statusCode).toBe(400);
+      expect(updated.json().message).toBe(noSuchRole(ProjectMembershipRole.KmsCryptographicOperator));
+      expect(await roleSlugsOf(membershipId)).toEqual([ProjectMembershipRole.NoAccess]);
     });
   });
 

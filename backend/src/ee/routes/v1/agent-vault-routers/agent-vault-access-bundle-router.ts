@@ -173,7 +173,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     handler: async (req) => {
       const { projectId: requestedProjectId, ...body } = req.body;
       const projectId = await resolveRequestedProjectId(req, requestedProjectId, "body");
-      const accessBundle = await server.services.agentVaultAccessBundle.createAccessBundle({
+      const { accessBundle, role } = await server.services.agentVaultAccessBundle.createAccessBundle({
         projectId,
         ctx: actorContext(req),
         ...body
@@ -188,7 +188,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           metadata: {
             accessBundleId: accessBundle.id,
             name: accessBundle.name,
-            description: accessBundle.description
+            description: accessBundle.description,
+            ...(role ? { roleId: role.id, roleSlug: role.slug } : {})
           }
         }
       });
@@ -323,7 +324,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         actorContext(req),
         req.params.accessBundleId
       );
-      const accessBundle = await server.services.agentVaultAccessBundle.deleteAccessBundle({
+      const { accessBundle, removedRole } = await server.services.agentVaultAccessBundle.deleteAccessBundle({
         projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId
@@ -335,7 +336,11 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         projectId,
         event: {
           type: EventType.AGENT_VAULT_ACCESS_BUNDLE_DELETE,
-          metadata: { accessBundleId: accessBundle.id, name: accessBundle.name }
+          metadata: {
+            accessBundleId: accessBundle.id,
+            name: accessBundle.name,
+            ...(removedRole ? { deletedRoleId: removedRole.id, deletedRoleSlug: removedRole.slug } : {})
+          }
         }
       });
 
@@ -760,7 +765,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         actorContext(req),
         req.params.accessBundleId
       );
-      const { members, skipped, accessBundleName } = await server.services.agentVaultAccessBundle.addMembers({
+      const { members, skipped, accessBundleName, role } = await server.services.agentVaultAccessBundle.addMembers({
         projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
@@ -778,6 +783,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
               metadata: {
                 accessBundleId: req.params.accessBundleId,
                 accessBundleName,
+                roleId: role.id,
+                roleSlug: role.slug,
                 ...auditActorFields(member)
               }
             }
@@ -823,7 +830,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         actorContext(req),
         req.params.accessBundleId
       );
-      const { members, skipped, accessBundleName } = await server.services.agentVaultAccessBundle.revokeMembers({
+      const { members, skipped, accessBundleName, role } = await server.services.agentVaultAccessBundle.revokeMembers({
         projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
@@ -841,6 +848,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
               metadata: {
                 accessBundleId: req.params.accessBundleId,
                 accessBundleName,
+                ...(role ? { roleId: role.id, roleSlug: role.slug } : {}),
                 ...auditActorFields(member)
               }
             }

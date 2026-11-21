@@ -14,6 +14,7 @@ import { TOnBehalfOfUser } from "../agent-vault-session/agent-vault-session-type
 import {
   getAgentVaultReachability,
   intersectReach,
+  REACHES_NOTHING,
   TAgentVaultReach,
   TAgentVaultReachDep
 } from "../agent-vault/agent-vault-permission";
@@ -121,8 +122,9 @@ export const resolveOnBehalfOfUser = async (
     });
   }
 
-  const { accessBundleIds, serviceIds, skillIds } = reachability;
-  return { user, identifier, reach: { accessBundleIds, serviceIds, skillIds } as TAgentVaultReach };
+  const { accessBundleIds, serviceIds, skillIds, deniedServiceIds, deniedSkillIds } = reachability;
+  const reach: TAgentVaultReach = { accessBundleIds, serviceIds, skillIds, deniedServiceIds, deniedSkillIds };
+  return { user, identifier, reach };
 };
 
 // What a session on the user's behalf could use: what both the user and the caller reach. Like minting that session, it
@@ -144,7 +146,7 @@ export const findOnBehalfOfListScope = async (
 ): Promise<{ reach: TAgentVaultReach; owner: { userId: string } | null }> => {
   const delegation = await findCallerDelegation(deps, { projectId, ctx });
   if (reachesNothing(callerReach)) {
-    return { reach: { accessBundleIds: [], serviceIds: [], skillIds: [] }, owner: null };
+    return { reach: REACHES_NOTHING, owner: null };
   }
 
   const { user, reach: userReach } = await resolveOnBehalfOfUser(deps, { projectId, ctx, onBehalfOf, delegation });

@@ -11,13 +11,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DiscardChangesAlertDialog,
   Field,
   FieldContent,
   FieldDescription,
   FieldLabel
 } from "@app/components/v3";
 import { useProject, useUser } from "@app/context";
-import { useDebounce } from "@app/hooks";
+import { useDebounce, useDiscardChangesGuard } from "@app/hooks";
 import {
   useAddAgentVaultMembers,
   useListAvailableAgentVaultMembers,
@@ -93,6 +94,9 @@ export const AssignRoleDialog = ({ isOpen, onOpenChange, roleSlug, roleName, mem
     onOpenChange(false);
   };
 
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty: selected.length > 0, onDiscard: handleClose });
+
   const handleAssign = async () => {
     const { adds, updates } = planAgentVaultRoleAssignment(roleSlug, selected);
     const calls = [
@@ -121,73 +125,83 @@ export const AssignRoleDialog = ({ isOpen, onOpenChange, roleSlug, roleName, mem
   };
 
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          handleClose();
-          return;
-        }
-        onOpenChange(open);
-      }}
-    >
-      <DialogContent isPending={isSubmitting}>
-        <DialogHeader>
-          <DialogTitle>Assign {roleName}</DialogTitle>
-          <DialogDescription>
-            Members keep their other roles, and anyone not in this project yet joins with only this
-            role.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            requestDiscard();
+            return;
+          }
+          onOpenChange(open);
+        }}
+      >
+        <DialogContent isPending={isSubmitting}>
+          <DialogHeader>
+            <DialogTitle>Assign {roleName}</DialogTitle>
+            <DialogDescription>
+              Members keep their other roles, and anyone not in this project yet joins with only
+              this role.
+            </DialogDescription>
+          </DialogHeader>
 
-        <Field>
-          <FieldLabel htmlFor="agent-vault-assign-role">Assign To</FieldLabel>
-          <FieldContent>
-            <Combobox
-              id="agent-vault-assign-role"
-              multiple
-              modal
-              includeMissingSelectedOptions
-              options={options}
-              value={selected}
-              isLoading={isFetching}
-              onSearchChange={setSearch}
-              onValueChange={setSelected}
-              getOptionValue={(option) => option.key}
-              getOptionLabel={(option) => option.name}
-              getOptionGroup={(option) => ASSIGN_GROUP_LABEL[option.type]}
-              isOptionDisabled={(option) => Boolean(option.disabledReason)}
-              renderOption={(option) => <AssignOption option={option} />}
-              placeholder="Pick users, machine identities or groups"
-              searchAriaLabel="Search users, machine identities and groups"
-              emptyMessage={(inputValue) =>
-                inputValue.trim()
-                  ? "Nothing matches your search"
-                  : "Everyone in your organization already holds this role"
-              }
-            />
-            {isListTruncated && (
-              <FieldDescription>
-                Search to find users, machine identities and groups that aren&apos;t listed.
-              </FieldDescription>
-            )}
-          </FieldContent>
-        </Field>
+          <Field>
+            <FieldLabel htmlFor="agent-vault-assign-role">Assign To</FieldLabel>
+            <FieldContent>
+              <Combobox
+                id="agent-vault-assign-role"
+                multiple
+                modal
+                includeMissingSelectedOptions
+                options={options}
+                value={selected}
+                isLoading={isFetching}
+                onSearchChange={setSearch}
+                onValueChange={setSelected}
+                getOptionValue={(option) => option.key}
+                getOptionLabel={(option) => option.name}
+                getOptionGroup={(option) => ASSIGN_GROUP_LABEL[option.type]}
+                isOptionDisabled={(option) => Boolean(option.disabledReason)}
+                renderOption={(option) => <AssignOption option={option} />}
+                placeholder="Pick users, machine identities or groups"
+                searchAriaLabel="Search users, machine identities and groups"
+                emptyMessage={(inputValue) =>
+                  inputValue.trim()
+                    ? "Nothing matches your search"
+                    : "Everyone in your organization already holds this role"
+                }
+              />
+              {isListTruncated && (
+                <FieldDescription>
+                  Search to find users, machine identities and groups that aren&apos;t listed.
+                </FieldDescription>
+              )}
+            </FieldContent>
+          </Field>
 
-        <DialogFooter>
-          <Button variant="ghost" onClick={handleClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="av"
-            isPending={isSubmitting}
-            isDisabled={!selected.length}
-            onClick={handleAssign}
-          >
-            Assign
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter>
+            <Button variant="ghost" isDisabled={isSubmitting} onClick={requestDiscard}>
+              Cancel
+            </Button>
+            <Button
+              variant="av"
+              isPending={isSubmitting}
+              isDisabled={!selected.length}
+              onClick={handleAssign}
+            >
+              Assign
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Nobody you picked gets this role."
+      />
+    </>
   );
 };

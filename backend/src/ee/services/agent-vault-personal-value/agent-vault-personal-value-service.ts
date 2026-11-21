@@ -26,9 +26,13 @@ import {
   TAgentVaultMemberProvidedField
 } from "../agent-vault/agent-vault-enums";
 import { ownerColumns, ownerOf, TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
-import { getAgentVaultReachability, usableServiceIdsOf } from "../agent-vault/agent-vault-permission";
+import {
+  getAgentVaultReachability,
+  TAgentVaultDeniedIds,
+  usableServiceIdsOf
+} from "../agent-vault/agent-vault-permission";
 import { TAgentVaultReachDALFactory } from "../agent-vault/agent-vault-reach-dal";
-import { getServiceServerUrl, serviceDestinationOf } from "../agent-vault/agent-vault-service-type-fns";
+import { getServiceServerUrl, serviceMoveOf } from "../agent-vault/agent-vault-service-type-fns";
 import {
   findStoredVariableIds,
   findVariableKeys,
@@ -85,8 +89,11 @@ type TPersonalValueCredentialType =
 const SERVICE_CHANGED_DURING_SAVE_MESSAGE =
   "An admin changed this service's credential while you were setting up your values. Reload the service and save again.";
 
-const SERVICE_MOVED_DURING_SAVE_MESSAGE =
-  "An admin changed where this service connects while you were setting up your values. Reload the service and save again.";
+const SERVICE_MOVED_DURING_SAVE_MESSAGE = {
+  destination:
+    "An admin changed where this service connects while you were setting up your values. Reload the service and save again.",
+  tls: "An admin changed this service's TLS settings while you were setting up your values. Reload the service and save again."
+};
 
 const VARIABLE_DELETED_DURING_SAVE_MESSAGE =
   "A variable one of your values uses was deleted while it was being saved. Check its variable references and save again.";
@@ -185,29 +192,45 @@ export const agentVaultPersonalValueServiceFactory = ({
    * The caller's status for every service in these bundles that takes values from members. No permission check: the
    * access bundle service calls it for what it has already resolved the caller's reach to. Without variable references,
    * each field's list is empty. `includeUnlinked` adds the services no bundle holds, for a caller who reaches every
-   * service (null `accessBundleIds`), and `directServiceIds` the services the caller uses directly.
+   * service (null `accessBundleIds`), and `directServiceIds` the services the caller uses directly. A service a role
+   * denies `use` on (`deniedServiceIds`) needs no setup, since no bundle gives it.
    */
-  const findStatusesForOwner = (args: {
+  const findStatusesForOwner = async ({
+    deniedServiceIds,
+    ...args
+  }: {
     projectId: string;
     owner: TAgentVaultOwner;
     accessBundleIds: string[] | null;
     includeUnlinked?: boolean;
     directServiceIds?: string[];
     withVariableReferences?: boolean;
-  }) => loadServices(args);
+    deniedServiceIds?: TAgentVaultDeniedIds;
+  }) => {
+    if (deniedServiceIds === "all") return [];
+    const statuses = await loadServices(args);
+    if (!deniedServiceIds?.length) return statuses;
+    const denied = new Set(deniedServiceIds);
+    return statuses.filter((status) => !denied.has(status.serviceId));
+  };
 
-  // A service the caller can't use, directly or through a bundle that holds it, reads exactly like one that does not
-  // exist.
-  const findReachableService = async (dto: TPersonalValuesByServiceDTO) => {
+  const serviceNotFound = (serviceId: string) =>
+    new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
+
+  // The service and whether the caller can use it, directly or through a bundle that holds it.
+  const findServiceForCaller = async (dto: TPersonalValuesByServiceDTO) => {
     const caller = await resolveCaller(dto);
     const service = await agentVaultServiceDAL.findByIdInProject({ id: dto.serviceId, projectId: dto.projectId });
-    const usable = service
-      ? await usableServiceIdsOf({ agentVaultServiceDAL, agentVaultReachDAL }, caller, dto.projectId)
-      : [];
-    if (!service || (usable !== null && !usable.includes(service.id))) {
-      throw new NotFoundError({ message: `Service with ID '${dto.serviceId}' not found` });
-    }
-    return { ...caller, service };
+    if (!service) throw serviceNotFound(dto.serviceId);
+    const usable = await usableServiceIdsOf({ agentVaultServiceDAL, agentVaultReachDAL }, caller, dto.projectId);
+    return { ...caller, service, canUse: usable === null || usable.includes(service.id) };
+  };
+
+  // A service the caller can't use reads exactly like one that does not exist.
+  const findReachableService = async (dto: TPersonalValuesByServiceDTO) => {
+    const { canUse, ...found } = await findServiceForCaller(dto);
+    if (!canUse) throw serviceNotFound(dto.serviceId);
+    return found;
   };
 
   // Under the service lock, after the reach check: the caller's project memberships, so that leaving the project, which
@@ -394,11 +417,10 @@ export const agentVaultPersonalValueServiceFactory = ({
         ) {
           throw new ConflictError({ message: SERVICE_CHANGED_DURING_SAVE_MESSAGE });
         }
-        // A move deletes every member's values, so values typed for where the service connected before must not
-        // land after it.
-        if (serviceDestinationOf(current) !== serviceDestinationOf(service)) {
-          throw new ConflictError({ message: SERVICE_MOVED_DURING_SAVE_MESSAGE });
-        }
+        // A move deletes every member's values, so values typed for where or how the service connected before must
+        // not land after it.
+        const move = serviceMoveOf(service, current);
+        if (move) throw new ConflictError({ message: SERVICE_MOVED_DURING_SAVE_MESSAGE[move] });
         await lockMembership({ projectId: dto.projectId, owner }, tx);
 
         // Before the values: a variable delete locks the variable and then deletes values.
@@ -469,20 +491,22 @@ export const agentVaultPersonalValueServiceFactory = ({
     }
   };
 
+  // Values outlive the caller's access to the service, so they can delete their own for a service they can no longer
+  // use. Without values of theirs, such a service still reads like one that does not exist.
   const deletePersonalValues = async (dto: TPersonalValuesByServiceDTO) => {
-    const { owner, service } = await findReachableService(dto);
+    const { owner, service, canUse } = await findServiceForCaller(dto);
 
     return agentVaultPersonalValueDAL.transaction(async (tx) => {
       const existing = await agentVaultPersonalValueDAL.lockForOwnerAndService({ serviceId: service.id, owner }, tx);
       if (!existing.length) {
+        if (!canUse) throw serviceNotFound(dto.serviceId);
         throw new NotFoundError({ message: `You haven't set any values for the service '${service.name}'.` });
       }
       await agentVaultPersonalValueDAL.delete({ $in: { id: existing.map((row) => row.id) } }, tx);
 
-      const [projected] = await loadServices(
-        { projectId: dto.projectId, owner, accessBundleIds: null, serviceId: service.id },
-        tx
-      );
+      const [projected] = canUse
+        ? await loadServices({ projectId: dto.projectId, owner, accessBundleIds: null, serviceId: service.id }, tx)
+        : [];
       return {
         personalValues: projected ?? {
           serviceId: service.id,

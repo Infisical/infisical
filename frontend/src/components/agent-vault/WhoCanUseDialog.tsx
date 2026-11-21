@@ -21,21 +21,23 @@ export type TWhoCanUseTarget = {
   name: string;
 };
 
+// Each role is listed for what it allows on its own. A deny in another role a member holds still wins for that
+// member, which a list of roles can't show.
+const DENIED_ELSEWHERE =
+  "A holder who also has a role that denies Use on it still can't use it. Open a role to change what it allows or who holds it.";
+
 const COPY: Record<TWhoCanUseTarget["kind"], { noun: string; description: string }> = {
   accessBundle: {
     noun: "bundle",
-    description:
-      "Holders of these roles can start sessions from this bundle, with every service and skill in it. Open a role to change what it allows or who holds it."
+    description: `These roles allow starting sessions from this bundle, with the services and skills in it. ${DENIED_ELSEWHERE}`
   },
   service: {
     noun: "service",
-    description:
-      "Holders of these roles can put this service in a session, directly or through an access bundle that holds it. Open a role to change what it allows or who holds it."
+    description: `These roles allow putting this service in a session, directly or through an access bundle that holds it. ${DENIED_ELSEWHERE}`
   },
   skill: {
     noun: "skill",
-    description:
-      "Holders of these roles can put this skill in a session, directly or through an access bundle that holds it. Open a role to change what it allows or who holds it."
+    description: `These roles allow putting this skill in a session, directly or through an access bundle that holds it. ${DENIED_ELSEWHERE}`
   }
 };
 

@@ -57,6 +57,8 @@ import {
   assertProductWillRetainAdmin,
   customRolesNeedRbacPlan,
   filterRolesNeedingPrivilegeBoundary,
+  findAgentVaultRoleChange,
+  lockAgentVaultRoleChange,
   rolesGiveAdmin,
   withAgentVaultMemberAlias
 } from "../membership/membership-fns";
@@ -93,7 +95,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
   projectDAL: Pick<TProjectDALFactory, "findActorAccessibleProjectIds" | "findOrgProjectIds" | "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  roleDAL: Pick<TRoleDALFactory, "find" | "findOne" | "findById" | "create">;
+  roleDAL: Pick<TRoleDALFactory, "find" | "findById">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
 };
 
@@ -414,7 +416,7 @@ export const identityV2ServiceFactory = ({
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
 
-    await factory.onDeleteIdentityGuard(dto);
+    const checked = await factory.onDeleteIdentityGuard(dto);
 
     const existingIdentity = await identityDAL.findOne({
       id: dto.selector.identityId,
@@ -429,6 +431,10 @@ export const identityV2ServiceFactory = ({
       throw new BadRequestError({ message: "Cannot delete identity while delete protection is enabled" });
     }
 
+    const agentVaultChange = await findAgentVaultRoleChange(
+      { projectDAL, permissionService },
+      { scopeData, actor: dto.permission }
+    );
     // Set the identity-wide PG revocation epoch atomically with the row delete
     // so any JWT issued for this identity (with iat < now) is rejected.
     const deletedIdentity = await identityDAL.transaction(async (tx) => {
@@ -443,6 +449,7 @@ export const identityV2ServiceFactory = ({
             },
             { tx }
           );
+          await lockAgentVaultRoleChange(agentVaultChange, { membershipId: memberships[0]?.id, checked }, tx);
           await assertProductWillRetainAdmin({
             project,
             excludeMembershipIds: memberships.map(({ id }) => id),

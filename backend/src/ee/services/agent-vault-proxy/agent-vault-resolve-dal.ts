@@ -50,14 +50,25 @@ export type TResolveSkillRow = {
   accessBundleName: string | null;
 };
 
-// What the session's owner reaches now (see TAgentVaultReach): the bundles they can use, and the services and skills
-// they can use directly. Each is null when it covers every one in the project.
+// What the session's owner reaches now (see TAgentVaultReach): the bundles they can use, the services and skills they
+// can use directly, each null when it covers every one in the project, and the ones a role denies.
 type TResolveScope = {
   sessionId: string;
   projectId: string;
   accessBundleIds: string[] | null;
   serviceIds: string[] | null;
   skillIds: string[] | null;
+  deniedServiceIds?: string[] | "all";
+  deniedSkillIds?: string[] | "all";
+};
+
+// Whether a row reached through a bundle is one a role denies. A deny wins over the allow that would let the owner use
+// it directly, so a denied id is never among the direct ones.
+const deniedThroughBundles = (directIds: string[] | null, denied: string[] | "all" | undefined) => {
+  if (directIds === null || !denied || (denied !== "all" && !denied.length)) return null;
+  const direct = new Set(directIds);
+  const deniedIds = denied === "all" ? null : new Set(denied);
+  return (id: string) => !direct.has(id) && (deniedIds === null || deniedIds.has(id));
 };
 
 // A listed service or skill stays while the owner can use it directly or through a bundle that holds it.
@@ -145,6 +156,37 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
         !pattern.isWildcard &&
         wildcards.some((wildcard) => relateHostPatterns(wildcard, pattern) === AgentVaultPatternRelation.Contained)
     );
+
+  /**
+   * A role's deny on a service holds inside a bundle too, so a denied row is left out. An exact host beats a wildcard,
+   * so leaving out only the denied service would hand its hosts to a wildcard service beside it, with that service's
+   * credential and none of the denied one's limits. A row whose wildcard covers a host of a denied row is left out with
+   * it, unless the owner can use it directly and so could name it alone anyway.
+   */
+  const withoutDeniedServices = <T extends { id: string; hostPattern: string | null }>(
+    rows: T[],
+    isDenied: ((id: string) => boolean) | null,
+    directIds: string[] | null
+  ) => {
+    if (!isDenied) return rows;
+    const deniedRows = rows.filter((row) => isDenied(row.id));
+    if (!deniedRows.length) return rows;
+    const direct = new Set(directIds ?? []);
+    const coversDeniedHost = (row: T) => {
+      const wildcards = wildcardsOf(row);
+      return (
+        wildcards.length > 0 &&
+        deniedRows.some(
+          (deniedRow) =>
+            Boolean(deniedRow.hostPattern) &&
+            parseHostPatterns(deniedRow.hostPattern!).patterns.some((pattern) =>
+              wildcards.some((wildcard) => relateHostPatterns(wildcard, pattern) !== AgentVaultPatternRelation.Disjoint)
+            )
+        )
+      );
+    };
+    return rows.filter((row) => !isDenied(row.id) && (direct.has(row.id) || !coversDeniedHost(row)));
+  };
 
   /**
    * An exact host beats a wildcard, which is how a bundle writes an override: `api.example.com` read-only beside an
@@ -308,7 +350,11 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
       // An owner who can use a service directly could name it alone anyway, so it brings no overrides. One reached
       // only through bundles brings theirs, as a session carrying the bundle would.
       const directIds = scope.serviceIds === null ? null : new Set(scope.serviceIds);
-      const reachedThroughBundles = directIds ? listedOnly.filter((row) => !directIds.has(row.id)) : [];
+      const isDenied = deniedThroughBundles(scope.serviceIds, scope.deniedServiceIds);
+      // A denied service is left out below, so it brings no overrides either.
+      const reachedThroughBundles = directIds
+        ? listedOnly.filter((row) => !directIds.has(row.id) && !isDenied?.(row.id))
+        : [];
       const overrides = reachedThroughBundles.length
         ? await findOverridesOfServices(
             conn,
@@ -317,7 +363,7 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
             new Set(present.map((row) => row.id))
           )
         : [];
-      const resolvable = [...present, ...overrides];
+      const resolvable = withoutDeniedServices([...present, ...overrides], isDenied, scope.serviceIds);
       // Narrowed after the overrides are found, since one can only be found through the service it overrides.
       return serviceId ? resolvable.filter((row) => row.id === serviceId) : resolvable;
     } catch (error) {
@@ -331,22 +377,27 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
     {
       projectId,
       accessBundleIds,
+      deniedServiceIds,
       services
     }: {
       projectId: string;
       accessBundleIds: string[] | null;
+      // Resolve leaves a denied override out, so it can't clash with anything the session sends.
+      deniedServiceIds?: string[] | "all";
       services: Pick<TResolveServiceRow, "id" | "hostPattern">[];
     },
     tx?: Knex
   ) => {
     if (accessBundleIds?.length === 0 || !services.length) return [];
     try {
-      return await findOverridesOfServices(
+      const overrides = await findOverridesOfServices(
         tx || db.replicaNode(),
         { projectId, accessBundleIds },
         services.map((service, position) => ({ ...service, position })),
         new Set(services.map(({ id }) => id))
       );
+      const isDenied = deniedThroughBundles([], deniedServiceIds);
+      return isDenied ? overrides.filter((row) => !isDenied(row.id)) : overrides;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault service overrides" });
     }
@@ -429,9 +480,11 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
       )) as unknown as TResolveSkillRow[];
 
       const throughBundleIds = new Set(throughBundle.map((row) => row.id));
-      return [...throughBundle, ...listedRows.filter((row) => !throughBundleIds.has(row.id))].sort((a, b) =>
-        a.name < b.name ? -1 : 1
-      );
+      // A role's deny on a skill holds inside a bundle too.
+      const isDenied = deniedThroughBundles(scope.skillIds, scope.deniedSkillIds);
+      return [...throughBundle, ...listedRows.filter((row) => !throughBundleIds.has(row.id))]
+        .filter((row) => !isDenied?.(row.id))
+        .sort((a, b) => (a.name < b.name ? -1 : 1));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault session skills" });
     }

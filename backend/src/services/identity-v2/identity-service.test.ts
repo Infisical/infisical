@@ -63,9 +63,10 @@ const createService = ({
       getOrgPermission: vi
         .fn()
         .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
-      getProjectPermission: vi
-        .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
+      getProjectPermission: vi.fn().mockResolvedValue({
+        permission: createMongoAbility([{ action: "manage", subject: "all" }]),
+        hasRole: (role: string) => role === "admin"
+      }),
       getOrgPermissionByRoles: vi.fn().mockResolvedValue([]),
       getProjectPermissionByRoles: vi.fn().mockResolvedValue([])
     } as never,
@@ -74,7 +75,8 @@ const createService = ({
     // The delete guards bound the removal against the roles the target identity holds.
     membershipIdentityDAL: {
       getIdentityById: vi.fn().mockResolvedValue({ roles: [] }),
-      find: vi.fn().mockResolvedValue([{ id: "identity-membership" }])
+      find: vi.fn().mockResolvedValue([{ id: "identity-membership" }]),
+      transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb(tx))
     } as never,
     membershipRoleDAL: {} as never,
     identityMetadataDAL: { delete: vi.fn(), insertMany: vi.fn() } as never,

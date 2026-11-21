@@ -82,7 +82,7 @@ const LEVEL_DESCRIPTIONS: Record<TResourceRowKey, Record<string, string>> = {
   accessBundles: {
     [NONE_LEVEL]: "Only the access bundles picked below",
     view: "See it and what it holds",
-    use: "Start sessions from it, with every service and skill in it",
+    use: "Start sessions from it, with the services and skills in it that no role denies",
     edit: "Also change what it holds",
     manage: "Also delete it",
     [DENIED_LEVEL]: "Overrides every other role"
@@ -131,6 +131,8 @@ type TViewProps = {
   onScopeOpenChange: (scopeKey: string, isOpen: boolean) => void;
   itemsById: Map<string, TPolicyResourceItem>;
   isCatalogPending: boolean;
+  // The catalog stops loading past a set number of rows, so an item it lacks may simply not be loaded.
+  isCatalogCutShort: boolean;
   searchResults: TPolicyResourceItem[];
   isSearching: boolean;
   hasMoreResults: boolean;
@@ -154,6 +156,7 @@ const ResourceAccessCardView = ({
   onScopeOpenChange,
   itemsById,
   isCatalogPending,
+  isCatalogCutShort,
   searchResults,
   isSearching,
   hasMoreResults,
@@ -308,7 +311,11 @@ const ResourceAccessCardView = ({
             const isOpen = level === CUSTOM_LEVEL || isScopeOpen(scopeKey);
             const warning = warnings.find(({ itemId }) => itemId === item.id)?.message;
             let subtitle: string | null = known?.description || null;
-            if (!known && !isCatalogPending) subtitle = `Deleted ${singular}, or one you can't see`;
+            if (!known && !isCatalogPending) {
+              subtitle = isCatalogCutShort
+                ? `Not loaded, since the project has more ${plural} than this page lists`
+                : `Deleted ${singular}, or one you can't see`;
+            }
             if (isItemRedundant(policy, rowKey, item.id))
               subtitle = `Already covered by All ${label}`;
 
@@ -484,6 +491,7 @@ type TCardProps = Omit<
   | "rowKey"
   | "itemsById"
   | "isCatalogPending"
+  | "isCatalogCutShort"
   | "searchResults"
   | "isSearching"
   | "hasMoreResults"
@@ -534,6 +542,7 @@ export const AccessBundlesAccessCard = ({ projectId, isReadOnly, ...props }: TCa
       isReadOnly={isReadOnly}
       itemsById={itemsById}
       isCatalogPending={catalog.isPending}
+      isCatalogCutShort={(catalog.data?.items.length ?? 0) < (catalog.data?.totalCount ?? 0)}
       searchResults={searchResults}
       isSearching={results.isFetching || search !== debouncedSearch}
       hasMoreResults={(results.data?.totalCount ?? 0) > searchResults.length}
@@ -569,6 +578,7 @@ export const ServicesAccessCard = ({ projectId, isReadOnly, ...props }: TCardPro
       isReadOnly={isReadOnly}
       itemsById={itemsById}
       isCatalogPending={catalog.isPending}
+      isCatalogCutShort={(catalog.data?.items.length ?? 0) < (catalog.data?.totalCount ?? 0)}
       searchResults={searchResults}
       isSearching={results.isFetching || search !== debouncedSearch}
       hasMoreResults={(results.data?.totalCount ?? 0) > searchResults.length}
@@ -614,6 +624,7 @@ export const SkillsAccessCard = ({ projectId, isReadOnly, ...props }: TCardProps
       isReadOnly={isReadOnly}
       itemsById={itemsById}
       isCatalogPending={catalog.isPending}
+      isCatalogCutShort={(catalog.data?.items.length ?? 0) < (catalog.data?.totalCount ?? 0)}
       searchResults={searchResults}
       isSearching={results.isFetching || search !== debouncedSearch}
       hasMoreResults={(results.data?.totalCount ?? 0) > searchResults.length}

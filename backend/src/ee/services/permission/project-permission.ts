@@ -1044,7 +1044,7 @@ const AGENT_VAULT_ID_SCHEMA = z
   .transform((id) => id.toLowerCase());
 
 // Ids only, equal or one of: a role names the bundles, services and skills it covers, never a pattern that could start
-// matching one created later.
+// matching one created later. One operator per condition, since $eq and $in together cover only the ids both name.
 const AGENT_VAULT_ID_CONDITION_SCHEMA = z.union([
   AGENT_VAULT_ID_SCHEMA,
   z
@@ -1055,16 +1055,15 @@ const AGENT_VAULT_ID_CONDITION_SCHEMA = z.union([
     .partial()
     .strict()
     .refine((value) => Object.keys(value).length > 0, "Name at least one by ID")
+    .refine((value) => Object.keys(value).length < 2, "Name the IDs with $eq or $in, not both")
 ]);
 
-const AgentVaultAccessBundleConditionSchema = z
-  .object({ accessBundleId: AGENT_VAULT_ID_CONDITION_SCHEMA })
-  .partial()
-  .strict();
+// The id is required: conditions that name nothing match every id, which is what leaving the conditions out says.
+const AgentVaultAccessBundleConditionSchema = z.object({ accessBundleId: AGENT_VAULT_ID_CONDITION_SCHEMA }).strict();
 
-const AgentVaultServiceConditionSchema = z.object({ serviceId: AGENT_VAULT_ID_CONDITION_SCHEMA }).partial().strict();
+const AgentVaultServiceConditionSchema = z.object({ serviceId: AGENT_VAULT_ID_CONDITION_SCHEMA }).strict();
 
-const AgentVaultSkillConditionSchema = z.object({ skillId: AGENT_VAULT_ID_CONDITION_SCHEMA }).partial().strict();
+const AgentVaultSkillConditionSchema = z.object({ skillId: AGENT_VAULT_ID_CONDITION_SCHEMA }).strict();
 
 const ProxiedServiceConditionSchema = z
   .object({

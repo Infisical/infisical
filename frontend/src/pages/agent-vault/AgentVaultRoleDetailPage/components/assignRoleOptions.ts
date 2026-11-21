@@ -1,6 +1,8 @@
 import { memberDisplayName } from "@app/components/agent-vault/MemberName";
 import {
   actorIdsPayload,
+  AGENT_VAULT_ROLE_LIMIT_REACHED,
+  canAddAgentVaultRole,
   getAgentVaultAdminChangeBlockedReason,
   nextAgentVaultRoles
 } from "@app/helpers/agentVaultMembers";
@@ -81,17 +83,19 @@ export const buildAgentVaultAssignOptions = ({
 }) => {
   const memberKeys = new Set(members.map((member) => `${member.type}:${member.id}`));
 
+  const blockedReasonOf = (member: TAgentVaultProductMember) => {
+    if (member.type === AgentVaultMemberType.User && member.id === viewerUserId) {
+      return SELF_ROLE_CHANGE_BLOCKED;
+    }
+    return (
+      getAgentVaultAdminChangeBlockedReason({ isViewerAdmin, memberRoles: member.roles }) ??
+      (canAddAgentVaultRole(member.roles, roleSlug) ? undefined : AGENT_VAULT_ROLE_LIMIT_REACHED)
+    );
+  };
+
   const fromMembers = members
     .filter((member) => !member.roles.includes(roleSlug))
-    .map((member) =>
-      toOption(
-        member,
-        member.roles,
-        member.type === AgentVaultMemberType.User && member.id === viewerUserId
-          ? SELF_ROLE_CHANGE_BLOCKED
-          : getAgentVaultAdminChangeBlockedReason({ isViewerAdmin, memberRoles: member.roles })
-      )
-    )
+    .map((member) => toOption(member, member.roles, blockedReasonOf(member)))
     .filter((option) => matchesSearch(option, search));
 
   const fromOrg = available

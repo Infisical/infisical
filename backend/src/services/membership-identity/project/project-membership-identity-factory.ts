@@ -1,6 +1,12 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { AccessScope, ActionProjectType, getAdminMemberOnlyProductLabel, ProjectMembershipRole } from "@app/db/schemas";
+import {
+  AccessScope,
+  ActionProjectType,
+  getAdminMemberOnlyProductLabel,
+  ProjectMembershipRole,
+  ProjectType
+} from "@app/db/schemas";
 import {
   assertRoleSetBoundary,
   constructPermissionErrorMessage,
@@ -12,14 +18,17 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import {
   assertAgentVaultAdminOnlyChange,
   assertAgentVaultRoleLimits,
+  checkedRoleSlugsOf,
   filterRolesNeedingPrivilegeBoundary,
+  readTargetForAgentVaultRecheck,
   resolveMembershipRoleSlugs,
   rolesGiveAdmin
 } from "@app/services/membership/membership-fns";
@@ -34,7 +43,7 @@ type TProjectMembershipIdentityScopeFactoryDep = {
 
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess">;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "getIdentityById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "getIdentityById" | "transaction">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
@@ -181,6 +190,11 @@ export const newProjectMembershipIdentityFactory = ({
     const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
       projectDAL.findById(scope.value)
     );
+    const isAgentVault = project?.type === ProjectType.AgentVault;
+    // As on Agent Vault's own members routes: nobody changes their own roles there, an admin included.
+    if (isAgentVault && dto.permission.type === ActorType.IDENTITY && dto.selector.identityId === dto.permission.id) {
+      throw new ForbiddenRequestError({ message: "You cannot change your own role" });
+    }
     const adminMemberOnlyLabel = getAdminMemberOnlyProductLabel(project?.type);
     if (adminMemberOnlyLabel) {
       const invalidRoles = dto.data.roles.filter(
@@ -214,10 +228,9 @@ export const newProjectMembershipIdentityFactory = ({
       () => orgDAL.findById(dto.permission.orgId)
     );
 
-    const targetMembership = await membershipIdentityDAL.getIdentityById({
-      scopeData: dto.scopeData,
-      identityId: dto.selector.identityId
-    });
+    const targetMembership = await readTargetForAgentVaultRecheck(membershipIdentityDAL, isAgentVault, (tx) =>
+      membershipIdentityDAL.getIdentityById({ scopeData: dto.scopeData, identityId: dto.selector.identityId, tx })
+    );
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
     assertAgentVaultRoleLimits({ project, roles: dto.data.roles });
     assertAgentVaultAdminOnlyChange({
@@ -267,6 +280,8 @@ export const newProjectMembershipIdentityFactory = ({
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }
+
+    return isAgentVault ? { checkedRoleSlugs: checkedRoleSlugsOf(targetMembership?.roles ?? []) } : undefined;
   };
 
   const onDeleteMembershipIdentityGuard: TMembershipIdentityScopeFactory["onDeleteMembershipIdentityGuard"] = async (
@@ -294,14 +309,14 @@ export const newProjectMembershipIdentityFactory = ({
       throw new BadRequestError({ message: "Failed to delete project membership for a project scoped identity" });
     }
 
-    const targetMembership = await membershipIdentityDAL.getIdentityById({
-      scopeData: dto.scopeData,
-      identityId: dto.selector.identityId
-    });
-    const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
     const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
       projectDAL.findById(scope.value)
     );
+    const isAgentVault = project?.type === ProjectType.AgentVault;
+    const targetMembership = await readTargetForAgentVaultRecheck(membershipIdentityDAL, isAgentVault, (tx) =>
+      membershipIdentityDAL.getIdentityById({ scopeData: dto.scopeData, identityId: dto.selector.identityId, tx })
+    );
+    const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
     assertAgentVaultAdminOnlyChange({
       project,
       hasRole,
@@ -325,6 +340,8 @@ export const newProjectMembershipIdentityFactory = ({
       baseMessage: "Failed to remove a more privileged identity from the project",
       subjectFields: { identityId: dto.selector.identityId }
     });
+
+    return isAgentVault ? { checkedRoleSlugs: checkedRoleSlugsOf(targetMembership?.roles ?? []) } : undefined;
   };
 
   const onListMembershipIdentityGuard: TMembershipIdentityScopeFactory["onListMembershipIdentityGuard"] = async (

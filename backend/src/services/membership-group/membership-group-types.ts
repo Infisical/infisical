@@ -1,5 +1,6 @@
 import { AccessScopeData, TemporaryPermissionMode } from "@app/db/schemas";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
+import { TAgentVaultCheckedTarget } from "@app/services/membership/membership-fns";
 
 export enum OrgGroupsOrderBy {
   Name = "name",
@@ -7,7 +8,7 @@ export enum OrgGroupsOrderBy {
   Role = "role"
 }
 
-export type TMembershipGroupGuardReturn = {
+export type TMembershipGroupGuardReturn = TAgentVaultCheckedTarget & {
   group: { id: string; name: string };
 };
 

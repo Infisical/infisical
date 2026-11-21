@@ -99,7 +99,7 @@ export const CapabilitiesCard = ({
           return (
             <Fragment key={row.key}>
               <TableRow>
-                <TableCell className="max-w-0 py-2.5 whitespace-normal">
+                <TableCell isWrappable className="max-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span>{row.label}</span>
                     {risk && <PrivilegedBadge risk={risk} />}

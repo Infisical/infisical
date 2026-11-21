@@ -1830,12 +1830,10 @@ const AgentVaultRoleSlugSchema = z.string().trim().min(1).max(64);
 // The role list, or the single deprecated role older clients send. Exactly one of the two.
 const memberRolesShape = {
   roles: AgentVaultRoleSlugSchema.array()
-    .min(1)
-    .max(AGENT_VAULT_MAX_MEMBER_ROLES)
+    .min(1, "Give each member at least one role.")
+    .max(AGENT_VAULT_MAX_MEMBER_ROLES, `A member can have at most ${AGENT_VAULT_MAX_MEMBER_ROLES} roles.`)
     .optional()
-    .describe(
-      JSON.stringify({ description: AGENT_VAULT.MEMBERSHIP.roles, "x-default": [ProjectMembershipRole.NoAccess] })
-    ),
+    .describe(AGENT_VAULT.MEMBERSHIP.roles),
   // What older clients send, with the values it always had.
   role: z
     .enum([ProjectMembershipRole.Admin, ProjectMembershipRole.Member])

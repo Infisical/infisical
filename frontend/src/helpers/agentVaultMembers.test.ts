@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   AGENT_VAULT_ADMIN_CHANGE_BLOCKED,
   assignableAgentVaultRoles,
+  canAddAgentVaultRole,
   defaultAgentVaultRoles,
   getAgentVaultAdminChangeBlockedReason,
   holdsAgentVaultAdmin,
@@ -123,5 +124,20 @@ describe("assignableAgentVaultRoles", () => {
       NO_ACCESS,
       "engineers"
     ]);
+  });
+});
+
+describe("canAddAgentVaultRole", () => {
+  const tenRoles = Array.from({ length: 10 }, (_, index) => `role-${index}`);
+
+  it("stops adding at the most roles a member can have", () => {
+    expect(canAddAgentVaultRole(tenRoles.slice(1), "auditors")).toBe(true);
+    expect(canAddAgentVaultRole(tenRoles, "auditors")).toBe(false);
+  });
+
+  it("still offers a role already held, and No Access, which replaces them", () => {
+    expect(canAddAgentVaultRole(tenRoles, "role-0")).toBe(true);
+    expect(canAddAgentVaultRole(tenRoles, NO_ACCESS)).toBe(true);
+    expect(canAddAgentVaultRole([NO_ACCESS], "auditors")).toBe(true);
   });
 });

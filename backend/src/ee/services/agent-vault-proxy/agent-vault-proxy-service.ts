@@ -74,7 +74,12 @@ import {
 } from "../agent-vault/agent-vault-enums";
 import { toResolvedNativeTarget } from "../agent-vault/agent-vault-native-config-schemas";
 import { TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
-import { intersectReach, reachOf, TAgentVaultReach } from "../agent-vault/agent-vault-permission";
+import {
+  intersectReach,
+  reachOf,
+  TAgentVaultReach,
+  TAgentVaultReachKinds
+} from "../agent-vault/agent-vault-permission";
 import { TAgentVaultReachDALFactory } from "../agent-vault/agent-vault-reach-dal";
 import { getServiceServerUrl } from "../agent-vault/agent-vault-service-type-fns";
 import { expandStoredVariableReferences, findStoredVariableIds } from "../agent-vault/agent-vault-variable-fns";
@@ -838,12 +843,14 @@ export const agentVaultProxyServiceFactory = ({
     projectId,
     orgId,
     identityId,
-    userId
+    userId,
+    kinds
   }: {
     projectId: string;
     orgId: string;
     identityId: string | null;
     userId: string | null;
+    kinds: TAgentVaultReachKinds;
   }): Promise<TAgentVaultReach> => {
     const refused = () =>
       new UnauthorizedError({
@@ -883,13 +890,14 @@ export const agentVaultProxyServiceFactory = ({
       throw refused();
     }
 
-    return reachOf(userPermission, { agentVaultReachDAL }, projectId);
+    return reachOf(userPermission, { agentVaultReachDAL }, projectId, undefined, kinds);
   };
 
   // Shared by the proxy's session routes and the CLI's skills fetch, so none of them can reach what resolve would not.
   // Returns what the session reaches now, from its owner's roles, and on a user's behalf only what the user reaches
   // too. Also whether the owner may still send inline services and inline skills, which each need to be delivered.
-  const $authorizeSessionOwner = async (session: TAgentVaultSessions, orgId: string) => {
+  // kinds names the lists the caller reads, so resolve doesn't work out skills it never sends.
+  const $authorizeSessionOwner = async (session: TAgentVaultSessions, orgId: string, kinds: TAgentVaultReachKinds) => {
     if (session.revokedAt) throw new UnauthorizedError({ message: "This session has been revoked" });
     if (session.expiresAt && session.expiresAt <= new Date()) {
       throw new UnauthorizedError({ message: "This session has expired" });
@@ -908,7 +916,8 @@ export const agentVaultProxyServiceFactory = ({
               projectId: session.projectId,
               orgId,
               identityId: session.identityId ?? null,
-              userId: session.onBehalfOfUserId ?? null
+              userId: session.onBehalfOfUserId ?? null,
+              kinds
             })
           }
         : null;
@@ -966,7 +975,7 @@ export const agentVaultProxyServiceFactory = ({
       throw error;
     }
 
-    const actorReach = await reachOf(ownerPermission, { agentVaultReachDAL }, session.projectId);
+    const actorReach = await reachOf(ownerPermission, { agentVaultReachDAL }, session.projectId, undefined, kinds);
     const reach = onBehalfOf ? intersectReach(actorReach, onBehalfOf.reach) : actorReach;
     return {
       reach,
@@ -996,7 +1005,7 @@ export const agentVaultProxyServiceFactory = ({
       throw new NotFoundError({ message: "Session not found" });
     }
 
-    const { reach, ownerCanUseInlineServices } = await $authorizeSessionOwner(session, orgId);
+    const { reach, ownerCanUseInlineServices } = await $authorizeSessionOwner(session, orgId, { skills: false });
     return { session, onPrimary, proxy, reach, ownerCanUseInlineServices };
   };
 
@@ -1523,7 +1532,9 @@ export const agentVaultProxyServiceFactory = ({
       throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });
     }
 
-    const { reach, ownerCanUseInlineSkills } = await $authorizeSessionOwner(session, project.orgId);
+    const { reach, ownerCanUseInlineSkills } = await $authorizeSessionOwner(session, project.orgId, {
+      services: false
+    });
 
     // Sending inline skills takes its own permission, re-checked on every fetch like the one inline services take.
     const [projectRows, inlineRows] = await Promise.all([
@@ -1610,7 +1621,7 @@ export const agentVaultProxyServiceFactory = ({
     if (!session || !project) {
       throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });
     }
-    await $authorizeSessionOwner(session, project.orgId);
+    await $authorizeSessionOwner(session, project.orgId, { services: false, skills: false });
 
     return { fingerprints: await agentVaultProxyDAL.findCaFingerprintsByProjectId(session.projectId) };
   };
@@ -1625,7 +1636,9 @@ export const agentVaultProxyServiceFactory = ({
       throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });
     }
 
-    const { reach, ownerCanUseInlineServices } = await $authorizeSessionOwner(session, project.orgId);
+    const { reach, ownerCanUseInlineServices } = await $authorizeSessionOwner(session, project.orgId, {
+      skills: false
+    });
 
     const scope = { sessionId: session.id, projectId: session.projectId, ...reach, onPrimary };
     const [resolvableRows, bundles, sessionInlineRows] = await Promise.all([

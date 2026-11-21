@@ -8,15 +8,15 @@ import { AccessScope, ProjectMembershipRole, ProjectType, TableName } from "../s
 // Agent Vault access moves from bundle grants to roles. Admin and No Access are the only built-in roles, and a custom
 // role grants exactly what it says. Until now every role but admin resolved to Member's rules in an Agent Vault project,
 // so nobody's access changes when:
-// 1. each project with Member or Viewer rows, or members holding a custom role, gets a custom role holding what Member
-//    held; those rows move onto it, and anyone holding a custom role gets it as well, since Member's rules applied to
-//    them and their own role's didn't;
+// 1. each project whose members hold any role but admin gets a custom role holding what Member held, and every such row
+//    moves onto it: Member, Viewer, No Access and any other built-in, and custom roles, whose own rules never applied;
 // 2. each bundle with grants gets a custom role that can use it, given to everyone the bundle was granted to, and to a
 //    group only for as long as its grant counted (bundleRoleWindowOf);
 // 3. the grants, now carried by those roles, are deleted.
 // The bundle's role is recorded on the bundle (grantRoleId), so the deprecated grant endpoints can keep working on it.
 // A rolling deploy isn't bridged: until instances still on the previous release are replaced, they find no grants, so
-// their non-admin sessions get no bundle, and a grant or revoke made through one of them isn't carried over.
+// their non-admin sessions get no bundle, a grant or revoke made through one of them isn't carried over, and a role one
+// of them gives is written as the built-in `member`, which grants nothing after this.
 //
 // Everything is inlined, so later changes to the app's rule builders and constants can't change what this writes.
 
@@ -38,13 +38,18 @@ const MEMBER_ROLE_ID_NAMESPACE = "8f4f5a2e-61b4-4c2e-9d0e-3b7a1c9e5d42";
 const memberRoleIdOf = (projectId: string) => uuidv5(projectId, MEMBER_ROLE_ID_NAMESPACE);
 
 const BUNDLE_ROLE_DESCRIPTION_PREFIX = "Use the access bundle";
+const BUNDLE_ROLE_SLUG_SUFFIX = "-users";
 const MAX_SLUG_LENGTH = 64;
+
+// A bundle name is a slug, so only the cut can leave a hyphen at the end, which would put `--` before the suffix: a slug
+// the role routes refuse, and the role page sends the slug back on every save.
+const cutSlug = (slug: string, maxLength: number) => slug.slice(0, maxLength).replace(/-+$/, "");
 
 const uniqueSlug = (base: string, taken: Set<string>) => {
   let slug = base;
   for (let suffix = 2; taken.has(slug); suffix += 1) {
     const tail = `-${suffix}`;
-    slug = `${base.slice(0, MAX_SLUG_LENGTH - tail.length)}${tail}`;
+    slug = `${cutSlug(base, MAX_SLUG_LENGTH - tail.length)}${tail}`;
   }
   taken.add(slug);
   return slug;
@@ -55,8 +60,12 @@ const takenSlugsIn = async (knex: Knex, projectId: string) =>
     ((await knex(TableName.Role).where({ projectId }).select("slug")) as { slug: string }[]).map((row) => row.slug)
   );
 
-// Built-in slugs that resolved to Member's rules in an Agent Vault project and grant nothing after this.
-const MEMBER_LIKE_ROLES: string[] = [ProjectMembershipRole.Member, ProjectMembershipRole.Viewer];
+// Statements that take a list of ids stay well under Postgres's limit on bound parameters.
+const CHUNK_SIZE = 1000;
+const chunksOf = <T>(items: T[]) =>
+  Array.from({ length: Math.ceil(items.length / CHUNK_SIZE) }, (_, index) =>
+    items.slice(index * CHUNK_SIZE, (index + 1) * CHUNK_SIZE)
+  );
 
 type TWindowRow = {
   id: string;
@@ -79,9 +88,31 @@ type TTimedRoleRow = TWindowRow & {
   temporaryAccessStartTime?: Date | null;
 };
 
-type TBundleRoleWindow = Omit<Partial<TTimedRoleRow>, "id" | "membershipId" | "isTemporary"> & {
+type TRoleWindow = Omit<Partial<TTimedRoleRow>, "id" | "membershipId" | "isTemporary"> & {
   isTemporary?: boolean;
 };
+
+const TIMED_ROLE_COLUMNS = [
+  "id",
+  "membershipId",
+  "isTemporary",
+  "temporaryMode",
+  "temporaryRange",
+  "temporaryAccessStartTime",
+  "temporaryAccessEndTime"
+];
+
+// What a new role row needs to last exactly as long as this one: nothing, for a permanent row.
+const windowOf = (row: TTimedRoleRow): TRoleWindow =>
+  row.isTemporary
+    ? {
+        isTemporary: true,
+        temporaryMode: row.temporaryMode,
+        temporaryRange: row.temporaryRange,
+        temporaryAccessStartTime: row.temporaryAccessStartTime,
+        temporaryAccessEndTime: row.temporaryAccessEndTime
+      }
+    : {};
 
 // A group's grant counted only while the group held a live role, so the group's bundle role lasts as long as the longest
 // of those, and a group whose roles have all ended gets none (null). Any other grant counted for as long as it stood, so
@@ -89,51 +120,21 @@ type TBundleRoleWindow = Omit<Partial<TTimedRoleRow>, "id" | "membershipId" | "i
 const bundleRoleWindowOf = async (
   knex: Knex,
   { membershipId, isGroup }: { membershipId: string; isGroup: boolean }
-): Promise<TBundleRoleWindow | null> => {
+): Promise<TRoleWindow | null> => {
   if (!isGroup) return {};
   const live = (await knex(TableName.MembershipRole)
     .where({ membershipId })
     .where((qb) => {
       void qb.where("isTemporary", false).orWhere("temporaryAccessEndTime", ">", new Date());
     })
-    .select(
-      "id",
-      "membershipId",
-      "isTemporary",
-      "temporaryMode",
-      "temporaryRange",
-      "temporaryAccessStartTime",
-      "temporaryAccessEndTime"
-    )) as TTimedRoleRow[];
+    .select(TIMED_ROLE_COLUMNS)) as TTimedRoleRow[];
   if (!live.length) return null;
-  const longest = longestLasting(live);
-  if (!longest.isTemporary) return {};
-  return {
-    isTemporary: true,
-    temporaryMode: longest.temporaryMode,
-    temporaryRange: longest.temporaryRange,
-    temporaryAccessStartTime: longest.temporaryAccessStartTime,
-    temporaryAccessEndTime: longest.temporaryAccessEndTime
-  };
+  return windowOf(longestLasting(live));
 };
 
-const retireMember = async (knex: Knex) => {
-  const rows = (await knex(TableName.MembershipRole)
-    .join(TableName.Membership, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
-    .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Membership}.scopeProjectId`)
-    .where(`${TableName.Membership}.scope`, AccessScope.Project)
-    .where(`${TableName.Project}.type`, ProjectType.AgentVault)
-    .whereIn(`${TableName.MembershipRole}.role`, [...MEMBER_LIKE_ROLES, ProjectMembershipRole.Custom])
-    .select(
-      `${TableName.Membership}.scopeProjectId as projectId`,
-      knex.ref("id").withSchema(TableName.MembershipRole),
-      `${TableName.MembershipRole}.membershipId`,
-      `${TableName.MembershipRole}.role`,
-      `${TableName.MembershipRole}.customRoleId`
-    )) as { projectId: string; id: string; membershipId: string; role: string; customRoleId: string | null }[];
-
-  // Roles this migration makes, which a second run must not count as roles that took no effect before.
-  const bundleRoleIds = new Set(
+// The roles a run before this one made from grants, which a second run must not count as roles that took no effect.
+const bundleRoleIdsOf = async (knex: Knex) =>
+  new Set(
     (
       (await knex(TableName.AgentVaultAccessBundle).whereNotNull("grantRoleId").select("grantRoleId")) as {
         grantRoleId: string;
@@ -141,77 +142,73 @@ const retireMember = async (knex: Knex) => {
     ).map((row) => row.grantRoleId)
   );
 
-  const projectIds = [...new Set(rows.map((row) => row.projectId))];
-  for await (const projectId of projectIds) {
-    let role = (await knex(TableName.Role)
-      .where({ id: memberRoleIdOf(projectId) })
-      .first("id")) as { id: string } | undefined;
-    if (!role) {
-      const slug = uniqueSlug(MEMBER_ROLE_SLUG, await takenSlugsIn(knex, projectId));
-      // Cast: the generated insert type leaves out id, and this role's id is derived on purpose.
-      [role] = (await knex(TableName.Role)
-        .insert({
-          id: memberRoleIdOf(projectId),
+type TRetiringRow = TWindowRow & { projectId: string; role: string; customRoleId: string | null };
+
+const retireMember = async (knex: Knex, bundleRoleIds: Set<string>) => {
+  // The one read of the project role rows: everything after it works by row id, so nothing scans the memberships of
+  // each project again.
+  const rows = (await knex(TableName.MembershipRole)
+    .join(TableName.Membership, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+    .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Membership}.scopeProjectId`)
+    .where(`${TableName.Membership}.scope`, AccessScope.Project)
+    .where(`${TableName.Project}.type`, ProjectType.AgentVault)
+    .whereNot(`${TableName.MembershipRole}.role`, ProjectMembershipRole.Admin)
+    .select(
+      `${TableName.Membership}.scopeProjectId as projectId`,
+      knex.ref("id").withSchema(TableName.MembershipRole),
+      `${TableName.MembershipRole}.membershipId`,
+      `${TableName.MembershipRole}.role`,
+      `${TableName.MembershipRole}.customRoleId`,
+      `${TableName.MembershipRole}.isTemporary`,
+      `${TableName.MembershipRole}.temporaryAccessEndTime`
+    )) as TRetiringRow[];
+
+  const byProject = new Map<string, TRetiringRow[]>();
+  rows.forEach((row) => byProject.set(row.projectId, [...(byProject.get(row.projectId) ?? []), row]));
+
+  for await (const [projectId, projectRows] of byProject) {
+    const memberRoleId = memberRoleIdOf(projectId);
+    const isOnMemberRole = (row: TRetiringRow) => row.customRoleId === memberRoleId;
+    // Every role but admin resolved to Member's rules here, built-ins and custom roles alike, and grants nothing of its
+    // own after this, so its rows move onto the Member role in place, keeping their windows. The custom roles stay, held
+    // by no one, for an admin to give out knowing what they now grant. Rows already on the Member role or a bundle's
+    // role are a run before this one's.
+    const moving = projectRows.filter(
+      (row) => !isOnMemberRole(row) && !(row.customRoleId && bundleRoleIds.has(row.customRoleId))
+    );
+    if (moving.length) {
+      const role = (await knex(TableName.Role).where({ id: memberRoleId }).first("id")) as { id: string } | undefined;
+      if (!role) {
+        // Cast: the generated insert type leaves out id, and this role's id is derived on purpose.
+        await knex(TableName.Role).insert({
+          id: memberRoleId,
           name: MEMBER_ROLE_NAME,
-          slug,
+          slug: uniqueSlug(MEMBER_ROLE_SLUG, await takenSlugsIn(knex, projectId)),
           description: MEMBER_ROLE_DESCRIPTION,
           permissions: JSON.stringify(MEMBER_PERMISSIONS),
           projectId
-        } as never)
-        .returning("id")) as { id: string }[];
+        } as never);
+      }
+      for await (const ids of chunksOf(moving.map((row) => row.id))) {
+        await knex(TableName.MembershipRole)
+          .whereIn("id", ids)
+          .update({ role: ProjectMembershipRole.Custom, customRoleId: memberRoleId });
+      }
+
+      // All of them meant Member's rules, so each member keeps one Member row: the one that lasts longest, which covers
+      // every window the others did.
+      const byMembership = new Map<string, TWindowRow[]>();
+      [...projectRows.filter(isOnMemberRole), ...moving].forEach((row) =>
+        byMembership.set(row.membershipId, [...(byMembership.get(row.membershipId) ?? []), row])
+      );
+      const extraRowIds = [...byMembership.values()].flatMap((held) => {
+        const kept = longestLasting(held);
+        return held.filter((row) => row.id !== kept.id).map((row) => row.id);
+      });
+      for await (const ids of chunksOf(extraRowIds)) {
+        await knex(TableName.MembershipRole).whereIn("id", ids).delete();
+      }
     }
-    const memberRoleId = role.id;
-
-    // An update rather than a new row, so a time-limited Member role keeps its window.
-    await knex(TableName.MembershipRole)
-      .whereIn(`${TableName.MembershipRole}.role`, MEMBER_LIKE_ROLES)
-      .whereIn(
-        `${TableName.MembershipRole}.membershipId`,
-        knex(TableName.Membership)
-          .where(`${TableName.Membership}.scope`, AccessScope.Project)
-          .where(`${TableName.Membership}.scopeProjectId`, projectId)
-          .select(`${TableName.Membership}.id`)
-      )
-      .update({ role: ProjectMembershipRole.Custom, customRoleId: memberRoleId });
-
-    // A custom role resolved to Member's rules here, and starts granting its own rules after this, so its rows move onto
-    // the Member role in place too, keeping their windows. The custom roles stay, held by no one, for an admin to give out
-    // knowing what they now grant.
-    const legacyCustomRowIds = rows
-      .filter(
-        (row) =>
-          row.projectId === projectId &&
-          row.role === ProjectMembershipRole.Custom &&
-          row.customRoleId &&
-          row.customRoleId !== memberRoleId &&
-          !bundleRoleIds.has(row.customRoleId)
-      )
-      .map((row) => row.id);
-    if (legacyCustomRowIds.length) {
-      await knex(TableName.MembershipRole).whereIn("id", legacyCustomRowIds).update({ customRoleId: memberRoleId });
-    }
-
-    // Member, viewer and custom rows all meant Member's rules, so each member keeps one Member row: the one that lasts
-    // longest, which covers every window the others did.
-    const memberRows = (await knex(TableName.MembershipRole)
-      .where({ customRoleId: memberRoleId })
-      .whereIn(
-        "membershipId",
-        knex(TableName.Membership)
-          .where(`${TableName.Membership}.scope`, AccessScope.Project)
-          .where(`${TableName.Membership}.scopeProjectId`, projectId)
-          .select(`${TableName.Membership}.id`)
-      )
-      .select("id", "membershipId", "isTemporary", "temporaryAccessEndTime")) as TWindowRow[];
-    const byMembership = new Map<string, TWindowRow[]>();
-    memberRows.forEach((row) =>
-      byMembership.set(row.membershipId, [...(byMembership.get(row.membershipId) ?? []), row])
-    );
-    const extraRowIds = [...byMembership.values()].flatMap((held) => {
-      const kept = longestLasting(held);
-      return held.filter((row) => row.id !== kept.id).map((row) => row.id);
-    });
-    if (extraRowIds.length) await knex(TableName.MembershipRole).whereIn("id", extraRowIds).delete();
   }
 };
 
@@ -245,12 +242,14 @@ const grantsToRoles = async (knex: Knex) => {
   const byBundle = new Map<string, typeof grants>();
   grants.forEach((grant) => byBundle.set(grant.accessBundleId, [...(byBundle.get(grant.accessBundleId) ?? []), grant]));
 
+  // Each bundle's new role, recorded on the bundle once its column exists.
+  const roleIdByBundle = new Map<string, string>();
   const takenByProject = new Map<string, Set<string>>();
   for await (const [accessBundleId, bundleGrants] of byBundle) {
     const { projectId, accessBundleName } = bundleGrants[0];
     if (!takenByProject.has(projectId)) takenByProject.set(projectId, await takenSlugsIn(knex, projectId));
     const slug = uniqueSlug(
-      `${accessBundleName.slice(0, MAX_SLUG_LENGTH - "-users".length)}-users`,
+      `${cutSlug(accessBundleName, MAX_SLUG_LENGTH - BUNDLE_ROLE_SLUG_SUFFIX.length)}${BUNDLE_ROLE_SLUG_SUFFIX}`,
       takenByProject.get(projectId)!
     );
     const [role] = (await knex(TableName.Role)
@@ -262,8 +261,9 @@ const grantsToRoles = async (knex: Knex) => {
         projectId
       })
       .returning("id")) as { id: string }[];
-    await knex(TableName.AgentVaultAccessBundle).where({ id: accessBundleId }).update({ grantRoleId: role.id });
+    roleIdByBundle.set(accessBundleId, role.id);
 
+    const roleRows: (TRoleWindow & { membershipId: string; role: string; customRoleId: string })[] = [];
     for await (const grant of bundleGrants.filter((row) => row.isActive)) {
       const projectMembership = (await knex(TableName.Membership)
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
@@ -281,7 +281,7 @@ const grantsToRoles = async (knex: Knex) => {
         ? await bundleRoleWindowOf(knex, { membershipId: projectMembership.id, isGroup: Boolean(grant.actorGroupId) })
         : null;
       if (projectMembership && window) {
-        await knex(TableName.MembershipRole).insert({
+        roleRows.push({
           membershipId: projectMembership.id,
           role: ProjectMembershipRole.Custom,
           customRoleId: role.id,
@@ -289,24 +289,35 @@ const grantsToRoles = async (knex: Knex) => {
         });
       }
     }
+    for await (const chunk of chunksOf(roleRows)) {
+      await knex(TableName.MembershipRole).insert(chunk);
+    }
   }
 
   await knex(TableName.Membership)
     .where(`${TableName.Membership}.scope`, RESOURCE_SCOPE)
     .where(`${TableName.Membership}.scopeResourceType`, GRANT_RESOURCE_TYPE)
     .delete();
+
+  return roleIdByBundle;
 };
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasColumn(TableName.AgentVaultAccessBundle, "grantRoleId"))) {
+  const hasGrantRoleId = await knex.schema.hasColumn(TableName.AgentVaultAccessBundle, "grantRoleId");
+  await retireMember(knex, hasGrantRoleId ? await bundleRoleIdsOf(knex) : new Set());
+  const roleIdByBundle = await grantsToRoles(knex);
+
+  // Adding the column locks the bundles table, and its foreign key the roles table, until the migration commits. Doing
+  // it after the work above keeps bundle reads and role writes in every product from waiting on that work.
+  if (!hasGrantRoleId) {
     await knex.schema.alterTable(TableName.AgentVaultAccessBundle, (t) => {
       t.uuid("grantRoleId").nullable();
       t.foreign("grantRoleId").references("id").inTable(TableName.Role).onDelete("SET NULL");
     });
   }
-
-  await retireMember(knex);
-  await grantsToRoles(knex);
+  for await (const [accessBundleId, roleId] of roleIdByBundle) {
+    await knex(TableName.AgentVaultAccessBundle).where({ id: accessBundleId }).update({ grantRoleId: roleId });
+  }
 }
 
 // Whether a bundle's role still lets its holders use the bundle. An admin can edit the role after up(), and a grant can't
@@ -324,10 +335,11 @@ const roleUsesBundle = (permissions: unknown, accessBundleId: string) => {
 };
 
 // Best effort: grants come back from each bundle's role and the roles go, and every row on a Member role returns to the
-// built-in role, Viewer rows and the rows moved off custom roles included, which the old rules read the same way.
-// Anything else given to those roles since is lost with them. A membership whose only role was a bundle's gets Member,
-// since a membership needs a role. The old rules read every role but admin as Member, so No Access and the custom roles
-// left in place read as Member too.
+// built-in role, keeping its window, the rows moved off other built-ins and custom roles included, which the old rules
+// read the same way. Anything else given to those roles since is lost with them. A membership whose only roles were
+// bundles' gets Member for as long as the longest of them lasted, since a membership needs a role and an ended row
+// grants nothing on the old rules either. The old rules read every role but admin as Member, so No Access and the custom
+// roles left in place read as Member too.
 export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasColumn(TableName.AgentVaultAccessBundle, "grantRoleId")) {
     // Any grant here was written after up() by an instance on the previous release. The roles say who has access now, so
@@ -348,7 +360,7 @@ export async function down(knex: Knex): Promise<void> {
         knex.ref("permissions").withSchema(TableName.Role).as("grantRolePermissions")
       )) as { id: string; projectId: string; grantRoleId: string; orgId: string; grantRolePermissions: unknown }[];
 
-    const bundleRoleMembershipIds = new Set<string>();
+    const bundleRoleRowsByMembership = new Map<string, TTimedRoleRow[]>();
     for await (const bundle of bundles) {
       // A grant can't carry a time limit, so a temporary assignment isn't restored: as a grant it would never end. That
       // holds for a group's too: its grant would count as long as any role the group holds, which can outlast the limit.
@@ -382,17 +394,22 @@ export async function down(knex: Knex): Promise<void> {
       }
 
       (
-        (await knex(TableName.MembershipRole).where({ customRoleId: bundle.grantRoleId }).select("membershipId")) as {
-          membershipId: string;
-        }[]
-      ).forEach((row) => bundleRoleMembershipIds.add(row.membershipId));
+        (await knex(TableName.MembershipRole)
+          .where({ customRoleId: bundle.grantRoleId })
+          .select(TIMED_ROLE_COLUMNS)) as TTimedRoleRow[]
+      ).forEach((row) =>
+        bundleRoleRowsByMembership.set(row.membershipId, [
+          ...(bundleRoleRowsByMembership.get(row.membershipId) ?? []),
+          row
+        ])
+      );
       await knex(TableName.MembershipRole).where({ customRoleId: bundle.grantRoleId }).delete();
       await knex(TableName.Role).where({ id: bundle.grantRoleId }).delete();
     }
 
-    if (bundleRoleMembershipIds.size) {
+    for await (const membershipIds of chunksOf([...bundleRoleRowsByMembership.keys()])) {
       const roleless = (await knex(TableName.Membership)
-        .whereIn("id", [...bundleRoleMembershipIds])
+        .whereIn("id", membershipIds)
         .whereNotExists(
           knex(TableName.MembershipRole)
             .whereRaw(`"${TableName.MembershipRole}"."membershipId" = "${TableName.Membership}"."id"`)
@@ -401,7 +418,11 @@ export async function down(knex: Knex): Promise<void> {
         .select("id")) as { id: string }[];
       if (roleless.length) {
         await knex(TableName.MembershipRole).insert(
-          roleless.map((membership) => ({ membershipId: membership.id, role: ProjectMembershipRole.Member }))
+          roleless.map((membership) => ({
+            membershipId: membership.id,
+            role: ProjectMembershipRole.Member,
+            ...windowOf(longestLasting(bundleRoleRowsByMembership.get(membership.id)!))
+          }))
         );
       }
     }
@@ -415,13 +436,11 @@ export async function down(knex: Knex): Promise<void> {
   const agentVaultProjectIds = (
     (await knex(TableName.Project).where({ type: ProjectType.AgentVault }).select("id")) as { id: string }[]
   ).map((project) => project.id);
-  const memberRoles = (await knex(TableName.Role)
-    .whereIn("id", agentVaultProjectIds.map(memberRoleIdOf))
-    .select("id")) as { id: string }[];
-  if (!memberRoles.length) return;
-  const roleIds = memberRoles.map((role) => role.id);
-  await knex(TableName.MembershipRole)
-    .whereIn("customRoleId", roleIds)
-    .update({ role: ProjectMembershipRole.Member, customRoleId: null });
-  await knex(TableName.Role).whereIn("id", roleIds).delete();
+  for await (const projectIds of chunksOf(agentVaultProjectIds)) {
+    const roleIds = projectIds.map(memberRoleIdOf);
+    await knex(TableName.MembershipRole)
+      .whereIn("customRoleId", roleIds)
+      .update({ role: ProjectMembershipRole.Member, customRoleId: null });
+    await knex(TableName.Role).whereIn("id", roleIds).delete();
+  }
 }

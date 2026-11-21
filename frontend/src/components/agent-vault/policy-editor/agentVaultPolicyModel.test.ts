@@ -1,5 +1,8 @@
+import { createMongoAbility, subject as caslSubject } from "@casl/ability";
 import { describe, expect, it } from "vitest";
 
+import { rulesForCopy } from "@app/components/agent-vault/roles/roleSchema";
+import { conditionsMatcher } from "@app/hooks/api/roles/permission-matcher";
 import { TProjectPermission } from "@app/hooks/api/roles/types";
 
 import {
@@ -10,7 +13,6 @@ import {
   createFullAgentVaultPolicy,
   CUSTOM_LEVEL,
   DENIED_LEVEL,
-  describeAgentVaultPolicy,
   formatRulesJson,
   getActionState,
   getBuiltInAgentVaultPolicy,
@@ -43,6 +45,7 @@ const GITHUB = "e83db5d4-ca14-4e6b-bcbe-d38e61f7c796";
 const LINEAR = "9686cd1a-659d-48ad-b53c-ec27a39b0830";
 const STRIPE = "8facda6c-9da5-41c6-a92f-21329dcd09ca";
 const SKILL = "1f5a3bd4-04b0-4759-9bf9-006e9649c66d";
+const OTHER_SKILL = "5b8f2c7a-3d4e-4f1a-9b6c-2e7d8a9f0c13";
 const BUNDLE = "4c3b6f0e-8f5c-4a0b-9a51-0d2b1c7e5f21";
 
 const SERVICES = "agent-vault-services";
@@ -166,6 +169,18 @@ const expectRoundTrip = (policy: TAgentVaultPolicy) => {
 
 const reasonsOf = (rules: TProjectPermission[]) =>
   rulesToPolicy(rules).unsupported.map(({ reason }) => reason);
+
+// What the API decides from a role's rules: it puts denies after allows, and CASL keeps the last rule that matches.
+const canDoWith = (
+  rules: TProjectPermission[],
+  action: string,
+  subjectType: string,
+  fields: Record<string, string>
+) =>
+  createMongoAbility(
+    [...rules].sort((a, b) => Number(Boolean(a.inverted)) - Number(Boolean(b.inverted))) as never,
+    { conditionsMatcher }
+  ).can(action, caslSubject(subjectType, fields) as never);
 
 const everySplit = (keys: string[]): TActionSets[] =>
   keys.reduce<TActionSets[]>(
@@ -491,7 +506,6 @@ describe("built-in roles", () => {
     expect(policy.accessBundles.allow).toContain("create");
     expect(policy.services.allow).toContain("create");
     expect(policy.skills.allow).toContain("create");
-    expect(describeAgentVaultPolicy(policy)).toEqual(["Everything in this project"]);
     PERMISSION_ROWS.forEach((row) =>
       expect(getRowSummary(policy, row.key, nameOf).access).toBe("full")
     );
@@ -608,6 +622,57 @@ describe("rulesToPolicy", () => {
       saved.filter((rule) => !rule.inverted).flatMap((rule) => [rule.action].flat())
     ).not.toContain("read");
     expect(rulesToPolicy(saved).policy).toEqual(policy);
+  });
+
+  describe("a skill whose use is denied while read only came with use", () => {
+    const SHAPES: [string, TProjectPermission[]][] = [
+      [
+        "use on two skills, use denied on one",
+        [
+          {
+            subject: SKILLS,
+            action: ["use"],
+            conditions: { skillId: { $in: [SKILL, OTHER_SKILL] } }
+          },
+          {
+            subject: SKILLS,
+            action: ["use"],
+            inverted: true,
+            conditions: { skillId: { $in: [SKILL] } }
+          }
+        ]
+      ],
+      [
+        "use on one skill, use denied on every skill",
+        [
+          { subject: SKILLS, action: ["use"], conditions: { skillId: { $in: [SKILL] } } },
+          { subject: SKILLS, action: ["use"], inverted: true }
+        ]
+      ]
+    ];
+
+    it.each(SHAPES)("stays hidden after an unrelated edit: %s", (_shape, rules) => {
+      expect(canDoWith(rules, "read", SKILLS, { skillId: SKILL })).toBe(false);
+
+      const saved = policyToRules(setRowLevel(rulesToPolicy(rules).policy, "proxies", "view"));
+
+      expect(canDoWith(saved, "read", SKILLS, { skillId: SKILL })).toBe(false);
+      expect(canDoWith(saved, "use", SKILLS, { skillId: SKILL })).toBe(false);
+      expect(canDoWith(saved, "use", SKILLS, { skillId: OTHER_SKILL })).toBe(
+        canDoWith(rules, "use", SKILLS, { skillId: OTHER_SKILL })
+      );
+    });
+
+    it.each(SHAPES)("stays hidden in a copy: %s", (_shape, rules) => {
+      expect(canDoWith(rulesForCopy(rules), "read", SKILLS, { skillId: SKILL })).toBe(false);
+    });
+
+    it.each(SHAPES)("reads back the rules it saved: %s", (_shape, rules) => {
+      const { policy, unsupported } = rulesToPolicy(rules);
+
+      expect(unsupported).toEqual([]);
+      expectRoundTrip(policy);
+    });
   });
 
   it("leaves a skill readable when use is denied on it but read was allowed on its own", () => {
@@ -1034,6 +1099,21 @@ describe("editing", () => {
     expect(setRowLevel(creating, "services", NONE_LEVEL).services.allow).toEqual([]);
   });
 
+  it("starts a picked service at a level that holds nothing denied for every service", () => {
+    const denyUseForAll = setActionDenied(empty(), { rowKey: "services" }, "use", true);
+
+    expect(getDefaultItemLevel(denyUseForAll, "services")).toBe("view");
+    expect(
+      getItemLevel(addResourceItems(denyUseForAll, "services", [GITHUB]), "services", GITHUB)
+    ).toBe("view");
+    expect(
+      getDefaultItemLevel(
+        setActionDenied(empty(), { rowKey: "services" }, "read", true),
+        "services"
+      )
+    ).toBe(DENIED_LEVEL);
+  });
+
   it("starts a picked service at the first level that adds something", () => {
     expect(getDefaultItemLevel(empty(), "services")).toBe("use");
     expect(getDefaultItemLevel(setRowLevel(empty(), "services", "view"), "services")).toBe("use");
@@ -1312,34 +1392,20 @@ describe("summaries", () => {
     ).toEqual({ access: "limited", details: ["All services: View", "Can't create services"] });
   });
 
-  it("lists what a role grants in a phrase per row, and nothing when it grants nothing", () => {
-    expect(describeAgentVaultPolicy(seed)).toEqual([
-      "Uses 2 services",
-      "Denies 1 service",
-      "Sessions: Own Sessions",
-      "Inline Skills: Yes",
-      "Proxies: View"
+  it("lists a service picked at Use as custom while use is denied for every service", () => {
+    const denyUseForAll = setActionDenied(empty(), { rowKey: "services" }, "use", true);
+    const picked = setItemLevel(
+      addResourceItems(denyUseForAll, "services", [GITHUB]),
+      "services",
+      GITHUB,
+      "use"
+    );
+
+    expect(getItemLevel(picked, "services", GITHUB)).toBe(CUSTOM_LEVEL);
+    expect(summary(picked, "services").details).toEqual([
+      "Denied for all services: Use",
+      "Custom: github"
     ]);
-    expect(describeAgentVaultPolicy(empty())).toEqual([]);
-    expect(
-      describeAgentVaultPolicy(
-        withRow(
-          "skills",
-          { allow: ["read", "edit"], deny: [], items: [] },
-          withRow("roles", { allow: ["read"], deny: ["edit"] })
-        )
-      )
-    ).toEqual(["Custom access to all skills", "Roles: Custom"]);
-    expect(
-      describeAgentVaultPolicy(
-        setActionAllowed(
-          setRowLevel(empty(), "services", "use"),
-          { rowKey: "services" },
-          "create",
-          true
-        )
-      )
-    ).toEqual(["Uses all services", "Creates services"]);
   });
 
   it("warns when a role lets holders use services but not start sessions", () => {

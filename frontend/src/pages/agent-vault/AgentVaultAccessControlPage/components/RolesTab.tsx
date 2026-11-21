@@ -51,7 +51,10 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
-import { canReadAgentVaultMembers } from "@app/helpers/agentVaultPermissions";
+import {
+  canReadAgentVaultMembers,
+  canReadEveryAgentVaultMember
+} from "@app/helpers/agentVaultPermissions";
 import { isCustomProjectRole } from "@app/helpers/roles";
 import { useGetProjectRoles } from "@app/hooks/api";
 import { useListAllAgentVaultMembers } from "@app/hooks/api/agentVaultRoles";
@@ -74,9 +77,15 @@ export const RolesTab = () => {
     isError,
     refetch
   } = useGetProjectRoles(projectId, ProjectType.AgentVault);
-  // Only the delete dialog reads these: it says how many members hold the role.
+  const [search, setSearch] = useState("");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [roleToCopy, setRoleToCopy] = useState<TRoleToCopy | null>(null);
+  const [roleToDelete, setRoleToDelete] = useState<TRoleToDelete | null>(null);
+
+  // Only the delete dialog reads these, to say how many members hold the role, so they load once one is picked.
+  const isCountingHolders = canReadMembers && Boolean(roleToDelete);
   const { data: members, isPending: isMembersPending } = useListAllAgentVaultMembers(projectId, {
-    enabled: canReadMembers
+    enabled: isCountingHolders
   });
 
   const holderCounts = useMemo(() => {
@@ -86,11 +95,6 @@ export const RolesTab = () => {
     );
     return counts;
   }, [members]);
-
-  const [search, setSearch] = useState("");
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [roleToCopy, setRoleToCopy] = useState<TRoleToCopy | null>(null);
-  const [roleToDelete, setRoleToDelete] = useState<TRoleToDelete | null>(null);
 
   const displayed = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -278,10 +282,12 @@ export const RolesTab = () => {
       <DeleteAgentVaultRoleDialog
         role={roleToDelete}
         holderCount={
-          roleToDelete && canReadMembers && !isMembersPending
+          roleToDelete && isCountingHolders && !isMembersPending
             ? (holderCounts.get(roleToDelete.slug) ?? 0)
             : undefined
         }
+        isHolderCountPending={isCountingHolders && isMembersPending}
+        isHolderCountComplete={canReadEveryAgentVaultMember(permission)}
         onOpenChange={(isOpen) => {
           if (!isOpen) setRoleToDelete(null);
         }}

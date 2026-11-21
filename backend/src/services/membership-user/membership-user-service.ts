@@ -34,15 +34,14 @@ import { AuthMethod } from "../auth/auth-type";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { lockMembershipsById } from "../membership/membership-dal";
 import {
-  agentVaultProjectToRecheck,
-  assertAgentVaultAdminTargetUnchanged,
-  customRolesNeedRbacPlan,
-  withAgentVaultMemberAlias,
   assertProductWillRetainAdmin,
   assertSecretsTemporaryAccessAllowed,
+  customRolesNeedRbacPlan,
+  findAgentVaultRoleChange,
   findProjectKeepingBundleRoles,
-  lockProjectRoleChanges,
-  replaceMembershipRoles
+  lockAgentVaultRoleChange,
+  replaceMembershipRoles,
+  withAgentVaultMemberAlias
 } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TProjectAccessRevokeServiceFactory } from "../membership/project-access-revoke-service";
@@ -83,7 +82,7 @@ type TMembershipUserServiceFactoryDep = {
     | "findActorsWithOrgAccess"
     | "lockActorsForOrgAccess"
   >;
-  roleDAL: Pick<TRoleDALFactory, "find" | "findOne" | "findById" | "create">;
+  roleDAL: Pick<TRoleDALFactory, "find" | "findById">;
   userDAL: TUserDALFactory;
   permissionService: Pick<
     TPermissionServiceFactory,
@@ -497,7 +496,7 @@ export const membershipUserServiceFactory = ({
     const keepBundleRolesInProjectId = await findProjectKeepingBundleRoles(projectDAL, scopeData, data.roles);
     data.roles = await withAgentVaultMemberAlias({ projectDAL, roleDAL }, scopeData, data.roles);
 
-    await factory.onUpdateMembershipUserGuard(dto);
+    const checked = await factory.onUpdateMembershipUserGuard(dto);
 
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
@@ -567,16 +566,13 @@ export const membershipUserServiceFactory = ({
 
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
-    const agentVaultProjectId = await agentVaultProjectToRecheck(
+    const agentVaultChange = await findAgentVaultRoleChange(
       { projectDAL, permissionService },
       { scopeData, actor: dto.permission }
     );
     const membershipDoc = await membershipUserDAL.transaction(async (tx) => {
-      await assertAgentVaultAdminTargetUnchanged(
-        { projectId: agentVaultProjectId, membershipIds: [existingMembership.id] },
-        tx
-      );
-      if (keepBundleRolesInProjectId) await lockProjectRoleChanges(keepBundleRolesInProjectId, tx);
+      // Takes the lock replaceMembershipRoles needs to keep access bundle roles, which only Agent Vault projects have.
+      await lockAgentVaultRoleChange(agentVaultChange, { membershipId: existingMembership.id, checked }, tx);
       if (!newRolesHavePermanentAdmin && scopeData.scope === AccessScope.Organization) {
         await assertWillRetainOrgAdmin({
           scopeOrgId: scopeData.orgId,
@@ -648,7 +644,7 @@ export const membershipUserServiceFactory = ({
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
 
-    await factory.onDeleteMembershipUserGuard(dto);
+    const checked = await factory.onDeleteMembershipUserGuard(dto);
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const existingMembership = await membershipUserDAL.findOne({
@@ -666,7 +662,7 @@ export const membershipUserServiceFactory = ({
         message: "You can't delete your own membership"
       });
 
-    const agentVaultProjectId = await agentVaultProjectToRecheck(
+    const agentVaultChange = await findAgentVaultRoleChange(
       { projectDAL, permissionService },
       { scopeData: dto.scopeData, actor: dto.permission }
     );
@@ -691,10 +687,7 @@ export const membershipUserServiceFactory = ({
       }
 
       if (dto.scopeData.scope === AccessScope.Project) {
-        await assertAgentVaultAdminTargetUnchanged(
-          { projectId: agentVaultProjectId, membershipIds: [existingMembership.id] },
-          tx
-        );
+        await lockAgentVaultRoleChange(agentVaultChange, { membershipId: existingMembership.id, checked }, tx);
         await assertProductWillRetainAdmin({
           project: await projectDAL.findById(dto.scopeData.projectId, tx),
           excludeMembershipIds: [existingMembership.id],

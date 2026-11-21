@@ -45,7 +45,8 @@ import {
 } from "@app/context";
 import {
   canOnAgentVaultAccessBundle,
-  canOnAgentVaultService
+  canOnAgentVaultService,
+  canUseAgentVaultAccessBundle
 } from "@app/helpers/agentVaultPermissions";
 import {
   AgentVaultSessionScope,
@@ -257,6 +258,13 @@ export const AgentVaultAccessBundleDetailPage = () => {
             )
           }
           canRemoveService={() => canEditBundle}
+          canOpenService={(service) =>
+            canUseAgentVaultAccessBundle(permission, accessBundle.id) ||
+            [
+              ProjectPermissionAgentVaultServiceActions.Read,
+              ProjectPermissionAgentVaultServiceActions.Use
+            ].some((action) => canOnAgentVaultService(permission, action, service.id))
+          }
           onAdd={() => setIsAddServiceOpen(true)}
           onEdit={(service) => {
             setServiceToEdit(service);

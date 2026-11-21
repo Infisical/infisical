@@ -136,6 +136,9 @@ type Props = {
   canEditService: (service: TListedService) => boolean;
   // Deletes the service from the project, or on a bundle's page takes it out of the bundle.
   canRemoveService: (service: TListedService) => boolean;
+  // Whether the caller can look into a service beyond its row, such as who can use it. A bundle's page lists services
+  // its viewers may not see anywhere else.
+  canOpenService?: (service: TListedService) => boolean;
   onAdd: () => void;
   onEdit: (service: TListedService) => void;
   onSetUp: (service: TAgentVaultService) => void;
@@ -236,6 +239,7 @@ export const ServicesCard = ({
   canAdd,
   canEditService,
   canRemoveService,
+  canOpenService = () => true,
   onAdd,
   onEdit,
   onSetUp,
@@ -561,7 +565,7 @@ export const ServicesCard = ({
                     {(service.personalValues ||
                       canEditService(service) ||
                       canRemoveService(service) ||
-                      canReadRoles) && (
+                      (canReadRoles && canOpenService(service))) && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton variant="ghost" size="xs" aria-label="Open service actions">
@@ -583,7 +587,7 @@ export const ServicesCard = ({
                               Edit
                             </DropdownMenuItem>
                           )}
-                          {canReadRoles && (
+                          {canReadRoles && canOpenService(service) && (
                             <DropdownMenuItem
                               onClick={() => {
                                 setWhoCanUse({

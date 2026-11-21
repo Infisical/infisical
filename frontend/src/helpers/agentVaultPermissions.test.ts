@@ -15,12 +15,14 @@ import {
   canUseAgentVaultAccessBundles,
   canUseAgentVaultService,
   canUseAgentVaultSkill,
-  canUseAgentVaultSkills
+  canUseAgentVaultSkills,
+  canUseNewAgentVaultSkill
 } from "./agentVaultPermissions";
 
 const BUNDLE = "4c3b6f0e-8f5c-4a0b-9a51-0d2b1c7e5f21";
 const OTHER_BUNDLE = "9686cd1a-659d-48ad-b53c-ec27a39b0830";
 const SERVICE = "e83db5d4-ca14-4e6b-bcbe-d38e61f7c796";
+const OTHER_SERVICE = "8facda6c-9da5-41c6-a92f-21329dcd09ca";
 const SKILL = "1f5a3bd4-04b0-4759-9bf9-006e9649c66d";
 
 type TRule = RawRuleOf<MongoAbility<ProjectPermissionSet>>;
@@ -117,5 +119,55 @@ describe("what a session can carry", () => {
     expect(
       canUseAgentVaultService(permission, { id: SERVICE, accessBundles: [{ id: OTHER_BUNDLE }] })
     ).toBe(false);
+  });
+
+  it("keeps out a service or skill a role denies, even inside a bundle the role uses", () => {
+    const permission = abilityOf([
+      useBundle(BUNDLE),
+      {
+        action: ProjectPermissionAgentVaultServiceActions.Use,
+        subject: ProjectPermissionSub.AgentVaultServices,
+        conditions: { serviceId: { $in: [SERVICE] } },
+        inverted: true
+      },
+      {
+        action: ProjectPermissionAgentVaultSkillActions.Use,
+        subject: ProjectPermissionSub.AgentVaultSkills,
+        inverted: true
+      }
+    ]);
+    expect(
+      canUseAgentVaultService(permission, { id: SERVICE, accessBundles: [{ id: BUNDLE }] })
+    ).toBe(false);
+    expect(
+      canUseAgentVaultService(permission, { id: OTHER_SERVICE, accessBundles: [{ id: BUNDLE }] })
+    ).toBe(true);
+    expect(canUseAgentVaultSkill(permission, { id: SKILL, accessBundles: [{ id: BUNDLE }] })).toBe(
+      false
+    );
+  });
+});
+
+describe("canUseNewAgentVaultSkill", () => {
+  const useSkills = (conditions?: Record<string, unknown>, inverted = false): TRule => ({
+    action: ProjectPermissionAgentVaultSkillActions.Use,
+    subject: ProjectPermissionSub.AgentVaultSkills,
+    ...(conditions ? { conditions } : {}),
+    ...(inverted ? { inverted } : {})
+  });
+
+  it("is true only when the caller's roles let them use every new skill", () => {
+    expect(canUseNewAgentVaultSkill(abilityOf([useSkills()]))).toBe(true);
+    expect(
+      canUseNewAgentVaultSkill(
+        abilityOf([useSkills(), useSkills({ skillId: { $in: [SKILL] } }, true)])
+      )
+    ).toBe(true);
+    expect(canUseNewAgentVaultSkill(abilityOf([useSkills({ skillId: { $in: [SKILL] } })]))).toBe(
+      false
+    );
+    expect(canUseNewAgentVaultSkill(abilityOf([useSkills(), useSkills(undefined, true)]))).toBe(
+      false
+    );
   });
 });

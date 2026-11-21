@@ -33,10 +33,12 @@ import { TMembershipUserDALFactory } from "../membership-user/membership-user-da
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { lockMembershipsById } from "../membership/membership-dal";
 import {
-  agentVaultProjectToRecheck,
   assertAgentVaultAdminOnlyChange,
-  assertAgentVaultAdminTargetUnchanged,
   assertProductWillRetainAdmin,
+  checkedRoleSlugsOf,
+  findAgentVaultRoleChange,
+  lockAgentVaultRoleChange,
+  readTargetForAgentVaultRecheck,
   resolveMembershipRoleSlugs
 } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
@@ -65,7 +67,10 @@ type TProjectMembershipServiceFactoryDep = {
   smtpService: TSmtpService;
   projectMembershipDAL: TProjectMembershipDALFactory;
   membershipUserDAL: TMembershipUserDALFactory;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "find" | "delete" | "findRolesByMembershipIds">;
+  membershipRoleDAL: Pick<
+    TMembershipRoleDALFactory,
+    "insertMany" | "find" | "delete" | "findRolesByMembershipIds" | "transaction"
+  >;
   userDAL: Pick<TUserDALFactory, "find">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
@@ -438,7 +443,22 @@ export const projectMembershipServiceFactory = ({
       });
     }
 
-    const targetRoleRows = await membershipRoleDAL.findRolesByMembershipIds(projectMembers.map(({ id }) => id));
+    const agentVaultRoleChange = await findAgentVaultRoleChange(
+      { projectDAL, permissionService },
+      {
+        scopeData: { scope: AccessScope.Project, projectId },
+        actor: { type: actor, id: actorId, authMethod: actorAuthMethod, orgId: actorOrgId }
+      }
+    );
+    const targetRoleRows = await readTargetForAgentVaultRecheck(
+      membershipRoleDAL,
+      Boolean(agentVaultRoleChange),
+      (tx) =>
+        membershipRoleDAL.findRolesByMembershipIds(
+          projectMembers.map(({ id }) => id),
+          tx
+        )
+    );
     const targetRoles = resolveMembershipRoleSlugs(targetRoleRows);
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
@@ -491,18 +511,17 @@ export const projectMembershipServiceFactory = ({
       await userGroupMembershipDAL.findUserGroupMembershipsInProject(usernamesAndEmails, projectId)
     );
 
-    const agentVaultProjectId = await agentVaultProjectToRecheck(
-      { projectDAL, permissionService },
-      {
-        scopeData: { scope: AccessScope.Project, projectId },
-        actor: { type: actor, id: actorId, authMethod: actorAuthMethod, orgId: actorOrgId }
-      }
-    );
     const performDelete = async (tx: Knex) => {
-      await assertAgentVaultAdminTargetUnchanged(
-        { projectId: agentVaultProjectId, membershipIds: projectMembers.map(({ id }) => id) },
-        tx
-      );
+      for await (const projectMember of projectMembers) {
+        await lockAgentVaultRoleChange(
+          agentVaultRoleChange,
+          {
+            membershipId: projectMember.id,
+            checked: { checkedRoleSlugs: checkedRoleSlugsOf(roleRowsByMembershipId[projectMember.id] || []) }
+          },
+          tx
+        );
+      }
       await assertProductWillRetainAdmin({
         project: await projectDAL.findById(projectId, tx),
         excludeMembershipIds: projectMembers.map(({ id }) => id),

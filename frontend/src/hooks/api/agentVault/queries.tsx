@@ -290,7 +290,8 @@ export const useGetAgentVaultDelegation = (
 // dialogs page the same way.
 const AVAILABLE_MEMBER_LIMIT = 50;
 
-// The Agent Vault users and groups not yet in the machine identity's delegation. Admins only.
+// The Agent Vault users and groups not yet in the machine identity's delegation. Needs Edit on the machine identity and
+// Manage Delegations on sessions, like changing the delegation.
 export const useListAvailableAgentVaultDelegationSubjects = (
   projectId: string,
   machineIdentityId: string,
@@ -371,9 +372,11 @@ export const useListAgentVaultAccessBundles = (
   });
 };
 
-// One page holds them all in practice: it is only the bundles the caller reaches that still require their values.
+// One page holds them all in practice: it is only the bundles the caller's roles give them one by one that still
+// require their values. As in the sidebar, a bundle they can only view, or reach through a role that can use every
+// bundle, isn't one to nag them about.
 export const useListAgentVaultAccessBundlesRequiringSetup = (projectId: string) =>
-  useListAgentVaultAccessBundles(projectId, { requiresSetup: true, limit: 100 });
+  useListAgentVaultAccessBundles(projectId, { requiresSetup: true, assigned: true, limit: 100 });
 
 // The roles whose holders can use the bundle: Admin, and every custom role that allows it. Needs Read on roles.
 export const useListAgentVaultAccessBundleRoles = (

@@ -40,6 +40,11 @@ import {
   useProject
 } from "@app/context";
 import {
+  canOnAgentVaultSkill,
+  canUseAgentVaultAccessBundle,
+  canUseNewAgentVaultSkill
+} from "@app/helpers/agentVaultPermissions";
+import {
   useAddAgentVaultAccessBundleSkill,
   useListAgentVaultAccessBundleSkills,
   useRemoveAgentVaultAccessBundleSkill
@@ -61,10 +66,20 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
   const { permission } = useProjectPermission();
   const { openSheet } = useAgentVaultSheetState("skillId");
   const { currentOrg } = useOrganization();
-  const canCreateSkills = permission.can(
-    ProjectPermissionAgentVaultSkillActions.Create,
-    ProjectPermissionSub.AgentVaultSkills
-  );
+  // A skill created here is added to the bundle next, which only someone who can use it may do.
+  const canCreateSkills =
+    permission.can(
+      ProjectPermissionAgentVaultSkillActions.Create,
+      ProjectPermissionSub.AgentVaultSkills
+    ) && canUseNewAgentVaultSkill(permission);
+  // Viewing the bundle shows which skills it holds, but opening one takes viewing or using it, or using the bundle.
+  const canUseBundle = canUseAgentVaultAccessBundle(permission, accessBundleId);
+  const canOpenSkill = (skillId: string) =>
+    canUseBundle ||
+    [
+      ProjectPermissionAgentVaultSkillActions.Read,
+      ProjectPermissionAgentVaultSkillActions.Use
+    ].some((action) => canOnAgentVaultSkill(permission, action, skillId));
   const { data: bundleSkills = [], isPending } = useListAgentVaultAccessBundleSkills(
     projectId,
     accessBundleId
@@ -157,54 +172,65 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
                 </TableRow>
               ))}
             {!isPending &&
-              bundleSkills.map((skill) => (
-                <TableRow key={skill.id} linked>
-                  <TableCell isTruncatable>
-                    <RowLink
-                      to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
-                      params={{ orgId: currentOrg.id, projectId, accessBundleId }}
-                      search={(prev) => ({ ...prev, skillId: skill.id })}
-                      title={skill.description}
-                    >
-                      {skill.name}
-                    </RowLink>
-                  </TableCell>
-                  <TableCell isTruncatable>{skill.description}</TableCell>
-                  <TableCell variant="action">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <IconButton
-                          variant="ghost"
-                          size="xs"
-                          aria-label="Open skill actions"
-                          onClick={(event) => event.stopPropagation()}
+              bundleSkills.map((skill) => {
+                const canOpen = canOpenSkill(skill.id);
+                return (
+                  <TableRow key={skill.id} linked={canOpen}>
+                    <TableCell isTruncatable>
+                      {canOpen ? (
+                        <RowLink
+                          to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
+                          params={{ orgId: currentOrg.id, projectId, accessBundleId }}
+                          search={(prev) => ({ ...prev, skillId: skill.id })}
+                          title={skill.description}
                         >
-                          <MoreHorizontalIcon />
-                        </IconButton>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        sideOffset={2}
-                        align="end"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <DropdownMenuItem onClick={() => openSheet(skill.id)}>
-                          <EyeIcon />
-                          View Skill
-                        </DropdownMenuItem>
-                        {canManage && (
-                          <DropdownMenuItem
-                            variant="danger"
-                            onClick={() => setSkillToRemove(skill)}
+                          {skill.name}
+                        </RowLink>
+                      ) : (
+                        skill.name
+                      )}
+                    </TableCell>
+                    <TableCell isTruncatable>{skill.description}</TableCell>
+                    <TableCell variant="action">
+                      {(canOpen || canManage) && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <IconButton
+                              variant="ghost"
+                              size="xs"
+                              aria-label="Open skill actions"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <MoreHorizontalIcon />
+                            </IconButton>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            sideOffset={2}
+                            align="end"
+                            onClick={(event) => event.stopPropagation()}
                           >
-                            <TrashIcon />
-                            Remove From Bundle
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+                            {canOpen && (
+                              <DropdownMenuItem onClick={() => openSheet(skill.id)}>
+                                <EyeIcon />
+                                View Skill
+                              </DropdownMenuItem>
+                            )}
+                            {canManage && (
+                              <DropdownMenuItem
+                                variant="danger"
+                                onClick={() => setSkillToRemove(skill)}
+                              >
+                                <TrashIcon />
+                                Remove From Bundle
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
           </TableBody>
         </Table>
       )}

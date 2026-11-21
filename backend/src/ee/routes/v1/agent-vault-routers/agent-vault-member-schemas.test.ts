@@ -36,3 +36,18 @@ describe("member ids are lowercased", () => {
     });
   });
 });
+
+describe("member roles", () => {
+  test("a list longer than a member can hold is refused with the limit", () => {
+    const result = AgentVaultProductMemberAddSchema.safeParse({
+      userIds: [USER_ID],
+      roles: Array.from({ length: 11 }, (_, index) => `role-${index}`)
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.message)).toContain("A member can have at most 10 roles.");
+  });
+
+  test("a request that names no roles is refused rather than given a default", () => {
+    expect(AgentVaultProductMemberAddSchema.safeParse({ userIds: [USER_ID] }).success).toBe(false);
+  });
+});

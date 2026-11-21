@@ -25,24 +25,27 @@ export type TAgentVaultPermission = {
   permission: TProjectPermissionResult["permission"];
 };
 
+// The ids a role denies `use` on, or "all" when a deny covers every one, including those created later.
+export type TAgentVaultDeniedIds = string[] | "all";
+
 /**
  * What an actor can put in a session, from their roles. Each list is null when it covers every one in the project,
  * including those created later.
  *
  * - `accessBundleIds`: the bundles they can use. A session can carry one, and name its services and skills one by one.
  * - `serviceIds` / `skillIds`: the ones they can use directly, whether or not a bundle holds them.
+ * - `deniedServiceIds` / `deniedSkillIds`: the ones a role denies `use` on. A bundle that holds one doesn't give it
+ *   either, so a deny holds wherever the item sits. Left out when nothing is denied.
  */
 export type TAgentVaultReach = {
   accessBundleIds: string[] | null;
   serviceIds: string[] | null;
   skillIds: string[] | null;
+  deniedServiceIds?: TAgentVaultDeniedIds;
+  deniedSkillIds?: TAgentVaultDeniedIds;
 };
 
-export type TAgentVaultReachability = TAgentVaultPermission &
-  TAgentVaultReach & {
-    // Every bundle, service and skill, as Admin: nothing a session lists needs checking against a list.
-    reachesEverything: boolean;
-  };
+export type TAgentVaultReachability = TAgentVaultPermission & TAgentVaultReach;
 
 export type TAgentVaultReachDep = Pick<
   TAgentVaultReachDALFactory,
@@ -51,7 +54,7 @@ export type TAgentVaultReachDep = Pick<
 
 type TPermissionDep = Pick<TPermissionServiceFactory, "getProjectPermission">;
 
-const NOTHING: TAgentVaultReach = { accessBundleIds: [], serviceIds: [], skillIds: [] };
+export const REACHES_NOTHING: TAgentVaultReach = { accessBundleIds: [], serviceIds: [], skillIds: [] };
 
 // Postgres matches a uuid in any case, but CASL compares condition values exactly, and roles store ids in lowercase. An
 // id from a request can arrive in capitals, so a subject built from one is lowercased, or it would slip past a rule
@@ -65,15 +68,37 @@ export const agentVaultServiceSubject = (serviceId: string) =>
 export const agentVaultSkillSubject = (skillId: string) =>
   subject(ProjectPermissionSub.AgentVaultSkills, { skillId: skillId.toLowerCase() });
 
+// rulesFor's typing pairs each subject with its own actions; the action here is checked by the callers.
+const rulesOf = (permission: TAbility, action: string, subjectType: ProjectPermissionSub) =>
+  (permission as unknown as MongoAbility).rulesFor(action, subjectType);
+
+const isDeniedFor = (permission: TAbility, action: string, subjectType: ProjectPermissionSub, field: string) => {
+  const ability = permission as unknown as MongoAbility;
+  return (id: string) => Boolean(ability.relevantRuleFor(action, subject(subjectType, { [field]: id }))?.inverted);
+};
+
 // Whether the rules for this action cover every id without checking one: an unconditioned allow and no deny. CASL
 // keeps the last matching rule, so any deny among them can take an id back and the ids have to be checked one by one.
 const coverageOf = (permission: TAbility, action: string, subjectType: ProjectPermissionSub) => {
-  // rulesFor's typing pairs each subject with its own actions; the action here is checked by the callers.
-  const rules = (permission as unknown as MongoAbility).rulesFor(action, subjectType);
+  const rules = rulesOf(permission, action, subjectType);
   if (!rules.some((rule) => !rule.inverted)) return "none" as const;
   if (rules.every((rule) => !rule.inverted) && rules.some((rule) => !rule.conditions)) return "all" as const;
   return "some" as const;
 };
+
+type TIdCondition = string | { $eq?: string; $in?: string[] } | undefined;
+
+// The ids a rule names one by one (a bare id, `$eq` or `$in`), or null when it isn't limited to named ids, as an
+// unconditioned rule isn't.
+const idsNamedBy = (rule: { conditions?: unknown }, field: string): string[] | null => {
+  if (!rule.conditions) return null;
+  const condition = (rule.conditions as Record<string, TIdCondition>)[field];
+  if (typeof condition === "string") return [condition.toLowerCase()];
+  if (!condition || Object.keys(condition).some((key) => key !== "$eq" && key !== "$in")) return null;
+  return [...(condition.$eq ? [condition.$eq] : []), ...(condition.$in ?? [])].map((id) => id.toLowerCase());
+};
+
+type TIdRules = { action: string; subjectType: ProjectPermissionSub; field: string };
 
 const idsAllowed = async (
   permission: TAbility,
@@ -82,14 +107,48 @@ const idsAllowed = async (
     subjectType,
     field,
     loadIds
-  }: { action: string; subjectType: ProjectPermissionSub; field: string; loadIds: () => Promise<string[]> }
+  }: TIdRules & {
+    // Lists the candidates, only those among onlyIds when it is given.
+    loadIds: (onlyIds?: string[]) => Promise<string[]>;
+  }
 ): Promise<string[] | null> => {
   const coverage = coverageOf(permission, action, subjectType);
   if (coverage === "none") return [];
   if (coverage === "all") return null;
-  const ids = await loadIds();
+  // When every allow names its ids, no other id can pass, so only those are looked up.
+  const named = rulesOf(permission, action, subjectType)
+    .filter((rule) => !rule.inverted)
+    .map((rule) => idsNamedBy(rule, field));
+  const ids = named.every((namedIds) => namedIds !== null)
+    ? await loadIds([...new Set(named.flatMap((namedIds) => namedIds ?? []))])
+    : await loadIds();
   return ids.filter((id) => permission.can(action as never, subject(subjectType, { [field]: id }) as never));
 };
+
+// Matches no row, so a deny that matches it covers ids no rule names, as an unconditioned deny does.
+const ANY_ID = "00000000-0000-0000-0000-000000000000";
+
+// The ids a deny on this action takes back: those the denies name, or "all" when one covers every id. Checked through
+// relevantRuleFor, so a deny that a later allow overrides doesn't count.
+const deniedIdsOf = (permission: TAbility, { action, subjectType, field }: TIdRules): TAgentVaultDeniedIds => {
+  const denies = rulesOf(permission, action, subjectType).filter((rule) => rule.inverted);
+  if (!denies.length) return [];
+  const isDenied = isDeniedFor(permission, action, subjectType, field);
+  if (isDenied(ANY_ID)) return "all";
+  return [...new Set(denies.flatMap((rule) => idsNamedBy(rule, field) ?? []))].filter(isDenied);
+};
+
+const isNothingDenied = (denied: TAgentVaultDeniedIds | undefined) => denied !== "all" && !denied?.length;
+
+// Leaves out a denied list that holds nothing, so a reach with no deny carries only its three lists.
+const withDenied = (
+  reach: Pick<TAgentVaultReach, "accessBundleIds" | "serviceIds" | "skillIds">,
+  { deniedServiceIds, deniedSkillIds }: Pick<TAgentVaultReach, "deniedServiceIds" | "deniedSkillIds">
+): TAgentVaultReach => ({
+  ...reach,
+  ...(isNothingDenied(deniedServiceIds) ? {} : { deniedServiceIds }),
+  ...(isNothingDenied(deniedSkillIds) ? {} : { deniedSkillIds })
+});
 
 // The machine identities a member list may show, null for every one: a role can limit identity read to some
 // identities, and the platform's own identity list filters by the same check. loadIds lists the candidates.
@@ -98,8 +157,27 @@ export const readableIdentityIdsOf = (permission: TAbility, loadIds: () => Promi
     action: ProjectPermissionIdentityActions.Read,
     subjectType: ProjectPermissionSub.Identity,
     field: "identityId",
-    loadIds
+    loadIds: () => loadIds()
   });
+
+const BUNDLE_USE: TIdRules = {
+  action: ProjectPermissionAgentVaultAccessBundleActions.Use,
+  subjectType: ProjectPermissionSub.AgentVaultAccessBundles,
+  field: "accessBundleId"
+};
+const SERVICE_USE: TIdRules = {
+  action: ProjectPermissionAgentVaultServiceActions.Use,
+  subjectType: ProjectPermissionSub.AgentVaultServices,
+  field: "serviceId"
+};
+const SKILL_USE: TIdRules = {
+  action: ProjectPermissionAgentVaultSkillActions.Use,
+  subjectType: ProjectPermissionSub.AgentVaultSkills,
+  field: "skillId"
+};
+
+// Which of the reach's lists to work out. One left out reaches nothing, for a caller that never reads it.
+export type TAgentVaultReachKinds = { services?: boolean; skills?: boolean };
 
 /**
  * The reach a permission gives in a project. Works on any actor's permission, so a session owner's, an on-behalf-of
@@ -109,58 +187,51 @@ export const reachOf = async (
   permission: TProjectPermissionResult["permission"],
   { agentVaultReachDAL }: { agentVaultReachDAL: TAgentVaultReachDep },
   projectId: string,
-  tx?: Knex
+  tx?: Knex,
+  { services = true, skills = true }: TAgentVaultReachKinds = {}
 ): Promise<TAgentVaultReach> => {
   const [accessBundleIds, serviceIds, skillIds] = await Promise.all([
     idsAllowed(permission, {
-      action: ProjectPermissionAgentVaultAccessBundleActions.Use,
-      subjectType: ProjectPermissionSub.AgentVaultAccessBundles,
-      field: "accessBundleId",
-      loadIds: () => agentVaultReachDAL.findAccessBundleIds(projectId, tx)
+      ...BUNDLE_USE,
+      loadIds: (onlyIds) => agentVaultReachDAL.findAccessBundleIds(projectId, tx, onlyIds)
     }),
-    idsAllowed(permission, {
-      action: ProjectPermissionAgentVaultServiceActions.Use,
-      subjectType: ProjectPermissionSub.AgentVaultServices,
-      field: "serviceId",
-      loadIds: () => agentVaultReachDAL.findServiceIds(projectId, tx)
-    }),
-    idsAllowed(permission, {
-      action: ProjectPermissionAgentVaultSkillActions.Use,
-      subjectType: ProjectPermissionSub.AgentVaultSkills,
-      field: "skillId",
-      loadIds: () => agentVaultReachDAL.findSkillIds(projectId, tx)
-    })
+    services
+      ? idsAllowed(permission, {
+          ...SERVICE_USE,
+          loadIds: (onlyIds) => agentVaultReachDAL.findServiceIds(projectId, tx, onlyIds)
+        })
+      : [],
+    skills
+      ? idsAllowed(permission, {
+          ...SKILL_USE,
+          loadIds: (onlyIds) => agentVaultReachDAL.findSkillIds(projectId, tx, onlyIds)
+        })
+      : []
   ]);
-  return { accessBundleIds, serviceIds, skillIds };
+  return withDenied(
+    { accessBundleIds, serviceIds, skillIds },
+    {
+      deniedServiceIds: services ? deniedIdsOf(permission, SERVICE_USE) : [],
+      deniedSkillIds: skills ? deniedIdsOf(permission, SKILL_USE) : []
+    }
+  );
 };
-
-type TIdCondition = string | { $eq?: string; $in?: string[] } | undefined;
 
 /**
  * The ids the allow rules for this action pick out one by one (a bare id, `$eq` or `$in`), less any a deny takes back.
  * Unlike reachOf, a rule that covers every id picks out none, so it tells what a role gives its holder by name from
  * what it gives them along with everything else.
  */
-export const idsPickedOutFor = (
-  permission: TProjectPermissionResult["permission"],
-  { action, subjectType, field }: { action: string; subjectType: ProjectPermissionSub; field: string }
-) => {
-  const picked = new Set<string>();
-  // rulesFor's typing pairs each subject with its own actions; the action here is checked by the callers.
-  (permission as unknown as MongoAbility).rulesFor(action, subjectType).forEach((rule) => {
-    if (rule.inverted || !rule.conditions) return;
-    const condition = (rule.conditions as Record<string, TIdCondition>)[field];
-    if (typeof condition === "string") picked.add(condition.toLowerCase());
-    else if (condition) {
-      if (condition.$eq) picked.add(condition.$eq.toLowerCase());
-      condition.$in?.forEach((id) => picked.add(id.toLowerCase()));
-    }
-  });
-  return [...picked].filter((id) => permission.can(action as never, subject(subjectType, { [field]: id }) as never));
+export const idsPickedOutFor = (permission: TProjectPermissionResult["permission"], rules: TIdRules) => {
+  const picked = new Set(
+    rulesOf(permission, rules.action, rules.subjectType)
+      .filter((rule) => !rule.inverted)
+      .flatMap((rule) => idsNamedBy(rule, rules.field) ?? [])
+  );
+  return [...picked].filter((id) =>
+    permission.can(rules.action as never, subject(rules.subjectType, { [rules.field]: id }) as never)
+  );
 };
-
-export const reachesEverythingIn = (reach: TAgentVaultReach) =>
-  reach.accessBundleIds === null && reach.serviceIds === null && reach.skillIds === null;
 
 // null covers everything, so intersecting with it returns the other side unchanged.
 export const intersectIds = (a: string[] | null, b: string[] | null): string[] | null => {
@@ -170,19 +241,44 @@ export const intersectIds = (a: string[] | null, b: string[] | null): string[] |
   return a.filter((id) => inB.has(id));
 };
 
-// A session on a user's behalf reaches only what both the user and the machine identity reach.
-export const intersectReach = (a: TAgentVaultReach, b: TAgentVaultReach): TAgentVaultReach => ({
-  accessBundleIds: intersectIds(a.accessBundleIds, b.accessBundleIds),
-  serviceIds: intersectIds(a.serviceIds, b.serviceIds),
-  skillIds: intersectIds(a.skillIds, b.skillIds)
-});
+const unionDenied = (a?: TAgentVaultDeniedIds, b?: TAgentVaultDeniedIds): TAgentVaultDeniedIds =>
+  a === "all" || b === "all" ? "all" : [...new Set([...(a ?? []), ...(b ?? [])])];
 
-const unionIds = (a: string[] | null, b: string[] | null): string[] | null =>
+// A session on a user's behalf reaches only what both the user and the machine identity reach, and either one's deny
+// holds.
+export const intersectReach = (a: TAgentVaultReach, b: TAgentVaultReach): TAgentVaultReach =>
+  withDenied(
+    {
+      accessBundleIds: intersectIds(a.accessBundleIds, b.accessBundleIds),
+      serviceIds: intersectIds(a.serviceIds, b.serviceIds),
+      skillIds: intersectIds(a.skillIds, b.skillIds)
+    },
+    {
+      deniedServiceIds: unionDenied(a.deniedServiceIds, b.deniedServiceIds),
+      deniedSkillIds: unionDenied(a.deniedSkillIds, b.deniedSkillIds)
+    }
+  );
+
+export const unionWithin = (a: string[] | null, b: string[] | null): string[] | null =>
   a === null || b === null ? null : [...new Set([...a, ...b])];
 
+// What a reach can use of one kind: the ids it uses directly, and those its bundles hold, less the ones a role denies.
+// A deny wins over the allow that would list an id directly, so "all" leaves only the direct ones, which it never
+// covers.
+const usableIds = async (
+  direct: string[],
+  denied: TAgentVaultDeniedIds | undefined,
+  loadThroughBundles: () => Promise<string[]>
+) => {
+  if (denied === "all") return direct;
+  const deniedIds = new Set(denied ?? []);
+  return [...new Set([...direct, ...(await loadThroughBundles())])].filter((id) => !deniedIds.has(id));
+};
+
 /**
- * The services a session can list: those used directly, and those a usable bundle holds. Session creation checks names
- * against it and the services list scopes itself to it, so the list offers exactly the services a session accepts.
+ * The services a session can list: those used directly, and those a usable bundle holds, less any a role denies.
+ * Session creation checks names against it and the services list scopes itself to it, so the list offers exactly the
+ * services a session accepts.
  */
 export const usableServiceIdsOf = async (
   deps: {
@@ -193,11 +289,11 @@ export const usableServiceIdsOf = async (
   projectId: string
 ): Promise<string[] | null> => {
   if (reach.serviceIds === null) return null;
-  const throughBundles =
+  return usableIds(reach.serviceIds, reach.deniedServiceIds, () =>
     reach.accessBundleIds === null
-      ? await deps.agentVaultReachDAL.findServiceIdsInAnyBundle(projectId)
-      : await deps.agentVaultServiceDAL.findIdsInBundles(reach.accessBundleIds);
-  return unionIds(reach.serviceIds, throughBundles);
+      ? deps.agentVaultReachDAL.findServiceIdsInAnyBundle(projectId)
+      : deps.agentVaultServiceDAL.findIdsInBundles(reach.accessBundleIds)
+  );
 };
 
 // The skills a session can list, the same rule as its services.
@@ -210,11 +306,11 @@ export const usableSkillIdsOf = async (
   projectId: string
 ): Promise<string[] | null> => {
   if (reach.skillIds === null) return null;
-  const throughBundles =
+  return usableIds(reach.skillIds, reach.deniedSkillIds, () =>
     reach.accessBundleIds === null
-      ? await deps.agentVaultReachDAL.findSkillIdsInAnyBundle(projectId)
-      : await deps.agentVaultSkillBundleDAL.findSkillIdsInBundles(reach.accessBundleIds);
-  return unionIds(reach.skillIds, throughBundles);
+      ? deps.agentVaultReachDAL.findSkillIdsInAnyBundle(projectId)
+      : deps.agentVaultSkillBundleDAL.findSkillIdsInBundles(reach.accessBundleIds)
+  );
 };
 
 /**
@@ -265,9 +361,6 @@ export const visibleIdsWithin = async (
   if (coverage.every((entry) => entry === "none")) return [];
   return visibleIdsOf(permission, { subjectType, field, ids: await loadIds() });
 };
-
-export const unionWithin = (a: string[] | null, b: string[] | null): string[] | null =>
-  a === null || b === null ? null : [...new Set([...a, ...b])];
 
 const canSee = (
   permission: TProjectPermissionResult["permission"],
@@ -350,8 +443,8 @@ export const getAgentVaultReachability = async (
   const { permission } = await $loadAgentVaultPermission({ permissionService }, { projectId, ctx });
   // Only a user or machine identity can hold a session.
   if (ctx.actor !== ActorType.USER && ctx.actor !== ActorType.IDENTITY) {
-    return { ...NOTHING, reachesEverything: false, permission };
+    return { ...REACHES_NOTHING, permission };
   }
   const reach = await reachOf(permission, { agentVaultReachDAL }, projectId, tx);
-  return { ...reach, reachesEverything: reachesEverythingIn(reach), permission };
+  return { ...reach, permission };
 };

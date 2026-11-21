@@ -658,6 +658,7 @@ export const agentVaultSessionServiceFactory = ({
           {
             projectId,
             accessBundleIds: ownerReach.accessBundleIds,
+            deniedServiceIds: ownerReach.deniedServiceIds,
             services: freshServices
               .filter(({ id }) => !throughBundleIds.has(id) && !directIds.has(id))
               .map(({ id, hostPattern }) => ({ id, hostPattern: hostPattern ?? null }))
@@ -813,7 +814,7 @@ export const agentVaultSessionServiceFactory = ({
           if (gone) {
             throw new BadRequestError({
               name: "SkillNotGranted",
-              message: `You can't use a skill called '${gone.skill.name}'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it.`
+              message: `You can't use a skill called '${gone.skill.name}'. Check the name, or ask an Agent Vault admin for a role that can use it.`
             });
           }
           try {

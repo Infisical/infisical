@@ -21,8 +21,11 @@ import {
   buildServiceSchema,
   HTTP_METHODS,
   isServiceDestinationChanged,
+  isServiceTlsWeakened,
   McpToolScope,
   MOVED_SERVICE_VALUE_MESSAGE,
+  serviceMoveOf,
+  TLS_CHANGED_SERVICE_VALUE_MESSAGE,
   TServiceForm,
   UNCHANGED_SECRET
 } from "./serviceSchema";
@@ -1013,9 +1016,73 @@ describe("OAuth variable credentials", () => {
     expect(
       buildUpdateServiceRequest(
         { ...storedHttp, credential: variableMcp.credential },
-        form({ credentialType: AgentVaultCredentialType.OAuth, oauthVariableKey: "LINEAR" })
+        form({
+          credentialType: AgentVaultCredentialType.OAuth,
+          oauthVariableKey: "LINEAR",
+          hosts: ["mcp.linear.app"]
+        })
       )
     ).not.toHaveProperty("credential");
+  });
+
+  it("names the variable again when the service moves, so the API sends the new destination its tokens", () => {
+    const movedUrl = "https://mcp2.linear.app/mcp";
+    const variable = { type: AgentVaultCredentialType.OAuth, variable: "LINEAR" };
+
+    expect(
+      buildUpdateServiceRequest(
+        variableMcp,
+        mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR", serverUrl: movedUrl })
+      ).credential
+    ).toEqual(variable);
+    expect(
+      buildUpdateServiceRequest(
+        { ...storedHttp, credential: variableMcp.credential },
+        form({
+          credentialType: AgentVaultCredentialType.OAuth,
+          oauthVariableKey: "LINEAR",
+          hosts: ["api2.linear.app"]
+        })
+      ).credential
+    ).toEqual(variable);
+    expect(
+      buildListMcpToolsRequest(
+        "project-1",
+        variableMcp,
+        mcpForm({ oauthUsesVariable: true, oauthVariableKey: "LINEAR", serverUrl: movedUrl })
+      ).credential
+    ).toEqual(variable);
+  });
+
+  it("asks for a variable when a service whose variable the caller can't see moves", () => {
+    const hidden = storedMcp({
+      type: AgentVaultCredentialType.OAuth,
+      source: "variable",
+      memberProvidedFields: [],
+      status: AgentVaultOauthStatus.Connected,
+      issuer: "https://mcp.linear.app",
+      grantedScopes: [],
+      requiredScopes: []
+    });
+    const issuesOf = (data: TServiceForm) => {
+      const result = buildServiceSchema(hidden).safeParse(data);
+      return result.success
+        ? []
+        : result.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`);
+    };
+
+    expect(issuesOf(mcpForm({ oauthUsesVariable: true, oauthVariableKey: "" }))).toEqual([]);
+    expect(
+      issuesOf(
+        mcpForm({
+          oauthUsesVariable: true,
+          oauthVariableKey: "",
+          serverUrl: "https://mcp2.linear.app/mcp"
+        })
+      )
+    ).toEqual([
+      "oauthVariableKey: Choose an OAuth variable again, since the service now connects somewhere else."
+    ]);
   });
 
   it("sends the variable on edit when it changes or the service didn't use one", () => {
@@ -1164,5 +1231,102 @@ describe("moving a service to another destination", () => {
       description:
         "Every member's token for this service will be removed, since the service now connects somewhere else. Each member has to enter theirs again."
     });
+  });
+});
+
+describe("moving a database or SSH service", () => {
+  const CA = "-----BEGIN CERTIFICATE-----\nMIIBcA\n-----END CERTIFICATE-----";
+  const OTHER_CA = "-----BEGIN CERTIFICATE-----\nMIIBcB\n-----END CERTIFICATE-----";
+  const withTls = (tls: { enabled: boolean; verify: boolean; ca: string | null }) => ({
+    ...storedPostgres,
+    tls
+  });
+  const keptLogin = { username: UNCHANGED_SECRET, secret: UNCHANGED_SECRET };
+
+  it("reads a host written the way the API stores it as the same server", () => {
+    ["DB.Internal", "db.internal.", " [db.internal] "].forEach((host) =>
+      expect(isServiceDestinationChanged(postgresForm({ host }), storedPostgres)).toBe(false)
+    );
+    expect(
+      isServiceDestinationChanged(postgresForm({ host: "db2.internal" }), storedPostgres)
+    ).toBe(true);
+    expect(isServiceDestinationChanged(sshKeyForm({ host: "BUILD.internal" }), storedSsh)).toBe(
+      false
+    );
+  });
+
+  it("counts turning TLS or the certificate check off, or trusting another CA, as a move", () => {
+    const verifiedWithCa = withTls({ enabled: true, verify: true, ca: CA });
+
+    expect(isServiceTlsWeakened(postgresForm({ tlsEnabled: false }), storedPostgres)).toBe(true);
+    expect(isServiceTlsWeakened(postgresForm({ tlsVerify: false }), storedPostgres)).toBe(true);
+    expect(isServiceTlsWeakened(postgresForm({ tlsCa: CA }), storedPostgres)).toBe(true);
+    expect(isServiceTlsWeakened(postgresForm({ tlsCa: OTHER_CA }), verifiedWithCa)).toBe(true);
+    expect(isServiceTlsWeakened(postgresForm({ tlsCa: "" }), verifiedWithCa)).toBe(true);
+    expect(serviceMoveOf(postgresForm({ tlsEnabled: false }), storedPostgres)).toBe("tls");
+  });
+
+  it("doesn't count turning TLS or the check on, or the same CA written differently", () => {
+    const verifiedWithCa = withTls({ enabled: true, verify: true, ca: CA });
+
+    expect(
+      isServiceTlsWeakened(
+        postgresForm({ tlsEnabled: true }),
+        withTls({ enabled: false, verify: true, ca: null })
+      )
+    ).toBe(false);
+    expect(
+      isServiceTlsWeakened(
+        postgresForm({ tlsVerify: true }),
+        withTls({ enabled: true, verify: false, ca: null })
+      )
+    ).toBe(false);
+    expect(
+      isServiceTlsWeakened(
+        postgresForm({ tlsCa: `\n  ${CA.replace(/\n/g, "\r\n  ")}\n  ` }),
+        verifiedWithCa
+      )
+    ).toBe(false);
+    expect(isServiceTlsWeakened(sshKeyForm(), storedSsh)).toBe(false);
+    expect(serviceMoveOf(postgresForm(), storedPostgres)).toBeNull();
+  });
+
+  it("asks for the login again after a TLS change, saying why", () => {
+    const result = buildServiceSchema(storedPostgres).safeParse(
+      postgresForm({ ...keptLogin, tlsVerify: false })
+    );
+
+    expect(
+      result.success ? [] : result.error.issues.map((issue) => `${issue.path}: ${issue.message}`)
+    ).toEqual([
+      `username: ${TLS_CHANGED_SERVICE_VALUE_MESSAGE}`,
+      `secret: ${TLS_CHANGED_SERVICE_VALUE_MESSAGE}`
+    ]);
+    expect(
+      buildServiceSchema(storedPostgres).safeParse(postgresForm({ ...keptLogin, tlsEnabled: true }))
+        .success
+    ).toBe(true);
+  });
+
+  it("warns that members' saved values go after a TLS change", () => {
+    expect(
+      membersClearedNotice(
+        postgresForm({
+          username: UNCHANGED_SECRET,
+          secret: "",
+          memberProvidedFields: [AgentVaultVariableReferenceField.CredentialValue],
+          tlsEnabled: false
+        }),
+        {
+          ...storedPostgres,
+          credential: {
+            type: AgentVaultCredentialType.Basic,
+            memberProvidedFields: [AgentVaultVariableReferenceField.CredentialValue]
+          }
+        }
+      )?.description
+    ).toBe(
+      "Every member's password for this service will be removed, since the service's TLS settings changed. Each member has to enter theirs again."
+    );
   });
 });

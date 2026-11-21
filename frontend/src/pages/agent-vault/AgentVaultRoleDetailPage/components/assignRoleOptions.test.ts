@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { AGENT_VAULT_ADMIN_CHANGE_BLOCKED } from "@app/helpers/agentVaultMembers";
+import {
+  AGENT_VAULT_ADMIN_CHANGE_BLOCKED,
+  AGENT_VAULT_ROLE_LIMIT_REACHED
+} from "@app/helpers/agentVaultMembers";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultProductActor, TAgentVaultProductMember } from "@app/hooks/api/agentVault/types";
 
@@ -98,6 +101,22 @@ describe("buildAgentVaultAssignOptions", () => {
       members: [user("viewer", "Me", ["auditors"]) as TAgentVaultProductMember]
     });
     expect(options[0].disabledReason).toBe(SELF_ROLE_CHANGE_BLOCKED);
+  });
+
+  it("keeps away a member who already holds the most roles a member can have", () => {
+    const tenRoles = Array.from({ length: 10 }, (_, index) => `role-${index}`);
+    const options = build({
+      members: [
+        user("u1", "Ada", tenRoles) as TAgentVaultProductMember,
+        user("u2", "Bo", tenRoles.slice(1)) as TAgentVaultProductMember,
+        user("u3", "Cy", ["no-access"]) as TAgentVaultProductMember
+      ]
+    });
+    expect(options.map((option) => [option.id, option.disabledReason])).toEqual([
+      ["u1", AGENT_VAULT_ROLE_LIMIT_REACHED],
+      ["u2", undefined],
+      ["u3", undefined]
+    ]);
   });
 
   it("searches members by name and email, and takes newcomers as the server found them", () => {
