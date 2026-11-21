@@ -1217,7 +1217,7 @@ export const pitServiceFactory = ({
     }
 
     const applied = await folderCommitDAL.transaction(async (trx) => {
-      const secretIdsToLock: string[] = [];
+      const secretsToLock: { id: string; key: string; folderId: string }[] = [];
       for (const { policy, environment, secretPath, changes } of prepared) {
         if (shouldApplyPolicy(policy, dto.actor)) continue;
         const folder = await folderDAL.findBySecretPath(dto.projectId, environment, secretPath, trx);
@@ -1245,13 +1245,18 @@ export const pitServiceFactory = ({
               secretTags: secret.tags.map((tag) => tag.slug)
             })
           );
-          secretIdsToLock.push(secret.id);
+          secretsToLock.push({ id: secret.id, key: secret.key, folderId: folder.id });
         }
       }
 
       // Single-folder saves lock their secret rows before the project-wide cache counter, so the batch takes
-      // every row it will write up front instead of holding that counter while waiting on another folder's rows
-      await secretV2BridgeDAL.lockSecretsForUpdate(secretIdsToLock, trx);
+      // every row it will write up front, in the secretKey order the bulk secret routes already lock in
+      await secretV2BridgeDAL.lockSecretsForUpdate(
+        secretsToLock
+          .sort((a, b) => a.key.localeCompare(b.key) || a.folderId.localeCompare(b.folderId))
+          .map(({ id }) => id),
+        trx
+      );
 
       const results: Awaited<ReturnType<typeof applyNewCommitRaw>>[] = [];
       for (const commit of prepared) {
