@@ -245,13 +245,10 @@ export const getApprovalRequestSubjectMetadata = (
     return { certificateRequestId, commonName: certificateRequest?.commonName, profileName };
   }
 
-  if (request.type === ApprovalPolicyType.CertRevocation) {
-    const { certificateId, commonName, profileName } = requestData as TCertRevocationRequestData;
-    return { certificateId, commonName, profileName };
-  }
-
-  if (request.type === ApprovalPolicyType.CertDeletion) {
-    const { certificateId, commonName, profileName } = requestData as TCertDeletionRequestData;
+  if (request.type === ApprovalPolicyType.CertRevocation || request.type === ApprovalPolicyType.CertDeletion) {
+    const { certificateId, commonName, profileName } = requestData as
+      | TCertRevocationRequestData
+      | TCertDeletionRequestData;
     return { certificateId, commonName, profileName };
   }
 

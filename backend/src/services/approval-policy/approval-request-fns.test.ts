@@ -1,8 +1,12 @@
 import { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
-import { ApprovalRequestApprovalDecision, ApproverType } from "./approval-policy-enums";
-import { isEligibleStepApprover, upsertApprovalRequestStepDecision } from "./approval-request-fns";
+import { ApprovalPolicyType, ApprovalRequestApprovalDecision, ApproverType } from "./approval-policy-enums";
+import {
+  getApprovalRequestSubjectMetadata,
+  isEligibleStepApprover,
+  upsertApprovalRequestStepDecision
+} from "./approval-request-fns";
 
 const TX = { isTx: true } as unknown as Knex;
 
@@ -75,4 +79,28 @@ describe("upsertApprovalRequestStepDecision", () => {
     );
     expect(result).toMatchObject({ id: "approval-7", decision: ApprovalRequestApprovalDecision.Rejected });
   });
+});
+
+describe("getApprovalRequestSubjectMetadata", () => {
+  test.each([ApprovalPolicyType.CertRevocation, ApprovalPolicyType.CertDeletion])(
+    "names the certificate a %s request is about",
+    (type) => {
+      const metadata = getApprovalRequestSubjectMetadata({
+        type,
+        requestData: {
+          version: 1,
+          requestData: {
+            certificateId: "cert-1",
+            serialNumber: "4f1a9c2be07d",
+            commonName: "web.example.com",
+            profileId: "profile-1",
+            profileName: "web-servers",
+            applicationId: "app-1"
+          }
+        }
+      });
+
+      expect(metadata).toEqual({ certificateId: "cert-1", commonName: "web.example.com", profileName: "web-servers" });
+    }
+  );
 });
