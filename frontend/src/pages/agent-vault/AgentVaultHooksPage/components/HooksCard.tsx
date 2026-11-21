@@ -243,7 +243,7 @@ export const HooksCard = () => {
                       {hook.name}
                     </RowLink>
                   </TableCell>
-                  <TableCell isTruncatable className="font-mono text-xs">
+                  <TableCell isTruncatable>
                     {hook.url}
                   </TableCell>
                   <TableCell isTruncatable>
