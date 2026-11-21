@@ -8,7 +8,7 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 
-import { errorMessage, toast } from "../../access/toast";
+import { errorMessage, failed, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import type { HomeApproval, HomeAttention, HomeQueue } from "../../data/home/contract";
 import { productOf } from "../../shell/navigation";
@@ -94,11 +94,7 @@ const ApprovalRow = ({ approval }: { approval: HomeApproval }) => {
       await approve.mutateAsync(approval.target);
       toast({ tone: "ok", title: "Request approved" });
     } catch (error) {
-      toast({
-        tone: "bad",
-        title: "Couldn't approve the request",
-        description: errorMessage(error)
-      });
+      failed("Couldn't approve the request", error);
     } finally {
       setPending(false);
     }
