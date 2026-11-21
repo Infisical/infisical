@@ -97,6 +97,7 @@ Each platform has its own way to run the proxy:
 - **Modal:** a [sidecar](https://modal.com/docs/guide/sandbox-sidecars) in the agent's sandbox (see the [Modal guide](/documentation/platform/agent-vault/guides/modal))
 - **Daytona:** a [linked sandbox](https://www.daytona.io/docs/en/sandboxes/#linked-sandboxes) (see the [Daytona guide](/documentation/platform/agent-vault/guides/daytona))
 - **Docker:** a second container in each run's Docker Compose project (see the [Docker guide](/documentation/platform/agent-vault/guides/docker))
+- **boxd:** a second machine on a [network](https://docs.boxd.sh/guides/vm-to-vm?ref=infisical#networks) that only the agent's machine and the proxy's machine share (see the [boxd guide](/documentation/platform/agent-vault/guides/boxd))
 
 You [create the proxy in Infisical](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it) once and start every copy with the same proxy token.
 
