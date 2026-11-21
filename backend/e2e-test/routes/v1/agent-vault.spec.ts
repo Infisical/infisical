@@ -12813,7 +12813,7 @@ describe("Agent Vault V1 Router", async () => {
         ...extra
       });
       expect(created.statusCode, created.payload).toBe(200);
-      return created.json().service as { id: string; name: string; hook?: unknown };
+      return created.json().service as { id: string; name: string; hostPattern: string; hook?: unknown };
     };
 
     const createHook = async (name: string) => {
@@ -12889,7 +12889,9 @@ describe("Agent Vault V1 Router", async () => {
       expect(read.json().service.hook).toEqual({ id: hook.id, name: "svc-hook", methods: ["POST"] });
       const listed = await inject("GET", hooksUrl);
       const listedHook = (listed.json().hooks as { id: string; usedBy: unknown }[]).find(({ id }) => id === hook.id);
-      expect(listedHook?.usedBy).toEqual([{ id: service.id, name: service.name }]);
+      expect(listedHook?.usedBy).toEqual([
+        { id: service.id, name: service.name, type: "http", hostPattern: service.hostPattern }
+      ]);
 
       const { resolve } = await mintAndResolve(
         { services: [service.name, plain.name], metadata: { userRef: "u-42" } },
@@ -13007,7 +13009,9 @@ describe("Agent Vault V1 Router", async () => {
 
       const deleted = await inject("DELETE", `${hooksUrl}/${hook.id}`);
       expect(deleted.statusCode, deleted.payload).toBe(200);
-      expect(deleted.json().hook.usedBy).toEqual([{ id: service.id, name: service.name }]);
+      expect(deleted.json().hook.usedBy).toEqual([
+        { id: service.id, name: service.name, type: "http", hostPattern: service.hostPattern }
+      ]);
 
       expect((await resolve()).services[0].hook).toBeNull();
       const read = await inject("GET", `${servicesUrl}/${service.id}`);

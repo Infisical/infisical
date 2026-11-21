@@ -193,7 +193,12 @@ export const registerAgentVaultHookRouter = async (server: FastifyZodProvider) =
         projectId,
         event: {
           type: EventType.AGENT_VAULT_HOOK_DELETE,
-          metadata: { hookId: hook.id, hookName: hook.name, url: hook.url, services: hook.usedBy }
+          metadata: {
+            hookId: hook.id,
+            hookName: hook.name,
+            url: hook.url,
+            services: hook.usedBy.map(({ id, name }) => ({ id, name }))
+          }
         }
       });
 

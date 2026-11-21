@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { linkOptions } from "@tanstack/react-router";
 import { MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, TrashIcon } from "lucide-react";
 
 import { DeleteHookDialog } from "@app/components/agent-vault/hooks/DeleteHookDialog";
 import { HookSheet } from "@app/components/agent-vault/hooks/HookSheet";
+import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import { AgentVaultHooksUpgradeIntent, useUpgradeGate } from "@app/components/license/UpgradeGate";
 import {
   Button,
@@ -26,6 +28,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  OverflowBadgeList,
   Pagination,
   RowLink,
   Skeleton,
@@ -34,10 +37,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  TableRow
 } from "@app/components/v3";
 import {
   ProjectPermissionAgentVaultHookActions,
@@ -59,30 +59,29 @@ import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
 import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 
-const SHOWN_USED_BY = 2;
+const renderServiceIcon = (service: TAgentVaultHook["usedBy"][number]) => (
+  <ServiceIcon hostPattern={service.hostPattern} serviceType={service.type} className="size-4" />
+);
 
-const UsedBySummary = ({ usedBy }: { usedBy: TAgentVaultHook["usedBy"] }) => {
-  if (!usedBy.length) return <span className="text-muted">No services</span>;
-  const names = usedBy.map((service) => service.name);
-  const shown = names.slice(0, SHOWN_USED_BY).join(", ");
-  if (names.length <= SHOWN_USED_BY) return <span className="truncate">{shown}</span>;
+const UsedByBadges = ({ usedBy }: { usedBy: TAgentVaultHook["usedBy"] }) => {
+  const { projectId } = useProject();
+  const { currentOrg } = useOrganization();
+
+  if (usedBy.length === 0) return <span className="text-sm text-muted">Unused</span>;
+
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="truncate" data-row-interactive>
-          {shown} <span className="text-muted">+{names.length - SHOWN_USED_BY}</span>
-        </span>
-      </TooltipTrigger>
-      <TooltipContent className="max-w-sm">
-        <ul className="flex flex-col gap-0.5">
-          {usedBy.map((service) => (
-            <li key={service.id} className="break-all">
-              {service.name}
-            </li>
-          ))}
-        </ul>
-      </TooltipContent>
-    </Tooltip>
+    <OverflowBadgeList
+      items={usedBy}
+      getKey={(service) => service.id}
+      getLabel={(service) => service.name}
+      getIcon={renderServiceIcon}
+      getLinkProps={() =>
+        linkOptions({
+          to: "/organizations/$orgId/projects/agent-vault/$projectId/services",
+          params: { orgId: currentOrg.id, projectId }
+        })
+      }
+    />
   );
 };
 
@@ -263,8 +262,8 @@ export const HooksCard = () => {
                       {hook.url}
                     </span>
                   </TableCell>
-                  <TableCell isTruncatable>
-                    <UsedBySummary usedBy={hook.usedBy} />
+                  <TableCell>
+                    <UsedByBadges usedBy={hook.usedBy} />
                   </TableCell>
                   <TableCell variant="action">
                     {(canEdit || canDelete) && (

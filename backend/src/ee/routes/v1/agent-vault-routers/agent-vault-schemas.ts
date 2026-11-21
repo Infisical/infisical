@@ -2265,7 +2265,9 @@ export const AgentVaultHookSchema = z.object({
   usedBy: z
     .object({
       id: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId),
-      name: z.string().describe(AGENT_VAULT.SERVICE.name)
+      name: z.string().describe(AGENT_VAULT.SERVICE.name),
+      type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.VARIABLE.usedByServiceType),
+      hostPattern: z.string().nullable().describe(AGENT_VAULT.VARIABLE.usedByServiceHostPattern)
     })
     .array()
     .describe(AGENT_VAULT.HOOK.usedBy),

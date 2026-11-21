@@ -21,7 +21,7 @@ export type TUpdateHookDTO = THookByIdDTO & {
   secret?: string;
 };
 
-export type THookServiceRef = { id: string; name: string };
+export type THookServiceRef = { id: string; name: string; type: string; hostPattern: string | null };
 
 /** A saved hook as every read returns it: never its secret. */
 export type TAgentVaultHook = {

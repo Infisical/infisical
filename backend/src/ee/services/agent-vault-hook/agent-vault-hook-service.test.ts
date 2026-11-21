@@ -13,8 +13,13 @@ const PROJECT_ID = "project-1";
 const HOOK_ID = "00000000-0000-4000-8000-0000000000aa";
 const HOOK_URL = "https://hooks.example.com/agent-vault";
 const SECRET = "s".repeat(32);
-const GITHUB = { id: "11111111-1111-4111-8111-111111111111", name: "github" };
-const LINEAR = { id: "22222222-2222-4222-8222-222222222222", name: "linear" };
+const GITHUB = {
+  id: "11111111-1111-4111-8111-111111111111",
+  name: "github",
+  type: "http",
+  hostPattern: "api.github.com"
+};
+const LINEAR = { id: "22222222-2222-4222-8222-222222222222", name: "linear", type: "mcp", hostPattern: null };
 
 const ctx = {
   actor: ActorType.USER,
@@ -49,7 +54,7 @@ const buildService = ({
   existingByName?: typeof storedHook;
   // null for a hook that isn't the project's.
   stored?: typeof storedHook | null;
-  usedBy?: { id: string; name: string }[];
+  usedBy?: { id: string; name: string; type: string; hostPattern: string | null }[];
   reachesEveryBundle?: boolean;
 } = {}) => {
   const tx = { raw: vi.fn() };

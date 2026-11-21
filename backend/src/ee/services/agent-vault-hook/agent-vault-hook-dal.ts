@@ -154,10 +154,12 @@ export const agentVaultHookDALFactory = (db: TDbClient) => {
             .whereIn(`${TableName.AgentVaultAccessBundleService}.accessBundleId`, accessBundleIds);
         });
       }
-      const rows = (await query.orderBy("name", "asc").select("id", "name", "hookId")) as (THookServiceRef & {
+      const rows = (await query
+        .orderBy("name", "asc")
+        .select("id", "name", "type", "hostPattern", "hookId")) as (THookServiceRef & {
         hookId: string;
       })[];
-      rows.forEach(({ hookId, id, name }) => usedBy.set(hookId, [...(usedBy.get(hookId) ?? []), { id, name }]));
+      rows.forEach(({ hookId, ...service }) => usedBy.set(hookId, [...(usedBy.get(hookId) ?? []), service]));
       return usedBy;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault services using hooks" });
@@ -192,7 +194,7 @@ export const agentVaultHookDALFactory = (db: TDbClient) => {
         .whereNull("sessionId")
         .orderBy("id", "asc")
         .forNoKeyUpdate()
-        .select("id", "name")) as THookServiceRef[];
+        .select("id", "name", "type", "hostPattern")) as THookServiceRef[];
     } catch (error) {
       throw new DatabaseError({ error, name: "Lock agent vault services using a hook" });
     }

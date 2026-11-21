@@ -1200,7 +1200,7 @@ export type TAgentVaultHook = {
   description: string | null;
   url: string;
   /** The saved services that use it. */
-  usedBy: { id: string; name: string }[];
+  usedBy: { id: string; name: string; type: AgentVaultServiceType; hostPattern: string | null }[];
   createdAt: string;
   updatedAt: string;
 };
