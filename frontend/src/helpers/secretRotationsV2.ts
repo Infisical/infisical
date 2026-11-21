@@ -198,7 +198,7 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
 
 const SECRET_ROTATION_ADDITIONAL_CONNECTION_MAP: Partial<Record<SecretRotation, AppConnection[]>> =
   {
-    [SecretRotation.HpIloLocalAccount]: [AppConnection.HpeIloRedFish]
+    [SecretRotation.HpIloLocalAccount]: [AppConnection.Redfish]
   };
 
 export const getSecretRotationConnectionApps = (type: SecretRotation): AppConnection[] => [

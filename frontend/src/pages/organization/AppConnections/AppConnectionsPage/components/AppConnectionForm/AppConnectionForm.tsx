@@ -59,7 +59,6 @@ import { GoDaddyConnectionForm } from "./GoDaddyConnectionForm";
 import { HasuraCloudConnectionForm } from "./HasuraCloudConnectionForm";
 import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
 import { HerokuConnectionForm } from "./HerokuAppConnectionForm";
-import { HpeIloConnectionForm } from "./HpeIloConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 import { ImpervaConnectionForm } from "./ImpervaConnectionForm";
 import { IncidentIoConnectionForm } from "./IncidentIoConnectionForm";
@@ -92,6 +91,7 @@ import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { PowerDnsConnectionForm } from "./PowerDnsConnectionForm";
 import { QoveryConnectionForm } from "./QoveryConnectionForm";
 import { RailwayConnectionForm } from "./RailwayConnectionForm";
+import { RedfishConnectionForm } from "./RedfishConnectionForm";
 import { RedisConnectionForm } from "./RedisConnectionForm";
 import { RenderConnectionForm } from "./RenderConnectionForm";
 import { RundeckConnectionForm } from "./RundeckConnectionForm";
@@ -410,8 +410,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <DatadogConnectionForm onSubmit={onSubmit} />;
       case AppConnection.F5BigIp:
         return <F5BigIpConnectionForm onSubmit={onSubmit} />;
-      case AppConnection.HpeIloRedFish:
-        return <HpeIloConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Redfish:
+        return <RedfishConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Jira:
         return <JiraConnectionForm onSubmit={onSubmit} />;
       case AppConnection.IncidentIo:
@@ -736,8 +736,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <DatadogConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.F5BigIp:
         return <F5BigIpConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
-      case AppConnection.HpeIloRedFish:
-        return <HpeIloConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Redfish:
+        return <RedfishConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Jira:
         return <JiraConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.IncidentIo:

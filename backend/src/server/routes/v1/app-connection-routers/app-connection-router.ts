@@ -149,7 +149,6 @@ import {
   SanitizedHCVaultConnectionSchema
 } from "@app/services/app-connection/hc-vault";
 import { HerokuConnectionListItemSchema, SanitizedHerokuConnectionSchema } from "@app/services/app-connection/heroku";
-import { HpeIloConnectionListItemSchema, SanitizedHpeIloConnectionSchema } from "@app/services/app-connection/hpe-ilo";
 import {
   HumanitecConnectionListItemSchema,
   SanitizedHumanitecConnectionSchema
@@ -240,6 +239,10 @@ import {
   RailwayConnectionListItemSchema,
   SanitizedRailwayConnectionSchema
 } from "@app/services/app-connection/railway";
+import {
+  RedfishConnectionListItemSchema,
+  SanitizedRedfishConnectionSchema
+} from "@app/services/app-connection/redfish";
 import { RedisConnectionListItemSchema, SanitizedRedisConnectionSchema } from "@app/services/app-connection/redis";
 import {
   RenderConnectionListItemSchema,
@@ -408,7 +411,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedDaytonaConnectionSchema.options,
   ...SanitizedStripeConnectionSchema.options,
   ...SanitizedKeeperConnectionSchema.options,
-  ...SanitizedHpeIloConnectionSchema.options,
+  ...SanitizedRedfishConnectionSchema.options,
   ...SanitizedServiceNowConnectionSchema.options,
   ...SanitizedS3CompatibleConnectionSchema.options,
   ...SanitizedJiraConnectionSchema.options,
@@ -510,7 +513,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   DaytonaConnectionListItemSchema,
   StripeConnectionListItemSchema,
   KeeperConnectionListItemSchema,
-  HpeIloConnectionListItemSchema,
+  RedfishConnectionListItemSchema,
   ServiceNowConnectionListItemSchema,
   S3CompatibleConnectionListItemSchema,
   JiraConnectionListItemSchema,

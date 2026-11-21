@@ -20,6 +20,7 @@ export const PROVIDER_ICON_VARIANTS: Record<string, ProviderIconVariants> = {
   "OpenAI.png": { onDark: "OpenAIWhite.png" },
   "OpenAIWhite.png": { onLight: "OpenAI.png" },
   "Railway.png": { onLight: "Railway.on-light.png" },
+  "Redfish.png": { onLight: "Redfish.on-light.png" },
   "Remix.png": { onLight: "Remix.on-light.png" },
   "SSH.png": { onLight: "SSH.on-light.png" },
   "UltraDNS.png": { onLight: "UltraDNS.on-light.png" },
