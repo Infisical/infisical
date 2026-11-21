@@ -135,3 +135,6 @@
 .read {
   align-self: flex-start;
 }
+:global([data-slot="sidebar"]) > :has(> .card) {
+  flex-shrink: 0;
+}
