@@ -130,7 +130,7 @@ export const AgentVaultIdentitiesTab = () => {
   const verb = managed ? "Delete" : "Remove";
 
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       <FilterBar
         label="Machine identity filters"
         fields={[]}

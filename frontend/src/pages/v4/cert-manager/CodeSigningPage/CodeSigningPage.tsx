@@ -157,7 +157,7 @@ const SignersList = ({ orgId, projectId }: { orgId: string; projectId: string })
     );
 
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       <Inline gap={12} align="center" wrap={false}>
         <Input
           icon="search"

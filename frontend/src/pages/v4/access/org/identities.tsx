@@ -452,7 +452,7 @@ export const OrgIdentitiesTab = () => {
 
   return (
     <Stack gap={32}>
-      <Stack gap={16}>
+      <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
         <FilterBar
           label="Machine identity filters"
           fields={[]}

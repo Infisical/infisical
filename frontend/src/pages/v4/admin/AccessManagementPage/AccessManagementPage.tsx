@@ -111,7 +111,7 @@ export const AccessManagementPage = () => {
     <Stack gap={24}>
       <PageTitle title="Access control" />
       <PageHeader title="Access control" description="Manage server admins on this instance." />
-      <Stack gap={16}>
+      <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
         <FilterBar
           label="Server admin filters"
           fields={[]}

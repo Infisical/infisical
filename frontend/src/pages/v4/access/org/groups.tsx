@@ -280,7 +280,7 @@ export const OrgGroupsTab = () => {
   const searching = Boolean(debouncedSearch);
   const canCreate = can(OrgPermissionGroupActions.Create);
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       <FilterBar
         label="Organization group filters"
         fields={[

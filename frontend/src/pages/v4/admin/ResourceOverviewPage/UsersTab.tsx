@@ -123,7 +123,7 @@ export const UsersTab = () => {
   const pageIds = new Set(users.map((user) => user.id));
 
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       <FilterBar
         label="User filters"
         fields={[

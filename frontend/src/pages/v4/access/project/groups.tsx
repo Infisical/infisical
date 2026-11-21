@@ -101,7 +101,7 @@ export const ProjectGroupsTab = () => {
   };
 
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       <FilterBar
         label={`${accessLabel(scope.projectType, "group")} filters`}
         fields={[]}

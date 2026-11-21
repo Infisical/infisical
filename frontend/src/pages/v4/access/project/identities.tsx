@@ -233,7 +233,7 @@ export const ProjectIdentitiesTab = () => {
   const searching = Boolean(debouncedSearch.trim() || roleFilter.length);
 
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       <FilterBar
         label={`${accessLabel(scope.projectType, "machine identity")} filters`}
         fields={[

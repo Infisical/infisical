@@ -322,7 +322,7 @@ export const ChangeRequests = ({
     );
 
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       <FilterBar
         label="Change request filters"
         fields={[

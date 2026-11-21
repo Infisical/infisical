@@ -175,7 +175,7 @@ export const AuditLogStreamsTab = () => {
   ];
 
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       <FilterBar
         label="Log stream filters"
         fields={[

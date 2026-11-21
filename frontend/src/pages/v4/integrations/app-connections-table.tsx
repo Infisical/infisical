@@ -553,7 +553,7 @@ export const AppConnectionsTable = ({
   };
 
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       {!isProject && <ProjectScopeBanner />}
       <FilterBar
         label="App connection filters"

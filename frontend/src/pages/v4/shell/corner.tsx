@@ -1,4 +1,5 @@
 import { useState, useSyncExternalStore } from "react";
+import { AnimatedCollapse } from "@infisical/cipher/ui/animated-collapse";
 import { Button } from "@infisical/cipher/ui/button";
 import { Icon } from "@infisical/cipher/ui/icon";
 import type { SidebarProps } from "@infisical/cipher/ui/sidebar";
@@ -159,7 +160,7 @@ const GetStartedCard = ({ getStarted }: { getStarted: ReturnType<typeof useGetSt
           <span key={step.id} data-done={step.done || undefined} />
         ))}
       </div>
-      {open ? (
+      <AnimatedCollapse open={open}>
         <ul className={styles.steps}>
           {steps.map((step) => (
             <li key={step.id}>
@@ -177,14 +178,15 @@ const GetStartedCard = ({ getStarted }: { getStarted: ReturnType<typeof useGetSt
             </Button>
           </li>
         </ul>
-      ) : (
-        next && (
+      </AnimatedCollapse>
+      <AnimatedCollapse open={!open && Boolean(next)}>
+        {next && (
           <a href={next.href} className={styles.next}>
             <span>{`Next: ${next.label}`}</span>
             <Icon name="chev-right" size={14} />
           </a>
-        )
-      )}
+        )}
+      </AnimatedCollapse>
     </div>
   );
 };

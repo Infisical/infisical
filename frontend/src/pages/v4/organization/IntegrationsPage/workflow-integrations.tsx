@@ -215,7 +215,7 @@ export const WorkflowIntegrationsTab = () => {
   const isFiltered = Boolean(query.trim()) || platformFilter.length > 0;
 
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       <FilterBar
         label="Workflow integration filters"
         fields={[

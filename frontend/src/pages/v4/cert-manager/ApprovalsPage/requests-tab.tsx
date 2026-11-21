@@ -130,7 +130,7 @@ export const RequestsTab = ({ orgId, projectId }: { orgId: string; projectId: st
   ];
   const filtered = Boolean(term) || status !== ApprovalRequestStatus.Pending;
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       <FilterBar
         label="Certificate request filters"
         fields={[statusField]}

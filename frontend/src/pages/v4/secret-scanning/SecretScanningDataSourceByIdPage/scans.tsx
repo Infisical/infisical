@@ -175,7 +175,7 @@ export const ScanHistoryTab = ({ dataSource }: { dataSource: TSecretScanningData
   ];
 
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       <FilterBar
         label="Scan filters"
         fields={[]}

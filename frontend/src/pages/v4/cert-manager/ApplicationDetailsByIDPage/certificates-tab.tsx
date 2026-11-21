@@ -223,7 +223,7 @@ export const CertificatesTab = ({
   };
 
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       <FilterBar
         label="Certificate filters"
         fields={fields}

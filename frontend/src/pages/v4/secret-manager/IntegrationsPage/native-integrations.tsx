@@ -278,7 +278,7 @@ export const NativeIntegrationsTab = ({
   ];
 
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       <RetirementNotice orgId={orgId} projectId={projectId} />
       <FilterBar
         label="Native integration filters"

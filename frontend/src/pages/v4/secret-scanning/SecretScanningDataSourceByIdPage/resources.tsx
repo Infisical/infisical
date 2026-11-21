@@ -383,7 +383,7 @@ export const ResourcesTab = ({ dataSource }: { dataSource: TSecretScanningDataSo
   };
 
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       <FilterBar
         label={`${resource.singularTitle} filters`}
         fields={[]}

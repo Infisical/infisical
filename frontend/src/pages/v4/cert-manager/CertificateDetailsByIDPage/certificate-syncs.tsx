@@ -179,7 +179,7 @@ const SyncsDialog = ({
               {`Select which syncs "${certificate.commonName}" should be part of.`}
             </DialogDescription>
           </DialogHeader>
-          <Stack gap={12}>
+          <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
             <Input
               icon="search"
               aria-label="Search certificate syncs"

@@ -74,7 +74,7 @@ export const AgentVaultGroupsTab = () => {
   };
 
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       <FilterBar
         label="Group filters"
         fields={[]}

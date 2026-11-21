@@ -160,7 +160,7 @@ export const InstallationsTab = ({ orgId, projectId }: { orgId: string; projectI
     );
 
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       <Input
         icon="search"
         aria-label="Search installations"

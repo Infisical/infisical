@@ -250,7 +250,7 @@ export const RequestsTab = ({
   ];
 
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       <FilterBar
         label="Request filters"
         fields={[statusField]}

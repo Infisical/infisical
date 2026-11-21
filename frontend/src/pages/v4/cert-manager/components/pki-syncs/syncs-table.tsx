@@ -271,7 +271,7 @@ export const PkiSyncsTable = ({
   const presentDestinations = [...new Set(syncs.map((sync) => sync.destination))] as PkiSync[];
 
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       <FilterBar
         label="Certificate sync filters"
         fields={[

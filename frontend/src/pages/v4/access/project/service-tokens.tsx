@@ -138,7 +138,7 @@ export const ServiceTokensTab = () => {
   };
 
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       <FilterBar
         label="Service token filters"
         fields={[]}

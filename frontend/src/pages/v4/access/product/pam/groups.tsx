@@ -258,7 +258,7 @@ export const PamGroupsTab = () => {
   };
 
   return (
-    <Stack gap={16}>
+    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
       <FilterBar
         label="Group filters"
         fields={[]}
