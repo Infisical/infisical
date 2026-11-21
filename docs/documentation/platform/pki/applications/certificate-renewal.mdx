@@ -157,7 +157,9 @@ Automatic renewal always places a new order. To reissue on the existing order, r
 
     To reissue a DigiCert certificate on its current order, send `"externalConfiguration": { "reissue": true }` and leave out `ttl`.
 
-    A request with no body renews the certificate as it is with a new key pair, so existing automation keeps working unchanged.
+    A request with no body renews the certificate as it is with a new key pair.
+
+    If an [approval policy](/documentation/platform/pki/applications/approvals#renewals) holds the renewal for approval, the response has the status `pending_approval`, an empty `certificate`, and a `certificateRequestId`. Poll the [Get certificate request](/api-reference/endpoints/certificates/certificate-request) endpoint with that ID to check the request's status and get the renewed certificate once it's issued.
 
     See the [Renew Certificate endpoint](/api-reference/endpoints/certificates/renew) for the full request and response.
 
