@@ -10,7 +10,7 @@ import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dr
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Inline } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { useNavigate } from "@tanstack/react-router";
@@ -26,6 +26,7 @@ import {
 import { getApplicationCertificateAccess } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
 
 import { RESTRICTED } from "../../access/ui";
+import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import type { TListCertificatesDTO } from "../../data/certificates/contract";
 import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
@@ -223,7 +224,7 @@ export const CertificatesTab = ({
   };
 
   return (
-    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
+    <ToolbarStack>
       <FilterBar
         label="Certificate filters"
         fields={fields}
@@ -377,6 +378,6 @@ export const CertificatesTab = ({
         projectId={projectId}
         onClose={() => setDeleting(undefined)}
       />
-    </Stack>
+    </ToolbarStack>
   );
 };

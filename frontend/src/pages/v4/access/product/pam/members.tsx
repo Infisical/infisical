@@ -34,6 +34,7 @@ import {
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import type { TWorkspaceUser } from "@app/hooks/api/users/types";
 
+import { ToolbarStack } from "../../../components/toolbar-stack";
 import { useV4Adapter } from "../../../data/adapters";
 import { useV4Session } from "../../../data/session/contract";
 import { accessLinks } from "../../links";
@@ -296,7 +297,7 @@ export const PamMembersTab = () => {
   };
 
   return (
-    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
+    <ToolbarStack>
       <FilterBar
         label="Member filters"
         fields={[]}
@@ -371,6 +372,6 @@ export const PamMembersTab = () => {
         actionLabel="Remove member"
         onConfirm={remove}
       />
-    </Stack>
+    </ToolbarStack>
   );
 };

@@ -23,6 +23,7 @@ import {
   type TApprovalRequest
 } from "@app/hooks/api/approvalRequests/types";
 
+import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, v4Path } from "../../links";
 import { RequestsTab as CertificateRequestsTab } from "../ApplicationDetailsByIDPage/requests-tab";
@@ -195,7 +196,7 @@ const RequestsTable = ({
   const filtered = Boolean(term) || statuses.length !== 1 || statuses[0] !== "pending";
   const onlyPending = statuses.length === 1 && statuses[0] === "pending";
   return (
-    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
+    <ToolbarStack>
       <FilterBar
         label={isSigning ? "Signing request filters" : "Application request filters"}
         fields={[statusField]}
@@ -263,7 +264,7 @@ const RequestsTable = ({
           requests.length ? `${rows.length} of ${requests.length} requests` : undefined
         }
       />
-    </Stack>
+    </ToolbarStack>
   );
 };
 

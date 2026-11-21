@@ -20,7 +20,6 @@ import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dr
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Stack } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { WrenchIcon } from "lucide-react";
 
@@ -31,6 +30,7 @@ import {
 import { isCustomProjectRole } from "@app/helpers/roles";
 import type { TProjectRole } from "@app/hooks/api/roles/types";
 
+import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
@@ -166,7 +166,7 @@ export const ProjectRolesTab = () => {
   };
 
   return (
-    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
+    <ToolbarStack>
       <FilterBar
         label={`${accessLabel(scope.projectType, "role")} filters`}
         fields={[]}
@@ -255,6 +255,6 @@ export const ProjectRolesTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Stack>
+    </ToolbarStack>
   );
 };

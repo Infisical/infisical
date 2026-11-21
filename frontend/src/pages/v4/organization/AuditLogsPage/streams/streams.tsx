@@ -36,6 +36,7 @@ import type { TAuditLogStream } from "@app/hooks/api/auditLogStreams/types";
 import { useOrgPermission } from "../../../access/permissions";
 import { failed, saved } from "../../../access/toast";
 import { AccessRestricted, RESTRICTED, type Sort } from "../../../access/ui";
+import { ToolbarStack } from "../../../components/toolbar-stack";
 import { useV4Adapter } from "../../../data/adapters";
 import { useV4Session } from "../../../data/session/contract";
 import { UpgradeGate } from "../../../license";
@@ -175,7 +176,7 @@ export const AuditLogStreamsTab = () => {
   ];
 
   return (
-    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
+    <ToolbarStack>
       <FilterBar
         label="Log stream filters"
         fields={[
@@ -362,6 +363,6 @@ export const AuditLogStreamsTab = () => {
         isOpen={Boolean(upgrade)}
         onOpenChange={(open) => !open && setUpgrade(undefined)}
       />
-    </Stack>
+    </ToolbarStack>
   );
 };

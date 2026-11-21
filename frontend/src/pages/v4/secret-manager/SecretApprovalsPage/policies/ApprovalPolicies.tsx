@@ -25,6 +25,7 @@ import type { TWorkspaceUser } from "@app/hooks/api/users/types";
 
 import { useOrgId, useProjectPermission } from "../../../access/permissions";
 import { usePagedList } from "../../../access/ui";
+import { ToolbarStack } from "../../../components/toolbar-stack";
 import { useV4Adapter } from "../../../data/adapters";
 import { useUpgradeGate } from "../../../license";
 import { PolicySheet, type PolicyRecord } from "./policy-sheet";
@@ -353,7 +354,7 @@ export const ApprovalPolicies = ({
     );
 
   return (
-    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
+    <ToolbarStack>
       <FilterBar
         label="Policy filters"
         fields={[
@@ -497,6 +498,6 @@ export const ApprovalPolicies = ({
         onClose={() => setRemoving(undefined)}
       />
       {upgradeGate}
-    </Stack>
+    </ToolbarStack>
   );
 };

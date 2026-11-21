@@ -22,6 +22,7 @@ import type { AdminEmailDomain } from "@app/hooks/api/admin/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 
 import { failed, saved } from "../../access/toast";
+import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { ConfirmDialog, pagination, usePageReset, usePaging } from "./shared";
 
@@ -175,7 +176,7 @@ export const EmailDomainsTab = () => {
   ];
 
   return (
-    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
+    <ToolbarStack>
       <FilterBar
         label="Email domain filters"
         fields={[]}
@@ -241,6 +242,6 @@ export const EmailDomainsTab = () => {
           saved("Email domain deleted");
         }}
       />
-    </Stack>
+    </ToolbarStack>
   );
 };

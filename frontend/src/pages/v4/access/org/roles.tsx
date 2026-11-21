@@ -42,6 +42,7 @@ import {
 import { isCustomOrgRole } from "@app/helpers/roles";
 import type { TOrgRole } from "@app/hooks/api/roles/types";
 
+import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
@@ -312,7 +313,7 @@ export const OrgRolesTab = () => {
   };
 
   return (
-    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
+    <ToolbarStack>
       <FilterBar
         label="Organization role filters"
         fields={[]}
@@ -396,6 +397,6 @@ export const OrgRolesTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Stack>
+    </ToolbarStack>
   );
 };

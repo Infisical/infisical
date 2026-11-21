@@ -23,6 +23,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 
 import { useProjectPermission } from "../../access/permissions";
 import { RESTRICTED } from "../../access/ui";
+import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { useUpgradeGate } from "../../license";
 import { orgHref, useGo, v4Path } from "../../links";
@@ -157,7 +158,7 @@ const SignersList = ({ orgId, projectId }: { orgId: string; projectId: string })
     );
 
   return (
-    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
+    <ToolbarStack>
       <Inline gap={12} align="center" wrap={false}>
         <Input
           icon="search"
@@ -208,7 +209,7 @@ const SignersList = ({ orgId, projectId }: { orgId: string; projectId: string })
         onClose={() => setCreating(false)}
       />
       {upgradeGate}
-    </Stack>
+    </ToolbarStack>
   );
 };
 

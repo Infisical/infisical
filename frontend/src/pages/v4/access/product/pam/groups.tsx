@@ -32,6 +32,7 @@ import type { TGroupMembership } from "@app/hooks/api/groups/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
+import { ToolbarStack } from "../../../components/toolbar-stack";
 import { useV4Adapter } from "../../../data/adapters";
 import { accessLinks } from "../../links";
 import { useGo } from "../../navigation";
@@ -258,7 +259,7 @@ export const PamGroupsTab = () => {
   };
 
   return (
-    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
+    <ToolbarStack>
       <FilterBar
         label="Group filters"
         fields={[]}
@@ -333,6 +334,6 @@ export const PamGroupsTab = () => {
         actionLabel="Remove group"
         onConfirm={remove}
       />
-    </Stack>
+    </ToolbarStack>
   );
 };

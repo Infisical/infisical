@@ -11,7 +11,6 @@ import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { useNavigate } from "@tanstack/react-router";
@@ -32,6 +31,7 @@ import { useProjectPermission } from "../../access/permissions";
 import { formatDate, formatDateTime } from "../../access/roles";
 import { failed, toast } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
+import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
 import { orgHref, v4Path } from "../../links";
@@ -250,7 +250,7 @@ export const RequestsTab = ({
   ];
 
   return (
-    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
+    <ToolbarStack>
       <FilterBar
         label="Request filters"
         fields={[statusField]}
@@ -396,6 +396,6 @@ export const RequestsTab = ({
           ) : undefined
         }
       />
-    </Stack>
+    </ToolbarStack>
   );
 };

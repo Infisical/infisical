@@ -69,6 +69,7 @@ import { useProjectPermission } from "../../access/permissions";
 import { errorMessage, failed, toast } from "../../access/toast";
 import { AccessRestricted, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
+import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 
@@ -383,7 +384,7 @@ export const ResourcesTab = ({ dataSource }: { dataSource: TSecretScanningDataSo
   };
 
   return (
-    <Stack style={{ gap: "var(--cipher-space-toolbar-gap)" }}>
+    <ToolbarStack>
       <FilterBar
         label={`${resource.singularTitle} filters`}
         fields={[]}
@@ -612,6 +613,6 @@ export const ResourcesTab = ({ dataSource }: { dataSource: TSecretScanningDataSo
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Stack>
+    </ToolbarStack>
   );
 };
