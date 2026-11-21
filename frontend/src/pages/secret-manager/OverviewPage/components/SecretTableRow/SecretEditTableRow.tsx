@@ -132,6 +132,7 @@ import {
   TABLE_ROW_ACTION_BAR_VISIBILITY_CLASS_NAME,
   TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
+import { useUnsavedEdit } from "../UnsavedEditsBar";
 import { SecretAccessInsights } from "./SecretAccessInsights";
 import { SecretCommentForm } from "./SecretCommentForm";
 import { SecretLastEditedTime } from "./SecretLastEditedTime";
@@ -1177,6 +1178,17 @@ export const SecretEditTableRow = ({
   const isDirtyState = Boolean(
     isDirty && (dirtyFields.key || dirtyFields.value) && !isImportedSecret && !isBatchMode
   );
+
+  useUnsavedEdit(isDirtyState, {
+    save: async () => {
+      let isSaved = false;
+      await handleSubmit(async (data) => {
+        isSaved = await handleFormSubmit(data);
+      })();
+      return isSaved;
+    },
+    discard: handleFormReset
+  });
 
   useEffect(() => {
     if (isDirtyState || hasPendingValueChange) setIsResolvedValueOpen.off();

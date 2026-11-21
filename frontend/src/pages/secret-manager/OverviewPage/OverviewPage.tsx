@@ -309,6 +309,7 @@ import {
   type TableRowActivityChangeHandler,
   type TableRowActivityId
 } from "./components/tableRowActivity";
+import { UnsavedEditsBar, UnsavedEditsScope, useUnsavedEdits } from "./components/UnsavedEditsBar";
 import {
   createOverviewTelemetry,
   observeOverviewRequest,
@@ -831,6 +832,14 @@ const OverviewPageContent = () => {
 
   const isSingleEnvView = visibleEnvs.length === 1;
   const [activeTableRows, setActiveTableRows] = useState<Set<TableRowActivityId>>(new Set());
+  const { count: unsavedEditsCount, getEdits: getUnsavedEdits } = useUnsavedEdits();
+  const bulkSaveOutcomeRef = useRef<{ reviewRequests: number } | null>(null);
+  const [isSavingUnsavedEdits, setIsSavingUnsavedEdits] = useState(false);
+  const [layoutContainer, setLayoutContainer] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setLayoutContainer(document.querySelector<HTMLElement>('[data-slot="sidebar-inset"]'));
+  }, []);
   const handleTableRowActivityChange = useCallback<TableRowActivityChangeHandler>(
     (rowId, isActive) => {
       setActiveTableRows((current) => {
@@ -2346,12 +2355,21 @@ const OverviewPageContent = () => {
     );
 
     if ("approval" in result) {
+      if (bulkSaveOutcomeRef.current) {
+        bulkSaveOutcomeRef.current.reviewRequests += 1;
+        return;
+      }
       createNotification({
         type: "info",
         text: "Requested change has been sent for review"
       });
     } else {
-      notifySecretsCreated(1, type === SecretType.Shared ? [{ environment: env, key, value }] : []);
+      if (!bulkSaveOutcomeRef.current) {
+        notifySecretsCreated(
+          1,
+          type === SecretType.Shared ? [{ environment: env, key, value }] : []
+        );
+      }
 
       // The user just created a secret: check whether to surface the activation nudge.
       checkSecretsActivation();
@@ -2507,6 +2525,11 @@ const OverviewPageContent = () => {
         })
     );
 
+    if (bulkSaveOutcomeRef.current) {
+      if ("approval" in result) bulkSaveOutcomeRef.current.reviewRequests += 1;
+      return;
+    }
+
     if ("approval" in result) {
       createNotification({
         type: "info",
@@ -2518,6 +2541,39 @@ const OverviewPageContent = () => {
         text: "Successfully updated secret"
       });
     }
+  };
+
+  const handleSaveAllUnsavedEdits = async () => {
+    if (bulkSaveOutcomeRef.current) return;
+    const outcome = { reviewRequests: 0 };
+    bulkSaveOutcomeRef.current = outcome;
+    setIsSavingUnsavedEdits(true);
+    let savedCount = 0;
+    try {
+      const results = await Promise.all(getUnsavedEdits().map((edit) => edit.save()));
+      savedCount = results.filter(Boolean).length;
+    } finally {
+      bulkSaveOutcomeRef.current = null;
+      setIsSavingUnsavedEdits(false);
+    }
+
+    const appliedCount = savedCount - outcome.reviewRequests;
+    if (appliedCount > 0) {
+      createNotification({
+        type: "success",
+        text: `Saved ${appliedCount} change${appliedCount === 1 ? "" : "s"}`
+      });
+    }
+    if (outcome.reviewRequests > 0) {
+      createNotification({
+        type: "info",
+        text: `Sent ${outcome.reviewRequests} change${outcome.reviewRequests === 1 ? "" : "s"} for review`
+      });
+    }
+  };
+
+  const handleDiscardAllUnsavedEdits = () => {
+    getUnsavedEdits().forEach((edit) => edit.discard());
   };
 
   const handleSecretDelete = async (
@@ -3306,6 +3362,9 @@ const OverviewPageContent = () => {
     secrets?.length || folders?.length || secretRotationNames?.length
   );
 
+  const hasSelectedEntries = Object.values(selectedEntries).some(
+    (entries) => Object.keys(entries).length > 0
+  );
   const hasSelectedEntriesOnPage =
     mergedFolderNamesAndDescriptions.some(({ name }) => selectedEntries.folder[name]) ||
     secretRotationNames.some((name) => selectedEntries.secretRotation[name]) ||
@@ -5608,10 +5667,7 @@ const OverviewPageContent = () => {
       <SecretsActivationNudge
         popUp={invitePopUp}
         handlePopUpToggle={handleInvitePopUpToggle}
-        isLifted={
-          hasPendingBatchChanges ||
-          Object.values(selectedEntries).some((entries) => Object.keys(entries).length > 0)
-        }
+        isLifted={hasPendingBatchChanges || hasSelectedEntries || unsavedEditsCount > 0}
       />
       {isSingleEnvView && singleVisibleEnv && (
         <CommitForm
@@ -5626,12 +5682,23 @@ const OverviewPageContent = () => {
           onReviewOpenChange={setIsReviewOpen}
         />
       )}
+      {!isSingleEnvView && (
+        <UnsavedEditsBar
+          count={hasSelectedEntries ? 0 : unsavedEditsCount}
+          isSaving={isSavingUnsavedEdits}
+          portalContainer={layoutContainer}
+          onSaveAll={handleSaveAllUnsavedEdits}
+          onDiscardAll={handleDiscardAllUnsavedEdits}
+        />
+      )}
     </div>
   );
 };
 
 export const OverviewPage = () => (
   <StoreProvider>
-    <OverviewPageContent />
+    <UnsavedEditsScope>
+      <OverviewPageContent />
+    </UnsavedEditsScope>
   </StoreProvider>
 );
