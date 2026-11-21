@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRightIcon } from "lucide-react";
 
+import { ProductRolesField } from "@app/components/agent-vault/ProductRolesField";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -18,6 +19,7 @@ import {
   FieldLabel
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
+import { defaultAgentVaultRoles } from "@app/helpers/agentVaultMembers";
 import { useDebounce } from "@app/hooks";
 import {
   useAddAgentVaultMembers,
@@ -25,9 +27,6 @@ import {
   useListAvailableAgentVaultMembers
 } from "@app/hooks/api/agentVault";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-
-import { ProductRoleField } from "./ProductRoleField";
 
 type TOption = { value: string; label: string };
 
@@ -42,7 +41,7 @@ export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
   const addMembers = useAddAgentVaultMembers(projectId);
 
   const [group, setGroup] = useState<TOption | null>(null);
-  const [role, setRole] = useState<string>(ProjectMembershipRole.Member);
+  const [roles, setRoles] = useState(defaultAgentVaultRoles);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
 
@@ -73,7 +72,7 @@ export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
 
   const handleClose = () => {
     setGroup(null);
-    setRole(ProjectMembershipRole.Member);
+    setRoles(defaultAgentVaultRoles());
     setSearch("");
     onOpenChange(false);
   };
@@ -81,7 +80,7 @@ export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
   const handleAdd = async () => {
     try {
       if (!group) return;
-      const { skipped } = await addMembers.mutateAsync({ groupIds: [group.value], role });
+      const { skipped } = await addMembers.mutateAsync({ groupIds: [group.value], roles });
       createNotification({
         text: skipped.length
           ? `"${group.label}" already has access to this project`
@@ -164,9 +163,14 @@ export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
             </Field>
 
             <Field>
-              <FieldLabel>Product Role</FieldLabel>
+              <FieldLabel htmlFor="agent-vault-add-group-roles">Roles</FieldLabel>
               <FieldContent>
-                <ProductRoleField value={role} onChange={setRole} idPrefix="add-group-role" />
+                <ProductRolesField
+                  id="agent-vault-add-group-roles"
+                  projectId={projectId}
+                  value={roles}
+                  onChange={setRoles}
+                />
               </FieldContent>
             </Field>
 

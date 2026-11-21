@@ -2,8 +2,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { agentVaultKeys } from "@app/hooks/api/agentVault/queries";
+import { invalidateAgentVaultRoleDependents } from "@app/hooks/api/agentVaultRoles/queries";
 import { isCertManagerProject, userMembershipsBase } from "@app/hooks/api/certManagerAccess";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { projectKeys } from "../projects";
 import { userKeys } from "./query-keys";
@@ -14,12 +16,12 @@ export const useAddUserToWsNonE2EE = () => {
 
   return useMutation<object, object, AddUserToWsDTONonE2EE>({
     mutationFn: async ({ projectId, projectType, usernames, roleSlugs }) => {
-      // Agent Vault adds members through its own service, which takes one admin or member role.
+      // Agent Vault adds members through its own service. Without a role, they get No Access.
       if (projectType === ProjectType.AgentVault) {
         const { data } = await apiRequest.post("/api/v1/agent-vault/members", {
           projectId,
           usernames,
-          role: roleSlugs?.[0] ?? "member"
+          roles: roleSlugs?.length ? roleSlugs : [ProjectMembershipRole.NoAccess]
         });
         return data;
       }
@@ -30,8 +32,13 @@ export const useAddUserToWsNonE2EE = () => {
       );
       return data;
     },
-    onSuccess: (_, { orgId, projectId }) => {
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.members(orgId, projectId) });
+    onSuccess: (_, { orgId, projectId, projectType }) => {
+      // In Agent Vault the new members' roles also change who can use each bundle, service and skill.
+      if (projectType === ProjectType.AgentVault) {
+        invalidateAgentVaultRoleDependents(queryClient, orgId, projectId);
+      } else {
+        queryClient.invalidateQueries({ queryKey: agentVaultKeys.members(orgId, projectId) });
+      }
       queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId) });
       queryClient.invalidateQueries({ queryKey: projectKeys.getAvailableProjectUsers(projectId) });
       queryClient.invalidateQueries({

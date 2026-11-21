@@ -373,10 +373,11 @@ describe("Org access reconcile", () => {
     expect(availableRes.statusCode, availableRes.payload).toBe(200);
     expect((availableRes.json().actors as { id: string }[]).map((actor) => actor.id)).toContain(userId);
 
+    // A new Agent Vault project has no Member role, so the user joins with No Access, as an invitee does.
     const addRes = await asSubOrg("POST", "/api/v1/agent-vault/members", {
       projectId: agentVaultProjectId,
       userIds: [userId],
-      role: "member"
+      roles: ["no-access"]
     });
     expect(addRes.statusCode, addRes.payload).toBe(200);
     expect(await projectRows(agentVaultProjectId, { actorUserId: userId })).toHaveLength(1);

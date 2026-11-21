@@ -43,7 +43,7 @@ Every proxy starts from the same proxy token, so you create the proxy in Infisic
 
 ## Prerequisites
 
-- The **Admin** role in an [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership)
+- The **Admin** role in an [Agent Vault project](/documentation/platform/agent-vault/access-control#roles)
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key the agent uses, including its model provider's key, such as **Anthropic** for Claude Code (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - [Docker Engine](https://docs.docker.com/engine/install/) with [Docker Compose](https://docs.docker.com/compose/install/) v2, or [Docker Desktop](https://docs.docker.com/desktop/)
 - [`curl`](https://curl.se) and [`jq`](https://jqlang.org) on the machine that runs Docker
@@ -240,7 +240,7 @@ If you think someone took control of the machine that runs Docker, [rotate the p
     Check the following:
 
     - `AGENT_VAULT_PROJECT_ID` in your script is the ID of the Agent Vault project that holds the access bundle
-    - The machine identity is a member of that project and has a grant on the access bundle
+    - The machine identity is a member of that project and has a role that can use the access bundle
   </Accordion>
   <Accordion title="Requests fail with a 403 partway through a run">
     The session expired before the agent finished. Set the session's `ttl` in the script longer than your longest run.

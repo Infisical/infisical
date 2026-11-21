@@ -11,6 +11,15 @@ export type TProjectRoleOption = {
 
 export const DEFAULT_PROJECT_ROLE: TProjectRoleOption = { slug: "member", name: "Member" };
 
+// Agent Vault has no built-in Member role, so someone added without another pick gets nothing until a role gives it.
+const AGENT_VAULT_DEFAULT_PROJECT_ROLE: TProjectRoleOption = {
+  slug: "no-access",
+  name: "No Access"
+};
+
+export const getDefaultProjectRole = (productType?: ProjectType) =>
+  productType === ProjectType.AgentVault ? AGENT_VAULT_DEFAULT_PROJECT_ROLE : DEFAULT_PROJECT_ROLE;
+
 // Mirrors the backend's getPredefinedRoles: type-tagged roles are only valid for
 // projects of that type.
 const PREDEFINED_PROJECT_ROLES: (TProjectRoleOption & { type?: ProjectType })[] = [

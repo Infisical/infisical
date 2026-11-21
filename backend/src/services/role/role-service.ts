@@ -1,8 +1,16 @@
 import { packRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
 
-import { AccessScope, ActionProjectType, OrganizationActionScope, TableName } from "@app/db/schemas";
+import {
+  AccessScope,
+  ActionProjectType,
+  OrganizationActionScope,
+  ProjectMembershipRole,
+  ProjectType,
+  TableName
+} from "@app/db/schemas";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -10,6 +18,7 @@ import { RequestContextKey } from "@app/lib/request-context/request-context-keys
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { UnpackedPermissionSchema, unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
+import { customRolesNeedRbacPlan, lockProjectRoleChanges } from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
 import { ActorType } from "../auth/auth-type";
@@ -54,7 +63,7 @@ type TRoleServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   externalGroupOrgRoleMappingDAL: Pick<TExternalGroupOrgRoleMappingDALFactory, "findOne">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find" | "delete" | "insertMany">;
   licenseService: TLicenseService;
 };
 
@@ -89,7 +98,7 @@ export const roleServiceFactory = ({
     await factory.onCreateRoleGuard(dto);
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
-    if (!plan?.has(PlanFeature.Rbac)) {
+    if (!plan?.has(PlanFeature.Rbac) && (await customRolesNeedRbacPlan(projectDAL, scopeData))) {
       throw new BadRequestError({
         message:
           "Failed to create custom role due to plan RBAC restriction. Upgrade to Infisical Enterprise plan to create custom roles."
@@ -128,7 +137,7 @@ export const roleServiceFactory = ({
     await factory.onUpdateRoleGuard(dto);
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
-    if (!plan?.has(PlanFeature.Rbac)) {
+    if (!plan?.has(PlanFeature.Rbac) && (await customRolesNeedRbacPlan(projectDAL, scopeData))) {
       throw new BadRequestError({
         message:
           "Failed to update custom role due to plan RBAC restriction. Upgrade to Infisical Enterprise plan to update custom roles."
@@ -177,6 +186,43 @@ export const roleServiceFactory = ({
       [scope.key]: scope.value
     });
     if (!existingRole) throw new NotFoundError({ message: `Role with ${dto.selector.id} not found` });
+
+    const project =
+      scopeData.scope === AccessScope.Project
+        ? await requestMemoize(requestMemoKeys.projectFindById(scopeData.projectId), () =>
+            projectDAL.findById(scopeData.projectId)
+          )
+        : null;
+    if (scopeData.scope === AccessScope.Project && project?.type === ProjectType.AgentVault) {
+      const { projectId } = scopeData;
+      const [role] = await roleDAL.transaction(async (tx) => {
+        await lockProjectRoleChanges(projectId, tx);
+        // A time limit that has ended confers nothing and no member list shows it, so only live holders keep the role,
+        // and the ended rows go with it.
+        const rows = await membershipRoleDAL.find({ customRoleId: existingRole.id }, { tx });
+        const holders = rows.filter(isActiveRole);
+        if (holders.length) {
+          throw new BadRequestError({
+            message: `${holders.length} member${holders.length > 1 ? "s hold" : " holds"} this role. Remove it from them under Access Control first.`
+          });
+        }
+        await membershipRoleDAL.delete({ customRoleId: existingRole.id }, tx);
+        // A membership needs a role row, so one whose only row was an ended assignment of this role gets No Access.
+        const membershipIds = [...new Set(rows.map((row) => row.membershipId))];
+        if (membershipIds.length) {
+          const remaining = await membershipRoleDAL.find({ $in: { membershipId: membershipIds } }, { tx });
+          const emptied = membershipIds.filter((id) => !remaining.some((row) => row.membershipId === id));
+          if (emptied.length) {
+            await membershipRoleDAL.insertMany(
+              emptied.map((membershipId) => ({ membershipId, role: ProjectMembershipRole.NoAccess })),
+              tx
+            );
+          }
+        }
+        return roleDAL.delete({ id: existingRole.id, projectId }, tx);
+      });
+      return { ...role, projectId, permissions: unpackPermissions(role.permissions) };
+    }
 
     const [roleUsageData] = await membershipRoleDAL.find(
       {

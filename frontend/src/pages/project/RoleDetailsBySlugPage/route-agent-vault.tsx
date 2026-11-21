@@ -1,13 +1,12 @@
 import { createFileRoute, linkOptions } from "@tanstack/react-router";
 
 import { AgentVaultAccessControlTab } from "@app/pages/agent-vault/AgentVaultAccessControlPage/AgentVaultAccessControlPage";
-
-import { RoleDetailsBySlugPage } from "./RoleDetailsBySlugPage";
+import { AgentVaultRoleDetailPage } from "@app/pages/agent-vault/AgentVaultRoleDetailPage/AgentVaultRoleDetailPage";
 
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/roles/$roleSlug"
 )({
-  component: RoleDetailsBySlugPage,
+  component: AgentVaultRoleDetailPage,
   beforeLoad: ({ context, params }) => {
     return {
       breadcrumbs: [
@@ -21,7 +20,7 @@ export const Route = createFileRoute(
               projectId: params.projectId
             },
             search: {
-              selectedTab: AgentVaultAccessControlTab.Users
+              selectedTab: AgentVaultAccessControlTab.Roles
             }
           })
         },

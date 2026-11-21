@@ -11,7 +11,13 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
+import {
+  actorContext,
+  deprecatedRoleOf,
+  resolveRequestedProjectId,
+  telemetryRoleOf,
+  withDeprecatedRole
+} from "./agent-vault-router-fns";
 import {
   AgentVaultActorRefSchema,
   agentVaultListQuery,
@@ -48,11 +54,13 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       const { projectId: requestedProjectId, ...query } = req.query;
       const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
-      return server.services.agentVaultMembership.listProductMembers({
+      const { members, totalCount } = await server.services.agentVaultMembership.listProductMembers({
         projectId,
         ...query,
         ctx: actorContext(req)
       });
+      const memberRoleSlug = await server.services.agentVaultMembership.findMemberRoleSlug(projectId);
+      return { members: members.map(withDeprecatedRole(memberRoleSlug)), totalCount };
     }
   });
 
@@ -114,6 +122,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         ...body,
         ctx: actorContext(req)
       });
+      const memberRoleSlug = await server.services.agentVaultMembership.findMemberRoleSlug(projectId);
 
       await Promise.all(
         members.map((member) =>
@@ -125,7 +134,8 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
               type: EventType.AGENT_VAULT_MEMBER_ADD,
               metadata: {
                 ...auditActorFields(member),
-                role: member.role
+                role: deprecatedRoleOf(member.roles, memberRoleSlug),
+                roles: member.roles
               }
             }
           })
@@ -135,11 +145,15 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       members.forEach((member) =>
         emitAgentVaultTelemetry(server.services.telemetry, req, {
           event: PostHogEventTypes.AgentVaultProductMemberAdded,
-          properties: { memberType: member.type, role: member.role }
+          properties: {
+            memberType: member.type,
+            role: telemetryRoleOf(member.roles, memberRoleSlug),
+            roleCount: member.roles.length
+          }
         })
       );
 
-      return { members, skipped };
+      return { members: members.map(withDeprecatedRole(memberRoleSlug)), skipped };
     }
   });
 
@@ -170,6 +184,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         ...body,
         ctx: actorContext(req)
       });
+      const memberRoleSlug = await server.services.agentVaultMembership.findMemberRoleSlug(projectId);
 
       await Promise.all(
         members.map((member) =>
@@ -181,7 +196,8 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
               type: EventType.AGENT_VAULT_MEMBER_UPDATE,
               metadata: {
                 ...auditActorFields(member),
-                role: member.role
+                role: deprecatedRoleOf(member.roles, memberRoleSlug),
+                roles: member.roles
               }
             }
           })
@@ -191,11 +207,15 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       members.forEach((member) =>
         emitAgentVaultTelemetry(server.services.telemetry, req, {
           event: PostHogEventTypes.AgentVaultProductMemberUpdated,
-          properties: { memberType: member.type, role: member.role }
+          properties: {
+            memberType: member.type,
+            role: telemetryRoleOf(member.roles, memberRoleSlug),
+            roleCount: member.roles.length
+          }
         })
       );
 
-      return { members, skipped };
+      return { members: members.map(withDeprecatedRole(memberRoleSlug)), skipped };
     }
   });
 

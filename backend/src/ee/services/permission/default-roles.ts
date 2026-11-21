@@ -4,6 +4,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultProxyActions,
+  ProjectPermissionAgentVaultServiceActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionAgentVaultVariableActions,
@@ -806,12 +807,23 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
   can(
     [
       ProjectPermissionAgentVaultAccessBundleActions.Read,
+      ProjectPermissionAgentVaultAccessBundleActions.Use,
       ProjectPermissionAgentVaultAccessBundleActions.Create,
       ProjectPermissionAgentVaultAccessBundleActions.Edit,
-      ProjectPermissionAgentVaultAccessBundleActions.Delete,
-      ProjectPermissionAgentVaultAccessBundleActions.ManageMembers
+      ProjectPermissionAgentVaultAccessBundleActions.Delete
     ],
     ProjectPermissionSub.AgentVaultAccessBundles
+  );
+
+  can(
+    [
+      ProjectPermissionAgentVaultServiceActions.Read,
+      ProjectPermissionAgentVaultServiceActions.Use,
+      ProjectPermissionAgentVaultServiceActions.Create,
+      ProjectPermissionAgentVaultServiceActions.Edit,
+      ProjectPermissionAgentVaultServiceActions.Delete
+    ],
+    ProjectPermissionSub.AgentVaultServices
   );
 
   can(
@@ -824,7 +836,8 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
       ProjectPermissionAgentVaultSessionActions.EditAny,
       ProjectPermissionAgentVaultSessionActions.RevokeAny,
       ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
-      ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills
+      ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills,
+      ProjectPermissionAgentVaultSessionActions.ManageDelegations
     ],
     ProjectPermissionSub.AgentVaultSessions
   );
@@ -844,6 +857,7 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
   can(
     [
       ProjectPermissionAgentVaultSkillActions.Read,
+      ProjectPermissionAgentVaultSkillActions.Use,
       ProjectPermissionAgentVaultSkillActions.Create,
       ProjectPermissionAgentVaultSkillActions.Edit,
       ProjectPermissionAgentVaultSkillActions.Delete
@@ -933,28 +947,6 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
   can([ProjectPermissionActions.Edit, ProjectPermissionActions.Delete], ProjectPermissionSub.Project);
 
   can([ProjectPermissionAuditLogsActions.Read, ProjectPermissionAuditLogsActions.Edit], ProjectPermissionSub.AuditLogs);
-
-  return rules;
-};
-
-// Deliberately narrower than PAM's member set: no directory reads, or any member could enumerate every
-// person, group and machine identity in the product.
-const buildAgentVaultProjectMemberPermissionRules = () => {
-  const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
-
-  can([ProjectPermissionAgentVaultAccessBundleActions.Read], ProjectPermissionSub.AgentVaultAccessBundles);
-  can(
-    [
-      ProjectPermissionAgentVaultSessionActions.Read,
-      ProjectPermissionAgentVaultSessionActions.Create,
-      ProjectPermissionAgentVaultSessionActions.Edit,
-      ProjectPermissionAgentVaultSessionActions.Revoke,
-      ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills
-    ],
-    ProjectPermissionSub.AgentVaultSessions
-  );
-  can([ProjectPermissionAgentVaultProxyActions.Read], ProjectPermissionSub.AgentVaultProxies);
-  can([ProjectPermissionAgentVaultSkillActions.Read], ProjectPermissionSub.AgentVaultSkills);
 
   return rules;
 };
@@ -1351,7 +1343,6 @@ const buildPamResourceAuditorPermissionRules = () => {
 // The product admin owns the PAM project, so it keeps the full project Admin ability it has always had.
 export const pamProjectAdminPermissions = projectAdminPermissions;
 export const agentVaultProjectAdminPermissions = buildAgentVaultProjectAdminPermissionRules();
-export const agentVaultProjectMemberPermissions = buildAgentVaultProjectMemberPermissionRules();
 export const pamProjectMemberPermissions = buildPamProjectMemberPermissionRules();
 export const pamResourceAdminPermissions = buildPamResourceAdminPermissionRules();
 export const pamResourceOperatorPermissions = buildPamResourceOperatorPermissionRules();

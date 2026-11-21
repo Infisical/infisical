@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { FilterIcon, PlugIcon, TriangleAlertIcon } from "lucide-react";
 
+import { AgentVaultRestrictedPage } from "@app/components/agent-vault/AgentVaultRestrictedPage";
 import { PersonalValuesDialog } from "@app/components/agent-vault/PersonalValuesDialog";
 import { ServiceSheet } from "@app/components/agent-vault/service-sheet";
 import { ServicesCard, ServiceSortColumn } from "@app/components/agent-vault/ServicesCard";
@@ -19,8 +20,18 @@ import {
   IconButton,
   PageHeader
 } from "@app/components/v3";
-import { useProject, useProjectPermission } from "@app/context";
-import { canManageAgentVaultServices } from "@app/helpers/agentVaultPermissions";
+import {
+  ProjectPermissionAgentVaultServiceActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
+import {
+  canManageAgentVaultServices,
+  canOnAgentVaultService,
+  canReadAgentVaultServices,
+  canUseAgentVaultServices
+} from "@app/helpers/agentVaultPermissions";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -29,7 +40,7 @@ import {
 import { useDebounce, useResetPageHelper } from "@app/hooks";
 import {
   useListAgentVaultServices,
-  useListGrantedAgentVaultServicesRequiringSetup
+  useListAssignedAgentVaultServicesRequiringSetup
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -42,7 +53,7 @@ const ORDER_BY: Record<ServiceSortColumn, "name" | "type" | "createdAt"> = {
   [ServiceSortColumn.Created]: "createdAt"
 };
 
-export const AgentVaultServicesPage = () => {
+const AgentVaultServicesPageContent = () => {
   const { projectId } = useProject();
   const { permission } = useProjectPermission();
   const canManageServices = canManageAgentVaultServices(permission);
@@ -82,8 +93,11 @@ export const AgentVaultServicesPage = () => {
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
 
-  // Counted over the bundles granted to the caller, the same count the sidebar shows.
-  const { data: requiringSetup } = useListGrantedAgentVaultServicesRequiringSetup(projectId);
+  // Counted over what the caller's roles pick out one by one, the same count the sidebar shows.
+  const { data: requiringSetup } = useListAssignedAgentVaultServicesRequiringSetup(
+    projectId,
+    canUseAgentVaultServices(permission)
+  );
   const requiringSetupCount = requiringSetup?.totalCount ?? 0;
   const firstRequiringSetup = requiringSetup?.services[0];
 
@@ -102,7 +116,7 @@ export const AgentVaultServicesPage = () => {
         description={
           canManageServices
             ? "Define each API, MCP server, database and SSH server once, then add it to the access bundles that need it."
-            : "The services your access bundles give you, and the personal values each one needs from you."
+            : "The services you can use, and the personal values each one needs from you."
         }
       />
 
@@ -130,13 +144,30 @@ export const AgentVaultServicesPage = () => {
 
       <ServicesCard
         services={data?.services ?? []}
-        canManage={canManageServices}
+        canAdd={permission.can(
+          ProjectPermissionAgentVaultServiceActions.Create,
+          ProjectPermissionSub.AgentVaultServices
+        )}
+        canEditService={(service) =>
+          canOnAgentVaultService(
+            permission,
+            ProjectPermissionAgentVaultServiceActions.Edit,
+            service.id
+          )
+        }
+        canRemoveService={(service) =>
+          canOnAgentVaultService(
+            permission,
+            ProjectPermissionAgentVaultServiceActions.Delete,
+            service.id
+          )
+        }
         isPending={isPending}
         onRetryLoad={isError && !data ? () => refetch() : undefined}
         emptyDescription={
           canManageServices
             ? undefined
-            : "No access bundle granted to you holds a service yet. Ask an admin to grant you one."
+            : "You can't use any service yet. Ask an Agent Vault admin for a role that can use one, directly or through an access bundle."
         }
         onAdd={() => {
           setServiceToEdit(null);
@@ -215,4 +246,19 @@ export const AgentVaultServicesPage = () => {
       />
     </div>
   );
+};
+
+export const AgentVaultServicesPage = () => {
+  const { permission } = useProjectPermission();
+  if (!canReadAgentVaultServices(permission)) {
+    return (
+      <AgentVaultRestrictedPage
+        title="Services"
+        icon={PlugIcon}
+        description="The services you can use, and the personal values each one needs from you."
+        requirement={{ action: "read", subject: ProjectPermissionSub.AgentVaultServices }}
+      />
+    );
+  }
+  return <AgentVaultServicesPageContent />;
 };

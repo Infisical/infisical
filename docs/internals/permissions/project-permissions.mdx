@@ -12,7 +12,7 @@ Each permission consists of:
 - **Subject**: The resource the permission applies to (e.g., secrets, members, settings)
 - **Action**: The operation that can be performed (e.g., read, create, edit, delete)
 
-Some project-level resources—specifically `secrets`, `secret-folders`, `secret-imports`, `dynamic-secrets`, `secret-syncs`, `secret-rotation`, `honey-tokens`, `identity`, `app-connections`, and `pam-accounts`—support conditional permissions and permission inversion for more granular access control. Conditions allow you to specify criteria (like environment, secret path, tags, app connection ID, identity ID, resource name, or endpoint name) that must be met for the permission to apply.
+Some project-level resources support conditional permissions and permission inversion for more granular access control: `secrets`, `secret-folders`, `secret-imports`, `dynamic-secrets`, `secret-syncs`, `secret-rotation`, `honey-tokens`, `identity`, `app-connections`, `pam-accounts`, `agent-vault-access-bundles`, `agent-vault-services`, and `agent-vault-skills`. Conditions allow you to specify criteria (like environment, secret path, tags, app connection ID, identity ID, resource name, endpoint name, or the ID of an Agent Vault access bundle, service, or skill) that must be met for the permission to apply.
 
 ## Available project permissions
 
@@ -104,12 +104,14 @@ Supports conditions and permission inversion.
 | `edit`   | Modify existing tags                     |
 | `delete` | Remove tags from the project             |
 
-#### Subject: `project`
+#### Subject: `workspace`
 
-| Action   | Description               |
-| -------- | ------------------------- |
-| `edit`   | Modify workspace settings |
-| `delete` | Delete the workspace      |
+This subject covers the project itself.
+
+| Action   | Description                   |
+| -------- | ----------------------------- |
+| `edit`   | Change the project's settings |
+| `delete` | Delete the project            |
 
 #### Subject: `ip-allowlist`
 
@@ -475,6 +477,107 @@ Supports conditions and permission inversion.
 | ------ | ----------- |
 | `read` | View the PAM insights dashboard, including resource and account totals, session activity, top actors, resource breakdown, and upcoming rotations |
 
+### Agent Vault
+
+A [role](/documentation/platform/agent-vault/access-control#roles) in an Agent Vault project uses the following subjects and some [shared subjects](#shared-subjects-in-agent-vault-projects). On a role's page, the **JSON** tab shows the role's rules in this format.
+
+In rules for access bundles, services, and skills:
+
+- `use` also lets a member view the access bundle, service, or skill, so a rule with `use` doesn't need `read`
+- A condition's value is one ID, `$eq` with one ID, or `$in` with a list of IDs (Infisical refuses any other operator, such as `$glob`)
+- `create` can't take a condition, so put `create` in a rule of its own
+
+#### Subject: `agent-vault-access-bundles`
+
+Supports conditions and permission inversion.
+
+| Action   | Description                                                                         | Condition keys   |
+| -------- | ----------------------------------------------------------------------------------- | ---------------- |
+| `read`   | View the access bundle and the services and skills in it                            | `accessBundleId` |
+| `use`    | Create sessions with the access bundle, including every service and skill in it     | `accessBundleId` |
+| `create` | Create new access bundles                                                           |                  |
+| `edit`   | Rename the access bundle and change which services and skills are in it             | `accessBundleId` |
+| `delete` | Delete the access bundle (its services and skills stay in the project)              | `accessBundleId` |
+
+#### Subject: `agent-vault-services`
+
+Supports conditions and permission inversion.
+
+| Action   | Description                                                                                         | Condition keys |
+| -------- | --------------------------------------------------------------------------------------------------- | -------------- |
+| `read`   | View the service and its settings                                                                   | `serviceId`    |
+| `use`    | Add the service to a session without an access bundle                                               | `serviceId`    |
+| `create` | Create new services                                                                                 |                |
+| `edit`   | Change the service's settings (changing where the service connects requires entering its credential again) | `serviceId`    |
+| `delete` | Delete the service                                                                                  | `serviceId`    |
+
+#### Subject: `agent-vault-skills`
+
+Supports conditions and permission inversion.
+
+| Action   | Description                                                              | Condition keys |
+| -------- | ------------------------------------------------------------------------ | -------------- |
+| `read`   | View the skill and its files                                             | `skillId`      |
+| `use`    | Add the skill to a session without an access bundle                      | `skillId`      |
+| `create` | Create new skills                                                        |                |
+| `edit`   | Change the skill's files (every session that loads the skill gets the change) | `skillId`      |
+| `delete` | Delete the skill                                                         | `skillId`      |
+
+#### Subject: `agent-vault-sessions`
+
+| Action                        | Description                                                                                                                                                                          |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `read`                        | View the sessions the member created                                                                                                                                                 |
+| `create`                      | Create sessions with the access bundles, services, and skills the member can use                                                                                                    |
+| `edit`                        | Change the [label and metadata](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata) of the sessions the member created                                    |
+| `revoke`                      | Revoke the sessions the member created                                                                                                                                               |
+| `read-any`                    | View every session in the project and its logs                                                                                                                                       |
+| `edit-any`                    | Change the label and metadata of any session in the project                                                                                                                          |
+| `revoke-any`                  | Revoke any session in the project                                                                                                                                                    |
+| `create-with-inline-services` | Create sessions with [inline services](/documentation/platform/agent-vault/inline-services), which bring their own hosts and credentials (also needs `create`)                       |
+| `create-with-inline-skills`   | Create sessions with [skills sent along with the session](/documentation/platform/agent-vault/skills#send-skills-with-a-session) (also needs `create`)                               |
+| `manage-delegations`          | Choose which users a machine identity can [create sessions on behalf of](/documentation/platform/agent-vault/sessions-on-behalf-of-users) (also needs `edit` on the machine identity) |
+
+#### Subject: `agent-vault-variables`
+
+These actions cover [global variables](/documentation/platform/agent-vault/variables) only.
+
+| Action       | Description                                                                                  |
+| ------------ | -------------------------------------------------------------------------------------------- |
+| `read`       | View the names of global variables and which services use them                               |
+| `read-value` | View the values of global variables (also needed to reference a global variable in a service) |
+| `create`     | Create global variables                                                                      |
+| `edit`       | Change the value of a global variable                                                        |
+| `delete`     | Delete global variables                                                                      |
+
+#### Subject: `agent-vault-proxies`
+
+| Action        | Description                                                                                                   |
+| ------------- | ------------------------------------------------------------------------------------------------------------- |
+| `read`        | View the project's proxies and whether they're connected                                                      |
+| `create`      | Create proxies                                                                                                |
+| `edit`        | Change a proxy's settings, such as its [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy) |
+| `delete`      | Delete proxies                                                                                                |
+| `issue-token` | [Rotate a proxy's token](/documentation/platform/agent-vault/proxies#rotate-a-proxy’s-token)                   |
+| `revoke`      | Revoke a proxy's access, so the proxy stops adding credentials to requests                                    |
+
+#### Shared subjects in Agent Vault projects
+
+A role in an Agent Vault project also uses these subjects from [core platform and access control](#core-platform-&-access-control). A rule for any other subject has no effect in an Agent Vault project.
+
+| Subject                                          | Actions that apply in Agent Vault                                                                                                   |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| [`role`](#subject-role)                       | Every action                                                                                                                        |
+| [`member`](#subject-member)                   | Every action except `assign-additional-privileges`                                                                                  |
+| [`groups`](#subject-groups)                   | Every action                                                                                                                        |
+| [`identity`](#subject-identity)               | Every action except `assign-additional-privileges`                                                                                  |
+| [`app-connections`](#subject-app-connections) | Every action, for the app connection that [stores session logs externally](/documentation/platform/agent-vault/external-log-storage) |
+| [`settings`](#subject-settings)               | `read` and `edit`, for [session log settings](/documentation/platform/agent-vault/session-logs#managing-session-logs)               |
+| [`audit-logs`](#subject-audit-logs)           | Every action                                                                                                                        |
+| [`workspace`](#subject-workspace)             | Every action                                                                                                                        |
+
+An Agent Vault project gives access through roles only, so `assign-additional-privileges` has no effect there.
+
 ## Condition operators
 
 When defining conditions for permissions, you can use the following operators to match values:
@@ -516,6 +619,9 @@ The following condition keys can be used to restrict permissions. Each key is av
 | `resourceName` | PAM resource name | `string` |
 | `accountName` | PAM account name | `string` |
 | `resourceType` | PAM resource type (e.g., `postgres`, `mysql`, `rdp`, `ssh`, `windows`, `active-directory`, `redis`, `mssql`, `kubernetes`, `aws-iam`) | `string` |
+| `accessBundleId` | The ID of an Agent Vault access bundle | `string` |
+| `serviceId` | The ID of an Agent Vault service | `string` |
+| `skillId` | The ID of an Agent Vault skill | `string` |
 | `userEmail` | User email - The email address of the user whose roles are being updated | `string` |
 | `groupName` | Group name - The name of the group whose roles are being updated | `string` |
 | `assignableRole` | Assignable roles - The roles that can be assigned to other members | `string` |
@@ -594,6 +700,34 @@ curl --request POST \
           "resourceName": { "$in": ["prod-db-1", "prod-db-2"] },
           "accountName": { "$glob": "readonly-*" }
         }
+      }
+    ]
+  }'
+```
+
+### Creating a role for Agent Vault sessions with one access bundle
+
+Create a role in an Agent Vault project whose members can create sessions with one access bundle, and view, change, and revoke the sessions they created:
+
+```bash
+curl --request POST \
+  --url https://app.infisical.com/api/v1/projects/<project-id>/roles \
+  --header 'Authorization: Bearer <token>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "slug": "release-engineer",
+    "name": "Release Engineer",
+    "permissions": [
+      {
+        "subject": "agent-vault-access-bundles",
+        "action": ["use"],
+        "conditions": {
+          "accessBundleId": { "$eq": "<access-bundle-id>" }
+        }
+      },
+      {
+        "subject": "agent-vault-sessions",
+        "action": ["read", "create", "edit", "revoke"]
       }
     ]
   }'

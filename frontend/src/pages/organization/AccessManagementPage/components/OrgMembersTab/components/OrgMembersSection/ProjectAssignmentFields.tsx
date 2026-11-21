@@ -26,6 +26,7 @@ import {
   AGENT_VAULT_ROLES,
   CERT_MANAGER_ROLES,
   DEFAULT_PROJECT_ROLE,
+  getDefaultProjectRole,
   getSingleSelectedProjectId,
   PAM_ROLES,
   ProjectRoleSelect
@@ -168,7 +169,7 @@ export const ProjectAssignmentFields = () => {
   const singleSelectedProjectId = getSingleSelectedProjectId(selectedProjects);
 
   useEffect(() => {
-    setValue("projectRole", DEFAULT_PROJECT_ROLE);
+    setValue("projectRole", getDefaultProjectRole(selectedProduct?.type));
   }, [singleSelectedProjectId, selectedProduct?.type, setValue]);
 
   return (
@@ -184,7 +185,7 @@ export const ProjectAssignmentFields = () => {
                 : availableProducts.find((option) => option.type === productType);
             onChange(product);
             setValue("projects", []);
-            setValue("projectRole", DEFAULT_PROJECT_ROLE);
+            setValue("projectRole", getDefaultProjectRole(product?.type));
           };
 
           return (

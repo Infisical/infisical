@@ -3,10 +3,8 @@ import { describe, expect, test, vi } from "vitest";
 
 import { AccessScope, ProjectMembershipRole } from "@app/db/schemas";
 import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
-import {
-  agentVaultProjectAdminPermissions,
-  agentVaultProjectMemberPermissions
-} from "@app/ee/services/permission/default-roles";
+import { agentVaultMemberTestRules } from "@app/ee/services/agent-vault/testing/agent-vault-test-roles";
+import { agentVaultProjectAdminPermissions } from "@app/ee/services/permission/default-roles";
 import {
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
@@ -82,13 +80,15 @@ const buildService = ({
           permission: createMongoAbility(
             (role === ProjectMembershipRole.Admin
               ? agentVaultProjectAdminPermissions
-              : agentVaultProjectMemberPermissions) as RawRuleOf<MongoAbility>[]
+              : agentVaultMemberTestRules()) as RawRuleOf<MongoAbility>[]
           ),
           role: { name: role, slug: role }
         }))
       ),
       getProjectPermission: vi.fn().mockResolvedValue({
-        permission: createMongoAbility(rules)
+        permission: createMongoAbility(rules),
+        // Admin is a role, not a rule set: only the built-in rules stand for holding it.
+        hasRole: (role: string) => role === ProjectMembershipRole.Admin && rules === agentVaultProjectAdminPermissions
       })
     },
     identityDAL: {
@@ -160,11 +160,21 @@ const buildService = ({
       find: vi
         .fn()
         .mockResolvedValue(adminMembershipIds.map((id) => ({ membershipId: id, role: ProjectMembershipRole.Admin }))),
+      findRolesByMembershipIds: vi
+        .fn()
+        .mockResolvedValue(adminMembershipIds.map((id) => ({ membershipId: id, role: ProjectMembershipRole.Admin }))),
       insertMany: vi.fn().mockResolvedValue(undefined),
       delete: vi.fn().mockResolvedValue(undefined)
     },
+    // The project's Member role, which `member` names, found by the id derived from the project. A lookup of custom roles
+    // by slug finds none.
+    roleDAL: {
+      find: vi.fn().mockResolvedValue([]),
+      findById: vi.fn().mockResolvedValue({ id: "role-member", slug: "member-role" })
+    },
     projectAccessRequestDAL: { delete: vi.fn().mockResolvedValue(undefined) },
-    agentVaultPersonalValueDAL: { deleteForActorsWithoutGrant: vi.fn().mockResolvedValue(0) },
+    agentVaultAccessBundleDAL: { find: vi.fn().mockResolvedValue([]) },
+    agentVaultPersonalValueDAL: { deleteForActorsOutsideProject: vi.fn().mockResolvedValue(0) },
     agentVaultMemberDAL: { findAvailableActors: vi.fn().mockResolvedValue({ members: [], totalCount: 0 }) },
     userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) },
     identityGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) }
@@ -186,7 +196,7 @@ describe("agentVaultMembership guards", () => {
       service.addProductMembers({
         projectId: PROJECT_ID,
         ...addIds,
-        role: ProjectMembershipRole.Member,
+        roles: [ProjectMembershipRole.Member],
         ctx
       })
     ).rejects.toThrow("belong to another project");
@@ -200,7 +210,7 @@ describe("agentVaultMembership guards", () => {
     const { members } = await service.addProductMembers({
       projectId: PROJECT_ID,
       ...addIds,
-      role: ProjectMembershipRole.Member,
+      roles: [ProjectMembershipRole.Member],
       ctx
     });
 
@@ -217,7 +227,7 @@ describe("agentVaultMembership guards", () => {
     const { members } = await service.addProductMembers({
       projectId: PROJECT_ID,
       ...addIds,
-      role: ProjectMembershipRole.Member,
+      roles: [ProjectMembershipRole.Member],
       ctx
     });
 
@@ -256,9 +266,9 @@ describe("agentVaultMembership guards", () => {
     expect(vi.mocked(lockMembershipsById).mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(deps.membershipDAL.delete).mock.invocationCallOrder[0]
     );
-    // Leaving Agent Vault loses every bundle, so the cleanup covers the whole project for this identity.
-    expect(deps.agentVaultPersonalValueDAL.deleteForActorsWithoutGrant).toHaveBeenCalledWith(
-      { projectId: PROJECT_ID, accessBundleId: undefined, userIds: [], identityIds: [IDENTITY_ID] },
+    // Leaving the project clears what the identity saved in it.
+    expect(deps.agentVaultPersonalValueDAL.deleteForActorsOutsideProject).toHaveBeenCalledWith(
+      { projectId: PROJECT_ID, userIds: [], identityIds: [IDENTITY_ID] },
       expect.anything()
     );
   });
@@ -274,7 +284,7 @@ describe("agentVaultMembership guards", () => {
       machineIdentityIds: [],
       groupIds: [GROUP_ID],
       emails: [],
-      role: ProjectMembershipRole.Member,
+      roles: [ProjectMembershipRole.Member],
       ctx
     });
 
@@ -295,7 +305,7 @@ describe("agentVaultMembership guards", () => {
         machineIdentityIds: [],
         groupIds: [GROUP_ID],
         emails: [],
-        role: ProjectMembershipRole.Member,
+        roles: [ProjectMembershipRole.Member],
         ctx
       })
     ).rejects.toThrow("not found");
@@ -316,7 +326,7 @@ describe("agentVaultMembership guards", () => {
       machineIdentityIds: [],
       groupIds: [],
       emails: [],
-      role: ProjectMembershipRole.Member,
+      roles: [ProjectMembershipRole.Member],
       ctx
     });
 
@@ -337,7 +347,7 @@ describe("agentVaultMembership guards", () => {
         machineIdentityIds: [],
         groupIds: [],
         emails: [],
-        role: ProjectMembershipRole.Member,
+        roles: [ProjectMembershipRole.Member],
         ctx
       })
     ).rejects.toThrow("is not a member of this organization");
@@ -356,7 +366,7 @@ describe("agentVaultMembership guards", () => {
         machineIdentityIds: [],
         groupIds: [],
         emails: [],
-        role: ProjectMembershipRole.Member,
+        roles: [ProjectMembershipRole.Member],
         ctx
       })
       // Named as deactivated rather than missing, because reactivating is the remedy, not inviting.
@@ -377,7 +387,7 @@ describe("agentVaultMembership guards", () => {
         machineIdentityIds: [],
         groupIds: [],
         emails: [],
-        role: ProjectMembershipRole.Member,
+        roles: [ProjectMembershipRole.Member],
         ctx
       })
     ).rejects.toThrow(/is deactivated in this organization[\s\S]*is not a member of this organization/);
@@ -398,7 +408,7 @@ describe("agentVaultMembership guards", () => {
       machineIdentityIds: [],
       groupIds: [],
       emails: [],
-      role: ProjectMembershipRole.Member,
+      roles: [ProjectMembershipRole.Member],
       ctx
     });
 
@@ -418,7 +428,7 @@ describe("agentVaultMembership guards", () => {
         machineIdentityIds: [],
         groupIds: [],
         emails: [],
-        role: ProjectMembershipRole.Member,
+        roles: [ProjectMembershipRole.Member],
         ctx
       })
     ).rejects.toThrow("'bob@test.local' is deactivated in this organization");
@@ -435,7 +445,7 @@ describe("agentVaultMembership guards", () => {
         machineIdentityIds: [],
         groupIds: [],
         emails: [],
-        role: ProjectMembershipRole.Member,
+        roles: [ProjectMembershipRole.Member],
         ctx
       })
     ).rejects.toThrow("are not members of this organization. Invite them to the organization first.");
@@ -453,7 +463,7 @@ describe("agentVaultMembership guards", () => {
         machineIdentityIds: [],
         groupIds: [GROUP_ID],
         emails: [],
-        role: ProjectMembershipRole.Member,
+        roles: [ProjectMembershipRole.Member],
         ctx
       })
     ).rejects.toThrow("not found");
@@ -470,7 +480,7 @@ describe("agentVaultMembership guards", () => {
         userIds: [OTHER_USER_ID, ACTOR_ID],
         groupIds: [],
         machineIdentityIds: [],
-        role: ProjectMembershipRole.Member,
+        roles: [ProjectMembershipRole.Member],
         ctx
       })
     ).rejects.toThrow("your own role");
@@ -489,21 +499,19 @@ describe("agentVaultMembership guards", () => {
       userIds: [],
       groupIds: [],
       machineIdentityIds: [IDENTITY_ID],
-      role: ProjectMembershipRole.Member,
+      roles: [ProjectMembershipRole.Member],
       ctx
     });
 
-    expect(members).toMatchObject([{ type: AgentVaultMemberType.MachineIdentity, role: ProjectMembershipRole.Member }]);
+    // member names the project's Member role.
+    expect(members).toMatchObject([{ type: AgentVaultMemberType.MachineIdentity, roles: ["member-role"] }]);
     expect(skipped).toEqual([]);
     expect(deps.membershipRoleDAL.insertMany).toHaveBeenCalledWith(
-      [{ membershipId: "mem-1", role: ProjectMembershipRole.Member }],
+      [{ membershipId: "mem-1", role: ProjectMembershipRole.Custom, customRoleId: "role-member" }],
       expect.anything()
     );
-    // A demoted admin no longer reaches the bundles they hold no grant on.
-    expect(deps.agentVaultPersonalValueDAL.deleteForActorsWithoutGrant).toHaveBeenCalledWith(
-      { projectId: PROJECT_ID, accessBundleId: undefined, userIds: [], identityIds: [IDENTITY_ID] },
-      expect.anything()
-    );
+    // Losing a role keeps what the member saved; only leaving the project clears it.
+    expect(deps.agentVaultPersonalValueDAL.deleteForActorsOutsideProject).not.toHaveBeenCalled();
   });
 
   test("skips a member who already has the role instead of rewriting it", async () => {
@@ -517,7 +525,7 @@ describe("agentVaultMembership guards", () => {
       userIds: [],
       groupIds: [],
       machineIdentityIds: [IDENTITY_ID],
-      role: ProjectMembershipRole.Admin,
+      roles: [ProjectMembershipRole.Admin],
       ctx
     });
 
@@ -531,18 +539,22 @@ describe("agentVaultMembership guards", () => {
       productMemberships: [{ id: "mem-identity" }, { id: "mem-group", actorIdentityId: null, actorGroupId: GROUP_ID }],
       adminMembershipIds: ["mem-group"]
     });
+    vi.mocked(deps.membershipRoleDAL.find).mockResolvedValue([
+      { id: "row-identity", membershipId: "mem-identity", role: ProjectMembershipRole.Custom, customRoleId: "role-x" },
+      { id: "row-group", membershipId: "mem-group", role: ProjectMembershipRole.Admin }
+    ] as never);
 
     const { members, skipped } = await service.updateProductMemberRoles({
       projectId: PROJECT_ID,
       userIds: [OTHER_USER_ID],
       groupIds: [GROUP_ID],
       machineIdentityIds: [IDENTITY_ID],
-      role: ProjectMembershipRole.Admin,
+      roles: [ProjectMembershipRole.Admin],
       ctx
     });
 
     expect(members).toEqual([
-      expect.objectContaining({ type: AgentVaultMemberType.MachineIdentity, id: IDENTITY_ID, role: "admin" })
+      expect.objectContaining({ type: AgentVaultMemberType.MachineIdentity, id: IDENTITY_ID, roles: ["admin"] })
     ]);
     expect(skipped).toHaveLength(2);
     expect(skipped).toEqual(
@@ -551,16 +563,170 @@ describe("agentVaultMembership guards", () => {
         expect.objectContaining({ type: AgentVaultMemberType.Group, id: GROUP_ID })
       ])
     );
-    expect(deps.membershipRoleDAL.delete).toHaveBeenCalledWith(
-      { $in: { membershipId: ["mem-identity"] } },
-      expect.anything()
-    );
+    expect(deps.membershipRoleDAL.delete).toHaveBeenCalledWith({ $in: { id: ["row-identity"] } }, expect.anything());
     expect(deps.membershipRoleDAL.insertMany).toHaveBeenCalledWith(
       [{ membershipId: "mem-identity", role: ProjectMembershipRole.Admin }],
       expect.anything()
     );
-    // A promotion takes nothing away, so nothing is cleared.
-    expect(deps.agentVaultPersonalValueDAL.deleteForActorsWithoutGrant).not.toHaveBeenCalled();
+    expect(deps.agentVaultPersonalValueDAL.deleteForActorsOutsideProject).not.toHaveBeenCalled();
+  });
+
+  test("the deprecated role keeps the roles a member holds for access bundles", async () => {
+    const { service, deps } = buildService({
+      productMemberships: [{ id: "mem-identity" }],
+      adminMembershipIds: ["mem-other-admin"]
+    });
+    vi.mocked(deps.membershipRoleDAL.find).mockResolvedValue([
+      { id: "row-member", membershipId: "mem-identity", role: ProjectMembershipRole.Custom, customRoleId: "role-x" },
+      {
+        id: "row-bundle",
+        membershipId: "mem-identity",
+        role: ProjectMembershipRole.Custom,
+        customRoleId: "role-bundle"
+      }
+    ] as never);
+    vi.mocked(deps.agentVaultAccessBundleDAL.find).mockResolvedValue([{ grantRoleId: "role-bundle" }] as never);
+    vi.mocked(deps.roleDAL.find).mockResolvedValue([{ id: "role-bundle", slug: "github-users" }] as never);
+
+    const { members } = await service.updateProductMemberRoles({
+      projectId: PROJECT_ID,
+      userIds: [],
+      groupIds: [],
+      machineIdentityIds: [IDENTITY_ID],
+      roles: [ProjectMembershipRole.Admin],
+      keepBundleRoles: true,
+      ctx
+    });
+
+    expect(members).toEqual([expect.objectContaining({ id: IDENTITY_ID, roles: ["admin", "github-users"] })]);
+    expect(deps.membershipRoleDAL.delete).toHaveBeenCalledWith({ $in: { id: ["row-member"] } }, expect.anything());
+    expect(deps.membershipRoleDAL.insertMany).toHaveBeenCalledWith(
+      [{ membershipId: "mem-identity", role: ProjectMembershipRole.Admin }],
+      expect.anything()
+    );
+  });
+
+  test("the deprecated role counts the access bundle roles it keeps toward the limit", async () => {
+    const { service, deps } = buildService({
+      productMemberships: [{ id: "mem-identity" }],
+      adminMembershipIds: ["mem-other-admin"]
+    });
+    const bundleRoleIds = Array.from({ length: 10 }, (_, index) => `role-bundle-${index}`);
+    vi.mocked(deps.membershipRoleDAL.find).mockResolvedValue(
+      bundleRoleIds.map((customRoleId) => ({
+        id: `row-${customRoleId}`,
+        membershipId: "mem-identity",
+        role: ProjectMembershipRole.Custom,
+        customRoleId
+      })) as never
+    );
+    vi.mocked(deps.agentVaultAccessBundleDAL.find).mockResolvedValue(
+      bundleRoleIds.map((grantRoleId) => ({ grantRoleId })) as never
+    );
+    vi.mocked(deps.roleDAL.find).mockResolvedValue(bundleRoleIds.map((id) => ({ id, slug: `${id}-users` })) as never);
+
+    await expect(
+      service.updateProductMemberRoles({
+        projectId: PROJECT_ID,
+        userIds: [],
+        groupIds: [],
+        machineIdentityIds: [IDENTITY_ID],
+        roles: [ProjectMembershipRole.Member],
+        keepBundleRoles: true,
+        ctx
+      })
+    ).rejects.toThrow("A member can have at most 10 roles.");
+
+    expect(deps.membershipRoleDAL.delete).not.toHaveBeenCalled();
+    expect(deps.membershipRoleDAL.insertMany).not.toHaveBeenCalled();
+  });
+
+  test("a role whose time limit has ended is given afresh when named again", async () => {
+    const { service, deps } = buildService({
+      productMemberships: [{ id: "mem-identity" }],
+      adminMembershipIds: ["mem-other-admin"]
+    });
+    vi.mocked(deps.membershipRoleDAL.find).mockResolvedValue([
+      {
+        id: "row-ended",
+        membershipId: "mem-identity",
+        role: ProjectMembershipRole.Custom,
+        customRoleId: "role-member",
+        isTemporary: true,
+        temporaryAccessEndTime: new Date(Date.now() - 60_000)
+      }
+    ] as never);
+
+    const { members, skipped } = await service.updateProductMemberRoles({
+      projectId: PROJECT_ID,
+      userIds: [],
+      groupIds: [],
+      machineIdentityIds: [IDENTITY_ID],
+      roles: [ProjectMembershipRole.Member],
+      ctx
+    });
+
+    expect(skipped).toEqual([]);
+    expect(members).toMatchObject([{ id: IDENTITY_ID, roles: ["member-role"] }]);
+    expect(deps.membershipRoleDAL.delete).toHaveBeenCalledWith({ $in: { id: ["row-ended"] } }, expect.anything());
+    expect(deps.membershipRoleDAL.insertMany).toHaveBeenCalledWith(
+      [{ membershipId: "mem-identity", role: ProjectMembershipRole.Custom, customRoleId: "role-member" }],
+      expect.anything()
+    );
+  });
+
+  test("a time-limited role named again keeps its row and its time limit", async () => {
+    const { service, deps } = buildService({
+      productMemberships: [{ id: "mem-identity" }],
+      adminMembershipIds: ["mem-other-admin"]
+    });
+    vi.mocked(deps.membershipRoleDAL.find).mockResolvedValue([
+      {
+        id: "row-live",
+        membershipId: "mem-identity",
+        role: ProjectMembershipRole.Custom,
+        customRoleId: "role-member",
+        isTemporary: true,
+        temporaryAccessEndTime: new Date(Date.now() + 3_600_000)
+      }
+    ] as never);
+
+    await service.updateProductMemberRoles({
+      projectId: PROJECT_ID,
+      userIds: [],
+      groupIds: [],
+      machineIdentityIds: [IDENTITY_ID],
+      roles: [ProjectMembershipRole.Member, ProjectMembershipRole.Admin],
+      ctx
+    });
+
+    expect(deps.membershipRoleDAL.delete).not.toHaveBeenCalled();
+    expect(deps.membershipRoleDAL.insertMany).toHaveBeenCalledWith(
+      [{ membershipId: "mem-identity", role: ProjectMembershipRole.Admin }],
+      expect.anything()
+    );
+  });
+
+  test("reads the members' roles on the primary before the write's transaction too", async () => {
+    const { service, deps, txs } = buildService({
+      productMemberships: [{ id: "mem-identity" }],
+      adminMembershipIds: ["mem-other-admin"]
+    });
+
+    await service.updateProductMemberRoles({
+      projectId: PROJECT_ID,
+      userIds: [],
+      groupIds: [],
+      machineIdentityIds: [IDENTITY_ID],
+      roles: [ProjectMembershipRole.Member],
+      ctx
+    });
+    await service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx });
+
+    // Only a read without a tx goes to a replica.
+    const { calls } = vi.mocked(deps.membershipRoleDAL.findRolesByMembershipIds).mock;
+    expect(calls.length).toBeGreaterThanOrEqual(2);
+    calls.forEach(([, tx]) => expect(txs).toContain(tx));
   });
 
   test("refuses one batch that would demote every remaining admin", async () => {
@@ -574,12 +740,13 @@ describe("agentVaultMembership guards", () => {
         userIds: [],
         groupIds: [GROUP_ID],
         machineIdentityIds: [IDENTITY_ID],
-        role: ProjectMembershipRole.Member,
+        roles: [ProjectMembershipRole.Member],
         ctx
       })
     ).rejects.toThrow("must keep at least one admin");
 
-    expect(txs[0].chain.whereNotIn).toHaveBeenCalledWith(
+    // The last transaction is the write's; the first only read the members' roles.
+    expect(txs.at(-1)!.chain.whereNotIn).toHaveBeenCalledWith(
       expect.any(String),
       expect.arrayContaining(["mem-identity", "mem-group"])
     );
@@ -614,11 +781,11 @@ describe("member changes take the action on each kind they name", () => {
       shouldUseNewPrivilegeSystem: true
     });
 
-    await service.addProductMembers({ projectId: PROJECT_ID, ...addIds, role: ProjectMembershipRole.Member, ctx });
+    await service.addProductMembers({ projectId: PROJECT_ID, ...addIds, roles: [ProjectMembershipRole.Member], ctx });
     await service.updateProductMemberRoles({
       projectId: PROJECT_ID,
       ...addIds,
-      role: ProjectMembershipRole.Admin,
+      roles: [ProjectMembershipRole.NoAccess],
       ctx
     });
     await service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx });
@@ -634,7 +801,13 @@ describe("member changes take the action on each kind they name", () => {
     const { service, deps } = buildService({ rules: identityManager });
 
     await expect(
-      service.addProductMembers({ projectId: PROJECT_ID, emails: [], ...ids, role: ProjectMembershipRole.Member, ctx })
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        emails: [],
+        ...ids,
+        roles: [ProjectMembershipRole.Member],
+        ctx
+      })
     ).rejects.toBeInstanceOf(ForbiddenError);
     expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
   });
@@ -644,7 +817,7 @@ describe("member changes take the action on each kind they name", () => {
     const users = { ...withoutIdentity, userIds: [OTHER_USER_ID] };
 
     await expect(
-      service.updateProductMemberRoles({ projectId: PROJECT_ID, ...users, role: ProjectMembershipRole.Admin, ctx })
+      service.updateProductMemberRoles({ projectId: PROJECT_ID, ...users, roles: [ProjectMembershipRole.Admin], ctx })
     ).rejects.toBeInstanceOf(ForbiddenError);
     await expect(service.revokeProductMembers({ projectId: PROJECT_ID, ...users, ctx })).rejects.toBeInstanceOf(
       ForbiddenError
@@ -681,29 +854,80 @@ describe("assigning a role is bounded like Secrets Management's membership route
   ].map((action) => ({ action, subject: ProjectPermissionSub.Identity }));
 
   test.each([true, false])(
-    "without assign-role, a role that manages identities can't add, promote, demote or remove one (new system: %s)",
+    "without assign-role, a role that manages identities can't add one, or give it a role (new system: %s)",
     async (shouldUseNewPrivilegeSystem) => {
       const { service, deps } = buildService({
         productMemberships: [{ id: "mem-1" }],
-        adminMembershipIds: ["mem-1", "mem-other"],
+        adminMembershipIds: ["mem-other"],
         rules: identityManager,
         shouldUseNewPrivilegeSystem
       });
 
       await expect(
-        service.addProductMembers({ projectId: PROJECT_ID, ...addIds, role: ProjectMembershipRole.Admin, ctx })
+        service.addProductMembers({ projectId: PROJECT_ID, ...addIds, roles: [ProjectMembershipRole.Member], ctx })
       ).rejects.toThrow("Failed to add the member with this role");
       await expect(
-        service.updateProductMemberRoles({ projectId: PROJECT_ID, ...addIds, role: ProjectMembershipRole.Member, ctx })
-      ).rejects.toThrow("Failed to change the role of a more privileged member");
-      await expect(service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx })).rejects.toThrow(
-        "Failed to remove a more privileged member"
+        service.updateProductMemberRoles({
+          projectId: PROJECT_ID,
+          ...addIds,
+          roles: [ProjectMembershipRole.Member],
+          ctx
+        })
+      ).rejects.toThrow(
+        // The new system checks assign-role on the member before the role it gives; the legacy one compares the role.
+        shouldUseNewPrivilegeSystem
+          ? "Failed to change the role of a more privileged member"
+          : "Failed to give the member this role"
       );
       expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
       expect(deps.membershipRoleDAL.insertMany).not.toHaveBeenCalled();
-      expect(deps.membershipDAL.delete).not.toHaveBeenCalled();
     }
   );
+
+  test("only an admin gives the admin role, or changes or removes an admin, whatever else a role can do", async () => {
+    const { service, deps } = buildService({
+      productMemberships: [{ id: "mem-1" }],
+      adminMembershipIds: ["mem-1", "mem-other"],
+      rules: [
+        ...identityManager,
+        { action: ProjectPermissionIdentityActions.AssignRole, subject: ProjectPermissionSub.Identity }
+      ],
+      shouldUseNewPrivilegeSystem: true
+    });
+
+    await expect(
+      service.addProductMembers({ projectId: PROJECT_ID, ...addIds, roles: [ProjectMembershipRole.Admin], ctx })
+    ).rejects.toThrow("Only an Agent Vault admin can give the admin role.");
+    await expect(
+      service.updateProductMemberRoles({
+        projectId: PROJECT_ID,
+        ...addIds,
+        roles: [ProjectMembershipRole.NoAccess],
+        ctx
+      })
+    ).rejects.toThrow("Only an Agent Vault admin can change or remove another admin.");
+    await expect(service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx })).rejects.toThrow(
+      "Only an Agent Vault admin can change or remove another admin."
+    );
+    expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
+    expect(deps.membershipDAL.delete).not.toHaveBeenCalled();
+  });
+
+  test("No Access can't sit beside another role, and an unknown role is refused", async () => {
+    const { service } = buildService();
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        ...addIds,
+        roles: [ProjectMembershipRole.NoAccess, ProjectMembershipRole.Admin],
+        ctx
+      })
+    ).rejects.toThrow("No Access can't be given together with another role.");
+    await expect(service.addProductMembers({ projectId: PROJECT_ID, ...addIds, roles: ["nope"], ctx })).rejects.toThrow(
+      "This project has no role 'nope'."
+    );
+  });
 
   test.each([true, false])(
     "an Agent Vault admin still promotes (new system: %s)",
@@ -716,7 +940,7 @@ describe("assigning a role is bounded like Secrets Management's membership route
       await service.updateProductMemberRoles({
         projectId: PROJECT_ID,
         ...addIds,
-        role: ProjectMembershipRole.Admin,
+        roles: [ProjectMembershipRole.Admin],
         ctx
       });
       expect(deps.membershipRoleDAL.insertMany).toHaveBeenCalled();

@@ -27,7 +27,13 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization, useProject, useProjectPermission } from "@app/context";
+import {
+  canUseAgentVaultService,
+  canUseAgentVaultServices,
+  canUseAgentVaultSkill,
+  canUseAgentVaultSkills
+} from "@app/helpers/agentVaultPermissions";
 import { useDebounce } from "@app/hooks";
 import {
   useGetAgentVaultAccessBundle,
@@ -139,6 +145,7 @@ type Props = {
 export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) => {
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
+  const { permission } = useProjectPermission();
 
   const formMethods = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -167,8 +174,8 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
     }
   }, [accessBundle?.id, selectedSkillCount]);
 
-  // An admin can pick any of the project's services, and a member only those in their bundles, which is what this
-  // list returns to each.
+  // Each list also returns what the caller can only read, which a session is refused, so the pickers keep what they can
+  // use, and a list is only asked for by someone who could use something in it.
   const [serviceSearch, setServiceSearch] = useState("");
   const [debouncedServiceSearch] = useDebounce(serviceSearch);
   const { data: pickableServices, isFetching: isSearchingServices } = useListAgentVaultServices(
@@ -178,10 +185,13 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
       orderBy: "name",
       orderDirection: "asc",
       limit: SERVICE_PICKER_LIMIT
-    }
+    },
+    { enabled: canUseAgentVaultServices(permission) }
+  );
+  const usableServices = (pickableServices?.services ?? []).filter((service) =>
+    canUseAgentVaultService(permission, service)
   );
 
-  // The same for skills: an admin can pick any of them, and a member only those in their bundles.
   const [skillSearch, setSkillSearch] = useState("");
   const [debouncedSkillSearch] = useDebounce(skillSearch);
   const { data: pickableSkills, isFetching: isSearchingSkills } = useListAgentVaultSkills(
@@ -189,7 +199,11 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
     {
       search: debouncedSkillSearch.trim() || undefined,
       limit: SKILL_PICKER_LIMIT
-    }
+    },
+    { enabled: canUseAgentVaultSkills(permission) }
+  );
+  const usableSkills = (pickableSkills?.skills ?? []).filter((skill) =>
+    canUseAgentVaultSkill(permission, skill)
   );
 
   const { data: bundleDetails } = useGetAgentVaultAccessBundle(projectId, accessBundle?.id ?? "");
@@ -259,7 +273,7 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
               <Combobox<TAgentVaultProjectService>
                 id="agent-vault-session-services"
                 multiple
-                options={pickableServices?.services ?? []}
+                options={usableServices}
                 value={field.value}
                 isLoading={isSearchingServices}
                 onSearchChange={setServiceSearch}
@@ -305,7 +319,7 @@ export const DashboardSessionForm = ({ formId, accessBundle, onSubmit }: Props) 
               <Combobox<TAgentVaultSkill>
                 id="agent-vault-session-skills"
                 multiple
-                options={pickableSkills?.skills ?? []}
+                options={usableSkills}
                 value={field.value}
                 isLoading={isSearchingSkills}
                 onSearchChange={setSkillSearch}

@@ -15,6 +15,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultProxyActions,
+  ProjectPermissionAgentVaultServiceActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionAgentVaultVariableActions,
@@ -295,10 +296,10 @@ const ApprovalRequestGrantPolicyActionSchema = z.object({
 
 const AgentVaultAccessBundlePolicyActionSchema = z.object({
   [ProjectPermissionAgentVaultAccessBundleActions.Read]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultAccessBundleActions.Use]: z.boolean().optional(),
   [ProjectPermissionAgentVaultAccessBundleActions.Create]: z.boolean().optional(),
   [ProjectPermissionAgentVaultAccessBundleActions.Edit]: z.boolean().optional(),
-  [ProjectPermissionAgentVaultAccessBundleActions.Delete]: z.boolean().optional(),
-  [ProjectPermissionAgentVaultAccessBundleActions.ManageMembers]: z.boolean().optional()
+  [ProjectPermissionAgentVaultAccessBundleActions.Delete]: z.boolean().optional()
 });
 
 const AgentVaultSessionPolicyActionSchema = z.object({
@@ -310,7 +311,8 @@ const AgentVaultSessionPolicyActionSchema = z.object({
   [ProjectPermissionAgentVaultSessionActions.EditAny]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.RevokeAny]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices]: z.boolean().optional(),
-  [ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills]: z.boolean().optional()
+  [ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSessionActions.ManageDelegations]: z.boolean().optional()
 });
 
 const AgentVaultProxyPolicyActionSchema = z.object({
@@ -324,9 +326,18 @@ const AgentVaultProxyPolicyActionSchema = z.object({
 
 const AgentVaultSkillPolicyActionSchema = z.object({
   [ProjectPermissionAgentVaultSkillActions.Read]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSkillActions.Use]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSkillActions.Create]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSkillActions.Edit]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSkillActions.Delete]: z.boolean().optional()
+});
+
+const AgentVaultServicePolicyActionSchema = z.object({
+  [ProjectPermissionAgentVaultServiceActions.Read]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultServiceActions.Use]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultServiceActions.Create]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultServiceActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultServiceActions.Delete]: z.boolean().optional()
 });
 
 const AgentVaultVariablePolicyActionSchema = z.object({
@@ -885,6 +896,8 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.AgentVaultSkills]: AgentVaultSkillPolicyActionSchema.array().default(
         []
       ),
+      [ProjectPermissionSub.AgentVaultServices]:
+        AgentVaultServicePolicyActionSchema.array().default([]),
       [ProjectPermissionSub.AgentVaultVariables]:
         AgentVaultVariablePolicyActionSchema.array().default([]),
       [ProjectPermissionSub.ProjectFolderGrant]: ProjectFolderGrantPolicyActionSchema.extend({
@@ -2539,12 +2552,17 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.AgentVaultAccessBundles]: {
     title: "Access Bundles",
-    description: "Manage what an agent can reach and who can reach it",
+    description: "Choose which access bundles sessions can start from, and manage them",
     actions: [
       {
         label: "Read",
         value: ProjectPermissionAgentVaultAccessBundleActions.Read,
         description: "View access bundles and their connections"
+      },
+      {
+        label: "Use",
+        value: ProjectPermissionAgentVaultAccessBundleActions.Use,
+        description: "Start sessions from these bundles, with every service and skill in them"
       },
       {
         label: "Create",
@@ -2560,11 +2578,6 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Remove",
         value: ProjectPermissionAgentVaultAccessBundleActions.Delete,
         description: "Delete access bundles"
-      },
-      {
-        label: "Manage Members",
-        value: ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
-        description: "Grant and revoke access to a bundle"
       }
     ]
   },
@@ -2616,6 +2629,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Create With Inline Skills",
         value: ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills,
         description: "Send skills that last only as long as the session"
+      },
+      {
+        label: "Manage Delegations",
+        value: ProjectPermissionAgentVaultSessionActions.ManageDelegations,
+        description: "Set which users a machine identity can start sessions on behalf of"
       }
     ]
   },
@@ -2655,14 +2673,50 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.AgentVaultServices]: {
+    title: "Services",
+    description: "Choose which services agents can reach, and manage them",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionAgentVaultServiceActions.Read,
+        description: "View services and their settings"
+      },
+      {
+        label: "Use",
+        value: ProjectPermissionAgentVaultServiceActions.Use,
+        description: "Start sessions that reach these services"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionAgentVaultServiceActions.Create,
+        description: "Add services to the project"
+      },
+      {
+        label: "Edit",
+        value: ProjectPermissionAgentVaultServiceActions.Edit,
+        description: "Change a service's settings and credentials"
+      },
+      {
+        label: "Delete",
+        value: ProjectPermissionAgentVaultServiceActions.Delete,
+        description: "Delete services"
+      }
+    ]
+  },
   [ProjectPermissionSub.AgentVaultSkills]: {
     title: "Skills",
-    description: "Manage the skills access bundles deliver to agents",
+    description: "Choose which skills agents can load, and manage them",
     actions: [
       {
         label: "Read",
         value: ProjectPermissionAgentVaultSkillActions.Read,
         description: "View skills, their versions and files"
+      },
+      {
+        label: "Use",
+        value: ProjectPermissionAgentVaultSkillActions.Use,
+        description: "Start sessions that load these skills"
       },
       {
         label: "Create",
@@ -3638,6 +3692,7 @@ const AgentVaultPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.AgentVaultSessions]: enabled,
   [ProjectPermissionSub.AgentVaultProxies]: enabled,
   [ProjectPermissionSub.AgentVaultSkills]: enabled,
+  [ProjectPermissionSub.AgentVaultServices]: enabled,
   [ProjectPermissionSub.AgentVaultVariables]: enabled
 });
 

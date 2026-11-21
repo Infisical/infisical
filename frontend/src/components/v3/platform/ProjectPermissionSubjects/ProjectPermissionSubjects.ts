@@ -29,6 +29,7 @@ import {
   type LucideIcon,
   PackageIcon,
   PenLineIcon,
+  PlugIcon,
   PuzzleIcon,
   RadarIcon,
   RadioIcon,
@@ -235,6 +236,7 @@ export const PROJECT_PERMISSION_SUBJECT_PRESENTATION = {
   [ProjectPermissionSub.AgentVaultSessions]: agentVault(TicketIcon),
   [ProjectPermissionSub.AgentVaultProxies]: agentVault(RouteIcon),
   [ProjectPermissionSub.AgentVaultSkills]: agentVault(BookOpenTextIcon),
+  [ProjectPermissionSub.AgentVaultServices]: agentVault(PlugIcon),
   [ProjectPermissionSub.AgentVaultVariables]: agentVault(BracesIcon)
 } as const satisfies Record<ProjectPermissionSub, ProjectPermissionSubjectPresentation>;
 

@@ -40,9 +40,9 @@ export const AGENT_VAULT_PRODUCT_ROLE_OPTIONS = [
     description: "Full administrative access over this project"
   },
   {
-    value: ProjectMembershipRole.Member,
-    label: "Member",
-    description: "Create sessions with the access bundles they're granted"
+    value: ProjectMembershipRole.NoAccess,
+    label: "No Access",
+    description: "No access until given a role"
   }
 ];
 

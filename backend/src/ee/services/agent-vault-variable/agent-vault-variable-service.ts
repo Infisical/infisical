@@ -3,7 +3,6 @@ import { ForbiddenError } from "@casl/ability";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
-  ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -13,8 +12,8 @@ import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } 
 import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { logger } from "@app/lib/logger";
 import { TGenericPermission } from "@app/lib/types";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
+import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent-vault-service-dal";
 import {
   TAgentVaultOauthServiceFactory,
   TOauthVariableConnected,
@@ -29,7 +28,14 @@ import {
   AgentVaultVariableType
 } from "../agent-vault/agent-vault-enums";
 import { ownerOf, ownerOrNullOf, TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
-import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
+import {
+  getAgentVaultPermission,
+  getAgentVaultReachability,
+  unionWithin,
+  usableServiceIdsOf,
+  visibleIdsWithin
+} from "../agent-vault/agent-vault-permission";
+import { TAgentVaultReachDALFactory } from "../agent-vault/agent-vault-reach-dal";
 import { AGENT_VAULT_MAX_PERSONAL_VARIABLES, AGENT_VAULT_MAX_VARIABLES } from "../agent-vault/agent-vault-variable-fns";
 import {
   describeOauthVariableImportProblem,
@@ -64,7 +70,11 @@ import {
 type TAgentVaultVariableServiceFactoryDep = {
   agentVaultVariableDAL: TAgentVaultVariableDALFactory;
   agentVaultPersonalValueDAL: Pick<TAgentVaultPersonalValueDALFactory, "delete">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+  agentVaultServiceDAL: Pick<TAgentVaultServiceDALFactory, "findIdsInBundles">;
+  agentVaultReachDAL: Pick<
+    TAgentVaultReachDALFactory,
+    "findAccessBundleIds" | "findServiceIds" | "findSkillIds" | "findServiceIdsInAnyBundle"
+  >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsDataKeyService: TKmsDataKeyService;
   agentVaultOauthService: Pick<TAgentVaultOauthServiceFactory, "prepareVariableSignIn" | "saveVariableSignIn">;
@@ -116,7 +126,8 @@ const importedOf = (variable: Pick<TAgentVaultVariable, "id" | "key" | "oauthCon
 export const agentVaultVariableServiceFactory = ({
   agentVaultVariableDAL,
   agentVaultPersonalValueDAL,
-  membershipDAL,
+  agentVaultServiceDAL,
+  agentVaultReachDAL,
   permissionService,
   kmsDataKeyService,
   agentVaultOauthService
@@ -126,8 +137,8 @@ export const agentVaultVariableServiceFactory = ({
 
   /**
    * Global variables take their own permission, reads included: a member can use a service without seeing what it is
-   * built from. Personal variables are the caller's own, and any Agent Vault member keeps them. Nobody, an admin
-   * included, can name or read another actor's.
+   * built from. Personal variables are the caller's own, and any member of the project keeps them whatever their
+   * roles, like their personal values. Nobody, an admin included, can name or read another actor's.
    */
   const resolveScope = async (
     { projectId, ctx }: TAgentVaultVariableScoped,
@@ -139,10 +150,6 @@ export const agentVaultVariableServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AgentVaultVariables);
       return { projectId, owner: null };
     }
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultAccessBundleActions.Read,
-      ProjectPermissionSub.AgentVaultAccessBundles
-    );
     return { projectId, owner: ownerOf(ctx) };
   };
 
@@ -155,10 +162,6 @@ export const agentVaultVariableServiceFactory = ({
     }
 
     const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultAccessBundleActions.Read,
-      ProjectPermissionSub.AgentVaultAccessBundles
-    );
     const owners: (TAgentVaultOwner | null)[] = [];
     if (permission.can(ProjectPermissionAgentVaultVariableActions.Read, ProjectPermissionSub.AgentVaultVariables)) {
       owners.push(null);
@@ -187,10 +190,6 @@ export const agentVaultVariableServiceFactory = ({
 
     if (!variable) throw notFound(variableId);
     if (isPersonal(variable)) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAgentVaultAccessBundleActions.Read,
-        ProjectPermissionSub.AgentVaultAccessBundles
-      );
       const owner = ownerOf(ctx);
       if (!isOwnedBy(variable, owner)) throw notFound(variableId);
       return { variable, scope: { projectId, owner } };
@@ -201,10 +200,10 @@ export const agentVaultVariableServiceFactory = ({
     return { variable, scope: { projectId, owner: null } };
   };
 
-  // A member who lost a bundle keeps their personal variables, but not a view into the bundle: its services drop out
-  // of what they see. Global variables get null because only the admin role can read them, and it reaches every
-  // bundle; a role that could read them without that reach would need this filtered too.
-  const reachableBundleIdsOf = async ({
+  // A member who lost a service keeps their personal variables, but not a view into the service: it drops out of what
+  // they see, and a delete doesn't wait for it. A global variable is held by every service that uses it.
+  const NO_LIMIT = { serviceIds: null, accessBundleIds: null };
+  const reachOfOwner = async ({
     projectId,
     ctx,
     owner
@@ -212,27 +211,55 @@ export const agentVaultVariableServiceFactory = ({
     projectId: string;
     ctx: TGenericPermission;
     owner: TAgentVaultOwner | null;
-  }) => {
-    if (!owner) return null;
-    const { accessBundleIds } = await getAgentVaultReachability(
-      { permissionService, membershipDAL },
-      { projectId, ctx }
-    );
-    return accessBundleIds;
+  }): Promise<{ serviceIds: string[] | null; accessBundleIds: string[] | null }> => {
+    if (!owner) return NO_LIMIT;
+    const reachability = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, { projectId, ctx });
+    return {
+      serviceIds: await usableServiceIdsOf({ agentVaultServiceDAL, agentVaultReachDAL }, reachability, projectId),
+      accessBundleIds: reachability.accessBundleIds
+    };
   };
 
-  // A service is reached through any bundle it is in; null reach is an admin's, which is every service.
-  const isReachable = (service: TAgentVaultServiceUsingVariable, accessBundleIds: string[] | null) =>
-    !accessBundleIds || service.accessBundles.some((bundle) => accessBundleIds.includes(bundle.id));
+  // What Used By shows. A personal variable shows the services its owner can still use, as above. A global one shows the
+  // services and bundles the caller can see: reading variables doesn't let a role see every service.
+  const usedByScopeOf = async (args: {
+    projectId: string;
+    ctx: TGenericPermission;
+    owner: TAgentVaultOwner | null;
+  }): Promise<{ serviceIds: string[] | null; accessBundleIds: string[] | null }> => {
+    if (args.owner) return reachOfOwner(args);
+    const { projectId } = args;
+    const reachability = await getAgentVaultReachability(
+      { permissionService, agentVaultReachDAL },
+      { projectId, ctx: args.ctx }
+    );
+    const [readable, usable, accessBundleIds] = await Promise.all([
+      visibleIdsWithin(reachability.permission, {
+        subjectType: ProjectPermissionSub.AgentVaultServices,
+        field: "serviceId",
+        loadIds: () => agentVaultReachDAL.findServiceIds(projectId)
+      }),
+      usableServiceIdsOf({ agentVaultServiceDAL, agentVaultReachDAL }, reachability, projectId),
+      visibleIdsWithin(reachability.permission, {
+        subjectType: ProjectPermissionSub.AgentVaultAccessBundles,
+        field: "accessBundleId",
+        loadIds: () => agentVaultReachDAL.findAccessBundleIds(projectId)
+      })
+    ]);
+    return { serviceIds: unionWithin(readable, usable), accessBundleIds };
+  };
+
+  // A service in the scope; null is every service.
+  const isReachable = (service: TAgentVaultServiceUsingVariable, serviceIds: string[] | null) =>
+    !serviceIds || serviceIds.includes(service.serviceId);
 
   const splitByReach = async (
     args: { projectId: string; ctx: TGenericPermission; owner: TAgentVaultOwner | null },
     services: TAgentVaultServiceUsingVariable[]
   ) => {
     if (!services.length) return { reachable: services, unreachable: [], accessBundleIds: null };
-    const accessBundleIds = await reachableBundleIdsOf(args);
-    if (!accessBundleIds) return { reachable: services, unreachable: [], accessBundleIds };
-    const reachable = services.filter((service) => isReachable(service, accessBundleIds));
+    const { serviceIds, accessBundleIds } = await usedByScopeOf(args);
+    const reachable = services.filter((service) => isReachable(service, serviceIds));
     return { reachable, unreachable: services.filter((service) => !reachable.includes(service)), accessBundleIds };
   };
 
@@ -270,10 +297,12 @@ export const agentVaultVariableServiceFactory = ({
   const duplicateKeyError = (key: string, scope: TAgentVaultVariableOwnerScope) =>
     new BadRequestError({ message: duplicateKeyMessage(key, scope), details: { field: "key" } });
 
+  // `hiddenCount` counts the services using a global variable that the caller can't see, which are never named.
   const inUseMessage = (
     key: string,
     services: TAgentVaultServiceUsingVariable[],
-    { owner }: TAgentVaultVariableOwnerScope
+    { owner }: TAgentVaultVariableOwnerScope,
+    hiddenCount = 0
   ) => {
     const names = services.map((service) => `'${service.serviceName}'`).join(", ");
     if (owner) {
@@ -281,9 +310,15 @@ export const agentVaultVariableServiceFactory = ({
         ? `The variable '${key}' is used by your personal values for the service ${names}. Remove it from the service before you delete it.`
         : `The variable '${key}' is used by your personal values for the services ${names}. Remove it from those services before you delete it.`;
     }
-    return services.length === 1
+    if (!services.length) {
+      return hiddenCount === 1
+        ? `The variable '${key}' is used by a service you can't see. Ask an Agent Vault admin to remove it from that service before deleting it.`
+        : `The variable '${key}' is used by ${hiddenCount} services you can't see. Ask an Agent Vault admin to remove it from those services before deleting it.`;
+    }
+    const others = hiddenCount ? ` and ${hiddenCount === 1 ? "1 other service" : `${hiddenCount} other services`}` : "";
+    return services.length === 1 && !hiddenCount
       ? `The variable '${key}' is used by the service ${names}. Remove it from that service before deleting it.`
-      : `The variable '${key}' is used by the services ${names}. Remove it from those services before deleting it.`;
+      : `The variable '${key}' is used by the service${services.length === 1 ? "" : "s"} ${names}${others}. Remove it from those services before deleting it.`;
   };
 
   type TProjectCipher = Awaited<ReturnType<typeof getProjectCipher>>;
@@ -307,20 +342,28 @@ export const agentVaultVariableServiceFactory = ({
 
     // A lookup by keys returns every key that exists unless the caller caps it, so a missing entry always means
     // the key doesn't exist.
-    // The Used By sort counts only what the page will show.
-    const accessBundleIds = await reachableBundleIdsOf({ projectId, ctx, owner: personalOwner });
+    const personalScope = personalOwner ? await usedByScopeOf({ projectId, ctx, owner: personalOwner }) : NO_LIMIT;
+    const globalScope = owners.includes(null) ? await usedByScopeOf({ projectId, ctx, owner: null }) : NO_LIMIT;
+    // The Used By sort counts only what the page will show for each variable.
     const { variables, totalCount } = await agentVaultVariableDAL.findForList({
       projectId,
       owners,
       ...query,
-      accessBundleIds: accessBundleIds ?? undefined,
+      globalServiceIds: globalScope.serviceIds ?? undefined,
+      personalServiceIds: personalScope.serviceIds ?? undefined,
       limit: limit ?? query.keys?.length ?? AGENT_VAULT_VARIABLE_LIST_DEFAULT_LIMIT
     });
     const services = await agentVaultVariableDAL.findServicesUsing(variables.map((variable) => variable.id));
-    const reachable = services.filter((service) => isReachable(service, accessBundleIds));
 
     return {
-      variables: variables.map((variable) => projectVariable(variable, reachable, accessBundleIds)),
+      variables: variables.map((variable) => {
+        const { serviceIds, accessBundleIds } = isPersonal(variable) ? personalScope : globalScope;
+        return projectVariable(
+          variable,
+          services.filter((service) => isReachable(service, serviceIds)),
+          accessBundleIds
+        );
+      }),
       totalCount
     };
   };
@@ -680,9 +723,8 @@ export const agentVaultVariableServiceFactory = ({
       { variableId, ...rest },
       ProjectPermissionAgentVaultVariableActions.Delete
     );
-    const { accessBundleIds } = scope.owner
-      ? await getAgentVaultReachability({ permissionService, membershipDAL }, rest)
-      : { accessBundleIds: null };
+    const { serviceIds } = await reachOfOwner({ ...rest, owner: scope.owner });
+    const shownServiceIds = scope.owner ? serviceIds : (await usedByScopeOf({ ...rest, owner: null })).serviceIds;
 
     // The refusal here is the real check. The row lock waits for any save adding a reference to this variable, since
     // those take it FOR SHARE. The deferred foreign keys only back it up, and only raise at commit.
@@ -695,8 +737,13 @@ export const agentVaultVariableServiceFactory = ({
         if (!variable) throw notFound(variableId);
 
         const services = await agentVaultVariableDAL.findServicesUsing([variable.id], tx);
-        const blocking = services.filter((service) => isReachable(service, accessBundleIds));
-        if (blocking.length) throw new ConflictError({ message: inUseMessage(variable.key, blocking, scope) });
+        const blocking = services.filter((service) => isReachable(service, serviceIds));
+        if (blocking.length) {
+          const shown = blocking.filter((service) => isReachable(service, shownServiceIds));
+          throw new ConflictError({
+            message: inUseMessage(variable.key, shown, scope, blocking.length - shown.length)
+          });
+        }
 
         // What the owner saved for a service they no longer reach can't be edited or used, so it doesn't hold the
         // variable in place.

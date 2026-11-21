@@ -1,4 +1,10 @@
-import { ProjectType } from "@app/db/schemas";
+import { AccessScope, ProjectMembershipRole, ProjectType, TableName } from "@app/db/schemas";
+import {
+  AGENT_VAULT_MEMBER_ROLE_DESCRIPTION,
+  AGENT_VAULT_MEMBER_ROLE_SLUG,
+  agentVaultMemberRoleIdOf
+} from "@app/ee/services/agent-vault-member/agent-vault-member-role-fns";
+import { KeyStorePrefixes } from "@app/keystore/keystore";
 
 type TMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -75,10 +81,19 @@ export const scopeAgentVaultRequest = (
   return { url, body: { projectId, ...(body ?? {}) } };
 };
 
-// A request helper bound to one bearer token and one Agent Vault project.
+// A role change reaches a cached project permission once the cache's 10-second marker lapses. Dropping the project's
+// markers makes the next request check the roles again, so a test can act on a role change at once.
+export const expireProjectPermissionMarkers = async (projectId: string) => {
+  const keys = await testRedis.keys(KeyStorePrefixes.ProjectPermissionMarker(projectId, "*", "*", "*"));
+  if (keys.length) await testRedis.del(...keys);
+};
+
+// A request helper bound to one bearer token and one Agent Vault project. Each request sees the project's roles as
+// they are now.
 export const agentVaultRequester =
-  (token: string, projectId: () => string) => (method: TMethod, url: string, body?: Record<string, unknown>) => {
+  (token: string, projectId: () => string) => async (method: TMethod, url: string, body?: Record<string, unknown>) => {
     const scoped = scopeAgentVaultRequest(projectId(), method, url, body);
+    await expireProjectPermissionMarkers(projectId());
     return testServer.inject({
       method,
       url: scoped.url,
@@ -86,3 +101,34 @@ export const agentVaultRequester =
       ...(scoped.body ? { body: scoped.body } : {})
     });
   };
+
+// Agent Vault has no built-in Member role: rows written straight to the database as `member` grant nothing until they
+// point at the project's Member role, which the role migration makes from them. This does the same for a test's rows.
+export const convertAgentVaultMemberRows = async (projectId: string) => {
+  let role = (await testDb(TableName.Role).where({ id: agentVaultMemberRoleIdOf(projectId) }).first()) as
+    | { id: string }
+    | undefined;
+  if (!role) {
+    [role] = (await testDb(TableName.Role)
+      .insert({
+        id: agentVaultMemberRoleIdOf(projectId),
+        name: "Member",
+        slug: AGENT_VAULT_MEMBER_ROLE_SLUG,
+        description: AGENT_VAULT_MEMBER_ROLE_DESCRIPTION,
+        projectId,
+        permissions: JSON.stringify([
+          ["read,create,edit,revoke,create-with-inline-skills", "agent-vault-sessions"],
+          ["read", "agent-vault-proxies"]
+        ])
+      } as never)
+      .returning("id")) as { id: string }[];
+  }
+  await testDb(TableName.MembershipRole)
+    .where({ role: ProjectMembershipRole.Member })
+    .whereIn(
+      "membershipId",
+      testDb(TableName.Membership).where({ scope: AccessScope.Project, scopeProjectId: projectId }).select("id")
+    )
+    .update({ role: ProjectMembershipRole.Custom, customRoleId: role.id });
+  return role.id;
+};

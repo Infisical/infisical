@@ -13,7 +13,8 @@ export const AgentVaultAccessBundlesSchema = z.object({
   name: z.string(),
   description: z.string().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  grantRoleId: z.string().uuid().nullable().optional()
 });
 
 export type TAgentVaultAccessBundles = z.infer<typeof AgentVaultAccessBundlesSchema>;

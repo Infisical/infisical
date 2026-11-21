@@ -1,10 +1,20 @@
 import knex, { Knex } from "knex";
 import { vi } from "vitest";
 
-import { ProjectType } from "@app/db/schemas";
+import { AccessScope, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
+import { ConflictError, ForbiddenRequestError } from "@app/lib/errors";
 
-import { assertProductWillRetainAdmin, resolveMembershipRoleSlugs } from "./membership-fns";
+import {
+  assertAgentVaultAdminOnlyChange,
+  assertAgentVaultRoleLimits,
+  assertProductWillRetainAdmin,
+  checkedRoleSlugsOf,
+  customRolesNeedRbacPlan,
+  lockAgentVaultRoleChange,
+  replaceMembershipRoles,
+  resolveMembershipRoleSlugs
+} from "./membership-fns";
 
 describe("product admin retention", () => {
   const buildTx = (adminCount: number, removingAdmins = 1) => {
@@ -136,5 +146,292 @@ describe("resolveMembershipRoleSlugs", () => {
         { role: "admin", isTemporary: true, temporaryAccessEndTime: new Date(Date.now() - 1) }
       ])
     ).toEqual([]);
+  });
+});
+
+describe("assertAgentVaultAdminOnlyChange", () => {
+  const agentVault = { type: ProjectType.AgentVault };
+  const notAdmin = () => false;
+
+  test("refuses a non-admin who gives the admin role or touches an admin in Agent Vault", () => {
+    expect(() =>
+      assertAgentVaultAdminOnlyChange({ project: agentVault, hasRole: notAdmin, givesAdmin: true, touchesAdmin: false })
+    ).toThrow("Only an Agent Vault admin can give the admin role.");
+    expect(() =>
+      assertAgentVaultAdminOnlyChange({ project: agentVault, hasRole: notAdmin, givesAdmin: false, touchesAdmin: true })
+    ).toThrow("Only an Agent Vault admin can change or remove another admin.");
+  });
+
+  test("lets an admin through, and any change that leaves admin alone", () => {
+    expect(() =>
+      assertAgentVaultAdminOnlyChange({
+        project: agentVault,
+        hasRole: (role) => role === "admin",
+        givesAdmin: true,
+        touchesAdmin: true
+      })
+    ).not.toThrow();
+    expect(() =>
+      assertAgentVaultAdminOnlyChange({
+        project: agentVault,
+        hasRole: notAdmin,
+        givesAdmin: false,
+        touchesAdmin: false
+      })
+    ).not.toThrow();
+  });
+
+  test("leaves other products to their own rules, without asking for the actor's roles", () => {
+    const hasRole = vi.fn(() => false);
+    expect(() =>
+      assertAgentVaultAdminOnlyChange({
+        project: { type: ProjectType.SecretManager },
+        hasRole,
+        givesAdmin: true,
+        touchesAdmin: true
+      })
+    ).not.toThrow();
+    expect(hasRole).not.toHaveBeenCalled();
+  });
+});
+
+describe("replaceMembershipRoles keeping access bundle roles", () => {
+  const MEMBERSHIP_ID = "membership-1";
+  const memberRoleDoc = {
+    membershipId: MEMBERSHIP_ID,
+    role: ProjectMembershipRole.Custom,
+    customRoleId: "role-member"
+  };
+
+  // The bundles' roles are read off the transaction itself, the membership's rows through the DAL.
+  const build = (rows: Record<string, unknown>[], bundleRoleIds: string[]) => {
+    const tx = vi.fn(() => ({
+      where: () => ({
+        whereNotNull: () => ({ select: async () => bundleRoleIds.map((grantRoleId) => ({ grantRoleId })) })
+      })
+    })) as unknown as Knex;
+    const membershipRoleDAL = {
+      find: vi.fn().mockResolvedValue(rows),
+      delete: vi.fn().mockResolvedValue([]),
+      insertMany: vi.fn(async (docs: Record<string, unknown>[]) => docs.map((doc) => ({ ...doc, id: "row-new" })))
+    };
+    const replace = () =>
+      replaceMembershipRoles(
+        { membershipRoleDAL } as unknown as Parameters<typeof replaceMembershipRoles>[0],
+        { membershipId: MEMBERSHIP_ID, roleDocs: [memberRoleDoc], keepBundleRolesInProjectId: "project-1" },
+        tx
+      );
+    return { membershipRoleDAL, replace };
+  };
+  const bundleRow = (customRoleId: string, extra: Record<string, unknown> = {}) => ({
+    id: `row-${customRoleId}`,
+    membershipId: MEMBERSHIP_ID,
+    role: ProjectMembershipRole.Custom,
+    customRoleId,
+    isTemporary: false,
+    ...extra
+  });
+
+  test("counts the kept roles toward the most a member can hold", async () => {
+    const bundleRoleIds = Array.from({ length: 10 }, (_, index) => `role-bundle-${index}`);
+    const { membershipRoleDAL, replace } = build(
+      bundleRoleIds.map((id) => bundleRow(id)),
+      bundleRoleIds
+    );
+
+    await expect(replace()).rejects.toThrow("A member can have at most 10 roles.");
+    expect(membershipRoleDAL.delete).not.toHaveBeenCalled();
+    expect(membershipRoleDAL.insertMany).not.toHaveBeenCalled();
+  });
+
+  test("keeps a live bundle role and replaces one whose time limit has ended", async () => {
+    const { membershipRoleDAL, replace } = build(
+      [
+        bundleRow("role-bundle-live"),
+        bundleRow("role-bundle-ended", { isTemporary: true, temporaryAccessEndTime: new Date(Date.now() - 60_000) }),
+        { id: "row-viewer", membershipId: MEMBERSHIP_ID, role: ProjectMembershipRole.Viewer, isTemporary: false }
+      ],
+      ["role-bundle-live", "role-bundle-ended"]
+    );
+
+    const result = await replace();
+
+    expect(membershipRoleDAL.delete).toHaveBeenCalledWith(
+      { $in: { id: ["row-role-bundle-ended", "row-viewer"] } },
+      expect.anything()
+    );
+    expect(membershipRoleDAL.insertMany).toHaveBeenCalledWith([memberRoleDoc], expect.anything());
+    expect(result.map((row) => row.customRoleId)).toEqual(["role-bundle-live", "role-member"]);
+  });
+});
+
+describe("assertAgentVaultRoleLimits", () => {
+  const agentVault = { type: ProjectType.AgentVault };
+
+  // Agent Vault resolves none of these, so each would be stored as a role that grants nothing. `custom` has no role
+  // behind it at all.
+  test.each([
+    ProjectMembershipRole.Custom,
+    ProjectMembershipRole.Viewer,
+    ProjectMembershipRole.Member,
+    ProjectMembershipRole.KmsCryptographicOperator
+  ])("refuses the built-in role %s", (role) => {
+    expect(() => assertAgentVaultRoleLimits({ project: agentVault, roles: [{ role }] })).toThrow(
+      `This project has no role '${role}'. Use admin, no-access, or the slug of one of the project's roles.`
+    );
+  });
+
+  test("takes admin, no-access and the slugs of the project's roles", () => {
+    expect(() =>
+      assertAgentVaultRoleLimits({ project: agentVault, roles: [{ role: ProjectMembershipRole.Admin }] })
+    ).not.toThrow();
+    expect(() =>
+      assertAgentVaultRoleLimits({ project: agentVault, roles: [{ role: ProjectMembershipRole.NoAccess }] })
+    ).not.toThrow();
+    expect(() =>
+      assertAgentVaultRoleLimits({ project: agentVault, roles: [{ role: "release-engineers" }, { role: "auditors" }] })
+    ).not.toThrow();
+  });
+
+  test("leaves other project types alone", () => {
+    expect(() =>
+      assertAgentVaultRoleLimits({
+        project: { type: ProjectType.KMS },
+        roles: [{ role: ProjectMembershipRole.KmsCryptographicOperator }]
+      })
+    ).not.toThrow();
+  });
+});
+
+describe("checkedRoleSlugsOf", () => {
+  test("reads live rows only, custom roles by slug, sorted and without repeats", () => {
+    expect(
+      checkedRoleSlugsOf([
+        { role: ProjectMembershipRole.Custom, customRoleSlug: "release-engineers" },
+        { role: ProjectMembershipRole.NoAccess },
+        { role: ProjectMembershipRole.Custom, customRoleSlug: "auditors" },
+        { role: ProjectMembershipRole.Custom, customRoleSlug: "auditors" },
+        {
+          role: ProjectMembershipRole.Admin,
+          isTemporary: true,
+          temporaryAccessEndTime: new Date(Date.now() - 60_000)
+        }
+      ])
+    ).toEqual(["auditors", ProjectMembershipRole.NoAccess, "release-engineers"]);
+  });
+});
+
+describe("lockAgentVaultRoleChange", () => {
+  const PROJECT_ID = "project-1";
+  const MEMBERSHIP_ID = "membership-1";
+  const TOUCH_ADMIN = "Only an Agent Vault admin can change or remove another admin.";
+
+  // The admin check reads the target's live Admin row with first(), the role comparison every row with select().
+  const buildTx = ({ adminRow, rows }: { adminRow?: { id: string }; rows: Record<string, unknown>[] }) => {
+    const chain = () => {
+      const query = {
+        whereIn: () => query,
+        where: () => query,
+        leftJoin: () => query,
+        first: vi.fn(async () => adminRow),
+        select: vi.fn(async () => rows)
+      };
+      return query;
+    };
+    const tx = Object.assign(
+      vi.fn(() => chain()),
+      { raw: vi.fn().mockResolvedValue(undefined) }
+    );
+    return { tx: tx as unknown as Knex, raw: tx.raw, query: tx };
+  };
+  const lockCall = ["SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("project", PROJECT_ID)]];
+  const customRow = (customRoleSlug: string) => ({ role: ProjectMembershipRole.Custom, customRoleSlug });
+
+  test("does nothing outside an Agent Vault project", async () => {
+    const { tx, raw, query } = buildTx({ rows: [] });
+    await lockAgentVaultRoleChange(null, { membershipId: MEMBERSHIP_ID, checked: { checkedRoleSlugs: [] } }, tx);
+    expect(raw).not.toHaveBeenCalled();
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  test("an admin's change takes the project's lock and checks nothing else", async () => {
+    const { tx, raw, query } = buildTx({ rows: [customRow("auditors")] });
+    await lockAgentVaultRoleChange(
+      { projectId: PROJECT_ID, actorIsAdmin: true },
+      { membershipId: MEMBERSHIP_ID, checked: { checkedRoleSlugs: [] } },
+      tx
+    );
+    expect(raw).toHaveBeenCalledWith(...lockCall);
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  test("a non-admin's change goes ahead when the target's roles are the ones its guard checked", async () => {
+    const { tx, raw } = buildTx({
+      rows: [
+        customRow("release-engineers"),
+        customRow("auditors"),
+        {
+          role: ProjectMembershipRole.Admin,
+          isTemporary: true,
+          temporaryAccessEndTime: new Date(Date.now() - 60_000)
+        }
+      ]
+    });
+    await lockAgentVaultRoleChange(
+      { projectId: PROJECT_ID, actorIsAdmin: false },
+      { membershipId: MEMBERSHIP_ID, checked: { checkedRoleSlugs: ["auditors", "release-engineers"] } },
+      tx
+    );
+    expect(raw).toHaveBeenCalledWith(...lockCall);
+  });
+
+  test("a non-admin's change starts over when the target got another role meanwhile", async () => {
+    const { tx } = buildTx({ rows: [customRow("release-engineers"), customRow("auditors")] });
+    const change = lockAgentVaultRoleChange(
+      { projectId: PROJECT_ID, actorIsAdmin: false },
+      { membershipId: MEMBERSHIP_ID, checked: { checkedRoleSlugs: ["release-engineers"] } },
+      tx
+    );
+    await expect(change).rejects.toThrow(ConflictError);
+    await expect(change).rejects.toThrow("A member's roles changed while this request was running. Try again.");
+  });
+
+  test("a non-admin's change is refused when the target was made an admin meanwhile", async () => {
+    const { tx } = buildTx({
+      adminRow: { id: "row-admin" },
+      rows: [{ role: ProjectMembershipRole.Admin }, customRow("release-engineers")]
+    });
+    const change = lockAgentVaultRoleChange(
+      { projectId: PROJECT_ID, actorIsAdmin: false },
+      { membershipId: MEMBERSHIP_ID, checked: { checkedRoleSlugs: ["release-engineers"] } },
+      tx
+    );
+    await expect(change).rejects.toThrow(ForbiddenRequestError);
+    await expect(change).rejects.toThrow(TOUCH_ADMIN);
+  });
+});
+
+describe("customRolesNeedRbacPlan", () => {
+  const projectDAL = (type: ProjectType) => ({ findById: vi.fn().mockResolvedValue({ id: "project-1", type }) });
+
+  test("an Agent Vault project's custom roles work on every plan", async () => {
+    await expect(
+      customRolesNeedRbacPlan(projectDAL(ProjectType.AgentVault), {
+        scope: AccessScope.Project,
+        projectId: "project-1"
+      })
+    ).resolves.toBe(false);
+  });
+
+  test("custom roles anywhere else need the RBAC plan", async () => {
+    await expect(
+      customRolesNeedRbacPlan(projectDAL(ProjectType.SecretManager), {
+        scope: AccessScope.Project,
+        projectId: "project-1"
+      })
+    ).resolves.toBe(true);
+    await expect(
+      customRolesNeedRbacPlan(projectDAL(ProjectType.AgentVault), { scope: AccessScope.Organization })
+    ).resolves.toBe(true);
   });
 });

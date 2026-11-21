@@ -18,6 +18,7 @@ import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fn
 import {
   agentVaultListQuery,
   AgentVaultProjectIdSchema,
+  AgentVaultRoleThatCanUseSchema,
   AgentVaultSkillDetailSchema,
   AgentVaultSkillFilesResponseSchema,
   AgentVaultSkillSchema,
@@ -89,7 +90,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       hide: false,
       operationId: "listAgentVaultSkills",
       description:
-        "List the skills in an Agent Vault project and the access bundles each is in, ordered by name. A member sees only the skills on access bundles they have been granted.",
+        "List the skills in an Agent Vault project that you can see, and the access bundles each is in that you can use, ordered by name. You see a skill your roles let you read or use, directly or through an access bundle you can use.",
       tags: [ApiDocsTags.AgentVaultSkills],
       querystring: z
         .object({
@@ -177,7 +178,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       hide: false,
       operationId: "getAgentVaultSkill",
       description:
-        "Get a skill in an Agent Vault project, the access bundles it is in, and the files of its latest version. A member can get only a skill on an access bundle they have been granted.",
+        "Get a skill in an Agent Vault project, the access bundles it is in that you can use, and the files of its latest version. You can get a skill your roles let you read or use, directly or through an access bundle you can use.",
       tags: [ApiDocsTags.AgentVaultSkills],
       params: SkillIdParamsSchema,
       response: {
@@ -211,6 +212,33 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       });
 
       return { skill };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:skillId/roles",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "listAgentVaultSkillRoles",
+      description:
+        "List the roles that let someone use a skill in an Agent Vault project, directly or through an access bundle that holds it, and how many members hold each.",
+      tags: [ApiDocsTags.AgentVaultSkills],
+      params: SkillIdParamsSchema,
+      response: { 200: z.object({ roles: AgentVaultRoleThatCanUseSchema.array() }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromSkill(
+        actorContext(req),
+        req.params.skillId
+      );
+      return server.services.agentVaultSkill.listSkillRoles({
+        projectId,
+        ctx: actorContext(req),
+        skillId: req.params.skillId
+      });
     }
   });
 
@@ -369,7 +397,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       hide: false,
       operationId: "getAgentVaultSkillVersion",
       description:
-        "Get one version of a skill with its files. A member can get only the latest version of a skill on an access bundle they have been granted.",
+        "Get one version of a skill with its files. Without a role that can edit the skill, you can get only the latest version of a skill you can see.",
       tags: [ApiDocsTags.AgentVaultSkills],
       params: SkillVersionParamsSchema,
       response: { 200: z.object({ version: AgentVaultSkillVersionWithFilesSchema }) }

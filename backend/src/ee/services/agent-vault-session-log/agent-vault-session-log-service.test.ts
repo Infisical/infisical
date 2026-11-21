@@ -6,10 +6,8 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { TPlanFeatures as TLicensePlan } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
-import {
-  agentVaultProjectAdminPermissions,
-  agentVaultProjectMemberPermissions
-} from "@app/ee/services/permission/default-roles";
+import { agentVaultMemberTestRules } from "@app/ee/services/agent-vault/testing/agent-vault-test-roles";
+import { agentVaultProjectAdminPermissions } from "@app/ee/services/permission/default-roles";
 import { BadRequestError, DailyQuotaExceededError, InternalServerError } from "@app/lib/errors";
 import { ObjectStorageError, toObjectStorageError } from "@app/services/object-storage/object-storage-errors";
 import { ObjectStorageErrorReason, ObjectStorageType } from "@app/services/object-storage/object-storage-types";
@@ -193,7 +191,7 @@ const build = (overrides: TOverrides = {}) => {
     permissionService: {
       getProjectPermission: vi.fn(async () => ({
         permission: createMongoAbility(
-          (overrides.isAdmin ?? true) ? agentVaultProjectAdminPermissions : agentVaultProjectMemberPermissions
+          (overrides.isAdmin ?? true) ? agentVaultProjectAdminPermissions : agentVaultMemberTestRules()
         ),
         hasRole: () => overrides.isAdmin ?? true
       }))

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { AgentVaultRestrictedPage } from "@app/components/agent-vault/AgentVaultRestrictedPage";
 import { createNotification } from "@app/components/notifications";
 import { PageTitle } from "@app/components/PageTitle";
 import {
@@ -65,6 +66,7 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
+import { canReadAgentVaultProxies } from "@app/helpers/agentVaultPermissions";
 import { downloadTxtFile } from "@app/helpers/download";
 import {
   getUserTablePreference,
@@ -144,7 +146,7 @@ enum SortColumn {
 const truncateFingerprint = (fingerprint: string) =>
   `${fingerprint.split(":").slice(0, 5).join(":")}…`;
 
-export const AgentVaultProxiesPage = () => {
+const AgentVaultProxiesPageContent = () => {
   const { projectId } = useProject();
   const { permission } = useProjectPermission();
   const canProxy = (action: ProjectPermissionAgentVaultProxyActions) =>
@@ -570,4 +572,19 @@ export const AgentVaultProxiesPage = () => {
       />
     </div>
   );
+};
+
+export const AgentVaultProxiesPage = () => {
+  const { permission } = useProjectPermission();
+  if (!canReadAgentVaultProxies(permission)) {
+    return (
+      <AgentVaultRestrictedPage
+        title="Proxies"
+        icon={ServerIcon}
+        description="Manage the proxies your agents route their requests through."
+        requirement={{ action: "read", subject: ProjectPermissionSub.AgentVaultProxies }}
+      />
+    );
+  }
+  return <AgentVaultProxiesPageContent />;
 };

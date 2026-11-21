@@ -256,7 +256,7 @@ export type TAgentVaultBundleRef = { id: string; name: string };
 // A service or skill in an add request that was already in the access bundle.
 export type TAgentVaultSkippedBundleItem = { id: string; name: string };
 
-// A service read from the project, with the access bundles it is in. A member gets only the ones they reach.
+// A service read from the project, with the access bundles it is in that the caller can use.
 export type TAgentVaultProjectService = TAgentVaultService & {
   accessBundles: TAgentVaultBundleRef[];
 };
@@ -275,13 +275,6 @@ export type TAgentVaultActor =
 
 export type TAgentVaultActorRef = { type: AgentVaultMemberType; id: string };
 
-export type TAgentVaultMember = (
-  | (Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }> & {
-      isOrgMembershipPending: boolean;
-    })
-  | Exclude<TAgentVaultActor, { type: AgentVaultMemberType.User }>
-) & { grantedAt: string };
-
 export type TAgentVaultProductActor =
   | (Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }> & {
       isOrgMembershipPending: boolean;
@@ -293,7 +286,8 @@ export type TAgentVaultProductActor =
   | Extract<TAgentVaultActor, { type: AgentVaultMemberType.Group }>;
 
 export type TAgentVaultProductMember = TAgentVaultProductActor & {
-  role: string;
+  /** Role slugs, oldest first: `admin`, `no-access`, or a custom role's slug. */
+  roles: string[];
   isActive: boolean;
   addedAt: string;
 };
@@ -313,10 +307,13 @@ export type TListAgentVaultProxiesDTO = {
 
 export type TListAgentVaultAccessBundlesDTO = Omit<TListAgentVaultProxiesDTO, "orderBy"> & {
   orderBy?: "name" | "serviceCount" | "createdAt";
-  /** Only the bundles the caller reaches that still require their personal values. */
+  /** Only the bundles that still require the caller's personal values. */
   requiresSetup?: boolean;
-  /** Only the bundles granted to the caller, or with false, only those an admin reaches by role. */
-  granted?: boolean;
+  /**
+   * Only the bundles the caller's roles pick out one by one, or with false, only the rest. A role that can use every
+   * bundle picks out none.
+   */
+  assigned?: boolean;
 };
 
 export type TListAgentVaultVariablesDTO = {
@@ -346,14 +343,13 @@ export type TAgentVaultActorIdsDTO = {
 
 export type TAddAgentVaultProductMembersDTO = TAgentVaultActorIdsDTO & {
   emails?: string[];
-  role: string;
+  roles: string[];
 };
 
-export type TUpdateAgentVaultMemberRolesDTO = TAgentVaultActorIdsDTO & { role: string };
+/** Replaces each member's whole set of roles. */
+export type TUpdateAgentVaultMemberRolesDTO = TAgentVaultActorIdsDTO & { roles: string[] };
 
-export type TAgentVaultWrittenMember = TAgentVaultActorRef & { role: string; addedAt: string };
-
-export type TAgentVaultGrantedMember = TAgentVaultActorRef & { grantedAt: string };
+export type TAgentVaultWrittenMember = TAgentVaultActorRef & { roles: string[]; addedAt: string };
 
 export type TAgentVaultMemberWriteResult<TMember, TSkipped = TAgentVaultActorRef> = {
   members: TMember[];
@@ -370,7 +366,6 @@ export type TAgentVaultAccessBundle = {
 
 export type TAgentVaultAccessBundleListItem = TAgentVaultAccessBundle & {
   serviceCount: number;
-  memberCount: number;
   hostPatterns: string[];
   // Database and SSH services, which cover no host pattern.
   nativeServices: { name: string; type: AgentVaultServiceType }[];
@@ -379,6 +374,19 @@ export type TAgentVaultAccessBundleListItem = TAgentVaultAccessBundle & {
 
 export type TAgentVaultAccessBundleDetails = TAgentVaultAccessBundle & {
   services: TAgentVaultService[];
+};
+
+/**
+ * A role that lets its holders use an access bundle, service or skill: Admin, or a custom role whose rules allow it,
+ * for a service or skill directly or through an access bundle that holds it.
+ */
+export type TAgentVaultRoleThatCanUse = {
+  // Null for the built-in Admin role.
+  id: string | null;
+  slug: string;
+  name: string;
+  isBuiltIn: boolean;
+  memberCount: number;
 };
 
 export type TAgentVaultSessionAccessBundle = {
@@ -724,10 +732,6 @@ export type TCompleteAgentVaultOauthAuthorizationDTO = {
   iss?: string;
   error?: string;
   errorDescription?: string;
-};
-
-export type TAddAgentVaultMembersDTO = TAgentVaultActorIdsDTO & {
-  accessBundleId: string;
 };
 
 // Needs an access bundle, or at least one service or skill. Each is named rather than referenced by ID. The API also
@@ -1113,8 +1117,8 @@ export type TListAgentVaultServicesDTO = {
   search?: string;
   // Only services that need (true) or don't need (false) the caller's personal values.
   requiresSetup?: boolean;
-  // Only services in bundles granted to the caller.
-  granted?: boolean;
+  // Only the services the caller's roles pick out one by one, directly or through a bundle they pick out.
+  assigned?: boolean;
   orderBy?: "name" | "type" | "createdAt";
   orderDirection?: "asc" | "desc";
   limit?: number;

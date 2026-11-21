@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
+import { ProductRolesField } from "@app/components/agent-vault/ProductRolesField";
 import { createNotification } from "@app/components/notifications";
 import { RoleOptionContent } from "@app/components/roles";
 import {
@@ -21,8 +22,9 @@ import {
   TabsTrigger
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { defaultAgentVaultRoles } from "@app/helpers/agentVaultMembers";
 import { getProjectBaseURL } from "@app/helpers/project";
-import { AGENT_VAULT_PRODUCT_ROLE_OPTIONS, PAM_PRODUCT_ROLE_OPTIONS } from "@app/helpers/roles";
+import { PAM_PRODUCT_ROLE_OPTIONS } from "@app/helpers/roles";
 import {
   projectIdentityMembershipQuery,
   useCreateIdentityProjectAdditionalPrivilege,
@@ -87,7 +89,7 @@ type Props = {
   onClose: () => void;
   // Replaces onClose and the redirect to the identity page, for callers that keep the user in their
   // own flow and close their overlay themselves.
-  onComplete?: (identity: TAssignableIdentity & { role: string }) => void;
+  onComplete?: (identity: TAssignableIdentity & { role: string; roles: string[] }) => void;
   // For a caller whose overlay must stay open while the form saves.
   onPendingChange?: (pending: boolean) => void;
 };
@@ -114,21 +116,20 @@ const ProjectIdentityFormContent = ({
   const { currentOrg } = useOrganization();
   const { data: projectRoles } = useGetProjectRoles(projectId, projectType);
 
+  // Agent Vault picks its roles with ProductRolesField, so this list serves every other product.
   const roles = useMemo(() => {
-    if (!isProductScoped) return projectRoles;
-
-    const options = isPam ? PAM_PRODUCT_ROLE_OPTIONS : AGENT_VAULT_PRODUCT_ROLE_OPTIONS;
+    if (!isPam) return projectRoles;
 
     return (projectRoles ?? []).flatMap((role) => {
-      const productRole = options.find((option) => option.value === role.slug);
-      if (!productRole) return [];
-
-      return [{ ...role, name: productRole.label, description: productRole.description }];
+      const productRole = PAM_PRODUCT_ROLE_OPTIONS.find((option) => option.value === role.slug);
+      return productRole
+        ? [{ ...role, name: productRole.label, description: productRole.description }]
+        : [];
     });
-  }, [projectRoles, isProductScoped, isPam]);
+  }, [projectRoles, isPam]);
 
   const defaultRole =
-    isCertManager || isProductScoped
+    isCertManager || isPam
       ? { slug: ProjectMembershipRole.Member, name: "Member" }
       : { slug: ProjectMembershipRole.NoAccess, name: "No Access" };
 
@@ -141,6 +142,7 @@ const ProjectIdentityFormContent = ({
           : CreateProjectIdentityMode.Create,
       name: "",
       role: defaultRole,
+      agentVaultRoles: isAgentVault ? defaultAgentVaultRoles() : [],
       templateIds: []
     }
   });
@@ -169,16 +171,27 @@ const ProjectIdentityFormContent = ({
 
   const onSubmit = async (data: TCreateProjectIdentityForm) => {
     let authAttachFailed = false;
+    const agentVaultRoles = data.agentVaultRoles.length
+      ? data.agentVaultRoles
+      : defaultAgentVaultRoles();
 
     try {
       let identityId: string;
 
       if (data.mode === CreateProjectIdentityMode.Create) {
+        // Agent Vault roles go in the create request: giving them once the identity exists would also take Edit on
+        // machine identities.
+        let createRoles: { role: string }[] | undefined;
+        if (isAgentVault) {
+          createRoles = agentVaultRoles.map((role) => ({ role }));
+        } else if (isPam && data.role?.slug) {
+          createRoles = [{ role: data.role.slug }];
+        }
         const created = await createProjectIdentity({
           name: data.name!.trim(),
           projectId,
           hasDeleteProtection: true,
-          ...(isProductScoped && data.role?.slug ? { roles: [{ role: data.role.slug }] } : {})
+          ...(createRoles ? { roles: createRoles } : {})
         });
         identityId = created.id;
 
@@ -210,7 +223,7 @@ const ProjectIdentityFormContent = ({
             role: data.role.slug
           });
         } else if (isAgentVault) {
-          await addAgentVaultMembers({ machineIdentityIds: [identityId], role: data.role.slug });
+          await addAgentVaultMembers({ machineIdentityIds: [identityId], roles: agentVaultRoles });
         } else {
           await createMembership({
             projectId,
@@ -276,7 +289,8 @@ const ProjectIdentityFormContent = ({
             data.mode === CreateProjectIdentityMode.Create
               ? data.name!.trim()
               : data.identity!.name,
-          role: data.role.slug
+          role: data.role.slug,
+          roles: isAgentVault ? agentVaultRoles : [data.role.slug]
         });
         return;
       }
@@ -378,31 +392,51 @@ const ProjectIdentityFormContent = ({
             />
           )}
 
-          <Controller
-            control={control}
-            name="role"
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel>Role</FieldLabel>
-                <FieldContent>
-                  <Combobox
-                    value={value}
-                    isClearable={false}
-                    onValueChange={onChange}
-                    options={roles}
-                    placeholder="Select role..."
-                    searchAriaLabel="Search roles"
-                    getOptionValue={(option) => option.slug}
-                    getOptionKeywords={(option) => [option.slug]}
-                    getOptionLabel={(option) => option.name}
-                    renderOption={(option) => <RoleOptionContent role={option} />}
-                    isError={Boolean(error)}
-                  />
-                </FieldContent>
-                {error && <FieldError>{error.message}</FieldError>}
-              </Field>
-            )}
-          />
+          {isAgentVault ? (
+            <Controller
+              control={control}
+              name="agentVaultRoles"
+              render={({ field: { value, onChange } }) => (
+                <Field>
+                  <FieldLabel htmlFor="project-identity-roles">Roles</FieldLabel>
+                  <FieldContent>
+                    <ProductRolesField
+                      id="project-identity-roles"
+                      projectId={projectId}
+                      value={value}
+                      onChange={onChange}
+                    />
+                  </FieldContent>
+                </Field>
+              )}
+            />
+          ) : (
+            <Controller
+              control={control}
+              name="role"
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel>Role</FieldLabel>
+                  <FieldContent>
+                    <Combobox
+                      value={value}
+                      isClearable={false}
+                      onValueChange={onChange}
+                      options={roles}
+                      placeholder="Select role..."
+                      searchAriaLabel="Search roles"
+                      getOptionValue={(option) => option.slug}
+                      getOptionKeywords={(option) => [option.slug]}
+                      getOptionLabel={(option) => option.name}
+                      renderOption={(option) => <RoleOptionContent role={option} />}
+                      isError={Boolean(error)}
+                    />
+                  </FieldContent>
+                  {error && <FieldError>{error.message}</FieldError>}
+                </Field>
+              )}
+            />
+          )}
 
           {canGrantPrivileges && (
             <Field>

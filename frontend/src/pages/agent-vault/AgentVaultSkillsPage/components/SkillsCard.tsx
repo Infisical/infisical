@@ -7,7 +7,8 @@ import {
   PencilIcon,
   PlusIcon,
   SearchIcon,
-  TrashIcon
+  TrashIcon,
+  UsersIcon
 } from "lucide-react";
 
 import { CreateSkillSheet } from "@app/components/agent-vault/skills/CreateSkillSheet";
@@ -15,6 +16,7 @@ import { DeleteSkillDialog } from "@app/components/agent-vault/skills/DeleteSkil
 import { downloadSkillVersion } from "@app/components/agent-vault/skills/downloadSkillVersion";
 import { SkillBundleBadges } from "@app/components/agent-vault/skills/SkillBundleBadges";
 import { SkillSheet } from "@app/components/agent-vault/skills/SkillSheet";
+import { TWhoCanUseTarget, WhoCanUseDialog } from "@app/components/agent-vault/WhoCanUseDialog";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -52,12 +54,14 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import {
+  ProjectPermissionActions,
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionSub,
   useOrganization,
   useProjectPermission,
   useProject
 } from "@app/context";
+import { canOnAgentVaultSkill } from "@app/helpers/agentVaultPermissions";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -84,14 +88,6 @@ export const SkillsCard = () => {
     ProjectPermissionAgentVaultSkillActions.Create,
     ProjectPermissionSub.AgentVaultSkills
   );
-  const canEdit = permission.can(
-    ProjectPermissionAgentVaultSkillActions.Edit,
-    ProjectPermissionSub.AgentVaultSkills
-  );
-  const canDelete = permission.can(
-    ProjectPermissionAgentVaultSkillActions.Delete,
-    ProjectPermissionSub.AgentVaultSkills
-  );
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
@@ -101,6 +97,9 @@ export const SkillsCard = () => {
   );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [skillToDelete, setSkillToDelete] = useState<TAgentVaultSkill | null>(null);
+  const [whoCanUse, setWhoCanUse] = useState<TWhoCanUseTarget | null>(null);
+  const [isWhoCanUseOpen, setIsWhoCanUseOpen] = useState(false);
+  const canReadRoles = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
 
   const searchTerm = debouncedSearch.trim();
 
@@ -264,7 +263,11 @@ export const SkillsCard = () => {
                         align="end"
                         onClick={(event) => event.stopPropagation()}
                       >
-                        {canEdit && (
+                        {canOnAgentVaultSkill(
+                          permission,
+                          ProjectPermissionAgentVaultSkillActions.Edit,
+                          skill.id
+                        ) && (
                           <DropdownMenuItem onClick={() => openSkill(skill)}>
                             <PencilIcon />
                             Edit
@@ -274,7 +277,22 @@ export const SkillsCard = () => {
                           <DownloadIcon />
                           Download
                         </DropdownMenuItem>
-                        {canDelete && (
+                        {canReadRoles && (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setWhoCanUse({ kind: "skill", id: skill.id, name: skill.name });
+                              setIsWhoCanUseOpen(true);
+                            }}
+                          >
+                            <UsersIcon />
+                            Who Can Use
+                          </DropdownMenuItem>
+                        )}
+                        {canOnAgentVaultSkill(
+                          permission,
+                          ProjectPermissionAgentVaultSkillActions.Delete,
+                          skill.id
+                        ) && (
                           <>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
@@ -319,6 +337,11 @@ export const SkillsCard = () => {
 
       <SkillSheet />
 
+      <WhoCanUseDialog
+        isOpen={isWhoCanUseOpen}
+        onOpenChange={setIsWhoCanUseOpen}
+        target={whoCanUse}
+      />
       <DeleteSkillDialog
         skill={skillToDelete}
         onOpenChange={(isOpen) => {

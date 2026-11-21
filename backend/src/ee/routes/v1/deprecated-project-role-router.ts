@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { AccessScope, ProjectMembershipRole, ProjectRolesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import {
   backfillPermissionV1SchemaToV2Schema,
   ProjectPermissionV1Schema
@@ -15,6 +16,12 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedRoleSchemaV1 } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+// The checks the v2 routes run on a role's rules, such as a condition on an action that takes none. A V1 rule reads the
+// same to them: V1 differs only in its secret and identity rules, which carry none of the actions and conditions they
+// check.
+const assertValidPermissionCombination = (permissions: z.infer<typeof ProjectPermissionV1Schema>[]) =>
+  checkForInvalidPermissionCombination(permissions as Parameters<typeof checkForInvalidPermissionCombination>[0]);
 
 export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -52,6 +59,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      assertValidPermissionCombination(req.body.permissions);
       const stringifiedPermissions = JSON.stringify(
         packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions, true))
       );
@@ -142,6 +150,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      if (req.body.permissions) assertValidPermissionCombination(req.body.permissions);
       const stringifiedPermissions = req.body.permissions
         ? JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions, true)))
         : undefined;

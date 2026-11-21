@@ -2,7 +2,14 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
+import {
+  AccessScope,
+  ActionProjectType,
+  ProjectMembershipRole,
+  ProjectType,
+  ProjectVersion,
+  TableName
+} from "@app/db/schemas";
 import { Meter, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -25,7 +32,15 @@ import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { lockMembershipsById } from "../membership/membership-dal";
-import { assertProductWillRetainAdmin, resolveMembershipRoleSlugs } from "../membership/membership-fns";
+import {
+  assertAgentVaultAdminOnlyChange,
+  assertProductWillRetainAdmin,
+  checkedRoleSlugsOf,
+  findAgentVaultRoleChange,
+  lockAgentVaultRoleChange,
+  readTargetForAgentVaultRecheck,
+  resolveMembershipRoleSlugs
+} from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
@@ -52,7 +67,10 @@ type TProjectMembershipServiceFactoryDep = {
   smtpService: TSmtpService;
   projectMembershipDAL: TProjectMembershipDALFactory;
   membershipUserDAL: TMembershipUserDALFactory;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "find" | "delete" | "findRolesByMembershipIds">;
+  membershipRoleDAL: Pick<
+    TMembershipRoleDALFactory,
+    "insertMany" | "find" | "delete" | "findRolesByMembershipIds" | "transaction"
+  >;
   userDAL: Pick<TUserDALFactory, "find">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
@@ -268,6 +286,12 @@ export const projectMembershipServiceFactory = ({
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
     );
+    // This route can only give the built-in Member role, which grants nothing in an Agent Vault project.
+    if (project?.type === ProjectType.AgentVault) {
+      throw new BadRequestError({
+        message: "This route can't add members to an Agent Vault project. Use POST /api/v1/agent-vault/members instead."
+      });
+    }
     const orgMembers = await membershipUserDAL.find({
       [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: actorOrgId,
       scope: AccessScope.Organization,
@@ -391,7 +415,7 @@ export const projectMembershipServiceFactory = ({
     { actorId, actor, actorOrgId, actorAuthMethod, projectId, emails, usernames }: TDeleteProjectMembershipsDTO,
     externalTx?: Knex
   ) => {
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -419,8 +443,32 @@ export const projectMembershipServiceFactory = ({
       });
     }
 
-    const targetRoleRows = await membershipRoleDAL.findRolesByMembershipIds(projectMembers.map(({ id }) => id));
+    const agentVaultRoleChange = await findAgentVaultRoleChange(
+      { projectDAL, permissionService },
+      {
+        scopeData: { scope: AccessScope.Project, projectId },
+        actor: { type: actor, id: actorId, authMethod: actorAuthMethod, orgId: actorOrgId }
+      }
+    );
+    const targetRoleRows = await readTargetForAgentVaultRecheck(
+      membershipRoleDAL,
+      Boolean(agentVaultRoleChange),
+      (tx) =>
+        membershipRoleDAL.findRolesByMembershipIds(
+          projectMembers.map(({ id }) => id),
+          tx
+        )
+    );
     const targetRoles = resolveMembershipRoleSlugs(targetRoleRows);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    assertAgentVaultAdminOnlyChange({
+      project,
+      hasRole,
+      givesAdmin: false,
+      touchesAdmin: targetRoles.includes(ProjectMembershipRole.Admin)
+    });
     const resolvedRoles = await permissionService.getProjectPermissionByRoles(targetRoles, projectId, {
       ignoreUnresolvedRoles: true
     });
@@ -464,6 +512,16 @@ export const projectMembershipServiceFactory = ({
     );
 
     const performDelete = async (tx: Knex) => {
+      for await (const projectMember of projectMembers) {
+        await lockAgentVaultRoleChange(
+          agentVaultRoleChange,
+          {
+            membershipId: projectMember.id,
+            checked: { checkedRoleSlugs: checkedRoleSlugsOf(roleRowsByMembershipId[projectMember.id] || []) }
+          },
+          tx
+        );
+      }
       await assertProductWillRetainAdmin({
         project: await projectDAL.findById(projectId, tx),
         excludeMembershipIds: projectMembers.map(({ id }) => id),

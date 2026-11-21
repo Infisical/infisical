@@ -84,9 +84,10 @@ const createService = ({
       getOrgPermission: vi
         .fn()
         .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
-      getProjectPermission: vi
-        .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
+      getProjectPermission: vi.fn().mockResolvedValue({
+        permission: createMongoAbility([{ action: "manage", subject: "all" }]),
+        hasRole: () => true
+      }),
       // These tests cover revocation markers, not the privilege boundary. Built-in roles come back
       // without a `role` field, and an empty target ability clears the boundary for the actor above.
       getOrgPermissionByRoles: vi

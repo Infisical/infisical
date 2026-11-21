@@ -1,6 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, ActionProjectType, getAdminMemberOnlyProductLabel, ProjectMembershipRole } from "@app/db/schemas";
+import {
+  AccessScope,
+  ActionProjectType,
+  getAdminMemberOnlyProductLabel,
+  ProjectMembershipRole,
+  ProjectType
+} from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import {
   assertRoleSetBoundary,
@@ -17,8 +23,13 @@ import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
+  assertAgentVaultAdminOnlyChange,
+  assertAgentVaultRoleLimits,
+  checkedRoleSlugsOf,
   filterRolesNeedingPrivilegeBoundary,
-  resolveMembershipRoleSlugs
+  readTargetForAgentVaultRecheck,
+  resolveMembershipRoleSlugs,
+  rolesGiveAdmin
 } from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -29,7 +40,7 @@ import { TMembershipGroupScopeFactory } from "../membership-group-types";
 type TProjectMembershipGroupScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "findOne" | "getGroupById">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "findOne" | "getGroupById" | "transaction">;
   groupDAL: Pick<TGroupDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
@@ -59,7 +70,7 @@ export const newProjectMembershipGroupFactory = ({
 
   const onCreateMembershipGroupGuard: TMembershipGroupScopeFactory["onCreateMembershipGroupGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasRole } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
       actionProjectType: ActionProjectType.Any,
@@ -97,6 +108,14 @@ export const newProjectMembershipGroupFactory = ({
     });
     if (!orgMembership)
       throw new BadRequestError({ message: `Group ${dto.data.groupId} is missing organization membership` });
+
+    assertAgentVaultRoleLimits({ project, roles: dto.data.roles });
+    assertAgentVaultAdminOnlyChange({
+      project,
+      hasRole,
+      givesAdmin: rolesGiveAdmin(dto.data.roles),
+      touchesAdmin: false
+    });
 
     const groupDetails = await groupDAL.findById(dto.data.groupId);
     if (!groupDetails) throw new BadRequestError({ message: "Group details not found" });
@@ -136,7 +155,7 @@ export const newProjectMembershipGroupFactory = ({
 
   const onUpdateMembershipGroupGuard: TMembershipGroupScopeFactory["onUpdateMembershipGroupGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasRole } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
       actionProjectType: ActionProjectType.Any,
@@ -183,11 +202,18 @@ export const newProjectMembershipGroupFactory = ({
       () => orgDAL.findById(dto.permission.orgId)
     );
 
-    const targetMembership = await membershipGroupDAL.getGroupById({
-      scopeData: dto.scopeData,
-      groupId: dto.selector.groupId
-    });
+    const isAgentVault = project?.type === ProjectType.AgentVault;
+    const targetMembership = await readTargetForAgentVaultRecheck(membershipGroupDAL, isAgentVault, (tx) =>
+      membershipGroupDAL.getGroupById({ scopeData: dto.scopeData, groupId: dto.selector.groupId, tx })
+    );
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    assertAgentVaultRoleLimits({ project, roles: dto.data.roles });
+    assertAgentVaultAdminOnlyChange({
+      project,
+      hasRole,
+      givesAdmin: rolesGiveAdmin(dto.data.roles),
+      touchesAdmin: targetRoles.includes(ProjectMembershipRole.Admin)
+    });
     const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
       ignoreUnresolvedRoles: true
     });
@@ -228,12 +254,15 @@ export const newProjectMembershipGroupFactory = ({
         });
     }
 
-    return { group: { id: groupDetails.id, name: groupDetails.name } };
+    return {
+      group: { id: groupDetails.id, name: groupDetails.name },
+      ...(isAgentVault ? { checkedRoleSlugs: checkedRoleSlugsOf(targetMembership?.roles ?? []) } : {})
+    };
   };
 
   const onDeleteMembershipGroupGuard: TMembershipGroupScopeFactory["onDeleteMembershipGroupGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasRole } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
       actionProjectType: ActionProjectType.Any,
@@ -247,11 +276,20 @@ export const newProjectMembershipGroupFactory = ({
     const groupDetails = await groupDAL.findById(dto.selector.groupId);
     if (!groupDetails) throw new BadRequestError({ message: "Group details not found" });
 
-    const targetMembership = await membershipGroupDAL.getGroupById({
-      scopeData: dto.scopeData,
-      groupId: dto.selector.groupId
-    });
+    const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
+      projectDAL.findById(scope.value)
+    );
+    const isAgentVault = project?.type === ProjectType.AgentVault;
+    const targetMembership = await readTargetForAgentVaultRecheck(membershipGroupDAL, isAgentVault, (tx) =>
+      membershipGroupDAL.getGroupById({ scopeData: dto.scopeData, groupId: dto.selector.groupId, tx })
+    );
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    assertAgentVaultAdminOnlyChange({
+      project,
+      hasRole,
+      givesAdmin: false,
+      touchesAdmin: targetRoles.includes(ProjectMembershipRole.Admin)
+    });
     const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
       ignoreUnresolvedRoles: true
     });
@@ -270,7 +308,10 @@ export const newProjectMembershipGroupFactory = ({
       subjectFields: { groupName: groupDetails.name }
     });
 
-    return { group: { id: groupDetails.id, name: groupDetails.name } };
+    return {
+      group: { id: groupDetails.id, name: groupDetails.name },
+      ...(isAgentVault ? { checkedRoleSlugs: checkedRoleSlugsOf(targetMembership?.roles ?? []) } : {})
+    };
   };
 
   const onListMembershipGroupGuard: TMembershipGroupScopeFactory["onListMembershipGroupGuard"] = async (dto) => {

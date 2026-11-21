@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import { ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import {
+  agentVaultProjectAdminPermissions,
   cryptographicOperatorPermissions,
   projectAdminPermissions,
   projectMemberPermissions,
@@ -10,14 +11,14 @@ import {
 } from "@app/ee/services/permission/default-roles";
 import { TGetPredefinedRolesDTO } from "@app/services/project-role/project-role-types";
 
-// Agent Vault resolves every slug except admin to its member set, so Viewer and No Access would promise
-// less access than they grant.
+// Agent Vault's built-in roles are Admin and No Access: every other slug grants nothing there, and access past No Access
+// comes from the project's custom roles.
 const NARROWED_ROLE_PROJECT_TYPES = new Set<string>([ProjectType.AgentVault]);
-const NARROWED_ROLE_SLUGS = new Set<string>([ProjectMembershipRole.Admin, ProjectMembershipRole.Member]);
+const NARROWED_ROLE_SLUGS = new Set<string>([ProjectMembershipRole.Admin, ProjectMembershipRole.NoAccess]);
 
 const AGENT_VAULT_ROLE_DESCRIPTIONS: Record<string, string> = {
   [ProjectMembershipRole.Admin]: "Full administrative access over this project",
-  [ProjectMembershipRole.Member]: "Create sessions over the access bundles they're granted"
+  [ProjectMembershipRole.NoAccess]: "No access until given a role"
 };
 
 const SECRET_SCANNING_ROLE_DESCRIPTIONS: Record<string, string> = {
@@ -25,6 +26,15 @@ const SECRET_SCANNING_ROLE_DESCRIPTIONS: Record<string, string> = {
   [ProjectMembershipRole.Member]: "Limited read/write role in secret scanning",
   [ProjectMembershipRole.Viewer]: "Only read role in secret scanning",
   [ProjectMembershipRole.NoAccess]: "No access to any resources in secret scanning"
+};
+
+// Agent Vault resolves its built-in roles to its own rules (`resolveAgentVaultProjectRoleRules`), so the roles list
+// shows those rather than Secrets Management's.
+const PERMISSIONS_BY_PROJECT_TYPE: Partial<Record<ProjectType, Record<string, typeof projectAdminPermissions>>> = {
+  [ProjectType.AgentVault]: {
+    [ProjectMembershipRole.Admin]: agentVaultProjectAdminPermissions,
+    [ProjectMembershipRole.NoAccess]: []
+  }
 };
 
 const ROLE_DESCRIPTIONS_BY_PROJECT_TYPE: Partial<Record<ProjectType, Record<string, string>>> = {
@@ -35,6 +45,7 @@ const ROLE_DESCRIPTIONS_BY_PROJECT_TYPE: Partial<Record<ProjectType, Record<stri
 export const getPredefinedRoles = ({ projectId, projectType, roleFilter }: TGetPredefinedRolesDTO) => {
   const isNarrowed = NARROWED_ROLE_PROJECT_TYPES.has(projectType);
   const roleDescriptions = ROLE_DESCRIPTIONS_BY_PROJECT_TYPE[projectType];
+  const rolePermissions = PERMISSIONS_BY_PROJECT_TYPE[projectType];
   return [
     {
       id: uuidv4(),
@@ -94,5 +105,9 @@ export const getPredefinedRoles = ({ projectId, projectType, roleFilter }: TGetP
         (!roleFilter || roleFilter === slug) &&
         (!isNarrowed || NARROWED_ROLE_SLUGS.has(slug))
     )
-    .map((role) => (roleDescriptions?.[role.slug] ? { ...role, description: roleDescriptions[role.slug] } : role));
+    .map((role) => ({
+      ...role,
+      ...(roleDescriptions?.[role.slug] ? { description: roleDescriptions[role.slug] } : {}),
+      ...(rolePermissions?.[role.slug] ? { permissions: rolePermissions[role.slug] } : {})
+    }));
 };

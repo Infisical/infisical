@@ -105,7 +105,7 @@ You [create the proxy in Infisical](/documentation/platform/agent-vault/proxies#
 Agent Vault uses four primitives to create secure sessions for AI agents:
 
 - [**Services**](#services): The APIs, MCP servers, and anything else the agent talks to, with any credentials to add
-- [**Access bundles**](#access-bundles): Groups of services, granted as a unit
+- [**Access bundles**](#access-bundles): Groups of services that a role lets members use as a unit
 - [**Sessions**](#sessions): Time-bound access grants that an agent uses to authenticate to the proxy for the services in an access bundle
 - [**Proxies**](#proxies): The forward proxy that intercepts an agent's outbound traffic and attaches real credentials to authorized requests
 
@@ -210,7 +210,7 @@ You don't give services to an agent directly. A session gives the agent access t
 
 An access bundle groups a set of services under one name. A **code-review** bundle might hold services for GitHub, Slack, and Anthropic. An **on-call** bundle might hold services for PagerDuty, Datadog, and Slack. Both bundles can hold the same Slack service, because you define each service once in the project and add it to any number of bundles.
 
-You grant a bundle to a user, group, or machine identity. Anyone with that grant can create sessions that reference it.
+A [role](/documentation/platform/agent-vault/access-control#roles) can let its members use a bundle. Anyone with a role that can use the bundle can create sessions that reference it.
 
 <Card title="Access bundles" icon="box" href="/documentation/platform/agent-vault/access-bundles">
   Lists of services that AI agents can access during a session.

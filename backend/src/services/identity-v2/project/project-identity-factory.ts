@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { AccessScope, ActionProjectType } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -8,21 +8,29 @@ import { InternalServerError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TMembershipIdentityDALFactory } from "@app/services/membership-identity/membership-identity-dal";
-import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
+import {
+  assertAgentVaultAdminOnlyChange,
+  checkedRoleSlugsOf,
+  readTargetForAgentVaultRecheck,
+  resolveMembershipRoleSlugs
+} from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TIdentityV2Factory } from "../identity-types";
 
 type TProjectIdentityFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "getIdentityById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "getIdentityById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export const newProjectIdentityFactory = ({
   permissionService,
   orgDAL,
-  membershipIdentityDAL
+  membershipIdentityDAL,
+  projectDAL
 }: TProjectIdentityFactoryDep): TIdentityV2Factory => {
   const getScopeField: TIdentityV2Factory["getScopeField"] = (scopeData) => {
     if (scopeData.scope === AccessScope.Project) {
@@ -65,7 +73,7 @@ export const newProjectIdentityFactory = ({
 
   const onDeleteIdentityGuard: TIdentityV2Factory["onDeleteIdentityGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, hasRole } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
       actionProjectType: ActionProjectType.Any,
@@ -78,11 +86,20 @@ export const newProjectIdentityFactory = ({
       subject(ProjectPermissionSub.Identity, { identityId: dto.selector.identityId })
     );
 
-    const targetMembership = await membershipIdentityDAL.getIdentityById({
-      scopeData: dto.scopeData,
-      identityId: dto.selector.identityId
-    });
+    const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
+      projectDAL.findById(scope.value)
+    );
+    const isAgentVault = project?.type === ProjectType.AgentVault;
+    const targetMembership = await readTargetForAgentVaultRecheck(membershipIdentityDAL, isAgentVault, (tx) =>
+      membershipIdentityDAL.getIdentityById({ scopeData: dto.scopeData, identityId: dto.selector.identityId, tx })
+    );
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    assertAgentVaultAdminOnlyChange({
+      project,
+      hasRole,
+      givesAdmin: false,
+      touchesAdmin: targetRoles.includes(ProjectMembershipRole.Admin)
+    });
     const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
       ignoreUnresolvedRoles: true
     });
@@ -100,6 +117,8 @@ export const newProjectIdentityFactory = ({
       baseMessage: "Failed to remove a more privileged identity from the project",
       subjectFields: { identityId: dto.selector.identityId }
     });
+
+    return isAgentVault ? { checkedRoleSlugs: checkedRoleSlugsOf(targetMembership?.roles ?? []) } : undefined;
   };
 
   const onListIdentityGuard: TIdentityV2Factory["onListIdentityGuard"] = async (dto) => {

@@ -31,8 +31,10 @@ export type TFindAgentVaultVariablesDTO = { projectId: string; owners: (TAgentVa
   search?: string;
   keys?: string[];
   type?: AgentVaultVariableType;
-  // Counts only the services in these bundles toward serviceCount. Omit to count every one.
-  accessBundleIds?: string[];
+  // Counts only these services toward serviceCount, a global variable's from the first and a personal one's from the
+  // second. Omit one to count every service for that kind of variable.
+  globalServiceIds?: string[];
+  personalServiceIds?: string[];
   orderBy: TAgentVaultVariableOrderBy;
   orderDirection: "asc" | "desc";
   limit: number;
@@ -120,7 +122,8 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
       search,
       keys,
       type,
-      accessBundleIds,
+      globalServiceIds,
+      personalServiceIds,
       orderBy,
       orderDirection,
       limit,
@@ -162,14 +165,23 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
         // Counted over this list's variables only; the references tables hold every org's.
         const usageCounts = conn
           .from(referencingServices(conn, listed().select(`${TableName.AgentVaultVariable}.id`)).as("refs"))
+          .join(`${TableName.AgentVaultVariable} as counted`, "counted.id", "refs.variableId")
           .select("refs.variableId")
           .countDistinct("refs.serviceId as count")
           .groupBy("refs.variableId");
-        if (accessBundleIds) {
-          void usageCounts.whereIn(
-            "refs.serviceId",
-            conn(TableName.AgentVaultAccessBundleService).whereIn("accessBundleId", accessBundleIds).select("serviceId")
-          );
+        if (globalServiceIds || personalServiceIds) {
+          void usageCounts.where((shown) => {
+            void shown.where((global) => {
+              void whereOwner(global, "counted", null);
+              if (globalServiceIds) void global.whereIn("refs.serviceId", globalServiceIds);
+            });
+            void shown.orWhere((personal) => {
+              void personal.where((owned) => {
+                void owned.whereNotNull("counted.userId").orWhereNotNull("counted.identityId");
+              });
+              if (personalServiceIds) void personal.whereIn("refs.serviceId", personalServiceIds);
+            });
+          });
         }
 
         void pageQuery.leftJoin(usageCounts.as("uc"), function joinUsageCount() {

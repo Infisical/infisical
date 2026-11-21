@@ -18,6 +18,7 @@ import {
   TriangleAlertIcon
 } from "lucide-react";
 
+import { AgentVaultRestrictedPage } from "@app/components/agent-vault/AgentVaultRestrictedPage";
 import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
 import { PageTitle } from "@app/components/PageTitle";
 import {
@@ -70,8 +71,8 @@ import {
 import { cn } from "@app/components/v3/utils";
 import {
   ProjectPermissionActions,
+  ProjectPermissionAgentVaultServiceActions,
   ProjectPermissionAgentVaultSessionActions,
-  ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionSub,
   useOrganization,
   useProjectPermission,
@@ -81,7 +82,10 @@ import {
 } from "@app/context";
 import {
   canActOnAgentVaultSession,
-  canManageAgentVaultServices
+  canReadAgentVaultSessions,
+  canUseAgentVaultAccessBundles,
+  canUseAgentVaultServices,
+  canUseAgentVaultSkills
 } from "@app/helpers/agentVaultPermissions";
 import { isAgentVaultSessionLogBlockedByPlan } from "@app/helpers/agentVaultSessionLogs";
 import {
@@ -175,7 +179,7 @@ const accessItemHoverCard = (item: TSessionAccessItem) => {
   return undefined;
 };
 
-export const AgentVaultSessionsPage = () => {
+const AgentVaultSessionsPageContent = () => {
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
@@ -188,7 +192,11 @@ export const AgentVaultSessionsPage = () => {
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Settings
   );
-  const canManageServices = canManageAgentVaultServices(permission);
+  // The empty state points at adding a service, which only someone who can create one can act on.
+  const canCreateServices = permission.can(
+    ProjectPermissionAgentVaultServiceActions.Create,
+    ProjectPermissionSub.AgentVaultServices
+  );
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
@@ -240,19 +248,22 @@ export const AgentVaultSessionsPage = () => {
     limit: perPage,
     offset: (page - 1) * perPage
   });
-  // A session needs a bundle the caller reaches or a service or skill they can pick. A member can pick only the
-  // services and skills in their bundles, so only someone who reaches every bundle can have them and no bundle.
-  const { data: accessBundles } = useListAgentVaultAccessBundles(projectId, { limit: 1 });
-  const { data: pickableServices } = useListAgentVaultServices(projectId, { limit: 1 });
-  // Without Read on skills the caller can pick none, and the list would only answer 403.
-  const canReadSkills = permission.can(
-    ProjectPermissionAgentVaultSkillActions.Read,
-    ProjectPermissionSub.AgentVaultSkills
+  // A session needs a bundle the caller can use or a service or skill they can pick. Each list also returns what the
+  // caller can only read, so it is only asked for by someone whose roles can use that kind of thing.
+  const { data: accessBundles } = useListAgentVaultAccessBundles(
+    projectId,
+    { limit: 1 },
+    { enabled: canUseAgentVaultAccessBundles(permission) }
+  );
+  const { data: pickableServices } = useListAgentVaultServices(
+    projectId,
+    { limit: 1 },
+    { enabled: canUseAgentVaultServices(permission) }
   );
   const { data: pickableSkills } = useListAgentVaultSkills(
     projectId,
     { limit: 1 },
-    { enabled: canReadSkills }
+    { enabled: canUseAgentVaultSkills(permission) }
   );
   const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(
     projectId,
@@ -300,10 +311,10 @@ export const AgentVaultSessionsPage = () => {
     emptyTitle = "No sessions match these filters";
     emptyDescription = "Try a different search term, status or metadata.";
   } else if (!canStartSession) {
-    emptyTitle = canManageServices ? "No sessions yet" : "No access bundles granted to you";
-    emptyDescription = canManageServices
+    emptyTitle = canCreateServices ? "No sessions yet" : "Nothing you can start a session with";
+    emptyDescription = canCreateServices
       ? "Add a service first, then create a session with it, on its own or through an access bundle. Agents also need a proxy to route through."
-      : "Ask an admin to grant you an access bundle.";
+      : "Ask an Agent Vault admin for a role that can use an access bundle, a service or a skill.";
   } else {
     emptyTitle = "No sessions yet";
     emptyDescription = "Create a session to get a token an agent can run with.";
@@ -316,7 +327,7 @@ export const AgentVaultSessionsPage = () => {
           <EmptyTitle>{emptyTitle}</EmptyTitle>
           <EmptyDescription>{emptyDescription}</EmptyDescription>
         </EmptyHeader>
-        {!isFiltered && !canStartSession && canManageServices && (
+        {!isFiltered && !canStartSession && canCreateServices && (
           <Button variant="av" asChild>
             <Link
               to="/organizations/$orgId/projects/agent-vault/$projectId/services"
@@ -745,4 +756,19 @@ export const AgentVaultSessionsPage = () => {
       />
     </div>
   );
+};
+
+export const AgentVaultSessionsPage = () => {
+  const { permission } = useProjectPermission();
+  if (!canReadAgentVaultSessions(permission)) {
+    return (
+      <AgentVaultRestrictedPage
+        title="Sessions"
+        icon={IdCardIcon}
+        description="Create sessions that let your agents reach the services they need."
+        requirement={{ action: "read", subject: ProjectPermissionSub.AgentVaultSessions }}
+      />
+    );
+  }
+  return <AgentVaultSessionsPageContent />;
 };

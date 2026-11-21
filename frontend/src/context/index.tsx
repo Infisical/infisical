@@ -21,6 +21,7 @@ export {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionAgentVaultServiceActions,
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionAuditLogsActions,

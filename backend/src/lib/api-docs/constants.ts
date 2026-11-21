@@ -4828,12 +4828,18 @@ const AGENT_VAULT_VARIABLE_REFERENCES = `Can use up to ${AGENT_VAULT_MAX_REFEREN
 
 export const AGENT_VAULT = {
   projectId: "The ID of the Agent Vault project.",
+  ROLE_THAT_CAN_USE: {
+    id: "The custom role's ID, or null for the built-in Admin role.",
+    slug: "The role's slug, as the members API takes it.",
+    name: "The role's name.",
+    isBuiltIn: "Whether the role is built in (Admin) rather than one of the project's custom roles.",
+    memberCount: "How many members hold the role, users, groups and machine identities together."
+  },
   ACCESS_BUNDLE: {
     accessBundleId: "The ID of the access bundle.",
     name: "The name of the access bundle.",
     description: "A description of what this access bundle is for.",
     serviceCount: "How many services the access bundle holds.",
-    memberCount: "How many users, machine identities and groups can reach the access bundle.",
     orderBy: "What to sort access bundles by: name, serviceCount or createdAt.",
     orderDirection: "Which way to sort: asc or desc.",
     search: "Match access bundles by name or description.",
@@ -4845,13 +4851,13 @@ export const AGENT_VAULT = {
     nativeServiceName: "The name of the service.",
     nativeServiceType: "The type of the service: `postgres`, `mysql`, or `ssh`.",
     requiresSetup:
-      "true lists only the access bundles you can reach that have services still requiring your personal values. false lists the rest of them. Omit to list them all.",
-    granted:
-      "true lists only the access bundles granted to you, directly or through a group. false lists the ones you reach only as an admin. Omit to list them all.",
+      "true lists only the access bundles you can see that have services still requiring your personal values. false lists the rest of them. Omit to list them all.",
+    assigned:
+      "true lists only the access bundles your roles pick out one by one, directly or through a group. false lists the rest of the ones you can see. A role that can use every access bundle picks out none, so its bundles are left out of true. Omit to list them all.",
     servicesRequiringSetup: "The services in this access bundle that still require your personal values.",
     servicesRequiringSetupId: "The ID of the service, for setting your personal values on it.",
     onBehalfOfUserId:
-      "List the access bundles a session on behalf of this user could use: those both the user and your machine identity can use. requiresSetup and servicesRequiringSetup then refer to the user's personal values. Only a machine identity whose delegation covers the user can do this, and granted can't be combined with it. Set this or onBehalfOfUserEmail, not both.",
+      "List the access bundles a session on behalf of this user could use: those both the user and your machine identity can use. requiresSetup and servicesRequiringSetup then refer to the user's personal values. Only a machine identity whose delegation covers the user can do this, and assigned can't be combined with it. Set this or onBehalfOfUserEmail, not both.",
     onBehalfOfUserEmail:
       "Like onBehalfOfUserId, naming the user by email address instead. Set this or onBehalfOfUserId, not both.",
     servicesRequiringSetupName: "The name of the service."
@@ -4863,7 +4869,7 @@ export const AGENT_VAULT = {
     addedServices: "The services the request added to the access bundle.",
     addSkippedServices: "The services in the request that were already in the access bundle. They're left as they are.",
     name: "The name of the service, unique in the Agent Vault project.",
-    accessBundles: "The access bundles the service is in, by name. A member sees only the ones they have been granted.",
+    accessBundles: "The access bundles the service is in that you can use, by name.",
     accessBundleId: "The ID of the access bundle.",
     accessBundleName: "The name of the access bundle.",
     createAccessBundleIds:
@@ -4874,10 +4880,10 @@ export const AGENT_VAULT = {
     totalCount: "The number of services that match, across every page.",
     requiresSetup:
       "true lists only the services that still need your personal values; false leaves them out. Leave it out to list both.",
-    granted:
-      "true lists only services in access bundles granted to you, leaving out ones an admin reaches only through their role.",
+    assigned:
+      "true lists only the services your roles pick out one by one, directly or through an access bundle they pick out. A role that can use every service or every access bundle picks out none.",
     onBehalfOfUserId:
-      "List the services a session on behalf of this user could use: those in an access bundle granted to both the user and your machine identity. accessBundles then lists those shared bundles, and requiresSetup and personalValues refer to the user's personal values, which say only whether each value is set. Only a machine identity whose delegation covers the user can do this, and granted can't be combined with it. Set this or onBehalfOfUserEmail, not both.",
+      "List the services a session on behalf of this user could use: those both the user and your machine identity can use, directly or through an access bundle both can use. accessBundles then lists those shared bundles, and requiresSetup and personalValues refer to the user's personal values, which say only whether each value is set. Only a machine identity whose delegation covers the user can do this, and assigned can't be combined with it. Set this or onBehalfOfUserEmail, not both.",
     onBehalfOfUserEmail:
       "Like onBehalfOfUserId, naming the user by email address instead. Set this or onBehalfOfUserId, not both.",
     orderBy: "What to sort services by: name, type, or createdAt.",
@@ -5093,7 +5099,7 @@ export const AGENT_VAULT = {
     registration:
       "Send `dynamic` to register a new client with the server, even when the service being reauthorized uses your own OAuth app.",
     personal:
-      "Send `true` to connect your own account to a service that leaves its OAuth sign-in to each member, then save the authorization as your personal value for the service. Needs only access to an access bundle the service is in. `serviceId` is required, and the client is the one the service's admin set up, so leave `clientId`, `clientSecret` and `registration` out.",
+      "Send `true` to connect your own account to a service that leaves its OAuth sign-in to each member, then save the authorization as your personal value for the service. Needs only a role that can use the service, directly or through an access bundle. `serviceId` is required, and the client is the one the service's admin set up, so leave `clientId`, `clientSecret` and `registration` out.",
     registrationRequired:
       "True when the server can't register Infisical as a client by itself, or refused to. Send `clientId` (and `clientSecret`) of your own OAuth app.",
     redirectUri:
@@ -5124,9 +5130,9 @@ export const AGENT_VAULT = {
     scope:
       "global for a variable admins set up for services, or personal for one of your own, which only your personal values can use and only you can see. Personal keys are unique among your own variables.",
     listScope:
-      "Which variables to list: global, which needs the admin role, or personal for your own. Omit to list everything you can see: your own personal variables, plus the global ones if you're an admin. Nobody can list another member's personal variables.",
+      "Which variables to list: global, which needs a role that can read variables, or personal for your own. Omit to list everything you can see: your own personal variables, plus the global ones if your role can read variables. Nobody can list another member's personal variables.",
     createScope:
-      "global creates a variable services can use, which needs the admin role. personal creates one of your own, which only your personal values can use.",
+      "global creates a variable services can use, which needs a role that can create variables. personal creates one of your own, which only your personal values can use.",
     key: "The name values use to refer to the variable, as `{{KEY}}`. Starts with a letter and uses only upper case letters, numbers and underscores.",
     value: "The value the proxy puts in place of each `{{KEY}}`.",
     updateValue:
@@ -5219,8 +5225,7 @@ export const AGENT_VAULT = {
     usedByServiceHostPattern: "The host pattern of the service. Null for a `postgres`, `mysql` or `ssh` service.",
     usedByServiceAccessBundleId: "The ID of the access bundle.",
     usedByServiceAccessBundleName: "The name of the access bundle.",
-    usedByServiceAccessBundles:
-      "The access bundles the service is in. A member sees only the ones they have been granted.",
+    usedByServiceAccessBundles: "The access bundles the service is in, among those you can see.",
     createdAt: "When the variable was added.",
     updatedAt: "When the variable was last changed."
   },
@@ -5229,8 +5234,7 @@ export const AGENT_VAULT = {
     name: "The name of the skill, taken from the `name` in the SKILL.md of its latest version. Lowercase letters, numbers and hyphens.",
     description: "What the skill is for, taken from the `description` in the SKILL.md of its latest version.",
     latestVersion: "The number of the skill's newest version.",
-    accessBundles:
-      "The access bundles the skill is in, ordered by name. A member sees only the bundles they have been granted.",
+    accessBundles: "The access bundles the skill is in that you can use, ordered by name.",
     accessBundleId: "The ID of an access bundle the skill is in.",
     accessBundleName: "The name of the access bundle.",
     createdAt: "When the skill was added.",
@@ -5266,7 +5270,7 @@ export const AGENT_VAULT = {
     sessionSkills:
       "The latest version of each skill on the session's access bundle and of each project skill the session was created with, while the session's owner can still reach them, every skill sent with the session, and the built-in infisical-agent-vault skill unless includeBuiltin is false, ordered by name. When a skill sent with the session has the same name as a skill from the project, the project's skill is returned and the sent one is left out.",
     onBehalfOfUserId:
-      "List the skills a session on behalf of this user could use: those in an access bundle granted to both the user and your machine identity. accessBundles then lists those shared bundles. Only a machine identity whose delegation covers the user can do this. Set this or onBehalfOfUserEmail, not both.",
+      "List the skills a session on behalf of this user could use: those both the user and your machine identity can use, directly or through an access bundle both can use. accessBundles then lists those shared bundles. Only a machine identity whose delegation covers the user can do this. Set this or onBehalfOfUserEmail, not both.",
     onBehalfOfUserEmail:
       "Like onBehalfOfUserId, naming the user by email address instead. Set this or onBehalfOfUserId, not both.",
     includeBuiltin:
@@ -5277,7 +5281,7 @@ export const AGENT_VAULT = {
     builtinDescription: "What the built-in skill is for, taken from the `description` in its SKILL.md."
   },
   MEMBER: {
-    grantedAt: "When the access bundle was granted.",
+    grantedAt: "When the access bundle's role was given to them.",
     userId: "The ID of the user whose Agent Vault membership this is.",
     identityId: "The ID of the machine identity whose Agent Vault membership this is.",
     groupId: "The ID of the group whose Agent Vault membership this is.",
@@ -5307,7 +5311,11 @@ export const AGENT_VAULT = {
     offset: "How many members to skip."
   },
   MEMBERSHIP: {
-    role: "The Agent Vault role: admin or member.",
+    roles:
+      "The roles to give, by slug: admin, no-access, or one of the project's custom roles. No Access can't be combined with another role.",
+    role: "Deprecated: use roles. admin or member, where member is the project's Member role. The member keeps the roles they hold for access bundles.",
+    rolesRead: "The member's roles, by slug.",
+    roleRead: "Deprecated: use roles. admin or member when the member holds either, and otherwise their first role.",
     isActive: "Whether the member can currently reach the project.",
     addedAt: "When the member was added to the project.",
     userIds: "The IDs of the users to act on.",
@@ -5437,7 +5445,7 @@ export const AGENT_VAULT = {
     services:
       "The services this session reaches besides its access bundle's. Each entry is either the name of a service in the project, up to 50, or a service sent inline, up to 20. Names must be unique across the list. If a name repeats, the request fails with a 422 error that says which one.",
     serviceName:
-      "The name of a service in this project. An Agent Vault admin can use any of them, and a member only a service in an access bundle granted to them. A session on behalf of a user can use only a service in an access bundle granted to both the user and the machine identity. On every request, the session reaches the service only while its owner still does.",
+      "The name of a service in this project that your roles let you use, directly or through an access bundle you can use. A session on behalf of a user can use only a service both the user and the machine identity can use that way. On every request, the session reaches the service only while its owner still does.",
     servicesRead:
       "The services from the project and the services sent with this session, in the order they were sent. Inline services are listed without their secrets. Its access bundle's services aren't listed here. Empty when the session carries only an access bundle.",
     serviceIdRead: "The ID of the project service.",
@@ -5449,7 +5457,7 @@ export const AGENT_VAULT = {
     skills:
       "The skills an agent gets in this session besides its access bundle's. Each entry is either the name of a skill in the project, up to 20, or a skill sent inline, up to 5. Names must be unique across the list. If a name repeats, the request fails with a 422 error that says which one.",
     skillName:
-      "The name of a skill in this project. An Agent Vault admin can use any of them, and a member only a skill in an access bundle granted to them. A session on behalf of a user can use only a skill in an access bundle granted to both the user and the machine identity. Each time an agent asks for the session's skills, it gets the skill's latest version, and only while the session's owner can still use it.",
+      "The name of a skill in this project that your roles let you use, directly or through an access bundle you can use. A session on behalf of a user can use only a skill both the user and the machine identity can use that way. Each time an agent asks for the session's skills, it gets the skill's latest version, and only while the session's owner can still use it.",
     inlineSkills:
       "A skill sent with this session, alongside its access bundle's skills and the skills from the project. Up to 5. Each takes the same files as a skill added to the project, with its name and description read from SKILL.md, and the files of every skill sent with the session share the 2 MB request limit. It belongs to this session only and can't be edited. If its name matches a skill in the access bundle, the request fails with a 400 error. If a skill from the project takes its name later, for example by joining the access bundle, the agent gets that skill instead. Its files are deleted when the session is revoked, or within an hour after it expires.",
     skillsRead:
@@ -5613,11 +5621,11 @@ export const AGENT_VAULT = {
     groupName: "The name of the group.",
     addedAt: "When the user or group was added to the delegation.",
     missingAccessBundles:
-      "The access bundles that users the delegation covers can use and the machine identity can't. A session on behalf of a user can use only an access bundle that both can use, so the machine identity can't start sessions over these. With all-members, this is every access bundle the machine identity can't use, since Agent Vault admins can use every bundle. Always empty when the machine identity reads its own delegation, unless it's an Agent Vault admin.",
+      "The access bundles that users the delegation covers can use and the machine identity can't. A session on behalf of a user can use only an access bundle that both can use, so the machine identity can't start sessions over these. With all-members, this is every access bundle the machine identity can't use, since Agent Vault admins can use every bundle. Lists only the access bundles you can see.",
     userMissingAccessBundles:
-      "The access bundles this user can use and the machine identity can't, so the machine identity can't start sessions over them on the user's behalf. For an Agent Vault admin, this is every access bundle the machine identity can't use. Always empty when the machine identity reads its own delegation, unless it's an Agent Vault admin.",
+      "The access bundles this user can use and the machine identity can't, so the machine identity can't start sessions over them on the user's behalf. For an Agent Vault admin, this is every access bundle the machine identity can't use. Lists only the access bundles you can see.",
     groupMissingAccessBundles:
-      "The access bundles granted to this group, or every bundle if the group has the Admin role, that the machine identity can't use. Always empty when the machine identity reads its own delegation, unless it's an Agent Vault admin.",
+      "The access bundles this group's roles let it use that the machine identity can't, among the bundles you can see.",
     accessBundleId: "The ID of the access bundle.",
     accessBundleName: "The name of the access bundle.",
     createdAt: "When the delegation was set up.",

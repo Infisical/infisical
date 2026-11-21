@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { AccessScopeData, TemporaryPermissionMode } from "@app/db/schemas";
 import { OrgServiceActor } from "@app/lib/types";
+import { TAgentVaultCheckedTarget } from "@app/services/membership/membership-fns";
 
 export interface TMembershipUserScopeFactory {
   onCreateMembershipUserGuard: (
@@ -18,8 +19,8 @@ export interface TMembershipUserScopeFactory {
     newMembers: { id: string; email?: string | null }[]
   ) => Promise<{ signUpTokens: { email: string; link: string }[] }>;
 
-  onUpdateMembershipUserGuard: (arg: TUpdateMembershipUserDTO) => Promise<void>;
-  onDeleteMembershipUserGuard: (arg: TDeleteMembershipUserDTO) => Promise<void>;
+  onUpdateMembershipUserGuard: (arg: TUpdateMembershipUserDTO) => Promise<TAgentVaultCheckedTarget | void>;
+  onDeleteMembershipUserGuard: (arg: TDeleteMembershipUserDTO) => Promise<TAgentVaultCheckedTarget | void>;
 
   onListMembershipUserGuard: (arg: TListMembershipUserDTO) => Promise<void>;
   onGetMembershipUserByUserIdGuard: (arg: TGetMembershipUserByUserIdDTO) => Promise<void>;

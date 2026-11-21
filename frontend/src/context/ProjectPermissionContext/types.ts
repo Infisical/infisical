@@ -299,22 +299,35 @@ export enum ProjectPermissionProxiedServiceActions {
   ReportUsage = "report-usage"
 }
 
+// Use lets a session start from the bundle, with every service and skill in it; Read only shows it.
 export enum ProjectPermissionAgentVaultAccessBundleActions {
   Read = "read",
-  Create = "create",
-  Edit = "edit",
-  Delete = "delete",
-  ManageMembers = "manage-members"
-}
-
-export enum ProjectPermissionAgentVaultSkillActions {
-  Read = "read",
+  Use = "use",
   Create = "create",
   Edit = "edit",
   Delete = "delete"
 }
 
-// Read, Edit and Revoke reach only the actor's own sessions; the Any actions reach everyone's.
+// Use puts the skill in a session; Read only shows it.
+export enum ProjectPermissionAgentVaultSkillActions {
+  Read = "read",
+  Use = "use",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
+// Use lets a session reach the service; Read only shows it.
+export enum ProjectPermissionAgentVaultServiceActions {
+  Read = "read",
+  Use = "use",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
+// Read, Edit and Revoke reach only the actor's own sessions; the Any actions reach everyone's. ManageDelegations sets
+// which users a machine identity may start sessions on behalf of.
 export enum ProjectPermissionAgentVaultSessionActions {
   Read = "read",
   Create = "create",
@@ -324,7 +337,8 @@ export enum ProjectPermissionAgentVaultSessionActions {
   EditAny = "edit-any",
   RevokeAny = "revoke-any",
   CreateWithInlineServices = "create-with-inline-services",
-  CreateWithInlineSkills = "create-with-inline-skills"
+  CreateWithInlineSkills = "create-with-inline-skills",
+  ManageDelegations = "manage-delegations"
 }
 
 // Global variables only. A personal variable belongs to the actor who saved it, and no permission reaches another's.
@@ -502,12 +516,25 @@ export enum ProjectPermissionSub {
   AgentVaultSessions = "agent-vault-sessions",
   AgentVaultProxies = "agent-vault-proxies",
   AgentVaultSkills = "agent-vault-skills",
+  AgentVaultServices = "agent-vault-services",
   AgentVaultVariables = "agent-vault-variables",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   ProjectFolderGrant = "project-folder-grant",
   Insights = "insights"
 }
+
+export type AgentVaultAccessBundleSubjectFields = {
+  accessBundleId: string;
+};
+
+export type AgentVaultServiceSubjectFields = {
+  serviceId: string;
+};
+
+export type AgentVaultSkillSubjectFields = {
+  skillId: string;
+};
 
 export type SecretSubjectFields = {
   environment: string;
@@ -784,10 +811,30 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.ProxiedServices> & ProxiedServiceSubjectFields)
       )
     ]
-  | [ProjectPermissionAgentVaultAccessBundleActions, ProjectPermissionSub.AgentVaultAccessBundles]
+  | [
+      ProjectPermissionAgentVaultAccessBundleActions,
+      (
+        | ProjectPermissionSub.AgentVaultAccessBundles
+        | (ForcedSubject<ProjectPermissionSub.AgentVaultAccessBundles> &
+            AgentVaultAccessBundleSubjectFields)
+      )
+    ]
   | [ProjectPermissionAgentVaultSessionActions, ProjectPermissionSub.AgentVaultSessions]
   | [ProjectPermissionAgentVaultProxyActions, ProjectPermissionSub.AgentVaultProxies]
-  | [ProjectPermissionAgentVaultSkillActions, ProjectPermissionSub.AgentVaultSkills]
+  | [
+      ProjectPermissionAgentVaultSkillActions,
+      (
+        | ProjectPermissionSub.AgentVaultSkills
+        | (ForcedSubject<ProjectPermissionSub.AgentVaultSkills> & AgentVaultSkillSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionAgentVaultServiceActions,
+      (
+        | ProjectPermissionSub.AgentVaultServices
+        | (ForcedSubject<ProjectPermissionSub.AgentVaultServices> & AgentVaultServiceSubjectFields)
+      )
+    ]
   | [ProjectPermissionAgentVaultVariableActions, ProjectPermissionSub.AgentVaultVariables]
   | [
       ProjectPermissionProjectFolderGrantActions,

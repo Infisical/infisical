@@ -47,7 +47,7 @@ Every proxy starts from the same proxy token, so you set up the proxy once, no m
 
 ## Prerequisites
 
-- The **Admin** role in an [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership)
+- The **Admin** role in an [Agent Vault project](/documentation/platform/agent-vault/access-control#roles)
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key the agent uses, including its model provider's key, such as **Anthropic** for Claude Code (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - A [Daytona](https://www.daytona.io) organization on [Tier 3 or 4](https://www.daytona.io/docs/en/network-limits/#tier-based-network-restrictions), because on Tiers 1 and 2 you can't limit a sandbox to reaching the proxy, and the proxy can't reach Infisical
 - A [Daytona API key](https://www.daytona.io/docs/en/api-keys/) in the `DAYTONA_API_KEY` environment variable on the machine that runs your code
@@ -1092,7 +1092,7 @@ Each proxy's sandbox holds a copy of the proxy token. If you think someone took 
     Check the following:
 
     - `PROJECT_ID` in your code is the ID of the Agent Vault project that holds the access bundle
-    - The machine identity is a member of that project and has a grant on the access bundle
+    - The machine identity is a member of that project and has a role that can use the access bundle
   </Accordion>
   <Accordion title="Requests fail with a 403 partway through a run">
     The session expired or was revoked. Set the session's `ttl` a few minutes longer than the proxy sandbox's time to live, so the session lasts as long as the sandboxes can run.

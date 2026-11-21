@@ -1,11 +1,12 @@
 import { AccessScopeData, TemporaryPermissionMode } from "@app/db/schemas";
 import { OrgServiceActor } from "@app/lib/types";
+import { TAgentVaultCheckedTarget } from "@app/services/membership/membership-fns";
 
 export interface TMembershipIdentityScopeFactory {
   onCreateMembershipIdentityGuard: (arg: TCreateMembershipIdentityDTO) => Promise<void>;
 
-  onUpdateMembershipIdentityGuard: (arg: TUpdateMembershipIdentityDTO) => Promise<void>;
-  onDeleteMembershipIdentityGuard: (arg: TDeleteMembershipIdentityDTO) => Promise<void>;
+  onUpdateMembershipIdentityGuard: (arg: TUpdateMembershipIdentityDTO) => Promise<TAgentVaultCheckedTarget | void>;
+  onDeleteMembershipIdentityGuard: (arg: TDeleteMembershipIdentityDTO) => Promise<TAgentVaultCheckedTarget | void>;
   onListMembershipIdentityGuard: (arg: TListMembershipIdentityDTO) => Promise<(arg: { identityId: string }) => boolean>;
   onGetMembershipIdentityByIdentityIdGuard: (arg: TGetMembershipIdentityByIdentityIdDTO) => Promise<void>;
   getScopeField: (scope: AccessScopeData) => { key: "orgId" | "projectId"; value: string };

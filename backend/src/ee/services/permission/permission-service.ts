@@ -19,7 +19,6 @@ import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { PamResourceRole } from "@app/ee/services/pam/pam-enums";
 import {
   agentVaultProjectAdminPermissions,
-  agentVaultProjectMemberPermissions,
   applicationAdminPermissions,
   applicationAuditorPermissions,
   applicationOperatorPermissions,
@@ -154,8 +153,21 @@ const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
 const resolvePamProjectRoleRules = (role: string) =>
   role === ProjectMembershipRole.Admin ? pamProjectAdminPermissions : pamProjectMemberPermissions;
 
-const resolveAgentVaultProjectRoleRules = (role: string) =>
-  role === ProjectMembershipRole.Admin ? agentVaultProjectAdminPermissions : agentVaultProjectMemberPermissions;
+// Agent Vault's built-in roles are Admin and No Access. A custom role is exactly its own rules, as in any other project,
+// so a role that should start sessions has to say so. Any other slug grants nothing, including a Member row the role
+// migration has not converted yet.
+const resolveAgentVaultProjectRoleRules = (
+  role: string,
+  permissions: unknown
+): RawRuleOf<MongoAbility<ProjectPermissionSet>>[] => {
+  if (role === ProjectMembershipRole.Admin) return agentVaultProjectAdminPermissions;
+  if (role === ProjectMembershipRole.Custom) {
+    return unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(
+      permissions as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[]
+    );
+  }
+  return [];
+};
 
 export const buildProjectPermissionRules = (
   projectUserRoles: TBuildProjectPermissionDTO,
@@ -166,7 +178,7 @@ export const buildProjectPermissionRules = (
     projectUserRoles
       .map(({ role, permissions }) => {
         if (projectType === ProjectType.PAM) return resolvePamProjectRoleRules(role);
-        if (projectType === ProjectType.AgentVault) return resolveAgentVaultProjectRoleRules(role);
+        if (projectType === ProjectType.AgentVault) return resolveAgentVaultProjectRoleRules(role, permissions);
 
         switch (role) {
           case ProjectMembershipRole.Admin:
@@ -834,7 +846,13 @@ export const permissionServiceFactory = ({
         slug: projectDetails.slug
       };
 
-      const permissionFromRoles = flattenActiveRolesFromMemberships(permissionData, ProjectMembershipRole.Custom);
+      // Agent Vault gives access through roles alone, so an additional privilege a member holds there grants nothing.
+      const permissionFromRoles = flattenActiveRolesFromMemberships(
+        projectDetails.type === ProjectType.AgentVault
+          ? permissionData.map((membership) => ({ ...membership, additionalPrivileges: [] }))
+          : permissionData,
+        ProjectMembershipRole.Custom
+      );
 
       const hasRole = (role: string) => membershipsHaveActiveRole(permissionData, role);
 

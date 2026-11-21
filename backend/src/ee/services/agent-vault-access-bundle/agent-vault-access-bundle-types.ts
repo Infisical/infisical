@@ -168,7 +168,7 @@ export type TAgentVaultProjectScoped = { projectId: string; ctx: TGenericPermiss
 
 export type TListAccessBundlesDTO = TAgentVaultProjectScoped & {
   requiresSetup?: boolean;
-  granted?: boolean;
+  assigned?: boolean;
   onBehalfOf?: TOnBehalfOfUser;
   search?: string;
   orderBy: TAgentVaultAccessBundleOrderBy;
@@ -284,8 +284,9 @@ export type TListServicesDTO = TAgentVaultProjectScoped & {
   search?: string;
   // Only services that need (true) or don't need (false) the caller's personal values.
   requiresSetup?: boolean;
-  // Only services in bundles granted to the caller, so an admin can leave out the ones they reach by role alone.
-  granted?: boolean;
+  // Only the services the caller's roles pick out by ID, directly or through a bundle they pick out, so a role that
+  // can use every service doesn't list them all.
+  assigned?: boolean;
   // The services a session on this user's behalf could name, with the user's personal values.
   onBehalfOf?: TOnBehalfOfUser;
   orderBy?: "name" | "type" | "createdAt";

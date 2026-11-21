@@ -75,6 +75,47 @@ export const isNativeService = (
 ): service is Extract<TAgentVaultService, { type: TAgentVaultNativeServiceType }> =>
   isNativeServiceType(service?.type);
 
+const hostsKey = (hostPattern: string) =>
+  displayHostPattern(hostPattern)
+    .split(", ")
+    .map((host) => host.toLowerCase().replace(/\.$/, ""))
+    .filter(Boolean)
+    .sort()
+    .join(",");
+
+/** A database or SSH host the way the API stores it: lowercase, without brackets or a trailing dot. */
+const nativeHostKey = (value: string) => {
+  const trimmed = value.trim();
+  const unbracketed =
+    trimmed.startsWith("[") && trimmed.endsWith("]") ? trimmed.slice(1, -1) : trimmed;
+  return unbracketed.replace(/\.$/, "").toLowerCase();
+};
+
+/**
+ * Whether an edit points the service somewhere else: other hosts, another MCP server URL, or another database or SSH
+ * server. The API sends no saved value to a new destination, so such an edit has to enter each one again.
+ */
+export const isServiceDestinationChanged = (
+  form: { hosts: string[]; serverUrl: string; host: string; port: string },
+  service: TAgentVaultService
+) => {
+  if (isNativeService(service)) {
+    return (
+      nativeHostKey(form.host) !== nativeHostKey(service.host) ||
+      Number(form.port.trim()) !== service.port
+    );
+  }
+  if (service.type === AgentVaultServiceType.Mcp)
+    return form.serverUrl.trim() !== service.serverUrl;
+  return hostsKey(form.hosts.join(",")) !== hostsKey(service.hostPattern);
+};
+
+export const MOVED_SERVICE_VALUE_MESSAGE =
+  "Enter this again, since the service now connects somewhere else.";
+
+export const TLS_CHANGED_SERVICE_VALUE_MESSAGE =
+  "Enter this again, since the service's TLS settings changed.";
+
 /** A database or SSH service is reached by name, so only an HTTP or MCP service has a host pattern. */
 export const hostPatternOf = (service: TAgentVaultService | TAgentVaultSessionInlineService) =>
   service.type === AgentVaultServiceType.Http || service.type === AgentVaultServiceType.Mcp
@@ -198,9 +239,7 @@ export const nativeHostError = (value: string): string | null => {
   if (trimmed.length > MAX_NATIVE_HOST_LENGTH) {
     return `The host can be at most ${MAX_NATIVE_HOST_LENGTH} characters.`;
   }
-  const unbracketed =
-    trimmed.startsWith("[") && trimmed.endsWith("]") ? trimmed.slice(1, -1) : trimmed;
-  const host = unbracketed.replace(/\.$/, "").toLowerCase();
+  const host = nativeHostKey(trimmed);
   if (/\s/.test(host) || !AGENT_VAULT_NO_CONTROL_CHARS_RE.test(host)) {
     return "The host can't contain spaces or control characters.";
   }
@@ -260,6 +299,51 @@ export const certificateAuthorityError = (value: string): string | null => {
   } catch {
     return invalid;
   }
+  return null;
+};
+
+// A certificate authority as the API compares one: only its certificate blocks, and line endings and indentation
+// don't count, so a re-pasted copy of the same PEM isn't a change.
+const comparableCertificateAuthority = (value: string | null | undefined) =>
+  ((value ?? "").match(PEM_BLOCK_RE) ?? []).join("").replace(/\s+/g, "");
+
+/**
+ * Whether an edit lowers how a database service protects its login on the way there: TLS or the certificate check
+ * turned off, or another certificate authority trusted. The API treats that like a move, so the saved values have to
+ * be entered again.
+ */
+export const isServiceTlsWeakened = (
+  form: { tlsEnabled: boolean; tlsVerify: boolean; tlsCa: string },
+  service: TAgentVaultService
+) => {
+  if (
+    service.type !== AgentVaultServiceType.Postgres &&
+    service.type !== AgentVaultServiceType.Mysql
+  ) {
+    return false;
+  }
+  const { tls } = service;
+  // The CA goes out only while the certificate is checked. Otherwise the stored one is kept.
+  const nextCa = form.tlsEnabled && form.tlsVerify ? form.tlsCa : tls.ca;
+  return (
+    (tls.enabled && !form.tlsEnabled) ||
+    (tls.verify && !form.tlsVerify) ||
+    comparableCertificateAuthority(nextCa) !== comparableCertificateAuthority(tls.ca)
+  );
+};
+
+export type TServiceMove = "destination" | "tls";
+
+type TServiceMoveForm = Parameters<typeof isServiceDestinationChanged>[0] &
+  Parameters<typeof isServiceTlsWeakened>[0];
+
+/** Why an edit counts as a move, which sends no saved value, or null when it doesn't. */
+export const serviceMoveOf = (
+  form: TServiceMoveForm,
+  service: TAgentVaultService
+): TServiceMove | null => {
+  if (isServiceDestinationChanged(form, service)) return "destination";
+  if (isServiceTlsWeakened(form, service)) return "tls";
   return null;
 };
 
@@ -796,10 +880,19 @@ export const buildServiceSchema = (
         }
       }
       if (isOAuthVariableCredential(data) && !data.oauthVariableKey) {
-        // A variable the caller can't see is kept as it is.
-        const isHiddenVariableKept =
+        // A variable the caller can't see is kept as it is, until the service moves: the new destination would get
+        // its tokens, so a move has to name a variable.
+        const isHiddenVariable =
           isOAuthVariableService(service) && !storedOAuthVariableKey(service);
-        if (!isHiddenVariableKept) issue("oauthVariableKey", "Choose an OAuth variable.");
+        const isMoved = Boolean(service && isServiceDestinationChanged(data, service));
+        if (isHiddenVariable && isMoved) {
+          issue(
+            "oauthVariableKey",
+            "Choose an OAuth variable again, since the service now connects somewhere else."
+          );
+        } else if (!isHiddenVariable) {
+          issue("oauthVariableKey", "Choose an OAuth variable.");
+        }
       }
       if (isMcp) {
         const urlError = serverUrlError(data.serverUrl);
@@ -1098,6 +1191,52 @@ export const buildServiceSchema = (
           Boolean(service?.hook)
         );
         if (hookSecretIssue) issue("hookSigningSecret", hookSecretIssue);
+      }
+
+      // A value left as saved is never sent to a new destination, or over weaker TLS, so a move asks for each one
+      // again. An OAuth sign-in has its own rule for a new server URL.
+      const move = service ? serviceMoveOf(data, service) : null;
+      if (service && move) {
+        const reenter = (path: (string | number)[]) =>
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path,
+            message:
+              move === "tls" ? TLS_CHANGED_SERVICE_VALUE_MESSAGE : MOVED_SERVICE_VALUE_MESSAGE
+          });
+        const type = data.credentialType;
+        const isMemberField = (field: TAgentVaultMemberProvidedField) =>
+          data.memberProvidedFields.includes(field);
+        if (type === service.credential.type) {
+          if (type === AgentVaultCredentialType.Bearer || type === AgentVaultCredentialType.Basic) {
+            if (
+              type === AgentVaultCredentialType.Basic &&
+              data.username === UNCHANGED_SECRET &&
+              !isMemberField(AgentVaultVariableReferenceField.CredentialUsername)
+            ) {
+              reenter(["username"]);
+            }
+            if (
+              data.secret === UNCHANGED_SECRET &&
+              !isMemberField(AgentVaultVariableReferenceField.CredentialValue)
+            ) {
+              reenter(["secret"]);
+            }
+          }
+          if (type === AgentVaultCredentialType.SshKey) {
+            if (data.username === UNCHANGED_SECRET) reenter(["username"]);
+            if (data.sshPrivateKey === UNCHANGED_SECRET) reenter(["sshPrivateKey"]);
+            if (data.sshCertificate === UNCHANGED_SECRET && !data.sshCertificateRemoved) {
+              reenter(["sshCertificate"]);
+            }
+          }
+        }
+        data.customHeaders.forEach((header, index) => {
+          if (header.value === UNCHANGED_SECRET) reenter(["customHeaders", index, "value"]);
+        });
+        data.substitutions.forEach((substitution, index) => {
+          if (substitution.value === UNCHANGED_SECRET) reenter(["substitutions", index, "value"]);
+        });
       }
 
       if (
