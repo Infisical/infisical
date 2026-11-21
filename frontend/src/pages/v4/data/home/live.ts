@@ -53,7 +53,7 @@ const DAY = 86_400_000;
 const ATTENTION_PRODUCT: Partial<Record<NotificationType, ProjectType | undefined>> = {
   [NotificationType.SECRET_ROTATION_FAILED]: ProjectType.SecretManager,
   [NotificationType.SECRET_SYNC_FAILED]: ProjectType.SecretManager,
-  [NotificationType.CREDENTIAL_ROTATION_FAILED]: ProjectType.PAM,
+  [NotificationType.CREDENTIAL_ROTATION_FAILED]: undefined,
   [NotificationType.PKI_SYNC_FAILED]: ProjectType.CertificateManager,
   [NotificationType.SECRET_SCANNING_SCAN_FAILED]: ProjectType.SecretScanning,
   [NotificationType.GATEWAY_HEALTH_ALERT]: undefined,
@@ -464,7 +464,15 @@ export const homeLive: HomeAdapter = {
         );
         const ownBlocked =
           request?.committerUserId === user.id && request.policy.allowedSelfApprovals === false;
-        if (!request || request.status !== "open" || request.hasMerged || reviewed || ownBlocked)
+        const approver = request?.policy.approvers.some((item) => item.userId === user.id);
+        if (
+          !request ||
+          request.status !== "open" ||
+          request.hasMerged ||
+          !approver ||
+          reviewed ||
+          ownBlocked
+        )
           return [];
         return [
           secretChangeRow(base, request, {
