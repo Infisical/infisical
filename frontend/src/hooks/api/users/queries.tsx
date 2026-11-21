@@ -202,7 +202,7 @@ export const useGetOrgUsers = (orgId: string, options?: { enabled?: boolean }) =
     enabled: Boolean(orgId) && (options?.enabled ?? true)
   });
 
-export const useGetOrgUserAccess = (orgId: string) =>
+export const useGetOrgUserAccess = (orgId: string, options?: { enabled?: boolean }) =>
   useQuery({
     queryKey: userKeys.getOrgUserAccess(orgId),
     queryFn: async () => {
@@ -211,7 +211,7 @@ export const useGetOrgUserAccess = (orgId: string) =>
       );
       return data.users;
     },
-    enabled: Boolean(orgId)
+    enabled: Boolean(orgId) && (options?.enabled ?? true)
   });
 
 // mutation

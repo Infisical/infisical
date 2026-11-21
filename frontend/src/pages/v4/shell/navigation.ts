@@ -33,7 +33,6 @@ export type ShellProductNavItem = {
   label: string;
   icon: IconName;
   path: string;
-  disabled?: boolean;
   children?: readonly ShellNavItem[];
 };
 
@@ -292,17 +291,18 @@ const productNavLabel = (product: ShellProduct) =>
 
 /** The org sidebar's Products section. A product with product-level pages expands in place to them; the rest link to their home. */
 export const productNavItems = (blocked: ReadonlySet<ProjectType>): ShellProductNavItem[] =>
-  products.map((product) => {
-    const pages = productSections(product)[0].items;
-    return {
-      id: product.slug,
-      label: productNavLabel(product),
-      icon: product.icon,
-      path: productHome(product),
-      disabled: blocked.has(product.type),
-      children: pages.length > 1 ? pages : undefined
-    };
-  });
+  products
+    .filter((product) => !blocked.has(product.type))
+    .map((product) => {
+      const pages = productSections(product)[0].items;
+      return {
+        id: product.slug,
+        label: productNavLabel(product),
+        icon: product.icon,
+        path: productHome(product),
+        children: pages.length > 1 ? pages : undefined
+      };
+    });
 
 const settingsTabOf =
   (path: string) => (id: string, label: string, icon: IconName, selectedTab: string) => ({

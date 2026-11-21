@@ -29,7 +29,7 @@ import { type ShellBannerContext, type ShellBannerScope, PageFrame, ShellBanners
 import { useShellChrome } from "./chrome";
 import { CommandPalette } from "./command-palette";
 import { useCornerCard } from "./corner";
-import { productNavId, shellTrail, type V4ShellLevel } from "./levels";
+import { productCurrentId, shellTrail, type V4ShellLevel } from "./levels";
 import { resolveShellLocation, type ShellLocation } from "./location";
 import {
   hueOf,
@@ -140,7 +140,7 @@ const sidebarCurrentId = ({
 }) => {
   if (nav) return nav.current;
   if (at.level === "product" && at.product && at.current)
-    return productNavId(productOf(at.product).slug, at.current.id);
+    return productCurrentId(at.product, at.current.id);
   return sidebarCurrent && `${shownId}:${sidebarCurrent.id}`;
 };
 
