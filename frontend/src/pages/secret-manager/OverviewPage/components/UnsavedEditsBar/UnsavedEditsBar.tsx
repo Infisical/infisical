@@ -41,7 +41,7 @@ export type TUnsavedChange = {
 
 type TUnsavedEdit = {
   getChange: () => TUnsavedChange | null;
-  settle: () => void;
+  settle: (committedValue: string) => void;
   discard: () => void;
 };
 
@@ -101,7 +101,7 @@ export const useUnsavedEdit = (isDirty: boolean, edit: TUnsavedEdit) => {
     if (!registry || !isDirty) return undefined;
     return registry.register(id, {
       getChange: () => editRef.current.getChange(),
-      settle: () => editRef.current.settle(),
+      settle: (committedValue) => editRef.current.settle(committedValue),
       discard: () => editRef.current.discard()
     });
   }, [registry, isDirty, id]);
@@ -135,13 +135,13 @@ export const UnsavedEditsBar = ({
     setMessage("");
   };
 
-  const changesByEnvironment = (reviewChanges ?? []).reduce<Record<string, TUnsavedChange[]>>(
-    (groups, change) => ({
-      ...groups,
-      [change.environmentName]: [...(groups[change.environmentName] ?? []), change]
-    }),
-    {}
-  );
+  const changesByEnvironment = new Map<string, TUnsavedChange[]>();
+  (reviewChanges ?? []).forEach((change) => {
+    changesByEnvironment.set(change.environment, [
+      ...(changesByEnvironment.get(change.environment) ?? []),
+      change
+    ]);
+  });
 
   return (
     <>
@@ -175,7 +175,7 @@ export const UnsavedEditsBar = ({
       </SelectedActionBar>
 
       <Sheet open={Boolean(reviewChanges)} onOpenChange={(open) => !open && setReviewChanges(null)}>
-        <SheetContent className="w-full gap-y-0 sm:max-w-2xl md:max-w-8xl">
+        <SheetContent size="wide" isPending={isCommitting} className="gap-y-0">
           <SheetHeader className="border-b">
             <SheetTitle className="flex items-center gap-2">
               Review Changes
@@ -191,12 +191,10 @@ export const UnsavedEditsBar = ({
           </SheetHeader>
 
           <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4">
-            {Object.entries(changesByEnvironment).map(([environmentName, changes]) => (
-              <div key={environmentName}>
+            {[...changesByEnvironment.entries()].map(([environment, changes]) => (
+              <div key={environment}>
                 <div className="mb-3 flex items-center gap-2 border-b border-border pb-2">
-                  <span className="flex-1 text-xs font-semibold tracking-wider text-accent uppercase">
-                    {environmentName}
-                  </span>
+                  <span className="flex-1 text-sm font-medium">{changes[0].environmentName}</span>
                   <Badge variant="neutral">{changes.length}</Badge>
                 </div>
                 <div className="space-y-2">
@@ -247,7 +245,6 @@ export const UnsavedEditsBar = ({
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Describe your changes..."
                   maxLength={255}
-                  autoFocus
                 />
               )}
               <div className="flex justify-end gap-2">

@@ -8,6 +8,7 @@ import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/s
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { canonicalizeSecretPath } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import {
@@ -1164,15 +1165,24 @@ export const pitServiceFactory = ({
   }: Omit<TNewCommitRawDTO, "environment" | "secretPath" | "changes"> & {
     commits: Pick<TNewCommitRawDTO, "environment" | "secretPath" | "changes">[];
   }) => {
-    const folderKeys = commits.map(({ environment, secretPath }) => `${environment}:${secretPath}`);
+    const canonicalCommits = commits.map((commit) => ({
+      ...commit,
+      secretPath: canonicalizeSecretPath(commit.secretPath)
+    }));
+    const folderKeys = canonicalCommits.map(({ environment, secretPath }) => `${environment}:${secretPath}`);
     if (new Set(folderKeys).size !== folderKeys.length) {
       throw new BadRequestError({
         message: "Each environment and secret path can appear only once in a batch of commits"
       });
     }
 
+    // A fixed folder order keeps two overlapping batches from taking row locks in opposite orders
+    const orderedCommits = canonicalCommits.sort(
+      (a, b) => a.environment.localeCompare(b.environment) || a.secretPath.localeCompare(b.secretPath)
+    );
+
     const prepared: (TNewCommitRawDTO & { policy: Awaited<ReturnType<typeof prepareNewCommitRaw>> })[] = [];
-    for (const commit of commits) {
+    for (const commit of orderedCommits) {
       const policy = await prepareNewCommitRaw({ ...dto, ...commit });
       prepared.push({ ...dto, ...commit, policy });
     }

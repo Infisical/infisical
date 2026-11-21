@@ -2536,22 +2536,29 @@ const OverviewPageContent = () => {
     });
 
   const handleCommitUnsavedEdits = async (message: string) => {
-    const edits = getUnsavedEdits();
-    const changes = getUnsavedChanges();
+    const edits = getUnsavedEdits().flatMap((edit) => {
+      const change = edit.getChange();
+      return change ? [{ edit, change }] : [];
+    });
+    const changes = edits.map(({ change }) => change);
     if (!changes.length) return false;
 
     try {
       const { commits } = await createCommits({ projectId, secretPath, message, secrets: changes });
-      edits.forEach((edit) => edit.settle());
+      edits.forEach(({ edit, change }) => edit.settle(change.secretValue));
 
-      const environmentNames = Object.fromEntries(
-        changes.map((change) => [change.environment, change.environmentName])
-      );
       const reviewEnvironments = commits
         .filter((commit) => commit.approval)
-        .map((commit) => environmentNames[commit.environment]);
+        .map((commit) => commit.environment);
+      const reviewEnvironmentNames = [
+        ...new Set(
+          changes
+            .filter((change) => reviewEnvironments.includes(change.environment))
+            .map((change) => change.environmentName)
+        )
+      ];
       const committedCount = changes.filter(
-        (change) => !reviewEnvironments.includes(change.environmentName)
+        (change) => !reviewEnvironments.includes(change.environment)
       ).length;
 
       if (committedCount > 0) {
@@ -2560,10 +2567,10 @@ const OverviewPageContent = () => {
           text: `Committed ${committedCount} change${committedCount === 1 ? "" : "s"}`
         });
       }
-      if (reviewEnvironments.length > 0) {
+      if (reviewEnvironmentNames.length > 0) {
         createNotification({
           type: "info",
-          text: `Change request opened for ${reviewEnvironments.join(", ")}`
+          text: `Change request opened for ${reviewEnvironmentNames.join(", ")}`
         });
       }
       return true;

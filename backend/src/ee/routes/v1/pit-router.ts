@@ -783,12 +783,12 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         }
       ],
       body: z.object({
-        projectId: z.string().trim(),
+        projectId: z.string().trim().min(1).max(64),
         message: z.string().trim().max(255).optional(),
         commits: z
           .object({
-            environment: z.string().trim(),
-            secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
+            environment: z.string().trim().min(1).max(64),
+            secretPath: z.string().trim().max(1000).default("/").transform(removeTrailingSlash),
             changes: CommitChangesSchema
           })
           .array()

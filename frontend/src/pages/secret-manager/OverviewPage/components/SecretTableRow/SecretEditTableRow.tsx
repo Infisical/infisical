@@ -1200,7 +1200,11 @@ export const SecretEditTableRow = ({
         tagIds: tags?.map((tag) => tag.id)
       };
     },
-    settle: () => reset({ value: secretValueHidden ? defaultValue || null : getValues("value") }),
+    settle: (committedValue) => {
+      const currentValue = getValues("value");
+      reset({ value: secretValueHidden ? defaultValue || null : committedValue });
+      if (currentValue !== committedValue) setValue("value", currentValue, { shouldDirty: true });
+    },
     discard: handleFormReset
   });
 
