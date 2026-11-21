@@ -7,6 +7,7 @@ import {
   isNativeService,
   isOAuthVariableService,
   McpToolScope,
+  serviceHookDraftOf,
   storedMemberFields,
   storedOAuthVariableKey,
   type TServiceForm,
@@ -84,9 +85,7 @@ export const BLANK_SERVICE_FORM: TServiceForm = {
   pathPrefixes: [],
   customHeaders: [],
   substitutions: [],
-  hookEnabled: false,
-  hookUrl: "",
-  hookSigningSecret: ""
+  hook: serviceHookDraftOf()
 };
 
 export const blankFormOf = (serviceType: AgentVaultServiceType): TServiceForm => {
@@ -106,9 +105,7 @@ export const blankFormOf = (serviceType: AgentVaultServiceType): TServiceForm =>
 };
 
 const hookFieldsOf = (service: TAgentVaultService) => ({
-  hookEnabled: Boolean(service.hook),
-  hookUrl: service.hook?.url ?? "",
-  hookSigningSecret: service.hook ? UNCHANGED_SECRET : ""
+  hook: serviceHookDraftOf(service.hook)
 });
 
 export const formFromService = (service: TAgentVaultService): TServiceForm => {

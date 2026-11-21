@@ -23,6 +23,7 @@ import type {
   TAgentVaultProjectService,
   TAgentVaultProxy,
   TAgentVaultService,
+  TAgentVaultServiceHookInput,
   TAgentVaultSkill,
   TAgentVaultSkillFile,
   TAgentVaultVariable,
@@ -132,6 +133,16 @@ const base = (index: number, name: string, description: string | null, createdDa
   updatedAt: at(-Math.floor(createdDaysAgo / 2) * DAY)
 });
 
+const demoHooks = [
+  { id: uuid("c9", 1), name: "linear-writes", url: "https://hooks.acme.dev/agent-vault/linear" },
+  { id: uuid("c9", 2), name: "datadog-queries", url: "https://hooks.acme.dev/agent-vault/datadog" }
+];
+
+const demoServiceHook = (hook?: TAgentVaultServiceHookInput | null) => {
+  const saved = hook && demoHooks.find((entry) => entry.name === hook.name);
+  return saved && hook ? { ...hook, id: saved.id, name: saved.name } : null;
+};
+
 const seedServices: TAgentVaultService[] = [
   {
     ...base(1, "github-api", "Read repositories and open pull requests", 58),
@@ -226,7 +237,7 @@ const seedServices: TAgentVaultService[] = [
     },
     customHeaders: [],
     variableReferences: [],
-    hook: { url: "https://hooks.acme.dev/agent-vault/linear" }
+    hook: { id: uuid("c9", 1), name: "linear-writes" }
   },
   {
     ...base(6, "datadog-us5", "Query metrics and logs for the US5 site", 18),
@@ -240,7 +251,7 @@ const seedServices: TAgentVaultService[] = [
     variableReferences: [
       ref(2, "DATADOG_API_KEY", AgentVaultVariableReferenceField.CredentialValue)
     ],
-    hook: { url: "https://hooks.acme.dev/agent-vault/datadog" }
+    hook: { id: uuid("c9", 2), name: "datadog-queries" }
   },
   {
     ...base(7, "sentry", null, 12),
@@ -826,7 +837,7 @@ const createdService = (
     createdAt: now,
     updatedAt: now,
     variableReferences: [],
-    hook: hook ? { url: hook.url } : null
+    hook: demoServiceHook(hook)
   };
   if (dto.type === AgentVaultServiceType.Http) {
     const { credential } = dto;
@@ -1014,7 +1025,7 @@ const updatedService = (
       surfaces: substitution.surfaces
     }));
   }
-  if (hook !== undefined) next.hook = hook ? { url: hook.url } : null;
+  if (hook !== undefined) next.hook = demoServiceHook(hook);
   if (credential) next.credential = updatedCredential(state, service.credential, credential);
   next.updatedAt = new Date().toISOString();
   return next as TAgentVaultService;
@@ -1712,6 +1723,27 @@ export const agentVaultResourcesDemo: AgentVaultResourcesAdapter = {
       };
     }
   ),
+
+  useHooks: query("hooks", (state, projectId: string, params: { search?: string } = {}) => {
+    const hooks = demoHooks
+      .filter((hook) => matches(params.search, hook.name, hook.url))
+      .map((hook) => ({
+        ...hook,
+        projectId,
+        description: null,
+        usedBy: state.services
+          .filter((service) => service.hook?.id === hook.id)
+          .map((service) => ({
+            id: service.id,
+            name: service.name,
+            type: service.type,
+            hostPattern: "hostPattern" in service ? service.hostPattern : null
+          })),
+        createdAt: new Date(0).toISOString(),
+        updatedAt: new Date(0).toISOString()
+      }));
+    return { hooks, totalCount: hooks.length };
+  }),
 
   useProxies: query("proxies", (state, _projectId: string, params = {}) => {
     const rows = state.proxies.filter((proxy) =>

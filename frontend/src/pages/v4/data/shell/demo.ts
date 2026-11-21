@@ -158,6 +158,8 @@ const gateway = (id: string, name: string): TGatewayV2 => ({
   heartbeatTTL: 60,
   directAddress: null,
   directHeartbeat: null,
+  cliVersion: null,
+  cliVersionReportedAt: null,
   canRevoke: true,
   connectedResourcesCount: 3,
   identity: null
