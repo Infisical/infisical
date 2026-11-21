@@ -3003,6 +3003,7 @@ export const registerRoutes = async (
     secretChangePolicyService,
     projectDAL,
     secretV2BridgeService,
+    secretV2BridgeDAL,
     folderCommitDAL,
     secretQueueService
   });

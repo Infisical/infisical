@@ -26,6 +26,7 @@ import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
+import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-service";
 import { SecretOperations, SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
@@ -56,6 +57,7 @@ type TPitServiceFactoryDep = {
   secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicy">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug" | "findById">;
   secretV2BridgeService: TSecretV2BridgeServiceFactory;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "lockSharedSecretsForUpdate">;
   folderCommitDAL: Pick<TFolderCommitDALFactory, "transaction">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
 };
@@ -85,6 +87,7 @@ export const pitServiceFactory = ({
   secretChangePolicyService,
   projectDAL,
   secretV2BridgeService,
+  secretV2BridgeDAL,
   folderCommitDAL,
   secretQueueService
 }: TPitServiceFactoryDep) => {
@@ -1176,6 +1179,18 @@ export const pitServiceFactory = ({
       });
     }
 
+    const hasFolderChanges = commits.some(
+      ({ changes }) =>
+        (changes.folders?.create?.length ?? 0) > 0 ||
+        (changes.folders?.update?.length ?? 0) > 0 ||
+        (changes.folders?.delete?.length ?? 0) > 0
+    );
+    if (commits.length > 1 && hasFolderChanges) {
+      throw new BadRequestError({
+        message: "Folder changes can't be combined with other folders in one commit. Commit them on their own."
+      });
+    }
+
     // A fixed folder order keeps two overlapping batches from taking row locks in opposite orders
     const orderedCommits = canonicalCommits.sort(
       (a, b) => a.environment.localeCompare(b.environment) || a.secretPath.localeCompare(b.secretPath)
@@ -1188,6 +1203,26 @@ export const pitServiceFactory = ({
     }
 
     const applied = await folderCommitDAL.transaction(async (trx) => {
+      // Single-folder saves lock their secret rows before the project-wide cache counter, so the batch takes
+      // every row it will write up front instead of holding that counter while waiting on another folder's rows
+      const directWrites = await Promise.all(
+        prepared
+          .filter(({ policy, actor }) => !shouldApplyPolicy(policy, actor))
+          .map(async ({ projectId, environment, secretPath, changes }) => {
+            const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath, trx);
+            return {
+              folderId: folder?.id ?? "",
+              secretKeys: [...(changes.secrets?.update ?? []), ...(changes.secrets?.delete ?? [])].map(
+                ({ secretKey }) => secretKey
+              )
+            };
+          })
+      );
+      await secretV2BridgeDAL.lockSharedSecretsForUpdate(
+        directWrites.filter(({ folderId }) => folderId),
+        trx
+      );
+
       const results: Awaited<ReturnType<typeof applyNewCommitRaw>>[] = [];
       for (const commit of prepared) {
         results.push(await applyNewCommitRaw(commit, trx));
