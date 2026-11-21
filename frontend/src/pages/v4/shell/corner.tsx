@@ -1,4 +1,5 @@
 import { useState, useSyncExternalStore } from "react";
+import { AnimatedCollapse } from "@infisical/cipher/ui/animated-collapse";
 import { Button } from "@infisical/cipher/ui/button";
 import { Icon } from "@infisical/cipher/ui/icon";
 import type { SidebarProps } from "@infisical/cipher/ui/sidebar";
@@ -159,32 +160,35 @@ const GetStartedCard = ({ getStarted }: { getStarted: ReturnType<typeof useGetSt
           <span key={step.id} data-done={step.done || undefined} />
         ))}
       </div>
-      {open ? (
-        <ul className={styles.steps}>
-          {steps.map((step) => (
-            <li key={step.id}>
-              <a href={step.href} data-done={step.done || undefined}>
-                <span className={styles.check} aria-hidden>
-                  {step.done && <Icon name="check" size={12} />}
-                </span>
-                {step.label}
-              </a>
+      <div>
+        <AnimatedCollapse open={open}>
+          <ul className={styles.steps}>
+            {steps.map((step) => (
+              <li key={step.id}>
+                <a href={step.href} data-done={step.done || undefined}>
+                  <span className={styles.check} aria-hidden>
+                    {step.done && <Icon name="check" size={12} />}
+                  </span>
+                  {step.label}
+                </a>
+              </li>
+            ))}
+            <li>
+              <Button variant="link" underline="hover" size="sm" onClick={getStarted.dismiss}>
+                Hide checklist
+              </Button>
             </li>
-          ))}
-          <li>
-            <Button variant="link" underline="hover" size="sm" onClick={getStarted.dismiss}>
-              Hide checklist
-            </Button>
-          </li>
-        </ul>
-      ) : (
-        next && (
-          <a href={next.href} className={styles.next}>
-            <span>{`Next: ${next.label}`}</span>
-            <Icon name="chev-right" size={14} />
-          </a>
-        )
-      )}
+          </ul>
+        </AnimatedCollapse>
+        <AnimatedCollapse open={!open && Boolean(next)}>
+          {next && (
+            <a href={next.href} className={styles.next}>
+              <span>{`Next: ${next.label}`}</span>
+              <Icon name="chev-right" size={14} />
+            </a>
+          )}
+        </AnimatedCollapse>
+      </div>
     </div>
   );
 };

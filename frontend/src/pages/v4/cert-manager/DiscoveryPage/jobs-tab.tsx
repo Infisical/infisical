@@ -5,7 +5,7 @@ import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dr
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Inline } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 
@@ -22,6 +22,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { useOrgId } from "../../access/permissions";
 import { failed } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
+import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { useUpgradeGate } from "../../license";
 import { orgHref, useGo } from "../../links";
@@ -197,7 +198,7 @@ export const JobsTab = ({ orgId, projectId }: { orgId: string; projectId: string
     );
 
   return (
-    <Stack gap={16}>
+    <ToolbarStack>
       <Inline gap={12} align="center" wrap={false}>
         <Input
           icon="search"
@@ -294,6 +295,6 @@ export const JobsTab = ({ orgId, projectId }: { orgId: string; projectId: string
       />
       <DeleteDiscoveryDialog discovery={deleting} onClose={() => setDeleting(undefined)} />
       {upgradeGate}
-    </Stack>
+    </ToolbarStack>
   );
 };

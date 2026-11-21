@@ -16,7 +16,6 @@ import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Stack } from "@infisical/cipher/ui/layout";
 import { UserRoundXIcon } from "lucide-react";
 
 import {
@@ -26,6 +25,7 @@ import {
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import type { TAgentVaultProductMemberOf } from "@app/hooks/api/agentVault/types";
 
+import { ToolbarStack } from "../../../components/toolbar-stack";
 import { useV4Adapter } from "../../../data/adapters";
 import { useProjectPermission } from "../../permissions";
 import { useProjectScope } from "../../project/scope";
@@ -74,7 +74,7 @@ export const AgentVaultGroupsTab = () => {
   };
 
   return (
-    <Stack gap={16}>
+    <ToolbarStack>
       <FilterBar
         label="Group filters"
         fields={[]}
@@ -159,6 +159,6 @@ export const AgentVaultGroupsTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Stack>
+    </ToolbarStack>
   );
 };

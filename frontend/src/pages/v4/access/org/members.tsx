@@ -39,6 +39,7 @@ import { findOrgMembershipRole } from "@app/helpers/roles";
 import type { TOrgRole } from "@app/hooks/api/roles/types";
 import type { TOrgUserAccess } from "@app/hooks/api/users/types";
 
+import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { accessLinks } from "../links";
@@ -450,7 +451,7 @@ export const OrgMembersTab = () => {
   const canCreate = can(OrgPermissionMemberActions.Create);
 
   return (
-    <Stack gap={16}>
+    <ToolbarStack>
       <FilterBar
         label="Organization user filters"
         fields={[
@@ -651,6 +652,6 @@ export const OrgMembersTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Stack>
+    </ToolbarStack>
   );
 };

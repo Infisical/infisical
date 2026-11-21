@@ -35,6 +35,7 @@ import { SearchIdentitiesScope } from "@app/hooks/api/identities/types";
 import { pamKeys, type TPamIdentityMember } from "@app/hooks/api/pam";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
+import { ToolbarStack } from "../../../components/toolbar-stack";
 import { useV4Adapter } from "../../../data/adapters";
 import { accessLinks } from "../../links";
 import { useGo } from "../../navigation";
@@ -387,7 +388,7 @@ export const PamIdentitiesTab = () => {
   };
 
   return (
-    <Stack gap={16}>
+    <ToolbarStack>
       <FilterBar
         label="Machine identity filters"
         fields={[]}
@@ -470,6 +471,6 @@ export const PamIdentitiesTab = () => {
         actionLabel={managedRemoval ? "Delete machine identity" : "Remove from PAM"}
         onConfirm={remove}
       />
-    </Stack>
+    </ToolbarStack>
   );
 };

@@ -49,6 +49,7 @@ import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
+import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref } from "../../links";
@@ -452,7 +453,7 @@ export const OrgIdentitiesTab = () => {
 
   return (
     <Stack gap={32}>
-      <Stack gap={16}>
+      <ToolbarStack>
         <FilterBar
           label="Machine identity filters"
           fields={[]}
@@ -547,7 +548,7 @@ export const OrgIdentitiesTab = () => {
             ) : undefined
           }
         />
-      </Stack>
+      </ToolbarStack>
       <AuthTemplatesSection />
       <CreateIdentitySheet open={creating} onOpenChange={setCreating} />
       {authForm && (
