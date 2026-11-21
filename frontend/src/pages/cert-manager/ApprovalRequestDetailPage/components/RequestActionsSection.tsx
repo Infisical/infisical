@@ -22,6 +22,7 @@ import { usePopUp } from "@app/hooks";
 import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import {
   ApprovalRequestStepStatus,
+  CertRequestRequestData,
   TApprovalRequest,
   useApproveApprovalRequest,
   useRejectApprovalRequest
@@ -30,6 +31,37 @@ import {
 type Props = {
   request: TApprovalRequest;
   canReview: boolean;
+};
+
+const DECISION_TEXT = {
+  revocation: {
+    approve:
+      "Once every step approves, the certificate is revoked with the requester's reason. This can't be undone.",
+    reject: "The request is closed and the certificate isn't revoked. The requester can ask again."
+  },
+  issuance: {
+    approve: "Once every step approves, Infisical issues the certificate.",
+    reject: "The request is closed and no certificate is issued. The requester can ask again."
+  },
+  renewal: {
+    approve: "Once every step approves, Infisical renews the certificate.",
+    reject:
+      "The request is closed and the certificate isn't renewed. If auto-renewal raised the request, or the certificate was imported or discovered, Infisical stops renewing it automatically until a manual renewal completes."
+  },
+  access: {
+    approve: "The requester gets the access described on this request as soon as you approve.",
+    reject: "The request is closed and the requester gets no access. They can open a new one."
+  }
+};
+
+const getDecisionText = (request: TApprovalRequest) => {
+  if (request.type === ApprovalPolicyType.CertRevocation) return DECISION_TEXT.revocation;
+  if (request.type === ApprovalPolicyType.CertRequest) {
+    return (request.requestData.requestData as CertRequestRequestData).renewal
+      ? DECISION_TEXT.renewal
+      : DECISION_TEXT.issuance;
+  }
+  return DECISION_TEXT.access;
 };
 
 export const RequestActionsSection = ({ request, canReview }: Props) => {
@@ -58,6 +90,8 @@ export const RequestActionsSection = ({ request, canReview }: Props) => {
   if (request.type === ApprovalPolicyType.CertCodeSigning && request.requesterId === userId) {
     return null;
   }
+
+  const decisionText = getDecisionText(request);
 
   const hasAlreadyActed = currentStep.approvals.some(
     (approval) => approval.approverUserId === userId
@@ -151,11 +185,7 @@ export const RequestActionsSection = ({ request, canReview }: Props) => {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Approve request</DialogTitle>
-            <DialogDescription>
-              {request.type === ApprovalPolicyType.CertRevocation
-                ? "Once every step approves, the certificate is revoked with the requester's reason. This can't be undone."
-                : "The requester gets the access described on this request as soon as you approve."}
-            </DialogDescription>
+            <DialogDescription>{decisionText.approve}</DialogDescription>
           </DialogHeader>
           <Field>
             <FieldLabel>Comment (optional)</FieldLabel>
@@ -196,11 +226,7 @@ export const RequestActionsSection = ({ request, canReview }: Props) => {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Reject request</DialogTitle>
-            <DialogDescription>
-              {request.type === ApprovalPolicyType.CertRevocation
-                ? "The request is closed and the certificate isn't revoked. The requester can ask again."
-                : "The request is closed and the requester gets no access. They can open a new one."}
-            </DialogDescription>
+            <DialogDescription>{decisionText.reject}</DialogDescription>
           </DialogHeader>
           <Field>
             <FieldLabel>Reason for rejection (optional)</FieldLabel>
