@@ -966,24 +966,12 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
-  const lockSharedSecretsForUpdate = async (folders: { folderId: string; secretKeys: string[] }[], tx: Knex) => {
-    const targets = folders.filter(({ secretKeys }) => secretKeys.length);
-    if (!targets.length) return;
+  const lockSecretsForUpdate = async (secretIds: string[], tx: Knex) => {
+    if (!secretIds.length) return;
     try {
-      await tx(TableName.SecretV2)
-        .where("type", SecretType.Shared)
-        .where((bd) => {
-          targets.forEach(({ folderId, secretKeys }) => {
-            void bd.orWhere((qb) => {
-              void qb.where({ folderId }).whereIn("key", secretKeys);
-            });
-          });
-        })
-        .orderBy("id")
-        .select("id")
-        .forUpdate();
+      await tx(TableName.SecretV2).whereIn("id", secretIds).orderBy("id").select("id").forUpdate();
     } catch (error) {
-      throw new DatabaseError({ error, name: "LockSharedSecretsForUpdate" });
+      throw new DatabaseError({ error, name: "LockSecretsForUpdate" });
     }
   };
 
@@ -1923,7 +1911,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findOne,
     find,
     invalidateSecretCacheByProjectId,
-    lockSharedSecretsForUpdate,
+    lockSecretsForUpdate,
     findSecretsWithReminderRecipients,
     findSecretsWithReminderRecipientsOld,
     findReferencedSecretReferencesBySecretKey,

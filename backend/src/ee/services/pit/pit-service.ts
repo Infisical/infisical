@@ -2,9 +2,13 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType, TSecretFolders } from "@app/db/schemas";
+import { ActionProjectType, SecretType, TSecretFolders } from "@app/db/schemas";
 import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionCommitsActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -57,7 +61,7 @@ type TPitServiceFactoryDep = {
   secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicy">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug" | "findById">;
   secretV2BridgeService: TSecretV2BridgeServiceFactory;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "lockSharedSecretsForUpdate">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findBySecretKeys" | "lockSecretsForUpdate">;
   folderCommitDAL: Pick<TFolderCommitDALFactory, "transaction">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
 };
@@ -1202,26 +1206,50 @@ export const pitServiceFactory = ({
       prepared.push({ ...dto, ...commit, policy });
     }
 
+    const { permission } = await permissionService.getProjectPermission({
+      actor: dto.actor,
+      actorId: dto.actorId,
+      projectId: dto.projectId,
+      actorAuthMethod: dto.actorAuthMethod,
+      actorOrgId: dto.actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    const secretIdsToLock: string[] = [];
+    for (const { policy, environment, secretPath, changes } of prepared) {
+      if (shouldApplyPolicy(policy, dto.actor)) continue;
+      const folder = await folderDAL.findBySecretPath(dto.projectId, environment, secretPath);
+      if (!folder) continue;
+      const actions = new Map([
+        ...(changes.secrets?.update ?? []).map(
+          ({ secretKey }) => [secretKey, ProjectPermissionSecretActions.Edit] as const
+        ),
+        ...(changes.secrets?.delete ?? []).map(
+          ({ secretKey }) => [secretKey, ProjectPermissionSecretActions.Delete] as const
+        )
+      ]);
+      const secrets = await secretV2BridgeDAL.findBySecretKeys(
+        folder.id,
+        [...actions.keys()].map((key) => ({ key, type: SecretType.Shared }))
+      );
+      for (const secret of secrets) {
+        ForbiddenError.from(permission).throwUnlessCan(
+          actions.get(secret.key) ?? ProjectPermissionSecretActions.Edit,
+          subject(ProjectPermissionSub.Secrets, {
+            environment,
+            secretPath,
+            secretName: secret.key,
+            secretTags: secret.tags.map((tag) => tag.slug)
+          })
+        );
+        secretIdsToLock.push(secret.id);
+      }
+    }
+
     const applied = await folderCommitDAL.transaction(async (trx) => {
       // Single-folder saves lock their secret rows before the project-wide cache counter, so the batch takes
       // every row it will write up front instead of holding that counter while waiting on another folder's rows
-      const directWrites = await Promise.all(
-        prepared
-          .filter(({ policy, actor }) => !shouldApplyPolicy(policy, actor))
-          .map(async ({ projectId, environment, secretPath, changes }) => {
-            const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath, trx);
-            return {
-              folderId: folder?.id ?? "",
-              secretKeys: [...(changes.secrets?.update ?? []), ...(changes.secrets?.delete ?? [])].map(
-                ({ secretKey }) => secretKey
-              )
-            };
-          })
-      );
-      await secretV2BridgeDAL.lockSharedSecretsForUpdate(
-        directWrites.filter(({ folderId }) => folderId),
-        trx
-      );
+      await secretV2BridgeDAL.lockSecretsForUpdate(secretIdsToLock, trx);
 
       const results: Awaited<ReturnType<typeof applyNewCommitRaw>>[] = [];
       for (const commit of prepared) {
