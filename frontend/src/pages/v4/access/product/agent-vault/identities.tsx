@@ -17,7 +17,6 @@ import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Stack } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Trash2Icon } from "lucide-react";
 
@@ -28,6 +27,7 @@ import {
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import type { TAgentVaultProductMemberOf } from "@app/hooks/api/agentVault/types";
 
+import { ToolbarStack } from "../../../components/toolbar-stack";
 import { useV4Adapter } from "../../../data/adapters";
 import { useV4Session } from "../../../data/session/contract";
 import { accessLinks } from "../../links";
@@ -130,7 +130,7 @@ export const AgentVaultIdentitiesTab = () => {
   const verb = managed ? "Delete" : "Remove";
 
   return (
-    <Stack gap={16}>
+    <ToolbarStack>
       <FilterBar
         label="Machine identity filters"
         fields={[]}
@@ -226,6 +226,6 @@ export const AgentVaultIdentitiesTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Stack>
+    </ToolbarStack>
   );
 };

@@ -9,7 +9,7 @@ import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dr
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Inline } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
@@ -39,6 +39,7 @@ import { useOrgId, useOrgPermission, useProjectPermission } from "../access/perm
 import { failed, saved } from "../access/toast";
 import { AccessRestricted, RESTRICTED, type Sort } from "../access/ui";
 import { copyText } from "../clipboard";
+import { ToolbarStack } from "../components/toolbar-stack";
 import { useV4Adapter } from "../data/adapters";
 import { orgHref } from "../links";
 import { AppLogo } from "../organization/IntegrationsPage/AppLogo";
@@ -553,7 +554,7 @@ export const AppConnectionsTable = ({
   };
 
   return (
-    <Stack gap={16}>
+    <ToolbarStack>
       {!isProject && <ProjectScopeBanner />}
       <FilterBar
         label="App connection filters"
@@ -694,6 +695,6 @@ export const AppConnectionsTable = ({
         returnTo={returnTo}
         onClose={() => setDialog(undefined)}
       />
-    </Stack>
+    </ToolbarStack>
   );
 };

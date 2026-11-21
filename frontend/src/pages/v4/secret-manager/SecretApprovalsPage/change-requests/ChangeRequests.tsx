@@ -7,7 +7,7 @@ import { EmptyState } from "@infisical/cipher/ui/empty";
 import { FloatingActionBar } from "@infisical/cipher/ui/floating-action-bar";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Inline } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Meta } from "@infisical/cipher/ui/text";
@@ -35,6 +35,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 
 import { useProjectPermission } from "../../../access/permissions";
 import { toast } from "../../../access/toast";
+import { ToolbarStack } from "../../../components/toolbar-stack";
 import { useV4Adapter } from "../../../data/adapters";
 import { useV4Session } from "../../../data/session/contract";
 import { useGo } from "../../../links";
@@ -322,7 +323,7 @@ export const ChangeRequests = ({
     );
 
   return (
-    <Stack gap={16}>
+    <ToolbarStack>
       <FilterBar
         label="Change request filters"
         fields={[
@@ -445,6 +446,6 @@ export const ChangeRequests = ({
           setReviewing(false);
         }}
       />
-    </Stack>
+    </ToolbarStack>
   );
 };

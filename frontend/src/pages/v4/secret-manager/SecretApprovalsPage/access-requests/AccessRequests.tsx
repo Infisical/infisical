@@ -5,7 +5,7 @@ import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Inline } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Meta, StatusText } from "@infisical/cipher/ui/text";
 import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
@@ -32,6 +32,7 @@ import {
 } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/AccessApprovalRequest.utils";
 
 import { useProjectPermission } from "../../../access/permissions";
+import { ToolbarStack } from "../../../components/toolbar-stack";
 import { useV4Adapter } from "../../../data/adapters";
 import { useV4Session } from "../../../data/session/contract";
 import { useUpgradeGate } from "../../../license";
@@ -339,7 +340,7 @@ export const AccessRequests = ({
   };
 
   return (
-    <Stack gap={16}>
+    <ToolbarStack>
       <FilterBar
         label="Access request filters"
         fields={fields}
@@ -496,6 +497,6 @@ export const AccessRequests = ({
         />
       )}
       {upgradeGate}
-    </Stack>
+    </ToolbarStack>
   );
 };
