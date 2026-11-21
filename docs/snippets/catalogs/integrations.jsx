@@ -89,6 +89,7 @@ export const integrations = [
   { name: "Heroku", path: "/integrations/secret-syncs/heroku", description: "Learn how to sync secrets from Infisical to Heroku.", type: "Secret Sync", tag: "Hosting" },
   { name: "DigitalOcean App Platform", path: "/integrations/secret-syncs/digital-ocean-app-platform", description: "Learn how to sync secrets from Infisical to DigitalOcean App Platform.", type: "Secret Sync", tag: "Hosting" },
   { name: "Supabase", path: "/integrations/secret-syncs/supabase", description: "Learn how to sync secrets from Infisical to Supabase.", type: "Secret Sync", tag: "Databases" },
+  { name: "Convex", path: "/integrations/secret-syncs/convex", description: "Learn how to sync secrets from Infisical to Convex.", type: "Secret Sync", tag: "Databases" },
   { name: "Checkly", path: "/integrations/secret-syncs/checkly", description: "Learn how to sync secrets from Infisical to Checkly.", type: "Secret Sync", tag: "Monitoring" },
   { name: "CircleCI", path: "/integrations/secret-syncs/circleci", description: "Learn how to sync secrets from Infisical to CircleCI.", type: "Secret Sync", tag: "CI/CD" },
   { name: "GitHub", path: "/integrations/secret-syncs/github", description: "Learn how to sync secrets from Infisical to GitHub.", type: "Secret Sync", tag: "CI/CD" },
