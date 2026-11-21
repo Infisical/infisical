@@ -136,6 +136,7 @@ const NATIVE_FIELD_OF_CONFIG_ERROR: [string, keyof TServiceForm][] = [
 // delivered it, so the sheet never offers one the server has already dropped.
 const OAUTH_AUTHORIZATION_LIFETIME_MS = (10 * 60 - 30) * 1000;
 const NO_HOOK = "none";
+const HOOK_PICKER_LIMIT = 100;
 const OAUTH_AUTHORIZATION_EXPIRED_MESSAGE =
   "This authorization expired before the service was saved. Authorize again.";
 
@@ -206,7 +207,7 @@ export const ServiceSheet = ({
   const resources = useV4Adapter("agentVaultResources");
   const create = resources.useCreateService(projectId);
   const update = resources.useUpdateService(projectId);
-  const savedHooks = resources.useHooks(projectId);
+  const savedHooks = resources.useHooks(projectId, { limit: HOOK_PICKER_LIMIT });
   const isCreate = !service;
   const fromRequest = isCreate ? request : undefined;
   const [prefilled] = useState(
@@ -861,9 +862,14 @@ export const ServiceSheet = ({
         value={form.hook.hookId || NO_HOOK}
         options={[
           { value: NO_HOOK, label: "No hook" },
+          ...(form.hook.hookId &&
+          !savedHooks.data?.hooks.some((hook) => hook.id === form.hook.hookId)
+            ? [{ value: form.hook.hookId, label: form.hook.hookName || "Current hook" }]
+            : []),
           ...(savedHooks.data?.hooks ?? []).map((hook) => ({ value: hook.id, label: hook.name }))
         ]}
         onChange={(next) => {
+          if (next === form.hook.hookId) return;
           const hook = savedHooks.data?.hooks.find((entry) => entry.id === next);
           set(
             "hook",
