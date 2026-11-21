@@ -1215,38 +1215,39 @@ export const pitServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const secretIdsToLock: string[] = [];
-    for (const { policy, environment, secretPath, changes } of prepared) {
-      if (shouldApplyPolicy(policy, dto.actor)) continue;
-      const folder = await folderDAL.findBySecretPath(dto.projectId, environment, secretPath);
-      if (!folder) continue;
-      const actions = new Map([
-        ...(changes.secrets?.update ?? []).map(
-          ({ secretKey }) => [secretKey, ProjectPermissionSecretActions.Edit] as const
-        ),
-        ...(changes.secrets?.delete ?? []).map(
-          ({ secretKey }) => [secretKey, ProjectPermissionSecretActions.Delete] as const
-        )
-      ]);
-      const secrets = await secretV2BridgeDAL.findBySecretKeys(
-        folder.id,
-        [...actions.keys()].map((key) => ({ key, type: SecretType.Shared }))
-      );
-      for (const secret of secrets) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          actions.get(secret.key) ?? ProjectPermissionSecretActions.Edit,
-          subject(ProjectPermissionSub.Secrets, {
-            environment,
-            secretPath,
-            secretName: secret.key,
-            secretTags: secret.tags.map((tag) => tag.slug)
-          })
-        );
-        secretIdsToLock.push(secret.id);
-      }
-    }
-
     const applied = await folderCommitDAL.transaction(async (trx) => {
+      const secretIdsToLock: string[] = [];
+      for (const { policy, environment, secretPath, changes } of prepared) {
+        if (shouldApplyPolicy(policy, dto.actor)) continue;
+        const folder = await folderDAL.findBySecretPath(dto.projectId, environment, secretPath, trx);
+        if (!folder) continue;
+        const actions = new Map([
+          ...(changes.secrets?.update ?? []).map(
+            ({ secretKey }) => [secretKey, ProjectPermissionSecretActions.Edit] as const
+          ),
+          ...(changes.secrets?.delete ?? []).map(
+            ({ secretKey }) => [secretKey, ProjectPermissionSecretActions.Delete] as const
+          )
+        ]);
+        const secrets = await secretV2BridgeDAL.findBySecretKeys(
+          folder.id,
+          [...actions.keys()].map((key) => ({ key, type: SecretType.Shared })),
+          trx
+        );
+        for (const secret of secrets) {
+          ForbiddenError.from(permission).throwUnlessCan(
+            actions.get(secret.key) ?? ProjectPermissionSecretActions.Edit,
+            subject(ProjectPermissionSub.Secrets, {
+              environment,
+              secretPath,
+              secretName: secret.key,
+              secretTags: secret.tags.map((tag) => tag.slug)
+            })
+          );
+          secretIdsToLock.push(secret.id);
+        }
+      }
+
       // Single-folder saves lock their secret rows before the project-wide cache counter, so the batch takes
       // every row it will write up front instead of holding that counter while waiting on another folder's rows
       await secretV2BridgeDAL.lockSecretsForUpdate(secretIdsToLock, trx);
