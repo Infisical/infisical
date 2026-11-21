@@ -751,6 +751,8 @@ export const approvalPolicyServiceFactory = ({
       policyType
     );
 
+    // Certificate issuance, revocation and deletion only: code signing follows pkiCodeSigning and PAM has its own
+    // product entitlement.
     if (
       policyType === ApprovalPolicyType.CertRequest ||
       policyType === ApprovalPolicyType.CertRevocation ||
