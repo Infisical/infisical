@@ -28,7 +28,7 @@ const MetricTile = ({
 }: Omit<ComponentProps<typeof StatCard>, "value"> & {
   hue: number;
   seed: string;
-  /** The Not set up state: a muted value and a faint gray hover corner. */
+  /** The Not set up state: a muted value and a faint gray corner. */
   muted?: boolean;
   value?: ReactNode;
 }) => (
@@ -40,7 +40,6 @@ const MetricTile = ({
     value={muted ? <span className={styles.mutedValue}>{value}</span> : value}
     backdrop={
       <Halftone
-        reveal="hover"
         reach={107}
         depth={0.667}
         width={160}
