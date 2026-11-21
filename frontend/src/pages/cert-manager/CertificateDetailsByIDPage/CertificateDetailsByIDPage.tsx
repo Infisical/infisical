@@ -80,6 +80,7 @@ import {
   getApplicationCertificateAccess,
   getCertificateActionApproval,
   getCertificateActionMenuState,
+  getCertificateDeletionTitle,
   getCertificateDeletionToast,
   getCertificateDeletionWarning,
   getPendingRequestLink,
@@ -683,7 +684,7 @@ const Page = () => {
       />
       <ConfirmationAlertDialog
         isOpen={popUp.deleteCertificate.isOpen}
-        title={`Delete Certificate ${displayName}?`}
+        title={certificate ? getCertificateDeletionTitle(certificate) : "Delete Certificate?"}
         description={
           <>
             {getCertificateDeletionWarning(

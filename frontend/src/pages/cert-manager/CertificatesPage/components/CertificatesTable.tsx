@@ -138,6 +138,8 @@ type Props = {
     data?: {
       serialNumber?: string;
       commonName?: string;
+      altNames?: string | null;
+      friendlyName?: string | null;
       certificateId?: string;
       profileId?: string;
       renewBeforeDays?: number;
@@ -1482,6 +1484,9 @@ export const CertificatesTable = ({
                                         certificateId: certificate.id,
                                         applicationId: certificate.applicationId,
                                         commonName: certificate.commonName,
+                                        altNames: certificate.altNames,
+                                        friendlyName: certificate.friendlyName,
+                                        serialNumber: certificate.serialNumber,
                                         status: certificate.status,
                                         notAfter: certificate.notAfter,
                                         hasPrivateKey: certificate.hasPrivateKey,

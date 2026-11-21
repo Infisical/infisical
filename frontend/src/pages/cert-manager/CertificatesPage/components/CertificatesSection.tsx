@@ -37,6 +37,7 @@ import { CertificateRenewalModal } from "./CertificateRenewalModal";
 import { CertificateRevocationModal } from "./CertificateRevocationModal";
 import { CertificatesTable } from "./CertificatesTable";
 import {
+  getCertificateDeletionTitle,
   getCertificateDeletionToast,
   getCertificateDeletionWarning
 } from "./CertificatesTable.utils";
@@ -144,6 +145,10 @@ export const CertificatesSection = ({
 
   const deleteCertificateData = popUp?.deleteCertificate?.data as
     | {
+        commonName: string;
+        altNames?: string | null;
+        friendlyName?: string | null;
+        serialNumber: string;
         status: string;
         notAfter: string;
         hasPrivateKey?: boolean;
@@ -239,9 +244,11 @@ export const CertificatesSection = ({
         />
         <ConfirmationAlertDialog
           isOpen={popUp.deleteCertificate.isOpen}
-          title={`Delete Certificate ${
-            (popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""
-          }?`}
+          title={
+            deleteCertificateData
+              ? getCertificateDeletionTitle(deleteCertificateData)
+              : "Delete Certificate?"
+          }
           description={
             <>
               {getCertificateDeletionWarning(

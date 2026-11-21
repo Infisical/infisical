@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import ms from "ms";
 
+import { getCertificateLabel } from "@app/components/utilities/certificateDisplayUtils";
 import {
   ApprovalPolicyType,
   TCertificateActionPolicyType
@@ -323,6 +324,14 @@ const getCertificateTrustWarning = (
   if (isRevocableAfterDeletion) return ` It stays trusted until ${expiresOn} unless you revoke it.`;
   return " It can't be revoked once deleted, so revoke it first if clients should stop trusting it.";
 };
+
+export const getCertificateDeletionTitle = (certificate: {
+  commonName: string;
+  altNames?: string | null;
+  friendlyName?: string | null;
+  serialNumber: string;
+}) =>
+  `Delete Certificate ${getCertificateLabel(certificate, certificate.serialNumber.toUpperCase())}?`;
 
 export const getCertificateDeletionWarning = (
   certificate?: TCertificateDeletionSource,
