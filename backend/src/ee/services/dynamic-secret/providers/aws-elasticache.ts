@@ -5,8 +5,13 @@ import {
   DescribeReplicationGroupsCommand,
   DescribeUserGroupsCommand,
   ElastiCache,
+  InvalidReplicationGroupStateFault,
+  InvalidUserGroupStateFault,
   ModifyReplicationGroupCommand,
-  ModifyUserGroupCommand
+  ModifyUserGroupCommand,
+  UserAlreadyExistsFault,
+  UserGroupAlreadyExistsFault,
+  UserGroupNotFoundFault
 } from "@aws-sdk/client-elasticache";
 import handlebars from "handlebars";
 import { customAlphabet } from "nanoid";
@@ -17,10 +22,11 @@ import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
-import { DynamicSecretAwsElastiCacheSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretAwsElastiCacheSchema, TDynamicProviderCreateMetadata, TDynamicProviderFns } from "./models";
 import { generateUsername } from "./templateUtils";
 
 const CreateElastiCacheUserSchema = z.object({
@@ -41,6 +47,25 @@ type TBasicAWSCredentials = { accessKeyId: string; secretAccessKey: string };
 type TCreateElastiCacheUserInput = z.infer<typeof CreateElastiCacheUserSchema>;
 type TDeleteElastiCacheUserInput = z.infer<typeof DeleteElasticCacheUserSchema>;
 
+const renderRevocationStatement = (revocationStatement: string, username: string) =>
+  DeleteElasticCacheUserSchema.parse(
+    JSON.parse(handlebars.compile(revocationStatement, { noEscape: true })({ username }))
+  );
+
+// Every cluster used to be attached to this one group, so its users can log in to all of those clusters.
+const LEGACY_SHARED_USER_GROUP_ID = "infisical-managed-group-elasticache";
+// Every user group needs a user named "default", which serves clients that connect without a password. AWS's own has
+// full access, so groups get this disabled one instead.
+const DISABLED_DEFAULT_USER_ID = "infisical-disabled-default";
+
+// A new user group takes up to a minute to become active, and adding users keeps it busy for about as long.
+const USER_GROUP_BUSY_MESSAGE =
+  "ElastiCache is still updating the user group for this cluster. Try creating the lease again in a minute.";
+
+// User group IDs are capped at 40 characters, the same as cluster names, so the ID holds a hash of the name.
+const getClusterUserGroupId = (clusterName: string) =>
+  `infisical-${crypto.nativeCrypto.createHash("sha256").update(clusterName.toLowerCase()).digest("hex").slice(0, 16)}`;
+
 const ElastiCacheUserManager = (credentials: TBasicAWSCredentials, region: string) => {
   const elastiCache = new ElastiCache({
     region,
@@ -49,64 +74,126 @@ const ElastiCacheUserManager = (credentials: TBasicAWSCredentials, region: strin
     credentials
   });
 
-  const infisicalGroup = "infisical-managed-group-elasticache";
+  const $getUserGroup = async (userGroupId: string) => {
+    try {
+      return (await elastiCache.send(new DescribeUserGroupsCommand({ UserGroupId: userGroupId }))).UserGroups?.[0];
+    } catch (err) {
+      if (err instanceof UserGroupNotFoundFault) return undefined;
+      throw err;
+    }
+  };
 
-  const ensureInfisicalGroupExists = async (clusterName: string) => {
-    const replicationGroups = await elastiCache.send(new DescribeUserGroupsCommand());
+  const $getReplicationGroupUserGroupIds = async (clusterName: string) => {
+    const replicationGroup = (
+      await elastiCache.send(new DescribeReplicationGroupsCommand({ ReplicationGroupId: clusterName }))
+    ).ReplicationGroups?.[0];
+    return [
+      ...(replicationGroup?.UserGroupIds ?? []),
+      ...(replicationGroup?.PendingModifiedValues?.UserGroups?.UserGroupIdsToAdd ?? [])
+    ];
+  };
 
-    const existingGroup = replicationGroups.UserGroups?.find((group) => group.UserGroupId === infisicalGroup);
+  const $ensureDisabledDefaultUserExists = async () => {
+    try {
+      await elastiCache.send(
+        new CreateUserCommand({
+          UserId: DISABLED_DEFAULT_USER_ID,
+          UserName: "default",
+          Engine: "redis",
+          Passwords: [crypto.randomBytes(32).toString("hex")],
+          AccessString: "off -@all"
+        })
+      );
+    } catch (err) {
+      if (!(err instanceof UserAlreadyExistsFault)) throw err;
+    }
+  };
 
-    let newlyCreatedGroup = false;
-    if (!existingGroup) {
-      const createGroupCommand = new CreateUserGroupCommand({
-        UserGroupId: infisicalGroup,
-        UserIds: ["default"],
-        Engine: "redis"
+  // A new user group takes up to a minute to become active, so this runs when the dynamic secret is saved as well as
+  // on every lease, which is asked to retry until the group is ready.
+  const ensureClusterUserGroupExists = async (clusterName: string) => {
+    const userGroupId = getClusterUserGroupId(clusterName);
+    const otherUserGroupId = (await $getReplicationGroupUserGroupIds(clusterName)).find(
+      (id) => id !== userGroupId && id !== LEGACY_SHARED_USER_GROUP_ID
+    );
+    if (otherUserGroupId) {
+      throw new BadRequestError({
+        message: `The ElastiCache cluster already uses the user group '${otherUserGroupId}'. A cluster can use only one user group, and Infisical needs its own to issue leases. Remove that user group from the cluster, or use a different cluster.`
       });
+    }
+    if (await $getUserGroup(userGroupId)) return;
 
-      await elastiCache.send(createGroupCommand);
-      newlyCreatedGroup = true;
+    await $ensureDisabledDefaultUserExists();
+    try {
+      await elastiCache.send(
+        new CreateUserGroupCommand({ UserGroupId: userGroupId, UserIds: [DISABLED_DEFAULT_USER_ID], Engine: "redis" })
+      );
+    } catch (err) {
+      if (!(err instanceof UserGroupAlreadyExistsFault)) throw err;
+    }
+  };
+
+  const createUser = async (
+    creationInput: TCreateElastiCacheUserInput,
+    clusterName: string,
+    getLeaseUserIds: () => Promise<string[]>
+  ) => {
+    const userGroupId = getClusterUserGroupId(clusterName);
+    const attachedUserGroupIds = await $getReplicationGroupUserGroupIds(clusterName);
+    const isAttached = attachedUserGroupIds.includes(userGroupId);
+    const isOnLegacyGroup = attachedUserGroupIds.includes(LEGACY_SHARED_USER_GROUP_ID);
+
+    const userGroup = isAttached ? undefined : await $getUserGroup(userGroupId);
+    // AWS refuses to modify a user group until it is active.
+    if (!isAttached && userGroup?.Status !== "active") {
+      throw new BadRequestError({ message: USER_GROUP_BUSY_MESSAGE });
     }
 
-    if (existingGroup || newlyCreatedGroup) {
-      const replicationGroup = (
+    // A cluster holds a single user group, so this dynamic secret's lease users are copied in right before the
+    // legacy group is swapped out, keeping those leases working. The legacy group also holds leases for other
+    // clusters, which must not gain access to this one. AWS stores user IDs in lowercase.
+    let legacyUserIds: string[] = [];
+    if (!isAttached && isOnLegacyGroup) {
+      const leaseUserIds = new Set((await getLeaseUserIds()).map((userId) => userId.toLowerCase()));
+      legacyUserIds = ((await $getUserGroup(LEGACY_SHARED_USER_GROUP_ID))?.UserIds ?? []).filter(
+        (userId) => leaseUserIds.has(userId.toLowerCase()) && !userGroup?.UserIds?.includes(userId)
+      );
+    }
+
+    await elastiCache.send(new CreateUserCommand(creationInput));
+    try {
+      await elastiCache.send(
+        new ModifyUserGroupCommand({
+          UserGroupId: userGroupId,
+          UserIdsToAdd: [creationInput.UserId, ...legacyUserIds],
+          UserIdsToRemove: []
+        })
+      );
+
+      if (!isAttached) {
+        // AWS accepts attaching a user group while the change above is still being applied.
         await elastiCache.send(
-          new DescribeReplicationGroupsCommand({
-            ReplicationGroupId: clusterName
+          new ModifyReplicationGroupCommand({
+            ReplicationGroupId: clusterName,
+            UserGroupIdsToAdd: [userGroupId],
+            UserGroupIdsToRemove: isOnLegacyGroup ? [LEGACY_SHARED_USER_GROUP_ID] : [],
+            ApplyImmediately: true
           })
-        )
-      ).ReplicationGroups?.[0];
-
-      if (!replicationGroup?.UserGroupIds?.includes(infisicalGroup)) {
-        // If the replication group doesn't have the infisical user group, we need to associate it
-        const modifyGroupCommand = new ModifyReplicationGroupCommand({
-          UserGroupIdsToAdd: [infisicalGroup],
-          UserGroupIdsToRemove: [],
-          ApplyImmediately: true,
-          ReplicationGroupId: clusterName
-        });
-        await elastiCache.send(modifyGroupCommand);
+        );
       }
+    } catch (err) {
+      // no lease will be saved to revoke whatever was already created
+      await elastiCache
+        .send(new DeleteUserCommand({ UserId: creationInput.UserId }))
+        .catch((cleanupErr) =>
+          logger.error(cleanupErr, `Failed to clean up ElastiCache user [userId=${creationInput.UserId}]`)
+        );
+      // The group or cluster is still applying an earlier change, such as the previous lease
+      if (err instanceof InvalidUserGroupStateFault || err instanceof InvalidReplicationGroupStateFault) {
+        throw new BadRequestError({ message: USER_GROUP_BUSY_MESSAGE });
+      }
+      throw err;
     }
-  };
-
-  const $addUserToInfisicalGroup = async (userId: string) => {
-    // figure out if the default user is already in the group, if it is, then we shouldn't add it again
-
-    const addUserToGroupCommand = new ModifyUserGroupCommand({
-      UserGroupId: infisicalGroup,
-      UserIdsToAdd: [userId],
-      UserIdsToRemove: []
-    });
-
-    await elastiCache.send(addUserToGroupCommand);
-  };
-
-  const createUser = async (creationInput: TCreateElastiCacheUserInput, clusterName: string) => {
-    await ensureInfisicalGroupExists(clusterName);
-
-    await elastiCache.send(new CreateUserCommand(creationInput)); // First create the user
-    await $addUserToInfisicalGroup(creationInput.UserId); // Then add the user to the group. We know the group is already a part of the cluster because of ensureInfisicalGroupExists()
 
     return {
       userId: creationInput.UserId,
@@ -132,7 +219,8 @@ const ElastiCacheUserManager = (credentials: TBasicAWSCredentials, region: strin
   return {
     createUser,
     deleteUser,
-    verifyCredentials
+    verifyCredentials,
+    ensureClusterUserGroupExists
   };
 };
 
@@ -163,13 +251,15 @@ export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
     try {
-      await ElastiCacheUserManager(
+      const userManager = ElastiCacheUserManager(
         {
           accessKeyId: providerInputs.accessKeyId,
           secretAccessKey: providerInputs.secretAccessKey
         },
         providerInputs.region
-      ).verifyCredentials(providerInputs.clusterName);
+      );
+      await userManager.verifyCredentials(providerInputs.clusterName);
+      await userManager.ensureClusterUserGroupExists(providerInputs.clusterName);
       return true;
     } catch (err) {
       const sanitizedErrorMessage = sanitizeString({
@@ -193,8 +283,9 @@ export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
     usernameTemplate?: string | null;
     identity: ActorIdentityAttributes;
     dynamicSecret: TDynamicSecrets;
+    metadata: TDynamicProviderCreateMetadata;
   }) => {
-    const { inputs, expireAt, usernameTemplate, identity, dynamicSecret } = data;
+    const { inputs, expireAt, usernameTemplate, identity, dynamicSecret, metadata } = data;
     const providerInputs = await validateProviderInputs(inputs);
     if (!(await validateConnection(providerInputs))) {
       throw new BadRequestError({ message: "Failed to establish connection" });
@@ -226,7 +317,11 @@ export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
           secretAccessKey: providerInputs.secretAccessKey
         },
         providerInputs.region
-      ).createUser(parsedStatement, providerInputs.clusterName);
+      ).createUser(parsedStatement, providerInputs.clusterName, async () =>
+        ((await metadata.getLeaseEntityIds?.()) ?? []).map(
+          (entityId) => renderRevocationStatement(providerInputs.revocationStatement, entityId).UserId
+        )
+      );
 
       return {
         entityId: leaseUsername,
@@ -255,10 +350,7 @@ export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await validateProviderInputs(inputs);
 
-    const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({
-      username: entityId
-    });
-    const parsedStatement = DeleteElasticCacheUserSchema.parse(JSON.parse(revokeStatement));
+    const parsedStatement = renderRevocationStatement(providerInputs.revocationStatement, entityId);
 
     try {
       await ElastiCacheUserManager(
