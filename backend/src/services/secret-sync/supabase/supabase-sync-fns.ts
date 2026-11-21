@@ -12,10 +12,11 @@ import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 import { TSecretSyncPayload } from "../secret-sync-payload";
 import { TSupabaseSyncWithCredentials } from "./supabase-sync-types";
 
-const SUPABASE_INTERNAL_SECRETS = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_DB_URL"];
-
-// Supabase rejects any secret name with this prefix and injects its own SUPABASE_* values into Edge Functions.
+// Supabase reserves this prefix for the secrets it manages itself (SUPABASE_URL, SUPABASE_DB_URL, SUPABASE_PUBLISHABLE_KEYS
+// and more over time). It refuses to create or delete them, and injects them into Edge Functions.
 const SUPABASE_RESERVED_PREFIX = "SUPABASE_";
+
+const isSupabaseReservedSecret = (key: string) => key.startsWith(SUPABASE_RESERVED_PREFIX);
 
 export const SupabaseSyncFns = {
   async getSecrets(secretSync: TSupabaseSyncWithCredentials) {
@@ -37,7 +38,7 @@ export const SupabaseSyncFns = {
     const toCreate: TSupabaseSecret[] = [];
 
     for (const key of Object.keys(secretMap)) {
-      if (key.startsWith(SUPABASE_RESERVED_PREFIX)) continue;
+      if (isSupabaseReservedSecret(key)) continue;
 
       const variable: TSupabaseSecret = { name: key, value: secretMap[key].value ?? "" };
       toCreate.push(variable);
@@ -60,7 +61,7 @@ export const SupabaseSyncFns = {
 
     for (const key of supabaseSecrets.keys()) {
       // eslint-disable-next-line no-continue
-      if (!matchesSchema(key, environment?.slug || "", keySchema) || SUPABASE_INTERNAL_SECRETS.includes(key)) continue;
+      if (!matchesSchema(key, environment?.slug || "", keySchema) || isSupabaseReservedSecret(key)) continue;
 
       if (!secretMap[key]) {
         toDelete.push(key);
@@ -90,7 +91,7 @@ export const SupabaseSyncFns = {
     const toDelete: string[] = [];
 
     for (const key of supabaseSecrets.keys()) {
-      if (SUPABASE_INTERNAL_SECRETS.includes(key) || !(key in secretMap)) continue;
+      if (isSupabaseReservedSecret(key) || !(key in secretMap)) continue;
 
       toDelete.push(key);
     }

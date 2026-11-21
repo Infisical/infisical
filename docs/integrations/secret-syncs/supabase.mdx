@@ -28,7 +28,7 @@ description: "Learn how to configure a Supabase Sync for Infisical."
                 - **Secret Path**: The folder path to retrieve secrets from.
 
                 <Note>
-                    Supabase reserves secret names that start with `SUPABASE_` and provides those values to Edge Functions itself. The sync skips any secret whose synced name starts with `SUPABASE_`.
+                    Supabase reserves secret names that start with `SUPABASE_` and provides those values to Edge Functions itself. The sync skips any secret whose synced name starts with `SUPABASE_`, and never deletes these secrets in Supabase.
                 </Note>
 
                 <Tip>
