@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
 import { chunkArray } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { TSupabaseSecret } from "@app/services/app-connection/supabase";
 import { SupabasePublicAPI } from "@app/services/app-connection/supabase/supabase-connection-public-client";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
@@ -36,12 +37,22 @@ export const SupabaseSyncFns = {
     const supabaseSecrets = new Map(variables!.map((variable) => [variable.name, variable]));
 
     const toCreate: TSupabaseSecret[] = [];
+    const skippedKeys: string[] = [];
 
     for (const key of Object.keys(secretMap)) {
-      if (isSupabaseReservedSecret(key)) continue;
+      if (isSupabaseReservedSecret(key)) {
+        skippedKeys.push(key);
+        continue;
+      }
 
       const variable: TSupabaseSecret = { name: key, value: secretMap[key].value ?? "" };
       toCreate.push(variable);
+    }
+
+    if (skippedKeys.length) {
+      logger.warn(
+        `SecretSync Supabase skipped secrets with the reserved ${SUPABASE_RESERVED_PREFIX} prefix [syncId=${secretSync.id}] [projectId=${config.projectId}] [keys=${skippedKeys.join(",")}]`
+      );
     }
 
     for await (const batch of chunkArray(toCreate, 100)) {
