@@ -659,16 +659,16 @@ function EditableCell({
       }}
     >
       <div className={styles.nameLine}>
-        {initial === undefined ? (
-          children
-        ) : dependentsOf ? (
+        {initial === undefined && children}
+        {initial !== undefined && dependentsOf && (
           <DependentsCellEditor
             {...editor}
             secret={dependentsOf}
             initial={initial}
             onDone={() => setInitial(undefined)}
           />
-        ) : (
+        )}
+        {initial !== undefined && !dependentsOf && (
           <CellEditor {...editor} initial={initial} onDone={() => setInitial(undefined)} />
         )}
         {trailing}
