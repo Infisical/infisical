@@ -58,7 +58,7 @@ export function EditSecretSheet({
   onClose: () => void;
   onSave: (patch: SecretPatch) => Promise<boolean>;
 }) {
-  const dependents = useDependents(secret);
+  const { dependents } = useDependents(secret);
   const initial = useMemo(() => toEntry(secret), [secret]);
   const [entry, setEntry] = useState(initial);
   const [createdTags, setCreatedTags] = useState<string[]>([]);

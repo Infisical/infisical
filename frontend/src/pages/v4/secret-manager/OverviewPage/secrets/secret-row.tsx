@@ -595,20 +595,26 @@ function DependentsCellEditor({
   secret,
   ...editor
 }: ComponentProps<typeof CellEditor> & { secret: Secret }) {
-  const dependents = useDependents(secret);
+  const { dependents, isPending } = useDependents(secret);
   const [held, setHeld] = useState<string>();
+  const { onCommit, onDone } = editor;
+  useEffect(() => {
+    if (held === undefined || isPending || dependents.length) return;
+    onCommit(held);
+    onDone();
+  }, [held, isPending, dependents.length, onCommit, onDone]);
   return (
     <>
       <CellEditor
         {...editor}
         holdCommit={(value) => {
-          if (!dependents.length) return false;
+          if (!isPending && !dependents.length) return false;
           setHeld(value);
           return true;
         }}
       />
       <ConfirmDependentsDialog
-        open={held !== undefined}
+        open={held !== undefined && !isPending && dependents.length > 0}
         dependents={dependents}
         onOpenChange={(open) => {
           if (!open) setHeld(undefined);
