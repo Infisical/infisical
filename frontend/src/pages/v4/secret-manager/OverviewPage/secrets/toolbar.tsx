@@ -73,7 +73,7 @@ export function ResourceFilterMenu({
       <Tooltip content="Filter resources">
         <DropdownMenuTrigger asChild>
           <Button variant="outline" aria-label="Filter resources">
-            <Icon name="funnel" />
+            <Icon name="funnel" size="var(--cipher-size-icon-small)" />
             {active > 0 && <Count tone="ink">{active}</Count>}
           </Button>
         </DropdownMenuTrigger>

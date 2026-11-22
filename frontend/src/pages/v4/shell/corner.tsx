@@ -128,6 +128,7 @@ const CardHead = ({
       variant="ghost"
       size="sm"
       icon="x"
+      iconOnly
       className={styles.close}
       aria-label={dismissLabel}
       onClick={onDismiss}
@@ -152,7 +153,7 @@ const GetStartedCard = ({ getStarted }: { getStarted: ReturnType<typeof useGetSt
             Get started
             <span className={styles.meta}>{`${done} of ${steps.length}`}</span>
           </span>
-          <Icon name="chev-down" size={14} className={styles.chevron} />
+          <Icon name="chev-down" size="var(--cipher-size-icon-small)" className={styles.chevron} />
         </button>
       </div>
       <div className={styles.progress} aria-hidden>
@@ -167,7 +168,7 @@ const GetStartedCard = ({ getStarted }: { getStarted: ReturnType<typeof useGetSt
               <li key={step.id}>
                 <a href={step.href} data-done={step.done || undefined}>
                   <span className={styles.check} aria-hidden>
-                    {step.done && <Icon name="check" size={12} />}
+                    {step.done && <Icon name="check" size="var(--cipher-size-icon-caption)" />}
                   </span>
                   {step.label}
                 </a>
@@ -184,7 +185,7 @@ const GetStartedCard = ({ getStarted }: { getStarted: ReturnType<typeof useGetSt
           {next && (
             <a href={next.href} className={styles.next}>
               <span>{`Next: ${next.label}`}</span>
-              <Icon name="chev-right" size={14} />
+              <Icon name="chev-right" size="var(--cipher-size-icon-small)" />
             </a>
           )}
         </AnimatedCollapse>
@@ -220,7 +221,7 @@ export const useCornerCard = (
           <CardHead title="Invite your team" onDismiss={dismissInvite} dismissLabel="Dismiss" />
           <a href={`${accessLinks.org(orgId)}&action=invite-members`} className={styles.next}>
             <span>Invite members</span>
-            <Icon name="chev-right" size={14} />
+            <Icon name="chev-right" size="var(--cipher-size-icon-small)" />
           </a>
         </div>
       )
