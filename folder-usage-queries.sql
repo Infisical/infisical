@@ -18,7 +18,7 @@
 --
 -- Table names are unqualified. Set the schema that holds the Infisical tables first;
 -- if your client runs each query in a fresh session, run this line before each one.
-SET search_path TO <schema_name>;
+SET search_path TO analytics;
 
 
 -- =====================================================================================
