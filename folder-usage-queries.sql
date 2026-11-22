@@ -16,9 +16,7 @@
 -- The recursive tree CTE walks every folder on Cloud. If a query is slow, run it with
 -- SET statement_timeout = '15min';
 --
--- Table names are unqualified. Set the schema that holds the Infisical tables first;
--- if your client runs each query in a fresh session, run this line before each one.
-SET search_path TO analytics;
+-- Every table is read from the analytics schema (analytics.<table>).
 
 
 -- =====================================================================================
@@ -27,20 +25,20 @@ SET search_path TO analytics;
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id, p."orgId" AS org_id, p.version AS project_version
-  FROM project_environments e
-  JOIN projects p ON p.id = e."projectId"
+  FROM analytics.project_environments e
+  JOIN analytics.projects p ON p.id = e."projectId"
   WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
 ),
 tree AS (
   SELECT f.id, f."envId", COALESCE(f."isReserved", false) AS reserved, 0 AS depth
-  FROM secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
+  FROM analytics.secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
   WHERE f."parentId" IS NULL
   UNION ALL
   SELECT c.id, c."envId", COALESCE(c."isReserved", false), t.depth + 1
-  FROM secret_folders c JOIN tree t ON c."parentId" = t.id
+  FROM analytics.secret_folders c JOIN tree t ON c."parentId" = t.id
 ),
 secret_counts AS (
-  SELECT s."folderId", count(*) AS n FROM secrets_v2 s WHERE s.type = 'shared' GROUP BY s."folderId"
+  SELECT s."folderId", count(*) AS n FROM analytics.secrets_v2 s WHERE s.type = 'shared' GROUP BY s."folderId"
 )
 SELECT
   count(DISTINCT e.org_id)                                                        AS orgs,
@@ -69,17 +67,17 @@ LEFT JOIN secret_counts sc ON sc."folderId" = t.id;
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
-  FROM project_environments e
-  JOIN projects p ON p.id = e."projectId"
+  FROM analytics.project_environments e
+  JOIN analytics.projects p ON p.id = e."projectId"
   WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
 ),
 tree AS (
   SELECT f.id, f."envId", COALESCE(f."isReserved", false) AS reserved, 0 AS depth
-  FROM secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
+  FROM analytics.secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
   WHERE f."parentId" IS NULL
   UNION ALL
   SELECT c.id, c."envId", COALESCE(c."isReserved", false), t.depth + 1
-  FROM secret_folders c JOIN tree t ON c."parentId" = t.id
+  FROM analytics.secret_folders c JOIN tree t ON c."parentId" = t.id
 ),
 per_project AS (
   SELECT e.project_id,
@@ -111,17 +109,17 @@ ORDER BY min(folders);
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
-  FROM project_environments e
-  JOIN projects p ON p.id = e."projectId"
+  FROM analytics.project_environments e
+  JOIN analytics.projects p ON p.id = e."projectId"
   WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
 ),
 tree AS (
   SELECT f.id, f."envId", COALESCE(f."isReserved", false) AS reserved, 0 AS depth
-  FROM secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
+  FROM analytics.secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
   WHERE f."parentId" IS NULL
   UNION ALL
   SELECT c.id, c."envId", COALESCE(c."isReserved", false), t.depth + 1
-  FROM secret_folders c JOIN tree t ON c."parentId" = t.id
+  FROM analytics.secret_folders c JOIN tree t ON c."parentId" = t.id
 ),
 per_project AS (
   SELECT e.project_id,
@@ -151,20 +149,20 @@ WHERE folders > 0;
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id, p."orgId" AS org_id
-  FROM project_environments e
-  JOIN projects p ON p.id = e."projectId"
+  FROM analytics.project_environments e
+  JOIN analytics.projects p ON p.id = e."projectId"
   WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
 ),
 tree AS (
   SELECT f.id, f."envId", COALESCE(f."isReserved", false) AS reserved, 0 AS depth
-  FROM secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
+  FROM analytics.secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
   WHERE f."parentId" IS NULL
   UNION ALL
   SELECT c.id, c."envId", COALESCE(c."isReserved", false), t.depth + 1
-  FROM secret_folders c JOIN tree t ON c."parentId" = t.id
+  FROM analytics.secret_folders c JOIN tree t ON c."parentId" = t.id
 ),
 secret_counts AS (
-  SELECT s."folderId", count(*) AS n FROM secrets_v2 s WHERE s.type = 'shared' GROUP BY s."folderId"
+  SELECT s."folderId", count(*) AS n FROM analytics.secrets_v2 s WHERE s.type = 'shared' GROUP BY s."folderId"
 )
 SELECT
   t.depth,
@@ -188,22 +186,22 @@ ORDER BY t.depth;
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id
-  FROM project_environments e
-  JOIN projects p ON p.id = e."projectId"
+  FROM analytics.project_environments e
+  JOIN analytics.projects p ON p.id = e."projectId"
   WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
 ),
 tree AS (
   SELECT f.id, COALESCE(f."isReserved", false) AS reserved, 0 AS depth
-  FROM secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
+  FROM analytics.secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
   WHERE f."parentId" IS NULL
   UNION ALL
   SELECT c.id, COALESCE(c."isReserved", false), t.depth + 1
-  FROM secret_folders c JOIN tree t ON c."parentId" = t.id
+  FROM analytics.secret_folders c JOIN tree t ON c."parentId" = t.id
 ),
 children AS (
   SELECT p.id, p.depth, count(c.id) FILTER (WHERE NOT COALESCE(c."isReserved", false)) AS n_children
   FROM tree p
-  LEFT JOIN secret_folders c ON c."parentId" = p.id
+  LEFT JOIN analytics.secret_folders c ON c."parentId" = p.id
   WHERE NOT p.reserved
   GROUP BY p.id, p.depth
 )
@@ -224,26 +222,26 @@ GROUP BY 1;
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id
-  FROM project_environments e
-  JOIN projects p ON p.id = e."projectId"
+  FROM analytics.project_environments e
+  JOIN analytics.projects p ON p.id = e."projectId"
   WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
 ),
 tree AS (
   SELECT f.id, COALESCE(f."isReserved", false) AS reserved, 0 AS depth
-  FROM secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
+  FROM analytics.secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
   WHERE f."parentId" IS NULL
   UNION ALL
   SELECT c.id, COALESCE(c."isReserved", false), t.depth + 1
-  FROM secret_folders c JOIN tree t ON c."parentId" = t.id
+  FROM analytics.secret_folders c JOIN tree t ON c."parentId" = t.id
 ),
 contents AS (
   SELECT
     t.id,
-    (SELECT count(*) FROM secrets_v2 s WHERE s."folderId" = t.id AND s.type = 'shared')                AS secrets,
-    (SELECT count(*) FROM secret_folders c WHERE c."parentId" = t.id AND NOT COALESCE(c."isReserved", false)) AS children,
-    (SELECT count(*) FROM secret_imports i WHERE i."folderId" = t.id AND NOT COALESCE(i."isReserved", false)) AS imports,
-    (SELECT count(*) FROM dynamic_secrets d WHERE d."folderId" = t.id)                                  AS dynamic_secrets,
-    (SELECT count(*) FROM secret_rotations_v2 r WHERE r."folderId" = t.id)                              AS rotations
+    (SELECT count(*) FROM analytics.secrets_v2 s WHERE s."folderId" = t.id AND s.type = 'shared')                AS secrets,
+    (SELECT count(*) FROM analytics.secret_folders c WHERE c."parentId" = t.id AND NOT COALESCE(c."isReserved", false)) AS children,
+    (SELECT count(*) FROM analytics.secret_imports i WHERE i."folderId" = t.id AND NOT COALESCE(i."isReserved", false)) AS imports,
+    (SELECT count(*) FROM analytics.dynamic_secrets d WHERE d."folderId" = t.id)                                  AS dynamic_secrets,
+    (SELECT count(*) FROM analytics.secret_rotations_v2 r WHERE r."folderId" = t.id)                              AS rotations
   FROM tree t
   WHERE t.depth > 0 AND NOT t.reserved
 )
@@ -266,21 +264,21 @@ ORDER BY 1;
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id
-  FROM project_environments e
-  JOIN projects p ON p.id = e."projectId"
+  FROM analytics.project_environments e
+  JOIN analytics.projects p ON p.id = e."projectId"
   WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
 ),
 tree AS (
   SELECT f.id, COALESCE(f."isReserved", false) AS reserved, 0 AS depth
-  FROM secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
+  FROM analytics.secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
   WHERE f."parentId" IS NULL
   UNION ALL
   SELECT c.id, COALESCE(c."isReserved", false), t.depth + 1
-  FROM secret_folders c JOIN tree t ON c."parentId" = t.id
+  FROM analytics.secret_folders c JOIN tree t ON c."parentId" = t.id
 ),
 counts AS (
   SELECT t.id, t.depth, count(s.id) AS n
-  FROM tree t JOIN secrets_v2 s ON s."folderId" = t.id AND s.type = 'shared'
+  FROM tree t JOIN analytics.secrets_v2 s ON s."folderId" = t.id AND s.type = 'shared'
   WHERE NOT t.reserved
   GROUP BY t.id, t.depth
 )
@@ -308,17 +306,17 @@ ORDER BY 1, min(n);
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
-  FROM project_environments e
-  JOIN projects p ON p.id = e."projectId"
+  FROM analytics.project_environments e
+  JOIN analytics.projects p ON p.id = e."projectId"
   WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
 ),
 tree AS (
   SELECT f.id, f."envId", 0 AS depth
-  FROM secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
+  FROM analytics.secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
   WHERE f."parentId" IS NULL
   UNION ALL
   SELECT c.id, c."envId", t.depth + 1
-  FROM secret_folders c JOIN tree t ON c."parentId" = t.id
+  FROM analytics.secret_folders c JOIN tree t ON c."parentId" = t.id
   WHERE NOT COALESCE(c."isReserved", false)
 ),
 per_project AS (
@@ -327,7 +325,7 @@ per_project AS (
          count(s.id) FILTER (WHERE t.depth > 0) AS in_folders
   FROM tree t
   JOIN sm_envs e ON e.env_id = t."envId"
-  JOIN secrets_v2 s ON s."folderId" = t.id AND s.type = 'shared'
+  JOIN analytics.secrets_v2 s ON s."folderId" = t.id AND s.type = 'shared'
   GROUP BY e.project_id
 )
 SELECT
@@ -351,17 +349,17 @@ ORDER BY 1;
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id, p."orgId" AS org_id
-  FROM project_environments e
-  JOIN projects p ON p.id = e."projectId"
+  FROM analytics.project_environments e
+  JOIN analytics.projects p ON p.id = e."projectId"
   WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
 ),
 tree AS (
   SELECT f.id, f."envId", f.name, 0 AS depth
-  FROM secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
+  FROM analytics.secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
   WHERE f."parentId" IS NULL
   UNION ALL
   SELECT c.id, c."envId", c.name, t.depth + 1
-  FROM secret_folders c JOIN tree t ON c."parentId" = t.id
+  FROM analytics.secret_folders c JOIN tree t ON c."parentId" = t.id
   WHERE NOT COALESCE(c."isReserved", false)
 )
 SELECT
@@ -381,17 +379,17 @@ LIMIT 150;
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id
-  FROM project_environments e
-  JOIN projects p ON p.id = e."projectId"
+  FROM analytics.project_environments e
+  JOIN analytics.projects p ON p.id = e."projectId"
   WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
 ),
 tree AS (
   SELECT f.id, f.name, 0 AS depth
-  FROM secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
+  FROM analytics.secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
   WHERE f."parentId" IS NULL
   UNION ALL
   SELECT c.id, c.name, t.depth + 1
-  FROM secret_folders c JOIN tree t ON c."parentId" = t.id
+  FROM analytics.secret_folders c JOIN tree t ON c."parentId" = t.id
   WHERE NOT COALESCE(c."isReserved", false)
 )
 SELECT
@@ -416,21 +414,21 @@ ORDER BY folders DESC;
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id, e.slug AS env_slug, e."projectId" AS project_id
-  FROM project_environments e
-  JOIN projects p ON p.id = e."projectId"
+  FROM analytics.project_environments e
+  JOIN analytics.projects p ON p.id = e."projectId"
   WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
 ),
 lvl1 AS (
   SELECT lower(c.name) AS name, e.project_id, e.env_slug
-  FROM secret_folders r
+  FROM analytics.secret_folders r
   JOIN sm_envs e ON e.env_id = r."envId"
-  JOIN secret_folders c ON c."parentId" = r.id AND NOT COALESCE(c."isReserved", false)
+  JOIN analytics.secret_folders c ON c."parentId" = r.id AND NOT COALESCE(c."isReserved", false)
   WHERE r."parentId" IS NULL
 ),
 project_env_slugs AS (
-  SELECT e."projectId" AS project_id, lower(e.slug) AS slug FROM project_environments e WHERE e."softDeletedAt" IS NULL
+  SELECT e."projectId" AS project_id, lower(e.slug) AS slug FROM analytics.project_environments e WHERE e."softDeletedAt" IS NULL
   UNION
-  SELECT e."projectId", lower(e.name) FROM project_environments e WHERE e."softDeletedAt" IS NULL
+  SELECT e."projectId", lower(e.name) FROM analytics.project_environments e WHERE e."softDeletedAt" IS NULL
 )
 SELECT
   CASE
@@ -467,17 +465,17 @@ ORDER BY folders DESC;
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
-  FROM project_environments e
-  JOIN projects p ON p.id = e."projectId"
+  FROM analytics.project_environments e
+  JOIN analytics.projects p ON p.id = e."projectId"
   WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
 ),
 tree AS (
   SELECT f.id, f."envId", 0 AS depth, ''::text AS path
-  FROM secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
+  FROM analytics.secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
   WHERE f."parentId" IS NULL
   UNION ALL
   SELECT c.id, c."envId", t.depth + 1, t.path || '/' || c.name
-  FROM secret_folders c JOIN tree t ON c."parentId" = t.id
+  FROM analytics.secret_folders c JOIN tree t ON c."parentId" = t.id
   WHERE NOT COALESCE(c."isReserved", false)
 ),
 env_counts AS (
@@ -521,17 +519,17 @@ ORDER BY 1;
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id
-  FROM project_environments e
-  JOIN projects p ON p.id = e."projectId"
+  FROM analytics.project_environments e
+  JOIN analytics.projects p ON p.id = e."projectId"
   WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
 ),
 tree AS (
   SELECT f.id, f.description, f.version, f."createdAt", f."lastSecretModified", 0 AS depth
-  FROM secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
+  FROM analytics.secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
   WHERE f."parentId" IS NULL
   UNION ALL
   SELECT c.id, c.description, c.version, c."createdAt", c."lastSecretModified", t.depth + 1
-  FROM secret_folders c JOIN tree t ON c."parentId" = t.id
+  FROM analytics.secret_folders c JOIN tree t ON c."parentId" = t.id
   WHERE NOT COALESCE(c."isReserved", false)
 )
 SELECT
@@ -554,35 +552,35 @@ WHERE depth > 0;
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
-  FROM project_environments e
-  JOIN projects p ON p.id = e."projectId"
+  FROM analytics.project_environments e
+  JOIN analytics.projects p ON p.id = e."projectId"
   WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
 ),
 tree AS (
   SELECT f.id, f."envId", 0 AS depth
-  FROM secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
+  FROM analytics.secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
   WHERE f."parentId" IS NULL
   UNION ALL
   SELECT c.id, c."envId", t.depth + 1
-  FROM secret_folders c JOIN tree t ON c."parentId" = t.id
+  FROM analytics.secret_folders c JOIN tree t ON c."parentId" = t.id
   WHERE NOT COALESCE(c."isReserved", false)
 ),
 attached AS (
-  SELECT 'secret_sync' AS feature, s."folderId" AS folder_id FROM secret_syncs s WHERE s."folderId" IS NOT NULL
+  SELECT 'secret_sync' AS feature, s."folderId" AS folder_id FROM analytics.secret_syncs s WHERE s."folderId" IS NOT NULL
   UNION ALL
-  SELECT 'secret_sync (includeAllSubFolders)', s."folderId" FROM secret_syncs s WHERE s."folderId" IS NOT NULL AND s."includeAllSubFolders"
+  SELECT 'secret_sync (includeAllSubFolders)', s."folderId" FROM analytics.secret_syncs s WHERE s."folderId" IS NOT NULL AND s."includeAllSubFolders"
   UNION ALL
-  SELECT 'dynamic_secret', d."folderId" FROM dynamic_secrets d
+  SELECT 'dynamic_secret', d."folderId" FROM analytics.dynamic_secrets d
   UNION ALL
-  SELECT 'secret_rotation_v2', r."folderId" FROM secret_rotations_v2 r
+  SELECT 'secret_rotation_v2', r."folderId" FROM analytics.secret_rotations_v2 r
   UNION ALL
-  SELECT 'secret_import (destination)', i."folderId" FROM secret_imports i WHERE NOT COALESCE(i."isReserved", false)
+  SELECT 'secret_import (destination)', i."folderId" FROM analytics.secret_imports i WHERE NOT COALESCE(i."isReserved", false)
   UNION ALL
-  SELECT 'secret_import (replication)', i."folderId" FROM secret_imports i WHERE i."isReplication"
+  SELECT 'secret_import (replication)', i."folderId" FROM analytics.secret_imports i WHERE i."isReplication"
   UNION ALL
-  SELECT 'folder_grant (shared to another project)', g."sourceFolderId" FROM project_folder_grants g
+  SELECT 'folder_grant (shared to another project)', g."sourceFolderId" FROM analytics.project_folder_grants g
   UNION ALL
-  SELECT 'folder-scoped additional privilege', a."folderId" FROM additional_privileges a WHERE a."folderId" IS NOT NULL
+  SELECT 'folder-scoped additional privilege', a."folderId" FROM analytics.additional_privileges a WHERE a."folderId" IS NOT NULL
 )
 SELECT
   a.feature,
@@ -606,24 +604,24 @@ ORDER BY total DESC;
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
-  FROM project_environments e
-  JOIN projects p ON p.id = e."projectId"
+  FROM analytics.project_environments e
+  JOIN analytics.projects p ON p.id = e."projectId"
   WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
 ),
 tree AS (
   SELECT f.id, f."envId", 0 AS depth, '/'::text AS path
-  FROM secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
+  FROM analytics.secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
   WHERE f."parentId" IS NULL
   UNION ALL
   SELECT c.id, c."envId", t.depth + 1,
          CASE WHEN t.depth = 0 THEN '/' || c.name ELSE t.path || '/' || c.name END
-  FROM secret_folders c JOIN tree t ON c."parentId" = t.id
+  FROM analytics.secret_folders c JOIN tree t ON c."parentId" = t.id
   WHERE NOT COALESCE(c."isReserved", false)
 ),
 imports AS (
   SELECT i.*, dst.depth AS dst_depth, dst."envId" AS dst_env, de.project_id AS dst_project,
          se.project_id AS src_project, src.id AS src_folder_id
-  FROM secret_imports i
+  FROM analytics.secret_imports i
   JOIN tree dst ON dst.id = i."folderId"
   JOIN sm_envs de ON de.env_id = dst."envId"
   LEFT JOIN sm_envs se ON se.env_id = i."importEnv"
@@ -644,7 +642,7 @@ SELECT
   count(*) FILTER (WHERE "isReplication")                                     AS replication,
   count(*) FILTER (WHERE "isReplication" AND "isReplicationSuccess" IS FALSE) AS replication_failing,
   count(*) FILTER (WHERE src_folder_id IS NULL)                               AS source_path_missing,
-  count(*) FILTER (WHERE EXISTS (SELECT 1 FROM secret_imports i2 WHERE i2."folderId" = src_folder_id))
+  count(*) FILTER (WHERE EXISTS (SELECT 1 FROM analytics.secret_imports i2 WHERE i2."folderId" = src_folder_id))
                                                                               AS source_itself_imports_chained
 FROM imports;
 
@@ -655,10 +653,10 @@ SELECT
   count(*) AS folders
 FROM (
   SELECT i."folderId", count(*) AS n
-  FROM secret_imports i
-  JOIN secret_folders f ON f.id = i."folderId"
-  JOIN project_environments e ON e.id = f."envId" AND e."softDeletedAt" IS NULL
-  JOIN projects p ON p.id = e."projectId" AND p.type = 'secret-manager' AND p."softDeletedAt" IS NULL
+  FROM analytics.secret_imports i
+  JOIN analytics.secret_folders f ON f.id = i."folderId"
+  JOIN analytics.project_environments e ON e.id = f."envId" AND e."softDeletedAt" IS NULL
+  JOIN analytics.projects p ON p.id = e."projectId" AND p.type = 'secret-manager' AND p."softDeletedAt" IS NULL
   WHERE NOT COALESCE(i."isReserved", false)
   GROUP BY i."folderId"
 ) x
@@ -671,16 +669,16 @@ ORDER BY min(n);
 -- =====================================================================================
 WITH paths AS (
   SELECT 'approval_policies (' || ap.type || ')' AS source, ase."secretPath" AS path, ap."projectId" AS project_id
-  FROM approval_policy_secret_environments ase
-  JOIN approval_policies ap ON ap.id = ase."policyId"
+  FROM analytics.approval_policy_secret_environments ase
+  JOIN analytics.approval_policies ap ON ap.id = ase."policyId"
   WHERE COALESCE(ap."isActive", true)
   UNION ALL
   SELECT 'secret_approval_policies (legacy)', sap."secretPath", e."projectId"
-  FROM secret_approval_policies sap JOIN project_environments e ON e.id = sap."envId"
+  FROM analytics.secret_approval_policies sap JOIN analytics.project_environments e ON e.id = sap."envId"
   WHERE sap."deletedAt" IS NULL
   UNION ALL
   SELECT 'access_approval_policies (legacy)', aap."secretPath", e."projectId"
-  FROM access_approval_policies aap JOIN project_environments e ON e.id = aap."envId"
+  FROM analytics.access_approval_policies aap JOIN analytics.project_environments e ON e.id = aap."envId"
   WHERE aap."deletedAt" IS NULL
 )
 SELECT
@@ -704,10 +702,10 @@ ORDER BY 1, rows DESC;
 -- =====================================================================================
 WITH perms AS (
   SELECT 'custom project role' AS source, r."projectId" AS project_id, r.permissions::text AS p
-  FROM roles r JOIN projects pr ON pr.id = r."projectId" AND pr.type = 'secret-manager' AND pr."softDeletedAt" IS NULL
+  FROM analytics.roles r JOIN analytics.projects pr ON pr.id = r."projectId" AND pr.type = 'secret-manager' AND pr."softDeletedAt" IS NULL
   UNION ALL
   SELECT 'additional privilege', a."projectId", a.permissions::text
-  FROM additional_privileges a JOIN projects pr ON pr.id = a."projectId" AND pr.type = 'secret-manager' AND pr."softDeletedAt" IS NULL
+  FROM analytics.additional_privileges a JOIN analytics.projects pr ON pr.id = a."projectId" AND pr.type = 'secret-manager' AND pr."softDeletedAt" IS NULL
 )
 SELECT
   source,
@@ -730,7 +728,7 @@ SELECT
   CASE WHEN r."secretPath" IN ('/', '') THEN 'root' ELSE 'subfolder' END AS target,
   count(*) AS ref_count,
   round(avg(array_length(string_to_array(NULLIF(trim(both '/' from r."secretPath"), ''), '/'), 1)), 2) AS avg_target_depth
-FROM secret_references_v2 r
+FROM analytics.secret_references_v2 r
 GROUP BY 1, 2
 ORDER BY ref_count DESC;
 
@@ -741,25 +739,25 @@ ORDER BY ref_count DESC;
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
-  FROM project_environments e
-  JOIN projects p ON p.id = e."projectId"
+  FROM analytics.project_environments e
+  JOIN analytics.projects p ON p.id = e."projectId"
   WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
 ),
 tree AS (
   SELECT f.id, f."envId", 0 AS depth
-  FROM secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
+  FROM analytics.secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
   WHERE f."parentId" IS NULL
   UNION ALL
   SELECT c.id, c."envId", t.depth + 1
-  FROM secret_folders c JOIN tree t ON c."parentId" = t.id
+  FROM analytics.secret_folders c JOIN tree t ON c."parentId" = t.id
   WHERE NOT COALESCE(c."isReserved", false)
 ),
 per_project AS (
   SELECT e.project_id,
          bool_or(t.depth > 0) AS uses_folders,
          EXISTS (
-           SELECT 1 FROM secret_v2_tag_junction j
-           JOIN secret_tags st ON st.id = j."secret_tagsId"
+           SELECT 1 FROM analytics.secret_v2_tag_junction j
+           JOIN analytics.secret_tags st ON st.id = j."secret_tagsId"
            WHERE st."projectId" = e.project_id
          ) AS uses_tags
   FROM tree t JOIN sm_envs e ON e.env_id = t."envId"
@@ -780,8 +778,8 @@ SELECT
   fcc."isUpdate",
   fc."actorType",
   count(*) AS folder_changes
-FROM folder_commit_changes fcc
-JOIN folder_commits fc ON fc.id = fcc."folderCommitId"
+FROM analytics.folder_commit_changes fcc
+JOIN analytics.folder_commits fc ON fc.id = fcc."folderCommitId"
 WHERE fcc."folderVersionId" IS NOT NULL
   AND fc."createdAt" > now() - interval '12 months'
 GROUP BY 1, 2, 3, 4
@@ -793,9 +791,9 @@ SELECT
   count(*) AS folders_created,
   count(DISTINCT p."orgId") AS orgs,
   count(DISTINCT p.id) AS projects
-FROM secret_folders f
-JOIN project_environments e ON e.id = f."envId" AND e."softDeletedAt" IS NULL
-JOIN projects p ON p.id = e."projectId" AND p.type = 'secret-manager' AND p."softDeletedAt" IS NULL
+FROM analytics.secret_folders f
+JOIN analytics.project_environments e ON e.id = f."envId" AND e."softDeletedAt" IS NULL
+JOIN analytics.projects p ON p.id = e."projectId" AND p.type = 'secret-manager' AND p."softDeletedAt" IS NULL
 WHERE f."parentId" IS NOT NULL
   AND NOT COALESCE(f."isReserved", false)
   AND f."createdAt" > now() - interval '24 months'
@@ -809,28 +807,28 @@ ORDER BY 1;
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id, p."orgId" AS org_id
-  FROM project_environments e
-  JOIN projects p ON p.id = e."projectId"
+  FROM analytics.project_environments e
+  JOIN analytics.projects p ON p.id = e."projectId"
   WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
 ),
 tree AS (
   SELECT f.id, f."envId", 0 AS depth
-  FROM secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
+  FROM analytics.secret_folders f JOIN sm_envs e ON e.env_id = f."envId"
   WHERE f."parentId" IS NULL
   UNION ALL
   SELECT c.id, c."envId", t.depth + 1
-  FROM secret_folders c JOIN tree t ON c."parentId" = t.id
+  FROM analytics.secret_folders c JOIN tree t ON c."parentId" = t.id
   WHERE NOT COALESCE(c."isReserved", false)
 ),
 org_users AS (
   SELECT m."scopeOrgId" AS org_id, count(*) AS users
-  FROM memberships m
+  FROM analytics.memberships m
   WHERE m.scope = 'organization' AND m."actorUserId" IS NOT NULL AND m."isActive"
   GROUP BY m."scopeOrgId"
 ),
 org_identities AS (
   SELECT m."scopeOrgId" AS org_id, count(*) AS identities
-  FROM memberships m
+  FROM analytics.memberships m
   WHERE m.scope = 'organization' AND m."actorIdentityId" IS NOT NULL
   GROUP BY m."scopeOrgId"
 ),
