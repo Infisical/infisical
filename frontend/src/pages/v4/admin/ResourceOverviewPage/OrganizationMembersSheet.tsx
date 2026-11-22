@@ -126,7 +126,7 @@ export const OrganizationMembersSheet = ({
             <Tooltip content="This member has a custom role assigned.">
               <Badge tone="soft">
                 {roleLabel(member.role)}
-                <Icon name="info" size={12} />
+                <Icon name="info" />
               </Badge>
             </Tooltip>
           ) : (

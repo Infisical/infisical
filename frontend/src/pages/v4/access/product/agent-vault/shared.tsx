@@ -48,7 +48,7 @@ export const ProductRoleBadge = ({ role }: { role: string }) => (
 export const PendingInvitationBadge = () => (
   <Tooltip content="Access begins once they accept their organization invitation.">
     <Badge tone="info">
-      <Icon icon={MailIcon} size={12} />
+      <Icon icon={MailIcon} />
       Pending invitation
     </Badge>
   </Tooltip>

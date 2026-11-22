@@ -504,7 +504,7 @@ export function SecretDiffView({
         newVersion?.isRedacted && (
           <Tooltip content="This secret version has been redacted. Rolling back to this version will result in an empty secret value.">
             <Badge tone="bad">
-              <Icon name="alert" size={12} />
+              <Icon name="alert" />
               Redacted version
             </Badge>
           </Tooltip>

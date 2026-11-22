@@ -63,7 +63,7 @@ export type AuthIdentity = {
 export const LockBadge = ({ label }: { label: string }) => (
   <Tooltip content={label}>
     <Badge tone="bad" aria-label={label}>
-      <Icon name="lock" size={12} />
+      <Icon name="lock" />
     </Badge>
   </Tooltip>
 );

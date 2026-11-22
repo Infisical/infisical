@@ -345,12 +345,12 @@ export const OrgIdentitiesTab = () => {
       render: (row) =>
         isProjectScoped(row) ? (
           <Badge tone="outline">
-            <Icon name="folder" size={12} />
+            <Icon name="folder" />
             {row.project?.name ?? "Project"}
           </Badge>
         ) : (
           <Badge tone="outline">
-            <Icon name="building" size={12} />
+            <Icon name="building" />
             {managedByLabel(isSubOrg, isOwned(row))}
           </Badge>
         )

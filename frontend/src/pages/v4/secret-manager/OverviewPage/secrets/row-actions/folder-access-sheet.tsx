@@ -297,7 +297,7 @@ function GrantValue({ access, isOverride }: { access: FolderGrant; isOverride: b
         >
           <span className={styles.badgeSlot}>
             <Badge tone={remainingTime.isExpired ? "bad" : "outline"}>
-              <Icon name="clock" size={12} />
+              <Icon name="clock" />
               {remainingTime.isExpired ? "Expired" : remainingTime.value}
             </Badge>
           </span>

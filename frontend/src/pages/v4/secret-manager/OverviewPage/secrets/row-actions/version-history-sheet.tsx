@@ -113,7 +113,7 @@ function VersionItem({
             {current && <Badge tone="info">Current</Badge>}
             {version.redacted && (
               <Badge tone="outline">
-                <Icon icon={EyeOffIcon} size={12} />
+                <Icon icon={EyeOffIcon} />
                 Redacted
               </Badge>
             )}

@@ -46,7 +46,7 @@ export const IdentitiesTab = () => {
           <span>{identity.name}</span>
           {identity.isInstanceAdmin && (
             <Badge tone="info">
-              <Icon icon={UserCogIcon} size={12} />
+              <Icon icon={UserCogIcon} />
               Server admin
             </Badge>
           )}

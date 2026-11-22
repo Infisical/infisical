@@ -10,7 +10,7 @@ import styles from "./folder-chips.module.css";
 const FolderChip = ({ grant }: { grant: TProjectFolderGrant }) => (
   <Badge tone="soft">
     <span className={styles.env}>{grant.environmentName}</span>
-    <Icon name="folder" size={12} />
+    <Icon name="folder" />
     <span>{grant.secretPath}</span>
   </Badge>
 );

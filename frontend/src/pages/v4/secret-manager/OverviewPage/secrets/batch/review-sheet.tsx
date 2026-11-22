@@ -92,7 +92,7 @@ export function ReviewSheet({
             <span className={styles.titleLine}>
               Review changes
               <Badge tone="warn">
-                <Icon icon={ClipboardCheckIcon} size={12} />
+                <Icon icon={ClipboardCheckIcon} />
                 {`${pending.length} change${single ? "" : "s"}`}
               </Badge>
             </span>

@@ -60,7 +60,7 @@ const managedByColumn = (orgId: string): DataTableColumn<TGroupOrgMembership> =>
   header: "Managed by",
   render: (group) => (
     <Badge tone="outline">
-      <Icon name="building" size={12} />
+      <Icon name="building" />
       {group.orgId !== orgId ? "Root organization" : "Sub-organization"}
     </Badge>
   )

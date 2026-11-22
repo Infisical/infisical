@@ -865,7 +865,7 @@ const DeletedProjects = ({ projectType }: { projectType: ProjectType }) => {
       width: 176,
       render: (row) => (
         <Badge tone="warn">
-          <Icon name="clock" size={12} />
+          <Icon name="clock" />
           {`In ${formatDistanceToNowStrict(new Date(row.deleteAfter))}`}
         </Badge>
       )

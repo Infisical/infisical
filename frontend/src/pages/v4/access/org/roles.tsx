@@ -250,7 +250,7 @@ export const OrgRolesTab = () => {
         const custom = isCustomOrgRole(role.slug);
         return (
           <Badge tone="outline">
-            <Icon icon={custom ? WrenchIcon : "server"} size={12} />
+            <Icon icon={custom ? WrenchIcon : "server"} />
             {custom ? "Custom" : "Platform"}
           </Badge>
         );

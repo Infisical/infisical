@@ -95,7 +95,7 @@ export const ServiceTokensTab = () => {
           {token.scopes.map(({ environment, secretPath }) => (
             <Badge key={`${environment}-${secretPath}`} tone="soft">
               <span className={styles.scopeEnv}>{environment}</span>
-              <Icon name="folder" size={12} />
+              <Icon name="folder" />
               <span>{secretPath}</span>
             </Badge>
           ))}

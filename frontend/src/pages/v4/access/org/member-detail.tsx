@@ -469,7 +469,7 @@ export const OrgMemberDetail = () => {
                     [
                       "Status",
                       <Badge key="status" tone={status.tone}>
-                        <Icon icon={status.icon} size={12} />
+                        <Icon icon={status.icon} />
                         {status.label}
                       </Badge>
                     ],

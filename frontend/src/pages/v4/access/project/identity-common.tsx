@@ -53,12 +53,12 @@ export const isProjectManaged = (identity: Pick<Identity, "projectId">) =>
 export const ManagedByBadge = ({ identity }: { identity: Pick<Identity, "projectId"> }) =>
   isProjectManaged(identity) ? (
     <Badge tone="soft">
-      <Icon name="folder" size={12} />
+      <Icon name="folder" />
       Project
     </Badge>
   ) : (
     <Badge tone="outline">
-      <Icon name="building" size={12} />
+      <Icon name="building" />
       Organization
     </Badge>
   );
@@ -67,7 +67,7 @@ export const LockedBadge = ({ label }: { label: string }) => (
   <Tooltip content={label}>
     <span className={styles.lock}>
       <Badge tone="bad" aria-label={label}>
-        <Icon name="lock" size={12} />
+        <Icon name="lock" />
       </Badge>
     </span>
   </Tooltip>

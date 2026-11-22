@@ -280,7 +280,7 @@ export const OrgMembersTab = () => {
               {member.user.superAdmin && (
                 <Tooltip content="Server admin">
                   <Badge tone="info">
-                    <Icon icon={UserCogIcon} size={12} />
+                    <Icon icon={UserCogIcon} />
                     Server admin
                   </Badge>
                 </Tooltip>

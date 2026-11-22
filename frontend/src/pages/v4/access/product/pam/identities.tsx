@@ -323,12 +323,12 @@ export const PamIdentitiesTab = () => {
       render: (member) =>
         isPamManaged(member, projectId) ? (
           <Badge tone="soft">
-            <Icon name="folder" size={12} />
+            <Icon name="folder" />
             PAM
           </Badge>
         ) : (
           <Badge tone="outline">
-            <Icon name="building" size={12} />
+            <Icon name="building" />
             Organization
           </Badge>
         )

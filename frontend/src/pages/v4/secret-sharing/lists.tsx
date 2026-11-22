@@ -236,12 +236,12 @@ export const SecretRequestsTable = ({ subOrganization }: { subOrganization?: str
       render: (row) =>
         row.accessType === SecretSharingAccessType.Anyone ? (
           <Badge tone="soft">
-            <Icon name="globe" size={12} />
+            <Icon name="globe" />
             Anyone
           </Badge>
         ) : (
           <Badge tone="soft">
-            <Icon name="building" size={12} />
+            <Icon name="building" />
             Organization
           </Badge>
         )

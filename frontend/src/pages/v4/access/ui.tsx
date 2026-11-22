@@ -211,7 +211,7 @@ export const RoleBadges = ({ roles, max = 2 }: { roles: readonly RoleGrant[]; ma
     const node = (
       <Badge key={grant.id} tone={expired ? "bad" : "soft"}>
         {grantLabel(grant)}
-        {grant.isTemporary && <Icon icon={expired ? ClockAlertIcon : ClockIcon} size={12} />}
+        {grant.isTemporary && <Icon icon={expired ? ClockAlertIcon : ClockIcon} />}
       </Badge>
     );
     return grant.isTemporary ? (
