@@ -31,7 +31,8 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  TableSkeletonRows
 } from "@app/components/v3";
 import {
   OrgPermissionIdentityActions,
@@ -39,17 +40,15 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub
 } from "@app/context";
-import { usePopUp, useRouteProjectId } from "@app/hooks";
-import { useRevokeIdentityTokenAuthToken } from "@app/hooks/api";
-import { IdentityAccessToken } from "@app/hooks/api/identities/types";
+import { usePopUp, useResetPageHelper, useRouteProjectId } from "@app/hooks";
+import { useGetIdentityTokensTokenAuth, useRevokeIdentityTokenAuthToken } from "@app/hooks/api";
 import { IdentityTokenModal } from "@app/pages/organization/IdentityDetailsByIDPage/components";
 
 type Props = {
-  tokens: IdentityAccessToken[];
   identityId: string;
 };
 
-export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
+export const IdentityTokenAuthTokensTable = ({ identityId }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "token",
     "revokeToken"
@@ -59,6 +58,17 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
 
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(5);
+  const offset = (page - 1) * perPage;
+
+  const { data, isPending } = useGetIdentityTokensTokenAuth({
+    identityId,
+    offset,
+    limit: perPage
+  });
+  const tokens = data?.tokens ?? [];
+  const totalCount = data?.totalCount ?? 0;
+
+  useResetPageHelper({ totalCount, offset, setPage });
 
   const { mutateAsync: revokeToken } = useRevokeIdentityTokenAuthToken();
 
@@ -120,7 +130,7 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
           )}
         </VariablePermissionCan>
       </div>
-      {tokens.length > 0 ? (
+      {isPending || totalCount > 0 ? (
         <>
           <Table>
             <TableHeader>
@@ -134,7 +144,8 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tokens.slice((page - 1) * perPage, perPage * page).map((token) => {
+              {isPending && <TableSkeletonRows columns={4} rows={perPage} />}
+              {tokens.map((token) => {
                 const {
                   createdAt,
                   isAccessTokenRevoked,
@@ -258,7 +269,7 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
             </TableBody>
           </Table>
           <Pagination
-            count={tokens.length}
+            count={totalCount}
             page={page}
             perPage={perPage}
             perPageList={[5]}

@@ -443,17 +443,18 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         identityId: z.string().describe(TOKEN_AUTH.GET_TOKENS.identityId)
       }),
       querystring: z.object({
-        offset: z.coerce.number().min(0).max(100).default(0).describe(TOKEN_AUTH.GET_TOKENS.offset),
+        offset: z.coerce.number().min(0).default(0).describe(TOKEN_AUTH.GET_TOKENS.offset),
         limit: z.coerce.number().min(1).max(100).default(20).describe(TOKEN_AUTH.GET_TOKENS.limit)
       }),
       response: {
         200: z.object({
-          tokens: IdentityAccessTokensSchema.array()
+          tokens: IdentityAccessTokensSchema.array(),
+          totalCount: z.number()
         })
       }
     },
     handler: async (req) => {
-      const { tokens, identityMembershipOrg } = await server.services.identityTokenAuth.getTokenAuthTokens({
+      const { tokens, totalCount, identityMembershipOrg } = await server.services.identityTokenAuth.getTokenAuthTokens({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -474,7 +475,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         }
       });
 
-      return { tokens };
+      return { tokens, totalCount };
     }
   });
 

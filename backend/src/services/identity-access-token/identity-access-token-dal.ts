@@ -142,5 +142,14 @@ export const identityAccessTokenDALFactory = (db: TDbClient) => {
     );
   };
 
-  return { ...identityAccessTokenOrm, findOne, removeExpiredTokens };
+  const countTokens = async (filter: Partial<TIdentityAccessTokens>, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.IdentityAccessToken).where(filter).count("*").first();
+      return parseInt((result as unknown as { count: string }).count || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "IdAccessTokenCount" });
+    }
+  };
+
+  return { ...identityAccessTokenOrm, findOne, removeExpiredTokens, countTokens };
 };
