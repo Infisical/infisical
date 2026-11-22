@@ -18,6 +18,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-fns";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -248,6 +249,7 @@ export const secretImportServiceFactory = ({
     }
 
     const secImport = await secretImportDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretImportPositions(folder.id)]);
       const lastPos = await secretImportDAL.findLastImportPosition(folder.id, tx);
       const doc = await secretImportDAL.create(
         {
@@ -385,7 +387,8 @@ export const secretImportServiceFactory = ({
     }
 
     const updatedSecImport = await secretImportDAL.transaction(async (tx) => {
-      const secImp = await secretImportDAL.findOne({ folderId: folder.id, id });
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretImportPositions(folder.id)]);
+      const secImp = await secretImportDAL.findOne({ folderId: folder.id, id }, tx);
       if (!secImp) throw ERR_SEC_IMP_NOT_FOUND;
 
       let finalPosition = data.position;
@@ -394,11 +397,13 @@ export const secretImportServiceFactory = ({
         if (secImp.isReplication) {
           const replicationFolderPath = path.join(secretPath, getReplicationFolderName(secImp.id));
           const reservedImport = await secretImportDAL.findOne({
-            folderId: folder.id,
-            importEnv: folder.environment.id,
-            importPath: replicationFolderPath,
-            isReserved: true
-          });
+              folderId: folder.id,
+              importEnv: folder.environment.id,
+              importPath: replicationFolderPath,
+              isReserved: true
+            },
+            tx
+          );
 
           const pairIds = new Set([secImp.id, ...(reservedImport ? [reservedImport.id] : [])]);
 
@@ -511,6 +516,7 @@ export const secretImportServiceFactory = ({
       });
 
     const secImport = await secretImportDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretImportPositions(folder.id)]);
       const [doc] = await secretImportDAL.delete({ folderId: folder.id, id }, tx);
       if (!doc) throw new NotFoundError({ message: `Secret import with folder ID '${id}' not found` });
       if (doc.isReplication) {
@@ -551,7 +557,7 @@ export const secretImportServiceFactory = ({
         tx
       );
 
-      const importEnv = await projectEnvDAL.findById(doc.importEnv);
+      const importEnv = await projectEnvDAL.findById(doc.importEnv, tx);
       if (!importEnv) {
         throw new NotFoundError({
           error: `Imported environment with ID '${doc.importEnv}' in project with ID '${projectId}' not found`
