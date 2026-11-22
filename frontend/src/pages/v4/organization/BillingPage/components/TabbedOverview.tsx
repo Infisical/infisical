@@ -129,7 +129,9 @@ const SummaryTile = ({
       <span className={styles.secondary}>{label}</span>
       <span className={styles.spread}>
         <span className={styles.truncate}>{children}</span>
-        {(href || onClick) && <Icon name={href ? "external" : "chev-right"} size={14} />}
+        {(href || onClick) && (
+          <Icon name={href ? "external" : "chev-right"} size="var(--cipher-size-icon-small)" />
+        )}
       </span>
     </>
   );

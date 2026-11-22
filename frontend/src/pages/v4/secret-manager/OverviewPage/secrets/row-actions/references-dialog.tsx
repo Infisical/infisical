@@ -104,7 +104,11 @@ export function ReferencesDialog({
             {location(target)}
             <Tooltip content="No value">
               <span className={styles.hint} data-tone="bad">
-                <Icon icon={EyeOffIcon} size={14} label="Referenced secret has no value" />
+                <Icon
+                  icon={EyeOffIcon}
+                  size="var(--cipher-size-icon-small)"
+                  label="Referenced secret has no value"
+                />
               </span>
             </Tooltip>
           </span>
@@ -147,14 +151,18 @@ export function ReferencesDialog({
               Reference tree
               <Tooltip content="Secrets this one references. You only see references you have access to.">
                 <span className={styles.hint}>
-                  <Icon name="info" size={14} label="About the reference tree" />
+                  <Icon
+                    name="info"
+                    size="var(--cipher-size-icon-small)"
+                    label="About the reference tree"
+                  />
                 </span>
               </Tooltip>
             </h3>
             <div className={styles.treeFrame}>
               {forbidden ? (
                 <SmallText role="alert" className={styles.treeError}>
-                  <Icon name="alert" size={14} />
+                  <Icon name="alert" size="var(--cipher-size-icon-small)" />
                   Error fetching secret reference tree
                 </SmallText>
               ) : (
@@ -182,7 +190,11 @@ export function ReferencesDialog({
               Dependency tree
               <Tooltip content="Secrets that reference this one. You only see references you have access to.">
                 <span className={styles.hint}>
-                  <Icon name="info" size={14} label="About the dependency tree" />
+                  <Icon
+                    name="info"
+                    size="var(--cipher-size-icon-small)"
+                    label="About the dependency tree"
+                  />
                 </span>
               </Tooltip>
             </h3>

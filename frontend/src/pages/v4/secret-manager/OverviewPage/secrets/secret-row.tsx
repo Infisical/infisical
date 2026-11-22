@@ -362,7 +362,7 @@ export function Annotations({
               onOpen(mark.overlay);
             }}
           >
-            <Icon icon={mark.icon} size={12} />
+            <Icon icon={mark.icon} size="var(--cipher-size-icon-caption)" />
             <span className="sr-only">{`${mark.label} for ${secret.name}`}</span>
           </Button>
         </Tooltip>
@@ -1647,10 +1647,18 @@ function SecretRowView({
                             </Tooltip>
                           )}
                           {secret?.managedBy && (
-                            <Icon name="sync" size={12} label="Rotated secret" />
+                            <Icon
+                              name="sync"
+                              size="var(--cipher-size-icon-caption)"
+                              label="Rotated secret"
+                            />
                           )}
                           {secret?.honeyToken && (
-                            <Icon name="honey" size={12} label="Honey token secret" />
+                            <Icon
+                              name="honey"
+                              size="var(--cipher-size-icon-caption)"
+                              label="Honey token secret"
+                            />
                           )}
                         </span>
                       </TableCell>

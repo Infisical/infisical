@@ -437,11 +437,11 @@ export function CopySecretsTree({
           <span className={styles.treeCount} aria-live="polite">
             <span className={styles.srOnly}>{selectionCountLabel}</span>
             <span className={styles.countItem} aria-hidden>
-              <Icon name="key" size={14} />
+              <Icon name="key" size="var(--cipher-size-icon-small)" />
               {selectedIds.length}
             </span>
             <span className={styles.countItem} aria-hidden>
-              <Icon name="folder" size={14} />
+              <Icon name="folder" size="var(--cipher-size-icon-small)" />
               {selectedFolderPaths.length}
             </span>
           </span>

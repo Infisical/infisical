@@ -75,7 +75,7 @@ const Chip = ({ icon }: { icon: TServiceIcon }) => (
     {icon.image ? (
       <ProviderIcon icon={icon.image} alt="" size="sm" />
     ) : (
-      <Icon icon={icon.icon ?? "globe"} size={14} />
+      <Icon icon={icon.icon ?? "globe"} size="var(--cipher-size-icon-small)" />
     )}
   </span>
 );

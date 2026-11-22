@@ -218,7 +218,7 @@ export function DetailsFields({
           <FieldLabel htmlFor="proxy-host-pattern">Host pattern</FieldLabel>
           <Tooltip content="The hosts whose traffic this service brokers. Separate multiple with commas, for example: api.stripe.com, *.github.com/v1/*, internal.corp.com:8443">
             <span className={styles.hint}>
-              <Icon name="info" size={14} label="About host patterns" />
+              <Icon name="info" size="var(--cipher-size-icon-small)" label="About host patterns" />
             </span>
           </Tooltip>
         </div>
@@ -463,7 +463,11 @@ export function SubstitutionFields({
               </span>
               <Tooltip content="Infisical sets this environment variable on the agent for you, holding the placeholder value.">
                 <span className={styles.hint}>
-                  <Icon name="info" size={14} label="About the environment variable" />
+                  <Icon
+                    name="info"
+                    size="var(--cipher-size-icon-small)"
+                    label="About the environment variable"
+                  />
                 </span>
               </Tooltip>
               <span className={styles.muted}>to the placeholder</span>
@@ -479,7 +483,11 @@ export function SubstitutionFields({
               </span>
               <Tooltip content="The value the agent sends instead of the real secret; the proxy swaps it on the wire. Prefilled to look like a real credential so format-checking clients accept it. Edit it if your client expects a different shape.">
                 <span className={styles.hint}>
-                  <Icon name="info" size={14} label="About the placeholder" />
+                  <Icon
+                    name="info"
+                    size="var(--cipher-size-icon-small)"
+                    label="About the placeholder"
+                  />
                 </span>
               </Tooltip>
               <Button
@@ -676,13 +684,17 @@ export function SubstitutionDiagram({ form }: { form: TProxiedServiceForm }) {
         <span className={styles.diagramTitle}>On the wire</span>
         <Tooltip content="When an agent launches with infisical secrets agent-proxy connect, Infisical sets each placeholder as an environment variable on it. The agent sends the placeholder in its requests, and the proxy swaps it for the real secret on the wire.">
           <span className={styles.hint}>
-            <Icon name="info" size={12} label="About the agent proxy" />
+            <Icon
+              name="info"
+              size="var(--cipher-size-icon-caption)"
+              label="About the agent proxy"
+            />
           </span>
         </Tooltip>
       </div>
       <Inset className={styles.node}>
         <span className={styles.nodeTitle}>
-          <Icon icon={BotIcon} size={14} />
+          <Icon icon={BotIcon} size="var(--cipher-size-icon-small)" />
           Your Agent
         </span>
         <code className={styles.nodeCode}>{`${envVar}=${placeholder}`}</code>
@@ -693,12 +705,12 @@ export function SubstitutionDiagram({ form }: { form: TProxiedServiceForm }) {
       {connector("Agent sends the placeholder in its request")}
       <Inset className={styles.node} data-accent="">
         <span className={styles.nodeTitle}>
-          <Icon name="proxy" size={14} />
+          <Icon name="proxy" size="var(--cipher-size-icon-small)" />
           Agent Proxy
         </span>
         <span className={styles.nodeCode}>
           <s>{placeholder}</s>
-          <Icon icon={ArrowRightIcon} size={12} />
+          <Icon icon={ArrowRightIcon} size="var(--cipher-size-icon-caption)" />
           real secret
         </span>
         <span className={styles.nodeNote}>Swaps the placeholder for the real secret.</span>
@@ -706,7 +718,7 @@ export function SubstitutionDiagram({ form }: { form: TProxiedServiceForm }) {
       {connector("Forwards the real request")}
       <Inset className={styles.node}>
         <span className={styles.nodeTitle}>
-          <Icon name="globe" size={14} />
+          <Icon name="globe" size="var(--cipher-size-icon-small)" />
           External Service
         </span>
         <span className={styles.nodeNote}>

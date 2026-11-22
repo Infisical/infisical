@@ -691,7 +691,7 @@ export function ReferenceEditor({
                     {option.meta && <span className={styles.optionMeta}>{option.meta}</span>}
                     {!option.insert && (
                       <span className={styles.trail}>
-                        <Icon name="chev-right" size={14} />
+                        <Icon name="chev-right" size="var(--cipher-size-icon-small)" />
                       </span>
                     )}
                     {option.insert && !option.meta && <span className={styles.insert}>insert</span>}

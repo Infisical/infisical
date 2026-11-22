@@ -207,7 +207,10 @@ export const TemplateRolesCard = ({
       width: 120,
       render: (role) => (
         <span className={styles.source}>
-          <Icon icon={isCustomProjectRole(role.slug) ? WrenchIcon : "server"} size={12} />
+          <Icon
+            icon={isCustomProjectRole(role.slug) ? WrenchIcon : "server"}
+            size="var(--cipher-size-icon-caption)"
+          />
           {isCustomProjectRole(role.slug) ? "Custom" : "Platform"}
         </span>
       )

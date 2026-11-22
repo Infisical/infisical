@@ -105,7 +105,7 @@ const SecretView = ({ secret }: { secret: TAccessSharedSecretResponse }) => {
         <div className={styles.facts}>
           {secret.expiresAt && (
             <span>
-              <Icon name="calendar" size={14} />
+              <Icon name="calendar" size="var(--cipher-size-icon-small)" />
               <span>
                 <SmallText className={styles.factLabel}>Expires</SmallText>
                 <SmallText muted>
@@ -116,7 +116,7 @@ const SecretView = ({ secret }: { secret: TAccessSharedSecretResponse }) => {
           )}
           {viewsLeft !== null && (
             <span>
-              <Icon name="eye" size={14} />
+              <Icon name="eye" size="var(--cipher-size-icon-small)" />
               <span>
                 <SmallText className={styles.factLabel}>Views remaining</SmallText>
                 <SmallText muted>{viewsLeft === 0 ? "Last available view" : viewsLeft}</SmallText>

@@ -303,7 +303,7 @@ export const OrgMembersTab = () => {
               content={`Last login with ${member.membership.lastLoginAuthMethod} on ${formatDateTime(member.membership.lastLoginTime)}`}
             >
               <button type="button" className={styles.rowHint} aria-label="Last login">
-                <Icon icon={InfoIcon} size={14} />
+                <Icon icon={InfoIcon} size="var(--cipher-size-icon-small)" />
               </button>
             </Tooltip>
           )}

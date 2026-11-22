@@ -97,7 +97,7 @@ export const OrganizationsTab = () => {
           {!hasAcceptedAdmin(organization) && (
             <Tooltip content="No admins have accepted their invitations.">
               <span role="img" aria-label="No admins have accepted their invitations">
-                <Icon name="alert" size={14} />
+                <Icon name="alert" size="var(--cipher-size-icon-small)" />
               </span>
             </Tooltip>
           )}

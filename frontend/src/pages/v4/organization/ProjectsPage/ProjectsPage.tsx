@@ -79,7 +79,7 @@ const ProductStats = ({
   if (!shown.length)
     return link ? (
       <CipherLink link={link} className={styles.setUp}>
-        <Icon icon={ArrowRightIcon} size={14} />
+        <Icon icon={ArrowRightIcon} size="var(--cipher-size-icon-small)" />
         Set up now
       </CipherLink>
     ) : null;

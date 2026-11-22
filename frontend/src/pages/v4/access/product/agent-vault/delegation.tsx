@@ -79,7 +79,9 @@ export const AgentVaultIdentityDelegationSection = ({
       grow: true,
       render: (subject) => (
         <Inline gap={8}>
-          {subject.key === ALL_MEMBERS && <Icon icon={UsersRoundIcon} size={14} />}
+          {subject.key === ALL_MEMBERS && (
+            <Icon icon={UsersRoundIcon} size="var(--cipher-size-icon-small)" />
+          )}
           <SubjectName name={subject.name} subtitle={subject.subtitle} />
         </Inline>
       )

@@ -132,7 +132,7 @@ function MatrixRow({
         onChange={onChange}
       />
       <span className={styles.arrow}>
-        <Icon icon={ArrowRightIcon} size={16} />
+        <Icon icon={ArrowRightIcon} size="var(--cipher-size-icon-label)" />
       </span>
       <span className={styles.mapResult}>
         <Badge tone="soft" size="control-sm" className={styles.mapBadge}>
@@ -142,7 +142,11 @@ function MatrixRow({
         {hint && (
           <Tooltip content={hint}>
             <span className={flowStyles.hint}>
-              <Icon name="info" size={14} label={`About ${label.toLowerCase()}`} />
+              <Icon
+                name="info"
+                size="var(--cipher-size-icon-small)"
+                label={`About ${label.toLowerCase()}`}
+              />
             </span>
           </Tooltip>
         )}
@@ -762,7 +766,7 @@ function ImportSecretsContent({
               <FieldLabel htmlFor="import-paste-secrets">Secret values</FieldLabel>
               <Tooltip content={<PasteExamples />}>
                 <span className={flowStyles.hint}>
-                  <Icon name="info" size={14} label="Example formats" />
+                  <Icon name="info" size="var(--cipher-size-icon-small)" label="Example formats" />
                 </span>
               </Tooltip>
             </span>
@@ -847,7 +851,7 @@ function ImportSecretsContent({
                         Key
                         <Icon
                           icon={areAllFoldersCollapsed ? ChevronsUpDownIcon : ChevronsDownUpIcon}
-                          size={14}
+                          size="var(--cipher-size-icon-small)"
                         />
                       </button>
                     ) : (
@@ -900,11 +904,19 @@ function ImportSecretsContent({
                             >
                               <span className={styles.glyph}>
                                 {isExpanded ? (
-                                  <Icon name="folder-open" size={14} />
+                                  <Icon name="folder-open" size="var(--cipher-size-icon-small)" />
                                 ) : (
                                   <>
-                                    <Icon name="folder" size={14} className={styles.closedFolder} />
-                                    <Icon name="chev-right" size={14} className={styles.chevron} />
+                                    <Icon
+                                      name="folder"
+                                      size="var(--cipher-size-icon-small)"
+                                      className={styles.closedFolder}
+                                    />
+                                    <Icon
+                                      name="chev-right"
+                                      size="var(--cipher-size-icon-small)"
+                                      className={styles.chevron}
+                                    />
                                   </>
                                 )}
                               </span>
@@ -942,7 +954,7 @@ function ImportSecretsContent({
                           style={folderTree ? indent(row.depth) : undefined}
                         >
                           <span className={styles.glyph}>
-                            <Icon name="key" size={14} />
+                            <Icon name="key" size="var(--cipher-size-icon-small)" />
                           </span>
                           {secretData.isFileSecret ? (
                             <Input
@@ -982,7 +994,11 @@ function ImportSecretsContent({
                               }
                             >
                               <span className={styles.glyph}>
-                                <Icon icon={MessageSquareIcon} size={14} label="Comment" />
+                                <Icon
+                                  icon={MessageSquareIcon}
+                                  size="var(--cipher-size-icon-small)"
+                                  label="Comment"
+                                />
                               </span>
                             </Tooltip>
                           )}
@@ -997,7 +1013,11 @@ function ImportSecretsContent({
                               }
                             >
                               <span className={styles.glyph}>
-                                <Icon icon={TagsIcon} size={14} label="Tags" />
+                                <Icon
+                                  icon={TagsIcon}
+                                  size="var(--cipher-size-icon-small)"
+                                  label="Tags"
+                                />
                               </span>
                             </Tooltip>
                           )}
@@ -1012,14 +1032,22 @@ function ImportSecretsContent({
                               }
                             >
                               <span className={styles.glyph}>
-                                <Icon icon={CodeXmlIcon} size={14} label="Metadata" />
+                                <Icon
+                                  icon={CodeXmlIcon}
+                                  size="var(--cipher-size-icon-small)"
+                                  label="Metadata"
+                                />
                               </span>
                             </Tooltip>
                           )}
                           {secretData.skipMultilineEncoding === true && (
                             <Tooltip content="Multi-line encoding enabled">
                               <span className={styles.glyph}>
-                                <Icon icon={WrapTextIcon} size={14} label="Multi-line encoding" />
+                                <Icon
+                                  icon={WrapTextIcon}
+                                  size="var(--cipher-size-icon-small)"
+                                  label="Multi-line encoding"
+                                />
                               </span>
                             </Tooltip>
                           )}
@@ -1056,7 +1084,11 @@ function ImportSecretsContent({
               <FieldLabel htmlFor="import-target-environments">Target environments</FieldLabel>
               <Tooltip content="The environments the secrets should be added to">
                 <span className={flowStyles.hint}>
-                  <Icon name="info" size={14} label="About target environments" />
+                  <Icon
+                    name="info"
+                    size="var(--cipher-size-icon-small)"
+                    label="About target environments"
+                  />
                 </span>
               </Tooltip>
             </span>
@@ -1074,7 +1106,11 @@ function ImportSecretsContent({
             <FieldLabel htmlFor="import-overwrite-existing">Overwrite existing secrets</FieldLabel>
             <Tooltip content="When enabled, secrets that already exist in the target environment will be updated with the imported values. When disabled, you choose whether to overwrite or skip them when you upload.">
               <span className={flowStyles.hint}>
-                <Icon name="info" size={14} label="About overwriting existing secrets" />
+                <Icon
+                  name="info"
+                  size="var(--cipher-size-icon-small)"
+                  label="About overwriting existing secrets"
+                />
               </span>
             </Tooltip>
             <Switch
@@ -1092,7 +1128,11 @@ function ImportSecretsContent({
                 content={`Each nested object becomes a folder relative to ${scope.path}, and its values become secrets in that folder. Arrays are stored as JSON strings, null as an empty value, and numbers and booleans as text.`}
               >
                 <span className={flowStyles.hint}>
-                  <Icon name="info" size={14} label="About importing nested objects" />
+                  <Icon
+                    name="info"
+                    size="var(--cipher-size-icon-small)"
+                    label="About importing nested objects"
+                  />
                 </span>
               </Tooltip>
               <Switch

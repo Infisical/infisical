@@ -88,7 +88,7 @@ export const MissingAccessBundlesHint = ({
     <HoverCard openDelay={150} closeDelay={100}>
       <HoverCardTrigger asChild>
         <button type="button" className={styles.hint}>
-          <Icon name="package" size={12} />
+          <Icon name="package" size="var(--cipher-size-icon-caption)" />
           {`${bundles.length} ${bundles.length === 1 ? "bundle" : "bundles"} excluded`}
         </button>
       </HoverCardTrigger>

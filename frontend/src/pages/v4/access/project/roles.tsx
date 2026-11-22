@@ -115,12 +115,12 @@ export const ProjectRolesTab = () => {
       render: (role) =>
         isCustomProjectRole(role.slug) ? (
           <span className={styles.source}>
-            <Icon icon={WrenchIcon} size={12} />
+            <Icon icon={WrenchIcon} size="var(--cipher-size-icon-caption)" />
             Custom
           </span>
         ) : (
           <span className={styles.source}>
-            <Icon name="server" size={12} />
+            <Icon name="server" size="var(--cipher-size-icon-caption)" />
             Platform
           </span>
         )

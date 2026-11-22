@@ -265,7 +265,7 @@ export const ChangeRequests = ({
             {failures[row.id] && (
               <Tooltip content={failures[row.id]}>
                 <span role="img" aria-label={`Review failed: ${failures[row.id]}`}>
-                  <Icon name="alert-c" size={16} />
+                  <Icon name="alert-c" size="var(--cipher-size-icon-label)" />
                 </span>
               </Tooltip>
             )}

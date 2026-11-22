@@ -89,7 +89,7 @@ export const VerifiedMark = ({ verified }: { verified: boolean }) => (
       role="img"
       aria-label={verified ? "Email has been verified" : "Email has not been verified"}
     >
-      <Icon name={verified ? "check" : "x"} size={14} />
+      <Icon name={verified ? "check" : "x"} size="var(--cipher-size-icon-small)" />
     </span>
   </Tooltip>
 );

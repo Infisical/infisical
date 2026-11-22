@@ -92,7 +92,7 @@ export function ResourceChangeCard({
           <span className={styles.cardTitle}>
             <Icon
               name={change.resourceType === "secret" ? "key" : "folder"}
-              size={16}
+              size="var(--cipher-size-icon-label)"
               className={styles.cardIcon}
             />
             <span className={styles.cardText}>
