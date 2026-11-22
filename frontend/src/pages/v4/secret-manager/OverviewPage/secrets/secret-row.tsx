@@ -245,6 +245,7 @@ function InlineEditor({
   useRegisterUnsavedEdit(dirty, { save, discard: onCancel });
   const control = {
     autoFocus: true,
+    readOnly: saving,
     className: styles.inlineInput,
     "aria-invalid": Boolean(error) || undefined,
     "aria-label": label,
@@ -1746,6 +1747,7 @@ function SecretRowView({
                       </TableCell>
                       {secret ? (
                         <EnvironmentValueCell
+                          key={secret.id}
                           secret={secret}
                           label={environment.label}
                           visible={rowVisible}
