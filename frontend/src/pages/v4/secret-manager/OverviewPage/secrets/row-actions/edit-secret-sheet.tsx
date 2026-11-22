@@ -58,7 +58,7 @@ export function EditSecretSheet({
   onClose: () => void;
   onSave: (patch: SecretPatch) => Promise<boolean>;
 }) {
-  const { dependents } = useDependents(secret);
+  const { dependents, isPending: dependentsPending } = useDependents(secret);
   const initial = useMemo(() => toEntry(secret), [secret]);
   const [entry, setEntry] = useState(initial);
   const [createdTags, setCreatedTags] = useState<string[]>([]);
@@ -80,6 +80,7 @@ export function EditSecretSheet({
       : {})
   };
   const dirty = Object.keys(patch).length > 0;
+  const checking = patch.value !== undefined && dependentsPending;
   const options = [...new Set([...tagOptions, ...createdTags, ...entry.tags])]
     .sort()
     .map((tag) => ({ value: tag, label: tag }));
@@ -101,7 +102,7 @@ export function EditSecretSheet({
       if (!item.key) issues[`${entry.id}.metadata.${item.id}`] = "Key is required";
     });
     setErrors(issues);
-    if (Object.keys(issues).length || !dirty) return;
+    if (Object.keys(issues).length || !dirty || checking) return;
     if (patch.value !== undefined && dependents.length) {
       setConfirm(patch);
       return;
@@ -186,7 +187,7 @@ export function EditSecretSheet({
                 type="submit"
                 form="edit-secret-sheet"
                 disabled={!dirty || saving}
-                loading={saving}
+                loading={saving || checking}
               >
                 {saveLabel}
               </Button>
