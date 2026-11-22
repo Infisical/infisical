@@ -23,7 +23,7 @@ import {
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline } from "@infisical/cipher/ui/layout";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
 import {
@@ -40,7 +40,6 @@ import { useOrgId, useOrgPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
 import { AccessRestricted, RESTRICTED, type Sort } from "../../access/ui";
 import { ProviderIcon } from "../../components/provider-icon";
-import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { PLATFORM_ICONS, PLATFORM_NAMES, PLATFORMS } from "./workflow-platforms";
 import { WorkflowSheet, type WorkflowSheetState } from "./workflow-sheet";
@@ -216,7 +215,7 @@ export const WorkflowIntegrationsTab = () => {
   const isFiltered = Boolean(query.trim()) || platformFilter.length > 0;
 
   return (
-    <ToolbarStack>
+    <Stack gap="toolbar">
       <FilterBar
         label="Workflow integration filters"
         fields={[
@@ -355,6 +354,6 @@ export const WorkflowIntegrationsTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </ToolbarStack>
+    </Stack>
   );
 };

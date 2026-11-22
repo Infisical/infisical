@@ -10,6 +10,7 @@ import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { UserRoundXIcon } from "lucide-react";
 
@@ -19,7 +20,6 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import type { TGroupMembership } from "@app/hooks/api/groups/types";
 
-import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
@@ -101,7 +101,7 @@ export const ProjectGroupsTab = () => {
   };
 
   return (
-    <ToolbarStack>
+    <Stack gap="toolbar">
       <FilterBar
         label={`${accessLabel(scope.projectType, "group")} filters`}
         fields={[]}
@@ -168,6 +168,6 @@ export const ProjectGroupsTab = () => {
         group={removing?.group}
         onOpenChange={(open) => !open && setRemoving(undefined)}
       />
-    </ToolbarStack>
+    </Stack>
   );
 };

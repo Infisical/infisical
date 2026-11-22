@@ -16,7 +16,7 @@ import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline } from "@infisical/cipher/ui/layout";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { useSearch } from "@tanstack/react-router";
 import { UserXIcon } from "lucide-react";
 
@@ -27,7 +27,6 @@ import {
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import type { TAgentVaultProductMemberOf } from "@app/hooks/api/agentVault/types";
 
-import { ToolbarStack } from "../../../components/toolbar-stack";
 import { useV4Adapter } from "../../../data/adapters";
 import { useV4Session } from "../../../data/session/contract";
 import { useProjectPermission } from "../../permissions";
@@ -108,7 +107,7 @@ export const AgentVaultMembersTab = () => {
   };
 
   return (
-    <ToolbarStack>
+    <Stack gap="toolbar">
       <FilterBar
         label="User filters"
         fields={[]}
@@ -200,6 +199,6 @@ export const AgentVaultMembersTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </ToolbarStack>
+    </Stack>
   );
 };

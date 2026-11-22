@@ -21,6 +21,7 @@ import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
 
 import {
   ProjectPermissionActions,
@@ -29,7 +30,6 @@ import {
 import type { ServiceToken } from "@app/hooks/api/serviceTokens/types";
 
 import { NoExpiry } from "../../components/no-expiry";
-import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { useProjectPermission } from "../permissions";
 import { formatDateTime } from "../roles";
@@ -138,7 +138,7 @@ export const ServiceTokensTab = () => {
   };
 
   return (
-    <ToolbarStack>
+    <Stack gap="toolbar">
       <FilterBar
         label="Service token filters"
         fields={[]}
@@ -208,6 +208,6 @@ export const ServiceTokensTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </ToolbarStack>
+    </Stack>
   );
 };

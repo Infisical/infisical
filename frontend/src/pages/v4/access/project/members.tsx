@@ -11,6 +11,7 @@ import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dr
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { useSearch } from "@tanstack/react-router";
 import { UserXIcon } from "lucide-react";
@@ -22,7 +23,6 @@ import {
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import type { TWorkspaceUser } from "@app/hooks/api/users/types";
 
-import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { accessLinks } from "../links";
@@ -176,7 +176,7 @@ export const ProjectMembersTab = () => {
   };
 
   return (
-    <ToolbarStack>
+    <Stack gap="toolbar">
       <FilterBar
         label={`${accessLabel(scope.projectType, "user")} filters`}
         fields={[
@@ -261,6 +261,6 @@ export const ProjectMembersTab = () => {
         target={assuming}
         onOpenChange={(next) => !next && setAssuming(undefined)}
       />
-    </ToolbarStack>
+    </Stack>
   );
 };

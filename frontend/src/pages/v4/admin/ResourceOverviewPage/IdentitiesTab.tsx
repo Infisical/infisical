@@ -6,14 +6,13 @@ import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline } from "@infisical/cipher/ui/layout";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { UserCogIcon } from "lucide-react";
 
 import type { Identity } from "@app/hooks/api/identities/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 
 import { saved } from "../../access/toast";
-import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { ConfirmDialog, pagination, usePageReset, usePaging } from "./shared";
 
@@ -57,7 +56,7 @@ export const IdentitiesTab = () => {
   ];
 
   return (
-    <ToolbarStack>
+    <Stack gap="toolbar">
       <FilterBar
         label="Machine identity filters"
         fields={[]}
@@ -119,6 +118,6 @@ export const IdentitiesTab = () => {
           saved("Successfully removed server admin permissions");
         }}
       />
-    </ToolbarStack>
+    </Stack>
   );
 };

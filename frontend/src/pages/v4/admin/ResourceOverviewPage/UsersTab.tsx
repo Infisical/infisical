@@ -11,7 +11,7 @@ import { EmptyState } from "@infisical/cipher/ui/empty";
 import { FloatingActionBar } from "@infisical/cipher/ui/floating-action-bar";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline } from "@infisical/cipher/ui/layout";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { UserCogIcon } from "lucide-react";
 
@@ -20,7 +20,6 @@ import type { User } from "@app/hooks/api/users/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 
 import { saved } from "../../access/toast";
-import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { useUpgradeGate } from "../../license";
@@ -124,7 +123,7 @@ export const UsersTab = () => {
   const pageIds = new Set(users.map((user) => user.id));
 
   return (
-    <ToolbarStack>
+    <Stack gap="toolbar">
       <FilterBar
         label="User filters"
         fields={[
@@ -273,6 +272,6 @@ export const UsersTab = () => {
         }}
       />
       {upgradeGate}
-    </ToolbarStack>
+    </Stack>
   );
 };

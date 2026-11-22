@@ -35,7 +35,6 @@ import type { User } from "@app/hooks/api/users/types";
 
 import { saved } from "../../access/toast";
 import { Muted } from "../../access/ui";
-import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { useUpgradeGate } from "../../license";
@@ -112,7 +111,7 @@ export const AccessManagementPage = () => {
     <Stack gap={24}>
       <PageTitle title="Access control" />
       <PageHeader title="Access control" description="Manage server admins on this instance." />
-      <ToolbarStack>
+      <Stack gap="toolbar">
         <FilterBar
           label="Server admin filters"
           fields={[]}
@@ -222,7 +221,7 @@ export const AccessManagementPage = () => {
             ) : undefined
           }
         />
-      </ToolbarStack>
+      </Stack>
 
       <GrantServerAdminDialog open={granting} onOpenChange={setGranting} />
 

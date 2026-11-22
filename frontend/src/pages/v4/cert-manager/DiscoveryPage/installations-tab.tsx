@@ -5,7 +5,7 @@ import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dr
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline } from "@infisical/cipher/ui/layout";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 
@@ -14,7 +14,6 @@ import type { TPkiInstallation } from "@app/hooks/api/pkiDiscovery/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 
 import { RESTRICTED } from "../../access/ui";
-import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo } from "../../links";
 import {
@@ -161,7 +160,7 @@ export const InstallationsTab = ({ orgId, projectId }: { orgId: string; projectI
     );
 
   return (
-    <ToolbarStack>
+    <Stack gap="toolbar">
       <Input
         icon="search"
         aria-label="Search installations"
@@ -258,6 +257,6 @@ export const InstallationsTab = ({ orgId, projectId }: { orgId: string; projectI
         projectId={projectId}
         onClose={() => setDeleting(undefined)}
       />
-    </ToolbarStack>
+    </Stack>
   );
 };

@@ -10,7 +10,7 @@ import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dr
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline } from "@infisical/cipher/ui/layout";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
 import { OrgMembershipRole } from "@app/helpers/roles";
@@ -19,7 +19,6 @@ import { OrgMembershipStatus } from "@app/hooks/api/organization/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 
 import { saved } from "../../access/toast";
-import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter, useV4Mode } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { useGo, v4Path } from "../../links";
@@ -140,7 +139,7 @@ export const OrganizationsTab = () => {
   };
 
   return (
-    <ToolbarStack>
+    <Stack gap="toolbar">
       <FilterBar
         label="Organization filters"
         fields={[]}
@@ -201,6 +200,6 @@ export const OrganizationsTab = () => {
           saved("Successfully deleted organization");
         }}
       />
-    </ToolbarStack>
+    </Stack>
   );
 };

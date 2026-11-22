@@ -24,7 +24,6 @@ import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 import { useProjectPermission } from "../../access/permissions";
 import { formatDateTime } from "../../access/roles";
 import { AccessRestricted, RESTRICTED, type Sort } from "../../access/ui";
-import { ToolbarStack } from "../../components/toolbar-stack";
 import { useV4Adapter } from "../../data/adapters";
 import { useGo } from "../../links";
 import {
@@ -279,7 +278,7 @@ export const NativeIntegrationsTab = ({
   ];
 
   return (
-    <ToolbarStack>
+    <Stack gap="toolbar">
       <RetirementNotice orgId={orgId} projectId={projectId} />
       <FilterBar
         label="Native integration filters"
@@ -399,6 +398,6 @@ export const NativeIntegrationsTab = ({
           onClose={() => setBlocked(false)}
         />
       )}
-    </ToolbarStack>
+    </Stack>
   );
 };
