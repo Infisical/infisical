@@ -836,9 +836,11 @@ const OverviewPageContent = () => {
   const {
     count: unsavedEditsCount,
     getEdits: getUnsavedEdits,
+    isCommitting: isCommittingUnsavedEdits,
     setCommitting: setCommittingUnsavedEdits
   } = useUnsavedEdits();
-  const { mutateAsync: createCommits, isPending: isCommittingUnsavedEdits } = useCreateCommits();
+  const isCommittingUnsavedEditsRef = useRef(false);
+  const { mutateAsync: createCommits } = useCreateCommits();
   const [layoutContainer, setLayoutContainer] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -2546,18 +2548,28 @@ const OverviewPageContent = () => {
       return change ? [{ edit, change }] : [];
     });
     const changes = edits.map(({ change }) => change);
-    if (!changes.length) return false;
+    if (!changes.length || isCommittingUnsavedEditsRef.current) return false;
 
+    isCommittingUnsavedEditsRef.current = true;
     setCommittingUnsavedEdits(true);
     try {
-      await Promise.all(
-        [
-          ...new Set(
-            changes.filter((change) => change.isCreate).map((change) => change.environment)
-          )
-        ].map(ensureSecretFolder)
+      const createEnvironments = [
+        ...new Set(changes.filter((change) => change.isCreate).map((change) => change.environment))
+      ];
+      const preparedFolders = await Promise.allSettled(createEnvironments.map(ensureSecretFolder));
+      const folderFailures = createEnvironments.flatMap((environment, index) => {
+        const result = preparedFolders[index];
+        return result.status === "rejected"
+          ? [{ environment, commit: undefined, error: result.reason as unknown }]
+          : [];
+      });
+      const sendableChanges = changes.filter(
+        (change) => !folderFailures.some(({ environment }) => environment === change.environment)
       );
-      const { commits } = await createCommits({ projectId, secretPath, message, secrets: changes });
+      const { commits: sentCommits } = sendableChanges.length
+        ? await createCommits({ projectId, secretPath, message, secrets: sendableChanges })
+        : { commits: [] };
+      const commits = [...sentCommits, ...folderFailures];
       const failedEnvironments = commits
         .filter(({ commit }) => !commit)
         .map(({ environment }) => environment);
@@ -2611,6 +2623,7 @@ const OverviewPageContent = () => {
       showSecretWriteErrors([{ error }]);
       return false;
     } finally {
+      isCommittingUnsavedEditsRef.current = false;
       setCommittingUnsavedEdits(false);
     }
   };

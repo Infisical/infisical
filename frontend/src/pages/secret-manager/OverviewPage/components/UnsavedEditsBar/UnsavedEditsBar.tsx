@@ -101,12 +101,13 @@ export const UnsavedEditsScope = ({ children }: { children: ReactNode }) => {
 export const useUnsavedEdits = () => {
   const registry = useContext(UnsavedEditsRegistryContext);
   const count = useContext(UnsavedEditsCountContext);
+  const isCommitting = useContext(UnsavedEditsCommittingContext);
   const getEdits = useCallback(() => registry?.getEdits() ?? [], [registry]);
   const setCommitting = useCallback(
     (isCommitting: boolean) => registry?.setCommitting(isCommitting),
     [registry]
   );
-  return { count, getEdits, setCommitting };
+  return { count, getEdits, isCommitting, setCommitting };
 };
 
 export const useUnsavedEdit = (isDirty: boolean, edit: TUnsavedEdit) => {
