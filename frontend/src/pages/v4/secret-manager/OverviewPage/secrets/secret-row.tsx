@@ -487,7 +487,8 @@ function CellEditor({
   onCommit,
   onInvalidBlur,
   onDone,
-  holdCommit
+  holdCommit,
+  onDraftChange
 }: {
   label: string;
   initial: string;
@@ -500,6 +501,7 @@ function CellEditor({
   onInvalidBlur: (message: string) => void;
   onDone: () => void;
   holdCommit?: (value: string) => boolean;
+  onDraftChange?: () => void;
 }) {
   useRequestBreadth(Boolean(multiline));
   const [draft, setDraft] = useState(initial);
@@ -541,6 +543,7 @@ function CellEditor({
     attempt.current += 1;
     setDraft(transform ? transform(value) : value);
     setError("");
+    onDraftChange?.();
   };
   return (
     <div className={styles.inlineEdit} data-invalid={error ? "" : undefined}>
@@ -612,6 +615,7 @@ function DependentsCellEditor({
           setHeld(value);
           return true;
         }}
+        onDraftChange={() => setHeld(undefined)}
       />
       <ConfirmDependentsDialog
         open={held !== undefined && !isPending && dependents.length > 0}
