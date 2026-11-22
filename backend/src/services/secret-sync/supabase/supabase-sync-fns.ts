@@ -7,6 +7,7 @@ import { logger } from "@app/lib/logger";
 import { TSupabaseSecret } from "@app/services/app-connection/supabase";
 import { SupabasePublicAPI } from "@app/services/app-connection/supabase/supabase-connection-public-client";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSyncSecretsResult } from "@app/services/secret-sync/secret-sync-types";
 
 import { SecretSyncError } from "../secret-sync-errors";
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
@@ -19,12 +20,26 @@ const SUPABASE_RESERVED_PREFIX = "SUPABASE_";
 
 const isSupabaseReservedSecret = (key: string) => key.startsWith(SUPABASE_RESERVED_PREFIX);
 
+// The message is saved to the sync's lastSyncMessage column, which holds 1024 characters.
+const MAX_SKIPPED_NAMES_LENGTH = 800;
+
+const buildSkippedSecretsMessage = (skippedKeys: string[]) => {
+  const names = skippedKeys.join(", ");
+  const listedNames =
+    names.length > MAX_SKIPPED_NAMES_LENGTH ? `${names.slice(0, MAX_SKIPPED_NAMES_LENGTH - 3)}...` : names;
+
+  return `Skipped ${skippedKeys.length} ${skippedKeys.length === 1 ? "secret" : "secrets"} with the reserved ${SUPABASE_RESERVED_PREFIX} prefix, which Supabase manages itself: ${listedNames}`;
+};
+
 export const SupabaseSyncFns = {
   async getSecrets(secretSync: TSupabaseSyncWithCredentials) {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
   },
 
-  async syncSecrets(secretSync: TSupabaseSyncWithCredentials, payload: TSecretSyncPayload) {
+  async syncSecrets(
+    secretSync: TSupabaseSyncWithCredentials,
+    payload: TSecretSyncPayload
+  ): Promise<TSyncSecretsResult | undefined> {
     const secretMap = payload.flatten();
     const {
       environment,
@@ -66,7 +81,9 @@ export const SupabaseSyncFns = {
       }
     }
 
-    if (disableSecretDeletion) return;
+    const result = skippedKeys.length ? { message: buildSkippedSecretsMessage(skippedKeys) } : undefined;
+
+    if (disableSecretDeletion) return result;
 
     const toDelete: string[] = [];
 
@@ -89,6 +106,8 @@ export const SupabaseSyncFns = {
         });
       }
     }
+
+    return result;
   },
 
   async removeSecrets(secretSync: TSupabaseSyncWithCredentials, payload: TSecretSyncPayload) {

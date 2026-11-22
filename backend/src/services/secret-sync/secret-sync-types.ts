@@ -576,9 +576,10 @@ export enum SecretSyncAction {
 }
 
 export type TSyncSecretsResult = {
-  createdSecretKeys: string[];
-  updatedSecretKeys: string[];
-  deletedSecretKeys: string[];
+  // Optional for destinations that only report a message and do not track per-key changes.
+  createdSecretKeys?: string[];
+  updatedSecretKeys?: string[];
+  deletedSecretKeys?: string[];
   // Something the user has to act on although the sync succeeded; saved as the sync's last message.
   message?: string;
 };
