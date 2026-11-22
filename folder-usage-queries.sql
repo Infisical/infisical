@@ -4,8 +4,8 @@
 -- (no org, project, or user identifiers), so the results are safe to paste back.
 --
 -- Scope used everywhere:
---   * projects.type = 'secret-manager', not soft-deleted
---   * project_environments not soft-deleted
+--   * projects.type = 'secret-manager' (the analytics copy has no soft-delete columns, so
+--     projects and environments pending deletion are counted too)
 --   * "user folder" = any folder except the root (parentId IS NULL) and replication
 --     reserved folders (isReserved = true)
 --   * "secret" = secrets_v2 row with type = 'shared' (personal overrides excluded)
@@ -17,6 +17,12 @@
 -- SET statement_timeout = '15min';
 --
 -- Every table is read from the analytics schema (analytics.<table>).
+--
+-- Not in the analytics schema, so not covered: project_folder_grants, approval_policies,
+-- approval_policy_secret_environments, access_approval_policies, secret_references_v2,
+-- secret_v2_tag_junction, folder_commits, folder_commit_changes, and the columns
+-- secret_syncs.includeAllSubFolders, additional_privileges.folderId / permissions.
+-- Q14 and Q16 are removed for that reason; Q10, Q12, Q13 and Q15 are narrowed.
 
 
 -- =====================================================================================
@@ -27,7 +33,7 @@ sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id, p."orgId" AS org_id, p.version AS project_version
   FROM analytics.project_environments e
   JOIN analytics.projects p ON p.id = e."projectId"
-  WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
+  WHERE p.type = 'secret-manager'
 ),
 tree AS (
   SELECT f.id, f."envId", COALESCE(f."isReserved", false) AS reserved, 0 AS depth
@@ -69,7 +75,7 @@ sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
   FROM analytics.project_environments e
   JOIN analytics.projects p ON p.id = e."projectId"
-  WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
+  WHERE p.type = 'secret-manager'
 ),
 tree AS (
   SELECT f.id, f."envId", COALESCE(f."isReserved", false) AS reserved, 0 AS depth
@@ -111,7 +117,7 @@ sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
   FROM analytics.project_environments e
   JOIN analytics.projects p ON p.id = e."projectId"
-  WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
+  WHERE p.type = 'secret-manager'
 ),
 tree AS (
   SELECT f.id, f."envId", COALESCE(f."isReserved", false) AS reserved, 0 AS depth
@@ -151,7 +157,7 @@ sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id, p."orgId" AS org_id
   FROM analytics.project_environments e
   JOIN analytics.projects p ON p.id = e."projectId"
-  WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
+  WHERE p.type = 'secret-manager'
 ),
 tree AS (
   SELECT f.id, f."envId", COALESCE(f."isReserved", false) AS reserved, 0 AS depth
@@ -188,7 +194,7 @@ sm_envs AS (
   SELECT e.id AS env_id
   FROM analytics.project_environments e
   JOIN analytics.projects p ON p.id = e."projectId"
-  WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
+  WHERE p.type = 'secret-manager'
 ),
 tree AS (
   SELECT f.id, COALESCE(f."isReserved", false) AS reserved, 0 AS depth
@@ -224,7 +230,7 @@ sm_envs AS (
   SELECT e.id AS env_id
   FROM analytics.project_environments e
   JOIN analytics.projects p ON p.id = e."projectId"
-  WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
+  WHERE p.type = 'secret-manager'
 ),
 tree AS (
   SELECT f.id, COALESCE(f."isReserved", false) AS reserved, 0 AS depth
@@ -266,7 +272,7 @@ sm_envs AS (
   SELECT e.id AS env_id
   FROM analytics.project_environments e
   JOIN analytics.projects p ON p.id = e."projectId"
-  WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
+  WHERE p.type = 'secret-manager'
 ),
 tree AS (
   SELECT f.id, COALESCE(f."isReserved", false) AS reserved, 0 AS depth
@@ -308,7 +314,7 @@ sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
   FROM analytics.project_environments e
   JOIN analytics.projects p ON p.id = e."projectId"
-  WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
+  WHERE p.type = 'secret-manager'
 ),
 tree AS (
   SELECT f.id, f."envId", 0 AS depth
@@ -351,7 +357,7 @@ sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id, p."orgId" AS org_id
   FROM analytics.project_environments e
   JOIN analytics.projects p ON p.id = e."projectId"
-  WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
+  WHERE p.type = 'secret-manager'
 ),
 tree AS (
   SELECT f.id, f."envId", f.name, 0 AS depth
@@ -381,7 +387,7 @@ sm_envs AS (
   SELECT e.id AS env_id
   FROM analytics.project_environments e
   JOIN analytics.projects p ON p.id = e."projectId"
-  WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
+  WHERE p.type = 'secret-manager'
 ),
 tree AS (
   SELECT f.id, f.name, 0 AS depth
@@ -416,7 +422,7 @@ sm_envs AS (
   SELECT e.id AS env_id, e.slug AS env_slug, e."projectId" AS project_id
   FROM analytics.project_environments e
   JOIN analytics.projects p ON p.id = e."projectId"
-  WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
+  WHERE p.type = 'secret-manager'
 ),
 lvl1 AS (
   SELECT lower(c.name) AS name, e.project_id, e.env_slug
@@ -426,9 +432,9 @@ lvl1 AS (
   WHERE r."parentId" IS NULL
 ),
 project_env_slugs AS (
-  SELECT e."projectId" AS project_id, lower(e.slug) AS slug FROM analytics.project_environments e WHERE e."softDeletedAt" IS NULL
+  SELECT e."projectId" AS project_id, lower(e.slug) AS slug FROM analytics.project_environments e
   UNION
-  SELECT e."projectId", lower(e.name) FROM analytics.project_environments e WHERE e."softDeletedAt" IS NULL
+  SELECT e."projectId", lower(e.name) FROM analytics.project_environments e
 )
 SELECT
   CASE
@@ -467,7 +473,7 @@ sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
   FROM analytics.project_environments e
   JOIN analytics.projects p ON p.id = e."projectId"
-  WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
+  WHERE p.type = 'secret-manager'
 ),
 tree AS (
   SELECT f.id, f."envId", 0 AS depth, ''::text AS path
@@ -521,7 +527,7 @@ sm_envs AS (
   SELECT e.id AS env_id
   FROM analytics.project_environments e
   JOIN analytics.projects p ON p.id = e."projectId"
-  WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
+  WHERE p.type = 'secret-manager'
 ),
 tree AS (
   SELECT f.id, f.description, f.version, f."createdAt", f."lastSecretModified", 0 AS depth
@@ -554,7 +560,7 @@ sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
   FROM analytics.project_environments e
   JOIN analytics.projects p ON p.id = e."projectId"
-  WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
+  WHERE p.type = 'secret-manager'
 ),
 tree AS (
   SELECT f.id, f."envId", 0 AS depth
@@ -568,8 +574,6 @@ tree AS (
 attached AS (
   SELECT 'secret_sync' AS feature, s."folderId" AS folder_id FROM analytics.secret_syncs s WHERE s."folderId" IS NOT NULL
   UNION ALL
-  SELECT 'secret_sync (includeAllSubFolders)', s."folderId" FROM analytics.secret_syncs s WHERE s."folderId" IS NOT NULL AND s."includeAllSubFolders"
-  UNION ALL
   SELECT 'dynamic_secret', d."folderId" FROM analytics.dynamic_secrets d
   UNION ALL
   SELECT 'secret_rotation_v2', r."folderId" FROM analytics.secret_rotations_v2 r
@@ -577,10 +581,6 @@ attached AS (
   SELECT 'secret_import (destination)', i."folderId" FROM analytics.secret_imports i WHERE NOT COALESCE(i."isReserved", false)
   UNION ALL
   SELECT 'secret_import (replication)', i."folderId" FROM analytics.secret_imports i WHERE i."isReplication"
-  UNION ALL
-  SELECT 'folder_grant (shared to another project)', g."sourceFolderId" FROM analytics.project_folder_grants g
-  UNION ALL
-  SELECT 'folder-scoped additional privilege', a."folderId" FROM analytics.additional_privileges a WHERE a."folderId" IS NOT NULL
 )
 SELECT
   a.feature,
@@ -606,7 +606,7 @@ sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
   FROM analytics.project_environments e
   JOIN analytics.projects p ON p.id = e."projectId"
-  WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
+  WHERE p.type = 'secret-manager'
 ),
 tree AS (
   SELECT f.id, f."envId", 0 AS depth, '/'::text AS path
@@ -655,8 +655,8 @@ FROM (
   SELECT i."folderId", count(*) AS n
   FROM analytics.secret_imports i
   JOIN analytics.secret_folders f ON f.id = i."folderId"
-  JOIN analytics.project_environments e ON e.id = f."envId" AND e."softDeletedAt" IS NULL
-  JOIN analytics.projects p ON p.id = e."projectId" AND p.type = 'secret-manager' AND p."softDeletedAt" IS NULL
+  JOIN analytics.project_environments e ON e.id = f."envId"
+  JOIN analytics.projects p ON p.id = e."projectId" AND p.type = 'secret-manager'
   WHERE NOT COALESCE(i."isReserved", false)
   GROUP BY i."folderId"
 ) x
@@ -665,47 +665,34 @@ ORDER BY min(n);
 
 
 -- =====================================================================================
--- Q12. Policies scoped by folder path (approvals and access)
+-- Q12. Secret approval policies scoped by folder path (legacy table only)
 -- =====================================================================================
-WITH paths AS (
-  SELECT 'approval_policies (' || ap.type || ')' AS source, ase."secretPath" AS path, ap."projectId" AS project_id
-  FROM analytics.approval_policy_secret_environments ase
-  JOIN analytics.approval_policies ap ON ap.id = ase."policyId"
-  WHERE COALESCE(ap."isActive", true)
-  UNION ALL
-  SELECT 'secret_approval_policies (legacy)', sap."secretPath", e."projectId"
-  FROM analytics.secret_approval_policies sap JOIN analytics.project_environments e ON e.id = sap."envId"
-  WHERE sap."deletedAt" IS NULL
-  UNION ALL
-  SELECT 'access_approval_policies (legacy)', aap."secretPath", e."projectId"
-  FROM analytics.access_approval_policies aap JOIN analytics.project_environments e ON e.id = aap."envId"
-  WHERE aap."deletedAt" IS NULL
-)
+-- Only the legacy secret_approval_policies table is in the analytics schema. New policies
+-- live in approval_policies, which is not, so this undercounts current policy usage.
 SELECT
-  source,
   CASE
-    WHEN path IN ('/', '') THEN 'root only'
-    WHEN path IN ('/**', '/*', '**', '*') THEN 'whole env glob'
-    WHEN path ~ '[*?{]' THEN 'subtree / glob pattern'
+    WHEN sap."secretPath" IN ('/', '') THEN 'root only'
+    WHEN sap."secretPath" IN ('/**', '/*', '**', '*') THEN 'whole env glob'
+    WHEN sap."secretPath" ~ '[*?{]' THEN 'subtree / glob pattern'
     ELSE 'exact folder path'
   END AS path_kind,
-  count(*) AS rows,
-  count(DISTINCT project_id) AS projects,
-  round(avg(array_length(string_to_array(trim(both '/' from path), '/'), 1)), 2) AS avg_path_segments
-FROM paths
-GROUP BY 1, 2
-ORDER BY 1, rows DESC;
+  count(*) AS policies,
+  count(DISTINCT e."projectId") AS projects,
+  round(avg(array_length(string_to_array(NULLIF(trim(both '/' from sap."secretPath"), ''), '/'), 1)), 2) AS avg_path_segments
+FROM analytics.secret_approval_policies sap
+JOIN analytics.project_environments e ON e.id = sap."envId"
+JOIN analytics.projects p ON p.id = e."projectId" AND p.type = 'secret-manager'
+WHERE sap."deletedAt" IS NULL
+GROUP BY 1
+ORDER BY policies DESC;
 
 
 -- =====================================================================================
--- Q13. Folder-path conditions in custom roles and additional privileges
+-- Q13. Folder-path conditions in custom project roles
 -- =====================================================================================
 WITH perms AS (
   SELECT 'custom project role' AS source, r."projectId" AS project_id, r.permissions::text AS p
-  FROM analytics.roles r JOIN analytics.projects pr ON pr.id = r."projectId" AND pr.type = 'secret-manager' AND pr."softDeletedAt" IS NULL
-  UNION ALL
-  SELECT 'additional privilege', a."projectId", a.permissions::text
-  FROM analytics.additional_privileges a JOIN analytics.projects pr ON pr.id = a."projectId" AND pr.type = 'secret-manager' AND pr."softDeletedAt" IS NULL
+  FROM analytics.roles r JOIN analytics.projects pr ON pr.id = r."projectId" AND pr.type = 'secret-manager'
 )
 SELECT
   source,
@@ -721,27 +708,16 @@ GROUP BY source;
 
 
 -- =====================================================================================
--- Q14. Secret references that point into folders (${env.path.KEY})
--- =====================================================================================
-SELECT
-  CASE WHEN r."targetProjectSlug" IS NOT NULL THEN 'cross-project' ELSE 'same project' END AS scope,
-  CASE WHEN r."secretPath" IN ('/', '') THEN 'root' ELSE 'subfolder' END AS target,
-  count(*) AS ref_count,
-  round(avg(array_length(string_to_array(NULLIF(trim(both '/' from r."secretPath"), ''), '/'), 1)), 2) AS avg_target_depth
-FROM analytics.secret_references_v2 r
-GROUP BY 1, 2
-ORDER BY ref_count DESC;
-
-
--- =====================================================================================
 -- Q15. Folders vs tags: are they alternatives or used together?
+--      (tag assignments are not in the analytics schema, so this checks whether the project
+--      has defined any tags, not whether secrets carry them)
 -- =====================================================================================
 WITH RECURSIVE
 sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id
   FROM analytics.project_environments e
   JOIN analytics.projects p ON p.id = e."projectId"
-  WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
+  WHERE p.type = 'secret-manager'
 ),
 tree AS (
   SELECT f.id, f."envId", 0 AS depth
@@ -755,45 +731,27 @@ tree AS (
 per_project AS (
   SELECT e.project_id,
          bool_or(t.depth > 0) AS uses_folders,
-         EXISTS (
-           SELECT 1 FROM analytics.secret_v2_tag_junction j
-           JOIN analytics.secret_tags st ON st.id = j."secret_tagsId"
-           WHERE st."projectId" = e.project_id
-         ) AS uses_tags
+         EXISTS (SELECT 1 FROM analytics.secret_tags st WHERE st."projectId" = e.project_id) AS has_tags_defined
   FROM tree t JOIN sm_envs e ON e.env_id = t."envId"
   GROUP BY e.project_id
 )
-SELECT uses_folders, uses_tags, count(*) AS projects
+SELECT uses_folders, has_tags_defined, count(*) AS projects
 FROM per_project
 GROUP BY 1, 2
 ORDER BY 1, 2;
 
 
 -- =====================================================================================
--- Q16. Folder activity over time (from commits): folder add/delete/update by actor type
--- =====================================================================================
-SELECT
-  date_trunc('month', fc."createdAt")::date AS month,
-  fcc."changeType",
-  fcc."isUpdate",
-  fc."actorType",
-  count(*) AS folder_changes
-FROM analytics.folder_commit_changes fcc
-JOIN analytics.folder_commits fc ON fc.id = fcc."folderCommitId"
-WHERE fcc."folderVersionId" IS NOT NULL
-  AND fc."createdAt" > now() - interval '12 months'
-GROUP BY 1, 2, 3, 4
-ORDER BY 1, 2, 3, 4;
-
 -- Q16b. Folder creation per month (current folders only) and how many orgs created folders
+-- =====================================================================================
 SELECT
   date_trunc('month', f."createdAt")::date AS month,
   count(*) AS folders_created,
   count(DISTINCT p."orgId") AS orgs,
   count(DISTINCT p.id) AS projects
 FROM analytics.secret_folders f
-JOIN analytics.project_environments e ON e.id = f."envId" AND e."softDeletedAt" IS NULL
-JOIN analytics.projects p ON p.id = e."projectId" AND p.type = 'secret-manager' AND p."softDeletedAt" IS NULL
+JOIN analytics.project_environments e ON e.id = f."envId"
+JOIN analytics.projects p ON p.id = e."projectId" AND p.type = 'secret-manager'
 WHERE f."parentId" IS NOT NULL
   AND NOT COALESCE(f."isReserved", false)
   AND f."createdAt" > now() - interval '24 months'
@@ -809,7 +767,7 @@ sm_envs AS (
   SELECT e.id AS env_id, e."projectId" AS project_id, p."orgId" AS org_id
   FROM analytics.project_environments e
   JOIN analytics.projects p ON p.id = e."projectId"
-  WHERE p.type = 'secret-manager' AND p."softDeletedAt" IS NULL AND e."softDeletedAt" IS NULL
+  WHERE p.type = 'secret-manager'
 ),
 tree AS (
   SELECT f.id, f."envId", 0 AS depth
