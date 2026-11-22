@@ -14,6 +14,16 @@ import { ClipboardCheckIcon, EyeIcon, SaveIcon } from "lucide-react";
 
 import { SecretVersionDiffView } from "@app/components/secrets/diff";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogConfirmationField,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
   Badge,
   Button,
   Input,
@@ -35,6 +45,7 @@ export type TUnsavedChange = {
   originalValue: string | null;
   secretValueHidden: boolean;
   isCreate: boolean;
+  isReferenced: boolean;
   secretComment?: string;
   tagIds?: string[];
 };
@@ -125,14 +136,25 @@ export const UnsavedEditsBar = ({
   onDiscardAll
 }: Props) => {
   const [reviewChanges, setReviewChanges] = useState<TUnsavedChange[] | null>(null);
+  const [referencedChanges, setReferencedChanges] = useState<TUnsavedChange[] | null>(null);
   const [message, setMessage] = useState("");
   const isSingleChange = count === 1;
   const commitLabel = isSingleChange ? "Save Change" : `Commit ${count} Changes`;
 
-  const handleCommit = async () => {
+  const commit = async () => {
     if (isCommitting || !(await onCommit(message))) return;
+    setReferencedChanges(null);
     setReviewChanges(null);
     setMessage("");
+  };
+
+  const handleCommit = () => {
+    const referenced = getChanges().filter((change) => change.isReferenced);
+    if (referenced.length) {
+      setReferencedChanges(referenced);
+      return;
+    }
+    commit();
   };
 
   const changesByEnvironment = new Map<string, TUnsavedChange[]>();
@@ -269,6 +291,48 @@ export const UnsavedEditsBar = ({
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      <AlertDialog
+        isPending={isCommitting}
+        open={Boolean(referencedChanges)}
+        onOpenChange={(open) => !open && setReferencedChanges(null)}
+        confirmationValue="confirm"
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <SaveIcon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Update referenced secrets?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Other secrets in your project reference{" "}
+              {referencedChanges?.length === 1 ? "this secret" : "these secrets"}. Committing
+              updates them everywhere they&apos;re referenced.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="space-y-1 text-sm">
+            {referencedChanges?.map((change) => (
+              <li key={`${change.environment}:${change.secretKey}`} className="flex gap-2">
+                <code>{change.secretKey}</code>
+                <span className="text-muted">{change.environmentName}</span>
+              </li>
+            ))}
+          </ul>
+          <AlertDialogConfirmationField />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="project"
+              onClick={(e) => {
+                e.preventDefault();
+                commit();
+              }}
+            >
+              {commitLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

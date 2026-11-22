@@ -1084,6 +1084,17 @@ export const SecretEditTableRow = ({
     }
   };
 
+  const isReferencedElsewhere = Boolean(
+    importedBy?.some(({ folders }) =>
+      folders?.some(({ secrets }) =>
+        secrets?.some(
+          ({ referencedSecretKey, referencedSecretEnv }) =>
+            referencedSecretKey === secretName && referencedSecretEnv === environment
+        )
+      )
+    )
+  );
+
   const handleFormSubmit = async ({
     value,
     key,
@@ -1101,20 +1112,7 @@ export const SecretEditTableRow = ({
 
     // If the value edit requires confirmation (importedBy references), defer everything
     // (including rename) to handleEditSecret so the rename isn't lost on re-render.
-    if (
-      isValueDirty &&
-      (value || value === "") &&
-      !isCreatable &&
-      importedBy &&
-      importedBy.some(({ folders }) =>
-        folders?.some(({ secrets }) =>
-          secrets?.some(
-            ({ referencedSecretKey, referencedSecretEnv }) =>
-              referencedSecretKey === secretName && referencedSecretEnv === environment
-          )
-        )
-      )
-    ) {
+    if (isValueDirty && (value || value === "") && !isCreatable && isReferencedElsewhere) {
       handlePopUpOpen("editSecret", {
         secretValue: value,
         newKey: isKeyDirty ? key : undefined,
@@ -1196,6 +1194,7 @@ export const SecretEditTableRow = ({
         originalValue: sharedValueData?.value ?? (defaultValue || null),
         secretValueHidden,
         isCreate: Boolean(isCreatable),
+        isReferenced: !isCreatable && isReferencedElsewhere,
         secretComment: comment,
         tagIds: tags?.map((tag) => tag.id)
       };
